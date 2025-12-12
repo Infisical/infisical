@@ -6,7 +6,7 @@ import { ForbiddenError } from "@casl/ability";
 import { AxiosError } from "axios";
 import { CronJob } from "cron";
 
-import { OrganizationActionScope, ProjectType } from "@app/db/schemas";
+import { OrganizationActionScope, ProjectType, SubscriptionProductCategory } from "@app/db/schemas";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { TEnvConfig } from "@app/lib/config/env";
 import { verifyOfflineLicense } from "@app/lib/crypto";
@@ -56,7 +56,7 @@ type TLicenseServiceFactoryDep = {
   licenseDAL: TLicenseDALFactory;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
   projectDAL: TProjectDALFactory;
-  queueService: TQueueServiceFactory;
+  queueService: Pick<TQueueServiceFactory, "start" | "queue">;
 };
 
 export type TLicenseServiceFactory = ReturnType<typeof licenseServiceFactory>;
@@ -199,6 +199,30 @@ export const licenseServiceFactory = ({
     }
   };
 
+  const $getPlanReturnFn = (featureSet: TFeatureSet) => {
+    return {
+      productPlans: featureSet.productPlans,
+      getAll: () => featureSet,
+      get: <C extends SubscriptionProductCategory, K extends keyof TFeatureSet[C]>(
+        category: C,
+        featureKey: K
+      ): TFeatureSet[C][K] | undefined => {
+        const feature = featureSet[category][featureKey];
+
+        if (
+          !feature &&
+          (category === SubscriptionProductCategory.Platform ||
+            category === SubscriptionProductCategory.SecretsManager) &&
+          featureKey in featureSet
+        ) {
+          return featureSet?.[featureKey];
+        }
+
+        return feature;
+      }
+    };
+  };
+
   const getPlan = async (orgId: string, projectId?: string) => {
     logger.info(`getPlan: attempting to fetch plan for [orgId=${orgId}] [projectId=${projectId}]`);
     try {
@@ -206,7 +230,7 @@ export const licenseServiceFactory = ({
         const cachedPlan = await keyStore.getItem(FEATURE_CACHE_KEY(orgId));
         if (cachedPlan) {
           logger.info(`getPlan: plan fetched from cache [orgId=${orgId}] [projectId=${projectId}]`);
-          return JSON.parse(cachedPlan) as TFeatureSet;
+          return $getPlanReturnFn(JSON.parse(cachedPlan) as TFeatureSet);
         }
 
         const org = await orgDAL.findRootOrgDetails(orgId);
@@ -218,27 +242,32 @@ export const licenseServiceFactory = ({
         } = await licenseServerCloudApi.request.get<{ currentPlan: TFeatureSet }>(
           `/api/license-server/v1/customers/${org.customerId}/cloud-plan`
         );
-        const workspacesUsed = await projectDAL.countOfOrgProjects(rootOrgId);
-        currentPlan.workspacesUsed = workspacesUsed;
+        if (currentPlan.version === 1) {
+          const workspacesUsed = await projectDAL.countOfOrgProjects(rootOrgId);
+          currentPlan.workspacesUsed = workspacesUsed;
 
-        const membersUsed = await licenseDAL.countOfOrgMembers(rootOrgId);
-        currentPlan.membersUsed = membersUsed;
-        const identityUsed = await licenseDAL.countOrgUsersAndIdentities(rootOrgId);
+          const membersUsed = await licenseDAL.countOfOrgMembers(rootOrgId);
+          currentPlan.membersUsed = membersUsed;
+          const identityUsed = await licenseDAL.countOrgUsersAndIdentities(rootOrgId);
 
-        if (currentPlan?.identitiesUsed && currentPlan.identitiesUsed !== identityUsed) {
-          try {
-            await licenseServerCloudApi.request.patch(`/api/license-server/v1/customers/${org.customerId}/cloud-plan`, {
-              quantity: membersUsed,
-              quantityIdentities: identityUsed
-            });
-          } catch (error) {
-            logger.error(
-              error,
-              `Update seats used: encountered an error when updating plan for customer [customerId=${org.customerId}]`
-            );
+          if (currentPlan?.identitiesUsed && currentPlan.identitiesUsed !== identityUsed) {
+            try {
+              await licenseServerCloudApi.request.patch(
+                `/api/license-server/v1/customers/${org.customerId}/cloud-plan`,
+                {
+                  quantity: membersUsed,
+                  quantityIdentities: identityUsed
+                }
+              );
+            } catch (error) {
+              logger.error(
+                error,
+                `Update seats used: encountered an error when updating plan for customer [customerId=${org.customerId}]`
+              );
+            }
           }
+          currentPlan.identitiesUsed = identityUsed;
         }
-        currentPlan.identitiesUsed = identityUsed;
 
         await keyStore.setItemWithExpiry(
           FEATURE_CACHE_KEY(org.id),
@@ -246,7 +275,7 @@ export const licenseServiceFactory = ({
           JSON.stringify(currentPlan)
         );
 
-        return currentPlan;
+        return $getPlanReturnFn(currentPlan);
       }
     } catch (error) {
       logger.error(
@@ -258,11 +287,45 @@ export const licenseServiceFactory = ({
         LICENSE_SERVER_CLOUD_PLAN_TTL,
         JSON.stringify(onPremFeatures)
       );
-      return onPremFeatures;
+      return $getPlanReturnFn(onPremFeatures);
     } finally {
       logger.info(`getPlan: Process done for [orgId=${orgId}] [projectId=${projectId}]`);
     }
-    return onPremFeatures;
+    return $getPlanReturnFn(onPremFeatures);
+  };
+
+  const validatePlanProjectLimit = async (orgId: string, projectType: ProjectType) => {
+    const plan = await getPlan(orgId);
+    const featureSet = plan.getAll();
+
+    let projectLimit = 0;
+    let projectsUsed = 0;
+
+    if (featureSet.version === 2) {
+      let type: SubscriptionProductCategory | null = null;
+      if (projectType === ProjectType.SecretManager) type = SubscriptionProductCategory.SecretsManager;
+      if (projectType === ProjectType.CertificateManager) type = SubscriptionProductCategory.CertManager;
+      if (projectType === ProjectType.PAM) type = SubscriptionProductCategory.Pam;
+      if (!type) return;
+
+      projectLimit = featureSet[type].projectLimit || 0;
+      if (projectLimit) {
+        projectsUsed = await projectDAL.countOfOrgProjects(orgId, projectType);
+      }
+    } else {
+      projectLimit = featureSet.workspacesUsed;
+      if (projectLimit) {
+        projectsUsed = await projectDAL.countOfOrgProjects(orgId);
+      }
+    }
+
+    if (projectLimit && projectsUsed >= projectLimit) {
+      throw new BadRequestError({
+        message: "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces."
+      });
+    }
+
+    return { projectLimit };
   };
 
   const refreshPlan = async (orgId: string) => {
@@ -1113,7 +1176,7 @@ export const licenseServiceFactory = ({
       return instanceType;
     },
     get onPremFeatures() {
-      return onPremFeatures;
+      return $getPlanReturnFn(onPremFeatures);
     },
     getPlan,
     getCustomerId,
@@ -1138,6 +1201,7 @@ export const licenseServiceFactory = ({
     delOrgTaxId,
     initializeBackgroundSync,
     updateOrgProductToPro,
-    getMySubscriptionMetrics
+    getMySubscriptionMetrics,
+    validatePlanProjectLimit
   };
 };

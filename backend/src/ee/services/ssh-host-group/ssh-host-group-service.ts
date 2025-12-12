@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, SubscriptionProductCategory } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
@@ -84,7 +84,7 @@ export const sshHostGroupServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.SshHostGroups);
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.sshHostGroups)
+    if (!plan.get(SubscriptionProductCategory.Pam, "sshHostGroups"))
       throw new BadRequestError({
         message: "Failed to create SSH host group due to plan restriction. Upgrade plan to create group."
       });
@@ -177,7 +177,7 @@ export const sshHostGroupServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SshHostGroups);
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.sshHostGroups)
+    if (!plan.get(SubscriptionProductCategory.Pam, "sshHostGroups"))
       throw new BadRequestError({
         message: "Failed to update SSH host group due to plan restriction. Upgrade plan to update group."
       });

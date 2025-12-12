@@ -9,6 +9,7 @@ import {
   ProjectMembershipRole,
   ProjectType,
   ProjectVersion,
+  SubscriptionProductCategory,
   TableName,
   TProjectEnvironments,
   TProjects
@@ -168,7 +169,7 @@ type TProjectServiceFactoryDep = {
   sshHostDAL: Pick<TSshHostDALFactory, "find" | "findSshHostsWithLoginMappings">;
   sshHostGroupDAL: Pick<TSshHostGroupDALFactory, "find" | "findSshHostGroupsWithLoginMappings">;
   permissionService: TPermissionServiceFactory;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "invalidateGetPlan">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "invalidateGetPlan" | "validatePlanProjectLimit">;
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findOne">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem">;
@@ -264,18 +265,7 @@ export const projectServiceFactory = ({
     const results = await (trx || projectDAL).transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(organization.id)]);
 
-      const plan = await licenseService.getPlan(organization.id);
-      if (
-        plan.workspaceLimit !== null &&
-        plan.workspacesUsed >= plan.workspaceLimit &&
-        type === ProjectType.SecretManager
-      ) {
-        // case: limit imposed on number of workspaces allowed
-        // case: number of workspaces used exceeds the number of workspaces allowed
-        throw new BadRequestError({
-          message: "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces."
-        });
-      }
+      const planLimit = await licenseService.validatePlanProjectLimit(organization.id, type);
 
       if (kmsKeyId) {
         const kms = await kmsService.getKmsById(kmsKeyId, tx);
@@ -439,7 +429,7 @@ export const projectServiceFactory = ({
       }
 
       // no need to invalidate if there was no limit
-      if (plan.workspaceLimit) {
+      if (planLimit?.projectLimit) {
         await licenseService.invalidateGetPlan(organization.id);
       }
       return {
@@ -733,7 +723,11 @@ export const projectServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.auditLogs || auditLogsRetentionDays > plan.auditLogsRetentionDays) {
+    const planAuditLogRetentionDays = plan.get(SubscriptionProductCategory.Platform, "auditLogsRetentionDays") || 0;
+    if (
+      !plan.get(SubscriptionProductCategory.Platform, "auditLogs") ||
+      auditLogsRetentionDays > planAuditLogRetentionDays
+    ) {
       throw new BadRequestError({
         message: "Failed to update audit logs retention due to plan limit reached. Upgrade plan to increase."
       });
@@ -1350,7 +1344,7 @@ export const projectServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.externalKms) {
+    if (!plan.get(SubscriptionProductCategory.Platform, "externalKms")) {
       throw new BadRequestError({
         message: "Failed to get KMS backup due to plan restriction. Upgrade to the enterprise plan."
       });
@@ -1380,7 +1374,7 @@ export const projectServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.externalKms) {
+    if (!plan.get(SubscriptionProductCategory.Platform, "externalKms")) {
       throw new BadRequestError({
         message: "Failed to load KMS backup due to plan restriction. Upgrade to the enterprise plan."
       });

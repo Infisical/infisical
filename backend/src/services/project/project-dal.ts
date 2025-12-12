@@ -440,7 +440,7 @@ export const projectDALFactory = (db: TDbClient) => {
     return project;
   };
 
-  const countOfOrgProjects = async (orgId: string | null, tx?: Knex) => {
+  const countOfOrgProjects = async (orgId: string | null, projectType?: ProjectType, tx?: Knex) => {
     try {
       const subOrgProjects = db.replicaNode()(TableName.Organization).where({ rootOrgId: orgId }).select("id");
 
@@ -448,6 +448,9 @@ export const projectDALFactory = (db: TDbClient) => {
         .andWhere((bd) => {
           if (orgId) {
             void bd.where({ orgId }).orWhereIn("orgId", subOrgProjects);
+          }
+          if (projectType) {
+            void bd.where({ type: projectType });
           }
         })
         .count();

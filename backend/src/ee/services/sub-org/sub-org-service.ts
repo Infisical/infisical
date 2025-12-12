@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, SubscriptionProductCategory } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
@@ -48,7 +48,7 @@ export const subOrgServiceFactory = ({
     );
 
     const orgLicensePlan = await licenseService.getPlan(permissionActor.rootOrgId);
-    if (!orgLicensePlan.subOrganization) {
+    if (!orgLicensePlan.get(SubscriptionProductCategory.Platform, "subOrganization")) {
       throw new BadRequestError({
         message: "Sub-organization creation failed. Please upgrade your instance to Infisical's Enterprise plan."
       });

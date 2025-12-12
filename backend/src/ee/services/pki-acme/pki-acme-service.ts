@@ -10,7 +10,7 @@ import {
 import { Knex } from "knex";
 import { z, ZodError } from "zod";
 
-import { TPkiAcmeOrders } from "@app/db/schemas";
+import { SubscriptionProductCategory, TPkiAcmeOrders } from "@app/db/schemas";
 import { TPkiAcmeAccounts } from "@app/db/schemas/pki-acme-accounts";
 import { TPkiAcmeAuths } from "@app/db/schemas/pki-acme-auths";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -170,7 +170,7 @@ export const pkiAcmeServiceFactory = ({
       throw new NotFoundError({ message: "Certificate profile is not configured for ACME enrollment" });
     }
     const orgLicensePlan = await licenseService.getPlan(profile.project!.orgId);
-    if (!orgLicensePlan.pkiAcme) {
+    if (!orgLicensePlan.get(SubscriptionProductCategory.CertManager, "pkiAcme")) {
       throw new AcmeUnauthorizedError({
         message: "Failed to validate ACME profile: Plan restriction. Upgrade plan to continue"
       });

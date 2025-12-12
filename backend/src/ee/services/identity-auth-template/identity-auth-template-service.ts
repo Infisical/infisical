@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { OrganizationActionScope } from "@app/db/schemas";
+import { OrganizationActionScope, SubscriptionProductCategory } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
@@ -49,7 +49,7 @@ export const identityAuthTemplateServiceFactory = ({
   // Plan check
   const $checkPlan = async (orgId: string) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.machineIdentityAuthTemplates)
+    if (!plan.get(SubscriptionProductCategory.Platform, "machineIdentityAuthTemplates"))
       throw new BadRequestError({
         message:
           "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."

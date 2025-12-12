@@ -1,5 +1,6 @@
 import fp from "fastify-plugin";
 
+import { SubscriptionProductCategory } from "@app/db/schemas";
 import { getRateLimiterConfig } from "@app/ee/services/rate-limit/rate-limit-service";
 import { getConfig } from "@app/lib/config/env";
 
@@ -15,7 +16,9 @@ export const injectRateLimits = fp(async (server) => {
       return;
     }
 
-    const { rateLimits, customRateLimits } = await server.services.license.getPlan(req.auth.orgId);
+    const plan = await server.services.license.getPlan(req.auth.orgId);
+    const rateLimits = plan.get(SubscriptionProductCategory.Platform, "rateLimits");
+    const customRateLimits = plan.get(SubscriptionProductCategory.Platform, "customRateLimits");
 
     if (customRateLimits && !appCfg.isCloud) {
       // we do this because for self-hosted/dedicated instances, we want custom rate limits to be based on admin configuration

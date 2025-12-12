@@ -3,7 +3,7 @@ import { isIP } from "node:net";
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, TRelays } from "@app/db/schemas";
+import { OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, SubscriptionProductCategory, TRelays } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -965,7 +965,7 @@ export const relayServiceFactory = ({
 
     if (isOrgRelay) {
       const orgLicensePlan = await licenseService.getPlan(orgId);
-      if (!orgLicensePlan.gateway) {
+      if (!orgLicensePlan.get(SubscriptionProductCategory.Platform, "gateway")) {
         throw new BadRequestError({
           message:
             "Relay registration failed due to organization plan restrictions. Please upgrade your instance to Infisical's Enterprise plan."

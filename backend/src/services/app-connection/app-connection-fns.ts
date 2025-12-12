@@ -1,4 +1,4 @@
-import { ProjectType } from "@app/db/schemas";
+import { ProjectType , SubscriptionProductCategory } from "@app/db/schemas";
 import { TAppConnections } from "@app/db/schemas/app-connections";
 import {
   ChefConnectionMethod,
@@ -530,7 +530,7 @@ export const enterpriseAppCheck = async (
 ) => {
   if (APP_CONNECTION_PLAN_MAP[appConnection] === AppConnectionPlanType.Enterprise) {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.enterpriseAppConnections)
+    if (!plan.get(SubscriptionProductCategory.Platform, "enterpriseAppConnections"))
       throw new BadRequestError({
         message: errorMessage
       });

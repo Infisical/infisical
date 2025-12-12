@@ -1,5 +1,6 @@
 import * as x509 from "@peculiar/x509";
 
+import { SubscriptionProductCategory } from "@app/db/schemas";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { isCertChainValid } from "@app/services/certificate/certificate-fns";
@@ -84,7 +85,7 @@ export const certificateEstV3ServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.pkiEst) {
+    if (!plan.get(SubscriptionProductCategory.CertManager, "pkiEst")) {
       throw new BadRequestError({
         message:
           "Failed to perform EST operation - simpleEnroll due to plan restriction. Upgrade to the Enterprise plan."
@@ -192,7 +193,7 @@ export const certificateEstV3ServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.pkiEst) {
+    if (!plan.get(SubscriptionProductCategory.CertManager, "pkiEst")) {
       throw new BadRequestError({
         message:
           "Failed to perform EST operation - simpleReenroll due to plan restriction. Upgrade to the Enterprise plan."
@@ -310,7 +311,7 @@ export const certificateEstV3ServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.pkiEst) {
+    if (!plan.get(SubscriptionProductCategory.CertManager, "pkiEst")) {
       throw new BadRequestError({
         message: "Failed to perform EST operation - caCerts due to plan restriction. Upgrade to the Enterprise plan."
       });

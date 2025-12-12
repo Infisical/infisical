@@ -2,7 +2,7 @@ import path from "node:path";
 
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType, TableName } from "@app/db/schemas";
+import { ActionProjectType, TableName , SubscriptionProductCategory } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   hasSecretReadValueOrDescribePermission,
@@ -105,7 +105,7 @@ export const secretImportServiceFactory = ({
 
     if (isReplication) {
       const plan = await licenseService.getPlan(actorOrgId);
-      if (!plan.secretApproval) {
+      if (!plan.get(SubscriptionProductCategory.SecretsManager, "secretApproval")) {
         throw new BadRequestError({
           message: "Failed to create secret replication due to plan restriction. Upgrade plan to create replication."
         });
@@ -401,7 +401,7 @@ export const secretImportServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.secretApproval) {
+    if (!plan.get(SubscriptionProductCategory.SecretsManager, "secretApproval")) {
       throw new BadRequestError({
         message: "Failed to create secret replication due to plan restriction. Upgrade plan to create replication."
       });

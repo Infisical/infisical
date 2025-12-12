@@ -11,7 +11,7 @@ import {
   SecretKeyEncoding,
   SecretsSchema,
   SecretType
-} from "@app/db/schemas";
+, SubscriptionProductCategory } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   hasSecretReadValueOrDescribePermission,
@@ -1264,7 +1264,7 @@ export const secretServiceFactory = ({
   const getSecretAccessList = async (dto: TGetSecretAccessListDTO) => {
     const { environment, secretPath, secretName, projectId } = dto;
     const plan = await licenseService.getPlan(dto.actorOrgId);
-    if (!plan.secretAccessInsights) {
+    if (!plan.get(SubscriptionProductCategory.SecretsManager, "secretAccessInsights")) {
       throw new BadRequestError({
         message: "Failed to fetch secret access list due to plan restriction. Upgrade your plan."
       });

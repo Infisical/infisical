@@ -1,6 +1,7 @@
 import * as handlebars from "handlebars";
 import { z, ZodSchema } from "zod";
 
+import { SubscriptionProductCategory } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { BadRequestError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -36,7 +37,10 @@ export const enterprisePkiSyncCheck = async (
 ) => {
   const plan = await licenseService.getPlan(orgId);
 
-  if (!plan.enterpriseCertificateSyncs && ENTERPRISE_PKI_SYNCS.includes(pkiSyncDestination)) {
+  if (
+    !plan.get(SubscriptionProductCategory.CertManager, "enterpriseCertificateSyncs") &&
+    ENTERPRISE_PKI_SYNCS.includes(pkiSyncDestination)
+  ) {
     throw new BadRequestError({
       message: errorMessage || "Failed to create PKI sync due to plan restriction. Upgrade plan to create PKI sync."
     });

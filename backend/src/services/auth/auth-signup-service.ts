@@ -401,7 +401,7 @@ export const authSignupServiceFactory = ({
         tx
       );
       const uniqueOrgId = [...new Set(updatedMembersips.map(({ scopeOrgId }) => scopeOrgId))];
-      await Promise.allSettled(uniqueOrgId.map((orgId) => licenseService.updateOrgSubscription(orgId, tx)));
+      await Promise.allSettled(uniqueOrgId.map((orgId) => licenseService.updateOrgSubscription(orgId)));
 
       await convertPendingGroupAdditionsToGroupMemberships({
         userIds: [user.id],

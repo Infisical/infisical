@@ -1,6 +1,7 @@
 import { AxiosError } from "axios";
 import handlebars from "handlebars";
 
+import { SubscriptionProductCategory } from "@app/db/schemas";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -561,7 +562,7 @@ export const enterpriseSyncCheck = async (
 ) => {
   if (SECRET_SYNC_PLAN_MAP[secretSync] === SecretSyncPlanType.Enterprise) {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.enterpriseSecretSyncs)
+    if (!plan.get(SubscriptionProductCategory.SecretsManager, "enterpriseSecretSyncs"))
       throw new BadRequestError({
         message: errorMessage
       });

@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, SubscriptionProductCategory } from "@app/db/schemas";
 import { TAccessApprovalPolicyEnvironmentDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-environment-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -82,7 +82,8 @@ export const projectEnvServiceFactory = ({
 
       const project = await projectDAL.findById(projectId);
       const plan = await licenseService.getPlan(project.orgId);
-      if (plan.environmentLimit !== null && envs.length >= plan.environmentLimit) {
+      const environmentLimit = plan.get(SubscriptionProductCategory.SecretsManager, "environmentLimit");
+      if (environmentLimit && envs.length >= environmentLimit) {
         // case: limit imposed on number of environments allowed
         // case: number of environments used exceeds the number of environments allowed
         throw new BadRequestError({
@@ -180,7 +181,8 @@ export const projectEnvServiceFactory = ({
       const envs = await projectEnvDAL.find({ projectId });
       const project = await projectDAL.findById(projectId);
       const plan = await licenseService.getPlan(project.orgId);
-      if (plan.environmentLimit !== null && envs.length > plan.environmentLimit) {
+      const environmentLimit = plan.get(SubscriptionProductCategory.SecretsManager, "environmentLimit");
+      if (environmentLimit && envs.length > environmentLimit) {
         // case: limit imposed on number of environments allowed
         // case: number of environments used exceeds the number of environments allowed
         throw new BadRequestError({
