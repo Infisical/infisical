@@ -3248,7 +3248,7 @@
     },
     {
       "source": "/integrations/cloud/teamcity",
-      "destination": "/integrations/cicd/teamcity"
+      "destination": "/integrations/secret-syncs/teamcity"
     }
   ]
 }
