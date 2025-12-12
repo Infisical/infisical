@@ -3,7 +3,7 @@ import { subject } from "@casl/ability";
 import { pipeline } from "stream/promises";
 import { z } from "zod";
 
-import { ActionProjectType, ProjectType } from "@app/db/schemas";
+import { ActionProjectType, ProjectType, SubscriptionProductCategory } from "@app/db/schemas";
 import { getServerSentEventsHeaders } from "@app/ee/services/event/event-sse-stream";
 import { EventRegisterSchema, Mappings } from "@app/ee/services/event/types";
 import { ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -37,7 +37,7 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
 
         const plan = await license.getPlan(req.auth.orgId);
 
-        if (!plan.eventSubscriptions) {
+        if (!plan.get(SubscriptionProductCategory.Platform, "eventSubscriptions")) {
           throw new BadRequestError({
             message:
               "Failed to use event subscriptions due to plan restriction. Upgrade plan to access enterprise event subscriptions."

@@ -6,7 +6,7 @@ import { paginateGraphql } from "@octokit/plugin-paginate-graphql";
 import { Octokit as OctokitRest } from "@octokit/rest";
 import RE2 from "re2";
 
-import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, OrgMembershipRole, SubscriptionProductCategory } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -115,7 +115,7 @@ export const githubOrgSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.GithubOrgSync);
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.get(SubscriptionProductCategory.Platform, "githubOrgSync")) {
       throw new BadRequestError({
         message:
           "Failed to create github organization team sync due to plan restriction. Upgrade plan to create github organization sync."
@@ -174,7 +174,7 @@ export const githubOrgSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.GithubOrgSync);
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.get(SubscriptionProductCategory.Platform, "githubOrgSync")) {
       throw new BadRequestError({
         message:
           "Failed to update github organization team sync due to plan restriction. Upgrade plan to update github organization sync."
@@ -240,7 +240,7 @@ export const githubOrgSyncServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.GithubOrgSync);
 
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.get(SubscriptionProductCategory.Platform, "githubOrgSync")) {
       throw new BadRequestError({
         message:
           "Failed to delete github organization team sync due to plan restriction. Upgrade plan to delete github organization sync."
@@ -438,7 +438,7 @@ export const githubOrgSyncServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.GithubOrgSync);
 
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.get(SubscriptionProductCategory.Platform, "githubOrgSync")) {
       throw new BadRequestError({
         message:
           "Failed to validate GitHub token due to plan restriction. Upgrade plan to use GitHub organization sync."
@@ -529,7 +529,7 @@ export const githubOrgSyncServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.githubOrgSync) {
+    if (!plan.get(SubscriptionProductCategory.Platform, "githubOrgSync")) {
       throw new BadRequestError({
         message:
           "Failed to sync all GitHub teams due to plan restriction. Upgrade plan to use GitHub organization sync."

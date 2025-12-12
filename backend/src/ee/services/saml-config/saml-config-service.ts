@@ -8,6 +8,7 @@ import {
   OrganizationActionScope,
   OrgMembershipRole,
   OrgMembershipStatus,
+  SubscriptionProductCategory,
   TableName,
   TGroups,
   TSamlConfigs,
@@ -279,7 +280,7 @@ export const samlConfigServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Sso);
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.samlSSO)
+    if (!plan.get(SubscriptionProductCategory.Platform, "samlSSO"))
       throw new BadRequestError({
         message:
           "Failed to create SAML SSO configuration due to plan restriction. Upgrade plan to create SSO configuration."
@@ -304,7 +305,7 @@ export const samlConfigServiceFactory = ({
       });
     }
 
-    if (enableGroupSync && !plan.groups) {
+    if (enableGroupSync && !plan.get(SubscriptionProductCategory.Platform, "groups")) {
       throw new BadRequestError({
         message: "Failed to enable SAML group sync due to plan restriction. Upgrade plan to enable group sync."
       });
@@ -351,7 +352,7 @@ export const samlConfigServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.samlSSO)
+    if (!plan.get(SubscriptionProductCategory.Platform, "samlSSO"))
       throw new BadRequestError({
         message:
           "Failed to update SAML SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
@@ -376,7 +377,7 @@ export const samlConfigServiceFactory = ({
       });
     }
 
-    if (enableGroupSync && !plan.groups) {
+    if (enableGroupSync && !plan.get(SubscriptionProductCategory.Platform, "groups")) {
       throw new BadRequestError({
         message: "Failed to enable SAML group sync due to plan restriction. Upgrade plan to enable group sync."
       });
@@ -531,7 +532,7 @@ export const samlConfigServiceFactory = ({
     const groupsMetadata = metadata?.find(({ key }) => key === "groups");
 
     const plan = await licenseService.getPlan(orgId);
-    const shouldSyncGroups = !!samlConfig?.enableGroupSync && !!plan.groups;
+    const shouldSyncGroups = !!samlConfig?.enableGroupSync && !!plan.get(SubscriptionProductCategory.Platform, "groups");
 
     let user: TUsers;
     if (userAlias) {

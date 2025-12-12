@@ -1,5 +1,6 @@
 import { CronJob } from "cron";
 
+import { SubscriptionProductCategory } from "@app/db/schemas";
 import { logger } from "@app/lib/logger";
 
 import { TLicenseServiceFactory } from "../license/license-service";
@@ -80,7 +81,7 @@ export const rateLimitServiceFactory = ({
   };
 
   const initializeBackgroundSync: TRateLimitServiceFactory["initializeBackgroundSync"] = async () => {
-    if (!licenseService.onPremFeatures.customRateLimits) {
+    if (!licenseService.onPremFeatures.get(SubscriptionProductCategory.Platform, "customRateLimits")) {
       logger.info("Current license does not support custom rate limit configuration");
       return;
     }

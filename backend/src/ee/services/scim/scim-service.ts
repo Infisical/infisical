@@ -7,6 +7,7 @@ import {
   OrganizationActionScope,
   OrgMembershipRole,
   OrgMembershipStatus,
+  SubscriptionProductCategory,
   TableName,
   TGroups,
   TMemberships,
@@ -139,7 +140,7 @@ export const scimServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Scim);
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.scim)
+    if (!plan.get(SubscriptionProductCategory.Platform, "scim"))
       throw new BadRequestError({
         message: "Failed to create a SCIM token due to plan restriction. Upgrade plan to create a SCIM token."
       });
@@ -181,7 +182,7 @@ export const scimServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Scim);
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.scim)
+    if (!plan.get(SubscriptionProductCategory.Platform, "scim"))
       throw new BadRequestError({
         message: "Failed to get SCIM tokens due to plan restriction. Upgrade plan to get SCIM tokens."
       });
@@ -211,7 +212,7 @@ export const scimServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Scim);
 
     const plan = await licenseService.getPlan(scimToken.orgId);
-    if (!plan.scim)
+    if (!plan.get(SubscriptionProductCategory.Platform, "scim"))
       throw new BadRequestError({
         message: "Failed to delete the SCIM token due to plan restriction. Upgrade plan to delete the SCIM token."
       });
@@ -711,7 +712,7 @@ export const scimServiceFactory = ({
     isMembersExcluded
   }) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.groups)
+    if (!plan.get(SubscriptionProductCategory.Platform, "groups"))
       throw new BadRequestError({
         message: "Failed to list SCIM groups due to plan restriction. Upgrade plan to list SCIM groups."
       });
@@ -820,7 +821,7 @@ export const scimServiceFactory = ({
 
   const createScimGroup: TScimServiceFactory["createScimGroup"] = async ({ displayName, orgId, members }) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.groups)
+    if (!plan.get(SubscriptionProductCategory.Platform, "groups"))
       throw new BadRequestError({
         message: "Failed to create a SCIM group due to plan restriction. Upgrade plan to create a SCIM group."
       });
@@ -934,7 +935,7 @@ export const scimServiceFactory = ({
 
   const getScimGroup: TScimServiceFactory["getScimGroup"] = async ({ groupId, orgId }) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.groups)
+    if (!plan.get(SubscriptionProductCategory.Platform, "groups"))
       throw new BadRequestError({
         message: "Failed to get SCIM group due to plan restriction. Upgrade plan to get SCIM group."
       });
@@ -1090,7 +1091,7 @@ export const scimServiceFactory = ({
     members
   }) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.groups)
+    if (!plan.get(SubscriptionProductCategory.Platform, "groups"))
       throw new BadRequestError({
         message: "Failed to update SCIM group due to plan restriction. Upgrade plan to update SCIM group."
       });
@@ -1122,7 +1123,7 @@ export const scimServiceFactory = ({
 
   const updateScimGroup: TScimServiceFactory["updateScimGroup"] = async ({ groupId, orgId, operations }) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.groups)
+    if (!plan.get(SubscriptionProductCategory.Platform, "groups"))
       throw new BadRequestError({
         message: "Failed to update SCIM group due to plan restriction. Upgrade plan to update SCIM group."
       });
@@ -1180,7 +1181,7 @@ export const scimServiceFactory = ({
 
   const deleteScimGroup: TScimServiceFactory["deleteScimGroup"] = async ({ groupId, orgId }) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.groups)
+    if (!plan.get(SubscriptionProductCategory.Platform, "groups"))
       throw new BadRequestError({
         message: "Failed to delete SCIM group due to plan restriction. Upgrade plan to delete SCIM group."
       });

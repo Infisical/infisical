@@ -10,6 +10,7 @@ import {
   ProjectUpgradeStatus,
   ProjectVersion,
   SecretType,
+  SubscriptionProductCategory,
   TSecretSnapshotSecretsV2,
   TSecretVersionsV2
 } from "@app/db/schemas";
@@ -610,7 +611,7 @@ export const secretQueueFactory = ({
 
     const plan = await licenseService.getPlan(dto.orgId);
 
-    if (event && plan.eventSubscriptions) {
+    if (event && plan.get(SubscriptionProductCategory.Platform, "eventSubscriptions")) {
       await publishEvents(event);
     }
 

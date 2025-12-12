@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope, SubscriptionProductCategory } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
@@ -112,7 +112,7 @@ export const pamSessionServiceFactory = ({
 
   const updateLogsById = async ({ sessionId, logs }: TUpdateSessionLogsDTO, actor: OrgServiceActor) => {
     const orgLicensePlan = await licenseService.getPlan(actor.orgId);
-    if (!orgLicensePlan.pam) {
+    if (!orgLicensePlan.get(SubscriptionProductCategory.Platform, "pam")) {
       throw new BadRequestError({
         message: "PAM operation failed due to organization plan restrictions."
       });

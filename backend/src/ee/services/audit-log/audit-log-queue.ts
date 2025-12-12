@@ -1,3 +1,4 @@
+import { SubscriptionProductCategory } from "@app/db/schemas";
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -52,15 +53,15 @@ export const auditLogQueueServiceFactory = async ({
     }
 
     const plan = await licenseService.getPlan(orgId);
-
+    const auditLogRetentionDays = plan.get(SubscriptionProductCategory.Platform, "auditLogsRetentionDays");
     // skip inserting if audit log retention is 0 meaning its not supported
-    if (plan.auditLogsRetentionDays !== 0) {
+    if (auditLogRetentionDays) {
       // For project actions, set TTL to project-level audit log retention config
       // This condition ensures that the plan's audit log retention days cannot be bypassed
       const ttlInDays =
-        project?.auditLogsRetentionDays && project.auditLogsRetentionDays < plan.auditLogsRetentionDays
+        project?.auditLogsRetentionDays && project.auditLogsRetentionDays < auditLogRetentionDays
           ? project.auditLogsRetentionDays
-          : plan.auditLogsRetentionDays;
+          : auditLogRetentionDays;
 
       const ttl = ttlInDays * MS_IN_DAY;
 

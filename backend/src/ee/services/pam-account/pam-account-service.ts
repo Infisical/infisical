@@ -2,7 +2,14 @@ import path from "node:path";
 
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType, OrganizationActionScope, TPamAccounts, TPamFolders, TPamResources } from "@app/db/schemas";
+import {
+  ActionProjectType,
+  OrganizationActionScope,
+  SubscriptionProductCategory,
+  TPamAccounts,
+  TPamFolders,
+  TPamResources
+} from "@app/db/schemas";
 import {
   extractAwsAccountIdFromArn,
   generateConsoleFederationUrl,
@@ -107,7 +114,7 @@ export const pamAccountServiceFactory = ({
     actor: OrgServiceActor
   ) => {
     const orgLicensePlan = await licenseService.getPlan(actor.orgId);
-    if (!orgLicensePlan.pam) {
+    if (!orgLicensePlan.get(SubscriptionProductCategory.Platform, "pam")) {
       throw new BadRequestError({
         message: "PAM operation failed due to organization plan restrictions."
       });
@@ -208,7 +215,7 @@ export const pamAccountServiceFactory = ({
     actor: OrgServiceActor
   ) => {
     const orgLicensePlan = await licenseService.getPlan(actor.orgId);
-    if (!orgLicensePlan.pam) {
+    if (!orgLicensePlan.get(SubscriptionProductCategory.Platform, "pam")) {
       throw new BadRequestError({
         message: "PAM operation failed due to organization plan restrictions."
       });
@@ -528,7 +535,7 @@ export const pamAccountServiceFactory = ({
     actor: OrgServiceActor
   ) => {
     const orgLicensePlan = await licenseService.getPlan(actor.orgId);
-    if (!orgLicensePlan.pam) {
+    if (!orgLicensePlan.get(SubscriptionProductCategory.Platform, "pam")) {
       throw new BadRequestError({
         message: "PAM operation failed due to organization plan restrictions."
       });
@@ -792,7 +799,7 @@ export const pamAccountServiceFactory = ({
 
   const getSessionCredentials = async (sessionId: string, actor: OrgServiceActor) => {
     const orgLicensePlan = await licenseService.getPlan(actor.orgId);
-    if (!orgLicensePlan.pam) {
+    if (!orgLicensePlan.get(SubscriptionProductCategory.Platform, "pam")) {
       throw new BadRequestError({
         message: "PAM operation failed due to organization plan restrictions."
       });

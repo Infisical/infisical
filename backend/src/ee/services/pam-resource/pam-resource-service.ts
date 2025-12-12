@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, TPamResources } from "@app/db/schemas";
+import { ActionProjectType, SubscriptionProductCategory, TPamResources } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -71,7 +71,7 @@ export const pamResourceServiceFactory = ({
     actor: OrgServiceActor
   ) => {
     const orgLicensePlan = await licenseService.getPlan(actor.orgId);
-    if (!orgLicensePlan.pam) {
+    if (!orgLicensePlan.get(SubscriptionProductCategory.Platform, "pam")) {
       throw new BadRequestError({
         message: "PAM operation failed due to organization plan restrictions."
       });
@@ -132,7 +132,7 @@ export const pamResourceServiceFactory = ({
     actor: OrgServiceActor
   ) => {
     const orgLicensePlan = await licenseService.getPlan(actor.orgId);
-    if (!orgLicensePlan.pam) {
+    if (!orgLicensePlan.get(SubscriptionProductCategory.Platform, "pam")) {
       throw new BadRequestError({
         message: "PAM operation failed due to organization plan restrictions."
       });

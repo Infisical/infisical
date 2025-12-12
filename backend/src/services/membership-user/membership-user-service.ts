@@ -2,6 +2,7 @@ import {
   AccessScope,
   OrgMembershipStatus,
   ProjectMembershipRole,
+  SubscriptionProductCategory,
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
@@ -216,7 +217,7 @@ export const membershipUserServiceFactory = ({
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
       const plan = await licenseService.getPlan(scopeData.orgId);
-      if (!plan?.rbac)
+      if (!plan.get(SubscriptionProductCategory.Platform, "rbac"))
         throw new BadRequestError({
           message:
             "Failed to set custom default role due to plan RBAC restriction. Upgrade plan to set custom default org membership role."
@@ -288,7 +289,7 @@ export const membershipUserServiceFactory = ({
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
       const plan = await licenseService.getPlan(scopeData.orgId);
-      if (!plan?.rbac)
+      if (!plan.get(SubscriptionProductCategory.Platform, "rbac"))
         throw new BadRequestError({
           message:
             "Failed to set custom default role due to plan RBAC restriction. Upgrade plan to set custom default org membership role."

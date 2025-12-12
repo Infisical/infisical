@@ -1,5 +1,6 @@
 import * as pkcs11js from "pkcs11js";
 
+import { SubscriptionProductCategory } from "@app/db/schemas";
 import { TEnvConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -86,7 +87,7 @@ export const isHsmActiveAndEnabled = async ({
   if (
     rootKmsConfigEncryptionStrategy === RootKeyEncryptionStrategy.HSM &&
     licenseService &&
-    !licenseService.onPremFeatures.hsm
+    !licenseService.onPremFeatures.get(SubscriptionProductCategory.Platform, "hsm")
   ) {
     throw new BadRequestError({
       message: "Your license does not include HSM integration. Please upgrade to the Enterprise plan to use HSM."

@@ -8,6 +8,7 @@ import {
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretType,
+  SubscriptionProductCategory,
   TableName,
   TSecretApprovalRequestsSecretsInsert,
   TSecretApprovalRequestsSecretsV2Insert
@@ -424,7 +425,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.secretApproval) {
+    if (!plan.get(SubscriptionProductCategory.SecretsManager, "secretApproval")) {
       throw new BadRequestError({
         message:
           "Failed to review secret approval request due to plan restriction. Upgrade plan to review secret approval request."
@@ -499,7 +500,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.secretApproval) {
+    if (!plan.get(SubscriptionProductCategory.SecretsManager, "secretApproval")) {
       throw new BadRequestError({
         message:
           "Failed to update secret approval request due to plan restriction. Upgrade plan to update secret approval request."
@@ -556,7 +557,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.secretApproval) {
+    if (!plan.get(SubscriptionProductCategory.SecretsManager, "secretApproval")) {
       throw new BadRequestError({
         message:
           "Failed to merge secret approval request due to plan restriction. Upgrade plan to merge secret approval request."

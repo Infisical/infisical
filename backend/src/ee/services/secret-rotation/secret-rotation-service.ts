@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import Ajv from "ajv";
 
-import { ActionProjectType, ProjectVersion, TableName } from "@app/db/schemas";
+import { ActionProjectType, ProjectVersion, SubscriptionProductCategory, TableName } from "@app/db/schemas";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
@@ -144,7 +144,7 @@ export const secretRotationServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.secretRotation)
+    if (!plan.get(SubscriptionProductCategory.SecretsManager, "secretRotation"))
       throw new BadRequestError({
         message: "Failed to add secret rotation due to plan restriction. Upgrade plan to add secret rotation."
       });
@@ -256,7 +256,7 @@ export const secretRotationServiceFactory = ({
 
     const project = await projectDAL.findById(doc.projectId);
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.secretRotation)
+    if (!plan.get(SubscriptionProductCategory.SecretsManager, "secretRotation"))
       throw new BadRequestError({
         message: "Failed to add secret rotation due to plan restriction. Upgrade plan to add secret rotation."
       });
