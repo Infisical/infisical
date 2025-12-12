@@ -380,6 +380,7 @@ export const externalKmsServiceFactory = ({
 
   const findById = async ({ actor, actorId, actorOrgId, actorAuthMethod, id: kmsId }: TGetExternalKmsByIdDTO) => {
     const kmsDoc = await kmsDAL.findById(kmsId);
+    if (!kmsDoc) throw new NotFoundError({ message: `Could not find KMS with ID '${kmsId}'` });
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
       actor,
