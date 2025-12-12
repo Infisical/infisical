@@ -88,9 +88,11 @@ export const registerExternalKmsEndpoints = <
         ...rest
       } = externalKms;
 
+      const credentialsToHash = JSON.stringify(configuration.credential);
+
       const credentialsHash = crypto.nativeCrypto
         .createHash("sha256")
-        .update(externalKmsData.encryptedProviderInputs)
+        .update(Buffer.from(credentialsToHash))
         .digest("hex");
       return { ...rest, externalKms: { ...externalKmsData, configuration, credentialsHash } };
     }
@@ -153,9 +155,12 @@ export const registerExternalKmsEndpoints = <
         external: { providerInput: externalKmsConfiguration, ...externalKmsData },
         ...rest
       } = externalKms;
+
+      const credentialsToHash = JSON.stringify(externalKmsConfiguration.credential);
+
       const credentialsHash = crypto.nativeCrypto
         .createHash("sha256")
-        .update(externalKmsData.encryptedProviderInputs)
+        .update(Buffer.from(credentialsToHash))
         .digest("hex");
       return { ...rest, externalKms: { ...externalKmsData, configuration: externalKmsConfiguration, credentialsHash } };
     }
@@ -222,9 +227,12 @@ export const registerExternalKmsEndpoints = <
         external: { providerInput: externalKmsConfiguration, ...externalKmsData },
         ...rest
       } = externalKms;
+
+      const credentialsToHash = JSON.stringify(externalKmsConfiguration.credential);
+
       const credentialsHash = crypto.nativeCrypto
         .createHash("sha256")
-        .update(externalKmsData.encryptedProviderInputs)
+        .update(Buffer.from(credentialsToHash))
         .digest("hex");
       return { ...rest, externalKms: { ...externalKmsData, configuration: externalKmsConfiguration, credentialsHash } };
     }
@@ -277,9 +285,12 @@ export const registerExternalKmsEndpoints = <
         external: { providerInput: configuration, ...externalKmsData },
         ...rest
       } = externalKms;
+
+      const credentialsToHash = JSON.stringify(configuration.credential);
+
       const credentialsHash = crypto.nativeCrypto
         .createHash("sha256")
-        .update(externalKmsData.encryptedProviderInputs)
+        .update(Buffer.from(credentialsToHash))
         .digest("hex");
 
       return { ...rest, externalKms: { ...externalKmsData, configuration, credentialsHash } };
