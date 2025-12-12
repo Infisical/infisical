@@ -50,12 +50,12 @@ export const PoliciesPage = () => {
   return (
     <div className="mx-auto flex h-full flex-col justify-between bg-bunker-800 text-white">
       <Helmet>
-        <title>{t("common.head-title", { title: "Certificate Management" })}</title>
+        <title>{t("common.head-title", { title: "Certificate Manager" })}</title>
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={ProjectType.CertificateManager}
-          title="Certificate Management"
+          title="Certificate Manager"
           description="Streamline certificate management by creating and maintaining templates, profiles, and certificates in one place"
         />
 

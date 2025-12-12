@@ -49,7 +49,7 @@ const PROJECT_TYPE_MENU_ITEMS = [
     value: ProjectType.SecretManager
   },
   {
-    label: "Certificates Management",
+    label: "Certificates Manager",
     value: ProjectType.CertificateManager
   },
   {

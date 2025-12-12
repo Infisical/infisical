@@ -1,6 +1,7 @@
+import { LogInIcon, PackageOpenIcon } from "lucide-react";
+
 import { Badge, UnstableButton } from "@app/components/v3";
 import { PAM_RESOURCE_TYPE_MAP, TPamAccount } from "@app/hooks/api/pam";
-import { LogInIcon, PackageOpenIcon } from "lucide-react";
 
 type Props = {
   account: TPamAccount;

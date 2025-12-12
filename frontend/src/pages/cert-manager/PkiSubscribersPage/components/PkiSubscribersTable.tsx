@@ -77,7 +77,7 @@ export const PkiSubscribersTable = ({ handlePopUpOpen }: Props) => {
                     key={`pki-subscriber-${subscriber.id}`}
                     onClick={() =>
                       navigate({
-                        to: "/organizations/$orgId/projects/cert-management/$projectId/subscribers/$subscriberName",
+                        to: "/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName",
                         params: {
                           orgId: currentOrg.id,
                           projectId: currentProject.id,

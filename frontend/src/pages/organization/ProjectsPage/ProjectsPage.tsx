@@ -33,7 +33,7 @@ export const ProjectsPage = () => {
   const hasChildRoute = matches.some(
     (match) =>
       match.pathname.includes("/secret-management/") ||
-      match.pathname.includes("/cert-management/") ||
+      match.pathname.includes("/cert-manager/") ||
       match.pathname.includes("/kms/") ||
       match.pathname.includes("/pam/") ||
       match.pathname.includes("/ssh/") ||
