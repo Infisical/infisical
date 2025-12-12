@@ -14,7 +14,11 @@ export const InternalKmsSchema = z.object({
   encryptedKey: zodBuffer,
   encryptionAlgorithm: z.string(),
   version: z.number().default(1),
-  kmsKeyId: z.string().uuid()
+  kmsKeyId: z.string().uuid(),
+  rotatedAt: z.date().nullable().optional(),
+  rotationInterval: z.number().nullable().optional(),
+  nextRotationAt: z.date().nullable().optional(),
+  isAutoRotationEnabled: z.boolean().default(false)
 });
 
 export type TInternalKms = z.infer<typeof InternalKmsSchema>;

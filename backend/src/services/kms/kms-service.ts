@@ -31,6 +31,7 @@ import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TInternalKmsDALFactory } from "./internal-kms-dal";
 import { TKmsKeyDALFactory } from "./kms-key-dal";
+import { getByteLengthForSymmetricEncryptionAlgorithm as getByteLength } from "./kms-fns";
 import { TKmsRootConfigDALFactory } from "./kms-root-config-dal";
 import {
   KmsDataKey,
@@ -57,7 +58,18 @@ type TKmsServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "updateById" | "transaction">;
   kmsRootConfigDAL: Pick<TKmsRootConfigDALFactory, "findById" | "create" | "updateById" | "transaction">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "waitTillReady" | "setItemWithExpiry">;
-  internalKmsDAL: Pick<TInternalKmsDALFactory, "create">;
+  internalKmsDAL: Pick<
+    TInternalKmsDALFactory,
+    | "create"
+    | "findByKmsKeyId"
+    | "createKeyVersion"
+    | "findKeyVersion"
+    | "findAllKeyVersions"
+    | "findMaxVersionNumber"
+    | "updateVersionAndRotatedAt"
+    | "updateScheduledRotation"
+    | "findKeysToRotate"
+  >;
   hsmService: THsmServiceFactory;
   envConfig: Pick<TEnvConfig, "ENCRYPTION_KEY" | "ROOT_ENCRYPTION_KEY">;
 };
@@ -96,7 +108,6 @@ export const kmsServiceFactory = ({
     keyUsage = KmsKeyUsage.ENCRYPT_DECRYPT,
     description
   }: TGenerateKMSDTO) => {
-    // daniel: ensure that the key type (sign/encrypt) and the encryption algorithm are compatible.
     verifyKeyTypeAndAlgorithm(keyUsage, encryptionAlgorithm);
 
     let kmsKeyMaterial: Buffer | null = null;
@@ -110,7 +121,6 @@ export const kmsServiceFactory = ({
       );
       kmsKeyMaterial = await generateAsymmetricPrivateKey();
 
-      // daniel: safety check to ensure we're able to extract the public key from the private key before we proceed to key creation
       getPublicKeyFromPrivateKey(kmsKeyMaterial);
     }
 
@@ -166,12 +176,10 @@ export const kmsServiceFactory = ({
    * The encrypted binary even has everything into it. The IV, the version etc
    */
   const encryptWithInputKey = async ({ key }: Omit<TEncryptionWithKeyDTO, "plainText">) => {
-    // akhilmhdh: as more encryption are added do a check here on kmsDoc.encryptionAlgorithm
     const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
     return ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
       const encryptedPlainTextBlob = cipher.encrypt(plainText, key);
-      // Buffer#1 encrypted text + Buffer#2 version number
-      const versionBlob = Buffer.from(KMS_VERSION, "utf8"); // length is 3
+      const versionBlob = Buffer.from(KMS_VERSION, "utf8");
       const cipherTextBlob = Buffer.concat([encryptedPlainTextBlob, versionBlob]);
       return { cipherTextBlob };
     };
@@ -295,9 +303,6 @@ export const kmsServiceFactory = ({
         throw new BadRequestError({ message: "Invalid organization KMS" });
       }
 
-      // The idea is external kms connection info is encrypted by an org default KMS
-      // This could be external kms(in future) but at the end of the day, the end KMS will be an infisical internal one
-      // we put a limit of depth to avoid too many cycles
       const orgKmsDecryptor = await decryptWithKmsKey({
         kmsId: kmsDoc.orgKms.id,
         depth: depth + 1,
@@ -356,7 +361,6 @@ export const kmsServiceFactory = ({
       forceType: KmsKeyUsage.ENCRYPT_DECRYPT
     });
 
-    // internal KMS
     const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
     const dataCipher = symmetricCipherService(encryptionAlgorithm);
     const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
@@ -396,7 +400,6 @@ export const kmsServiceFactory = ({
     { key, algorithm, name, isReserved, projectId, orgId, keyUsage, kmipMetadata }: TImportKeyMaterialDTO,
     tx?: Knex
   ) => {
-    // daniel: currently we only support imports for encrypt/decrypt keys
     verifyKeyTypeAndAlgorithm(keyUsage, algorithm, { forceType: KmsKeyUsage.ENCRYPT_DECRYPT });
 
     const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
@@ -568,15 +571,12 @@ export const kmsServiceFactory = ({
       forceType: KmsKeyUsage.ENCRYPT_DECRYPT
     });
 
-    // internal KMS
     const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
     const dataCipher = symmetricCipherService(encryptionAlgorithm);
     return ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
       const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
       const encryptedPlainTextBlob = dataCipher.encrypt(plainText, kmsKey);
-
-      // Buffer#1 encrypted text + Buffer#2 version number
-      const versionBlob = Buffer.from(KMS_VERSION, "utf8"); // length is 3
+      const versionBlob = Buffer.from(KMS_VERSION, "utf8");
       const cipherTextBlob = Buffer.concat([encryptedPlainTextBlob, versionBlob]);
 
       return Promise.resolve({ cipherTextBlob });
@@ -843,7 +843,6 @@ export const kmsServiceFactory = ({
   };
 
   const $decryptRootKey = async (kmsRootConfig: TKmsRootConfig) => {
-    // case 1: root key is encrypted with HSM
     if (kmsRootConfig.encryptionStrategy === RootKeyEncryptionStrategy.HSM) {
       const hsmIsActive = await hsmService.isActive();
       if (!hsmIsActive) {
@@ -856,7 +855,6 @@ export const kmsServiceFactory = ({
       return decryptedKey;
     }
 
-    // case 2: root key is encrypted with software encryption
     if (kmsRootConfig.encryptionStrategy === RootKeyEncryptionStrategy.Software) {
       const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
       const encryptionKeyBuffer = $getBasicEncryptionKey();
@@ -890,9 +888,6 @@ export const kmsServiceFactory = ({
     throw new BadRequestError({ message: `Invalid root key encryption strategy: ${strategy}` });
   };
 
-  // by keeping the decrypted data key in inner scope
-  // none of the entities outside can interact directly or expose the data key
-  // NOTICE: If changing here update migrations/utils/kms
   const createCipherPairWithDataKey = async (encryptionContext: TEncryptWithKmsDataKeyDTO, trx?: Knex) => {
     const dataKey = await $getDataKey(encryptionContext, trx);
 
@@ -901,9 +896,7 @@ export const kmsServiceFactory = ({
     return {
       encryptor: ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
         const encryptedPlainTextBlob = cipher.encrypt(plainText, dataKey);
-
-        // Buffer#1 encrypted text + Buffer#2 version number
-        const versionBlob = Buffer.from(KMS_VERSION, "utf8"); // length is 3
+        const versionBlob = Buffer.from(KMS_VERSION, "utf8");
         const cipherTextBlob = Buffer.concat([encryptedPlainTextBlob, versionBlob]);
         return { cipherTextBlob };
       },
@@ -919,13 +912,11 @@ export const kmsServiceFactory = ({
     const kmsKeyId = await getProjectSecretManagerKmsKeyId(projectId);
     const currentKms = await kmsDAL.findById(kmsKeyId);
 
-    // case: internal kms -> internal kms. no change needed
     if (kms.type === KmsType.Internal && currentKms.isReserved) {
       return KmsSanitizedSchema.parseAsync({ isExternal: false, ...currentKms });
     }
 
     if (kms.type === KmsType.External) {
-      // validate kms is scoped in org
       const { kmsId } = kms;
       const project = await projectDAL.findById(projectId);
       if (!project) {
@@ -993,7 +984,6 @@ export const kmsServiceFactory = ({
       plainText: secretManagerDataKey
     });
 
-    // backup format: version.projectId.kmsFunction.kmsId.Base64(encryptedDataKey).verificationHash
     let secretManagerBackup = `v1.${projectId}.secretManager.${kmsKeyIdForEncrypt}.${encryptedSecretManagerDataKeyWithOrgKms.toString(
       "base64"
     )}`;
@@ -1074,6 +1064,317 @@ export const kmsServiceFactory = ({
     }
     const { id, name, orgId, isExternal } = kms;
     return { id, name, orgId, isExternal };
+  };
+
+  /**
+   * Rotates an internal KMS key by generating new key material
+   * The old key version is preserved in the version history for decryption
+   */
+  const rotateInternalKmsKey = async (kmsKeyId: string, tx?: Knex) => {
+    const lock = await keyStore
+      .acquireLock([KeyStorePrefixes.KmsKeyRotationLock(kmsKeyId)], 60000, { retryCount: 3 })
+      .catch(() => null);
+
+    if (!lock) {
+      throw new BadRequestError({ message: "Key rotation is already in progress. Please try again later." });
+    }
+
+    try {
+      const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsKeyId, tx);
+
+      if (!kmsDoc) {
+        throw new NotFoundError({ message: `KMS with ID '${kmsKeyId}' not found` });
+      }
+
+      if (kmsDoc.isExternal || !kmsDoc.internalKms) {
+        throw new BadRequestError({ message: "Key rotation is only supported for internal KMS keys" });
+      }
+
+      if (kmsDoc.isDisabled) {
+        throw new BadRequestError({ message: "Cannot rotate a disabled key" });
+      }
+
+      if (kmsDoc.keyUsage !== KmsKeyUsage.ENCRYPT_DECRYPT) {
+        throw new BadRequestError({ message: "Key rotation is only supported for symmetric encryption keys" });
+      }
+
+      const encryptionAlgorithm = kmsDoc.internalKms.encryptionAlgorithm as SymmetricKeyAlgorithm;
+      const currentVersion = kmsDoc.internalKms.version;
+
+      const newKeyMaterial = crypto.randomBytes(getByteLength(encryptionAlgorithm));
+
+      const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
+      const encryptedNewKey = cipher.encrypt(newKeyMaterial, ROOT_ENCRYPTION_KEY);
+
+      const dbQuery = async (db: Knex) => {
+        const internalKms = await internalKmsDAL.findByKmsKeyId(kmsKeyId, db);
+        if (!internalKms) {
+          throw new NotFoundError({ message: "Internal KMS record not found" });
+        }
+
+        const maxVersionInHistory = await internalKmsDAL.findMaxVersionNumber(internalKms.id, db);
+        const newVersion = Math.max(currentVersion, maxVersionInHistory) + 1;
+
+        const existingVersion = await internalKmsDAL.findKeyVersion(internalKms.id, currentVersion, db);
+        if (!existingVersion) {
+          await internalKmsDAL.createKeyVersion(
+            {
+              encryptedKey: internalKms.encryptedKey,
+              version: currentVersion,
+              internalKmsId: internalKms.id
+            },
+            db
+          );
+        }
+
+        await internalKmsDAL.createKeyVersion(
+          {
+            encryptedKey: encryptedNewKey,
+            version: newVersion,
+            internalKmsId: internalKms.id
+          },
+          db
+        );
+
+        let nextRotationAt: Date | null | undefined;
+        if (internalKms.isAutoRotationEnabled && internalKms.rotationInterval) {
+          nextRotationAt = new Date();
+          nextRotationAt.setDate(nextRotationAt.getDate() + internalKms.rotationInterval);
+        }
+
+        const updatedInternalKms = await internalKmsDAL.updateVersionAndRotatedAt(
+          internalKms.id,
+          {
+            encryptedKey: encryptedNewKey,
+            version: newVersion,
+            rotatedAt: new Date(),
+            nextRotationAt
+          },
+          db
+        );
+
+        return {
+          kmsKeyId,
+          version: newVersion,
+          rotatedAt: updatedInternalKms.rotatedAt
+        };
+      };
+
+      if (tx) return dbQuery(tx);
+      return kmsDAL.transaction(async (tx2) => dbQuery(tx2));
+    } finally {
+      await lock.release();
+    }
+  };
+
+  /**
+   * Updates scheduled rotation settings for an internal KMS key
+   */
+  const updateScheduledRotation = async (
+    kmsKeyId: string,
+    data: {
+      enableAutoRotation: boolean;
+      rotationIntervalDays?: number;
+    },
+    tx?: Knex
+  ) => {
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsKeyId, tx);
+
+    if (!kmsDoc) {
+      throw new NotFoundError({ message: `KMS with ID '${kmsKeyId}' not found` });
+    }
+
+    if (kmsDoc.isExternal || !kmsDoc.internalKms) {
+      throw new BadRequestError({ message: "Scheduled rotation is only supported for internal KMS keys" });
+    }
+
+    if (kmsDoc.isDisabled) {
+      throw new BadRequestError({ message: "Cannot configure scheduled rotation for a disabled key" });
+    }
+
+    if (kmsDoc.keyUsage !== KmsKeyUsage.ENCRYPT_DECRYPT) {
+      throw new BadRequestError({ message: "Scheduled rotation is only supported for symmetric encryption keys" });
+    }
+
+    const internalKms = await internalKmsDAL.findByKmsKeyId(kmsKeyId, tx);
+    if (!internalKms) {
+      throw new NotFoundError({ message: "Internal KMS record not found" });
+    }
+
+    let nextRotationAt: Date | null = null;
+    let rotationInterval: number | null = null;
+
+    if (data.enableAutoRotation) {
+      if (!data.rotationIntervalDays || data.rotationIntervalDays < 1) {
+        throw new BadRequestError({ message: "Rotation interval must be at least 1 day" });
+      }
+      if (data.rotationIntervalDays > 365) {
+        throw new BadRequestError({ message: "Rotation interval cannot exceed 365 days" });
+      }
+      rotationInterval = data.rotationIntervalDays;
+      nextRotationAt = new Date();
+      nextRotationAt.setDate(nextRotationAt.getDate() + data.rotationIntervalDays);
+    }
+
+    const dbQuery = async (db: Knex) => {
+      const updatedInternalKms = await internalKmsDAL.updateScheduledRotation(
+        internalKms.id,
+        {
+          rotationInterval,
+          nextRotationAt,
+          isAutoRotationEnabled: data.enableAutoRotation
+        },
+        db
+      );
+
+      return {
+        kmsKeyId,
+        isAutoRotationEnabled: updatedInternalKms.isAutoRotationEnabled,
+        rotationIntervalDays: updatedInternalKms.rotationInterval,
+        nextRotationAt: updatedInternalKms.nextRotationAt
+      };
+    };
+
+    if (tx) return dbQuery(tx);
+    return kmsDAL.transaction(async (tx2) => dbQuery(tx2));
+  };
+
+  /**
+   * Gets scheduled rotation settings for an internal KMS key
+   */
+  const getScheduledRotation = async (kmsKeyId: string, tx?: Knex) => {
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsKeyId, tx);
+
+    if (!kmsDoc) {
+      throw new NotFoundError({ message: `KMS with ID '${kmsKeyId}' not found` });
+    }
+
+    if (kmsDoc.isExternal || !kmsDoc.internalKms) {
+      throw new BadRequestError({ message: "Scheduled rotation is only supported for internal KMS keys" });
+    }
+
+    const internalKms = await internalKmsDAL.findByKmsKeyId(kmsKeyId, tx);
+    if (!internalKms) {
+      throw new NotFoundError({ message: "Internal KMS record not found" });
+    }
+
+    return {
+      kmsKeyId,
+      isAutoRotationEnabled: internalKms.isAutoRotationEnabled,
+      rotationIntervalDays: internalKms.rotationInterval,
+      nextRotationAt: internalKms.nextRotationAt,
+      lastRotatedAt: internalKms.rotatedAt
+    };
+  };
+
+  /**
+   * Rolls back an internal KMS key to a previous version
+   * The target version becomes the new current key for encryption
+   */
+  const rollbackInternalKmsKey = async (kmsKeyId: string, targetVersion: number, tx?: Knex) => {
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsKeyId, tx);
+
+    if (!kmsDoc) {
+      throw new NotFoundError({ message: `KMS with ID '${kmsKeyId}' not found` });
+    }
+
+    if (kmsDoc.isExternal || !kmsDoc.internalKms) {
+      throw new BadRequestError({ message: "Key rollback is only supported for internal KMS keys" });
+    }
+
+    if (kmsDoc.isDisabled) {
+      throw new BadRequestError({ message: "Cannot rollback a disabled key" });
+    }
+
+    if (kmsDoc.keyUsage !== KmsKeyUsage.ENCRYPT_DECRYPT) {
+      throw new BadRequestError({ message: "Key rollback is only supported for symmetric encryption keys" });
+    }
+
+    const currentVersion = kmsDoc.internalKms.version;
+
+    if (targetVersion === currentVersion) {
+      throw new BadRequestError({ message: "Target version is already the current version" });
+    }
+
+    if (targetVersion < 1) {
+      throw new BadRequestError({ message: "Target version must be at least 1" });
+    }
+
+    const dbQuery = async (db: Knex) => {
+      const internalKms = await internalKmsDAL.findByKmsKeyId(kmsKeyId, db);
+      if (!internalKms) {
+        throw new NotFoundError({ message: "Internal KMS record not found" });
+      }
+
+      const targetVersionRecord = await internalKmsDAL.findKeyVersion(internalKms.id, targetVersion, db);
+      if (!targetVersionRecord) {
+        throw new NotFoundError({ message: `Version ${targetVersion} not found in key history` });
+      }
+
+      const existingCurrentVersion = await internalKmsDAL.findKeyVersion(internalKms.id, currentVersion, db);
+      if (!existingCurrentVersion) {
+        await internalKmsDAL.createKeyVersion(
+          {
+            encryptedKey: internalKms.encryptedKey,
+            version: currentVersion,
+            internalKmsId: internalKms.id
+          },
+          db
+        );
+      }
+
+      const updatedInternalKms = await internalKmsDAL.updateVersionAndRotatedAt(
+        internalKms.id,
+        {
+          encryptedKey: targetVersionRecord.encryptedKey,
+          version: targetVersion,
+          rotatedAt: new Date()
+        },
+        db
+      );
+
+      return {
+        kmsKeyId,
+        version: targetVersion,
+        previousVersion: currentVersion,
+        rotatedAt: updatedInternalKms.rotatedAt
+      };
+    };
+
+    if (tx) return dbQuery(tx);
+    return kmsDAL.transaction(async (tx2) => dbQuery(tx2));
+  };
+
+  /**
+   * Lists all versions of an internal KMS key
+   */
+  const listInternalKmsKeyVersions = async (kmsKeyId: string, tx?: Knex) => {
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsKeyId, tx);
+
+    if (!kmsDoc) {
+      throw new NotFoundError({ message: `KMS with ID '${kmsKeyId}' not found` });
+    }
+
+    if (kmsDoc.isExternal || !kmsDoc.internalKms) {
+      throw new BadRequestError({ message: "Version listing is only supported for internal KMS keys" });
+    }
+
+    const internalKms = await internalKmsDAL.findByKmsKeyId(kmsKeyId, tx);
+    if (!internalKms) {
+      throw new NotFoundError({ message: "Internal KMS record not found" });
+    }
+
+    const versions = await internalKmsDAL.findAllKeyVersions(internalKms.id, tx);
+
+    return {
+      kmsKeyId,
+      currentVersion: kmsDoc.internalKms.version,
+      versions: versions.map((v) => ({
+        id: v.id,
+        version: v.version,
+        createdAt: v.createdAt
+      }))
+    };
   };
 
   const startService = async (hsmStatus: THsmStatus) => {
@@ -1168,6 +1469,11 @@ export const kmsServiceFactory = ({
     importKeyMaterial,
     signWithKmsKey,
     verifyWithKmsKey,
-    getPublicKey
+    getPublicKey,
+    rotateInternalKmsKey,
+    listInternalKmsKeyVersions,
+    updateScheduledRotation,
+    getScheduledRotation,
+    rollbackInternalKmsKey
   };
 };

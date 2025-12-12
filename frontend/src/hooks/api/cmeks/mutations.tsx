@@ -14,7 +14,13 @@ import {
   TCmekVerifyResponse,
   TCreateCmek,
   TDeleteCmek,
-  TUpdateCmek
+  TRollbackCmek,
+  TRollbackCmekResponse,
+  TRotateCmek,
+  TRotateCmekResponse,
+  TUpdateCmek,
+  TUpdateScheduledRotationDTO,
+  TUpdateScheduledRotationResponse
 } from "@app/hooks/api/cmeks/types";
 
 export const useCreateCmek = () => {
@@ -127,6 +133,65 @@ export const useCmekDecrypt = () => {
       );
 
       return data;
+    }
+  });
+};
+
+export const useRotateCmek = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ keyId }: TRotateCmek) => {
+      const { data } = await apiRequest.post<TRotateCmekResponse>(
+        `/api/v1/kms/keys/${keyId}/rotate`
+      );
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cmekKeys.all });
+    }
+  });
+};
+
+export const useRollbackCmek = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ keyId, targetVersion }: TRollbackCmek) => {
+      const { data } = await apiRequest.post<TRollbackCmekResponse>(
+        `/api/v1/kms/keys/${keyId}/rollback`,
+        { targetVersion }
+      );
+
+      return data;
+    },
+    onSuccess: (_, { keyId }) => {
+      queryClient.invalidateQueries({ queryKey: cmekKeys.all });
+      queryClient.invalidateQueries({ queryKey: cmekKeys.getVersions(keyId) });
+    }
+  });
+};
+
+export const useUpdateCmekScheduledRotation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      keyId,
+      enableAutoRotation,
+      rotationIntervalDays
+    }: TUpdateScheduledRotationDTO) => {
+      const { data } = await apiRequest.put<TUpdateScheduledRotationResponse>(
+        `/api/v1/kms/keys/${keyId}/scheduled-rotation`,
+        {
+          enableAutoRotation,
+          rotationIntervalDays
+        }
+      );
+
+      return data;
+    },
+    onSuccess: (_, { keyId }) => {
+      queryClient.invalidateQueries({ queryKey: cmekKeys.getScheduledRotation(keyId) });
+      queryClient.invalidateQueries({ queryKey: cmekKeys.all });
     }
   });
 };
