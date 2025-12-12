@@ -3,7 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } from "openid-client";
 
-import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, OrgMembershipStatus, SubscriptionProductCategory, TableName, TUsers } from "@app/db/schemas";
 import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
@@ -505,7 +505,7 @@ export const oidcConfigServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(org.id);
-    if (!plan.oidcSSO)
+    if (!plan.get(SubscriptionProductCategory.Platform, "oidcSSO"))
       throw new BadRequestError({
         message:
           "Failed to update OIDC SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
@@ -600,7 +600,7 @@ export const oidcConfigServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(org.id);
-    if (!plan.oidcSSO)
+    if (!plan.get(SubscriptionProductCategory.Platform, "oidcSSO"))
       throw new BadRequestError({
         message:
           "Failed to create OIDC SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."

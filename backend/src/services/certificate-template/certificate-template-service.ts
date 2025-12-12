@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { ActionProjectType, TCertificateTemplateEstConfigsUpdate } from "@app/db/schemas";
+import { ActionProjectType, SubscriptionProductCategory, TCertificateTemplateEstConfigsUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -254,7 +254,7 @@ export const certificateTemplateServiceFactory = ({
     disableBootstrapCertValidation
   }: TCreateEstConfigurationDTO) => {
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.pkiEst) {
+    if (!plan.get(SubscriptionProductCategory.CertManager, "pkiEst")) {
       throw new BadRequestError({
         message: "Failed to create EST configuration due to plan restriction. Upgrade to the Enterprise plan."
       });
@@ -337,7 +337,7 @@ export const certificateTemplateServiceFactory = ({
     disableBootstrapCertValidation
   }: TUpdateEstConfigurationDTO) => {
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.pkiEst) {
+    if (!plan.get(SubscriptionProductCategory.CertManager, "pkiEst")) {
       throw new BadRequestError({
         message: "Failed to update EST configuration due to plan restriction. Upgrade to the Enterprise plan."
       });

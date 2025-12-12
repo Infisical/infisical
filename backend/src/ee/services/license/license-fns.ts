@@ -1,5 +1,6 @@
 import axios, { AxiosError } from "axios";
 
+import { SubscriptionProductCategory } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { getConfig, TEnvConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
@@ -54,67 +55,93 @@ export const getLicenseKeyConfig = (
 
 export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   _id: null,
+  version: 2,
+  productPlans: {},
   slug: null,
   tier: -1,
-  workspaceLimit: null,
-  workspacesUsed: 0,
   memberLimit: null,
   membersUsed: 0,
-  environmentLimit: null,
-  environmentsUsed: 0,
-  identityLimit: null,
-  identitiesUsed: 0,
-  dynamicSecret: false,
-  secretVersioning: true,
-  pitRecovery: false,
-  ipAllowlisting: false,
-  rbac: false,
-  githubOrgSync: false,
-  customRateLimits: false,
-  subOrganization: false,
-  customAlerts: false,
-  secretAccessInsights: false,
-  auditLogs: true,
-  auditLogsRetentionDays: 1,
-  auditLogStreams: false,
-  auditLogStreamLimit: 3,
-  samlSSO: false,
-  enforceGoogleSSO: false,
-  hsm: false,
-  oidcSSO: false,
-  scim: false,
-  ldap: false,
-  groups: false,
   status: null,
   trial_end: null,
   has_used_trial: true,
-  secretApproval: false,
-  secretRotation: false,
-  caCrl: false,
-  instanceUserManagement: false,
-  externalKms: false,
-  rateLimits: {
-    readLimit: 60,
-    writeLimit: 200,
-    secretsLimit: 40
+  workspaceLimit: null,
+  workspacesUsed: 0,
+  identityLimit: null,
+  identitiesUsed: 0,
+  [SubscriptionProductCategory.Platform]: {
+    ipAllowlisting: false,
+    rbac: false,
+    githubOrgSync: false,
+    customRateLimits: false,
+    subOrganization: false,
+    secretScanning: false,
+    enterpriseAppConnections: false,
+    fips: false,
+    eventSubscriptions: false,
+    machineIdentityAuthTemplates: false,
+    pam: false,
+    ai: false,
+    enforceMfa: false,
+    projectTemplates: false,
+    instanceUserManagement: false,
+    externalKms: false,
+    hsm: false,
+    oidcSSO: false,
+    gateway: false,
+    scim: false,
+    ldap: false,
+    groups: false,
+    auditLogs: false,
+    auditLogsRetentionDays: 0,
+    auditLogStreams: false,
+    auditLogStreamLimit: 3,
+    samlSSO: false,
+    enforceGoogleSSO: false,
+    rateLimits: {
+      readLimit: 60,
+      writeLimit: 200,
+      secretsLimit: 40
+    }
   },
-  pkiEst: false,
-  pkiAcme: false,
-  enforceMfa: false,
-  projectTemplates: false,
-  kmip: false,
-  gateway: false,
-  sshHostGroups: false,
-  secretScanning: false,
-  enterpriseSecretSyncs: false,
-  enterpriseCertificateSyncs: false,
-  enterpriseAppConnections: false,
-  fips: false,
-  eventSubscriptions: false,
-  machineIdentityAuthTemplates: false,
-  pkiLegacyTemplates: false,
-  pam: false,
-  ai: false
+  [SubscriptionProductCategory.SecretsManager]: {
+    enterpriseSecretSyncs: false,
+    secretApproval: false,
+    secretRotation: false,
+    dynamicSecret: false,
+    secretVersioning: true,
+    secretAccessInsights: false,
+    pitRecovery: false,
+    identityLimit: 0,
+    identitiesUsed: 0,
+    environmentLimit: 0,
+    environmentsUsed: 0,
+    projectLimit: null,
+    projectsUsed: 0
+  },
+  [SubscriptionProductCategory.CertManager]: {
+    enterpriseCertificateSyncs: false,
+    pkiEst: false,
+    pkiAcme: false,
+    kmip: false,
+    pkiLegacyTemplates: false,
+    caCrl: false,
+    projectLimit: null,
+    projectsUsed: 0
+  },
+  [SubscriptionProductCategory.Pam]: {
+    sshHostGroups: false,
+    identityLimit: null,
+    identitiesUsed: 0,
+    projectLimit: null,
+    projectsUsed: 0
+  },
+  [SubscriptionProductCategory.SecretsScanning]: {
+    sshHostGroups: false,
+    identityLimit: null,
+    identitiesUsed: 0,
+    projectLimit: null,
+    projectsUsed: 0
+  }
 });
 
 export const setupLicenseRequestWithStore = (
@@ -193,7 +220,12 @@ export const throwOnPlanSeatLimitReached = async (
 ) => {
   const plan = await licenseService.getPlan(orgId);
 
-  if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
+  if (
+    plan?.slug !== "enterprise" &&
+    plan.version === 1 &&
+    plan?.identityLimit &&
+    plan.identitiesUsed >= plan.identityLimit
+  ) {
     // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
     throw new BadRequestError({
       message: `Failed to create new member${type ? ` via ${type.toUpperCase()}` : ""} due to member limit reached. Upgrade plan to add more members.`

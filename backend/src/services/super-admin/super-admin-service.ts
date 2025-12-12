@@ -5,6 +5,7 @@ import {
   IdentityAuthMethod,
   OrgMembershipRole,
   OrgMembershipStatus,
+  SubscriptionProductCategory,
   TSuperAdmin,
   TSuperAdminUpdate,
   TUsers
@@ -1082,7 +1083,7 @@ export const superAdminServiceFactory = ({
   };
 
   const grantServerAdminAccessToUser = async (userId: string) => {
-    if (!licenseService.onPremFeatures?.instanceUserManagement) {
+    if (!licenseService.onPremFeatures?.get(SubscriptionProductCategory.Platform, "instanceUserManagement")) {
       throw new BadRequestError({
         message: "Failed to grant server admin access to user due to plan restriction. Upgrade to Infisical's Pro plan."
       });

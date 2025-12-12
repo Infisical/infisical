@@ -3,7 +3,7 @@ import net from "node:net";
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, TRelays } from "@app/db/schemas";
+import { OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, SubscriptionProductCategory, TRelays } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -65,7 +65,7 @@ export const gatewayV2ServiceFactory = ({
 }: TGatewayV2ServiceFactoryDep) => {
   const $validateIdentityAccessToGateway = async (orgId: string, actorId: string, actorAuthMethod: ActorAuthMethod) => {
     const orgLicensePlan = await licenseService.getPlan(orgId);
-    if (!orgLicensePlan.gateway) {
+    if (!orgLicensePlan.get(SubscriptionProductCategory.Platform, "gateway")) {
       throw new BadRequestError({
         message:
           "Gateway operation failed due to organization plan restrictions. Please upgrade your instance to Infisical's Enterprise plan."
@@ -305,7 +305,7 @@ export const gatewayV2ServiceFactory = ({
     }
 
     const orgLicensePlan = await licenseService.getPlan(orgGatewayConfig.orgId);
-    if (!orgLicensePlan.gateway) {
+    if (!orgLicensePlan.get(SubscriptionProductCategory.Platform, "gateway")) {
       throw new BadRequestError({
         message: "Please upgrade your instance to Infisical's Enterprise plan to use gateways."
       });
@@ -462,7 +462,7 @@ export const gatewayV2ServiceFactory = ({
     }
 
     const orgLicensePlan = await licenseService.getPlan(orgGatewayConfig.orgId);
-    if (!orgLicensePlan.gateway) {
+    if (!orgLicensePlan.get(SubscriptionProductCategory.Platform, "gateway")) {
       throw new BadRequestError({
         message: "Please upgrade your instance to Infisical's Enterprise plan to use gateways."
       });

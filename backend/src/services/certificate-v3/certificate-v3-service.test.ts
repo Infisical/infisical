@@ -6,6 +6,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -65,6 +66,10 @@ describe("CertificateV3Service", () => {
   const mockCertificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create"> = {
     findOne: vi.fn(),
     create: vi.fn()
+  };
+
+  const mockLicenseService: Pick<TLicenseServiceFactory, "updateOrgSubscription"> = {
+    updateOrgSubscription: vi.fn()
   };
 
   const mockCertificateAuthorityDAL: Pick<
@@ -162,6 +167,7 @@ describe("CertificateV3Service", () => {
       certificateAuthorityDAL: mockCertificateAuthorityDAL,
       certificateProfileDAL: mockCertificateProfileDAL,
       certificateTemplateV2Service: mockCertificateTemplateV2Service,
+      licenseService: mockLicenseService,
       acmeAccountDAL: mockAcmeAccountDAL,
       internalCaService: mockInternalCaService,
       permissionService: mockPermissionService,

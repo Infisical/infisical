@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import { z } from "zod";
 
-import { OrganizationActionScope } from "@app/db/schemas";
+import { OrganizationActionScope, SubscriptionProductCategory } from "@app/db/schemas";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -63,7 +63,7 @@ export const gatewayServiceFactory = ({
     //   });
     // }
     const orgLicensePlan = await licenseService.getPlan(orgId);
-    if (!orgLicensePlan.gateway) {
+    if (!orgLicensePlan.get(SubscriptionProductCategory.Platform, "gateway")) {
       throw new BadRequestError({
         message:
           "Gateway handshake failed due to organization plan restrictions. Please upgrade your instance to Infisical's Enterprise plan."
@@ -574,7 +574,7 @@ export const gatewayServiceFactory = ({
     const orgGatewayConfig = await orgGatewayConfigDAL.findById(gateway.orgGatewayRootCaId);
 
     const orgLicensePlan = await licenseService.getPlan(orgGatewayConfig.orgId);
-    if (!orgLicensePlan.gateway) {
+    if (!orgLicensePlan.get(SubscriptionProductCategory.Platform, "gateway")) {
       throw new BadRequestError({
         message: "Please upgrade your instance to Infisical's Enterprise plan to use gateways."
       });

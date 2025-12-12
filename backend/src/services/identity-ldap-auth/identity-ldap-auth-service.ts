@@ -3,7 +3,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 import slugify from "@sindresorhus/slugify";
 
-import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
+import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope , SubscriptionProductCategory } from "@app/db/schemas";
 import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template";
 import { testLDAPConfig } from "@app/ee/services/ldap-config/ldap-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -173,7 +173,7 @@ export const identityLdapAuthServiceFactory = ({
     let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
     const plan = await licenseService.getPlan(identity.orgId);
-    if (!plan.ldap) {
+    if (!plan.get(SubscriptionProductCategory.Platform, "ldap")) {
       throw new BadRequestError({
         message:
           "Failed to login to identity due to plan restriction. Upgrade plan to login to use LDAP authentication."
@@ -373,7 +373,7 @@ export const identityLdapAuthServiceFactory = ({
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
 
-    if (!plan.ldap) {
+    if (!plan.get(SubscriptionProductCategory.Platform, "ldap")) {
       throw new BadRequestError({
         message: "Failed to add LDAP Auth to identity due to plan restriction. Upgrade plan to add LDAP Auth."
       });
@@ -381,7 +381,7 @@ export const identityLdapAuthServiceFactory = ({
 
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
-        !plan.ipAllowlisting &&
+        !plan.get(SubscriptionProductCategory.Platform, "ipAllowlisting") &&
         accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
         accessTokenTrustedIp.ipAddress !== "::/0"
       )
@@ -573,7 +573,7 @@ export const identityLdapAuthServiceFactory = ({
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
 
-    if (!plan.ldap) {
+    if (!plan.get(SubscriptionProductCategory.Platform, "ldap")) {
       throw new BadRequestError({
         message: "Failed to update LDAP Auth due to plan restriction. Upgrade plan to update LDAP Auth."
       });
@@ -581,7 +581,7 @@ export const identityLdapAuthServiceFactory = ({
 
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
-        !plan.ipAllowlisting &&
+        !plan.get(SubscriptionProductCategory.Platform, "ipAllowlisting") &&
         accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
         accessTokenTrustedIp.ipAddress !== "::/0"
       )

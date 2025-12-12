@@ -5,6 +5,7 @@ import {
   AccessScope,
   OrganizationActionScope,
   OrgMembershipStatus,
+  SubscriptionProductCategory,
   TableName,
   TLdapConfigsUpdate,
   TUsers
@@ -137,7 +138,7 @@ export const ldapConfigServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.ldap)
+    if (!plan.get(SubscriptionProductCategory.Platform, "ldap"))
       throw new BadRequestError({
         message:
           "Failed to create LDAP configuration due to plan restriction. Upgrade plan to create LDAP configuration."
@@ -263,7 +264,7 @@ export const ldapConfigServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Ldap);
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.ldap)
+    if (!plan.get(SubscriptionProductCategory.Platform, "ldap"))
       throw new BadRequestError({
         message:
           "Failed to update LDAP configuration due to plan restriction. Upgrade plan to update LDAP configuration."
@@ -724,7 +725,7 @@ export const ldapConfigServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.ldap)
+    if (!plan.get(SubscriptionProductCategory.Platform, "ldap"))
       throw new BadRequestError({
         message: "Failed to create LDAP group map due to plan restriction. Upgrade plan to create LDAP group map."
       });
@@ -785,7 +786,7 @@ export const ldapConfigServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Ldap);
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.ldap)
+    if (!plan.get(SubscriptionProductCategory.Platform, "ldap"))
       throw new BadRequestError({
         message: "Failed to delete LDAP group map due to plan restriction. Upgrade plan to delete LDAP group map."
       });
@@ -831,7 +832,7 @@ export const ldapConfigServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.ldap)
+    if (!plan.get(SubscriptionProductCategory.Platform, "ldap"))
       throw new BadRequestError({
         message: "Failed to test LDAP connection due to plan restriction. Upgrade plan to test the LDAP connection."
       });

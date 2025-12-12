@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 
-import { OrganizationActionScope, ProjectType, TProjectTemplates } from "@app/db/schemas";
+import { OrganizationActionScope, ProjectType, SubscriptionProductCategory, TProjectTemplates } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -54,7 +54,7 @@ export const projectTemplateServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.projectTemplates)
+    if (!plan.get(SubscriptionProductCategory.Platform, "projectTemplates"))
       throw new BadRequestError({
         message: "Failed to access project templates due to plan restriction. Upgrade plan to access project templates."
       });
@@ -89,7 +89,7 @@ export const projectTemplateServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.projectTemplates)
+    if (!plan.get(SubscriptionProductCategory.Platform, "projectTemplates"))
       throw new BadRequestError({
         message: "Failed to access project template due to plan restriction. Upgrade plan to access project templates."
       });
@@ -118,7 +118,7 @@ export const projectTemplateServiceFactory = ({
   const findProjectTemplateById: TProjectTemplateServiceFactory["findProjectTemplateById"] = async (id, actor) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.projectTemplates)
+    if (!plan.get(SubscriptionProductCategory.Platform, "projectTemplates"))
       throw new BadRequestError({
         message: "Failed to access project template due to plan restriction. Upgrade plan to access project templates."
       });
@@ -150,7 +150,7 @@ export const projectTemplateServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.projectTemplates)
+    if (!plan.get(SubscriptionProductCategory.Platform, "projectTemplates"))
       throw new BadRequestError({
         message: "Failed to create project template due to plan restriction. Upgrade plan to access project templates."
       });
@@ -170,10 +170,11 @@ export const projectTemplateServiceFactory = ({
       throw new BadRequestError({ message: "Cannot configure environments for non-SecretManager project templates" });
     }
 
-    if (environments && plan.environmentLimit !== null && environments.length > plan.environmentLimit) {
+    const environmentLimit = plan.get(SubscriptionProductCategory.SecretsManager, "environmentLimit");
+    if (environments && environmentLimit && environments.length > environmentLimit) {
       throw new BadRequestError({
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        message: `Failed to create project template due to environment count exceeding your current limit of ${plan.environmentLimit}. Contact Infisical to increase limit.`
+        message: `Failed to create project template due to environment count exceeding your current limit of ${environmentLimit}. Contact Infisical to increase limit.`
       });
     }
 
@@ -212,7 +213,7 @@ export const projectTemplateServiceFactory = ({
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.projectTemplates)
+    if (!plan.get(SubscriptionProductCategory.Platform, "projectTemplates"))
       throw new BadRequestError({
         message: "Failed to update project template due to plan restriction. Upgrade plan to access project templates."
       });
@@ -237,10 +238,11 @@ export const projectTemplateServiceFactory = ({
     if (projectTemplate.type === ProjectType.SecretManager && environments === null)
       throw new BadRequestError({ message: "Environments cannot be removed for SecretManager project templates" });
 
-    if (environments && plan.environmentLimit !== null && environments.length > plan.environmentLimit) {
+    const environmentLimit = plan.get(SubscriptionProductCategory.SecretsManager, "environmentLimit");
+    if (environments && environmentLimit && environments.length > environmentLimit) {
       throw new BadRequestError({
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        message: `Failed to update project template due to environment count exceeding your current limit of ${plan.environmentLimit}. Contact Infisical to increase limit.`
+        message: `Failed to update project template due to environment count exceeding your current limit of ${environmentLimit}. Contact Infisical to increase limit.`
       });
     }
 
@@ -272,7 +274,7 @@ export const projectTemplateServiceFactory = ({
   const deleteProjectTemplateById: TProjectTemplateServiceFactory["deleteProjectTemplateById"] = async (id, actor) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
-    if (!plan.projectTemplates)
+    if (!plan.get(SubscriptionProductCategory.Platform, "projectTemplates"))
       throw new BadRequestError({
         message: "Failed to delete project template due to plan restriction. Upgrade plan to access project templates."
       });

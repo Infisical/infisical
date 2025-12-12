@@ -8,7 +8,7 @@ import jwtDep from "jsonwebtoken";
 import nacl from "tweetnacl";
 import naclUtils from "tweetnacl-util";
 
-import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
+import { SecretEncryptionAlgo, SecretKeyEncoding, SubscriptionProductCategory } from "@app/db/schemas";
 import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -102,7 +102,7 @@ const cryptographyFactory = () => {
     if (
       !appCfg.isDevelopmentMode &&
       isFipsModeEnabled({ skipInitializationCheck: true }) &&
-      !licenseService.onPremFeatures?.fips
+      !licenseService.onPremFeatures?.get(SubscriptionProductCategory.Platform, "fips")
     ) {
       throw new CryptographyError({
         message: "FIPS mode is enabled but your license does not include FIPS support. Please contact support."

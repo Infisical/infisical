@@ -77,7 +77,11 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
     licenseDAL,
     keyStore,
     projectDAL,
-    envConfig
+    envConfig,
+    queueService: {
+      start: () => undefined,
+      queue: async () => undefined
+    }
   });
 
   // ----- HSM startup -----

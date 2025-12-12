@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { AxiosError } from "axios";
 
-import { OrganizationActionScope, TAuditLogs } from "@app/db/schemas";
+import { OrganizationActionScope, SubscriptionProductCategory, TAuditLogs } from "@app/db/schemas";
 import {
   decryptLogStream,
   decryptLogStreamCredentials,
@@ -39,7 +39,7 @@ export const auditLogStreamServiceFactory = ({
 }: TAuditLogStreamServiceFactoryDep) => {
   const create = async ({ provider, credentials }: TCreateAuditLogStreamDTO, actor: OrgServiceActor) => {
     const plan = await licenseService.getPlan(actor.orgId);
-    if (!plan.auditLogStreams) {
+    if (!plan.get(SubscriptionProductCategory.Platform, "auditLogStreams")) {
       throw new BadRequestError({
         message: "Failed to create Audit Log Stream: Plan restriction. Upgrade plan to continue."
       });
@@ -57,7 +57,8 @@ export const auditLogStreamServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
 
     const totalStreams = await auditLogStreamDAL.find({ orgId: actor.orgId });
-    if (totalStreams.length >= plan.auditLogStreamLimit) {
+    const auditLogStreamLimit = plan.get(SubscriptionProductCategory.Platform, "auditLogStreamLimit");
+    if (auditLogStreamLimit && totalStreams.length >= auditLogStreamLimit) {
       throw new BadRequestError({
         message: "Failed to create Audit Log Stream: Plan limit reached. Contact Infisical to increase quota."
       });
@@ -86,7 +87,7 @@ export const auditLogStreamServiceFactory = ({
     actor: OrgServiceActor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
-    if (!plan.auditLogStreams) {
+    if (!plan.get(SubscriptionProductCategory.Platform, "auditLogStreams")) {
       throw new BadRequestError({
         message: "Failed to update Audit Log Stream: Plan restriction. Upgrade plan to continue."
       });

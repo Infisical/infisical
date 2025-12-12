@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
-import { AccessScope, OrganizationActionScope, OrgMembershipRole, TRoles } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, OrgMembershipRole, SubscriptionProductCategory, TRoles } from "@app/db/schemas";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -112,7 +112,7 @@ export const groupServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Create, OrgPermissionSubjects.Groups);
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.groups)
+    if (!plan.get(SubscriptionProductCategory.Platform, "groups"))
       throw new BadRequestError({
         message: "Failed to create group due to plan restriction. Upgrade plan to create group."
       });
@@ -208,7 +208,7 @@ export const groupServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.groups)
+    if (!plan.get(SubscriptionProductCategory.Platform, "groups"))
       throw new BadRequestError({
         message: "Failed to update group due to plan restriction Upgrade plan to update group."
       });
@@ -312,7 +312,7 @@ export const groupServiceFactory = ({
 
     const plan = await licenseService.getPlan(actorOrgId);
 
-    if (!plan.groups)
+    if (!plan.get(SubscriptionProductCategory.Platform, "groups"))
       throw new BadRequestError({
         message: "Failed to delete group due to plan restriction. Upgrade plan to delete group."
       });

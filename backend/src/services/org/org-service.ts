@@ -7,6 +7,7 @@ import {
   OrganizationActionScope,
   OrgMembershipRole,
   OrgMembershipStatus,
+  SubscriptionProductCategory,
   TableName,
   TOidcConfigs,
   TSamlConfigs
@@ -441,7 +442,7 @@ export const orgServiceFactory = ({
     const currentOrg = await orgDAL.findOrgById(actorOrgId);
 
     if (enforceMfa !== undefined) {
-      if (!plan.enforceMfa) {
+      if (!plan.get(SubscriptionProductCategory.Platform, "enforceMfa")) {
         throw new BadRequestError({
           message: "Failed to enforce user MFA due to plan restriction. Upgrade plan to enforce/un-enforce MFA."
         });
@@ -455,7 +456,10 @@ export const orgServiceFactory = ({
     }
 
     if (authEnforced !== undefined) {
-      if (!plan?.samlSSO && !plan.oidcSSO)
+      if (
+        !plan?.get(SubscriptionProductCategory.Platform, "samlSSO") &&
+        !plan.get(SubscriptionProductCategory.Platform, "oidcSSO")
+      )
         throw new BadRequestError({
           message: "Failed to enforce/un-enforce SSO due to plan restriction. Upgrade plan to enforce/un-enforce SSO."
         });
@@ -463,7 +467,7 @@ export const orgServiceFactory = ({
     }
 
     if (scimEnabled !== undefined) {
-      if (!plan?.scim)
+      if (!plan?.get(SubscriptionProductCategory.Platform, "scim"))
         throw new BadRequestError({
           message:
             "Failed to enable/disable SCIM provisioning due to plan restriction. Upgrade plan to enable/disable SCIM provisioning."
@@ -477,7 +481,7 @@ export const orgServiceFactory = ({
     }
 
     if (googleSsoAuthEnforced !== undefined) {
-      if (!plan.enforceGoogleSSO) {
+      if (!plan.get(SubscriptionProductCategory.Platform, "enforceGoogleSSO")) {
         throw new BadRequestError({
           message: "Failed to enforce Google SSO due to plan restriction. Upgrade plan to enforce Google SSO."
         });
@@ -578,7 +582,7 @@ export const orgServiceFactory = ({
         membershipRoleSlug: defaultMembershipRoleSlug,
         orgId,
         roleDAL,
-        plan
+        rbac: plan.get(SubscriptionProductCategory.Platform, "rbac")
       });
     }
 
@@ -655,7 +659,7 @@ export const orgServiceFactory = ({
 
     const organization = await (trx ? createOrg(trx) : orgDAL.transaction(createOrg));
 
-    await licenseService.updateOrgSubscription(organization.id, trx);
+    await licenseService.updateOrgSubscription(organization.id);
     return organization;
   };
 
@@ -796,7 +800,7 @@ export const orgServiceFactory = ({
       if (!customRole) throw new BadRequestError({ name: "UpdateMembership", message: "Organization role not found" });
 
       const plan = await licenseService.getPlan(orgId);
-      if (!plan?.rbac)
+      if (!plan?.get(SubscriptionProductCategory.Platform, "rbac"))
         throw new BadRequestError({
           message: "Failed to assign custom role due to RBAC restriction. Upgrade plan to assign custom role to member."
         });

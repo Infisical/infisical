@@ -1,7 +1,8 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, SubscriptionProductCategory } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -305,6 +306,12 @@ export const certificateProfileServiceFactory = ({
     const project = await projectDAL.findById(projectId);
     if (!project) {
       throw new NotFoundError({ message: "Project not found" });
+    }
+    const plan = await licenseService.getPlan(project.orgId);
+    if (!plan.get(SubscriptionProductCategory.CertManager, "pkiAcme") && data.enrollmentType === EnrollmentType.ACME) {
+      throw new BadRequestError({
+        message: "Failed to create certificate profile: Plan restriction. Upgrade plan to continue"
+      });
     }
 
     // Validate that certificate template exists and belongs to the same project
