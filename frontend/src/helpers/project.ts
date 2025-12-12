@@ -88,7 +88,7 @@ export const getProjectTitle = (type: ProjectType) => {
   const titleConvert = {
     [ProjectType.SecretManager]: "Secrets Management",
     [ProjectType.KMS]: "Key Management",
-    [ProjectType.CertificateManager]: "Cert Manager",
+    [ProjectType.CertificateManager]: "Certificate Manager",
     [ProjectType.SSH]: "SSH",
     [ProjectType.SecretScanning]: "Secret Scanning",
     [ProjectType.PAM]: "PAM"
