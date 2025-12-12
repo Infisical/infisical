@@ -3241,6 +3241,14 @@
     {
       "source": "/integrations/overview",
       "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/aws-amplify",
+      "destination": "/integrations/cicd/aws-amplify"
+    },
+    {
+      "source": "/integrations/cloud/teamcity",
+      "destination": "/integrations/cicd/teamcity"
     }
   ]
 }
