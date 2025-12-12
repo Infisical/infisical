@@ -47,9 +47,16 @@ certificates:
       - "server_auth"
     ttl: "30d"
     file-output:
-      private-key-path: "./certs/api/private.key"
-      certificate-path: "./certs/api/certificate.crt"
-      file-permissions: "0600"
+      private-key:
+        path: "./certs/api/private.key"
+        permission: "0600"
+      certificate:
+        path: "./certs/api/certificate.crt"
+        permission: "0644"
+      chain:
+        path: "./certs/api/chain.crt"
+        permission: "0644"
+        omit-root: false
 ```
 
 ### CSR-based Issuance
@@ -63,9 +70,42 @@ certificates:
   - profile-id: "prof-external-ca-12345"
     csr-path: "/etc/ssl/requests/api.csr"
     file-output:
-      certificate-path: "/etc/ssl/certs/api.crt"
-      ca-certificate-path: "/etc/ssl/certs/ca.crt"
-      file-permissions: "0644"
+      certificate:
+        path: "/etc/ssl/certs/api.crt"
+        permission: "0644"
+      chain:
+        path: "/etc/ssl/certs/ca-chain.crt"
+        permission: "0644"
+        omit-root: true
+```
+
+### File Output Configuration
+
+The Certificate Agent provides granular control over file permissions and certificate chain composition:
+
+#### Certificate Chain Management
+
+The `omit-root` parameter in the chain configuration controls whether the root certificate is included in the certificate chain file:
+
+- `omit-root: false` (default): Includes the root certificate in the chain file, providing the complete certificate chain
+- `omit-root: true`: Excludes the root certificate, useful when the root certificate is already trusted by the system or when intermediate certificates are sufficient
+
+#### Individual File Permissions
+
+Each file type (private key, certificate, chain) can have its own permission settings:
+
+```yaml
+file-output:
+  private-key:
+    path: "./certs/private.key"
+    permission: "0600"  # Read/write for owner only
+  certificate:
+    path: "./certs/certificate.crt"
+    permission: "0644"  # Read for all, write for owner
+  chain:
+    path: "./certs/chain.crt"
+    permission: "0644"  # Read for all, write for owner
+    omit-root: false    # Include root certificate
 ```
 
 ## Lifecycle Management
@@ -84,9 +124,15 @@ certificates:
       renew-before-expiry: "14d"     # Renew 14 days before expiration
       status-check-interval: "6h"    # Check certificate status every 6 hours
     file-output:
-      private-key-path: "./certs/web/private.key"
-      certificate-path: "./certs/web/certificate.crt"
-      file-permissions: "0600"
+      private-key:
+        path: "./certs/web/private.key"
+        permission: "0600"
+      certificate:
+        path: "./certs/web/certificate.crt"
+        permission: "0644"
+      chain:
+        path: "./certs/web/chain.crt"
+        permission: "0644"
     post-hooks:
       on-issuance:
         command: "systemctl reload nginx"
@@ -321,10 +367,13 @@ infisical:
 | `key-usages`                                      | List of key usage values                                                     |
 | `extended-key-usages`                             | List of extended key usage values                                            |
 | `csr-path`                                        | Path to CSR file                                                            |
-| `file-output.private-key-path`     | Where to store private key                                                   |
-| `file-output.certificate-path`     | Where to store certificate                                                   |
-| `file-output.ca-certificate-path`  | Where to store CA certificate                                               |
-| `file-output.file-permissions`     | File permissions for generated files                                        |
+| `file-output.private-key.path`     | Where to store private key                                                   |
+| `file-output.private-key.permission` | File permissions for private key (e.g., "0600")                           |
+| `file-output.certificate.path`     | Where to store certificate                                                   |
+| `file-output.certificate.permission` | File permissions for certificate (e.g., "0644")                          |
+| `file-output.chain.path`           | Where to store certificate chain                                            |
+| `file-output.chain.permission`     | File permissions for chain file (e.g., "0644")                             |
+| `file-output.chain.omit-root`      | Whether to exclude root certificate from chain                             |
 | `lifecycle.renew-before-expiry`                   | When to renew before expiration                                             |
 | `lifecycle.status-check-interval`                 | How often to check certificate status                                       |                                       |
 | `post-hooks.on-issuance.command`                  | Command to run on certificate issuance                                      |
@@ -380,10 +429,16 @@ certificates:
 
     # File output configuration
     file-output:
-      private-key-path: "/etc/ssl/private/web.key"
-      certificate-path: "/etc/ssl/certs/web.crt"
-      ca-certificate-path: "/etc/ssl/certs/ca.crt"
-      file-permissions: "0600"
+      private-key:
+        path: "/etc/ssl/private/web.key"
+        permission: "0600"
+      certificate:
+        path: "/etc/ssl/certs/web.crt"
+        permission: "0644"
+      chain:
+        path: "/etc/ssl/certs/web-chain.crt"
+        permission: "0644"
+        omit-root: false  # Include root certificate in chain
 
     # Post-event hooks
     post-hooks:
