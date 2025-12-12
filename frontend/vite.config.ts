@@ -29,14 +29,14 @@ export default defineConfig(({ mode }) => {
     "0.0.1"
   ).replaceAll(".", "-");
 
-  // Optional CDN URL for static assets (e.g., https://cdn.example.com)
-  // When set, all static assets will be served from this URL instead of the same origin.
-  // This is useful for serving assets from a CDN subdomain while keeping API calls on the main domain.
-  // If not set, assets are served from the same origin (backward compatible).
+  // CDN URL for static assets in /assets/* only.
+  // Docker: Set CDN_URL env var at runtime (placeholder replaced at container startup).
+  // Direct build: Use --build-arg CDN_URL=https://... or VITE_CDN_URL env var.
+  // Default: Empty = same-origin asset loading.
   const cdnUrl = env.VITE_CDN_URL || "";
 
   return {
-    base: cdnUrl || "/",
+    base: "/",
     server: {
       allowedHosts,
       host: true,
@@ -57,6 +57,15 @@ export default defineConfig(({ mode }) => {
           chunkFileNames: `assets/[name]-${version}-[hash].js`,
           assetFileNames: `assets/[name]-${version}-[hash].[ext]`
         }
+      }
+    },
+    experimental: {
+      // Only apply CDN URL to files in /assets/* directory
+      renderBuiltUrl(filename) {
+        if (filename.startsWith("assets/")) {
+          return `${cdnUrl}/${filename}`;
+        }
+        return `/${filename}`;
       }
     },
     plugins: [

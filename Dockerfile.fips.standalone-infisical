@@ -2,6 +2,8 @@ ARG POSTHOG_HOST=https://app.posthog.com
 ARG POSTHOG_API_KEY=posthog-api-key
 ARG INTERCOM_ID=intercom-id
 ARG CAPTCHA_SITE_KEY=captcha-site-key
+# CDN URL placeholder - replaced at container startup with actual CDN_URL env var
+ARG CDN_URL=__INFISICAL_CDN_URL__
 
 FROM node:20.19.5-trixie-slim AS base
 
@@ -36,6 +38,8 @@ ARG INFISICAL_PLATFORM_VERSION
 ENV VITE_INFISICAL_PLATFORM_VERSION $INFISICAL_PLATFORM_VERSION
 ARG CAPTCHA_SITE_KEY
 ENV VITE_CAPTCHA_SITE_KEY $CAPTCHA_SITE_KEY
+ARG CDN_URL
+ENV VITE_CDN_URL $CDN_URL
 
 ENV NODE_OPTIONS="--max-old-space-size=8192"
 
@@ -185,8 +189,10 @@ COPY --from=backend-runner /app /backend
 
 COPY --from=frontend-runner /app ./backend/frontend-build
 
-# Make export-assets script executable for CDN asset extraction
-RUN chmod +x /backend/scripts/export-assets.sh
+# Copy CDN URL replacement script for runtime CDN URL replacement
+COPY frontend/scripts/replace-standalone-build-variable.sh /backend/scripts/replace-standalone-build-variable.sh
+RUN chmod +x /backend/scripts/export-assets.sh /backend/scripts/replace-standalone-build-variable.sh
+RUN chown -R non-root-user:nodejs /backend/frontend-build
 
 ARG INFISICAL_PLATFORM_VERSION
 ENV INFISICAL_PLATFORM_VERSION $INFISICAL_PLATFORM_VERSION
