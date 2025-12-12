@@ -11,6 +11,7 @@ import {
 } from "@app/ee/services/external-kms/providers/model";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
+import { deterministicStringify } from "@app/lib/fn/object";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -88,7 +89,7 @@ export const registerExternalKmsEndpoints = <
         ...rest
       } = externalKms;
 
-      const credentialsToHash = JSON.stringify(configuration.credential);
+      const credentialsToHash = deterministicStringify(configuration.credential);
 
       const credentialsHash = crypto.nativeCrypto
         .createHash("sha256")
@@ -156,7 +157,7 @@ export const registerExternalKmsEndpoints = <
         ...rest
       } = externalKms;
 
-      const credentialsToHash = JSON.stringify(externalKmsConfiguration.credential);
+      const credentialsToHash = deterministicStringify(externalKmsConfiguration.credential);
 
       const credentialsHash = crypto.nativeCrypto
         .createHash("sha256")
@@ -228,7 +229,7 @@ export const registerExternalKmsEndpoints = <
         ...rest
       } = externalKms;
 
-      const credentialsToHash = JSON.stringify(externalKmsConfiguration.credential);
+      const credentialsToHash = deterministicStringify(externalKmsConfiguration.credential);
 
       const credentialsHash = crypto.nativeCrypto
         .createHash("sha256")
@@ -286,7 +287,7 @@ export const registerExternalKmsEndpoints = <
         ...rest
       } = externalKms;
 
-      const credentialsToHash = JSON.stringify(configuration.credential);
+      const credentialsToHash = deterministicStringify(configuration.credential);
 
       const credentialsHash = crypto.nativeCrypto
         .createHash("sha256")
