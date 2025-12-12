@@ -2,6 +2,8 @@ import { AxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { removeTrailingSlash } from "@app/lib/fn";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { AppConnection } from "../app-connection-enums";
 import { OctopusDeployConnectionMethod } from "./octopus-deploy-connection-enums";
@@ -16,6 +18,14 @@ import {
   TOctopusDeploySpaceResponse
 } from "./octopus-deploy-connection-types";
 
+export const getOctopusDeployInstanceUrl = async (config: TOctopusDeployConnectionConfig) => {
+  const instanceUrl = removeTrailingSlash(config.credentials.instanceUrl);
+
+  await blockLocalAndPrivateIpAddresses(instanceUrl);
+
+  return instanceUrl;
+};
+
 export const getOctopusDeployConnectionListItem = () => {
   return {
     name: "Octopus Deploy" as const,
@@ -25,12 +35,13 @@ export const getOctopusDeployConnectionListItem = () => {
 };
 
 export const validateOctopusDeployConnectionCredentials = async (config: TOctopusDeployConnectionConfig) => {
-  const { credentials: inputCredentials } = config;
+  const instanceUrl = await getOctopusDeployInstanceUrl(config);
+  const { apiKey } = config.credentials;
   try {
-    await request.get(`${inputCredentials.instanceUrl}/api/users/me`, {
+    await request.get(`${instanceUrl}/api/users/me`, {
       headers: {
-        "X-Octopus-ApiKey": inputCredentials.apiKey,
-        "X-NuGet-ApiKey": inputCredentials.apiKey,
+        "X-Octopus-ApiKey": apiKey,
+        "X-NuGet-ApiKey": apiKey,
         Accept: "application/json"
       }
     });
@@ -46,14 +57,14 @@ export const validateOctopusDeployConnectionCredentials = async (config: TOctopu
     });
   }
 
-  return inputCredentials;
+  return config.credentials;
 };
 
 export const getOctopusDeploySpaces = async (
   appConnection: TOctopusDeployConnection
 ): Promise<TOctopusDeploySpace[]> => {
-  const { credentials } = appConnection;
-  const { instanceUrl, apiKey } = credentials;
+  const instanceUrl = await getOctopusDeployInstanceUrl(appConnection);
+  const { apiKey } = appConnection.credentials;
 
   try {
     const { data } = await request.get<TOctopusDeploySpaceResponse[]>(`${instanceUrl}/api/spaces/all`, {
@@ -91,8 +102,8 @@ export const getOctopusDeployProjects = async (
   appConnection: TOctopusDeployConnection,
   spaceId: string
 ): Promise<TOctopusDeployProject[]> => {
-  const { credentials } = appConnection;
-  const { instanceUrl, apiKey } = credentials;
+  const instanceUrl = await getOctopusDeployInstanceUrl(appConnection);
+  const { apiKey } = appConnection.credentials;
 
   try {
     const { data } = await request.get<TOctopusDeployProjectResponse[]>(`${instanceUrl}/api/${spaceId}/projects/all`, {
@@ -130,8 +141,8 @@ export const getOctopusDeployScopeValues = async (
   spaceId: string,
   projectId: string
 ): Promise<TOctopusDeployScopeValues> => {
-  const { credentials } = appConnection;
-  const { instanceUrl, apiKey } = credentials;
+  const instanceUrl = await getOctopusDeployInstanceUrl(appConnection);
+  const { apiKey } = appConnection.credentials;
 
   try {
     const { data } = await request.get<TOctopusDeployScopeValuesResponse>(

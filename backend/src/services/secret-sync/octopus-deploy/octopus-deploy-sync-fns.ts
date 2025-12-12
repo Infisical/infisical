@@ -1,5 +1,6 @@
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { getOctopusDeployInstanceUrl } from "@app/services/app-connection/octopus-deploy";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
@@ -37,7 +38,8 @@ export const OctopusDeploySyncFns = {
       environment,
       syncOptions: { disableSecretDeletion, keySchema }
     } = secretSync;
-    const { apiKey, instanceUrl } = connection.credentials;
+    const instanceUrl = await getOctopusDeployInstanceUrl(connection);
+    const { apiKey } = connection.credentials;
 
     const { spaceId, projectId, scope } = secretSync.destinationConfig;
 
@@ -50,14 +52,14 @@ export const OctopusDeploySyncFns = {
     // Get scope values from destination config (if configured)
     const scopeValues = secretSync.destinationConfig.scopeValues || {};
 
-    const nonSenstiveVariables: TOctopusDeployVariable[] = [];
+    const nonSensitiveVariables: TOctopusDeployVariable[] = [];
     let sensitiveVariables: TOctopusDeployVariable[] = [];
 
     variableSet.Variables.forEach((variable) => {
       if (!variable.IsSensitive && variable.Type !== "Sensitive") {
-        nonSenstiveVariables.push(variable);
+        nonSensitiveVariables.push(variable);
       } else {
-        // sensitve variables, this could contain infisical secrets
+        // sensitive variables, this could contain infisical secrets
         sensitiveVariables.push(variable);
       }
     });
@@ -103,7 +105,7 @@ export const OctopusDeploySyncFns = {
       url,
       {
         ...variableSet,
-        Variables: [...nonSenstiveVariables, ...sensitiveVariables, ...newVariables]
+        Variables: [...nonSensitiveVariables, ...sensitiveVariables, ...newVariables]
       },
       {
         headers: this.getAuthHeader(apiKey)
@@ -112,10 +114,12 @@ export const OctopusDeploySyncFns = {
   },
   async removeSecrets(secretSync: TOctopusDeploySyncWithCredentials, secretMap: TSecretMap) {
     const {
-      credentials: { apiKey, instanceUrl }
-    } = secretSync.connection;
+      connection,
+      destinationConfig: { spaceId, projectId, scope }
+    } = secretSync;
 
-    const { spaceId, projectId, scope } = secretSync.destinationConfig;
+    const instanceUrl = await getOctopusDeployInstanceUrl(connection);
+    const { apiKey } = connection.credentials;
 
     const url = this.buildVariableUrl(instanceUrl, spaceId, projectId, scope);
 
