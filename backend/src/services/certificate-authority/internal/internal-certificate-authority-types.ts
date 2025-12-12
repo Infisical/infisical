@@ -126,6 +126,7 @@ export type TImportCertToCaDTO = {
   caId: string;
   certificate: string;
   certificateChain: string;
+  parentCaId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TIssueCertFromCaDTO = {

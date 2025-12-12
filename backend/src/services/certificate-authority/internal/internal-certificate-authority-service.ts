@@ -1052,7 +1052,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     actor,
     actorOrgId,
     certificate,
-    certificateChain
+    certificateChain,
+    parentCaId
   }: TImportCertToCaDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
@@ -1071,7 +1072,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
     );
 
-    if (ca.internalCa.parentCaId) {
+    if (ca.internalCa.parentCaId && (!parentCaId || parentCaId !== ca.internalCa.parentCaId)) {
       /**
        * re-evaluate in the future if we should allow users to import a new CA certificate for an intermediate
        * CA chained to an internal parent CA. Doing so would allow users to re-chain the CA to a different
@@ -1305,7 +1306,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       actorId,
       actorAuthMethod,
       actor,
-      actorOrgId
+      actorOrgId,
+      parentCaId
     });
 
     return {
@@ -2163,9 +2165,6 @@ export const internalCertificateAuthorityServiceFactory = ({
     if (ca.internalCa.type !== InternalCaType.ROOT) {
       throw new BadRequestError({ message: "Certificate generation is only available for root CAs" });
     }
-    if (ca.status === CaStatus.ACTIVE) {
-      throw new BadRequestError({ message: "CA already has an active certificate" });
-    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -2254,12 +2253,16 @@ export const internalCertificateAuthorityServiceFactory = ({
         plainText: Buffer.alloc(0)
       });
 
+      const existingCaCert = ca.internalCa.activeCaCertId
+        ? await certificateAuthorityCertDAL.findById(ca.internalCa.activeCaCertId, tx)
+        : undefined;
+
       const caCert = await certificateAuthorityCertDAL.create(
         {
           caId: ca.id,
           encryptedCertificate,
           encryptedCertificateChain,
-          version: 1,
+          version: existingCaCert ? existingCaCert.version + 1 : 1,
           caSecretId: caSecret.id
         },
         tx
