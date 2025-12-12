@@ -62,7 +62,7 @@ export default defineConfig(({ mode }) => {
     experimental: {
       // Only apply CDN URL to files in /assets/* directory
       renderBuiltUrl(filename) {
-        if (filename.startsWith("assets/")) {
+        if (filename.startsWith("assets/") && cdnUrl) {
           return `${cdnUrl}/${filename}`;
         }
         return `/${filename}`;

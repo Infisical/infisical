@@ -10,13 +10,16 @@ fi
 
 echo "Replacing pre-baked value.."
 
+# Escape special characters in REPLACEMENT for sed to avoid regex issues and injection attacks
+ESCAPED_REPLACEMENT=$(printf '%s\n' "$REPLACEMENT" | sed 's/[\/&]/\\&/g')
+
 # Replace in JS files in assets directory
 find assets -type f -name "*.js" |
 while read file; do
-    sed -i "s|$ORIGINAL|$REPLACEMENT|g" "$file"
+    sed -i "s|$ORIGINAL|$ESCAPED_REPLACEMENT|g" "$file"
 done
 
 # Replace in index.html (for asset references)
 if [ -f "index.html" ]; then
-    sed -i "s|$ORIGINAL|$REPLACEMENT|g" "index.html"
+    sed -i "s|$ORIGINAL|$ESCAPED_REPLACEMENT|g" "index.html"
 fi
