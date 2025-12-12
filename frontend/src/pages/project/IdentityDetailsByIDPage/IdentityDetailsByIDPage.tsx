@@ -64,7 +64,7 @@ const Page = () => {
     select: (el) => el.identityId as string
   });
   const { currentProject, projectId } = useProject();
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
 
   const { data: identityMembershipDetails, isPending: isMembershipDetailsLoading } =
     useGetProjectIdentityMembershipV2(projectId, identityId);
@@ -167,7 +167,9 @@ const Page = () => {
 
   const isOrgIdentity = !isProjectIdentity;
   const isSubOrgIdentity =
-    isOrgIdentity && currentOrg.rootOrgId !== identityMembershipDetails?.identity.orgId;
+    isOrgIdentity &&
+    isSubOrganization &&
+    currentOrg.rootOrgId !== identityMembershipDetails?.identity.orgId;
 
   return (
     <div className="mx-auto flex max-w-8xl flex-col">
