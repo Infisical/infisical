@@ -3,10 +3,13 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType, TPamResources } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { createSshKeyPair } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
+import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "../license/license-service";
@@ -290,12 +293,57 @@ export const pamResourceServiceFactory = ({
     };
   };
 
+  const getOrCreateSshCa = async (resourceId: string, actor: OrgServiceActor) => {
+    const resource = await pamResourceDAL.findById(resourceId);
+    if (!resource) throw new NotFoundError({ message: `Resource with ID '${resourceId}' not found` });
+
+    if (resource.resourceType !== PamResource.SSH) {
+      throw new BadRequestError({ message: "This operation is only available for SSH resources" });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorAuthMethod: actor.authMethod,
+      actorId: actor.id,
+      actorOrgId: actor.orgId,
+      projectId: resource.projectId,
+      actionProjectType: ActionProjectType.PAM
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PamResources);
+
+    if (resource.caPublicKey) {
+      return { caPublicKey: resource.caPublicKey };
+    }
+
+    // Generate new CA key pair
+    const keyAlgorithm = SshCertKeyAlgorithm.ED25519;
+    const { publicKey, privateKey } = await createSshKeyPair(keyAlgorithm);
+
+    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: resource.projectId
+    });
+
+    const encryptedCaPrivateKey = encryptor({ plainText: Buffer.from(privateKey, "utf8") }).cipherTextBlob;
+    const caPublicKey = publicKey.trim();
+
+    await pamResourceDAL.updateById(resourceId, {
+      encryptedCaPrivateKey,
+      caPublicKey,
+      caKeyAlgorithm: keyAlgorithm
+    });
+
+    return { caPublicKey };
+  };
+
   return {
     getById,
     create,
     updateById,
     deleteById,
     list,
-    listResourceOptions
+    listResourceOptions,
+    getOrCreateSshCa
   };
 };
