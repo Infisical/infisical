@@ -1,3 +1,5 @@
+import { Resolver } from "node:dns/promises";
+
 import axios, { AxiosError } from "axios";
 
 import { TPkiAcmeChallenges } from "@app/db/schemas/pki-acme-challenges";
@@ -107,22 +109,26 @@ export const pkiAcmeChallengeServiceFactory = ({
     const expectedChallengeResponseBody = `${challenge.auth.token}.${thumbprint}`;
 
     if (challengeResponseBody.trimEnd() !== expectedChallengeResponseBody) {
-      throw new AcmeIncorrectResponseError({ message: "ACME challenge response is not correct" });
+      throw new AcmeIncorrectResponseError({ message: "ACME HTTP-01 challenge response is not correct" });
     }
   };
 
   const validateDns01Challenge = async (challenge: ChallengeWithAuth): Promise<void> => {
-    // TODO: Implement DNS-01 challenge validation
-    // DNS-01 challenge validation should:
-    // 1. Construct the TXT record name: _acme-challenge.{challenge.auth.identifierValue}
-    // 2. Query DNS for the TXT record
-    // 3. Verify the TXT record value matches: {challenge.auth.token}.{challenge.auth.account.publicKeyThumbprint}
-    // 4. Handle DNS propagation delays and retries
-    logger.info(
-      { challengeId: challenge.id, domain: challenge.auth.identifierValue },
-      "DNS-01 challenge validation not yet implemented"
-    );
-    throw new BadRequestError({ message: "DNS-01 challenge validation is not yet implemented" });
+    const resolver = new Resolver();
+    if (appCfg.ACME_DNS_RESOLVER_SERVERS.length > 0) {
+      resolver.setServers(appCfg.ACME_DNS_RESOLVER_SERVERS);
+    }
+
+    const recordName = `_acme-challenge.${challenge.auth.identifierValue}`;
+    const records = await resolver.resolveTxt(recordName);
+    const recordValue = records.map((chunks) => chunks.join("")).join("");
+
+    const thumbprint = challenge.auth.account.publicKeyThumbprint;
+    const expectedChallengeResponseBody = `${challenge.auth.token}.${thumbprint}`;
+
+    if (recordValue !== expectedChallengeResponseBody) {
+      throw new AcmeIncorrectResponseError({ message: "ACME DNS-01 challenge response is not correct" });
+    }
   };
 
   const handleChallengeValidationError = async (
