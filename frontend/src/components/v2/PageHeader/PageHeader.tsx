@@ -32,7 +32,7 @@ export const PageHeader = ({ title, description, children, className, scope }: P
       <div className="mr-4 flex w-full items-center">
         <h1
           className={twMerge(
-            "text-2xl font-medium text-white capitalize underline decoration-2 underline-offset-4",
+            "text-2xl font-medium text-white underline decoration-2 underline-offset-4",
             scope === "org" && "decoration-org/90",
             scope === "instance" && "decoration-neutral/90",
             scope === "namespace" && "decoration-sub-org/90",
