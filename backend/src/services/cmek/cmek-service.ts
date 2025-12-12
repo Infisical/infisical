@@ -16,8 +16,12 @@ import {
   TCmekSignDTO,
   TCmekVerifyDTO,
   TCreateCmekDTO,
+  TGetCmekScheduledRotationDTO,
   TListCmeksByProjectIdDTO,
-  TUpdabteCmekByIdDTO
+  TListCmekVersionsDTO,
+  TRotateCmekDTO,
+  TUpdateCmekByIdDTO,
+  TUpdateCmekScheduledRotationDTO
 } from "@app/services/cmek/cmek-types";
 import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -67,7 +71,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
     }
   };
 
-  const updateCmekById = async ({ keyId, ...data }: TUpdabteCmekByIdDTO, actor: OrgServiceActor) => {
+  const updateCmekById = async ({ keyId, ...data }: TUpdateCmekByIdDTO, actor: OrgServiceActor) => {
     const key = await kmsDAL.findCmekById(keyId);
 
     if (!key) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
@@ -188,7 +192,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
   };
 
   const cmekEncrypt = async ({ keyId, plaintext }: TCmekEncryptDTO, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findById(keyId);
+    const key = await kmsDAL.findCmekById(keyId);
 
     if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
 
@@ -359,7 +363,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
   };
 
   const cmekDecrypt = async ({ keyId, ciphertext }: TCmekDecryptDTO, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findById(keyId);
+    const key = await kmsDAL.findCmekById(keyId);
 
     if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
 
@@ -388,6 +392,151 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
     };
   };
 
+  const rotateCmek = async ({ keyId }: TRotateCmekDTO, actor: OrgServiceActor) => {
+    const key = await kmsDAL.findCmekById(keyId);
+
+    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+
+    if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
+
+    if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: key.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Edit, ProjectPermissionSub.Cmek);
+
+    const result = await kmsService.rotateInternalKmsKey(keyId);
+
+    return {
+      ...result,
+      projectId: key.projectId
+    };
+  };
+
+  const listCmekVersions = async ({ keyId }: TListCmekVersionsDTO, actor: OrgServiceActor) => {
+    const key = await kmsDAL.findCmekById(keyId);
+
+    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+
+    if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: key.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
+
+    const result = await kmsService.listInternalKmsKeyVersions(keyId);
+
+    return {
+      ...result,
+      projectId: key.projectId
+    };
+  };
+
+  const rollbackCmek = async (
+    { keyId, targetVersion }: { keyId: string; targetVersion: number },
+    actor: OrgServiceActor
+  ) => {
+    const key = await kmsDAL.findCmekById(keyId);
+
+    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+
+    if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
+
+    if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: key.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Edit, ProjectPermissionSub.Cmek);
+
+    const result = await kmsService.rollbackInternalKmsKey(keyId, targetVersion);
+
+    return {
+      ...result,
+      projectId: key.projectId
+    };
+  };
+
+  const updateCmekScheduledRotation = async (
+    { keyId, enableAutoRotation, rotationIntervalDays }: TUpdateCmekScheduledRotationDTO,
+    actor: OrgServiceActor
+  ) => {
+    const key = await kmsDAL.findCmekById(keyId);
+
+    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+
+    if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
+
+    if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: key.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Edit, ProjectPermissionSub.Cmek);
+
+    const result = await kmsService.updateScheduledRotation(keyId, {
+      enableAutoRotation,
+      rotationIntervalDays
+    });
+
+    return {
+      ...result,
+      projectId: key.projectId
+    };
+  };
+
+  const getCmekScheduledRotation = async ({ keyId }: TGetCmekScheduledRotationDTO, actor: OrgServiceActor) => {
+    const key = await kmsDAL.findCmekById(keyId);
+
+    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+
+    if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: key.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
+
+    const result = await kmsService.getScheduledRotation(keyId);
+
+    return {
+      ...result,
+      projectId: key.projectId
+    };
+  };
+
   return {
     createCmek,
     updateCmekById,
@@ -400,6 +549,11 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
     cmekSign,
     cmekVerify,
     listSigningAlgorithms,
-    getPublicKey
+    getPublicKey,
+    rotateCmek,
+    listCmekVersions,
+    updateCmekScheduledRotation,
+    getCmekScheduledRotation,
+    rollbackCmek
   };
 };

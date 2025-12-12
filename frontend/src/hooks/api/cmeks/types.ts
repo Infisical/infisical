@@ -20,6 +20,13 @@ export type TCmek = {
   version: number;
   createdAt: string;
   updatedAt: string;
+  rotatedAt?: string;
+};
+
+export type TKeyVersion = {
+  id: string;
+  version: number;
+  createdAt: string;
 };
 
 type ProjectRef = { projectId: string };
@@ -35,11 +42,16 @@ export type TDeleteCmek = KeyRef & ProjectRef;
 export type TCmekEncrypt = KeyRef & { plaintext: string; isBase64Encoded?: boolean };
 export type TCmekDecrypt = KeyRef & { ciphertext: string };
 
-export type TCmekSign = KeyRef & { data: string; signingAlgorithm: SigningAlgorithm };
+export type TCmekSign = KeyRef & {
+  data: string;
+  signingAlgorithm: SigningAlgorithm;
+  isDigest?: boolean;
+};
 export type TCmekVerify = KeyRef & {
   data: string;
   signature: string;
   signingAlgorithm: SigningAlgorithm;
+  isDigest?: boolean;
 };
 
 export type TProjectCmeksList = {
@@ -74,6 +86,52 @@ export type TCmekVerifyResponse = {
 
 export type TCmekDecryptResponse = {
   plaintext: string;
+};
+
+// projectId is used for cache invalidation only - backend looks it up from the key
+export type TRotateCmek = KeyRef & ProjectRef;
+export type TRotateCmekResponse = {
+  key: {
+    id: string;
+    version: number;
+    rotatedAt: string | null;
+  };
+};
+
+export type TRollbackCmek = KeyRef & ProjectRef & { targetVersion: number };
+export type TRollbackCmekResponse = {
+  key: {
+    id: string;
+    version: number;
+    previousVersion: number;
+  };
+};
+
+export type TListCmekVersionsResponse = {
+  keyId: string;
+  currentVersion: number;
+  versions: TKeyVersion[];
+};
+
+export type TScheduledRotation = {
+  keyId: string;
+  isAutoRotationEnabled: boolean;
+  rotationIntervalDays: number | null;
+  nextRotationAt: string | null;
+  lastRotatedAt: string | null;
+};
+
+export type TUpdateScheduledRotationDTO = KeyRef &
+  ProjectRef & {
+    enableAutoRotation: boolean;
+    rotationIntervalDays?: number;
+  };
+
+export type TUpdateScheduledRotationResponse = {
+  keyId: string;
+  isAutoRotationEnabled: boolean;
+  rotationIntervalDays: number | null;
+  nextRotationAt: string | null;
 };
 
 export enum CmekOrderBy {
@@ -112,3 +170,10 @@ export enum SigningAlgorithm {
   ECDSA_SHA_384 = "ECDSA_SHA_384",
   ECDSA_SHA_512 = "ECDSA_SHA_512"
 }
+
+// KMS rotation constants - should match backend values in kms-types.ts
+export const KMS_ROTATION_CONSTANTS = {
+  DEFAULT_INTERVAL_DAYS: 90,
+  MIN_INTERVAL_DAYS: 1,
+  MAX_INTERVAL_DAYS: 365
+} as const;

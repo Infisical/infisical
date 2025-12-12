@@ -419,6 +419,12 @@ export enum EventType {
   CMEK_VERIFY = "cmek-verify",
   CMEK_LIST_SIGNING_ALGORITHMS = "cmek-list-signing-algorithms",
   CMEK_GET_PUBLIC_KEY = "cmek-get-public-key",
+  ROTATE_CMEK = "rotate-cmek",
+  ROTATE_CMEK_FAILED = "rotate-cmek-failed",
+  LIST_CMEK_VERSIONS = "list-cmek-versions",
+  GET_CMEK_SCHEDULED_ROTATION = "get-cmek-scheduled-rotation",
+  UPDATE_CMEK_SCHEDULED_ROTATION = "update-cmek-scheduled-rotation",
+  ROLLBACK_CMEK = "rollback-cmek",
 
   UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "update-external-group-org-role-mapping",
   GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "get-external-group-org-role-mapping",
@@ -3114,6 +3120,61 @@ interface CmekGetPublicKeyEvent {
   };
 }
 
+interface RotateCmekEvent {
+  type: EventType.ROTATE_CMEK;
+  metadata: {
+    keyId: string;
+    newVersion: number;
+    deletedVersions?: number[]; // Versions deleted due to exceeding retention limit
+    deletedVersionCount?: number;
+    isAutoRotation?: boolean; // True if rotation was triggered by scheduled auto-rotation
+  };
+}
+
+interface RotateCmekFailedEvent {
+  type: EventType.ROTATE_CMEK_FAILED;
+  metadata: {
+    keyId: string;
+    errorMessage: string;
+    isAutoRotation: boolean;
+    attemptNumber?: number; // Which attempt this was (for auto-rotation retries)
+    maxAttempts?: number; // Max retry attempts configured
+  };
+}
+
+interface ListCmekVersionsEvent {
+  type: EventType.LIST_CMEK_VERSIONS;
+  metadata: {
+    keyId: string;
+    versionCount: number;
+  };
+}
+
+interface GetCmekScheduledRotationEvent {
+  type: EventType.GET_CMEK_SCHEDULED_ROTATION;
+  metadata: {
+    keyId: string;
+  };
+}
+
+interface UpdateCmekScheduledRotationEvent {
+  type: EventType.UPDATE_CMEK_SCHEDULED_ROTATION;
+  metadata: {
+    keyId: string;
+    enableAutoRotation: boolean;
+    rotationIntervalDays: number | null;
+  };
+}
+
+interface RollbackCmekEvent {
+  type: EventType.ROLLBACK_CMEK;
+  metadata: {
+    keyId: string;
+    targetVersion: number;
+    previousVersion: number;
+  };
+}
+
 interface GetExternalGroupOrgRoleMappingsEvent {
   type: EventType.GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS;
   metadata?: Record<string, never>; // not needed, based off orgId
@@ -4726,6 +4787,12 @@ export type Event =
   | CmekVerifyEvent
   | CmekListSigningAlgorithmsEvent
   | CmekGetPublicKeyEvent
+  | RotateCmekEvent
+  | RotateCmekFailedEvent
+  | ListCmekVersionsEvent
+  | GetCmekScheduledRotationEvent
+  | UpdateCmekScheduledRotationEvent
+  | RollbackCmekEvent
   | GetExternalGroupOrgRoleMappingsEvent
   | UpdateExternalGroupOrgRoleMappingsEvent
   | GetProjectTemplatesEvent

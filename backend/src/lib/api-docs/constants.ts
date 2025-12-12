@@ -2281,6 +2281,25 @@ export const KMS = {
     data: "The data in string format to be verified (base64 encoded). For data larger than 4096 bytes you must first create a digest of the data and then pass the digest in the data parameter.",
     signature: "The signature to be verified (base64 encoded).",
     isDigest: "Whether the data is already digested or not."
+  },
+  ROTATE_KEY: {
+    keyId: "The ID of the key to rotate."
+  },
+  LIST_KEY_VERSIONS: {
+    keyId: "The ID of the key to list versions for."
+  },
+  GET_SCHEDULED_ROTATION: {
+    keyId: "The ID of the key to get scheduled rotation settings for."
+  },
+  ROLLBACK_KEY: {
+    keyId: "The ID of the key to rollback.",
+    targetVersion: "The version number to rollback to."
+  },
+  UPDATE_SCHEDULED_ROTATION: {
+    keyId: "The ID of the key to update scheduled rotation settings for.",
+    enableAutoRotation: "Whether to enable automatic scheduled rotation for the key.",
+    rotationIntervalDays:
+      "The number of days between automatic rotations (1-365). Required when enableAutoRotation is true."
   }
 };
 

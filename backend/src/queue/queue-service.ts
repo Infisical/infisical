@@ -84,7 +84,8 @@ export enum QueueName {
   CertificateV3AutoRenewal = "certificate-v3-auto-renewal",
   PamAccountRotation = "pam-account-rotation",
   PamSessionExpiration = "pam-session-expiration",
-  PkiAcmeChallengeValidation = "pki-acme-challenge-validation"
+  PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
+  KmsKeyRotation = "kms-key-rotation"
 }
 
 export enum QueueJobs {
@@ -140,7 +141,9 @@ export enum QueueJobs {
   CertificateV3DailyAutoRenewal = "certificate-v3-daily-auto-renewal",
   PamAccountRotation = "pam-account-rotation",
   PamSessionExpiration = "pam-session-expiration",
-  PkiAcmeChallengeValidation = "pki-acme-challenge-validation"
+  PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
+  KmsKeyRotationQueueRotations = "kms-key-rotation-queue-rotations",
+  KmsKeyRotationRotateKey = "kms-key-rotation-rotate-key"
 }
 
 export type TQueueJobTypes = {
@@ -414,6 +417,15 @@ export type TQueueJobTypes = {
     name: QueueJobs.PkiAcmeChallengeValidation;
     payload: { challengeId: string };
   };
+  [QueueName.KmsKeyRotation]:
+    | {
+        name: QueueJobs.KmsKeyRotationQueueRotations;
+        payload: undefined;
+      }
+    | {
+        name: QueueJobs.KmsKeyRotationRotateKey;
+        payload: { kmsKeyId: string; internalKmsId: string };
+      };
 };
 
 const SECRET_SCANNING_JOBS = [

@@ -2,6 +2,7 @@ import {
   faArrowDown,
   faArrowUp,
   faArrowUpRightFromSquare,
+  faCalendarAlt,
   faCancel,
   faCheck,
   faCheckCircle,
@@ -9,12 +10,14 @@ import {
   faEdit,
   faEllipsis,
   faFileSignature,
+  faHistory,
   faInfoCircle,
   faKey,
   faLock,
   faLockOpen,
   faMagnifyingGlass,
   faPlus,
+  faRotate,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -67,7 +70,10 @@ import { CmekEncryptModal } from "./CmekEncryptModal";
 import { CmekModal } from "./CmekModal";
 import { CmekSignModal } from "./CmekSignModal";
 import { CmekVerifyModal } from "./CmekVerifyModal";
+import { CmekVersionsDrawer } from "./CmekVersionsDrawer";
 import { DeleteCmekModal } from "./DeleteCmekModal";
+import { RotateCmekModal } from "./RotateCmekModal";
+import { ScheduledRotationModal } from "./ScheduledRotationModal";
 
 const getStatusBadgeProps = (
   isDisabled: boolean
@@ -140,7 +146,10 @@ export const CmekTable = () => {
     "encryptData",
     "decryptData",
     "signData",
-    "verifyData"
+    "verifyData",
+    "rotateKey",
+    "viewVersions",
+    "scheduledRotation"
   ] as const);
 
   const handleSort = () => {
@@ -443,6 +452,54 @@ export const CmekTable = () => {
                                 </>
                               )}
 
+                              {keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT && (
+                                <>
+                                  <Tooltip
+                                    content={
+                                      // eslint-disable-next-line no-nested-ternary
+                                      cannotEditKey
+                                        ? "Access Restricted"
+                                        : isDisabled
+                                          ? "Key Disabled"
+                                          : ""
+                                    }
+                                    position="left"
+                                  >
+                                    <div>
+                                      <DropdownMenuItem
+                                        onClick={() => handlePopUpOpen("rotateKey", cmek)}
+                                        icon={<FontAwesomeIcon icon={faRotate} />}
+                                        iconPos="left"
+                                        isDisabled={cannotEditKey || isDisabled}
+                                      >
+                                        Rotate Key
+                                      </DropdownMenuItem>
+                                    </div>
+                                  </Tooltip>
+                                  <DropdownMenuItem
+                                    onClick={() => handlePopUpOpen("viewVersions", cmek)}
+                                    icon={<FontAwesomeIcon icon={faHistory} />}
+                                    iconPos="left"
+                                  >
+                                    View Versions
+                                  </DropdownMenuItem>
+                                  <Tooltip
+                                    content={cannotEditKey ? "Access Restricted" : ""}
+                                    position="left"
+                                  >
+                                    <div>
+                                      <DropdownMenuItem
+                                        onClick={() => handlePopUpOpen("scheduledRotation", cmek)}
+                                        icon={<FontAwesomeIcon icon={faCalendarAlt} />}
+                                        iconPos="left"
+                                        isDisabled={cannotEditKey}
+                                      >
+                                        Scheduled Rotation
+                                      </DropdownMenuItem>
+                                    </div>
+                                  </Tooltip>
+                                </>
+                              )}
                               <Tooltip
                                 content={cannotEditKey ? "Access Restricted" : ""}
                                 position="left"
@@ -550,6 +607,21 @@ export const CmekTable = () => {
           isOpen={popUp.verifyData.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("verifyData", isOpen)}
           cmek={popUp.verifyData.data as TCmek}
+        />
+        <RotateCmekModal
+          isOpen={popUp.rotateKey.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("rotateKey", isOpen)}
+          cmek={popUp.rotateKey.data as TCmek}
+        />
+        <CmekVersionsDrawer
+          isOpen={popUp.viewVersions.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("viewVersions", isOpen)}
+          cmek={popUp.viewVersions.data as TCmek}
+        />
+        <ScheduledRotationModal
+          isOpen={popUp.scheduledRotation.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("scheduledRotation", isOpen)}
+          cmek={popUp.scheduledRotation.data as TCmek}
         />
       </div>
     </motion.div>

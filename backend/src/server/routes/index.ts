@@ -112,6 +112,7 @@ import { secretRotationQueueFactory } from "@app/ee/services/secret-rotation/sec
 import { secretRotationServiceFactory } from "@app/ee/services/secret-rotation/secret-rotation-service";
 import { secretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { secretRotationV2QueueServiceFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-queue";
+import { kmsKeyRotationQueueServiceFactory } from "@app/services/kms/kms-key-rotation-queue";
 import { secretRotationV2ServiceFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-service";
 import { gitAppDALFactory } from "@app/ee/services/secret-scanning/git-app-dal";
 import { gitAppInstallSessionDALFactory } from "@app/ee/services/secret-scanning/git-app-install-session-dal";
@@ -2389,6 +2390,14 @@ export const registerRoutes = async (
     projectMembershipDAL,
     smtpService,
     notificationService
+  });
+
+  await kmsKeyRotationQueueServiceFactory({
+    queueService,
+    keyStore,
+    internalKmsDAL,
+    kmsService,
+    auditLogService
   });
 
   const secretScanningV2Queue = await secretScanningV2QueueServiceFactory({

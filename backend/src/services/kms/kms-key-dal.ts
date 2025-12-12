@@ -34,9 +34,11 @@ export const kmskeyDALFactory = (db: TDbClient) => {
 
   // akhilmhdh: this function should never be called outside kms service
   // why: because the encrypted key should never be shared with another service
+  // NOTE: Uses primary node (not replica) because this is used for encryption/decryption
+  // operations that require strong consistency after key rotation
   const findByIdWithAssociatedKms = async (id: string, tx?: Knex) => {
     try {
-      const result = await (tx || db.replicaNode())(TableName.KmsKey)
+      const result = await (tx || db)(TableName.KmsKey)
         .where({ [`${TableName.KmsKey}.id` as "id"]: id })
         .join(TableName.Organization, `${TableName.KmsKey}.orgId`, `${TableName.Organization}.id`)
         .leftJoin(TableName.InternalKms, `${TableName.KmsKey}.id`, `${TableName.InternalKms}.kmsKeyId`)
@@ -48,7 +50,10 @@ export const kmskeyDALFactory = (db: TDbClient) => {
           db.ref("encryptedKey").withSchema(TableName.InternalKms).as("internalKmsEncryptedKey"),
           db.ref("encryptionAlgorithm").withSchema(TableName.InternalKms).as("internalKmsEncryptionAlgorithm"),
           db.ref("version").withSchema(TableName.InternalKms).as("internalKmsVersion"),
-          db.ref("id").withSchema(TableName.InternalKms).as("internalKmsId")
+          db.ref("rotatedAt").withSchema(TableName.InternalKms).as("internalKmsRotatedAt"),
+          db.ref("isAutoRotationEnabled").withSchema(TableName.InternalKms).as("internalKmsIsAutoRotationEnabled"),
+          db.ref("rotationInterval").withSchema(TableName.InternalKms).as("internalKmsRotationInterval"),
+          db.ref("nextRotationAt").withSchema(TableName.InternalKms).as("internalKmsNextRotationAt")
         )
         .select(
           db.ref("id").withSchema(TableName.ExternalKms).as("externalKmsId"),
@@ -83,7 +88,11 @@ export const kmskeyDALFactory = (db: TDbClient) => {
               id: result.internalKmsId,
               encryptedKey: result.internalKmsEncryptedKey,
               encryptionAlgorithm: result.internalKmsEncryptionAlgorithm,
-              version: result.internalKmsVersion
+              version: result.internalKmsVersion,
+              rotatedAt: result.internalKmsRotatedAt,
+              isAutoRotationEnabled: result.internalKmsIsAutoRotationEnabled,
+              rotationInterval: result.internalKmsRotationInterval,
+              nextRotationAt: result.internalKmsNextRotationAt
             }
           : undefined
       };

@@ -51,6 +51,9 @@ export const KeyStorePrefixes = {
   PkiSyncLock: (syncId: string) => `pki-sync-mutex-${syncId}` as const,
   AppConnectionConcurrentJobs: (connectionId: string) => `app-connection-concurrency-${connectionId}` as const,
   SecretRotationLock: (rotationId: string) => `secret-rotation-v2-mutex-${rotationId}` as const,
+  KmsKeyRotationLock: (kmsKeyId: string) => `kms-key-rotation-mutex-${kmsKeyId}` as const,
+  KmsKeyRotationCooldown: (kmsKeyId: string) => `kms-key-rotation-cooldown-${kmsKeyId}` as const,
+  KmsKeyRotationQueueLock: "kms-key-rotation-queue-lock" as const,
   SecretScanningLock: (dataSourceId: string, resourceExternalId: string) =>
     `secret-scanning-v2-mutex-${dataSourceId}-${resourceExternalId}` as const,
   IdentityLockoutLock: (lockoutKey: string) => `identity-lockout-lock-${lockoutKey}` as const,
@@ -87,7 +90,8 @@ export const KeyStoreTtls = {
   SetSecretSyncLastRunTimestampInSeconds: 60,
   AccessTokenStatusUpdateInSeconds: 120,
   ProjectPermissionCacheInSeconds: 300, // 5 minutes
-  ProjectPermissionDalVersionTtl: "15m" // Project permission DAL version TTL
+  ProjectPermissionDalVersionTtl: "15m", // Project permission DAL version TTL
+  KmsKeyRotationCooldownInSeconds: 60 // Minimum time between key rotations (1 minute)
 };
 
 type TDeleteItems = {
