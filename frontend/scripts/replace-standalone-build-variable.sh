@@ -10,7 +10,7 @@ fi
 
 echo "Replacing pre-baked value.."
 
-# Escape special characters in REPLACEMENT for sed to avoid regex issues and injection attacks
+# Escape special characters in REPLACEMENT for sed to avoid syntax errors
 ESCAPED_REPLACEMENT=$(printf '%s\n' "$REPLACEMENT" | sed 's/[\/&]/\\&/g')
 
 # Replace in JS files in assets directory
