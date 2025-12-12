@@ -62,7 +62,9 @@ export const OctopusDeploySyncFields = () => {
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.spaceId", "");
+          setValue("destinationConfig.spaceName", "");
           setValue("destinationConfig.projectId", "");
+          setValue("destinationConfig.projectName", "");
           setValue("destinationConfig.scopeValues", undefined);
         }}
       />
