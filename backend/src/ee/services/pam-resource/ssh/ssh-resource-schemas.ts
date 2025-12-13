@@ -47,6 +47,16 @@ export const SSHAccountCredentialsSchema = z.discriminatedUnion("authMethod", [
   SSHCertificateCredentialsSchema
 ]);
 
+// Schema for session credentials - includes certificate with keys
+export const SSHSessionAccountCredentialsSchema = z.discriminatedUnion("authMethod", [
+  SSHPasswordCredentialsSchema,
+  SSHPublicKeyCredentialsSchema,
+  SSHCertificateCredentialsSchema.extend({
+    privateKey: z.string().trim().max(5000),
+    certificate: z.string().trim().max(5000)
+  })
+]);
+
 export const SSHResourceSchema = BaseSSHResourceSchema.extend({
   connectionDetails: SSHResourceConnectionDetailsSchema,
   rotationAccountCredentials: SSHAccountCredentialsSchema.nullable().optional()
@@ -114,4 +124,4 @@ export const SanitizedSSHAccountWithResourceSchema = BasePamAccountSchemaWithRes
 });
 
 // Sessions
-export const SSHSessionCredentialsSchema = SSHResourceConnectionDetailsSchema.and(SSHAccountCredentialsSchema);
+export const SSHSessionCredentialsSchema = SSHResourceConnectionDetailsSchema.and(SSHSessionAccountCredentialsSchema);

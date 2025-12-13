@@ -191,6 +191,15 @@ export const sshResourceFactory: TPamResourceFactory<TSSHResourceConnectionDetai
                 tryKeyboard: false
               });
               break;
+            case SSHAuthMethod.Certificate:
+              // For certificate auth, we don't validate by connecting to the SSH server
+              // The certificate will be issued on-demand when the session is accessed
+              logger.info(
+                { username: credentials.username },
+                "[SSH Resource Factory] Certificate auth method selected - skipping SSH connection validation"
+              );
+              resolve();
+              break;
             default:
               reject(new Error(`Unsupported SSH auth method: ${(credentials as TSSHAccountCredentials).authMethod}`));
           }

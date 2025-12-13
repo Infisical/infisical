@@ -10,12 +10,16 @@ import {
 } from "@app/ee/services/pam-resource/aws-iam";
 import { PAM_RESOURCE_FACTORY_MAP } from "@app/ee/services/pam-resource/pam-resource-factory";
 import { decryptResource, decryptResourceConnectionDetails } from "@app/ee/services/pam-resource/pam-resource-fns";
+import { SSHAuthMethod } from "@app/ee/services/pam-resource/ssh/ssh-resource-enums";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
   ProjectPermissionPamAccountActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { createSshCert, createSshKeyPair } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
+import { SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
+import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import {
   BadRequestError,
@@ -855,6 +859,58 @@ export const pamAccountServiceFactory = ({
         startedAt: new Date()
       });
       sessionStarted = true;
+    }
+
+    // Handle SSH certificate-based authentication
+    if (decryptedResource.resourceType === PamResource.SSH) {
+      const accountCredentials = decryptedAccount.credentials as TSSHAccountCredentials;
+
+      if (accountCredentials.authMethod === SSHAuthMethod.Certificate) {
+        if (!resource.encryptedCaPrivateKey) {
+          throw new BadRequestError({
+            message: "SSH resource does not have a CA configured for certificate-based authentication"
+          });
+        }
+
+        const { decryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId: session.projectId
+        });
+
+        const caPrivateKey = decryptor({
+          cipherTextBlob: resource.encryptedCaPrivateKey
+        }).toString("utf8");
+
+        // Generate a new key pair for the user
+        const keyAlgorithm = (resource.caKeyAlgorithm as SshCertKeyAlgorithm) || SshCertKeyAlgorithm.ED25519;
+        const { publicKey, privateKey } = await createSshKeyPair(keyAlgorithm);
+
+        // Calculate TTL from session expiry
+        const ttlSeconds = Math.max(Math.floor((session.expiresAt.getTime() - Date.now()) / 1000), 60);
+
+        // Sign the public key with the CA to create a certificate
+        const { signedPublicKey } = await createSshCert({
+          caPrivateKey,
+          clientPublicKey: publicKey,
+          keyId: `pam-session-${session.id}`,
+          principals: [accountCredentials.username],
+          requestedTtl: `${ttlSeconds}s`,
+          certType: SshCertType.USER
+        });
+
+        return {
+          credentials: {
+            ...decryptedResource.connectionDetails,
+            authMethod: SSHAuthMethod.Certificate,
+            username: accountCredentials.username,
+            privateKey,
+            certificate: signedPublicKey
+          },
+          projectId: project.id,
+          account,
+          sessionStarted
+        };
+      }
     }
 
     return {
