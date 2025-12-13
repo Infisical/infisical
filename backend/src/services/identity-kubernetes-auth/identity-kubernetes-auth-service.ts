@@ -52,6 +52,7 @@ import { TMembershipIdentityDALFactory } from "../membership-identity/membership
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityKubernetesAuthDALFactory } from "./identity-kubernetes-auth-dal";
+import { handleAxiosError, isKnownError, KubernetesAuthErrorContext } from "./identity-kubernetes-auth-error-handlers";
 import { extractK8sUsername } from "./identity-kubernetes-auth-fns";
 import {
   IdentityKubernetesAuthTokenReviewMode,
@@ -62,6 +63,10 @@ import {
   TRevokeKubernetesAuthDTO,
   TUpdateKubernetesAuthDTO
 } from "./identity-kubernetes-auth-types";
+import {
+  validateKubernetesHostConnectivity,
+  validateTokenReviewerJwtPermissions
+} from "./identity-kubernetes-auth-validators";
 
 type TIdentityKubernetesAuthServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
@@ -276,28 +281,37 @@ export const identityKubernetesAuthServiceFactory = ({
           .catch((err) => {
             const tokenReviewerJwtSnippet = `${tokenReviewerJwt?.substring?.(0, 10) || ""}...${tokenReviewerJwt?.substring?.(tokenReviewerJwt.length - 10) || ""}`;
             const serviceAccountJwtSnippet = `${serviceAccountJwt?.substring?.(0, 10) || ""}...${serviceAccountJwt?.substring?.(serviceAccountJwt.length - 10) || ""}`;
+
             if (err instanceof AxiosError) {
               logger.error(
-                { response: err.response, host, port, tokenReviewerJwtSnippet, serviceAccountJwtSnippet },
+                {
+                  response: err.response,
+                  host,
+                  port,
+                  tokenReviewerJwtSnippet,
+                  serviceAccountJwtSnippet,
+                  code: err.code
+                },
                 "tokenReviewCallbackRaw: Kubernetes token review request error (request error)"
               );
-              if (err.response) {
-                const { message } = err?.response?.data as unknown as { message?: string };
 
-                if (message) {
-                  throw new UnauthorizedError({
-                    message,
-                    name: "KubernetesTokenReviewRequestError"
-                  });
-                }
-              }
-            } else {
-              logger.error(
-                { error: err as Error, host, port, tokenReviewerJwtSnippet, serviceAccountJwtSnippet },
-                "tokenReviewCallbackRaw: Kubernetes token review request error (non-request error)"
-              );
+              throw handleAxiosError(err, { host, port }, KubernetesAuthErrorContext.KubernetesApiServer);
             }
-            throw err;
+
+            logger.error(
+              { error: err as Error, host, port, tokenReviewerJwtSnippet, serviceAccountJwtSnippet },
+              "tokenReviewCallbackRaw: Kubernetes token review request error (non-request error)"
+            );
+
+            if (isKnownError(err)) {
+              throw err;
+            }
+
+            throw new BadRequestError({
+              name: "KubernetesTokenReviewError",
+              message: (err as Error).message || "Unexpected error during token review",
+              error: err
+            });
           });
 
         return res.data;
@@ -335,23 +349,24 @@ export const identityKubernetesAuthServiceFactory = ({
             }
           )
           .catch((err) => {
+            logger.error(
+              { error: err as Error, host, port },
+              "tokenReviewCallbackThroughGateway: Kubernetes token review request error"
+            );
+
             if (err instanceof AxiosError) {
-              if (err.response) {
-                let { message } = err?.response?.data as unknown as { message?: string };
-
-                if (!message && typeof err.response.data === "string") {
-                  message = err.response.data;
-                }
-
-                if (message) {
-                  throw new UnauthorizedError({
-                    message,
-                    name: "KubernetesTokenReviewRequestError"
-                  });
-                }
-              }
+              throw handleAxiosError(err, { host, port }, KubernetesAuthErrorContext.GatewayProxy);
             }
-            throw err;
+
+            if (isKnownError(err)) {
+              throw err;
+            }
+
+            throw new BadRequestError({
+              name: "GatewayTokenReviewError",
+              message: (err as Error).message || "Unexpected error during gateway token review",
+              error: err
+            });
           });
 
         return res.data;
@@ -571,7 +586,18 @@ export const identityKubernetesAuthServiceFactory = ({
           "user_agent.original": requestContext.get("userAgent")
         });
       }
-      throw error;
+
+      if (isKnownError(error)) {
+        throw error;
+      }
+
+      logger.error({ error, identityId }, "Unexpected error during Kubernetes auth login");
+
+      throw new BadRequestError({
+        name: "KubernetesAuthLoginError",
+        message: (error as Error).message || "An unexpected error occurred during Kubernetes authentication",
+        error
+      });
     }
   };
 
@@ -691,6 +717,28 @@ export const identityKubernetesAuthServiceFactory = ({
         OrgPermissionGatewayActions.AttachGateways,
         OrgPermissionSubjects.Gateway
       );
+    }
+
+    if (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && kubernetesHost && !gatewayId) {
+      logger.info({ kubernetesHost }, "Validating Kubernetes host connectivity for new auth method");
+      await validateKubernetesHostConnectivity({
+        kubernetesHost,
+        caCert: caCert || undefined
+      });
+    }
+
+    if (
+      tokenReviewerJwt &&
+      kubernetesHost &&
+      tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+      !gatewayId
+    ) {
+      logger.info({ kubernetesHost }, "Validating token reviewer JWT permissions for new auth method");
+      await validateTokenReviewerJwtPermissions({
+        kubernetesHost,
+        tokenReviewerJwt,
+        caCert: caCert || undefined
+      });
     }
 
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
@@ -850,6 +898,57 @@ export const identityKubernetesAuthServiceFactory = ({
     const gatewayIdValue = isGatewayV1 ? gatewayId : null;
     const gatewayV2IdValue = isGatewayV1 ? null : gatewayId;
 
+    const effectiveTokenReviewMode = tokenReviewMode ?? identityKubernetesAuth.tokenReviewMode;
+    const effectiveKubernetesHost =
+      kubernetesHost !== undefined ? kubernetesHost : identityKubernetesAuth.kubernetesHost;
+    const effectiveGatewayId =
+      gatewayId !== undefined ? gatewayId : (identityKubernetesAuth.gatewayId ?? identityKubernetesAuth.gatewayV2Id);
+
+    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: identityMembershipOrg.scopeOrgId
+    });
+
+    let effectiveCaCert: string | undefined;
+    if (caCert !== undefined) {
+      effectiveCaCert = caCert;
+    } else if (identityKubernetesAuth.encryptedKubernetesCaCertificate) {
+      effectiveCaCert = decryptor({
+        cipherTextBlob: identityKubernetesAuth.encryptedKubernetesCaCertificate
+      }).toString();
+    } else {
+      effectiveCaCert = undefined;
+    }
+
+    if (
+      kubernetesHost &&
+      effectiveTokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+      !effectiveGatewayId
+    ) {
+      logger.info({ kubernetesHost }, "Validating Kubernetes host connectivity for auth method update");
+      await validateKubernetesHostConnectivity({
+        kubernetesHost,
+        caCert: effectiveCaCert
+      });
+    }
+
+    if (
+      tokenReviewerJwt &&
+      effectiveKubernetesHost &&
+      effectiveTokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+      !effectiveGatewayId
+    ) {
+      logger.info(
+        { kubernetesHost: effectiveKubernetesHost },
+        "Validating token reviewer JWT permissions for auth method update"
+      );
+      await validateTokenReviewerJwtPermissions({
+        kubernetesHost: effectiveKubernetesHost,
+        tokenReviewerJwt,
+        caCert: effectiveCaCert
+      });
+    }
+
     const updateQuery: TIdentityKubernetesAuthsUpdate = {
       kubernetesHost,
       tokenReviewMode,
@@ -865,11 +964,6 @@ export const identityKubernetesAuthServiceFactory = ({
         ? JSON.stringify(reformattedAccessTokenTrustedIps)
         : undefined
     };
-
-    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: identityMembershipOrg.scopeOrgId
-    });
 
     if (caCert !== undefined) {
       updateQuery.encryptedKubernetesCaCertificate = encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob;
