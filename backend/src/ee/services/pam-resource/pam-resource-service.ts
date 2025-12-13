@@ -310,7 +310,7 @@ export const pamResourceServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PamResources);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.PamResources);
 
     if (resource.caPublicKey) {
       return { caPublicKey: resource.caPublicKey };
