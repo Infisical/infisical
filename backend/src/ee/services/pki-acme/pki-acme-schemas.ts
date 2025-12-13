@@ -6,8 +6,8 @@ export enum AcmeIdentifierType {
 
 export enum AcmeOrderStatus {
   Pending = "pending",
-  Processing = "processing",
   Ready = "ready",
+  Processing = "processing",
   Valid = "valid",
   Invalid = "invalid"
 }
