@@ -4,7 +4,7 @@ import { TGroups } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { OrderByDirection, TGenericPermission } from "@app/lib/types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { TIdentityOrgDALFactory } from "@app/services/identity/identity-org-dal";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -129,8 +129,8 @@ export type TAddIdentitiesToGroup = {
   group: TGroups;
   identityIds: string[];
   identityDAL: Pick<TIdentityDALFactory, "transaction">;
-  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findByIds">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "insertMany">;
+  membershipDAL: Pick<TMembershipDALFactory, "find">;
 };
 
 export type TRemoveUsersFromGroupByUserIds = {
@@ -147,7 +147,7 @@ export type TRemoveIdentitiesFromGroup = {
   group: TGroups;
   identityIds: string[];
   identityDAL: Pick<TIdentityDALFactory, "find" | "transaction">;
-  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findByIds">;
+  membershipDAL: Pick<TMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "delete">;
 };
 

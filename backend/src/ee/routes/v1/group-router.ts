@@ -458,7 +458,9 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         machineIdentityId: z.string().trim().describe(GROUPS.ADD_MACHINE_IDENTITY.machineIdentityId)
       }),
       response: {
-        200: GroupIdentityResponseSchema
+        200: z.object({
+          id: z.string()
+        })
       }
     },
     handler: async (req) => {
@@ -528,7 +530,9 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         machineIdentityId: z.string().trim().describe(GROUPS.DELETE_MACHINE_IDENTITY.machineIdentityId)
       }),
       response: {
-        200: GroupIdentityResponseSchema
+        200: z.object({
+          id: z.string()
+        })
       }
     },
     handler: async (req) => {

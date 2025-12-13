@@ -757,7 +757,7 @@ export const registerRoutes = async (
   });
   const groupService = groupServiceFactory({
     identityDAL,
-    identityOrgMembershipDAL,
+    membershipDAL,
     identityGroupMembershipDAL,
     userDAL,
     groupDAL,

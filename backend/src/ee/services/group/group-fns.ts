@@ -291,21 +291,34 @@ export const addUsersToGroupByUserIds = async ({
  * Add identities with identity ids [identityIds] to group [group].
  * @param {group} group - group to add identity(s) to
  * @param {string[]} identityIds - id(s) of organization scoped identity(s) to add to group
+ * @returns {Promise<{ id: string }[]>} - id(s) of added identity(s)
  */
 export const addIdentitiesToGroup = async ({
   group,
   identityIds,
   identityDAL,
-  identityOrgMembershipDAL,
-  identityGroupMembershipDAL
+  identityGroupMembershipDAL,
+  membershipDAL
 }: TAddIdentitiesToGroup) => {
   return identityDAL.transaction(async (tx) => {
     const identityIdsSet = new Set(identityIds);
     const identityIdsArray = Array.from(identityIdsSet);
 
-    const foundIdentities = await identityOrgMembershipDAL.findByIds(identityIdsArray, group.orgId, tx);
+    // ensure all identities exist and belong to the org via org scoped membership
+    const foundIdentitiesMemberships = await membershipDAL.find(
+      {
+        scope: AccessScope.Organization,
+        scopeOrgId: group.orgId,
+        $in: {
+          actorIdentityId: identityIdsArray
+        }
+      },
+      { tx }
+    );
 
-    const existingIdentityOrgMembershipsIdentityIdsSet = new Set(foundIdentities.map((u) => u.id));
+    const existingIdentityOrgMembershipsIdentityIdsSet = new Set(
+      foundIdentitiesMemberships.map((u) => u.actorIdentityId as string)
+    );
 
     identityIdsArray.forEach((identityId) => {
       if (!existingIdentityOrgMembershipsIdentityIdsSet.has(identityId)) {
@@ -333,14 +346,14 @@ export const addIdentitiesToGroup = async ({
     }
 
     await identityGroupMembershipDAL.insertMany(
-      foundIdentities.map((identity) => ({
-        identityId: identity.id,
+      foundIdentitiesMemberships.map((membership) => ({
+        identityId: membership.actorIdentityId as string,
         groupId: group.id
       })),
       tx
     );
 
-    return foundIdentities;
+    return identityIdsArray.map((identityId) => ({ id: identityId }));
   });
 };
 
@@ -484,26 +497,42 @@ export const removeUsersFromGroupByUserIds = async ({
  * Remove identities with identity ids [identityIds] from group [group].
  * @param {group} group - group to remove identity(s) from
  * @param {string[]} identityIds - id(s) of identity(s) to remove from group
+ * @returns {Promise<{ id: string }[]>} - id(s) of removed identity(s)
  */
 export const removeIdentitiesFromGroup = async ({
   group,
   identityIds,
   identityDAL,
-  identityOrgMembershipDAL,
+  membershipDAL,
   identityGroupMembershipDAL
 }: TRemoveIdentitiesFromGroup) => {
   return identityDAL.transaction(async (tx) => {
     const identityIdsSet = new Set(identityIds);
     const identityIdsArray = Array.from(identityIdsSet);
 
-    const foundIdentities = await identityOrgMembershipDAL.findByIds(identityIdsArray, group.orgId, tx);
+    // ensure all identities exist and belong to the org via org scoped membership
+    const foundIdentitiesMemberships = await membershipDAL.find(
+      {
+        scope: AccessScope.Organization,
+        scopeOrgId: group.orgId,
+        $in: {
+          actorIdentityId: identityIdsArray
+        }
+      },
+      { tx }
+    );
 
-    if (foundIdentities.length !== identityIdsArray.length) {
+    const foundIdentitiesMembershipsIdentityIdsSet = new Set(
+      foundIdentitiesMemberships.map((u) => u.actorIdentityId as string)
+    );
+
+    if (foundIdentitiesMembershipsIdentityIdsSet.size !== identityIdsArray.length) {
       throw new NotFoundError({
         message: `Machine identities not found`
       });
     }
 
+    // check if identity group membership already exists
     const existingIdentityGroupMemberships = await identityGroupMembershipDAL.find(
       {
         groupId: group.id,
@@ -536,7 +565,7 @@ export const removeIdentitiesFromGroup = async ({
       tx
     );
 
-    return foundIdentities;
+    return identityIdsArray.map((identityId) => ({ id: identityId }));
   });
 };
 

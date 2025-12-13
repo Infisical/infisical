@@ -6,7 +6,7 @@ import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { TIdentityOrgDALFactory } from "@app/services/identity/identity-org-dal";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -46,7 +46,6 @@ import { TUserGroupMembershipDALFactory } from "./user-group-membership-dal";
 type TGroupServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find" | "findUserEncKeyByUserIdsBatch" | "transaction" | "findUserByUsername">;
   identityDAL: Pick<TIdentityDALFactory, "findOne" | "find" | "transaction">;
-  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findByIds">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "delete" | "insertMany">;
   groupDAL: Pick<
     TGroupDALFactory,
@@ -62,6 +61,7 @@ type TGroupServiceFactoryDep = {
     | "findAllGroupProjects"
   >;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "findOne" | "create">;
+  membershipDAL: Pick<TMembershipDALFactory, "find" | "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "countAllOrgMembers" | "findById">;
   userGroupMembershipDAL: Pick<
@@ -83,7 +83,7 @@ export type TGroupServiceFactory = ReturnType<typeof groupServiceFactory>;
 
 export const groupServiceFactory = ({
   identityDAL,
-  identityOrgMembershipDAL,
+  membershipDAL,
   identityGroupMembershipDAL,
   userDAL,
   groupDAL,
@@ -672,17 +672,21 @@ export const groupServiceFactory = ({
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
-    const [identity] = await identityOrgMembershipDAL.findByIds([identityId], group.orgId);
+    const identityMembership = await membershipDAL.findOne({
+      scope: AccessScope.Organization,
+      scopeOrgId: group.orgId,
+      actorIdentityId: identityId
+    });
 
-    if (!identity) {
+    if (!identityMembership) {
       throw new NotFoundError({ message: `Identity with id ${identityId} is not part of the organization` });
     }
 
     const identities = await addIdentitiesToGroup({
       group,
-      identityIds: [identity.id],
+      identityIds: [identityId],
       identityDAL,
-      identityOrgMembershipDAL,
+      membershipDAL,
       identityGroupMembershipDAL
     });
 
@@ -824,16 +828,21 @@ export const groupServiceFactory = ({
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
-    const [identity] = await identityOrgMembershipDAL.findByIds([identityId], group.orgId);
+    const identityMembership = await membershipDAL.findOne({
+      scope: AccessScope.Organization,
+      scopeOrgId: group.orgId,
+      actorIdentityId: identityId
+    });
 
-    if (!identity)
+    if (!identityMembership) {
       throw new NotFoundError({ message: `Identity with id ${identityId} is not part of the organization` });
+    }
 
     const identities = await removeIdentitiesFromGroup({
       group,
-      identityIds: [identity.id],
+      identityIds: [identityId],
       identityDAL,
-      identityOrgMembershipDAL,
+      membershipDAL,
       identityGroupMembershipDAL
     });
 

@@ -674,24 +674,5 @@ export const identityOrgDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByIds = async (identityIds: string[], orgId: string, tx?: Knex) => {
-    try {
-      const identities = await (tx || db.replicaNode())(TableName.Identity)
-        .join(TableName.Membership, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
-        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-        .where(`${TableName.Membership}.scopeOrgId`, orgId)
-        .whereNotNull(`${TableName.Membership}.actorIdentityId`)
-        .whereNull(`${TableName.Identity}.projectId`)
-        .whereIn(`${TableName.Identity}.id`, identityIds)
-        .distinctOn(`${TableName.Identity}.id`)
-        .orderBy(`${TableName.Identity}.id`)
-        .select(selectAllTableCols(TableName.Identity));
-
-      return identities;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "findByIds" });
-    }
-  };
-
-  return { find, findOne, countAllOrgIdentities, searchIdentities, findByIds };
+  return { find, findOne, countAllOrgIdentities, searchIdentities };
 };
