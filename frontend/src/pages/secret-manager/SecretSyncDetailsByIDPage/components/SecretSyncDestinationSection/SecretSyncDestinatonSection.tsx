@@ -36,6 +36,7 @@ import { LaravelForgeSyncDestinationSection } from "./LaravelForgeSyncDestinatio
 import { NetlifySyncDestinationSection } from "./NetlifySyncDestinationSection";
 import { NorthflankSyncDestinationSection } from "./NorthflankSyncDestinationSection";
 import { OCIVaultSyncDestinationSection } from "./OCIVaultSyncDestinationSection";
+import { OctopusDeploySyncDestinationSection } from "./OctopusDeploySyncDestinationSection";
 import { RailwaySyncDestinationSection } from "./RailwaySyncDestinationSection";
 import { RenderSyncDestinationSection } from "./RenderSyncDestinationSection";
 import { SupabaseSyncDestinationSection } from "./SupabaseSyncDestinationSection";
@@ -159,6 +160,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.Chef:
       DestinationComponents = <ChefSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.OctopusDeploy:
+      DestinationComponents = <OctopusDeploySyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

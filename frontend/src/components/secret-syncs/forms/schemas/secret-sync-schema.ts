@@ -25,6 +25,7 @@ import { LaravelForgeSyncDestinationSchema } from "./laravel-forge-sync-destinat
 import { NetlifySyncDestinationSchema } from "./netlify-sync-destination-schema";
 import { NorthflankSyncDestinationSchema } from "./northflank-sync-destination-schema";
 import { OCIVaultSyncDestinationSchema } from "./oci-vault-sync-destination-schema";
+import { OctopusDeploySyncDestinationSchema } from "./octopus-deploy-sync-destination-schema";
 import { RailwaySyncDestinationSchema } from "./railway-sync-destination-schema";
 import { RenderSyncDestinationSchema } from "./render-sync-destination-schema";
 import { SupabaseSyncDestinationSchema } from "./supabase-sync-destination-schema";
@@ -65,6 +66,7 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   DigitalOceanAppPlatformSyncDestinationSchema,
   NetlifySyncDestinationSchema,
   NorthflankSyncDestinationSchema,
+  OctopusDeploySyncDestinationSchema,
   BitbucketSyncDestinationSchema,
   LaravelForgeSyncDestinationSchema,
   ChefSyncDestinationSchema

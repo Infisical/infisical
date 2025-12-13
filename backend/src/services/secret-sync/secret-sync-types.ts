@@ -137,6 +137,12 @@ import {
   TNorthflankSyncWithCredentials
 } from "./northflank";
 import {
+  TOctopusDeploySync,
+  TOctopusDeploySyncInput,
+  TOctopusDeploySyncListItem,
+  TOctopusDeploySyncWithCredentials
+} from "./octopus-deploy";
+import {
   TRailwaySync,
   TRailwaySyncInput,
   TRailwaySyncListItem,
@@ -201,7 +207,8 @@ export type TSecretSync =
   | TSupabaseSync
   | TNetlifySync
   | TNorthflankSync
-  | TBitbucketSync;
+  | TBitbucketSync
+  | TOctopusDeploySync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -236,7 +243,8 @@ export type TSecretSyncWithCredentials =
   | TNetlifySyncWithCredentials
   | TNorthflankSyncWithCredentials
   | TBitbucketSyncWithCredentials
-  | TLaravelForgeSyncWithCredentials;
+  | TLaravelForgeSyncWithCredentials
+  | TOctopusDeploySyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -271,7 +279,8 @@ export type TSecretSyncInput =
   | TNetlifySyncInput
   | TNorthflankSyncInput
   | TBitbucketSyncInput
-  | TLaravelForgeSyncInput;
+  | TLaravelForgeSyncInput
+  | TOctopusDeploySyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -306,7 +315,8 @@ export type TSecretSyncListItem =
   | TDigitalOceanAppPlatformSyncListItem
   | TNetlifySyncListItem
   | TNorthflankSyncListItem
-  | TBitbucketSyncListItem;
+  | TBitbucketSyncListItem
+  | TOctopusDeploySyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

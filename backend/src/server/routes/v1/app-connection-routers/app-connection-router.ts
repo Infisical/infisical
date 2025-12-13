@@ -101,6 +101,10 @@ import {
   NorthflankConnectionListItemSchema,
   SanitizedNorthflankConnectionSchema
 } from "@app/services/app-connection/northflank";
+import {
+  OctopusDeployConnectionListItemSchema,
+  SanitizedOctopusDeployConnectionSchema
+} from "@app/services/app-connection/octopus-deploy";
 import { OktaConnectionListItemSchema, SanitizedOktaConnectionSchema } from "@app/services/app-connection/okta";
 import {
   PostgresConnectionListItemSchema,
@@ -180,7 +184,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedMongoDBConnectionSchema.options,
   ...SanitizedLaravelForgeConnectionSchema.options,
   ...SanitizedChefConnectionSchema.options,
-  ...SanitizedDNSMadeEasyConnectionSchema.options
+  ...SanitizedDNSMadeEasyConnectionSchema.options,
+  ...SanitizedOctopusDeployConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -227,7 +232,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   MongoDBConnectionListItemSchema,
   LaravelForgeConnectionListItemSchema,
   ChefConnectionListItemSchema,
-  DNSMadeEasyConnectionListItemSchema
+  DNSMadeEasyConnectionListItemSchema,
+  OctopusDeployConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

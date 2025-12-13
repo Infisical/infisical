@@ -39,7 +39,8 @@ export const SecretSyncsBrowser = () => {
     {"name": "Zabbix", "slug": "zabbix", "path": "/integrations/secret-syncs/zabbix", "description": "Learn how to sync secrets from Infisical to Zabbix.", "category": "Monitoring"},
     {"name": "Laravel Forge", "slug": "laravel-forge", "path": "/integrations/secret-syncs/laravel-forge", "description": "Learn how to sync secrets from Infisical to Laravel Forge.", "category": "Hosting"},
     {"name": "Chef", "slug": "chef", "path": "/integrations/secret-syncs/chef", "description": "Learn how to sync secrets from Infisical to Chef.", "category": "DevOps Tools"},
-    {"name": "Northflank", "slug": "northflank", "path": "/integrations/secret-syncs/northflank", "description": "Learn how to sync secrets from Infisical to Northflank projects.", "category": "Hosting"}
+    {"name": "Northflank", "slug": "northflank", "path": "/integrations/secret-syncs/northflank", "description": "Learn how to sync secrets from Infisical to Northflank projects.", "category": "Hosting"},
+    {"name": "Octopus Deploy", "slug": "octopus-deploy", "path": "/integrations/secret-syncs/octopus-deploy", "description": "Learn how to sync secrets from Infisical to Octopus Deploy.", "category": "DevOps Tools"}
   ].sort(function(a, b) {
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });

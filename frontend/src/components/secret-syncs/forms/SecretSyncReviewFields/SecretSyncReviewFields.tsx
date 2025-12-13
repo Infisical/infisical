@@ -40,6 +40,7 @@ import { LaravelForgeSyncReviewFields } from "./LaravelForgeSyncReviewFields";
 import { NetlifySyncReviewFields } from "./NetlifySyncReviewFields";
 import { NorthflankSyncReviewFields } from "./NorthflankSyncReviewFields";
 import { OCIVaultSyncReviewFields } from "./OCIVaultSyncReviewFields";
+import { OctopusDeploySyncReviewFields } from "./OctopusDeploySyncReviewFields";
 import { OnePassSyncReviewFields } from "./OnePassSyncReviewFields";
 import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
 import { RenderSyncOptionsReviewFields, RenderSyncReviewFields } from "./RenderSyncReviewFields";
@@ -180,6 +181,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Chef:
       DestinationFieldsComponent = <ChefSyncReviewFields />;
+      break;
+    case SecretSync.OctopusDeploy:
+      DestinationFieldsComponent = <OctopusDeploySyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

@@ -94,6 +94,10 @@ export type THCVaultConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.HCVault;
 };
 
+export type TOctopusDeployConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.OctopusDeploy;
+};
+
 export type TLdapConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.LDAP;
 };
@@ -236,7 +240,8 @@ export type TAppConnectionOption =
   | TRedisConnectionOption
   | TMongoDBConnectionOption
   | TChefConnectionOption
-  | TDNSMadeEasyConnectionOption;
+  | TDNSMadeEasyConnectionOption
+  | TOctopusDeployConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -283,4 +288,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.MongoDB]: TMongoDBConnectionOption;
   [AppConnection.LaravelForge]: TLaravelForgeConnectionOption;
   [AppConnection.Chef]: TChefConnectionOption;
+  [AppConnection.OctopusDeploy]: TOctopusDeployConnectionOption;
 };

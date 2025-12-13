@@ -103,6 +103,8 @@ import { ValidateNetlifyConnectionCredentialsSchema } from "./netlify";
 import { netlifyConnectionService } from "./netlify/netlify-connection-service";
 import { ValidateNorthflankConnectionCredentialsSchema } from "./northflank";
 import { northflankConnectionService } from "./northflank/northflank-connection-service";
+import { ValidateOctopusDeployConnectionCredentialsSchema } from "./octopus-deploy";
+import { octopusDeployConnectionService } from "./octopus-deploy/octopus-deploy-connection-service";
 import { ValidateOktaConnectionCredentialsSchema } from "./okta";
 import { oktaConnectionService } from "./okta/okta-connection-service";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
@@ -182,7 +184,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Okta]: ValidateOktaConnectionCredentialsSchema,
   [AppConnection.Redis]: ValidateRedisConnectionCredentialsSchema,
   [AppConnection.MongoDB]: ValidateMongoDBConnectionCredentialsSchema,
-  [AppConnection.Chef]: ValidateChefConnectionCredentialsSchema
+  [AppConnection.Chef]: ValidateChefConnectionCredentialsSchema,
+  [AppConnection.OctopusDeploy]: ValidateOctopusDeployConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -891,6 +894,7 @@ export const appConnectionServiceFactory = ({
     northflank: northflankConnectionService(connectAppConnectionById),
     okta: oktaConnectionService(connectAppConnectionById),
     laravelForge: laravelForgeConnectionService(connectAppConnectionById),
-    chef: chefConnectionService(connectAppConnectionById, licenseService)
+    chef: chefConnectionService(connectAppConnectionById, licenseService),
+    octopusDeploy: octopusDeployConnectionService(connectAppConnectionById)
   };
 };

@@ -25,6 +25,7 @@ import { registerHumanitecSyncRouter } from "./humanitec-sync-router";
 import { registerLaravelForgeSyncRouter } from "./laravel-forge-sync-router";
 import { registerNetlifySyncRouter } from "./netlify-sync-router";
 import { registerNorthflankSyncRouter } from "./northflank-sync-router";
+import { registerOctopusDeploySyncRouter } from "./octopus-deploy-sync-router";
 import { registerRailwaySyncRouter } from "./railway-sync-router";
 import { registerRenderSyncRouter } from "./render-sync-router";
 import { registerSupabaseSyncRouter } from "./supabase-sync-router";
@@ -69,5 +70,6 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.Northflank]: registerNorthflankSyncRouter,
   [SecretSync.Bitbucket]: registerBitbucketSyncRouter,
   [SecretSync.LaravelForge]: registerLaravelForgeSyncRouter,
-  [SecretSync.Chef]: registerChefSyncRouter
+  [SecretSync.Chef]: registerChefSyncRouter,
+  [SecretSync.OctopusDeploy]: registerOctopusDeploySyncRouter
 };

@@ -368,6 +368,13 @@ export const AppConnectionsBrowser = () => {
       path: "/integrations/app-connections/mongodb",
       description: "Learn how to connect your MongoDB to pull secrets from Infisical.",
       category: "Databases"
+    },
+    {
+      name: "Octopus Deploy",
+      slug: "octopus-deploy",
+      path: "/integrations/app-connections/octopus-deploy",
+      description: "Learn how to connect your Octopus Deploy to pull secrets from Infisical.",
+      category: "DevOps Tools",
     }
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());

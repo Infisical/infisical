@@ -31,7 +31,8 @@ export enum SecretSync {
   Northflank = "northflank",
   Bitbucket = "bitbucket",
   LaravelForge = "laravel-forge",
-  Chef = "chef"
+  Chef = "chef",
+  OctopusDeploy = "octopus-deploy"
 }
 
 export enum SecretSyncInitialSyncBehavior {

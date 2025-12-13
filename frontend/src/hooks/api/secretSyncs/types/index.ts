@@ -25,6 +25,7 @@ import { THumanitecSync } from "./humanitec-sync";
 import { TLaravelForgeSync } from "./laravel-forge-sync";
 import { TNetlifySync } from "./netlify-sync";
 import { TNorthflankSync } from "./northflank-sync";
+import { TOctopusDeploySync } from "./octopus-deploy-sync";
 import { TOCIVaultSync } from "./oci-vault-sync";
 import { TRailwaySync } from "./railway-sync";
 import { TRenderSync } from "./render-sync";
@@ -75,7 +76,8 @@ export type TSecretSync =
   | TNorthflankSync
   | TBitbucketSync
   | TLaravelForgeSync
-  | TChefSync;
+  | TChefSync
+  | TOctopusDeploySync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

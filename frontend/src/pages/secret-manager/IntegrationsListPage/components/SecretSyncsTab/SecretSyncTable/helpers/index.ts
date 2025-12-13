@@ -8,6 +8,7 @@ import {
 } from "@app/hooks/api/secretSyncs/types/github-sync";
 import { GitLabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
+import { OctopusDeploySyncScope } from "@app/hooks/api/secretSyncs/types/octopus-deploy-sync";
 import { RenderSyncScope } from "@app/hooks/api/secretSyncs/types/render-sync";
 
 // This functional ensures parity across what is displayed in the destination column
@@ -205,6 +206,13 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
     case SecretSync.Chef:
       primaryText = destinationConfig.dataBagName;
       secondaryText = destinationConfig.dataBagItemName;
+      break;
+    case SecretSync.OctopusDeploy:
+      primaryText = destinationConfig.spaceName || destinationConfig.spaceId;
+      secondaryText = destinationConfig.scope;
+      if (destinationConfig.scope === OctopusDeploySyncScope.Project) {
+        secondaryText = destinationConfig.projectName || destinationConfig.projectId;
+      }
       break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
