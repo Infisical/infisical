@@ -33,7 +33,8 @@ The agent will issue a certificate with specified parameters:
 version: v1
 
 certificates:
-  - profile-id: "prof-web-server-12345"
+  - profile-name: "prof-web-server-12345"
+    project-slug: "my-project-slug"
     common-name: "api.company.com"
     alt-names:
       - "www.api.company.com"
@@ -67,7 +68,8 @@ Submit a pre-generated [Certificate Signing Request](/documentation/platform/pki
 version: v1
 
 certificates:
-  - profile-id: "prof-external-ca-12345"
+  - profile-name: "prof-web-server-12345"
+    project-slug: "my-project-slug"
     csr-path: "/etc/ssl/requests/api.csr"
     file-output:
       certificate:
@@ -116,7 +118,8 @@ The Certificate Agent provides comprehensive certificate lifecycle management wi
 version: v1
 
 certificates:
-  - profile-id: "prof-web-server-12345"
+  - profile-name: "prof-web-server-12345"
+    project-slug: "my-project-slug"
     common-name: "web.company.com"
     alt-names: ["www.company.com"]
     ttl: "90d"
@@ -358,7 +361,8 @@ infisical:
 
 | Parameter                                         | Description                                                                  |
 | ------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `profile-id`                                      | [Certificate profile](/documentation/platform/pki/certificates/profiles) identifier                                               |
+| `profile-name`                                    | [Certificate profile](/documentation/platform/pki/certificates/profiles) identifier                                               |
+| `project-slug`                                    | Project slug identifier                                                      |
 | `common-name`                                     | Certificate common name                                                      |
 | `alt-names`                                       | List of alternative names                                                    |
 | `ttl`                                             | Certificate validity period                                                  |
@@ -408,7 +412,8 @@ auth:
     client-secret: "your-client-secret"
 
 certificates:
-  - profile-id: "prof-web-server-12345"
+  - profile-name: "prof-web-server-12345"
+    project-slug: "my-project-slug"
     common-name: "web.company.com"
     alt-names: ["web.company.com", "www.company.com"]
     ttl: "90d"
