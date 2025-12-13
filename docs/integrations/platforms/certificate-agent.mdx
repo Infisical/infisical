@@ -22,11 +22,16 @@ This follows a [client-driven approach](/documentation/platform/pki/certificates
 A typical workflow for using the Infisical Agent to request certificates from Infisical consists of the following steps:
 
 1. Create a [certificate profile](/documentation/platform/pki/certificates/profiles) in Infisical with the [API enrollment method](/documentation/platform/pki/enrollment-methods/api) configured on it.
-2. Install the Infisical CLI on the target machine.
-3. Create a configuration file containing details about the certificate to request and how it should be managed such as renewal thresholds, post-event hooks, etc.
+2. Install the [Infisical CLI](/cli/overview) on the target machine.
+3. Create an agent [configuration file](/integrations/platforms/certificate-agent#agent-configuration) containing details about the certificate to request and how it should be managed such as renewal thresholds, post-event hooks, etc.
 4. Start the agent with that configuration so it can request, persist, monitor, and going forward automatically renew the certificate before it expires on the target machine.
 
-## Authentication
+## Operating the Agent
+
+This section describes how to use the Infisical Agent to request certificates from Infisical. It covers how the agent authenticates with Infisical,
+and how to configure it to start requesting certificates from Infisical.
+
+### Authentication
 
 The Infisical Agent can authenticate with Infisical as a [machine identity](/documentation/platform/identities/machine-identities) using one of its supported authentication methods.
 
@@ -170,37 +175,38 @@ the agent automatically handles token renewal as documented [here](/integrations
   </Accordion>
 </AccordionGroup>
 
-## Agent configuration file
+### Agent Configuration
 
 The Infisical Agent relies on a YAML configuration file to define its behavior, including how it should authenticate with Infisical, the certificate it should request, and how that certificate should be managed including auto-renewal.
 
-### Example configuration file
+The code snippet below shows an example configuration file that instructs the agent to request and continuously renew a certificate from Infisical.
 
-The code snippet below shows an example of a comprehensive configuration file that instructs the agent to request and continuously renew acertificate from Infisical.
+Note that not all configuration options in this file are required but this example includes all of the available options.
 
 ```yaml example-cert-agent-config.yaml
 version: v1
 
-# Required: Infisical server configuration
+# Infisical server configuration
 infisical:
-  address: "https://app.infisical.com"
+  address: "https://app.infisical.com" # The URL of the Infisical instance (e.g. https://app.infisical.com, https://eu.infisical.com, https://your-self-hosted-instance.com)
   retry-strategy:
     max-retries: 3
     max-delay: "5s"
     base-delay: "200ms"
 
-# Authentication configuration
+# Infisical authentication configuration
 auth:
-  type: "universal-auth"
+  type: "universal-auth" # The authentication method to use (e.g. universal-auth, kubernetes-auth, azure-auth, gcp-id-token, gcp-iam, aws-iam)
   config:
     client-id: "your-client-id"
     client-secret: "your-client-secret"
 
+# Certificate configuration
 certificates:
   - profile-name: "prof-web-server-12345"
     project-slug: "my-project-slug"
-    common-name: "web.company.com"
-    alt-names: ["web.company.com", "www.company.com"]
+    common-name: "api.example.com"
+    alt-names: ["api.example.com", "api-v2.example.com"]
     ttl: "90d"
     key-algorithm: "RSA_2048"
     signature-algorithm: "RSA-SHA256"
@@ -210,27 +216,27 @@ certificates:
     extended-key-usages:
       - "server_auth"
 
-    # Lifecycle management
+    # Enable automatic certificate renewal
     lifecycle:
       renew-before-expiry: "30d"
       status-check-interval: "6h"
       max-failure-retries: 3
       failure-retry-interval: "1h"
 
-    # File output configuration
+    # Configure where to store the issued certificate and its associated private key and certificate chain
     file-output:
       private-key:
         path: "/etc/ssl/private/web.key"
-        permission: "0600"
+        permission: "0600" # Read/write for owner only
       certificate:
         path: "/etc/ssl/certs/web.crt"
-        permission: "0644"
+        permission: "0644" # Read for all, write for owner
       chain:
         path: "/etc/ssl/certs/web-chain.crt"
-        permission: "0644"
+        permission: "0644" # Read for all, write for owner
         omit-root: true # Exclude the root CA certificate in chain
 
-    # Post-event hooks
+    # Configure custom commands to execute after certificate issuance, renewal, or failure events
     post-hooks:
       on-issuance:
         command: |
@@ -254,182 +260,63 @@ certificates:
 To be more specific, the configuration file instructs the agent to:
 
 - Authenticate with Infisical using the [Universal Auth](/integrations/platforms/certificate-agent#universal-auth) authentication method.
-- Request a 90-day certificate against the [certificate profile](/documentation/platform/pki/certificates/profiles) with the ID `prof-web-server-12345` with the common name `web.company.com` and the subject alternative names `web.company.com` and `www.company.com`.
+- Request a 90-day certificate against the [certificate profile](/documentation/platform/pki/certificates/profiles) named `prof-web-server-12345` with the common name `web.company.com` and the subject alternative names `web.company.com` and `www.company.com`.
 - Automatically renew the certificate 30 days before expiration by checking the certificate status every 6 hours and retrying up to 3 times with a base delay of 200ms and a maximum delay of 5s if the certificate status check fails.
 - Store the certificate and its associated private key and certificate chain (excluding the root CA certificate) in the filesystem at the specified paths with the specified permissions.
 - Execute custom commands after certificate issuance, renewal, or failure events such as reloading an `nginx` service or sending an email notification.
 
-### Configuration file options
+### Agent Execution
 
-The table below provides a complete list of parameters that can be configured in the agent configuration file:
+After creating the configuration file, you can run the command below with the `--config` flag pointing to the path where the agent configuration file is located.
 
-Work in progress...
-
-| Parameter                            | Required    | Description                                                                                                                                                                                                                        |
-| ------------------------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `profile-name`                       | Yes         | The name of the [certificate profile](/documentation/platform/pki/certificates/profiles) to request a certificate against (e.g., `web-server-12345`)                                                                               |
-| `project-slug`                       | Yes         | The slug of the project to request a certificate against (e.g., `my-project-slug`)                                                                                                                                                 |
-| `common-name`                        | Optional    | The common name for the certificate (e.g. `www.example.com`)                                                                                                                                                                       |
-| `alt-names`                          | Optional    | The list of subject alternative names for the certificate (e.g., `["www.example.com", "api.example.com"]`)                                                                                                                         |
-| `ttl`                                | Optional    | The validity period for the certificate (e.g. `90d`)                                                                                                                                                                               |
-| `key-algorithm`                      | Optional    | The private key algorithm for the certificate (e.g. `RSA_2048`)                                                                                                                                                                    |
-| `signature-algorithm`                | Optional    | The signature algorithm for the certificate (e.g. `RSA-SHA256`)                                                                                                                                                                    |
-| `key-usages`                         | Optional    | The list of key usage values for the certificate. One or more of: `digital_signature`, `key_encipherment`, `non_repudiation`, `data_encipherment`, `key_agreement`, `key_cert_sign`, `crl_sign`, `encipher_only`, `decipher_only`. |
-| `extended-key-usages`                | Optional    | The list of extended key usage values for the certificate. One or more of: `server_auth`, `client_auth`, `code_signing`, `email_protection`, `timestamping`, `ocsp_signing`.                                                       |
-| `csr-path`                           | Conditional | The path to the CSR file (required if using a pre-generated CSR)                                                                                                                                                                   |
-| `file-output.private-key.path`       | Conditional | The path to store the private key (required if not using a CSR)                                                                                                                                                                    |
-| `file-output.private-key.permission` | Optional    | The permissions for the private key file (e.g. `0600`)                                                                                                                                                                             |
-| `file-output.certificate.path`       | Yes         | The path to store the certificate                                                                                                                                                                                                  |
-| `file-output.certificate.permission` | Optional    | The permissions for the certificate file (e.g. `0644`)                                                                                                                                                                             |
-| `file-output.chain.path`             | Optional    | The path to store the certificate chain                                                                                                                                                                                            |
-| `file-output.chain.permission`       | Optional    | The permissions for the chain file (e.g. `0644`)                                                                                                                                                                                   |
-| `file-output.chain.omit-root`        | Optional    | Whether to exclude root certificate from chain                                                                                                                                                                                     |
-| `lifecycle.renew-before-expiry`      | Optional    | The time before expiration to renew the certificate (e.g. `30d`)                                                                                                                                                                   |
-| `lifecycle.status-check-interval`    | Optional    | The interval to check the certificate status (e.g. `6h`)                                                                                                                                                                           |
-| `post-hooks.on-issuance.command`     | Optional    | Command to run on certificate issuance                                                                                                                                                                                             |
-| `post-hooks.on-issuance.timeout`     | Optional    | Timeout for issuance command                                                                                                                                                                                                       |
-| `post-hooks.on-renewal.command`      | Optional    | The command to run on certificate renewal                                                                                                                                                                                          |
-| `post-hooks.on-renewal.timeout`      | Optional    | Timeout for renewal command                                                                                                                                                                                                        |
-| `post-hooks.on-failure.command`      | Optional    | Command to run on operation failure                                                                                                                                                                                                |
-| `post-hooks.on-failure.timeout`      | Optional    | Timeout for failure command                                                                                                                                                                                                        |
-| `lifecycle.max-failure-retries`      | Optional    | The maximum number of times to retry a failed certificate issuance or renewal operation (e.g. `3`)                                                                                                                                 |
-| `lifecycle.failure-retry-interval`   | Optional    | The interval to wait before retrying a failed certificate issuance or renewal operation (e.g. `1h`)                                                                                                                                |
-
-## Getting Started
-
-To use the Certificate Agent, you'll need:
-
-1. **Infisical CLI installed**: Download from [GitHub releases](https://github.com/Infisical/cli/releases)
-2. **Certificate Profile configured**: Set up a [certificate profile](/documentation/platform/pki/certificates/profiles) in your Infisical project
-3. **Authentication credentials**: [Machine identity](/documentation/platform/identities/overview) with appropriate permissions
-
-The agent operates using a YAML configuration file that defines authentication, certificate profiles, and operational parameters. When started, it authenticates with Infisical and begins monitoring certificates according to your configuration.
-
-## Certificate Management
-
-### Manual Certificate Issuance
-
-The agent will issue a certificate with specified parameters:
-
-```yaml
-version: v1
-
-certificates:
-  - profile-name: "prof-web-server-12345"
-    project-slug: "my-project-slug"
-    common-name: "api.company.com"
-    alt-names:
-      - "www.api.company.com"
-      - "api-v2.company.com"
-    key-algorithm: "RSA_2048"
-    signature-algorithm: "RSA-SHA256"
-    key-usages:
-      - "digital_signature"
-      - "key_encipherment"
-    extended-key-usages:
-      - "server_auth"
-    ttl: "30d"
-    file-output:
-      private-key:
-        path: "./certs/api/private.key"
-        permission: "0600"
-      certificate:
-        path: "./certs/api/certificate.crt"
-        permission: "0644"
-      chain:
-        path: "./certs/api/chain.crt"
-        permission: "0644"
-        omit-root: false
+```bash
+infisical cert-manager agent --config /path/to/your/agent-config.yaml
 ```
 
-### CSR-based Issuance
+This will start the agent as a daemon process, continuously monitoring and managing certificates according to your configuration. You can also run it in the foreground for debugging:
 
-Submit a pre-generated [Certificate Signing Request](/documentation/platform/pki/certificates#guide-to-issuing-certificates):
-
-```yaml
-version: v1
-
-certificates:
-  - profile-name: "prof-web-server-12345"
-    project-slug: "my-project-slug"
-    csr-path: "/etc/ssl/requests/api.csr"
-    file-output:
-      certificate:
-        path: "/etc/ssl/certs/api.crt"
-        permission: "0644"
-      chain:
-        path: "/etc/ssl/certs/ca-chain.crt"
-        permission: "0644"
-        omit-root: true
+```bash
+infisical cert-manager agent --config /path/to/your/agent-config.yaml --verbose
 ```
 
-### File Output Configuration
+For production deployments, you may consider running the agent as a system service to ensure it starts automatically and runs continuously.
 
-The Certificate Agent provides granular control over file permissions and certificate chain composition:
+### Agent Certificate Configuration Parameters
 
-#### Certificate Chain Management
+The table below provides a complete list of parameters that can be configured in the **certificate configuration** section of the agent configuration file:
 
-The `omit-root` parameter in the chain configuration controls whether the root certificate is included in the certificate chain file:
+| Parameter                            | Required                                               | Description                                                                                                                                                                                                                        |
+| ------------------------------------ | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `profile-name`                       | Yes                                                    | The name of the [certificate profile](/documentation/platform/pki/certificates/profiles) to request a certificate against (e.g., `web-server-12345`)                                                                               |
+| `project-slug`                       | Yes                                                    | The slug of the project to request a certificate against (e.g., `my-project-slug`)                                                                                                                                                 |
+| `common-name`                        | Optional                                               | The common name for the certificate (e.g. `www.example.com`)                                                                                                                                                                       |
+| `alt-names`                          | Optional                                               | The list of subject alternative names for the certificate (e.g., `["www.example.com", "api.example.com"]`)                                                                                                                         |
+| `ttl`                                | Optional (uses profile default if not specified)       | The time-to-live duration for the certificate, specified as a duration string (e.g. `72h`, `90d`, `1y`, etc.)                                                                                                                      |
+| `key-algorithm`                      | Optional                                               | The algorithm for the certificate key pair. One of: `RSA_2048`, `RSA_4096`, `EC_prime256v1`, `EC_secp384r1`.                                                                                                                       |
+| `signature-algorithm`                | Optional                                               | The algorithm used to sign the certificate. One of: `RSA-SHA256`, `RSA-SHA384`, `RSA-SHA512`, `ECDSA-SHA256`.                                                                                                                      |
+| `key-usages`                         | Optional                                               | The list of key usage values for the certificate. One or more of: `digital_signature`, `key_encipherment`, `non_repudiation`, `data_encipherment`, `key_agreement`, `key_cert_sign`, `crl_sign`, `encipher_only`, `decipher_only`. |
+| `extended-key-usages`                | Optional                                               | The list of extended key usage values for the certificate. One or more of: `server_auth`, `client_auth`, `code_signing`, `email_protection`, `timestamping`, `ocsp_signing`.                                                       |
+| `csr-path`                           | Conditional                                            | The path to a certificate signing request (CSR) file (e.g., `./csr/webserver.csr`, `/etc/ssl/csr.pem`). This is required if using a pre-generated CSR.                                                                             |
+| `file-output.private-key.path`       | Optional (required if the `csr-path` is not specified) | The path to store the private key (required if not using a CSR)                                                                                                                                                                    |
+| `file-output.private-key.permission` | Optional (defaults to `0600`)                          | The octal file permissions for the private key file (e.g. `0600`)                                                                                                                                                                  |
+| `file-output.certificate.path`       | Yes                                                    | The path to store the issued certificate in the filesystem                                                                                                                                                                         |
+| `file-output.certificate.permission` | Optional (defaults to `0600`)                          | The octal file permissions for the certificate file (e.g. `0644`)                                                                                                                                                                  |
+| `file-output.chain.path`             | Optional                                               | The path to store the certificate chain in the filesystem.                                                                                                                                                                         |
+| `file-output.chain.permission`       | Optional (defaults to `0600`)                          | The octal permissions for the chain file (e.g. `0644`)                                                                                                                                                                             |
+| `file-output.chain.omit-root`        | Optional (defaults to `true`)                          | Whether to exclude the root CA certificate from the returned certificate chain                                                                                                                                                     |
+| `lifecycle.renew-before-expiry`      | Optional (auto-renewal is disabled if not set)         | Duration before certificate expiration when renewal checks should begin, specified as a duration string (e.g. `72h`, `90d`, `1y`, etc.)                                                                                            |
+| `lifecycle.status-check-interval`    | Optional (defaults to `10s`)                           | How frequently the agent checks certificate status and renewal needs, specified as a duration string (e.g. `10s`, `30m`, `1d`, etc.)                                                                                               |
+| `post-hooks.on-issuance.command`     | Optional                                               | The shell command to execute after a certificate is successfully issued for the first time (e.g., `systemctl reload nginx`, `/usr/local/bin/reload-service.sh`)                                                                    |
+| `post-hooks.on-issuance.timeout`     | Optional (defaults to `30`)                            | Maximum execution time in seconds for the on-issuance post-hook command before it is terminated (e.g., `30`, `60`, `120`)                                                                                                          |
+| `post-hooks.on-renewal.command`      | Optional                                               | The shell command to execute after a certificate is successfully renewed (e.g., `systemctl reload nginx`, `docker restart web-server`)                                                                                             |
+| `post-hooks.on-renewal.timeout`      | Optional (defaults to `30`)                            | Maximum execution time in seconds for the on-renewal post-hook command before it is terminated (e.g., `30`, `60`, `120`)                                                                                                           |
+| `post-hooks.on-failure.command`      | Optional                                               | The shell command to execute when certificate issuance or renewal fails (e.g., `logger 'Certificate renewal failed'`, `/usr/local/bin/alert.sh`)                                                                                   |
+| `post-hooks.on-failure.timeout`      | Optional (defaults to `30`)                            | Maximum execution time in seconds for the on-failure post-hook command before it is terminated (e.g., `10`, `30`, `60`)                                                                                                            |
 
-- `omit-root: false` (default): Includes the root certificate in the chain file, providing the complete certificate chain
-- `omit-root: true`: Excludes the root certificate, useful when the root certificate is already trusted by the system or when intermediate certificates are sufficient
+### Post-Event Hooks
 
-#### Individual File Permissions
-
-Each file type (private key, certificate, chain) can have its own permission settings:
-
-```yaml
-file-output:
-  private-key:
-    path: "./certs/private.key"
-    permission: "0600" # Read/write for owner only
-  certificate:
-    path: "./certs/certificate.crt"
-    permission: "0644" # Read for all, write for owner
-  chain:
-    path: "./certs/chain.crt"
-    permission: "0644" # Read for all, write for owner
-    omit-root: false # Include root certificate
-```
-
-## Lifecycle Management
-
-The Certificate Agent provides comprehensive certificate lifecycle management with configurable monitoring and renewal:
-
-```yaml
-version: v1
-
-certificates:
-  - profile-name: "prof-web-server-12345"
-    project-slug: "my-project-slug"
-    common-name: "web.company.com"
-    alt-names: ["www.company.com"]
-    ttl: "90d"
-    lifecycle:
-      renew-before-expiry: "14d" # Renew 14 days before expiration
-      status-check-interval: "6h" # Check certificate status every 6 hours
-    file-output:
-      private-key:
-        path: "./certs/web/private.key"
-        permission: "0600"
-      certificate:
-        path: "./certs/web/certificate.crt"
-        permission: "0644"
-      chain:
-        path: "./certs/web/chain.crt"
-        permission: "0644"
-    post-hooks:
-      on-issuance:
-        command: "systemctl reload nginx"
-        timeout: 30
-      on-renewal:
-        command: "systemctl reload nginx && logger 'Certificate renewed'"
-        timeout: 30
-```
-
-## Post-Event Hooks
-
-Execute custom commands in response to certificate lifecycle events using the `post-hooks` configuration:
+The Infisical Agent supports running custom commands in response to certificate lifecycle events such as issuance, renewal, and failure through the `post-hooks` configuration
+in the agent configuration file.
 
 <Tabs>
   <Tab title="Issuance Hook">
@@ -486,9 +373,9 @@ Execute custom commands in response to certificate lifecycle events using the `p
   </Tab>
 </Tabs>
 
-## Retrying mechanism
+### Retrying mechanism
 
-The Certificate Agent will automatically attempt to retry failed API requests such as authentication, certificate issuance, and renewal operations.
+The Infisical Agent will automatically attempt to retry any failed API requests including authentication, certificate issuance, and renewal operations.
 By default, the agent will retry up to 3 times with a base delay of 200ms and a maximum delay of 5s.
 
 You can configure the retrying mechanism through the agent configuration file:
@@ -503,66 +390,42 @@ infisical:
 # ... rest of the agent configuration file
 ```
 
-#### Certificate Configuration Parameters
+## Example Agent Configuration Files
 
-| Parameter                            | Description                                                                         |
-| ------------------------------------ | ----------------------------------------------------------------------------------- | --- |
-| `profile-name`                       | [Certificate profile](/documentation/platform/pki/certificates/profiles) identifier |
-| `project-slug`                       | Project slug identifier                                                             |
-| `common-name`                        | Certificate common name                                                             |
-| `alt-names`                          | List of alternative names                                                           |
-| `ttl`                                | Certificate validity period                                                         |
-| `key-algorithm`                      | Private key algorithm (RSA_2048, RSA_4096, ECDSA_P256, ECDSA_P384)                  |
-| `signature-algorithm`                | Signature algorithm (RSA-SHA256, RSA-SHA512, ECDSA-SHA256)                          |
-| `key-usages`                         | List of key usage values                                                            |
-| `extended-key-usages`                | List of extended key usage values                                                   |
-| `csr-path`                           | Path to CSR file                                                                    |
-| `file-output.private-key.path`       | Where to store private key                                                          |
-| `file-output.private-key.permission` | File permissions for private key (e.g., "0600")                                     |
-| `file-output.certificate.path`       | Where to store certificate                                                          |
-| `file-output.certificate.permission` | File permissions for certificate (e.g., "0644")                                     |
-| `file-output.chain.path`             | Where to store certificate chain                                                    |
-| `file-output.chain.permission`       | File permissions for chain file (e.g., "0644")                                      |
-| `file-output.chain.omit-root`        | Whether to exclude root certificate from chain                                      |
-| `lifecycle.renew-before-expiry`      | When to renew before expiration                                                     |
-| `lifecycle.status-check-interval`    | How often to check certificate status                                               |     |
-| `post-hooks.on-issuance.command`     | Command to run on certificate issuance                                              |
-| `post-hooks.on-issuance.timeout`     | Timeout for issuance command                                                        |
-| `post-hooks.on-renewal.command`      | Command to run on certificate renewal                                               |
-| `post-hooks.on-renewal.timeout`      | Timeout for renewal command                                                         |
-| `post-hooks.on-failure.command`      | Command to run on operation failure                                                 |
-| `post-hooks.on-failure.timeout`      | Timeout for failure command                                                         |
+Since there are several ways you might want to use the Infisical Agent to request certificates from Infisical,
+we provide a few example configuration files for common use cases below to help you get started.
 
-## Agent configuration file
+### One-Time Certificate Issuance
 
-The Certificate Agent configuration file is a YAML file that defines how the agent should behave. It includes authentication settings, certificate profiles, and operational parameters.
+The code snippet below shows a configuration file that instructs the agent to request a certificate from Infisical
+once without performing any subsequent auto-renewal.
 
-Below is a comprehensive example of a Certificate Agent configuration file:
-
-```yaml example-cert-agent-config.yaml
+```yaml
 version: v1
 
-# Required: Infisical server configuration
+# Infisical server configuration
 infisical:
-  address: "https://app.infisical.com"
+  address: "https://app.infisical.com" # The URL of the Infisical instance (e.g. https://app.infisical.com, https://eu.infisical.com, https://your-self-hosted-instance.com)
   retry-strategy:
     max-retries: 3
     max-delay: "5s"
     base-delay: "200ms"
 
-# Authentication configuration
+# Infisical authentication configuration
 auth:
-  type: "universal-auth"
+  type: "universal-auth" # The authentication method to use (e.g. universal-auth, kubernetes-auth, azure-auth, gcp-id-token, gcp-iam, aws-iam)
   config:
     client-id: "your-client-id"
     client-secret: "your-client-secret"
 
+# Certificate configuration
 certificates:
   - profile-name: "prof-web-server-12345"
     project-slug: "my-project-slug"
-    common-name: "web.company.com"
-    alt-names: ["web.company.com", "www.company.com"]
-    ttl: "90d"
+    common-name: "api.example.com"
+    alt-names:
+      - "api.example.com"
+      - "api-v2.example.com"
     key-algorithm: "RSA_2048"
     signature-algorithm: "RSA-SHA256"
     key-usages:
@@ -570,58 +433,119 @@ certificates:
       - "key_encipherment"
     extended-key-usages:
       - "server_auth"
-
-    # Lifecycle management
-    lifecycle:
-      renew-before-expiry: "30d"
-      status-check-interval: "6h"
-      max-failure-retries: 3
-      failure-retry-interval: "1h"
-
-    # File output configuration
+    ttl: "30d"
     file-output:
       private-key:
-        path: "/etc/ssl/private/web.key"
+        path: "/etc/ssl/private/api.example.com.key"
         permission: "0600"
       certificate:
-        path: "/etc/ssl/certs/web.crt"
+        path: "/etc/ssl/certs/api.example.com.crt"
         permission: "0644"
       chain:
-        path: "/etc/ssl/certs/web-chain.crt"
+        path: "/etc/ssl/certs/api.example.com.chain.crt"
         permission: "0644"
-        omit-root: false # Include root certificate in chain
+        omit-root: true
+```
 
-    # Post-event hooks
+### One-Time Certificate Issuance using a Pre-Generated CSR
+
+The code snippet below shows a configuration file that instructs the agent to request a certificate from Infisical
+once using a pre-generated CSR.
+
+Note that when `csr-path` is specified:
+
+- The `private-key` is omitted from the configuration file because we assume that it is pre-generated and managed externally, with only the CSR being submitted to Infisical for signing.
+- The agent will not be able to perform any auto-renewal operations, as it is assumed to not have access to the private key required to generate a new CSR.
+
+```yaml
+version: v1
+
+# Infisical server configuration
+infisical:
+  address: "https://app.infisical.com" # The URL of the Infisical instance (e.g. https://app.infisical.com, https://eu.infisical.com, https://your-self-hosted-instance.com)
+  retry-strategy:
+    max-retries: 3
+    max-delay: "5s"
+    base-delay: "200ms"
+
+# Infisical authentication configuration
+auth:
+  type: "universal-auth" # The authentication method to use (e.g. universal-auth, kubernetes-auth, azure-auth, gcp-id-token, gcp-iam, aws-iam)
+  config:
+    client-id: "your-client-id"
+    client-secret: "your-client-secret"
+
+# Certificate configuration
+certificates:
+  - profile-name: "prof-web-server-12345"
+    project-slug: "my-project-slug"
+    csr-path: "/etc/ssl/requests/api.csr"
+    file-output:
+      certificate:
+        path: "/etc/ssl/certs/api.example.com.crt"
+        permission: "0644"
+      chain:
+        path: "/etc/ssl/certs/api.example.com.chain.crt"
+        permission: "0644"
+        omit-root: true
+```
+
+### Certificate Issuance with Automatic Renewal
+
+The code snippet below shows a configuration file that instructs the agent to request a certificate from Infisical and continuously renew it 14 days before expiration, checking the certificate status every 6 hours.
+
+```yaml
+version: v1
+
+# Infisical server configuration
+infisical:
+  address: "https://app.infisical.com" # The URL of the Infisical instance (e.g. https://app.infisical.com, https://eu.infisical.com, https://your-self-hosted-instance.com)
+  retry-strategy:
+    max-retries: 3
+    max-delay: "5s"
+    base-delay: "200ms"
+
+# Infisical authentication configuration
+auth:
+  type: "universal-auth" # The authentication method to use (e.g. universal-auth, kubernetes-auth, azure-auth, gcp-id-token, gcp-iam, aws-iam)
+  config:
+    client-id: "your-client-id"
+    client-secret: "your-client-secret"
+
+# Certificate configuration
+certificates:
+  - profile-name: "prof-web-server-12345"
+    project-slug: "my-project-slug"
+    common-name: "api.example.com"
+    alt-names:
+      - "api.example.com"
+      - "api-v2.example.com"
+    key-algorithm: "RSA_2048"
+    signature-algorithm: "RSA-SHA256"
+    key-usages:
+      - "digital_signature"
+      - "key_encipherment"
+    extended-key-usages:
+      - "server_auth"
+    ttl: "30d"
+    lifecycle:
+      renew-before-expiry: "14d" # Renew 14 days before expiration
+      status-check-interval: "6h" # Check certificate status every 6 hours
+    file-output:
+      private-key:
+        path: "/etc/ssl/private/api.example.com.key"
+        permission: "0600"
+      certificate:
+        path: "/etc/ssl/certs/api.example.com.crt"
+        permission: "0644"
+      chain:
+        path: "/etc/ssl/certs/api.example.com.chain.crt"
+        permission: "0644"
     post-hooks:
       on-issuance:
-        command: |
-          echo "Certificate issued for ${CERT_COMMON_NAME}"
-          systemctl reload nginx
+        command: "systemctl reload nginx"
         timeout: 30
-
       on-renewal:
-        command: |
-          echo "Certificate renewed for ${CERT_COMMON_NAME}"
-          systemctl reload nginx
-        timeout: 30
-
-      on-failure:
-        command: |
-          echo "Certificate operation failed: ${ERROR_MESSAGE}"
-          mail -s "Certificate Alert" admin@company.com < /dev/null
+        command: "systemctl reload nginx && logger 'Certificate renewed'"
         timeout: 30
 ```
-
-After defining the agent configuration file, run the command below pointing to the path where the agent configuration file is located.
-
-```bash
-infisical cert-manager agent --config /path/to/your/agent-config.yaml
-```
-
-The agent will start as a daemon process, continuously monitoring and managing certificates according to your configuration. You can also run it in the foreground for debugging:
-
-```bash
-infisical cert-manager agent --config /path/to/your/agent-config.yaml --verbose
-```
-
-For production deployments, consider running the agent as a system service to ensure it starts automatically and runs continuously.
