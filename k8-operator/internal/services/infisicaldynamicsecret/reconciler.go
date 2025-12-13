@@ -57,32 +57,53 @@ func (r *InfisicalDynamicSecretReconciler) createInfisicalManagedKubeSecret(ctx 
 
 	annotations[constants.SECRET_VERSION_ANNOTATION] = versionAnnotationValue
 
-	// create a new secret as specified by the managed secret spec of CRD
-	newKubeSecretInstance := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        infisicalDynamicSecret.Spec.ManagedSecretReference.SecretName,
-			Namespace:   infisicalDynamicSecret.Spec.ManagedSecretReference.SecretNamespace,
-			Annotations: annotations,
-			Labels:      labels,
-		},
-		Type: corev1.SecretType(secretType),
+	// Parse namespaces - supports single or comma-separated list
+	targetNamespaces := parseNamespaces(infisicalDynamicSecret.Spec.ManagedSecretReference.SecretNamespace)
+
+	for _, namespace := range targetNamespaces {
+		newKubeSecretInstance := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        infisicalDynamicSecret.Spec.ManagedSecretReference.SecretName,
+				Namespace:   namespace,
+				Annotations: annotations,
+				Labels:      labels,
+			},
+			Type: corev1.SecretType(secretType),
+		}
+
+		if infisicalDynamicSecret.Spec.ManagedSecretReference.CreationPolicy == "Owner" {
+			if namespace == infisicalDynamicSecret.Namespace {
+				err := ctrl.SetControllerReference(&infisicalDynamicSecret, newKubeSecretInstance, r.Scheme)
+				if err != nil {
+					logger.Error(err, "failed to set controller reference for secret", "namespace", namespace)
+					return err
+				}
+			} else {
+				logger.Info("Skipping owner reference for cross-namespace secret", "secretNamespace", namespace, "crdNamespace", infisicalDynamicSecret.Namespace)
+			}
+		}
+
+		err := r.Client.Create(ctx, newKubeSecretInstance)
+		if err != nil {
+			return fmt.Errorf("unable to create the managed Kubernetes secret : %w", err)
+		}
+
+		logger.Info(fmt.Sprintf("Successfully created a managed Kubernetes secret. [type: %s]", secretType))
 	}
 
-	if infisicalDynamicSecret.Spec.ManagedSecretReference.CreationPolicy == "Owner" {
-		// Set InfisicalSecret instance as the owner and controller of the managed secret
-		err := ctrl.SetControllerReference(&infisicalDynamicSecret, newKubeSecretInstance, r.Scheme)
-		if err != nil {
-			return err
+	return nil
+}
+
+func parseNamespaces(namespaceStr string) []string {
+	namespaces := strings.Split(namespaceStr, ",")
+	result := make([]string, 0, len(namespaces))
+	for _, ns := range namespaces {
+		trimmed := strings.TrimSpace(ns)
+		if trimmed != "" {
+			result = append(result, trimmed)
 		}
 	}
-
-	err := r.Client.Create(ctx, newKubeSecretInstance)
-	if err != nil {
-		return fmt.Errorf("unable to create the managed Kubernetes secret : %w", err)
-	}
-
-	logger.Info(fmt.Sprintf("Successfully created a managed Kubernetes secret. [type: %s]", secretType))
-	return nil
+	return result
 }
 
 func (r *InfisicalDynamicSecretReconciler) getResourceVariables(infisicalDynamicSecret v1alpha1.InfisicalDynamicSecret, resourceVariablesMap map[string]util.ResourceVariables) util.ResourceVariables {

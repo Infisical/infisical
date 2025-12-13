@@ -59,12 +59,23 @@ spec:
   managedSecretReference:
     # The name of managed Kubernetes secret that should be created
     secretName: infisical-managed-secret
-    # The namespace the managed secret should be installed in
+    # The namespace(s) the managed secret should be installed in
+    # Single namespace: "default"
+    # Multiple namespaces: "ns1,ns2,ns3"
     secretNamespace: default
 EOF
 ```
 
 ### Managed secrets
+
+Latest stable version, no breaking changes
+
+**Multi-namespace support:** You can now create secrets in multiple namespaces by providing a comma-separated list:
+```yaml
+managedSecretReference:
+  secretName: infisical-managed-secret
+  secretNamespace: namespace1,namespace2,namespace3
+```
 
 #### Methods
 
