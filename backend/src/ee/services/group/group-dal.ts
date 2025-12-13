@@ -135,10 +135,10 @@ export const groupDALFactory = (db: TDbClient) => {
 
       switch (filter) {
         case FilterReturnedUsers.EXISTING_MEMBERS:
-          void query.andWhere(`${TableName.UserGroupMembership}.createdAt`, "is not", null);
+          void query.whereNotNull(`${TableName.UserGroupMembership}.createdAt`);
           break;
         case FilterReturnedUsers.NON_MEMBERS:
-          void query.andWhere(`${TableName.UserGroupMembership}.createdAt`, "is", null);
+          void query.whereNull(`${TableName.UserGroupMembership}.createdAt`);
           break;
         default:
           break;
@@ -225,10 +225,10 @@ export const groupDALFactory = (db: TDbClient) => {
 
       switch (filter) {
         case FilterReturnedMachineIdentities.ASSIGNED_MACHINE_IDENTITIES:
-          void query.andWhere(`${TableName.IdentityGroupMembership}.createdAt`, "is not", null);
+          void query.whereNotNull(`${TableName.IdentityGroupMembership}.createdAt`);
           break;
         case FilterReturnedMachineIdentities.NON_ASSIGNED_MACHINE_IDENTITIES:
-          void query.andWhere(`${TableName.IdentityGroupMembership}.createdAt`, "is", null);
+          void query.whereNull(`${TableName.IdentityGroupMembership}.createdAt`);
           break;
         default:
           break;
@@ -327,9 +327,6 @@ export const groupDALFactory = (db: TDbClient) => {
           db.raw(
             `CASE WHEN "${TableName.Membership}"."actorUserId" IS NOT NULL THEN 'user' ELSE 'machineIdentity' END as "member_type"`
           ),
-          db.raw(
-            `COALESCE(NULLIF(TRIM(CONCAT_WS(' ', "${TableName.Users}"."firstName", "${TableName.Users}"."lastName")), ''), "${TableName.Users}"."username", "${TableName.Users}"."email", "${TableName.Identity}"."name") as "sortName"`
-          ),
           db.raw(`count(*) OVER() as total_count`)
         );
 
@@ -362,6 +359,9 @@ export const groupDALFactory = (db: TDbClient) => {
 
       if (orderBy === GroupMembersOrderBy.Name) {
         const orderDirectionClause = orderDirection === OrderByDirection.ASC ? "ASC" : "DESC";
+
+        // This order by clause is used to sort the members by name.
+        // It first checks if the full name (first name and last name) is not empty, then the username, then the email, then the identity name. If all of these are empty, it returns null.
         void query.orderByRaw(
           `LOWER(COALESCE(NULLIF(TRIM(CONCAT_WS(' ', "${TableName.Users}"."firstName", "${TableName.Users}"."lastName")), ''), "${TableName.Users}"."username", "${TableName.Users}"."email", "${TableName.Identity}"."name")) ${orderDirectionClause}`
         );
