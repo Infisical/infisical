@@ -1,0 +1,267 @@
+---
+title: "SSH"
+sidebarTitle: "SSH"
+description: "Learn how to configure SSH server access through Infisical PAM with support for password, key-based, and certificate-based authentication."
+---
+
+Infisical PAM supports secure, just-in-time access to SSH servers. This allows your team to access Linux/Unix servers without sharing static credentials, while maintaining a complete audit trail of all sessions.
+
+## How It Works
+
+SSH access in Infisical PAM uses a Gateway deployed in your network to establish secure connections to your servers. The Gateway acts as a bridge between Infisical and your private infrastructure.
+
+```mermaid
+sequenceDiagram
+    participant CLI as Infisical CLI
+    participant Gateway
+    participant Infisical
+    participant SSH as SSH Server
+
+    CLI->>Infisical: Request session (authenticate)
+    Infisical-->>CLI: Session ID + Gateway connection details
+    CLI->>Gateway: Connect via secure tunnel
+    Gateway->>Infisical: Fetch credentials for session
+    Infisical-->>Gateway: Return credentials
+    Gateway->>SSH: Connect with credentials
+    SSH-->>Gateway: Session established
+    Gateway-->>CLI: Proxied SSH session
+```
+
+## Authentication Methods
+
+Infisical PAM supports three authentication methods for SSH:
+
+| Method | Description | Use Case |
+|--------|-------------|----------|
+| **Password** | Traditional username/password authentication | Legacy systems, simple setups |
+| **SSH Key** | Public key authentication with a private key | Standard secure access |
+| **Certificate** | SSH certificates signed by a CA | Zero-trust, ephemeral credentials |
+
+### Certificate-Based Authentication
+
+Certificate-based authentication is the most secure option. Instead of storing static credentials, Infisical generates short-lived SSH certificates on-demand for each session.
+
+**Benefits:**
+- **No static credentials**: Certificates are generated per-session and expire automatically
+- **Centralized trust**: Servers trust the Infisical CA, not individual keys
+- **Simplified key management**: No need to distribute or rotate SSH keys
+- **Audit trail**: Each certificate is tied to a specific user and session
+
+```mermaid
+sequenceDiagram
+    participant CLI as Infisical CLI
+    participant Gateway
+    participant Infisical
+    participant SSH as SSH Server
+
+    CLI->>Infisical: Request session (authenticate)
+    Infisical-->>CLI: Session ID + Gateway connection details
+    CLI->>Gateway: Connect via secure tunnel
+    Gateway->>Infisical: Fetch credentials for session
+    Infisical->>Infisical: Generate key pair + sign certificate
+    Infisical-->>Gateway: Return private key + certificate
+    Gateway->>SSH: Connect with certificate
+    SSH->>SSH: Verify certificate against CA
+    SSH-->>Gateway: Session established
+    Gateway-->>CLI: Proxied SSH session
+```
+
+## Prerequisites
+
+Before configuring SSH access in Infisical PAM, ensure you have:
+
+1. **An Infisical Gateway** deployed in the same network as your SSH servers
+2. **Network connectivity** from the Gateway to your SSH servers on port 22 (or custom SSH port)
+3. **SSH server credentials** (password, private key, or CA setup for certificate auth)
+
+## Create the PAM Resource
+
+The PAM Resource represents the SSH server you want to protect.
+
+<Steps>
+  <Step title="Navigate to Resources">
+    Go to your PAM project and click on the **Resources** tab.
+  </Step>
+
+  <Step title="Add SSH Resource">
+    Click **Add Resource** and select **SSH**.
+  </Step>
+
+  <Step title="Configure Connection Details">
+    Fill in the connection details:
+
+    <ParamField path="Name" type="string" required>
+      A friendly name for this resource (e.g., `production-server`, `bastion-host`)
+    </ParamField>
+
+    <ParamField path="Gateway" type="string" required>
+      Select the Gateway that has network access to this SSH server
+    </ParamField>
+
+    <ParamField path="Host" type="string" required>
+      The hostname or IP address of the SSH server (e.g., `192.168.1.100` or `server.internal.example.com`)
+    </ParamField>
+
+    <ParamField path="Port" type="number" required>
+      The SSH port (default: `22`)
+    </ParamField>
+  </Step>
+
+  <Step title="Create the Resource">
+    Click **Create Resource**. Infisical will validate that the Gateway can reach the SSH server.
+  </Step>
+</Steps>
+
+## Create PAM Accounts
+
+A PAM Account represents a specific user account on the SSH server. You can create multiple accounts per resource with different authentication methods.
+
+### Password Authentication
+
+<Steps>
+  <Step title="Navigate to Accounts">
+    Go to the **Accounts** tab in your PAM project.
+  </Step>
+
+  <Step title="Add Account">
+    Click **Add Account** and select your SSH resource.
+  </Step>
+
+  <Step title="Configure Password Auth">
+    <ParamField path="Name" type="string" required>
+      A friendly name for this account (e.g., `ubuntu-admin`, `deploy-user`)
+    </ParamField>
+
+    <ParamField path="Authentication Method" type="string" required>
+      Select **Password**
+    </ParamField>
+
+    <ParamField path="Username" type="string" required>
+      The SSH username on the server
+    </ParamField>
+
+    <ParamField path="Password" type="string" required>
+      The SSH password for this user
+    </ParamField>
+  </Step>
+</Steps>
+
+### SSH Key Authentication
+
+<Steps>
+  <Step title="Add Account">
+    Click **Add Account** and select your SSH resource.
+  </Step>
+
+  <Step title="Configure Key Auth">
+    <ParamField path="Name" type="string" required>
+      A friendly name for this account
+    </ParamField>
+
+    <ParamField path="Authentication Method" type="string" required>
+      Select **SSH Key**
+    </ParamField>
+
+    <ParamField path="Username" type="string" required>
+      The SSH username on the server
+    </ParamField>
+
+    <ParamField path="Private Key" type="string" required>
+      The private key in OpenSSH format (begins with `-----BEGIN OPENSSH PRIVATE KEY-----`)
+    </ParamField>
+  </Step>
+</Steps>
+
+### Certificate Authentication
+
+Certificate authentication requires additional setup on your SSH server to trust the Infisical CA.
+
+<Steps>
+  <Step title="Configure the SSH Server">
+    Before creating the account, you need to configure your SSH server to trust certificates signed by Infisical.
+
+    Run the following command on your SSH server (requires root/sudo):
+
+    ```bash
+    curl -H "Authorization: Bearer <YOUR_TOKEN>" \
+      "https://app.infisical.com/api/v1/pam/resources/ssh/<RESOURCE_ID>/ssh-ca-setup" \
+      | sudo bash
+    ```
+
+    This script will:
+    1. Download the CA public key for your SSH resource
+    2. Save it to `/etc/ssh/infisical_ca.pub`
+    3. Add `TrustedUserCAKeys /etc/ssh/infisical_ca.pub` to `/etc/ssh/sshd_config`
+    4. Validate and restart the SSH service
+
+    <Info>
+      **First-time setup**: The CA key pair is generated automatically when you first call the setup endpoint. Subsequent calls will return the same CA public key.
+    </Info>
+
+    <Warning>
+      **Manual setup**: If you prefer to configure the server manually, you can download just the CA public key and configure sshd yourself:
+      
+      1. Add to `/etc/ssh/sshd_config`:
+         ```
+         TrustedUserCAKeys /etc/ssh/infisical_ca.pub
+         ```
+      2. Restart sshd: `sudo systemctl restart sshd`
+    </Warning>
+  </Step>
+
+  <Step title="Add Account in Infisical">
+    <ParamField path="Name" type="string" required>
+      A friendly name for this account
+    </ParamField>
+
+    <ParamField path="Authentication Method" type="string" required>
+      Select **Certificate**
+    </ParamField>
+
+    <ParamField path="Username" type="string" required>
+      The SSH username that the certificate will be issued for. This user must exist on the SSH server.
+    </ParamField>
+
+    <Note>
+      Unlike password or key authentication, you don't need to provide any credentials. Infisical will generate a new key pair and certificate for each session.
+    </Note>
+  </Step>
+</Steps>
+
+## Access SSH Servers
+
+Once your resource and accounts are configured, users can access SSH servers through the Infisical CLI.
+
+<Steps>
+  <Step title="Install the CLI">
+    If you haven't already, install the Infisical CLI:
+
+    ```bash
+    # macOS
+    brew install infisical/get-cli/infisical
+
+    # Linux
+    curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' | sudo -E bash
+    sudo apt-get install infisical
+    ```
+  </Step>
+
+  <Step title="Login to Infisical">
+    ```bash
+    infisical login
+    ```
+  </Step>
+
+  <Step title="Connect to SSH Server">
+    ```bash
+    infisical pam ssh access-account <account-path> --project-id <project-id> --duration <duration>
+    ```
+
+    For example:
+    ```bash
+    infisical pam ssh access-account /production-server/ubuntu-admin --project-id 00000000-0000-0000-0000-000000000000 --duration 1h
+    ```
+
+    This will establish a secure SSH session through the Gateway. For certificate authentication, Infisical automatically generates the credentials before connecting.
+  </Step>
+</Steps>
