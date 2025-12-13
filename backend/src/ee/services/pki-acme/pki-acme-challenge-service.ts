@@ -4,6 +4,7 @@ import axios, { AxiosError } from "axios";
 
 import { TPkiAcmeChallenges } from "@app/db/schemas/pki-acme-challenges";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { logger } from "@app/lib/logger";
@@ -124,9 +125,11 @@ export const pkiAcmeChallengeServiceFactory = ({
     const recordValues = records.map((chunks) => chunks.join(""));
 
     const thumbprint = challenge.auth.account.publicKeyThumbprint;
-    const expectedChallengeResponseBody = `${challenge.auth.token}.${thumbprint}`;
+    const keyAuthorization = `${challenge.auth.token}.${thumbprint}`;
+    const digest = crypto.nativeCrypto.createHash("sha256").update(keyAuthorization).digest();
+    const expectedChallengeResponseValue = Buffer.from(digest).toString("base64url");
 
-    if (!recordValues.some((recordValue) => recordValue.trim() === expectedChallengeResponseBody)) {
+    if (!recordValues.some((recordValue) => recordValue.trim() === expectedChallengeResponseValue)) {
       throw new AcmeIncorrectResponseError({ message: "ACME DNS-01 challenge response is not correct" });
     }
   };
