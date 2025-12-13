@@ -707,15 +707,17 @@ export const pkiAcmeServiceFactory = ({
             tx
           );
           if (!skipDnsOwnershipVerification) {
-            // TODO: support other challenge types here. Currently only HTTP-01 is supported.
-            await acmeChallengeDAL.create(
-              {
-                authId: auth.id,
-                status: AcmeChallengeStatus.Pending,
-                type: AcmeChallengeType.HTTP_01
-              },
-              tx
-            );
+            for (const challengeType of [AcmeChallengeType.HTTP_01, AcmeChallengeType.DNS_01]) {
+              // eslint-disable-next-line no-await-in-loop
+              await acmeChallengeDAL.create(
+                {
+                  authId: auth.id,
+                  status: AcmeChallengeStatus.Pending,
+                  type: challengeType
+                },
+                tx
+              );
+            }
           }
           return auth;
         })

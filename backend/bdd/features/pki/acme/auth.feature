@@ -20,12 +20,16 @@ Feature: Authorization
       """
         [
           {
+            "type": "dns-01",
+            "status": "pending"
+          },
+          {
             "type": "http-01",
             "status": "pending"
           }
         ]
       """
-    And the value order.authorizations[0].body with jq ".challenges | map(.status) | sort" should be equal to ["pending"]
+    And the value order.authorizations[0].body with jq ".challenges | map(.status) | sort" should be equal to ["pending", "pending"]
     And the value order.authorizations[0].body with jq ".identifier" should be equal to json
       """
       {
