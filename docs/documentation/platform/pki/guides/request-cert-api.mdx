@@ -1,0 +1,81 @@
+---
+title: "Request a Certificate via API"
+---
+
+import RequestCertSetup from "/snippets/documentation/platform/pki/guides/request-cert-setup.mdx";
+
+The [API enrollment method](/documentation/platform/pki/enrollment-methods/api) lets clients programmatically request TLS and other X.509 certificates from Infisical.
+
+## Diagram
+
+The following sequence diagram illustrates the certificate issuance workflow for requesting a certificate via API from Infisical.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Client as Client
+  participant Infis as Infisical
+  participant CA as CA<br/>(Internal or External)
+
+  alt Issue Certificate
+    Client->>Infis: POST /issue-certificate<br/>(profileId, subject/SANs, ttl,<br/>key usages, etc.)
+  else Sign Certificate
+    Client->>Infis: POST /sign-certificate<br/>(profileId, CSR, ttl)
+  end
+
+  Infis->>Infis: Look up certificate profile<br/>(by profileId)
+  Infis->>Infis: Validate request or CSR<br/>against template constraints<br/>(CN/SAN rules, key usages, max TTL, etc.)
+
+  alt Issue Certificate - Issuer Type = Self-Signed
+    Infis->>Infis: Generate keypair<br/>and self-sign certificate
+  else Issue/Sign Certificate - Issuer Type = Internal CA
+    Infis->>CA: Request certificate issuance<br/>(CSR)
+    CA-->>Infis: Signed certificate<br/>(+ chain)
+  end
+
+  Infis-->>Client: Return certificate, certificate chain,<br/>issuing CA certificate, serial number,<br/>certificate ID<br/>(and private key if server-generated)
+```
+
+## Guide
+
+In the following steps, we explore an end-to-end workflow for requesting a certificate via API from Infisical.
+
+<Steps>
+  <RequestCertSetup />
+  <Step title="Create a certificate profile">
+    Next, follow the guide [here](/documentation/platform/pki/certificates/profiles#guide-to-creating-a-certificate-profile) to create a [certificate profile](/documentation/platform/pki/certificates/profiles)
+    that will be referenced when requesting a certificate.
+    
+    The certificate profile specifies which certificate template and issuing CA should be used to validate an incoming certificate request and issue a certificate;
+    it also specifies the [enrollment method](/documentation/platform/pki/enrollment-methods/overview) for how certificates can be requested against this profile
+    to begin with.
+    
+    You should specify the certificate template from Step 2, the issuing CA from Step 1, and the **API** option in the **Enrollment Method** dropdown when creating the certificate profile.
+
+    <Note>
+        Note that if you're looking to issue self-signed certificates, you should select the **Self-Signed** option in the **Issuer Type** dropdown when creating the certificate profile.
+    </Note>
+
+  </Step>
+  <Step title="Request a certificate">
+    Finally, follow the guide [here](/documentation/platform/pki/enrollment-methods/api#guide-to-certificate-enrollment-via-api) to request a certificate against the certificate profile
+    over the Web UI or by making an API request to either the [Issue Certificate](/api-reference/endpoints/certificates/issue-certificate) API endpoint or the [Sign Certificate](/api-reference/endpoints/certificates/sign-certificate) API endpoint
+    with a Certificate Signing Request (CSR).
+    
+    To renew a certificate on the client-side, you have two options:
+
+    - Make a request to issue a new certificate against the same [Issue Certificate](/api-reference/endpoints/certificates/issue-certificate) API endpoint.
+    - Make a request to the [Renew Certificate](/api-reference/endpoints/certificates/renew) API endpoint with the ID of the certificate you wish to renew. Note that this endpoint only works if the original certificate was issued through the [Issue Certificate](/api-reference/endpoints/certificates/issue-certificate) API endpoint.
+
+    <Note>
+        We recommend reading the guide [here](/documentation/platform/pki/certificates/certificates#guide-to-renewing-certificates) to learn more about all the ways to renew a certificate
+        with Infisical including [server-driven certificate renewal](/documentation/platform/pki/certificates/certificates#server-driven-certificate-renewal).
+    </Note>
+
+  </Step>
+</Steps>
+
+Note that depending on your environment and infrastructure use-case, you may wish to use a different [enrollment method](/documentation/platform/pki/enrollment-methods/overview) to request certificates.
+
+For more automated certificate management, you may wish to request certificates using a client that can monitor expiring certificates and request renewals for you.
+For example, you can install the Infisical Agent on a VM and have it request and renew certificates for you or use an [ACME client](https://letsencrypt.org/docs/client-options/) paired with Infisical's [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme).

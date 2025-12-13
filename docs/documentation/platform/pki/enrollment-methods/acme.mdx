@@ -6,7 +6,9 @@ sidebarTitle: "ACME"
 ## Concept
 
 The ACME enrollment method allows Infisical to act as an ACME server. It lets you request and manage certificates against a specific [certificate profile](/documentation/platform/pki/certificates/profiles) using the [ACME protocol](https://en.wikipedia.org/wiki/Automatic_Certificate_Management_Environment).
-This method is suitable for web servers, load balancers, and other general-purpose servers that can run an [ACME client](https://letsencrypt.org/docs/client-options/) for automated certificate management.
+
+This method is suitable for web servers, load balancers, and other general-purpose servers that can run an [ACME client](https://letsencrypt.org/docs/client-options/) for automated certificate management;
+it can also be used with [cert-manager](https://cert-manager.io/) to issue and renew certificates for Kubernetes workloads through the [ACME issuer type](https://cert-manager.io/docs/configuration/acme/).
 
 Infisical's ACME enrollment method is based on [RFC 8555](https://datatracker.ietf.org/doc/html/rfc8555/).
 
