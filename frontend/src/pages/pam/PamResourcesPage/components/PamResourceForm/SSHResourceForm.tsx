@@ -45,7 +45,7 @@ export const SSHResourceForm = ({ resource, onSubmit }: Props) => {
     setSetupSshCaCommand(
       `curl -H "Authorization: Bearer ${getAuthToken()}" "${siteURL}/api/v1/pam/resources/ssh/${resource?.id}/ssh-ca-setup" | sudo bash`
     );
-  }, [getAuthToken, siteURL, resource]);
+  }, [siteURL, resource]);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
