@@ -36,6 +36,7 @@ import {
   CaCertificatesSection,
   CaCrlsSection,
   CaDetailsSection,
+  CaGenerateRootCertModal,
   CaRenewalModal
 } from "./components";
 
@@ -60,7 +61,8 @@ const Page = () => {
     "ca",
     "deleteCa",
     "installCaCert",
-    "renewCa"
+    "renewCa",
+    "generateRootCaCert"
   ] as const);
 
   const onRemoveCaSubmit = async () => {
@@ -168,6 +170,7 @@ const Page = () => {
       <CaModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaInstallCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <CaGenerateRootCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteCa.isOpen}
         title={`Are you sure you want to remove the CA ${
