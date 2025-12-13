@@ -9,7 +9,7 @@ import {
   TemporaryPermissionMode,
   UsersSchema
 } from "@app/db/schemas";
-import { EFilterReturnedUsers } from "@app/ee/services/group/group-types";
+import { FilterReturnedUsers } from "@app/ee/services/group/group-types";
 import { ApiDocsTags, GROUPS, PROJECTS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { isUuidV4 } from "@app/lib/validator";
@@ -355,9 +355,10 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      hide: true,
+      deprecated: true,
       tags: [ApiDocsTags.ProjectGroups],
-      description: "Return project group users",
+      description: "Return project group users (Deprecated: Use /api/v1/groups/{id}/users instead)",
       params: z.object({
         projectId: z.string().trim().describe(GROUPS.LIST_USERS.projectId),
         groupId: z.string().trim().describe(GROUPS.LIST_USERS.id)
@@ -367,7 +368,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
         limit: z.coerce.number().min(1).max(100).default(10).describe(GROUPS.LIST_USERS.limit),
         username: z.string().trim().optional().describe(GROUPS.LIST_USERS.username),
         search: z.string().trim().optional().describe(GROUPS.LIST_USERS.search),
-        filter: z.nativeEnum(EFilterReturnedUsers).optional().describe(GROUPS.LIST_USERS.filterUsers)
+        filter: z.nativeEnum(FilterReturnedUsers).optional().describe(GROUPS.LIST_USERS.filterUsers)
       }),
       response: {
         200: z.object({

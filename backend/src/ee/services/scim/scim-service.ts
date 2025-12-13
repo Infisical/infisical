@@ -72,7 +72,7 @@ type TScimServiceFactoryDep = {
     TGroupDALFactory,
     | "create"
     | "findOne"
-    | "findAllGroupPossibleMembers"
+    | "findAllGroupPossibleUsers"
     | "delete"
     | "findGroups"
     | "transaction"
@@ -952,7 +952,7 @@ export const scimServiceFactory = ({
     }
 
     const users = await groupDAL
-      .findAllGroupPossibleMembers({
+      .findAllGroupPossibleUsers({
         orgId: group.orgId,
         groupId: group.id
       })

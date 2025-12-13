@@ -31,7 +31,7 @@ import {
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useListGroupProjects } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { EFilterReturnedProjects } from "@app/hooks/api/groups/types";
+import { FilterReturnedProjects } from "@app/hooks/api/groups/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { GroupProjectRow } from "./GroupProjectRow";
@@ -78,7 +78,7 @@ export const GroupProjectsTable = ({ groupId, groupSlug, handlePopUpOpen }: Prop
     search: debouncedSearch,
     orderBy,
     orderDirection,
-    filter: EFilterReturnedProjects.ASSIGNED_PROJECTS
+    filter: FilterReturnedProjects.ASSIGNED_PROJECTS
   });
 
   const totalCount = groupMemberships?.totalCount ?? 0;

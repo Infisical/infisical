@@ -27,7 +27,7 @@ import {
   useAddGroupToWorkspace as useAddProjectToGroup,
   useListGroupProjects
 } from "@app/hooks/api";
-import { EFilterReturnedProjects } from "@app/hooks/api/groups/types";
+import { FilterReturnedProjects } from "@app/hooks/api/groups/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -57,7 +57,7 @@ export const AddGroupProjectModal = ({ popUp, handlePopUpToggle }: Props) => {
     offset,
     limit: perPage,
     search: debouncedSearch,
-    filter: EFilterReturnedProjects.UNASSIGNED_PROJECTS
+    filter: FilterReturnedProjects.UNASSIGNED_PROJECTS
   });
 
   const { totalCount = 0 } = data ?? {};

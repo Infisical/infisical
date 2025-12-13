@@ -6,7 +6,14 @@ import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 
-import { EFilterReturnedProjects, EFilterReturnedUsers, EGroupProjectsOrderBy } from "./group-types";
+import {
+  FilterMemberType,
+  FilterReturnedMachineIdentities,
+  FilterReturnedProjects,
+  FilterReturnedUsers,
+  GroupMembersOrderBy,
+  GroupProjectsOrderBy
+} from "./group-types";
 
 export type TGroupDALFactory = ReturnType<typeof groupDALFactory>;
 
@@ -70,7 +77,7 @@ export const groupDALFactory = (db: TDbClient) => {
   };
 
   // special query
-  const findAllGroupPossibleMembers = async ({
+  const findAllGroupPossibleUsers = async ({
     orgId,
     groupId,
     offset = 0,
@@ -85,7 +92,7 @@ export const groupDALFactory = (db: TDbClient) => {
     limit?: number;
     username?: string;
     search?: string;
-    filter?: EFilterReturnedUsers;
+    filter?: FilterReturnedUsers;
   }) => {
     try {
       const query = db
@@ -127,11 +134,11 @@ export const groupDALFactory = (db: TDbClient) => {
       }
 
       switch (filter) {
-        case EFilterReturnedUsers.EXISTING_MEMBERS:
-          void query.andWhere(`${TableName.UserGroupMembership}.createdAt`, "is not", null);
+        case FilterReturnedUsers.EXISTING_MEMBERS:
+          void query.whereNotNull(`${TableName.UserGroupMembership}.createdAt`);
           break;
-        case EFilterReturnedUsers.NON_MEMBERS:
-          void query.andWhere(`${TableName.UserGroupMembership}.createdAt`, "is", null);
+        case FilterReturnedUsers.NON_MEMBERS:
+          void query.whereNull(`${TableName.UserGroupMembership}.createdAt`);
           break;
         default:
           break;
@@ -155,7 +162,7 @@ export const groupDALFactory = (db: TDbClient) => {
             username: memberUsername,
             firstName,
             lastName,
-            isPartOfGroup: !!memberGroupId,
+            isPartOfGroup: Boolean(memberGroupId),
             joinedGroupAt
           })
         ),
@@ -164,6 +171,256 @@ export const groupDALFactory = (db: TDbClient) => {
       };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all user group members" });
+    }
+  };
+
+  const findAllGroupPossibleMachineIdentities = async ({
+    orgId,
+    groupId,
+    offset = 0,
+    limit,
+    search,
+    filter
+  }: {
+    orgId: string;
+    groupId: string;
+    offset?: number;
+    limit?: number;
+    search?: string;
+    filter?: FilterReturnedMachineIdentities;
+  }) => {
+    try {
+      const query = db
+        .replicaNode()(TableName.Membership)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+        .whereNull(`${TableName.Identity}.projectId`)
+        .join(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
+        .leftJoin(TableName.IdentityGroupMembership, (bd) => {
+          bd.on(`${TableName.IdentityGroupMembership}.identityId`, "=", `${TableName.Identity}.id`).andOn(
+            `${TableName.IdentityGroupMembership}.groupId`,
+            "=",
+            db.raw("?", [groupId])
+          );
+        })
+        .select(
+          db.ref("id").withSchema(TableName.Membership),
+          db.ref("groupId").withSchema(TableName.IdentityGroupMembership),
+          db.ref("createdAt").withSchema(TableName.IdentityGroupMembership).as("joinedGroupAt"),
+          db.ref("name").withSchema(TableName.Identity),
+          db.ref("id").withSchema(TableName.Identity).as("identityId"),
+          db.raw(`count(*) OVER() as total_count`)
+        )
+        .offset(offset)
+        .orderBy("name", "asc");
+
+      if (limit) {
+        void query.limit(limit);
+      }
+
+      if (search) {
+        void query.andWhereRaw(`LOWER("${TableName.Identity}"."name") ilike ?`, `%${search}%`);
+      }
+
+      switch (filter) {
+        case FilterReturnedMachineIdentities.ASSIGNED_MACHINE_IDENTITIES:
+          void query.whereNotNull(`${TableName.IdentityGroupMembership}.createdAt`);
+          break;
+        case FilterReturnedMachineIdentities.NON_ASSIGNED_MACHINE_IDENTITIES:
+          void query.whereNull(`${TableName.IdentityGroupMembership}.createdAt`);
+          break;
+        default:
+          break;
+      }
+
+      const machineIdentities = await query;
+
+      return {
+        machineIdentities: machineIdentities.map(({ name, identityId, joinedGroupAt, groupId: identityGroupId }) => ({
+          id: identityId,
+          name,
+          isPartOfGroup: Boolean(identityGroupId),
+          joinedGroupAt
+        })),
+        // @ts-expect-error col select is raw and not strongly typed
+        totalCount: Number(machineIdentities?.[0]?.total_count ?? 0)
+      };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find all group identities" });
+    }
+  };
+
+  const findAllGroupPossibleMembers = async ({
+    orgId,
+    groupId,
+    offset = 0,
+    limit,
+    search,
+    orderBy = GroupMembersOrderBy.Name,
+    orderDirection = OrderByDirection.ASC,
+    memberTypeFilter
+  }: {
+    orgId: string;
+    groupId: string;
+    offset?: number;
+    limit?: number;
+    search?: string;
+    orderBy?: GroupMembersOrderBy;
+    orderDirection?: OrderByDirection;
+    memberTypeFilter?: FilterMemberType[];
+  }) => {
+    try {
+      const includeUsers =
+        !memberTypeFilter || memberTypeFilter.length === 0 || memberTypeFilter.includes(FilterMemberType.USERS);
+      const includeMachineIdentities =
+        !memberTypeFilter ||
+        memberTypeFilter.length === 0 ||
+        memberTypeFilter.includes(FilterMemberType.MACHINE_IDENTITIES);
+
+      const query = db
+        .replicaNode()(TableName.Membership)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .leftJoin(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
+        .leftJoin(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
+        .leftJoin(TableName.UserGroupMembership, (bd) => {
+          bd.on(`${TableName.UserGroupMembership}.userId`, "=", `${TableName.Users}.id`).andOn(
+            `${TableName.UserGroupMembership}.groupId`,
+            "=",
+            db.raw("?", [groupId])
+          );
+        })
+        .leftJoin(TableName.IdentityGroupMembership, (bd) => {
+          bd.on(`${TableName.IdentityGroupMembership}.identityId`, "=", `${TableName.Identity}.id`).andOn(
+            `${TableName.IdentityGroupMembership}.groupId`,
+            "=",
+            db.raw("?", [groupId])
+          );
+        })
+        .where((qb) => {
+          void qb
+            .where((innerQb) => {
+              void innerQb
+                .whereNotNull(`${TableName.Membership}.actorUserId`)
+                .whereNotNull(`${TableName.UserGroupMembership}.createdAt`)
+                .where(`${TableName.Users}.isGhost`, false);
+            })
+            .orWhere((innerQb) => {
+              void innerQb
+                .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+                .whereNotNull(`${TableName.IdentityGroupMembership}.createdAt`)
+                .whereNull(`${TableName.Identity}.projectId`);
+            });
+        })
+        .select(
+          db.raw(
+            `CASE WHEN "${TableName.Membership}"."actorUserId" IS NOT NULL THEN "${TableName.UserGroupMembership}"."createdAt" ELSE "${TableName.IdentityGroupMembership}"."createdAt" END as "joinedGroupAt"`
+          ),
+          db.ref("email").withSchema(TableName.Users),
+          db.ref("username").withSchema(TableName.Users),
+          db.ref("firstName").withSchema(TableName.Users),
+          db.ref("lastName").withSchema(TableName.Users),
+          db.raw(`"${TableName.Users}"."id"::text as "userId"`),
+          db.raw(`"${TableName.Identity}"."id"::text as "identityId"`),
+          db.ref("name").withSchema(TableName.Identity).as("identityName"),
+          db.raw(
+            `CASE WHEN "${TableName.Membership}"."actorUserId" IS NOT NULL THEN 'user' ELSE 'machineIdentity' END as "member_type"`
+          ),
+          db.raw(`count(*) OVER() as total_count`)
+        );
+
+      void query.andWhere((qb) => {
+        if (includeUsers) {
+          void qb.whereNotNull(`${TableName.Membership}.actorUserId`);
+        }
+
+        if (includeMachineIdentities) {
+          void qb[includeUsers ? "orWhere" : "where"]((innerQb) => {
+            void innerQb.whereNotNull(`${TableName.Membership}.actorIdentityId`);
+          });
+        }
+
+        if (!includeUsers && !includeMachineIdentities) {
+          void qb.whereRaw("FALSE");
+        }
+      });
+
+      if (search) {
+        void query.andWhere((qb) => {
+          void qb
+            .whereRaw(
+              `CONCAT_WS(' ', "${TableName.Users}"."firstName", "${TableName.Users}"."lastName", lower("${TableName.Users}"."username")) ilike ?`,
+              [`%${search}%`]
+            )
+            .orWhereRaw(`LOWER("${TableName.Identity}"."name") ilike ?`, [`%${search}%`]);
+        });
+      }
+
+      if (orderBy === GroupMembersOrderBy.Name) {
+        const orderDirectionClause = orderDirection === OrderByDirection.ASC ? "ASC" : "DESC";
+
+        // This order by clause is used to sort the members by name.
+        // It first checks if the full name (first name and last name) is not empty, then the username, then the email, then the identity name. If all of these are empty, it returns null.
+        void query.orderByRaw(
+          `LOWER(COALESCE(NULLIF(TRIM(CONCAT_WS(' ', "${TableName.Users}"."firstName", "${TableName.Users}"."lastName")), ''), "${TableName.Users}"."username", "${TableName.Users}"."email", "${TableName.Identity}"."name")) ${orderDirectionClause}`
+        );
+      }
+
+      if (offset) {
+        void query.offset(offset);
+      }
+      if (limit) {
+        void query.limit(limit);
+      }
+
+      const results = (await query) as unknown as {
+        email: string;
+        username: string;
+        firstName: string;
+        lastName: string;
+        userId: string;
+        identityId: string;
+        identityName: string;
+        member_type: "user" | "machineIdentity";
+        joinedGroupAt: Date;
+        total_count: string;
+      }[];
+
+      const members = results.map(
+        ({ email, username, firstName, lastName, userId, identityId, identityName, member_type, joinedGroupAt }) => {
+          if (member_type === "user") {
+            return {
+              id: userId,
+              joinedGroupAt,
+              type: "user" as const,
+              user: {
+                id: userId,
+                email,
+                username,
+                firstName,
+                lastName
+              }
+            };
+          }
+          return {
+            id: identityId,
+            joinedGroupAt,
+            type: "machineIdentity" as const,
+            machineIdentity: {
+              id: identityId,
+              name: identityName
+            }
+          };
+        }
+      );
+
+      return {
+        members,
+        totalCount: Number(results?.[0]?.total_count ?? 0)
+      };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find all group possible members" });
     }
   };
 
@@ -182,8 +439,8 @@ export const groupDALFactory = (db: TDbClient) => {
     offset?: number;
     limit?: number;
     search?: string;
-    filter?: EFilterReturnedProjects;
-    orderBy?: EGroupProjectsOrderBy;
+    filter?: FilterReturnedProjects;
+    orderBy?: GroupProjectsOrderBy;
     orderDirection?: OrderByDirection;
   }) => {
     try {
@@ -225,10 +482,10 @@ export const groupDALFactory = (db: TDbClient) => {
       }
 
       switch (filter) {
-        case EFilterReturnedProjects.ASSIGNED_PROJECTS:
+        case FilterReturnedProjects.ASSIGNED_PROJECTS:
           void query.whereNotNull(`${TableName.Membership}.id`);
           break;
-        case EFilterReturnedProjects.UNASSIGNED_PROJECTS:
+        case FilterReturnedProjects.UNASSIGNED_PROJECTS:
           void query.whereNull(`${TableName.Membership}.id`);
           break;
         default:
@@ -313,6 +570,8 @@ export const groupDALFactory = (db: TDbClient) => {
     ...groupOrm,
     findGroups,
     findByOrgId,
+    findAllGroupPossibleUsers,
+    findAllGroupPossibleMachineIdentities,
     findAllGroupPossibleMembers,
     findAllGroupProjects,
     findGroupsByProjectId,

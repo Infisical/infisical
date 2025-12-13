@@ -1,86 +1,41 @@
 import { useState } from "react";
-import { faMagnifyingGlass, faUsers } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { HardDriveIcon, UserIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
-import { createNotification } from "@app/components/notifications";
-import { OrgPermissionCan } from "@app/components/permissions";
-import {
-  Button,
-  EmptyState,
-  Input,
-  Modal,
-  ModalContent,
-  Pagination,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
-import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/context";
-import { useDebounce, useResetPageHelper } from "@app/hooks";
-import { useAddUserToGroup, useListGroupUsers } from "@app/hooks/api";
-import { EFilterReturnedUsers } from "@app/hooks/api/groups/types";
+import { Button, Input, Modal, ModalContent, Tooltip } from "@app/components/v2";
+import { useDebounce } from "@app/hooks";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+
+import { AddGroupIdentitiesTab, AddGroupUsersTab } from "./AddGroupMemberModalTabs";
+
+enum AddMemberType {
+  Users = "users",
+  MachineIdentities = "machineIdentities"
+}
 
 type Props = {
   popUp: UsePopUpState<["addGroupMembers"]>;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["addGroupMembers"]>, state?: boolean) => void;
+  isOidcManageGroupMembershipsEnabled: boolean;
 };
 
-export const AddGroupMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+export const AddGroupMembersModal = ({
+  popUp,
+  handlePopUpToggle,
+  isOidcManageGroupMembershipsEnabled
+}: Props) => {
+  const [addMemberType, setAddMemberType] = useState<AddMemberType>(
+    isOidcManageGroupMembershipsEnabled ? AddMemberType.MachineIdentities : AddMemberType.Users
+  );
+
   const [searchMemberFilter, setSearchMemberFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchMemberFilter);
 
   const popUpData = popUp?.addGroupMembers?.data as {
     groupId: string;
     slug: string;
-  };
-
-  const offset = (page - 1) * perPage;
-  const { data, isPending } = useListGroupUsers({
-    id: popUpData?.groupId,
-    groupSlug: popUpData?.slug,
-    offset,
-    limit: perPage,
-    search: debouncedSearch,
-    filter: EFilterReturnedUsers.NON_MEMBERS
-  });
-
-  const { totalCount = 0 } = data ?? {};
-
-  useResetPageHelper({
-    totalCount,
-    offset,
-    setPage
-  });
-
-  const { mutateAsync: addUserToGroupMutateAsync } = useAddUserToGroup();
-
-  const handleAddMember = async (username: string) => {
-    if (!popUpData?.slug) {
-      createNotification({
-        text: "Some data is missing, please refresh the page and try again",
-        type: "error"
-      });
-      return;
-    }
-
-    await addUserToGroupMutateAsync({
-      groupId: popUpData.groupId,
-      username,
-      slug: popUpData.slug
-    });
-
-    createNotification({
-      text: "Successfully assigned user to the group",
-      type: "success"
-    });
   };
 
   return (
@@ -91,74 +46,78 @@ export const AddGroupMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
       }}
     >
       <ModalContent title="Add Group Members">
-        <Input
-          value={searchMemberFilter}
-          onChange={(e) => setSearchMemberFilter(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search members..."
-        />
-        <TableContainer className="mt-4">
-          <Table>
-            <THead>
-              <Tr>
-                <Th>User</Th>
-                <Th />
-              </Tr>
-            </THead>
-            <TBody>
-              {isPending && <TableSkeleton columns={2} innerKey="group-users" />}
-              {!isPending &&
-                data?.users?.map(({ id, firstName, lastName, username }) => {
-                  return (
-                    <Tr className="items-center" key={`group-user-${id}`}>
-                      <Td>
-                        <p>{`${firstName ?? "-"} ${lastName ?? ""}`}</p>
-                        <p>{username}</p>
-                      </Td>
-                      <Td className="flex justify-end">
-                        <OrgPermissionCan
-                          I={OrgPermissionGroupActions.Edit}
-                          a={OrgPermissionSubjects.Groups}
-                        >
-                          {(isAllowed) => {
-                            return (
-                              <Button
-                                isLoading={isPending}
-                                isDisabled={!isAllowed}
-                                colorSchema="primary"
-                                variant="outline_bg"
-                                type="submit"
-                                onClick={() => handleAddMember(username)}
-                              >
-                                Assign
-                              </Button>
-                            );
-                          }}
-                        </OrgPermissionCan>
-                      </Td>
-                    </Tr>
-                  );
-                })}
-            </TBody>
-          </Table>
-          {!isPending && totalCount > 0 && (
-            <Pagination
-              count={totalCount}
-              page={page}
-              perPage={perPage}
-              onChangePage={(newPage) => setPage(newPage)}
-              onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
+        <div className="mx-auto flex w-3/4 gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+          <Tooltip
+            className="text-center"
+            content={
+              isOidcManageGroupMembershipsEnabled
+                ? "OIDC Group Membership Mapping Enabled. Assign users to this group in your OIDC provider."
+                : undefined
+            }
+          >
+            <div className="flex-1">
+              <Button
+                variant="outline_bg"
+                onClick={() => {
+                  setAddMemberType(AddMemberType.Users);
+                }}
+                size="xs"
+                isDisabled={isOidcManageGroupMembershipsEnabled}
+                className={twMerge(
+                  "w-full min-w-[2.4rem] rounded border-none hover:bg-mineshaft-600",
+                  addMemberType === AddMemberType.Users ? "bg-mineshaft-500" : "bg-transparent"
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <UserIcon size={16} />
+                  Users
+                </div>
+              </Button>
+            </div>
+          </Tooltip>
+          <Button
+            variant="outline_bg"
+            onClick={() => {
+              setAddMemberType(AddMemberType.MachineIdentities);
+            }}
+            size="xs"
+            className={twMerge(
+              "min-w-[2.4rem] flex-1 rounded border-none hover:bg-mineshaft-600",
+              addMemberType === AddMemberType.MachineIdentities
+                ? "bg-mineshaft-500"
+                : "bg-transparent"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <HardDriveIcon size={16} />
+              Machine Identities
+            </div>
+          </Button>
+        </div>
+        <div className="mt-4 mb-4 flex items-center justify-center gap-x-2">
+          <Input
+            value={searchMemberFilter}
+            onChange={(e) => setSearchMemberFilter(e.target.value)}
+            leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+            placeholder="Search members..."
+          />
+        </div>
+        {addMemberType === AddMemberType.Users &&
+          popUpData &&
+          !isOidcManageGroupMembershipsEnabled && (
+            <AddGroupUsersTab
+              groupId={popUpData.groupId}
+              groupSlug={popUpData.slug}
+              search={debouncedSearch}
             />
           )}
-          {!isPending && !data?.users?.length && (
-            <EmptyState
-              title={
-                debouncedSearch ? "No users match search" : "All users are already in the group"
-              }
-              icon={faUsers}
-            />
-          )}
-        </TableContainer>
+        {addMemberType === AddMemberType.MachineIdentities && popUpData && (
+          <AddGroupIdentitiesTab
+            groupId={popUpData.groupId}
+            groupSlug={popUpData.slug}
+            search={debouncedSearch}
+          />
+        )}
       </ModalContent>
     </Modal>
   );

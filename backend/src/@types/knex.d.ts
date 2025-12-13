@@ -170,6 +170,9 @@ import {
   TIdentityGcpAuths,
   TIdentityGcpAuthsInsert,
   TIdentityGcpAuthsUpdate,
+  TIdentityGroupMembership,
+  TIdentityGroupMembershipInsert,
+  TIdentityGroupMembershipUpdate,
   TIdentityJwtAuths,
   TIdentityJwtAuthsInsert,
   TIdentityJwtAuthsUpdate,
@@ -856,6 +859,11 @@ declare module "knex/types/tables" {
       TUserGroupMembership,
       TUserGroupMembershipInsert,
       TUserGroupMembershipUpdate
+    >;
+    [TableName.IdentityGroupMembership]: KnexOriginal.CompositeTableType<
+      TIdentityGroupMembership,
+      TIdentityGroupMembershipInsert,
+      TIdentityGroupMembershipUpdate
     >;
     [TableName.GroupProjectMembership]: KnexOriginal.CompositeTableType<
       TGroupProjectMemberships,
