@@ -121,12 +121,12 @@ export const pkiAcmeChallengeServiceFactory = ({
 
     const recordName = `_acme-challenge.${challenge.auth.identifierValue}`;
     const records = await resolver.resolveTxt(recordName);
-    const recordValue = records.map((chunks) => chunks.join("")).join("");
+    const recordValues = records.map((chunks) => chunks.join(""));
 
     const thumbprint = challenge.auth.account.publicKeyThumbprint;
     const expectedChallengeResponseBody = `${challenge.auth.token}.${thumbprint}`;
 
-    if (recordValue !== expectedChallengeResponseBody) {
+    if (!recordValues.some((recordValue) => recordValue.trim() === expectedChallengeResponseBody)) {
       throw new AcmeIncorrectResponseError({ message: "ACME DNS-01 challenge response is not correct" });
     }
   };
@@ -172,6 +172,9 @@ export const pkiAcmeChallengeServiceFactory = ({
         throw new AcmeServerInternalError({ message: "Unknown error validating ACME challenge response" });
       }
       if (exp instanceof Error) {
+        if ((exp as unknown as { code?: string })?.code === "ENOTFOUND") {
+          throw new AcmeDnsFailureError({ message: "Hostname could not be resolved (DNS failure)" });
+        }
         logger.error(exp, "Error validating ACME challenge response");
         throw exp;
       }

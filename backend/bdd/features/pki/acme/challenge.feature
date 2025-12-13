@@ -30,19 +30,19 @@ Feature: Challenge
     Then I add names to certificate signing request csr
       """
       {
-        "COMMON_NAME": "localhost"
+        "COMMON_NAME": "example.com"
       }
       """
     And I create a RSA private key pair as cert_key
     And I sign the certificate signing request csr with private key cert_key and output it as csr_pem in PEM format
     And I submit the certificate signing request PEM csr_pem certificate order to the ACME server as order
-    And I select challenge with type dns-01 for domain localhost from order in order as challenge
-    And I add challenge response DNS records for challenge at localhost
+    And I select challenge with type dns-01 for domain example.com from order in order as challenge
+    Then I add domain example.com challenge response DNS records for challenge
     And I tell ACME server that challenge is ready to be verified
     And I poll and finalize the ACME order order as finalized_order
     And the value finalized_order.body with jq ".status" should be equal to "valid"
     And I parse the full-chain certificate from order finalized_order as cert
-    And the value cert with jq ".subject.common_name" should be equal to "localhost"
+    And the value cert with jq ".subject.common_name" should be equal to "example.com"
 
   Scenario: Validate challenge with retry
     Given I have an ACME cert profile as "acme_profile"
