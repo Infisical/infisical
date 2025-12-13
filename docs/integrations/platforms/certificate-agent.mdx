@@ -1,17 +1,299 @@
 ---
-title: "Infisical Certificate Agent"
+title: "Infisical Agent"
+sidebarTitle: "Infisical Agent"
 description: "Learn how to use Infisical CLI Agent to manage certificates automatically."
 ---
 
-The Infisical Certificate Agent is a specialized feature of the Infisical CLI designed to automatically manage certificates from your Infisical instance. It operates as a daemon process that continuously monitors and handles certificate lifecycle events including issuance, renewal, and storage without manual intervention.
+## Concept
 
-## Key features
+The Infisical Agent is a client daemon that is packaged into the [Infisical CLI](/cli/overview).
+It can be used to request a certificate from Infisical using the [API enrollment method](/documentation/platform/pki/enrollment-methods/api) configured on a [certificate profile](/documentation/platform/pki/certificates/profiles), persist it to a specified path on the filesystem, and automatically monitor and renew it before expiration.
 
-- **Automated Certificate Management**: Automatically issue, monitor, and renew certificates from Infisical [Certificate Profiles](/documentation/platform/pki/certificates/profiles)
-- **Certificate Signing Request (CSR) Support**: Submit pre-generated CSRs for certificate issuance
-- **Intelligent Renewal**: Configurable renewal thresholds and automatic certificate renewal before expiration
-- **Post-Event Hooks**: Execute custom commands after certificate issuance, renewal, or failure events
-- **Multiple Authentication Methods**: Support for Universal Auth, Kubernetes, AWS, GCP, and Azure authentication
+The Infisical Agent is notable:
+
+- Automating certificate management: The agent can request, persist, monitor, and renew certificates from Infisical automatically without manual intervention. It also supports post-event hooks to execute custom commands after certificate issuance, renewal, or failure events.
+- Leveraging workload identity: The agent can authenticate with Infisical as a [machine identity](/documentation/platform/identities/machine-identities) using an infrastructure-native authentication method such as [AWS Auth](/docs/documentation/platform/identities/aws-auth), [Azure Auth](/docs/documentation/platform/identities/azure-auth), [GCP Auth](/docs/documentation/platform/identities/gcp-auth), [Kubernetes Auth](/docs/documentation/platform/identities/kubernetes-auth), etc.
+
+The typical workflow for using the agent involves installing the Infisical CLI on the target machine, creating a configuration file defining the certificate to request and how it should be managed, and then starting the agent with that configuration so it can request, persist, monitor, and renew the certificate before it expires.
+This follows a [client-driven approach](/documentation/platform/pki/certificates/certificates#client-driven-certificate-renewal) to certificate renewal.
+
+## Workflow
+
+A typical workflow for using the Infisical Agent to request certificates from Infisical consists of the following steps:
+
+1. Create a [certificate profile](/documentation/platform/pki/certificates/profiles) in Infisical with the [API enrollment method](/documentation/platform/pki/enrollment-methods/api) configured on it.
+2. Install the Infisical CLI on the target machine.
+3. Create a configuration file containing details about the certificate to request and how it should be managed such as renewal thresholds, post-event hooks, etc.
+4. Start the agent with that configuration so it can request, persist, monitor, and going forward automatically renew the certificate before it expires on the target machine.
+
+## Authentication
+
+The Infisical Agent can authenticate with Infisical as a [machine identity](/documentation/platform/identities/machine-identities) using one of its supported authentication methods.
+
+Upon successful authentication, the agent receives a short-lived access token that it uses to make subsequent authenticated requests to obtain and renew certificates from Infisical;
+the agent automatically handles token renewal as documented [here](/integrations/platforms/infisical-agent#token-renewal).
+
+<AccordionGroup>
+<Accordion title="Universal Auth">
+  The Universal Auth method uses a client ID and secret for authentication.
+
+  <Steps>
+    <Step title="Create a universal auth machine identity">
+      To create a universal auth machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/universal-auth).
+    </Step>
+    <Step title="Configure the agent">
+      Update the agent configuration file with the auth method and credentials:
+
+    ```yaml
+    auth:
+      type: "universal-auth"
+      config:
+        client-id: "./client-id"           # Path to file containing client ID
+        client-secret: "./client-secret"   # Path to file containing client secret
+        remove-client-secret-on-read: false # Optional: remove secret file after reading
+    ```
+
+    You can also provide credentials directly:
+
+    ```yaml
+    auth:
+      type: "universal-auth"
+      config:
+        client-id: "your-client-id"
+        client-secret: "your-client-secret"
+    ```
+    </Step>
+
+  </Steps>
+</Accordion>
+<Accordion title="Kubernetes Auth">
+  The Kubernetes Auth method is used when running the agent in a Kubernetes environment.
+
+  <Steps>
+    <Step title="Create a Kubernetes machine identity">
+      To create a Kubernetes machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/kubernetes-auth).
+    </Step>
+    <Step title="Configure the agent">
+      Configure the agent to use Kubernetes service account authentication:
+
+    ```yaml
+    auth:
+      type: "kubernetes-auth"
+      config:
+        identity-id: "your-kubernetes-identity-id"
+        service-account-token-path: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+    ```
+    </Step>
+
+  </Steps>
+</Accordion>
+  <Accordion title="Azure Auth">
+    The Azure Auth method is used when running the agent in an Azure environment.
+
+    <Steps>
+      <Step title="Create an Azure machine identity">
+        To create an Azure machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/azure-auth).
+      </Step>
+      <Step title="Configure the agent">
+        Configure the agent to use Azure managed identity authentication:
+
+      ```yaml
+      auth:
+        type: "azure-auth"
+        config:
+          identity-id: "your-azure-identity-id"
+      ```
+      </Step>
+    </Steps>
+
+  </Accordion>
+  <Accordion title="Native GCP ID Token">
+    The Native GCP ID Token method is used to authenticate with Infisical when running in a GCP environment.
+
+    <Steps>
+      <Step title="Create a GCP machine identity">
+        To create a GCP machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/gcp-auth).
+      </Step>
+      <Step title="Configure the agent">
+        Update the agent configuration file with the specified auth method and identity ID:
+
+      ```yaml
+      auth:
+        type: "gcp-id-token"
+        config:
+          identity-id: "your-gcp-identity-id"
+      ```
+      </Step>
+    </Steps>
+
+  </Accordion>
+  <Accordion title="GCP IAM">
+    The GCP IAM method is used to authenticate with Infisical with a GCP service account key.
+
+    <Steps>
+      <Step title="Create a GCP machine identity">
+        To create a GCP machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/gcp-auth).
+      </Step>
+      <Step title="Configure the agent">
+        Update the agent configuration file with the specified auth method, identity ID, and service account key:
+
+      ```yaml
+      auth:
+        type: "gcp-iam"
+        config:
+          identity-id: "your-gcp-identity-id"
+          service-account-key: "/path/to/service-account-key.json"
+      ```
+      </Step>
+    </Steps>
+
+  </Accordion>
+  <Accordion title="Native AWS IAM">
+    The AWS IAM method is used to authenticate with Infisical with an AWS IAM role while running in an AWS environment.
+
+    <Steps>
+      <Step title="Create an AWS machine identity">
+        To create an AWS machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/aws-auth).
+      </Step>
+      <Step title="Configure the agent">
+        Update the agent configuration file with the specified auth method and identity ID:
+
+      ```yaml
+      auth:
+        type: "aws-iam"
+        config:
+          identity-id: "your-aws-identity-id"
+      ```
+      </Step>
+    </Steps>
+
+  </Accordion>
+</AccordionGroup>
+
+## Agent configuration file
+
+The Infisical Agent relies on a YAML configuration file to define its behavior, including how it should authenticate with Infisical, the certificate it should request, and how that certificate should be managed including auto-renewal.
+
+### Example configuration file
+
+The code snippet below shows an example of a comprehensive configuration file that instructs the agent to request and continuously renew acertificate from Infisical.
+
+```yaml example-cert-agent-config.yaml
+version: v1
+
+# Required: Infisical server configuration
+infisical:
+  address: "https://app.infisical.com"
+  retry-strategy:
+    max-retries: 3
+    max-delay: "5s"
+    base-delay: "200ms"
+
+# Authentication configuration
+auth:
+  type: "universal-auth"
+  config:
+    client-id: "your-client-id"
+    client-secret: "your-client-secret"
+
+certificates:
+  - profile-name: "prof-web-server-12345"
+    project-slug: "my-project-slug"
+    common-name: "web.company.com"
+    alt-names: ["web.company.com", "www.company.com"]
+    ttl: "90d"
+    key-algorithm: "RSA_2048"
+    signature-algorithm: "RSA-SHA256"
+    key-usages:
+      - "digital_signature"
+      - "key_encipherment"
+    extended-key-usages:
+      - "server_auth"
+
+    # Lifecycle management
+    lifecycle:
+      renew-before-expiry: "30d"
+      status-check-interval: "6h"
+      max-failure-retries: 3
+      failure-retry-interval: "1h"
+
+    # File output configuration
+    file-output:
+      private-key:
+        path: "/etc/ssl/private/web.key"
+        permission: "0600"
+      certificate:
+        path: "/etc/ssl/certs/web.crt"
+        permission: "0644"
+      chain:
+        path: "/etc/ssl/certs/web-chain.crt"
+        permission: "0644"
+        omit-root: true # Exclude the root CA certificate in chain
+
+    # Post-event hooks
+    post-hooks:
+      on-issuance:
+        command: |
+          echo "Certificate issued for ${CERT_COMMON_NAME}"
+          systemctl reload nginx
+        timeout: 30
+
+      on-renewal:
+        command: |
+          echo "Certificate renewed for ${CERT_COMMON_NAME}"
+          systemctl reload nginx
+        timeout: 30
+
+      on-failure:
+        command: |
+          echo "Certificate operation failed: ${ERROR_MESSAGE}"
+          mail -s "Certificate Alert" admin@company.com < /dev/null
+        timeout: 30
+```
+
+To be more specific, the configuration file instructs the agent to:
+
+- Authenticate with Infisical using the [Universal Auth](/integrations/platforms/certificate-agent#universal-auth) authentication method.
+- Request a 90-day certificate against the [certificate profile](/documentation/platform/pki/certificates/profiles) with the ID `prof-web-server-12345` with the common name `web.company.com` and the subject alternative names `web.company.com` and `www.company.com`.
+- Automatically renew the certificate 30 days before expiration by checking the certificate status every 6 hours and retrying up to 3 times with a base delay of 200ms and a maximum delay of 5s if the certificate status check fails.
+- Store the certificate and its associated private key and certificate chain (excluding the root CA certificate) in the filesystem at the specified paths with the specified permissions.
+- Execute custom commands after certificate issuance, renewal, or failure events such as reloading an `nginx` service or sending an email notification.
+
+### Configuration file options
+
+The table below provides a complete list of parameters that can be configured in the agent configuration file:
+
+Work in progress...
+
+| Parameter                            | Required    | Description                                                                                                                                                                                                                        |
+| ------------------------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `profile-name`                       | Yes         | The name of the [certificate profile](/documentation/platform/pki/certificates/profiles) to request a certificate against (e.g., `web-server-12345`)                                                                               |
+| `project-slug`                       | Yes         | The slug of the project to request a certificate against (e.g., `my-project-slug`)                                                                                                                                                 |
+| `common-name`                        | Optional    | The common name for the certificate (e.g. `www.example.com`)                                                                                                                                                                       |
+| `alt-names`                          | Optional    | The list of subject alternative names for the certificate (e.g., `["www.example.com", "api.example.com"]`)                                                                                                                         |
+| `ttl`                                | Optional    | The validity period for the certificate (e.g. `90d`)                                                                                                                                                                               |
+| `key-algorithm`                      | Optional    | The private key algorithm for the certificate (e.g. `RSA_2048`)                                                                                                                                                                    |
+| `signature-algorithm`                | Optional    | The signature algorithm for the certificate (e.g. `RSA-SHA256`)                                                                                                                                                                    |
+| `key-usages`                         | Optional    | The list of key usage values for the certificate. One or more of: `digital_signature`, `key_encipherment`, `non_repudiation`, `data_encipherment`, `key_agreement`, `key_cert_sign`, `crl_sign`, `encipher_only`, `decipher_only`. |
+| `extended-key-usages`                | Optional    | The list of extended key usage values for the certificate. One or more of: `server_auth`, `client_auth`, `code_signing`, `email_protection`, `timestamping`, `ocsp_signing`.                                                       |
+| `csr-path`                           | Conditional | The path to the CSR file (required if using a pre-generated CSR)                                                                                                                                                                   |
+| `file-output.private-key.path`       | Conditional | The path to store the private key (required if not using a CSR)                                                                                                                                                                    |
+| `file-output.private-key.permission` | Optional    | The permissions for the private key file (e.g. `0600`)                                                                                                                                                                             |
+| `file-output.certificate.path`       | Yes         | The path to store the certificate                                                                                                                                                                                                  |
+| `file-output.certificate.permission` | Optional    | The permissions for the certificate file (e.g. `0644`)                                                                                                                                                                             |
+| `file-output.chain.path`             | Optional    | The path to store the certificate chain                                                                                                                                                                                            |
+| `file-output.chain.permission`       | Optional    | The permissions for the chain file (e.g. `0644`)                                                                                                                                                                                   |
+| `file-output.chain.omit-root`        | Optional    | Whether to exclude root certificate from chain                                                                                                                                                                                     |
+| `lifecycle.renew-before-expiry`      | Optional    | The time before expiration to renew the certificate (e.g. `30d`)                                                                                                                                                                   |
+| `lifecycle.status-check-interval`    | Optional    | The interval to check the certificate status (e.g. `6h`)                                                                                                                                                                           |
+| `post-hooks.on-issuance.command`     | Optional    | Command to run on certificate issuance                                                                                                                                                                                             |
+| `post-hooks.on-issuance.timeout`     | Optional    | Timeout for issuance command                                                                                                                                                                                                       |
+| `post-hooks.on-renewal.command`      | Optional    | The command to run on certificate renewal                                                                                                                                                                                          |
+| `post-hooks.on-renewal.timeout`      | Optional    | Timeout for renewal command                                                                                                                                                                                                        |
+| `post-hooks.on-failure.command`      | Optional    | Command to run on operation failure                                                                                                                                                                                                |
+| `post-hooks.on-failure.timeout`      | Optional    | Timeout for failure command                                                                                                                                                                                                        |
+| `lifecycle.max-failure-retries`      | Optional    | The maximum number of times to retry a failed certificate issuance or renewal operation (e.g. `3`)                                                                                                                                 |
+| `lifecycle.failure-retry-interval`   | Optional    | The interval to wait before retrying a failed certificate issuance or renewal operation (e.g. `1h`)                                                                                                                                |
 
 ## Getting Started
 
@@ -100,14 +382,14 @@ Each file type (private key, certificate, chain) can have its own permission set
 file-output:
   private-key:
     path: "./certs/private.key"
-    permission: "0600"  # Read/write for owner only
+    permission: "0600" # Read/write for owner only
   certificate:
     path: "./certs/certificate.crt"
-    permission: "0644"  # Read for all, write for owner
+    permission: "0644" # Read for all, write for owner
   chain:
     path: "./certs/chain.crt"
-    permission: "0644"  # Read for all, write for owner
-    omit-root: false    # Include root certificate
+    permission: "0644" # Read for all, write for owner
+    omit-root: false # Include root certificate
 ```
 
 ## Lifecycle Management
@@ -124,8 +406,8 @@ certificates:
     alt-names: ["www.company.com"]
     ttl: "90d"
     lifecycle:
-      renew-before-expiry: "14d"     # Renew 14 days before expiration
-      status-check-interval: "6h"    # Check certificate status every 6 hours
+      renew-before-expiry: "14d" # Renew 14 days before expiration
+      status-check-interval: "6h" # Check certificate status every 6 hours
     file-output:
       private-key:
         path: "./certs/web/private.key"
@@ -163,6 +445,7 @@ Execute custom commands in response to certificate lifecycle events using the `p
           systemctl reload nginx
         timeout: 30
     ```
+
   </Tab>
 
   <Tab title="Renewal Hook">
@@ -182,6 +465,7 @@ Execute custom commands in response to certificate lifecycle events using the `p
             -d "{'text': 'Certificate for ${CERT_COMMON_NAME} renewed successfully'}"
         timeout: 60
     ```
+
   </Tab>
 
   <Tab title="Failure Hook">
@@ -198,146 +482,9 @@ Execute custom commands in response to certificate lifecycle events using the `p
           logger -p daemon.error "Certificate agent failure: ${ERROR_MESSAGE}"
         timeout: 30
     ```
+
   </Tab>
 </Tabs>
-
-## Authentication
-
-The Certificate Agent uses the same authentication system as the Infisical CLI. Configure authentication in the `auth` section of your configuration file.
-
-<AccordionGroup>
-<Accordion title="Universal Auth">
-  The Universal Auth method uses a client ID and secret for authentication.
-
-  <Steps>
-    <Step title="Create a universal auth machine identity">
-      To create a universal auth machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/universal-auth).
-    </Step>
-    <Step title="Configure the agent">
-      Update the agent configuration file with the auth method and credentials:
-
-    ```yaml
-    auth:
-      type: "universal-auth"
-      config:
-        client-id: "./client-id"           # Path to file containing client ID
-        client-secret: "./client-secret"   # Path to file containing client secret
-        remove-client-secret-on-read: false # Optional: remove secret file after reading
-    ```
-
-    You can also provide credentials directly:
-
-    ```yaml
-    auth:
-      type: "universal-auth"
-      config:
-        client-id: "your-client-id"
-        client-secret: "your-client-secret"
-    ```
-    </Step>
-  </Steps>
-</Accordion>
-<Accordion title="Kubernetes Auth">
-  The Kubernetes Auth method is used when running the agent in a Kubernetes environment.
-
-  <Steps>
-    <Step title="Create a Kubernetes machine identity">
-      To create a Kubernetes machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/kubernetes-auth).
-    </Step>
-    <Step title="Configure the agent">
-      Configure the agent to use Kubernetes service account authentication:
-
-    ```yaml
-    auth:
-      type: "kubernetes-auth"
-      config:
-        identity-id: "your-kubernetes-identity-id"
-        service-account-token-path: "/var/run/secrets/kubernetes.io/serviceaccount/token"
-    ```
-    </Step>
-  </Steps>
-</Accordion>
-  <Accordion title="Azure Auth">
-    The Azure Auth method is used when running the agent in an Azure environment.
-
-    <Steps>
-      <Step title="Create an Azure machine identity">
-        To create an Azure machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/azure-auth).
-      </Step>
-      <Step title="Configure the agent">
-        Configure the agent to use Azure managed identity authentication:
-
-      ```yaml
-      auth:
-        type: "azure-auth"
-        config:
-          identity-id: "your-azure-identity-id"
-      ```
-      </Step>
-    </Steps>
-  </Accordion>
-  <Accordion title="Native GCP ID Token">
-    The Native GCP ID Token method is used to authenticate with Infisical when running in a GCP environment.
-
-    <Steps>
-      <Step title="Create a GCP machine identity">
-        To create a GCP machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/gcp-auth).
-      </Step>
-      <Step title="Configure the agent">
-        Update the agent configuration file with the specified auth method and identity ID:
-
-      ```yaml
-      auth:
-        type: "gcp-id-token"
-        config:
-          identity-id: "your-gcp-identity-id"
-      ```
-      </Step>
-    </Steps>
-
-  </Accordion>
-  <Accordion title="GCP IAM">
-    The GCP IAM method is used to authenticate with Infisical with a GCP service account key.
-
-    <Steps>
-      <Step title="Create a GCP machine identity">
-        To create a GCP machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/gcp-auth).
-      </Step>
-      <Step title="Configure the agent">
-        Update the agent configuration file with the specified auth method, identity ID, and service account key:
-
-      ```yaml
-      auth:
-        type: "gcp-iam"
-        config:
-          identity-id: "your-gcp-identity-id"
-          service-account-key: "/path/to/service-account-key.json"
-      ```
-      </Step>
-    </Steps>
-
-  </Accordion>
-  <Accordion title="Native AWS IAM">
-    The AWS IAM method is used to authenticate with Infisical with an AWS IAM role while running in an AWS environment.
-
-    <Steps>
-      <Step title="Create an AWS machine identity">
-        To create an AWS machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/aws-auth).
-      </Step>
-      <Step title="Configure the agent">
-        Update the agent configuration file with the specified auth method and identity ID:
-
-      ```yaml
-      auth:
-        type: "aws-iam"
-        config:
-          identity-id: "your-aws-identity-id"
-      ```
-      </Step>
-    </Steps>
-
-  </Accordion>
-</AccordionGroup>
 
 ## Retrying mechanism
 
@@ -353,39 +500,38 @@ infisical:
     max-retries: 3
     max-delay: "5s"
     base-delay: "200ms"
-
 # ... rest of the agent configuration file
 ```
 
 #### Certificate Configuration Parameters
 
-| Parameter                                         | Description                                                                  |
-| ------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `profile-name`                                    | [Certificate profile](/documentation/platform/pki/certificates/profiles) identifier                                               |
-| `project-slug`                                    | Project slug identifier                                                      |
-| `common-name`                                     | Certificate common name                                                      |
-| `alt-names`                                       | List of alternative names                                                    |
-| `ttl`                                             | Certificate validity period                                                  |
-| `key-algorithm`                                   | Private key algorithm (RSA_2048, RSA_4096, ECDSA_P256, ECDSA_P384)         |
-| `signature-algorithm`                             | Signature algorithm (RSA-SHA256, RSA-SHA512, ECDSA-SHA256)                  |
-| `key-usages`                                      | List of key usage values                                                     |
-| `extended-key-usages`                             | List of extended key usage values                                            |
-| `csr-path`                                        | Path to CSR file                                                            |
-| `file-output.private-key.path`     | Where to store private key                                                   |
-| `file-output.private-key.permission` | File permissions for private key (e.g., "0600")                           |
-| `file-output.certificate.path`     | Where to store certificate                                                   |
-| `file-output.certificate.permission` | File permissions for certificate (e.g., "0644")                          |
-| `file-output.chain.path`           | Where to store certificate chain                                            |
-| `file-output.chain.permission`     | File permissions for chain file (e.g., "0644")                             |
-| `file-output.chain.omit-root`      | Whether to exclude root certificate from chain                             |
-| `lifecycle.renew-before-expiry`                   | When to renew before expiration                                             |
-| `lifecycle.status-check-interval`                 | How often to check certificate status                                       |                                       |
-| `post-hooks.on-issuance.command`                  | Command to run on certificate issuance                                      |
-| `post-hooks.on-issuance.timeout`                  | Timeout for issuance command                                               |
-| `post-hooks.on-renewal.command`                   | Command to run on certificate renewal                                       |
-| `post-hooks.on-renewal.timeout`                   | Timeout for renewal command                                                |
-| `post-hooks.on-failure.command`                   | Command to run on operation failure                                         |
-| `post-hooks.on-failure.timeout`                   | Timeout for failure command                                                |
+| Parameter                            | Description                                                                         |
+| ------------------------------------ | ----------------------------------------------------------------------------------- | --- |
+| `profile-name`                       | [Certificate profile](/documentation/platform/pki/certificates/profiles) identifier |
+| `project-slug`                       | Project slug identifier                                                             |
+| `common-name`                        | Certificate common name                                                             |
+| `alt-names`                          | List of alternative names                                                           |
+| `ttl`                                | Certificate validity period                                                         |
+| `key-algorithm`                      | Private key algorithm (RSA_2048, RSA_4096, ECDSA_P256, ECDSA_P384)                  |
+| `signature-algorithm`                | Signature algorithm (RSA-SHA256, RSA-SHA512, ECDSA-SHA256)                          |
+| `key-usages`                         | List of key usage values                                                            |
+| `extended-key-usages`                | List of extended key usage values                                                   |
+| `csr-path`                           | Path to CSR file                                                                    |
+| `file-output.private-key.path`       | Where to store private key                                                          |
+| `file-output.private-key.permission` | File permissions for private key (e.g., "0600")                                     |
+| `file-output.certificate.path`       | Where to store certificate                                                          |
+| `file-output.certificate.permission` | File permissions for certificate (e.g., "0644")                                     |
+| `file-output.chain.path`             | Where to store certificate chain                                                    |
+| `file-output.chain.permission`       | File permissions for chain file (e.g., "0644")                                      |
+| `file-output.chain.omit-root`        | Whether to exclude root certificate from chain                                      |
+| `lifecycle.renew-before-expiry`      | When to renew before expiration                                                     |
+| `lifecycle.status-check-interval`    | How often to check certificate status                                               |     |
+| `post-hooks.on-issuance.command`     | Command to run on certificate issuance                                              |
+| `post-hooks.on-issuance.timeout`     | Timeout for issuance command                                                        |
+| `post-hooks.on-renewal.command`      | Command to run on certificate renewal                                               |
+| `post-hooks.on-renewal.timeout`      | Timeout for renewal command                                                         |
+| `post-hooks.on-failure.command`      | Command to run on operation failure                                                 |
+| `post-hooks.on-failure.timeout`      | Timeout for failure command                                                         |
 
 ## Agent configuration file
 
@@ -443,7 +589,7 @@ certificates:
       chain:
         path: "/etc/ssl/certs/web-chain.crt"
         permission: "0644"
-        omit-root: false  # Include root certificate in chain
+        omit-root: false # Include root certificate in chain
 
     # Post-event hooks
     post-hooks:
