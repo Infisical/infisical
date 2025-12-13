@@ -94,6 +94,11 @@ export const certificateServiceFactory = ({
   /**
    * Return details for certificate with serial number [serialNumber]
    */
+  const getCert = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertDTO) => {
+    const cert = await certificateDAL.findOne({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({ message: `Certificate with serial number '${serialNumber}' not found` });
+    }
   const getCert = async ({ id, serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertDTO) => {
     const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
 
@@ -131,6 +136,10 @@ export const certificateServiceFactory = ({
     actor,
     actorOrgId
   }: TGetCertPrivateKeyDTO) => {
+    const cert = await certificateDAL.findOne({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({ message: `Certificate with serial number '${serialNumber}' not found` });
+    }
     const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
 
     const { permission } = await permissionService.getProjectPermission({
@@ -168,6 +177,11 @@ export const certificateServiceFactory = ({
   /**
    * Delete certificate with serial number [serialNumber]
    */
+  const deleteCert = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TDeleteCertDTO) => {
+    const cert = await certificateDAL.findOne({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({ message: `Certificate with serial number '${serialNumber}' not found` });
+    }
   const deleteCert = async ({ id, serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TDeleteCertDTO) => {
     const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
 
@@ -217,6 +231,10 @@ export const certificateServiceFactory = ({
     actor,
     actorOrgId
   }: TRevokeCertDTO) => {
+    const cert = await certificateDAL.findOne({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({ message: `Certificate with serial number '${serialNumber}' not found` });
+    }
     const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
 
     if (!cert.caId) {
@@ -313,6 +331,11 @@ export const certificateServiceFactory = ({
    * Return certificate body and certificate chain for certificate with
    * serial number [serialNumber]
    */
+  const getCertBody = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertBodyDTO) => {
+    const cert = await certificateDAL.findOne({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({ message: `Certificate with serial number '${serialNumber}' not found` });
+    }
   const getCertBody = async ({ id, serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertBodyDTO) => {
     const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
 
@@ -611,6 +634,11 @@ export const certificateServiceFactory = ({
    * Return certificate body and certificate chain for certificate with
    * serial number [serialNumber]
    */
+  const getCertBundle = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertBundleDTO) => {
+    const cert = await certificateDAL.findOne({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({ message: `Certificate with serial number '${serialNumber}' not found` });
+    }
   const getCertBundle = async ({
     id,
     serialNumber,
@@ -746,6 +774,10 @@ export const certificateServiceFactory = ({
 
     if (!alias || alias.trim() === "") {
       throw new BadRequestError({ message: "Alias is required for PKCS12 keystore generation" });
+    }
+    const cert = await certificateDAL.findOne({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({ message: `Certificate with serial number '${serialNumber}' not found` });
     }
     const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
 
