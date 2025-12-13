@@ -890,6 +890,7 @@ export const pkiAcmeServiceFactory = ({
       notAfter: updatedCertificateRequest.notAfter,
       status: CertificateRequestStatus.PENDING,
       acmeOrderId: orderId,
+      csr,
       tx
     });
     const csrObj = new x509.Pkcs10CertificateRequest(csr);
