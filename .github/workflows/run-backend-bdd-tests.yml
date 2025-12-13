@@ -47,7 +47,7 @@ jobs:
 
       - name: Output .env file and enable feature flags for BDD tests
         run: |
-          cp .env.example .env
+          cp .env.dev.example .env
           echo "ACME_DEVELOPMENT_MODE=true" >> .env
           echo "ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES={\"localhost\": \"host.docker.internal:8087\", \"infisical.com\": \"host.docker.internal:8087\", \"example.com\": \"host.docker.internal:8087\"}" >> .env
           echo "BDD_NOCK_API_ENABLED=true" >> .env
