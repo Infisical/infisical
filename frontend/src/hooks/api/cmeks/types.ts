@@ -20,6 +20,13 @@ export type TCmek = {
   version: number;
   createdAt: string;
   updatedAt: string;
+  rotatedAt?: string;
+};
+
+export type TKeyVersion = {
+  id: string;
+  version: number;
+  createdAt: string;
 };
 
 type ProjectRef = { projectId: string };
@@ -74,6 +81,52 @@ export type TCmekVerifyResponse = {
 
 export type TCmekDecryptResponse = {
   plaintext: string;
+};
+
+export type TRotateCmek = { keyId: string };
+export type TRotateCmekResponse = {
+  key: {
+    id: string;
+    version: number;
+    rotatedAt: string | null;
+  };
+};
+
+export type TRollbackCmek = { keyId: string; targetVersion: number };
+export type TRollbackCmekResponse = {
+  key: {
+    id: string;
+    version: number;
+    previousVersion: number;
+    rotatedAt: string | null;
+  };
+};
+
+export type TListCmekVersionsResponse = {
+  keyId: string;
+  currentVersion: number;
+  versions: TKeyVersion[];
+};
+
+export type TScheduledRotation = {
+  keyId: string;
+  isAutoRotationEnabled: boolean;
+  rotationIntervalDays: number | null;
+  nextRotationAt: string | null;
+  lastRotatedAt: string | null;
+};
+
+export type TUpdateScheduledRotationDTO = {
+  keyId: string;
+  enableAutoRotation: boolean;
+  rotationIntervalDays?: number;
+};
+
+export type TUpdateScheduledRotationResponse = {
+  keyId: string;
+  isAutoRotationEnabled: boolean;
+  rotationIntervalDays: number | null;
+  nextRotationAt: string | null;
 };
 
 export enum CmekOrderBy {

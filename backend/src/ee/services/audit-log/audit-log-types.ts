@@ -419,6 +419,10 @@ export enum EventType {
   CMEK_VERIFY = "cmek-verify",
   CMEK_LIST_SIGNING_ALGORITHMS = "cmek-list-signing-algorithms",
   CMEK_GET_PUBLIC_KEY = "cmek-get-public-key",
+  ROTATE_CMEK = "rotate-cmek",
+  LIST_CMEK_VERSIONS = "list-cmek-versions",
+  UPDATE_CMEK_SCHEDULED_ROTATION = "update-cmek-scheduled-rotation",
+  ROLLBACK_CMEK = "rollback-cmek",
 
   UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "update-external-group-org-role-mapping",
   GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "get-external-group-org-role-mapping",
@@ -3114,6 +3118,40 @@ interface CmekGetPublicKeyEvent {
   };
 }
 
+interface RotateCmekEvent {
+  type: EventType.ROTATE_CMEK;
+  metadata: {
+    keyId: string;
+    newVersion: number;
+  };
+}
+
+interface ListCmekVersionsEvent {
+  type: EventType.LIST_CMEK_VERSIONS;
+  metadata: {
+    keyId: string;
+    versionCount: number;
+  };
+}
+
+interface UpdateCmekScheduledRotationEvent {
+  type: EventType.UPDATE_CMEK_SCHEDULED_ROTATION;
+  metadata: {
+    keyId: string;
+    enableAutoRotation: boolean;
+    rotationIntervalDays: number | null;
+  };
+}
+
+interface RollbackCmekEvent {
+  type: EventType.ROLLBACK_CMEK;
+  metadata: {
+    keyId: string;
+    targetVersion: number;
+    previousVersion: number;
+  };
+}
+
 interface GetExternalGroupOrgRoleMappingsEvent {
   type: EventType.GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS;
   metadata?: Record<string, never>; // not needed, based off orgId
@@ -4726,6 +4764,10 @@ export type Event =
   | CmekVerifyEvent
   | CmekListSigningAlgorithmsEvent
   | CmekGetPublicKeyEvent
+  | RotateCmekEvent
+  | ListCmekVersionsEvent
+  | UpdateCmekScheduledRotationEvent
+  | RollbackCmekEvent
   | GetExternalGroupOrgRoleMappingsEvent
   | UpdateExternalGroupOrgRoleMappingsEvent
   | GetProjectTemplatesEvent

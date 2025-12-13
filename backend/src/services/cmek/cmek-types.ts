@@ -67,3 +67,26 @@ export type TCmekVerifyDTO = {
   signingAlgorithm: SigningAlgorithm;
   isDigest: boolean;
 };
+
+export type TRotateCmekDTO = {
+  keyId: string;
+};
+
+export type TListCmekVersionsDTO = {
+  keyId: string;
+};
+
+export type TRollbackCmekDTO = {
+  keyId: string;
+  targetVersion: number;
+};
+
+export type TUpdateCmekScheduledRotationDTO = {
+  keyId: string;
+  enableAutoRotation: boolean;
+  rotationIntervalDays?: number;
+};
+
+export type TGetCmekScheduledRotationDTO = {
+  keyId: string;
+};
