@@ -26,6 +26,17 @@ In the following steps, we explore how to issue a X.509 certificate using the AC
 
     ![pki acme config](/images/platform/pki/enrollment-methods/acme/acme-config.png)
 
+    <Note>
+
+    By default, when the ACME client requests a certificate against the certificate profile for a particular domain, Infisical will verify domain ownership using the [HTTP-01 challenge](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) method prior to issuing a certificate back to the client.
+
+    If you want Infisical to skip domain ownership validation entirely, you can enable the **Skip DNS Ownership Validation** checkbox.
+
+    Note that skipping domain ownership validation for the ACME enrollment method is **not the same** as skipping validation for an [External ACME CA integration](/documentation/platform/pki/ca/acme-ca).
+
+    When using the ACME enrollment, the domain ownership check occurring between the ACME client and Infisical can be skipped. In contrast, External ACME CA integrations always require domain ownership validation, as Infisical must complete a DNS-01 challenge with the upstream ACME-compatible CA.
+    </Note>
+
   </Step>
   <Step title="Obtain the ACME configuration">
     Once you've created the certificate profile, you can obtain its ACME configuration details by clicking the **Reveal ACME EAB** option on the profile.

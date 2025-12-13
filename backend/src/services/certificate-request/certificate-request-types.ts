@@ -21,6 +21,7 @@ export type TCreateCertificateRequestDTO = TProjectPermission & {
   metadata?: string;
   status: CertificateRequestStatus;
   certificateId?: string;
+  acmeOrderId?: string;
 };
 
 export type TGetCertificateRequestDTO = TProjectPermission & {

@@ -5,7 +5,9 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { logger } from "@app/lib/logger";
+import { ActorType } from "@app/services/auth/auth-type";
 
+import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { TPkiAcmeChallengeDALFactory } from "./pki-acme-challenge-dal";
 import {
   AcmeConnectionError,
@@ -25,10 +27,12 @@ type TPkiAcmeChallengeServiceFactoryDep = {
     | "markAsInvalidCascadeById"
     | "updateById"
   >;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 export const pkiAcmeChallengeServiceFactory = ({
-  acmeChallengeDAL
+  acmeChallengeDAL,
+  auditLogService
 }: TPkiAcmeChallengeServiceFactoryDep): TPkiAcmeChallengeServiceFactory => {
   const appCfg = getConfig();
   const markChallengeAsReady = async (challengeId: string): Promise<TPkiAcmeChallenges> => {
@@ -113,7 +117,25 @@ export const pkiAcmeChallengeServiceFactory = ({
       }
       logger.info({ challengeId }, "ACME challenge response is correct, marking challenge as valid");
       await acmeChallengeDAL.markAsValidCascadeById(challengeId);
+      await auditLogService.createAuditLog({
+        projectId: challenge.auth.account.project.id,
+        actor: {
+          type: ActorType.ACME_ACCOUNT,
+          metadata: {
+            profileId: challenge.auth.account.profileId,
+            accountId: challenge.auth.account.id
+          }
+        },
+        event: {
+          type: EventType.PASS_ACME_CHALLENGE,
+          metadata: {
+            challengeId,
+            type: challenge.type as AcmeChallengeType
+          }
+        }
+      });
     } catch (exp) {
+      let finalAttempt = false;
       if (retryCount >= 2) {
         logger.error(
           exp,
@@ -121,35 +143,59 @@ export const pkiAcmeChallengeServiceFactory = ({
         );
         // This is the last attempt to validate the challenge response, if it fails, we mark the challenge as invalid
         await acmeChallengeDAL.markAsInvalidCascadeById(challengeId);
+        finalAttempt = true;
       }
-      // Properly type and inspect the error
-      if (axios.isAxiosError(exp)) {
-        const axiosError = exp as AxiosError;
-        const errorCode = axiosError.code;
-        const errorMessage = axiosError.message;
+      try {
+        // Properly type and inspect the error
+        if (axios.isAxiosError(exp)) {
+          const axiosError = exp as AxiosError;
+          const errorCode = axiosError.code;
+          const errorMessage = axiosError.message;
 
-        if (errorCode === "ECONNREFUSED" || errorMessage.includes("ECONNREFUSED")) {
-          throw new AcmeConnectionError({ message: "Connection refused" });
+          if (errorCode === "ECONNREFUSED" || errorMessage.includes("ECONNREFUSED")) {
+            throw new AcmeConnectionError({ message: "Connection refused" });
+          }
+          if (errorCode === "ENOTFOUND" || errorMessage.includes("ENOTFOUND")) {
+            throw new AcmeDnsFailureError({ message: "Hostname could not be resolved (DNS failure)" });
+          }
+          if (errorCode === "ECONNRESET" || errorMessage.includes("ECONNRESET")) {
+            throw new AcmeConnectionError({ message: "Connection reset by peer" });
+          }
+          if (errorCode === "ECONNABORTED" || errorMessage.includes("timeout")) {
+            logger.error(exp, "Connection timed out while validating ACME challenge response");
+            throw new AcmeConnectionError({ message: "Connection timed out" });
+          }
+          logger.error(exp, "Unknown error validating ACME challenge response");
+          throw new AcmeServerInternalError({ message: "Unknown error validating ACME challenge response" });
         }
-        if (errorCode === "ENOTFOUND" || errorMessage.includes("ENOTFOUND")) {
-          throw new AcmeDnsFailureError({ message: "Hostname could not be resolved (DNS failure)" });
-        }
-        if (errorCode === "ECONNRESET" || errorMessage.includes("ECONNRESET")) {
-          throw new AcmeConnectionError({ message: "Connection reset by peer" });
-        }
-        if (errorCode === "ECONNABORTED" || errorMessage.includes("timeout")) {
-          logger.error(exp, "Connection timed out while validating ACME challenge response");
-          throw new AcmeConnectionError({ message: "Connection timed out" });
+        if (exp instanceof Error) {
+          logger.error(exp, "Error validating ACME challenge response");
+          throw exp;
         }
         logger.error(exp, "Unknown error validating ACME challenge response");
         throw new AcmeServerInternalError({ message: "Unknown error validating ACME challenge response" });
+      } catch (outterExp) {
+        await auditLogService.createAuditLog({
+          projectId: challenge.auth.account.project.id,
+          actor: {
+            type: ActorType.ACME_ACCOUNT,
+            metadata: {
+              profileId: challenge.auth.account.profileId,
+              accountId: challenge.auth.account.id
+            }
+          },
+          event: {
+            type: finalAttempt ? EventType.FAIL_ACME_CHALLENGE : EventType.ATTEMPT_ACME_CHALLENGE,
+            metadata: {
+              challengeId,
+              type: challenge.type as AcmeChallengeType,
+              retryCount,
+              errorMessage: exp instanceof Error ? exp.message : "Unknown error"
+            }
+          }
+        });
+        throw outterExp;
       }
-      if (exp instanceof Error) {
-        logger.error(exp, "Error validating ACME challenge response");
-        throw exp;
-      }
-      logger.error(exp, "Unknown error validating ACME challenge response");
-      throw new AcmeServerInternalError({ message: "Unknown error validating ACME challenge response" });
     }
   };
 

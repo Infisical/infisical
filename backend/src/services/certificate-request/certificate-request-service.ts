@@ -91,6 +91,7 @@ export const certificateRequestServiceFactory = ({
   permissionService
 }: TCertificateRequestServiceFactoryDep) => {
   const createCertificateRequest = async ({
+    acmeOrderId,
     actor,
     actorId,
     actorAuthMethod,
@@ -123,6 +124,7 @@ export const certificateRequestServiceFactory = ({
       {
         status,
         projectId,
+        acmeOrderId,
         ...validatedData
       },
       tx

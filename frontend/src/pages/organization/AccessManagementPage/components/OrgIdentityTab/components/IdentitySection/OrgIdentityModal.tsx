@@ -185,7 +185,7 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
               isError={Boolean(error)}
               errorText={error?.message}
             >
-              <Input {...field} placeholder="Machine 1" />
+              <Input {...field} autoFocus placeholder="Machine 1" />
             </FormControl>
           )}
         />

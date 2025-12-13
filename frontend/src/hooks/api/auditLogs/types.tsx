@@ -38,6 +38,13 @@ interface KmipClientActorMetadata {
   name: string;
 }
 
+interface AcmeAccountActorMetadata {
+  profileId: string;
+  accountId: string;
+}
+interface AcmeProfileActorMetadata {
+  profileId: string;
+}
 interface UserActor {
   type: ActorType.USER;
   metadata: UserActorMetadata;
@@ -67,13 +74,25 @@ export interface UnknownUserActor {
   type: ActorType.UNKNOWN_USER;
 }
 
+export interface AcmeProfileActor {
+  type: ActorType.ACME_PROFILE;
+  metadata: AcmeProfileActorMetadata;
+}
+
+export interface AcmeAccountActor {
+  type: ActorType.ACME_ACCOUNT;
+  metadata: AcmeAccountActorMetadata;
+}
+
 export type Actor =
   | UserActor
   | ServiceActor
   | IdentityActor
   | PlatformActor
   | UnknownUserActor
-  | KmipClientActor;
+  | KmipClientActor
+  | AcmeProfileActor
+  | AcmeAccountActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;

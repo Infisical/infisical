@@ -49,6 +49,7 @@ import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
 import { KmipPermission } from "../kmip/kmip-enum";
+import { AcmeChallengeType, AcmeIdentifierType } from "../pki-acme/pki-acme-schemas";
 import { ApprovalStatus } from "../secret-approval-request/secret-approval-request-types";
 
 export type TListProjectAuditLogDTO = {
@@ -78,7 +79,9 @@ export type TCreateAuditLogDTO = {
     | ScimClientActor
     | PlatformActor
     | UnknownUserActor
-    | KmipClientActor;
+    | KmipClientActor
+    | AcmeProfileActor
+    | AcmeAccountActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -574,7 +577,18 @@ export enum EventType {
   APPROVAL_REQUEST_CANCEL = "approval-request-cancel",
   APPROVAL_REQUEST_GRANT_LIST = "approval-request-grant-list",
   APPROVAL_REQUEST_GRANT_GET = "approval-request-grant-get",
-  APPROVAL_REQUEST_GRANT_REVOKE = "approval-request-grant-revoke"
+  APPROVAL_REQUEST_GRANT_REVOKE = "approval-request-grant-revoke",
+
+  // PKI ACME
+  CREATE_ACME_ACCOUNT = "create-acme-account",
+  RETRIEVE_ACME_ACCOUNT = "retrieve-acme-account",
+  CREATE_ACME_ORDER = "create-acme-order",
+  FINALIZE_ACME_ORDER = "finalize-acme-order",
+  DOWNLOAD_ACME_CERTIFICATE = "download-acme-certificate",
+  RESPOND_TO_ACME_CHALLENGE = "respond-to-acme-challenge",
+  PASS_ACME_CHALLENGE = "pass-acme-challenge",
+  ATTEMPT_ACME_CHALLENGE = "attempt-acme-challenge",
+  FAIL_ACME_CHALLENGE = "fail-acme-challenge"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -615,6 +629,15 @@ interface KmipClientActorMetadata {
   name: string;
 }
 
+interface AcmeProfileActorMetadata {
+  profileId: string;
+}
+
+interface AcmeAccountActorMetadata {
+  profileId: string;
+  accountId: string;
+}
+
 interface UnknownUserActorMetadata {}
 
 export interface UserActor {
@@ -652,7 +675,25 @@ export interface ScimClientActor {
   metadata: ScimClientActorMetadata;
 }
 
-export type Actor = UserActor | ServiceActor | IdentityActor | ScimClientActor | PlatformActor | KmipClientActor;
+export interface AcmeProfileActor {
+  type: ActorType.ACME_PROFILE;
+  metadata: AcmeProfileActorMetadata;
+}
+
+export interface AcmeAccountActor {
+  type: ActorType.ACME_ACCOUNT;
+  metadata: AcmeAccountActorMetadata;
+}
+
+export type Actor =
+  | UserActor
+  | ServiceActor
+  | IdentityActor
+  | ScimClientActor
+  | PlatformActor
+  | KmipClientActor
+  | AcmeProfileActor
+  | AcmeAccountActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -4368,6 +4409,84 @@ interface ApprovalRequestGrantRevokeEvent {
   };
 }
 
+interface CreateAcmeAccountEvent {
+  type: EventType.CREATE_ACME_ACCOUNT;
+  metadata: {
+    accountId: string;
+    publicKeyThumbprint: string;
+    emails?: string[];
+  };
+}
+
+interface RetrieveAcmeAccountEvent {
+  type: EventType.RETRIEVE_ACME_ACCOUNT;
+  metadata: {
+    accountId: string;
+    publicKeyThumbprint: string;
+  };
+}
+
+interface CreateAcmeOrderEvent {
+  type: EventType.CREATE_ACME_ORDER;
+  metadata: {
+    orderId: string;
+    identifiers: Array<{
+      type: AcmeIdentifierType;
+      value: string;
+    }>;
+  };
+}
+
+interface FinalizeAcmeOrderEvent {
+  type: EventType.FINALIZE_ACME_ORDER;
+  metadata: {
+    orderId: string;
+    csr: string;
+  };
+}
+
+interface DownloadAcmeCertificateEvent {
+  type: EventType.DOWNLOAD_ACME_CERTIFICATE;
+  metadata: {
+    orderId: string;
+  };
+}
+
+interface RespondToAcmeChallengeEvent {
+  type: EventType.RESPOND_TO_ACME_CHALLENGE;
+  metadata: {
+    challengeId: string;
+    type: AcmeChallengeType;
+  };
+}
+interface PassedAcmeChallengeEvent {
+  type: EventType.PASS_ACME_CHALLENGE;
+  metadata: {
+    challengeId: string;
+    type: AcmeChallengeType;
+  };
+}
+
+interface AttemptAcmeChallengeEvent {
+  type: EventType.ATTEMPT_ACME_CHALLENGE;
+  metadata: {
+    challengeId: string;
+    type: AcmeChallengeType;
+    retryCount: number;
+    errorMessage: string;
+  };
+}
+
+interface FailAcmeChallengeEvent {
+  type: EventType.FAIL_ACME_CHALLENGE;
+  metadata: {
+    challengeId: string;
+    type: AcmeChallengeType;
+    retryCount: number;
+    errorMessage: string;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -4768,4 +4887,13 @@ export type Event =
   | ApprovalRequestCancelEvent
   | ApprovalRequestGrantListEvent
   | ApprovalRequestGrantGetEvent
-  | ApprovalRequestGrantRevokeEvent;
+  | ApprovalRequestGrantRevokeEvent
+  | CreateAcmeAccountEvent
+  | RetrieveAcmeAccountEvent
+  | CreateAcmeOrderEvent
+  | FinalizeAcmeOrderEvent
+  | DownloadAcmeCertificateEvent
+  | RespondToAcmeChallengeEvent
+  | PassedAcmeChallengeEvent
+  | AttemptAcmeChallengeEvent
+  | FailAcmeChallengeEvent;

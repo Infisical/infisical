@@ -11,6 +11,7 @@ import {
 } from "@app/ee/services/external-kms/providers/model";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
+import { deterministicStringify } from "@app/lib/fn/object";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -88,9 +89,11 @@ export const registerExternalKmsEndpoints = <
         ...rest
       } = externalKms;
 
+      const credentialsToHash = deterministicStringify(configuration.credential);
+
       const credentialsHash = crypto.nativeCrypto
         .createHash("sha256")
-        .update(externalKmsData.encryptedProviderInputs)
+        .update(Buffer.from(credentialsToHash))
         .digest("hex");
       return { ...rest, externalKms: { ...externalKmsData, configuration, credentialsHash } };
     }
@@ -153,9 +156,12 @@ export const registerExternalKmsEndpoints = <
         external: { providerInput: externalKmsConfiguration, ...externalKmsData },
         ...rest
       } = externalKms;
+
+      const credentialsToHash = deterministicStringify(externalKmsConfiguration.credential);
+
       const credentialsHash = crypto.nativeCrypto
         .createHash("sha256")
-        .update(externalKmsData.encryptedProviderInputs)
+        .update(Buffer.from(credentialsToHash))
         .digest("hex");
       return { ...rest, externalKms: { ...externalKmsData, configuration: externalKmsConfiguration, credentialsHash } };
     }
@@ -222,9 +228,12 @@ export const registerExternalKmsEndpoints = <
         external: { providerInput: externalKmsConfiguration, ...externalKmsData },
         ...rest
       } = externalKms;
+
+      const credentialsToHash = deterministicStringify(externalKmsConfiguration.credential);
+
       const credentialsHash = crypto.nativeCrypto
         .createHash("sha256")
-        .update(externalKmsData.encryptedProviderInputs)
+        .update(Buffer.from(credentialsToHash))
         .digest("hex");
       return { ...rest, externalKms: { ...externalKmsData, configuration: externalKmsConfiguration, credentialsHash } };
     }
@@ -277,9 +286,12 @@ export const registerExternalKmsEndpoints = <
         external: { providerInput: configuration, ...externalKmsData },
         ...rest
       } = externalKms;
+
+      const credentialsToHash = deterministicStringify(configuration.credential);
+
       const credentialsHash = crypto.nativeCrypto
         .createHash("sha256")
-        .update(externalKmsData.encryptedProviderInputs)
+        .update(Buffer.from(credentialsToHash))
         .digest("hex");
 
       return { ...rest, externalKms: { ...externalKmsData, configuration, credentialsHash } };
