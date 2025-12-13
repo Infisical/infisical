@@ -294,36 +294,36 @@ export const ROUTE_PATHS = Object.freeze({
   },
   CertManager: {
     CertAuthDetailsByIDPage: setRoute(
-      "/organizations/$orgId/projects/cert-management/$projectId/ca/$caId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-management/$projectId/_cert-manager-layout/ca/$caId"
+      "/organizations/$orgId/projects/cert-manager/$projectId/ca/$caId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/ca/$caId"
     ),
     SubscribersPage: setRoute(
-      "/organizations/$orgId/projects/cert-management/$projectId/subscribers",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-management/$projectId/_cert-manager-layout/subscribers"
+      "/organizations/$orgId/projects/cert-manager/$projectId/subscribers",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers"
     ),
     CertificateAuthoritiesPage: setRoute(
-      "/organizations/$orgId/projects/cert-management/$projectId/certificate-authorities",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-management/$projectId/_cert-manager-layout/certificate-authorities"
+      "/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-authorities"
     ),
     AlertingPage: setRoute(
-      "/organizations/$orgId/projects/cert-management/$projectId/alerting",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-management/$projectId/_cert-manager-layout/alerting"
+      "/organizations/$orgId/projects/cert-manager/$projectId/alerting",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/alerting"
     ),
     PkiCollectionDetailsByIDPage: setRoute(
-      "/organizations/$orgId/projects/cert-management/$projectId/pki-collections/$collectionId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-management/$projectId/_cert-manager-layout/pki-collections/$collectionId"
+      "/organizations/$orgId/projects/cert-manager/$projectId/pki-collections/$collectionId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/pki-collections/$collectionId"
     ),
     PkiSubscriberDetailsByIDPage: setRoute(
-      "/organizations/$orgId/projects/cert-management/$projectId/subscribers/$subscriberName",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-management/$projectId/_cert-manager-layout/subscribers/$subscriberName"
+      "/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName"
     ),
     IntegrationsListPage: setRoute(
-      "/organizations/$orgId/projects/cert-management/$projectId/integrations",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-management/$projectId/_cert-manager-layout/integrations/"
+      "/organizations/$orgId/projects/cert-manager/$projectId/integrations",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/integrations/"
     ),
     PkiSyncDetailsByIDPage: setRoute(
-      "/organizations/$orgId/projects/cert-management/$projectId/integrations/$syncId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-management/$projectId/_cert-manager-layout/integrations/$syncId"
+      "/organizations/$orgId/projects/cert-manager/$projectId/integrations/$syncId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/integrations/$syncId"
     )
   },
   Ssh: {

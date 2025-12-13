@@ -1986,7 +1986,7 @@ export const projectServiceFactory = ({
     if (project.type === ProjectType.SecretManager) {
       projectTypeUrl = "secret-management";
     } else if (project.type === ProjectType.CertificateManager) {
-      projectTypeUrl = "cert-management";
+      projectTypeUrl = "cert-manager";
     }
 
     const callbackPath = `/organizations/${project.orgId}/projects/${projectTypeUrl}/${project.id}/access-management?selectedTab=members&requesterEmail=${userDetails.email}`;

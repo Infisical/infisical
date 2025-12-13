@@ -61,9 +61,7 @@ export const PkiExpirationAlertTemplate = ({
       </Section>
 
       <Section className="text-center mt-[32px] mb-[16px]">
-        <BaseButton href={`${siteUrl}/projects/cert-management/${projectId}/policies`}>
-          View Certificate Alerts
-        </BaseButton>
+        <BaseButton href={`${siteUrl}/projects/cert-manager/${projectId}/policies`}>View Certificate Alerts</BaseButton>
       </Section>
     </BaseEmailWrapper>
   );
