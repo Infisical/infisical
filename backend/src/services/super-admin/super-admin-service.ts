@@ -235,10 +235,13 @@ export const superAdminServiceFactory = ({
       ? decrypt(serverCfg.encryptedGitHubAppConnectionPrivateKey).toString()
       : "";
 
+    const appCfg = getConfig();
+
     return {
       slack: {
         clientSecret: slackClientSecret,
-        clientId: slackClientId
+        clientId: slackClientId,
+        govEnabled: appCfg.WORKFLOW_SLACK_GOV_ENABLED
       },
       microsoftTeams: {
         appId: microsoftAppId,

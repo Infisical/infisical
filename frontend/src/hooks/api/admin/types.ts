@@ -119,6 +119,7 @@ export type AdminIntegrationsConfig = {
   slack: {
     clientId: string;
     clientSecret: string;
+    govEnabled: boolean;
   };
   microsoftTeams: {
     appId: string;

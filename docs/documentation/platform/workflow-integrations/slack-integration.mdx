@@ -62,6 +62,10 @@ This guide will provide step by step instructions on how to configure Slack inte
     ### Configure admin settings
     Note that this step only has to be done once for the entire instance.
 
+    <Info>
+      If you're using GovSlack, you'll need to enable GovSlack mode by setting `WORKFLOW_SLACK_GOV_ENABLED=true` and `WORKFLOW_SLACK_GOV_BASE_URL` environment variables. See the [GovSlack Support](#govslack-support) section for more details.
+    </Info>
+
     <Steps>
       <Step title="Navigate to the Integrations tab in the Admin settings">
         Before anything else, you need to setup the Slack app to be used by
@@ -144,6 +148,34 @@ This guide will provide step by step instructions on how to configure Slack inte
 
   </Tab>
 </Tabs>
+
+## GovSlack Support
+
+Infisical supports integration with GovSlack workspaces. When enabled, Infisical will use the GovSlack API endpoints instead of the standard Slack API.
+
+<Info>
+  GovSlack support is only available for self-hosted instances. Contact your
+  instance administrator to enable this feature.
+</Info>
+
+### Enabling Slack Gov Mode
+
+To enable Slack Gov support, set the following environment variables:
+
+```bash
+WORKFLOW_SLACK_GOV_ENABLED=true
+WORKFLOW_SLACK_GOV_BASE_URL=https://slack-gov.com
+```
+
+<Note>
+  The `WORKFLOW_SLACK_GOV_BASE_URL` defaults to `https://slack-gov.com` if not
+  specified. If your organization uses a custom Slack Gov URL, update this value
+  accordingly.
+</Note>
+
+### Setting Up GovSlack Integration
+
+When GovSlack mode is enabled, the integration process is the same as the standard Slack integration. You can follow the steps in the [Self-hosted setup](#self-hosted-setup) section to set up the Slack integration.
 
 ## Using the Slack integration in your private channels
 

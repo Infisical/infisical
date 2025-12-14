@@ -1,4 +1,4 @@
-import { WebClient } from "@slack/web-api";
+import { WebClient, WebClientOptions } from "@slack/web-api";
 
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
@@ -12,12 +12,20 @@ const COMPANY_BRAND_COLOR = "#e0ed34";
 const ERROR_COLOR = "#e74c3c";
 
 export const fetchSlackChannels = async (botKey: string) => {
+  const appCfg = getConfig();
   const slackChannels: {
     name: string;
     id: string;
   }[] = [];
 
-  const slackWebClient = new WebClient(botKey);
+  const webClientOptions: WebClientOptions = {};
+
+  if (appCfg.WORKFLOW_SLACK_GOV_ENABLED) {
+    const govBaseUrl = appCfg.WORKFLOW_SLACK_GOV_BASE_URL;
+    webClientOptions.slackApiUrl = `${govBaseUrl}/api`;
+  }
+
+  const slackWebClient = new WebClient(botKey, webClientOptions);
   let cursor;
 
   do {
@@ -269,6 +277,7 @@ export const sendSlackNotification = async ({
   targetChannelIds,
   slackIntegration
 }: TSendSlackNotificationDTO) => {
+  const appCfg = getConfig();
   const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
     type: KmsDataKey.Organization,
     orgId
@@ -276,7 +285,15 @@ export const sendSlackNotification = async ({
   const botKey = orgDataKeyDecryptor({
     cipherTextBlob: slackIntegration.encryptedBotAccessToken
   }).toString("utf8");
-  const slackWebClient = new WebClient(botKey);
+
+  const webClientOptions: WebClientOptions = {};
+
+  if (appCfg.WORKFLOW_SLACK_GOV_ENABLED) {
+    const govBaseUrl = appCfg.WORKFLOW_SLACK_GOV_BASE_URL;
+    webClientOptions.slackApiUrl = `${govBaseUrl}/api`;
+  }
+
+  const slackWebClient = new WebClient(botKey, webClientOptions);
 
   const { payloadMessage, payloadBlocks, color, headerBlocks } = buildSlackPayload(notification);
 

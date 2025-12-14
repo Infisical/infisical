@@ -1,5 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
-import { InstallProvider } from "@slack/oauth";
+import { InstallProvider, InstallProviderOptions } from "@slack/oauth";
 
 import { OrganizationActionScope } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -162,7 +162,7 @@ export const slackServiceFactory = ({
       });
     }
 
-    return new InstallProvider({
+    const installProviderOptions: InstallProviderOptions = {
       clientId: slackClientId,
       clientSecret: slackClientSecret,
       stateSecret: appCfg.AUTH_SECRET,
@@ -218,7 +218,17 @@ export const slackServiceFactory = ({
           return {} as never;
         }
       }
-    });
+    };
+
+    if (appCfg.WORKFLOW_SLACK_GOV_ENABLED) {
+      const govBaseUrl = appCfg.WORKFLOW_SLACK_GOV_BASE_URL;
+      installProviderOptions.authorizationUrl = `${govBaseUrl}/oauth/v2/authorize`;
+      installProviderOptions.clientOptions = {
+        slackApiUrl: `${govBaseUrl}/api`
+      };
+    }
+
+    return new InstallProvider(installProviderOptions);
   };
 
   const getInstallUrl = async ({

@@ -18,8 +18,9 @@ import { useToggle } from "@app/hooks";
 import { useUpdateServerConfig } from "@app/hooks/api";
 import { AdminIntegrationsConfig } from "@app/hooks/api/admin/types";
 
-const getCustomSlackAppCreationUrl = () =>
-  `https://api.slack.com/apps?new_app=1&manifest_json=${encodeURIComponent(
+const getCustomSlackAppCreationUrl = (govEnabled: boolean) => {
+  const baseUrl = govEnabled ? "https://api.slack-gov.com" : "https://api.slack.com";
+  return `${baseUrl}/apps?new_app=1&manifest_json=${encodeURIComponent(
     JSON.stringify({
       display_information: {
         name: "Infisical",
@@ -56,6 +57,7 @@ const getCustomSlackAppCreationUrl = () =>
       }
     })
   )}`;
+};
 
 const slackFormSchema = z.object({
   clientId: z.string(),
@@ -119,7 +121,13 @@ export const SlackIntegrationForm = ({ adminIntegrationsConfig }: Props) => {
               <div className="mb-6">
                 <Button
                   colorSchema="secondary"
-                  onClick={() => window.open(getCustomSlackAppCreationUrl())}
+                  onClick={() =>
+                    window.open(
+                      getCustomSlackAppCreationUrl(
+                        adminIntegrationsConfig?.slack.govEnabled ?? false
+                      )
+                    )
+                  }
                 >
                   Create Slack App
                 </Button>

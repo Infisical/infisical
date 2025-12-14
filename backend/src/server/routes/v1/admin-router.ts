@@ -374,7 +374,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           slack: z.object({
             clientId: z.string(),
-            clientSecret: z.string()
+            clientSecret: z.string(),
+            govEnabled: z.boolean()
           }),
           microsoftTeams: z.object({
             appId: z.string(),
