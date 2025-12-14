@@ -103,7 +103,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
       secretsLimit: 40
     }
   },
-  [SubscriptionProductCategory.SecretsManager]: {
+  [SubscriptionProductCategory.SecretManager]: {
     enterpriseSecretSyncs: false,
     secretApproval: false,
     secretRotation: false,
@@ -118,7 +118,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
     projectLimit: null,
     projectsUsed: 0
   },
-  [SubscriptionProductCategory.CertManager]: {
+  [SubscriptionProductCategory.CertificateManager]: {
     enterpriseCertificateSyncs: false,
     pkiEst: false,
     pkiAcme: false,
@@ -135,12 +135,12 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
     projectLimit: null,
     projectsUsed: 0
   },
-  [SubscriptionProductCategory.SecretsScanning]: {
-    sshHostGroups: false,
+  [SubscriptionProductCategory.SecretScanning]: {
     identityLimit: null,
     identitiesUsed: 0,
     projectLimit: null,
-    projectsUsed: 0
+    projectsUsed: 0,
+    sshHostGroups: false
   }
 });
 

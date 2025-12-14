@@ -425,7 +425,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.get(SubscriptionProductCategory.SecretsManager, "secretApproval")) {
+    if (!plan.get(SubscriptionProductCategory.SecretManager, "secretApproval")) {
       throw new BadRequestError({
         message:
           "Failed to review secret approval request due to plan restriction. Upgrade plan to review secret approval request."
@@ -500,7 +500,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.get(SubscriptionProductCategory.SecretsManager, "secretApproval")) {
+    if (!plan.get(SubscriptionProductCategory.SecretManager, "secretApproval")) {
       throw new BadRequestError({
         message:
           "Failed to update secret approval request due to plan restriction. Upgrade plan to update secret approval request."
@@ -557,7 +557,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.get(SubscriptionProductCategory.SecretsManager, "secretApproval")) {
+    if (!plan.get(SubscriptionProductCategory.SecretManager, "secretApproval")) {
       throw new BadRequestError({
         message:
           "Failed to merge secret approval request due to plan restriction. Upgrade plan to merge secret approval request."

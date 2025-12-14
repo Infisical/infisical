@@ -65,7 +65,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         orgId: req.params.organizationId,
         refreshCache: req.query.refreshCache
       });
-      return { plan };
+      return { plan: plan.getAll() };
     }
   });
 

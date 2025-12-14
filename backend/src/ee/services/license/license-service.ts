@@ -207,12 +207,12 @@ export const licenseServiceFactory = ({
         category: C,
         featureKey: K
       ): TFeatureSet[C][K] | undefined => {
-        const feature = featureSet[category][featureKey];
+        const feature = featureSet?.[category]?.[featureKey];
 
         if (
           !feature &&
           (category === SubscriptionProductCategory.Platform ||
-            category === SubscriptionProductCategory.SecretsManager) &&
+            category === SubscriptionProductCategory.SecretManager) &&
           featureKey in featureSet
         ) {
           return featureSet?.[featureKey];
@@ -237,6 +237,7 @@ export const licenseServiceFactory = ({
         if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
         const rootOrgId = org.id;
 
+        console.log(`/api/license-server/v1/customers/${org.customerId}/cloud-plan`);
         const {
           data: { currentPlan }
         } = await licenseServerCloudApi.request.get<{ currentPlan: TFeatureSet }>(
@@ -303,8 +304,8 @@ export const licenseServiceFactory = ({
 
     if (featureSet.version === 2) {
       let type: SubscriptionProductCategory | null = null;
-      if (projectType === ProjectType.SecretManager) type = SubscriptionProductCategory.SecretsManager;
-      if (projectType === ProjectType.CertificateManager) type = SubscriptionProductCategory.CertManager;
+      if (projectType === ProjectType.SecretManager) type = SubscriptionProductCategory.SecretManager;
+      if (projectType === ProjectType.CertificateManager) type = SubscriptionProductCategory.CertificateManager;
       if (projectType === ProjectType.PAM) type = SubscriptionProductCategory.Pam;
       if (!type) return;
 

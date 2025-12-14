@@ -1264,7 +1264,7 @@ export const secretServiceFactory = ({
   const getSecretAccessList = async (dto: TGetSecretAccessListDTO) => {
     const { environment, secretPath, secretName, projectId } = dto;
     const plan = await licenseService.getPlan(dto.actorOrgId);
-    if (!plan.get(SubscriptionProductCategory.SecretsManager, "secretAccessInsights")) {
+    if (!plan.get(SubscriptionProductCategory.SecretManager, "secretAccessInsights")) {
       throw new BadRequestError({
         message: "Failed to fetch secret access list due to plan restriction. Upgrade your plan."
       });

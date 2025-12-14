@@ -82,7 +82,7 @@ export type TFeatureSet = {
       secretsLimit: number;
     };
   };
-  [SubscriptionProductCategory.SecretsManager]: {
+  [SubscriptionProductCategory.SecretManager]: {
     enterpriseSecretSyncs: false;
     secretApproval: false;
     secretRotation: false;
@@ -97,7 +97,7 @@ export type TFeatureSet = {
     projectLimit: null;
     projectsUsed: number;
   };
-  [SubscriptionProductCategory.CertManager]: {
+  [SubscriptionProductCategory.CertificateManager]: {
     enterpriseCertificateSyncs: false;
     pkiEst: boolean;
     pkiAcme: false;
@@ -114,7 +114,7 @@ export type TFeatureSet = {
     projectLimit: null;
     projectsUsed: number;
   };
-  [SubscriptionProductCategory.SecretsScanning]: {
+  [SubscriptionProductCategory.SecretScanning]: {
     sshHostGroups: false;
     identityLimit: null;
     identitiesUsed: number;

@@ -144,7 +144,7 @@ export const secretApprovalPolicyServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.get(SubscriptionProductCategory.SecretsManager, "secretApproval")) {
+    if (!plan.get(SubscriptionProductCategory.SecretManager, "secretApproval")) {
       throw new BadRequestError({
         message:
           "Failed to create secret approval policy due to plan restriction. Upgrade plan to create secret approval policy."
@@ -364,7 +364,7 @@ export const secretApprovalPolicyServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.get(SubscriptionProductCategory.SecretsManager, "secretApproval")) {
+    if (!plan.get(SubscriptionProductCategory.SecretManager, "secretApproval")) {
       throw new BadRequestError({
         message:
           "Failed to update secret approval policy due to plan restriction. Upgrade plan to update secret approval policy."
@@ -539,7 +539,7 @@ export const secretApprovalPolicyServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.get(SubscriptionProductCategory.SecretsManager, "secretApproval")) {
+    if (!plan.get(SubscriptionProductCategory.SecretManager, "secretApproval")) {
       throw new BadRequestError({
         message:
           "Failed to update secret approval policy due to plan restriction. Upgrade plan to update secret approval policy."

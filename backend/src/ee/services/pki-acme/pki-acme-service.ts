@@ -166,7 +166,7 @@ export const pkiAcmeServiceFactory = ({
       throw new NotFoundError({ message: "Certificate profile is not configured for ACME enrollment" });
     }
     const orgLicensePlan = await licenseService.getPlan(profile.project!.orgId);
-    if (!orgLicensePlan.get(SubscriptionProductCategory.CertManager, "pkiAcme")) {
+    if (!orgLicensePlan.get(SubscriptionProductCategory.CertificateManager, "pkiAcme")) {
       throw new AcmeUnauthorizedError({
         message: "Failed to validate ACME profile: Plan restriction. Upgrade plan to continue"
       });

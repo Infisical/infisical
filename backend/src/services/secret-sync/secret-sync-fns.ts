@@ -562,7 +562,7 @@ export const enterpriseSyncCheck = async (
 ) => {
   if (SECRET_SYNC_PLAN_MAP[secretSync] === SecretSyncPlanType.Enterprise) {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.get(SubscriptionProductCategory.SecretsManager, "enterpriseSecretSyncs"))
+    if (!plan.get(SubscriptionProductCategory.SecretManager, "enterpriseSecretSyncs"))
       throw new BadRequestError({
         message: errorMessage
       });

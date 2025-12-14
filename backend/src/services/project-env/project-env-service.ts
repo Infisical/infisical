@@ -82,7 +82,7 @@ export const projectEnvServiceFactory = ({
 
       const project = await projectDAL.findById(projectId);
       const plan = await licenseService.getPlan(project.orgId);
-      const environmentLimit = plan.get(SubscriptionProductCategory.SecretsManager, "environmentLimit");
+      const environmentLimit = plan.get(SubscriptionProductCategory.SecretManager, "environmentLimit");
       if (environmentLimit && envs.length >= environmentLimit) {
         // case: limit imposed on number of environments allowed
         // case: number of environments used exceeds the number of environments allowed
@@ -181,7 +181,7 @@ export const projectEnvServiceFactory = ({
       const envs = await projectEnvDAL.find({ projectId });
       const project = await projectDAL.findById(projectId);
       const plan = await licenseService.getPlan(project.orgId);
-      const environmentLimit = plan.get(SubscriptionProductCategory.SecretsManager, "environmentLimit");
+      const environmentLimit = plan.get(SubscriptionProductCategory.SecretManager, "environmentLimit");
       if (environmentLimit && envs.length > environmentLimit) {
         // case: limit imposed on number of environments allowed
         // case: number of environments used exceeds the number of environments allowed
