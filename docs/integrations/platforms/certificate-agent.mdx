@@ -205,16 +205,17 @@ auth:
 certificates:
   - profile-name: "prof-web-server-12345"
     project-slug: "my-project-slug"
-    common-name: "api.example.com"
-    alt-names: ["api.example.com", "api-v2.example.com"]
-    ttl: "90d"
-    key-algorithm: "RSA_2048"
-    signature-algorithm: "RSA-SHA256"
-    key-usages:
-      - "digital_signature"
-      - "key_encipherment"
-    extended-key-usages:
-      - "server_auth"
+    attributes:
+      common-name: "api.example.com"
+      alt-names: ["api.example.com", "api-v2.example.com"]
+      ttl: "90d"
+      key-algorithm: "RSA_2048"
+      signature-algorithm: "RSA-SHA256"
+      key-usages:
+        - "digital_signature"
+        - "key_encipherment"
+      extended-key-usages:
+        - "server_auth"
 
     # Enable automatic certificate renewal
     lifecycle:
@@ -292,8 +293,8 @@ The table below provides a complete list of parameters that can be configured in
 | `common-name`                        | Optional                                               | The common name for the certificate (e.g. `www.example.com`)                                                                                                                                                                       |
 | `alt-names`                          | Optional                                               | The list of subject alternative names for the certificate (e.g., `["www.example.com", "api.example.com"]`)                                                                                                                         |
 | `ttl`                                | Optional (uses profile default if not specified)       | The time-to-live duration for the certificate, specified as a duration string (e.g. `72h`, `90d`, `1y`, etc.)                                                                                                                      |
-| `key-algorithm`                      | Optional                                               | The algorithm for the certificate key pair. One of: `RSA_2048`, `RSA_4096`, `EC_prime256v1`, `EC_secp384r1`.                                                                                                                       |
-| `signature-algorithm`                | Optional                                               | The algorithm used to sign the certificate. One of: `RSA-SHA256`, `RSA-SHA384`, `RSA-SHA512`, `ECDSA-SHA256`.                                                                                                                      |
+| `key-algorithm`                      | Optional                                               | The algorithm for the certificate key pair. One of: `RSA_2048`, `RSA_3072`, `RSA_4096`, `EC_prime256v1`, `EC_secp384r1`, `EC_secp521r1`.                                                                                           |
+| `signature-algorithm`                | Optional                                               | The algorithm used to sign the certificate. One of: `RSA-SHA256`, `RSA-SHA384`, `RSA-SHA512`, `ECDSA-SHA256`, `ECDSA-SHA384`, `ECDSA-SHA512`.                                                                                      |
 | `key-usages`                         | Optional                                               | The list of key usage values for the certificate. One or more of: `digital_signature`, `key_encipherment`, `non_repudiation`, `data_encipherment`, `key_agreement`, `key_cert_sign`, `crl_sign`, `encipher_only`, `decipher_only`. |
 | `extended-key-usages`                | Optional                                               | The list of extended key usage values for the certificate. One or more of: `server_auth`, `client_auth`, `code_signing`, `email_protection`, `timestamping`, `ocsp_signing`.                                                       |
 | `csr-path`                           | Conditional                                            | The path to a certificate signing request (CSR) file (e.g., `./csr/webserver.csr`, `/etc/ssl/csr.pem`). This is required if using a pre-generated CSR.                                                                             |
@@ -422,18 +423,19 @@ auth:
 certificates:
   - profile-name: "prof-web-server-12345"
     project-slug: "my-project-slug"
-    common-name: "api.example.com"
-    alt-names:
-      - "api.example.com"
-      - "api-v2.example.com"
-    key-algorithm: "RSA_2048"
-    signature-algorithm: "RSA-SHA256"
-    key-usages:
-      - "digital_signature"
-      - "key_encipherment"
-    extended-key-usages:
-      - "server_auth"
-    ttl: "30d"
+    attributes:
+      common-name: "api.example.com"
+      alt-names:
+        - "api.example.com"
+        - "api-v2.example.com"
+      key-algorithm: "RSA_2048"
+      signature-algorithm: "RSA-SHA256"
+      key-usages:
+        - "digital_signature"
+        - "key_encipherment"
+      extended-key-usages:
+        - "server_auth"
+      ttl: "30d"
     file-output:
       private-key:
         path: "/etc/ssl/private/api.example.com.key"
@@ -516,18 +518,19 @@ auth:
 certificates:
   - profile-name: "prof-web-server-12345"
     project-slug: "my-project-slug"
-    common-name: "api.example.com"
-    alt-names:
-      - "api.example.com"
-      - "api-v2.example.com"
-    key-algorithm: "RSA_2048"
-    signature-algorithm: "RSA-SHA256"
-    key-usages:
-      - "digital_signature"
-      - "key_encipherment"
-    extended-key-usages:
-      - "server_auth"
-    ttl: "30d"
+    attributes:
+      common-name: "api.example.com"
+      alt-names:
+        - "api.example.com"
+        - "api-v2.example.com"
+      key-algorithm: "RSA_2048"
+      signature-algorithm: "RSA-SHA256"
+      key-usages:
+        - "digital_signature"
+        - "key_encipherment"
+      extended-key-usages:
+        - "server_auth"
+      ttl: "30d"
     lifecycle:
       renew-before-expiry: "14d" # Renew 14 days before expiration
       status-check-interval: "6h" # Check certificate status every 6 hours
