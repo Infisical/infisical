@@ -54,7 +54,7 @@ export const certificateEstServiceFactory = ({
     });
 
     const plan = await licenseService.getPlan(estConfig.orgId);
-    if (!plan.get(SubscriptionProductCategory.CertManager, "pkiEst")) {
+    if (!plan.get(SubscriptionProductCategory.CertificateManager, "pkiEst")) {
       throw new BadRequestError({
         message:
           "Failed to perform EST operation - simpleReenroll due to plan restriction. Upgrade to the Enterprise plan."
@@ -155,7 +155,7 @@ export const certificateEstServiceFactory = ({
     });
 
     const plan = await licenseService.getPlan(estConfig.orgId);
-    if (!plan.get(SubscriptionProductCategory.CertManager, "pkiEst")) {
+    if (!plan.get(SubscriptionProductCategory.CertificateManager, "pkiEst")) {
       throw new BadRequestError({
         message:
           "Failed to perform EST operation - simpleEnroll due to plan restriction. Upgrade to the Enterprise plan."
@@ -216,7 +216,7 @@ export const certificateEstServiceFactory = ({
     });
 
     const plan = await licenseService.getPlan(estConfig.orgId);
-    if (!plan.get(SubscriptionProductCategory.CertManager, "pkiEst")) {
+    if (!plan.get(SubscriptionProductCategory.CertificateManager, "pkiEst")) {
       throw new BadRequestError({
         message: "Failed to perform EST operation - caCerts due to plan restriction. Upgrade to the Enterprise plan."
       });

@@ -170,7 +170,7 @@ export const projectTemplateServiceFactory = ({
       throw new BadRequestError({ message: "Cannot configure environments for non-SecretManager project templates" });
     }
 
-    const environmentLimit = plan.get(SubscriptionProductCategory.SecretsManager, "environmentLimit");
+    const environmentLimit = plan.get(SubscriptionProductCategory.SecretManager, "environmentLimit");
     if (environments && environmentLimit && environments.length > environmentLimit) {
       throw new BadRequestError({
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -238,7 +238,7 @@ export const projectTemplateServiceFactory = ({
     if (projectTemplate.type === ProjectType.SecretManager && environments === null)
       throw new BadRequestError({ message: "Environments cannot be removed for SecretManager project templates" });
 
-    const environmentLimit = plan.get(SubscriptionProductCategory.SecretsManager, "environmentLimit");
+    const environmentLimit = plan.get(SubscriptionProductCategory.SecretManager, "environmentLimit");
     if (environments && environmentLimit && environments.length > environmentLimit) {
       throw new BadRequestError({
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions

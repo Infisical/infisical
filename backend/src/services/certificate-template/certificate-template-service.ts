@@ -254,7 +254,7 @@ export const certificateTemplateServiceFactory = ({
     disableBootstrapCertValidation
   }: TCreateEstConfigurationDTO) => {
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.get(SubscriptionProductCategory.CertManager, "pkiEst")) {
+    if (!plan.get(SubscriptionProductCategory.CertificateManager, "pkiEst")) {
       throw new BadRequestError({
         message: "Failed to create EST configuration due to plan restriction. Upgrade to the Enterprise plan."
       });
@@ -337,7 +337,7 @@ export const certificateTemplateServiceFactory = ({
     disableBootstrapCertValidation
   }: TUpdateEstConfigurationDTO) => {
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.get(SubscriptionProductCategory.CertManager, "pkiEst")) {
+    if (!plan.get(SubscriptionProductCategory.CertificateManager, "pkiEst")) {
       throw new BadRequestError({
         message: "Failed to update EST configuration due to plan restriction. Upgrade to the Enterprise plan."
       });

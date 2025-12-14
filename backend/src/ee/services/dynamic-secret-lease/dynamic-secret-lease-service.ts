@@ -90,7 +90,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     });
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.get(SubscriptionProductCategory.SecretsManager, "dynamicSecret")) {
+    if (!plan.get(SubscriptionProductCategory.SecretManager, "dynamicSecret")) {
       throw new BadRequestError({
         message: "Failed to create lease due to plan restriction. Upgrade plan to create dynamic secret."
       });
@@ -219,7 +219,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     });
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.get(SubscriptionProductCategory.SecretsManager, "dynamicSecret")) {
+    if (!plan.get(SubscriptionProductCategory.SecretManager, "dynamicSecret")) {
       throw new BadRequestError({
         message: "Failed to renew lease due to plan restriction. Upgrade plan to create dynamic secret."
       });

@@ -341,10 +341,10 @@ export enum ProjectType {
 }
 
 export enum SubscriptionProductCategory {
-  SecretsManager = "secret-manager",
-  SecretsScanning = "secret-scanning",
+  SecretManager = "secret-manager",
+  SecretScanning = "secret-scanning",
   Pam = "pam",
-  CertManager = "cert-manager",
+  CertificateManager = "cert-manager",
   Platform = "platform"
 }
 

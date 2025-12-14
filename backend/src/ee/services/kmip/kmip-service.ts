@@ -89,7 +89,7 @@ export const kmipServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.get(SubscriptionProductCategory.CertManager, "kmip"))
+    if (!plan.get(SubscriptionProductCategory.CertificateManager, "kmip"))
       throw new BadRequestError({
         message: "Failed to create KMIP client. Upgrade your plan to enterprise."
       });
@@ -123,7 +123,7 @@ export const kmipServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.get(SubscriptionProductCategory.CertManager, "kmip"))
+    if (!plan.get(SubscriptionProductCategory.CertificateManager, "kmip"))
       throw new BadRequestError({
         message: "Failed to update KMIP client. Upgrade your plan to enterprise."
       });
@@ -175,7 +175,7 @@ export const kmipServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.get(SubscriptionProductCategory.CertManager, "kmip"))
+    if (!plan.get(SubscriptionProductCategory.CertificateManager, "kmip"))
       throw new BadRequestError({
         message: "Failed to delete KMIP client. Upgrade your plan to enterprise."
       });
@@ -248,7 +248,7 @@ export const kmipServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.get(SubscriptionProductCategory.CertManager, "kmip"))
+    if (!plan.get(SubscriptionProductCategory.CertificateManager, "kmip"))
       throw new BadRequestError({
         message: "Failed to create KMIP client. Upgrade your plan to enterprise."
       });
@@ -422,7 +422,7 @@ export const kmipServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.get(SubscriptionProductCategory.CertManager, "kmip"))
+    if (!plan.get(SubscriptionProductCategory.CertificateManager, "kmip"))
       throw new BadRequestError({
         message: "Failed to setup KMIP. Upgrade your plan to enterprise."
       });
@@ -625,7 +625,7 @@ export const kmipServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.get(SubscriptionProductCategory.CertManager, "kmip"))
+    if (!plan.get(SubscriptionProductCategory.CertificateManager, "kmip"))
       throw new BadRequestError({
         message: "Failed to generate KMIP server certificate. Upgrade your plan to enterprise."
       });
@@ -789,7 +789,7 @@ export const kmipServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.get(SubscriptionProductCategory.CertManager, "kmip"))
+    if (!plan.get(SubscriptionProductCategory.CertificateManager, "kmip"))
       throw new BadRequestError({
         message: "Failed to register KMIP server. Upgrade your plan to enterprise."
       });

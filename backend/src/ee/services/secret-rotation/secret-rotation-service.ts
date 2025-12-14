@@ -144,7 +144,7 @@ export const secretRotationServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.get(SubscriptionProductCategory.SecretsManager, "secretRotation"))
+    if (!plan.get(SubscriptionProductCategory.SecretManager, "secretRotation"))
       throw new BadRequestError({
         message: "Failed to add secret rotation due to plan restriction. Upgrade plan to add secret rotation."
       });
@@ -256,7 +256,7 @@ export const secretRotationServiceFactory = ({
 
     const project = await projectDAL.findById(doc.projectId);
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.get(SubscriptionProductCategory.SecretsManager, "secretRotation"))
+    if (!plan.get(SubscriptionProductCategory.SecretManager, "secretRotation"))
       throw new BadRequestError({
         message: "Failed to add secret rotation due to plan restriction. Upgrade plan to add secret rotation."
       });

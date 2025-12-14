@@ -38,7 +38,7 @@ export const enterprisePkiSyncCheck = async (
   const plan = await licenseService.getPlan(orgId);
 
   if (
-    !plan.get(SubscriptionProductCategory.CertManager, "enterpriseCertificateSyncs") &&
+    !plan.get(SubscriptionProductCategory.CertificateManager, "enterpriseCertificateSyncs") &&
     ENTERPRISE_PKI_SYNCS.includes(pkiSyncDestination)
   ) {
     throw new BadRequestError({
