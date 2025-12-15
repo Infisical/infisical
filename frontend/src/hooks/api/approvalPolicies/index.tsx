@@ -1,4 +1,5 @@
 export {
+  useCheckPolicyMatch,
   useCreateApprovalPolicy,
   useDeleteApprovalPolicy,
   useUpdateApprovalPolicy
@@ -11,6 +12,8 @@ export {
   type PamAccessPolicyConditions,
   type PamAccessPolicyConstraints,
   type TApprovalPolicy,
+  type TCheckPolicyMatchDTO,
+  type TCheckPolicyMatchResult,
   type TCreateApprovalPolicyDTO,
   type TDeleteApprovalPolicyDTO,
   type TGetApprovalPolicyByIdDTO,

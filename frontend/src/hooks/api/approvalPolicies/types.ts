@@ -81,3 +81,14 @@ export type TDeleteApprovalPolicyDTO = {
   policyType: ApprovalPolicyType;
   policyId: string;
 };
+
+export type TCheckPolicyMatchDTO = {
+  policyType: ApprovalPolicyType;
+  projectId: string;
+  inputs: { accountPath: string };
+};
+
+export type TCheckPolicyMatchResult = {
+  requiresApproval: boolean;
+  hasActiveGrant: boolean;
+};

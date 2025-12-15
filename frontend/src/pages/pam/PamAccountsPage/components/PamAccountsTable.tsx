@@ -16,6 +16,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -48,6 +49,7 @@ import {
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
+import { ApprovalPolicyType, useCheckPolicyMatch } from "@app/hooks/api/approvalPolicies";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   PAM_RESOURCE_TYPE_MAP,
@@ -85,6 +87,8 @@ type Props = {
 export const PamAccountsTable = ({ projectId }: Props) => {
   const navigate = useNavigate({ from: ROUTE_PATHS.Pam.AccountsPage.path });
   const { accessAwsIam, loadingAccountId } = useAccessAwsIamAccount();
+  const { mutateAsync: checkPolicyMatch } = useCheckPolicyMatch();
+  const [requestAccountPath, setRequestAccountPath] = useState<string | undefined>();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "misc",
@@ -232,16 +236,35 @@ export const PamAccountsTable = ({ projectId }: Props) => {
 
   const resources = resourcesData?.resources || [];
 
-  function accessAccount(account: TPamAccount) {
+  async function accessAccount(account: TPamAccount) {
+    let fullAccountPath = account.name;
+    const folderPath = account.folderId ? folderPaths[account.folderId] : undefined;
+    if (folderPath) {
+      fullAccountPath = `${folderPath}/${account.name}`;
+    }
+
+    const { requiresApproval } = await checkPolicyMatch({
+      policyType: ApprovalPolicyType.PamAccess,
+      projectId,
+      inputs: {
+        accountPath: fullAccountPath
+      }
+    });
+
+    if (requiresApproval) {
+      createNotification({
+        text: "This account is protected by an approval policy, you must request access",
+        type: "info"
+      });
+
+      // Open request access modal with pre-populated path
+      setRequestAccountPath(fullAccountPath);
+      handlePopUpOpen("requestAccount");
+      return;
+    }
+
     // For AWS IAM, directly open console without modal
     if (account.resource.resourceType === PamResourceType.AwsIam) {
-      let fullAccountPath = account?.name;
-      const folderPath = account.folderId ? folderPaths[account.folderId] : undefined;
-      if (folderPath) {
-        const path = folderPath.replace(/^\/+|\/+$/g, "");
-        fullAccountPath = `${path}/${account?.name}`;
-      }
-
       accessAwsIam(account, fullAccountPath);
     } else {
       handlePopUpOpen("accessAccount", account);
@@ -537,7 +560,13 @@ export const PamAccountsTable = ({ projectId }: Props) => {
       />
       <PamRequestAccountAccessModal
         isOpen={popUp.requestAccount.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("requestAccount", isOpen)}
+        onOpenChange={(isOpen) => {
+          handlePopUpToggle("requestAccount", isOpen);
+          if (!isOpen) {
+            setRequestAccountPath(undefined);
+          }
+        }}
+        accountPath={requestAccountPath}
       />
       <PamDeleteAccountModal
         isOpen={popUp.deleteAccount.isOpen}
