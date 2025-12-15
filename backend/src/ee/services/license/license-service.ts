@@ -215,6 +215,7 @@ export const licenseServiceFactory = ({
             category === SubscriptionProductCategory.SecretManager) &&
           featureKey in featureSet
         ) {
+          // @ts-expect-error this is expected
           return featureSet?.[featureKey];
         }
 
