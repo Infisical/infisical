@@ -103,3 +103,34 @@ export const deepEqualSkipFields = (obj1: unknown, obj2: unknown, skipFields: st
 
   return deepEqual(filtered1, filtered2);
 };
+
+export const deterministicStringify = (value: unknown): string => {
+  if (value === null || value === undefined) {
+    return JSON.stringify(value);
+  }
+
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return JSON.stringify(value);
+  }
+
+  if (Array.isArray(value)) {
+    const items = value.map((item) => deterministicStringify(item));
+    return `[${items.join(",")}]`;
+  }
+
+  if (typeof value === "object") {
+    const sortedKeys = Object.keys(value).sort();
+    const sortedObj: Record<string, unknown> = {};
+    for (const key of sortedKeys) {
+      const val = (value as Record<string, unknown>)[key];
+      if (typeof val === "object" && val !== null) {
+        sortedObj[key] = JSON.parse(deterministicStringify(val));
+      } else {
+        sortedObj[key] = val;
+      }
+    }
+    return JSON.stringify(sortedObj);
+  }
+
+  return JSON.stringify(value);
+};

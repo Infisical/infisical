@@ -10,7 +10,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { formatDistance } from "date-fns";
-import { FolderIcon, PackageOpenIcon } from "lucide-react";
+import { PackageOpenIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -39,8 +39,6 @@ type Props = {
   onUpdate: (resource: TPamAccount) => void;
   onDelete: (resource: TPamAccount) => void;
   search: string;
-  isFlatView: boolean;
-  accountPath?: string;
   isAccessLoading?: boolean;
 };
 
@@ -50,8 +48,6 @@ export const PamAccountRow = ({
   onAccess,
   onUpdate,
   onDelete,
-  isFlatView,
-  accountPath,
   isAccessLoading
 }: Props) => {
   const { id, name } = account;
@@ -95,14 +91,6 @@ export const PamAccountRow = ({
                 <HighlightText text={account.resource.name} highlight={search} />
               </span>
             </Badge>
-            {isFlatView && accountPath && (
-              <Badge variant="neutral">
-                <FolderIcon />
-                <span>
-                  <HighlightText text={accountPath} highlight={search} />
-                </span>
-              </Badge>
-            )}
             {"lastRotatedAt" in account && account.lastRotatedAt && (
               <Tooltip
                 className="max-w-sm text-center"

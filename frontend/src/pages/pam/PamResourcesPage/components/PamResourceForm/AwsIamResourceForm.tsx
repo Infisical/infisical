@@ -30,7 +30,7 @@ const AwsIamConnectionDetailsSchema = z.object({
   roleArn: z
     .string()
     .trim()
-    .min(1, "PAM Role ARN is required")
+    .min(1, "Resource Role ARN is required")
     .refine((val) => arnRoleRegex.test(val), {
       message: "ARN must be in the format 'arn:aws:iam::123456789012:role/RoleName'"
     })
@@ -57,7 +57,7 @@ export const AwsIamResourceForm = ({ resource, onSubmit }: Props) => {
   "Statement": [{
     "Effect": "Allow",
     "Action": "sts:AssumeRole",
-    "Resource": "arn:aws:iam::<YOUR_ACCOUNT_ID>:role/<YOUR_PREFIX>-*"
+    "Resource": "arn:aws:iam::<YOUR_ACCOUNT_ID>:role/*"
   }]
 }`;
 
@@ -116,12 +116,15 @@ export const AwsIamResourceForm = ({ resource, onSubmit }: Props) => {
           control={control}
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              helperText="The ARN of the Infisical PAM role that can assume target roles"
+              helperText="The ARN of the Infisical Resource Role that can assume target roles"
               errorText={error?.message}
               isError={Boolean(error?.message)}
-              label="PAM Role ARN"
+              label="Resource Role ARN"
             >
-              <Input placeholder="arn:aws:iam::123456789012:role/InfisicalPAMRole" {...field} />
+              <Input
+                placeholder="arn:aws:iam::123456789012:role/InfisicalResourceRole"
+                {...field}
+              />
             </FormControl>
           )}
         />
@@ -148,12 +151,12 @@ export const AwsIamResourceForm = ({ resource, onSubmit }: Props) => {
                 Step 1: Create a permissions policy for assuming target roles
               </p>
               <p className="mb-3 text-sm text-mineshaft-300">
-                This policy allows the PAM role to assume target roles. We recommend using a
-                wildcard pattern (e.g.,{" "}
-                <code className="rounded bg-mineshaft-700 px-1 text-xs">pam-*</code> or{" "}
-                <code className="rounded bg-mineshaft-700 px-1 text-xs">privileged-*</code>) so you
-                can add new accounts without updating this policy. Choose a prefix that fits your
-                naming conventions.
+                This policy allows the Resource Role to assume target roles. For simplicity, use a
+                wildcard to allow assuming any role in your account. For more granular control,
+                replace <code className="rounded bg-mineshaft-700 px-1 text-xs">*</code> with a
+                specific pattern like{" "}
+                <code className="rounded bg-mineshaft-700 px-1 text-xs">/pam-*</code> or{" "}
+                <code className="rounded bg-mineshaft-700 px-1 text-xs">/infisical-*</code>.
               </p>
               <div className="relative mb-4">
                 <div className="absolute top-1 right-1">
@@ -165,12 +168,12 @@ export const AwsIamResourceForm = ({ resource, onSubmit }: Props) => {
               </div>
 
               <p className="mb-2 text-sm font-medium text-mineshaft-200">
-                Step 2: Create the PAM role with a trust policy
+                Step 2: Create the Resource Role with a trust policy
               </p>
               <p className="mb-3 text-sm text-mineshaft-300">
                 Create an IAM role (e.g.,{" "}
-                <code className="rounded bg-mineshaft-700 px-1 text-xs">InfisicalPAMRole</code>)
-                with the permissions policy above and the following trust policy:
+                <code className="rounded bg-mineshaft-700 px-1 text-xs">InfisicalResourceRole</code>
+                ) with the permissions policy above and the following trust policy:
               </p>
               <div className="relative mb-4">
                 <div className="absolute top-1 right-3">
@@ -189,11 +192,8 @@ export const AwsIamResourceForm = ({ resource, onSubmit }: Props) => {
                 <code className="rounded bg-mineshaft-700 px-1 font-bold">
                   {INFISICAL_AWS_ACCOUNT_EU}
                 </code>{" "}
-                for EU region. Replace{" "}
-                <code className="rounded bg-mineshaft-700 px-1 font-bold">
-                  &lt;INFISICAL_AWS_ACCOUNT_ID&gt;
-                </code>{" "}
-                with the appropriate Infisical AWS account ID for your region. The External ID{" "}
+                for EU region. For dedicated instances, contact Infisical support. For self-hosted
+                instances, use your Infisical deployment&apos;s AWS account ID. The External ID{" "}
                 <code className="rounded bg-mineshaft-700 px-1 font-bold">{projectId}</code> is your
                 current project ID.
               </p>

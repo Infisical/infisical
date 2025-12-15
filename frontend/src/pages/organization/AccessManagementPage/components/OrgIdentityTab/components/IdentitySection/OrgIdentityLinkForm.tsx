@@ -84,6 +84,7 @@ export const OrgIdentityLinkForm = ({ onClose }: Props) => {
               onChange={onChange}
               placeholder="Select machine identity..."
               // onInputChange={setSearchValue}
+              autoFocus
               options={rootOrgIdentities}
               getOptionValue={(option) => option.id}
               getOptionLabel={(option) => option.name}

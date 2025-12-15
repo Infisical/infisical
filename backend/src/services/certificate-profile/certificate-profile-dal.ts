@@ -168,7 +168,11 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db.ref("autoRenew").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigAutoRenew"),
           db.ref("renewBeforeDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigRenewBeforeDays"),
           db.ref("id").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeConfigId"),
-          db.ref("encryptedEabSecret").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeConfigEncryptedEabSecret")
+          db.ref("encryptedEabSecret").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeConfigEncryptedEabSecret"),
+          db
+            .ref("skipDnsOwnershipVerification")
+            .withSchema(TableName.PkiAcmeEnrollmentConfig)
+            .as("acmeConfigSkipDnsOwnershipVerification")
         )
         .where(`${TableName.PkiCertificateProfile}.id`, id)
         .first();
@@ -198,7 +202,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
       const acmeConfig = result.acmeConfigId
         ? ({
             id: result.acmeConfigId,
-            encryptedEabSecret: result.acmeConfigEncryptedEabSecret
+            encryptedEabSecret: result.acmeConfigEncryptedEabSecret,
+            skipDnsOwnershipVerification: result.acmeConfigSkipDnsOwnershipVerification ?? false
           } as TCertificateProfileWithConfigs["acmeConfig"])
         : undefined;
 
@@ -356,7 +361,11 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.PkiApiEnrollmentConfig).as("apiId"),
           db.ref("autoRenew").withSchema(TableName.PkiApiEnrollmentConfig).as("apiAutoRenew"),
           db.ref("renewBeforeDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiRenewBeforeDays"),
-          db.ref("id").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeId")
+          db.ref("id").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeId"),
+          db
+            .ref("skipDnsOwnershipVerification")
+            .withSchema(TableName.PkiAcmeEnrollmentConfig)
+            .as("acmeSkipDnsOwnershipVerification")
         );
 
       if (processedRules) {
@@ -393,7 +402,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
 
         const acmeConfig = result.acmeId
           ? {
-              id: result.acmeId as string
+              id: result.acmeId as string,
+              skipDnsOwnershipVerification: !!result.acmeSkipDnsOwnershipVerification
             }
           : undefined;
 

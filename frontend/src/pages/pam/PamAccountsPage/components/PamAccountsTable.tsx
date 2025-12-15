@@ -62,6 +62,7 @@ import { useListPamAccounts, useListPamResources } from "@app/hooks/api/pam/quer
 import { AccountViewToggle } from "./AccountViewToggle";
 import { FolderBreadCrumbs } from "./FolderBreadCrumbs";
 import { PamAccessAccountModal } from "./PamAccessAccountModal";
+import { PamAccountCard } from "./PamAccountCard";
 import { PamAccountRow } from "./PamAccountRow";
 import { PamAddAccountModal } from "./PamAddAccountModal";
 import { PamAddFolderModal } from "./PamAddFolderModal";
@@ -128,7 +129,7 @@ export const PamAccountsTable = ({ projectId }: Props) => {
     setOrderDirection,
     setOrderBy
   } = usePagination<PamAccountOrderBy>(PamAccountOrderBy.Name, {
-    initPerPage: getUserTablePreference("pamAccountsTable", PreferenceKey.PerPage, 20),
+    initPerPage: getUserTablePreference("pamAccountsTable", PreferenceKey.PerPage, 18),
     initSearch
   });
 
@@ -231,10 +232,25 @@ export const PamAccountsTable = ({ projectId }: Props) => {
 
   const resources = resourcesData?.resources || [];
 
+  function accessAccount(account: TPamAccount) {
+    // For AWS IAM, directly open console without modal
+    if (account.resource.resourceType === PamResourceType.AwsIam) {
+      let fullAccountPath = account?.name;
+      const folderPath = account.folderId ? folderPaths[account.folderId] : undefined;
+      if (folderPath) {
+        const path = folderPath.replace(/^\/+|\/+$/g, "");
+        fullAccountPath = `${path}/${account?.name}`;
+      }
+
+      accessAwsIam(account, fullAccountPath);
+    } else {
+      handlePopUpOpen("accessAccount", account);
+    }
+  }
+
   return (
-    <div>
-      {accountView === PamAccountView.Nested && <FolderBreadCrumbs path={accountPath} />}
-      <div className="mt-4 flex gap-2">
+    <div className="flex flex-col gap-4">
+      <div className="flex gap-2">
         <ProjectPermissionCan I={ProjectPermissionActions.Read} a={ProjectPermissionSub.PamFolders}>
           {(isAllowed) =>
             isAllowed && (
@@ -392,32 +408,64 @@ export const PamAccountsTable = ({ projectId }: Props) => {
           )}
         </ProjectPermissionCan>
       </div>
-      <TableContainer className="mt-4">
-        <Table>
-          <THead>
-            <Tr>
-              <Th>
-                <div className="flex items-center">
-                  Accounts
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(PamAccountOrderBy.Name)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(PamAccountOrderBy.Name)}
-                  >
-                    <FontAwesomeIcon icon={getColSortIcon(PamAccountOrderBy.Name)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-5" />
-            </Tr>
-          </THead>
-          <TBody>
-            {isLoading && <TableSkeleton columns={2} innerKey="pam-accounts" />}
-            {!isLoading && (
-              <>
-                {accountView !== PamAccountView.Flat &&
-                  foldersToRender.map((folder) => (
+      {accountView === PamAccountView.Nested && <FolderBreadCrumbs path={accountPath} />}
+      {accountView === PamAccountView.Flat ? (
+        <>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {filteredAccounts.map((account) => (
+              <PamAccountCard
+                key={account.id}
+                account={account}
+                accountPath={account.folderId ? folderPaths[account.folderId] : undefined}
+                onAccess={(e: TPamAccount) => accessAccount(e)}
+              />
+            ))}
+          </div>
+          {!isLoading && isContentEmpty && (
+            <EmptyState
+              title={isSearchEmpty ? "No accounts match search" : "No accounts"}
+              icon={isSearchEmpty ? faSearch : faCircleXmark}
+              className="rounded border border-mineshaft-500"
+            />
+          )}
+          {Boolean(totalCount) && !isLoading && !isContentEmpty && (
+            <Pagination
+              className="col-span-full justify-start! border-transparent bg-transparent pl-2"
+              count={totalCount}
+              page={page}
+              perPage={perPage}
+              onChangePage={(newPage) => setPage(newPage)}
+              onChangePerPage={handlePerPageChange}
+              perPageList={[9, 18, 48, 99]}
+            />
+          )}
+        </>
+      ) : (
+        <TableContainer>
+          <Table>
+            <THead>
+              <Tr>
+                <Th>
+                  <div className="flex items-center">
+                    Accounts
+                    <IconButton
+                      variant="plain"
+                      className={getClassName(PamAccountOrderBy.Name)}
+                      ariaLabel="sort"
+                      onClick={() => handleSort(PamAccountOrderBy.Name)}
+                    >
+                      <FontAwesomeIcon icon={getColSortIcon(PamAccountOrderBy.Name)} />
+                    </IconButton>
+                  </div>
+                </Th>
+                <Th className="w-5" />
+              </Tr>
+            </THead>
+            <TBody>
+              {isLoading && <TableSkeleton columns={2} innerKey="pam-accounts" />}
+              {!isLoading && (
+                <>
+                  {foldersToRender.map((folder) => (
                     <PamFolderRow
                       key={folder.id}
                       folder={folder}
@@ -427,53 +475,39 @@ export const PamAccountsTable = ({ projectId }: Props) => {
                       onDelete={(e) => handlePopUpOpen("deleteFolder", e)}
                     />
                   ))}
-                {filteredAccounts.map((account) => (
-                  <PamAccountRow
-                    key={account.id}
-                    account={account}
-                    search={search}
-                    isFlatView={accountView === PamAccountView.Flat}
-                    accountPath={account.folderId ? folderPaths[account.folderId] : undefined}
-                    isAccessLoading={loadingAccountId === account.id}
-                    onAccess={(e: TPamAccount) => {
-                      // For AWS IAM, directly open console without modal
-                      if (e.resource.resourceType === PamResourceType.AwsIam) {
-                        let fullAccountPath = e?.name;
-                        const folderPath = e.folderId ? folderPaths[e.folderId] : undefined;
-                        if (folderPath) {
-                          const path = folderPath.replace(/^\/+|\/+$/g, "");
-                          fullAccountPath = `${path}/${e?.name}`;
-                        }
-
-                        accessAwsIam(e, fullAccountPath);
-                      } else {
-                        handlePopUpOpen("accessAccount", e);
-                      }
-                    }}
-                    onUpdate={(e) => handlePopUpOpen("updateAccount", e)}
-                    onDelete={(e) => handlePopUpOpen("deleteAccount", e)}
-                  />
-                ))}
-              </>
-            )}
-          </TBody>
-        </Table>
-        {Boolean(totalCount) && !isLoading && (
-          <Pagination
-            count={totalCount}
-            page={page}
-            perPage={perPage}
-            onChangePage={(newPage) => setPage(newPage)}
-            onChangePerPage={handlePerPageChange}
-          />
-        )}
-        {!isLoading && isContentEmpty && (
-          <EmptyState
-            title={isSearchEmpty ? "No accounts match search" : "No accounts"}
-            icon={isSearchEmpty ? faSearch : faCircleXmark}
-          />
-        )}
-      </TableContainer>
+                  {filteredAccounts.map((account) => (
+                    <PamAccountRow
+                      key={account.id}
+                      account={account}
+                      search={search}
+                      isAccessLoading={loadingAccountId === account.id}
+                      onAccess={(e: TPamAccount) => accessAccount(e)}
+                      onUpdate={(e) => handlePopUpOpen("updateAccount", e)}
+                      onDelete={(e) => handlePopUpOpen("deleteAccount", e)}
+                    />
+                  ))}
+                </>
+              )}
+            </TBody>
+          </Table>
+          {!isLoading && isContentEmpty && (
+            <EmptyState
+              title={isSearchEmpty ? "No accounts match search" : "No accounts"}
+              icon={isSearchEmpty ? faSearch : faCircleXmark}
+            />
+          )}
+          {Boolean(totalCount) && !isLoading && !isContentEmpty && (
+            <Pagination
+              count={totalCount}
+              page={page}
+              perPage={perPage}
+              onChangePage={(newPage) => setPage(newPage)}
+              onChangePerPage={handlePerPageChange}
+              perPageList={[9, 18, 48, 99]}
+            />
+          )}
+        </TableContainer>
+      )}
       <PamDeleteFolderModal
         isOpen={popUp.deleteFolder.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteFolder", isOpen)}

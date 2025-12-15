@@ -689,13 +689,30 @@ export const pamAccountServiceFactory = ({
       throw new BadRequestError({ message: "Gateway ID is required for this resource type" });
     }
 
+    const { host, port } =
+      resourceType !== PamResource.Kubernetes
+        ? connectionDetails
+        : (() => {
+            const url = new URL(connectionDetails.url);
+            let portNumber: number | undefined;
+            if (url.port) {
+              portNumber = Number(url.port);
+            } else {
+              portNumber = url.protocol === "https:" ? 443 : 80;
+            }
+            return {
+              host: url.hostname,
+              port: portNumber
+            };
+          })();
+
     const gatewayConnectionDetails = await gatewayV2Service.getPAMConnectionDetails({
       gatewayId,
       duration,
       sessionId: session.id,
       resourceType: resource.resourceType as PamResource,
-      host: (connectionDetails as TSqlResourceConnectionDetails).host,
-      port: (connectionDetails as TSqlResourceConnectionDetails).port,
+      host,
+      port,
       actorMetadata: {
         id: actor.id,
         type: actor.type,
@@ -745,6 +762,13 @@ export const pamAccountServiceFactory = ({
             username: credentials.username
           };
         }
+        break;
+      case PamResource.Kubernetes:
+        metadata = {
+          resourceName: resource.name,
+          accountName: account.name,
+          accountPath
+        };
         break;
       default:
         break;

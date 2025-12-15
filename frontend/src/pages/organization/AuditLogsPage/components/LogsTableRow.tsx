@@ -68,6 +68,12 @@ export const LogsTableRow = ({ auditLog, rowNumber, timezone }: Props) => {
             {auditLog.actor.type === ActorType.IDENTITY && (
               <Tag label="identity_name" value={auditLog.actor.metadata.name} />
             )}
+            {auditLog.actor.type === ActorType.ACME_PROFILE && (
+              <Tag label="acme_profile_id" value={auditLog.actor.metadata.profileId} />
+            )}
+            {auditLog.actor.type === ActorType.ACME_ACCOUNT && (
+              <Tag label="acme_account_id" value={auditLog.actor.metadata.accountId} />
+            )}
           </div>
         </Td>
       </Tr>

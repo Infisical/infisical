@@ -30,7 +30,11 @@ export const createCertificateProfileSchema = z
         renewBeforeDays: z.number().min(1).max(30).optional()
       })
       .optional(),
-    acmeConfig: z.object({}).optional()
+    acmeConfig: z
+      .object({
+        skipDnsOwnershipVerification: z.boolean().optional()
+      })
+      .optional()
   })
   .refine(
     (data) => {
@@ -154,6 +158,11 @@ export const updateCertificateProfileSchema = z
       .object({
         autoRenew: z.boolean().default(false),
         renewBeforeDays: z.number().min(1).max(30).optional()
+      })
+      .optional(),
+    acmeConfig: z
+      .object({
+        skipDnsOwnershipVerification: z.boolean().optional()
       })
       .optional()
   })

@@ -139,7 +139,7 @@ The following steps show how to install cert-manager (using `kubectl`) and obtai
     ```
 
     <Note>
-        - Currently, the Infisical ACME server only supports the HTTP-01 challenge and requires successful challenge completion before issuing certificates. Support for optional challenges and DNS-01 is planned for a future release.
+        - Currently, the [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme) only supports the [HTTP-01 challenge](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) method. Support for the [DNS-01 challenge](https://letsencrypt.org/docs/challenge-types/#dns-01-challenge) method is planned for a future release. If domain ownership validation is not desired, you can disable it by enabling the **Skip DNS ownership validation** option in your ACME certificate profile configuration.
         - An `Issuer` is namespace-scoped. Certificates can only be issued using an `Issuer` that exists in the same namespace as the `Certificate` resource.
         - If you need to issue certificates across multiple namespaces with a single resource, create a `ClusterIssuer` instead. The configuration is identical except `kind: ClusterIssuer` and no `metadata.namespace`.
         - More details: https://cert-manager.io/docs/configuration/acme/
