@@ -1,4 +1,4 @@
-import { Resolver } from "node:dns/promises";
+import { resolve4, Resolver } from "node:dns/promises";
 
 import axios, { AxiosError } from "axios";
 
@@ -20,6 +20,7 @@ import {
 } from "./pki-acme-errors";
 import { AcmeAuthStatus, AcmeChallengeStatus, AcmeChallengeType } from "./pki-acme-schemas";
 import { TPkiAcmeChallengeServiceFactory } from "./pki-acme-types";
+import { isValidIp } from "@app/lib/ip";
 
 type TPkiAcmeChallengeServiceFactoryDep = {
   acmeChallengeDAL: Pick<
@@ -117,7 +118,18 @@ export const pkiAcmeChallengeServiceFactory = ({
   const validateDns01Challenge = async (challenge: ChallengeWithAuth): Promise<void> => {
     const resolver = new Resolver();
     if (appCfg.ACME_DNS_RESOLVER_SERVERS.length > 0) {
-      resolver.setServers(appCfg.ACME_DNS_RESOLVER_SERVERS);
+      const servers = appCfg.ACME_DNS_RESOLVE_RESOLVER_SERVERS_HOST_ENABLED
+        ? await Promise.all(
+            appCfg.ACME_DNS_RESOLVER_SERVERS.map(async (server) => {
+              if (isValidIp(server)) {
+                return server;
+              }
+              const ips = await resolve4(server);
+              return ips[0];
+            })
+          )
+        : appCfg.ACME_DNS_RESOLVER_SERVERS;
+      resolver.setServers(servers);
     }
 
     const recordName = `_acme-challenge.${challenge.auth.identifierValue}`;
