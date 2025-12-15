@@ -95,11 +95,11 @@ services:
       - ./backend/bdd/pebble/:/var/data/pebble:ro
 
   technitium:
-      image: technitium/dns-server:14.2.0
-      ports:
-        - "5380:5380/tcp"
-      environment:
-        - DNS_SERVER_ADMIN_PASSWORD=infisical
+    image: technitium/dns-server:14.2.0
+    ports:
+      - "5380:5380/tcp"
+    environment:
+      - DNS_SERVER_ADMIN_PASSWORD=infisical
 
 volumes:
   postgres-data:
