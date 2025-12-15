@@ -300,51 +300,45 @@ export const addIdentitiesToGroup = async ({
   identityGroupMembershipDAL,
   membershipDAL
 }: TAddIdentitiesToGroup) => {
-  return identityDAL.transaction(async (tx) => {
-    const identityIdsSet = new Set(identityIds);
-    const identityIdsArray = Array.from(identityIdsSet);
+  const identityIdsSet = new Set(identityIds);
+  const identityIdsArray = Array.from(identityIdsSet);
 
-    // ensure all identities exist and belong to the org via org scoped membership
-    const foundIdentitiesMemberships = await membershipDAL.find(
-      {
-        scope: AccessScope.Organization,
-        scopeOrgId: group.orgId,
-        $in: {
-          actorIdentityId: identityIdsArray
-        }
-      },
-      { tx }
-    );
+  // ensure all identities exist and belong to the org via org scoped membership
+  const foundIdentitiesMemberships = await membershipDAL.find({
+    scope: AccessScope.Organization,
+    scopeOrgId: group.orgId,
+    $in: {
+      actorIdentityId: identityIdsArray
+    }
+  });
 
-    const existingIdentityOrgMembershipsIdentityIdsSet = new Set(
-      foundIdentitiesMemberships.map((u) => u.actorIdentityId as string)
-    );
+  const existingIdentityOrgMembershipsIdentityIdsSet = new Set(
+    foundIdentitiesMemberships.map((u) => u.actorIdentityId as string)
+  );
 
-    identityIdsArray.forEach((identityId) => {
-      if (!existingIdentityOrgMembershipsIdentityIdsSet.has(identityId)) {
-        throw new ForbiddenRequestError({
-          message: `Identity with id ${identityId} is not part of the organization`
-        });
-      }
-    });
-
-    // check if identity group membership already exists
-    const existingIdentityGroupMemberships = await identityGroupMembershipDAL.find(
-      {
-        groupId: group.id,
-        $in: {
-          identityId: identityIdsArray
-        }
-      },
-      { tx }
-    );
-
-    if (existingIdentityGroupMemberships.length) {
-      throw new BadRequestError({
-        message: `${identityIdsArray.length > 1 ? `Identities are` : `Identity is`} already part of the group ${group.slug}`
+  identityIdsArray.forEach((identityId) => {
+    if (!existingIdentityOrgMembershipsIdentityIdsSet.has(identityId)) {
+      throw new ForbiddenRequestError({
+        message: `Identity with id ${identityId} is not part of the organization`
       });
     }
+  });
 
+  // check if identity group membership already exists
+  const existingIdentityGroupMemberships = await identityGroupMembershipDAL.find({
+    groupId: group.id,
+    $in: {
+      identityId: identityIdsArray
+    }
+  });
+
+  if (existingIdentityGroupMemberships.length) {
+    throw new BadRequestError({
+      message: `${identityIdsArray.length > 1 ? `Identities are` : `Identity is`} already part of the group ${group.slug}`
+    });
+  }
+
+  return identityDAL.transaction(async (tx) => {
     await identityGroupMembershipDAL.insertMany(
       foundIdentitiesMemberships.map((membership) => ({
         identityId: membership.actorIdentityId as string,
@@ -506,55 +500,48 @@ export const removeIdentitiesFromGroup = async ({
   membershipDAL,
   identityGroupMembershipDAL
 }: TRemoveIdentitiesFromGroup) => {
-  return identityDAL.transaction(async (tx) => {
-    const identityIdsSet = new Set(identityIds);
-    const identityIdsArray = Array.from(identityIdsSet);
+  const identityIdsSet = new Set(identityIds);
+  const identityIdsArray = Array.from(identityIdsSet);
 
-    // ensure all identities exist and belong to the org via org scoped membership
-    const foundIdentitiesMemberships = await membershipDAL.find(
-      {
-        scope: AccessScope.Organization,
-        scopeOrgId: group.orgId,
-        $in: {
-          actorIdentityId: identityIdsArray
-        }
-      },
-      { tx }
-    );
+  // ensure all identities exist and belong to the org via org scoped membership
+  const foundIdentitiesMemberships = await membershipDAL.find({
+    scope: AccessScope.Organization,
+    scopeOrgId: group.orgId,
+    $in: {
+      actorIdentityId: identityIdsArray
+    }
+  });
 
-    const foundIdentitiesMembershipsIdentityIdsSet = new Set(
-      foundIdentitiesMemberships.map((u) => u.actorIdentityId as string)
-    );
+  const foundIdentitiesMembershipsIdentityIdsSet = new Set(
+    foundIdentitiesMemberships.map((u) => u.actorIdentityId as string)
+  );
 
-    if (foundIdentitiesMembershipsIdentityIdsSet.size !== identityIdsArray.length) {
-      throw new NotFoundError({
-        message: `Machine identities not found`
+  if (foundIdentitiesMembershipsIdentityIdsSet.size !== identityIdsArray.length) {
+    throw new NotFoundError({
+      message: `Machine identities not found`
+    });
+  }
+
+  // check if identity group membership already exists
+  const existingIdentityGroupMemberships = await identityGroupMembershipDAL.find({
+    groupId: group.id,
+    $in: {
+      identityId: identityIdsArray
+    }
+  });
+
+  const existingIdentityGroupMembershipsIdentityIdsSet = new Set(
+    existingIdentityGroupMemberships.map((u) => u.identityId)
+  );
+
+  identityIdsArray.forEach((identityId) => {
+    if (!existingIdentityGroupMembershipsIdentityIdsSet.has(identityId)) {
+      throw new ForbiddenRequestError({
+        message: `Machine identities are not part of the group ${group.slug}`
       });
     }
-
-    // check if identity group membership already exists
-    const existingIdentityGroupMemberships = await identityGroupMembershipDAL.find(
-      {
-        groupId: group.id,
-        $in: {
-          identityId: identityIdsArray
-        }
-      },
-      { tx }
-    );
-
-    const existingIdentityGroupMembershipsIdentityIdsSet = new Set(
-      existingIdentityGroupMemberships.map((u) => u.identityId)
-    );
-
-    identityIdsArray.forEach((identityId) => {
-      if (!existingIdentityGroupMembershipsIdentityIdsSet.has(identityId)) {
-        throw new ForbiddenRequestError({
-          message: `Machine identities are not part of the group ${group.slug}`
-        });
-      }
-    });
-
+  });
+  return identityDAL.transaction(async (tx) => {
     await identityGroupMembershipDAL.delete(
       {
         groupId: group.id,

@@ -11,6 +11,7 @@ import {
 } from "@app/ee/services/group/group-types";
 import { ApiDocsTags, GROUPS } from "@app/lib/api-docs";
 import { OrderByDirection } from "@app/lib/types";
+import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -198,7 +199,14 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         offset: z.coerce.number().min(0).default(0).describe(GROUPS.LIST_USERS.offset),
         limit: z.coerce.number().min(1).max(100).default(10).describe(GROUPS.LIST_USERS.limit),
         username: z.string().trim().optional().describe(GROUPS.LIST_USERS.username),
-        search: z.string().trim().optional().describe(GROUPS.LIST_USERS.search),
+        search: z
+          .string()
+          .trim()
+          .refine((val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])(val), {
+            message: "Invalid pattern: only alphanumeric characters, - are allowed."
+          })
+          .optional()
+          .describe(GROUPS.LIST_USERS.search),
         filter: z.nativeEnum(FilterReturnedUsers).optional().describe(GROUPS.LIST_USERS.filterUsers)
       }),
       response: {
@@ -249,7 +257,14 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       querystring: z.object({
         offset: z.coerce.number().min(0).default(0).describe(GROUPS.LIST_MACHINE_IDENTITIES.offset),
         limit: z.coerce.number().min(1).max(100).default(10).describe(GROUPS.LIST_MACHINE_IDENTITIES.limit),
-        search: z.string().trim().optional().describe(GROUPS.LIST_MACHINE_IDENTITIES.search),
+        search: z
+          .string()
+          .trim()
+          .refine((val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])(val), {
+            message: "Invalid pattern: only alphanumeric characters, - are allowed."
+          })
+          .optional()
+          .describe(GROUPS.LIST_MACHINE_IDENTITIES.search),
         filter: z
           .nativeEnum(FilterReturnedMachineIdentities)
           .optional()
@@ -295,7 +310,14 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       querystring: z.object({
         offset: z.coerce.number().min(0).default(0).describe(GROUPS.LIST_MEMBERS.offset),
         limit: z.coerce.number().min(1).max(100).default(10).describe(GROUPS.LIST_MEMBERS.limit),
-        search: z.string().trim().optional().describe(GROUPS.LIST_MEMBERS.search),
+        search: z
+          .string()
+          .trim()
+          .refine((val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])(val), {
+            message: "Invalid pattern: only alphanumeric characters, - are allowed."
+          })
+          .optional()
+          .describe(GROUPS.LIST_MEMBERS.search),
         orderBy: z
           .nativeEnum(GroupMembersOrderBy)
           .default(GroupMembersOrderBy.Name)
@@ -363,7 +385,14 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       querystring: z.object({
         offset: z.coerce.number().min(0).default(0).describe(GROUPS.LIST_PROJECTS.offset),
         limit: z.coerce.number().min(1).max(100).default(10).describe(GROUPS.LIST_PROJECTS.limit),
-        search: z.string().trim().optional().describe(GROUPS.LIST_PROJECTS.search),
+        search: z
+          .string()
+          .trim()
+          .refine((val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])(val), {
+            message: "Invalid pattern: only alphanumeric characters, - are allowed."
+          })
+          .optional()
+          .describe(GROUPS.LIST_PROJECTS.search),
         filter: z.nativeEnum(FilterReturnedProjects).optional().describe(GROUPS.LIST_PROJECTS.filterProjects),
         orderBy: z
           .nativeEnum(GroupProjectsOrderBy)

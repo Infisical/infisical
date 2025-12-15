@@ -25,12 +25,27 @@ export const projectDALFactory = (db: TDbClient) => {
 
   const findIdentityProjects = async (identityId: string, orgId: string, projectType?: ProjectType) => {
     try {
+      const identityGroupSubquery = db
+        .replicaNode()(TableName.Groups)
+        .leftJoin(
+          TableName.IdentityGroupMembership,
+          `${TableName.IdentityGroupMembership}.groupId`,
+          `${TableName.Groups}.id`
+        )
+        .where(`${TableName.Groups}.orgId`, orgId)
+        .where(`${TableName.IdentityGroupMembership}.identityId`, identityId)
+        .select(db.ref("id").withSchema(TableName.Groups));
+
       const workspaces = await db
         .replicaNode()(TableName.Membership)
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
-        .where(`${TableName.Membership}.actorIdentityId`, identityId)
         .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
+        .andWhere((qb) => {
+          void qb
+            .where(`${TableName.Membership}.actorIdentityId`, identityId)
+            .orWhereIn(`${TableName.Membership}.actorGroupId`, identityGroupSubquery);
+        })
         .andWhere((qb) => {
           if (projectType) {
             void qb.where(`${TableName.Project}.type`, projectType);

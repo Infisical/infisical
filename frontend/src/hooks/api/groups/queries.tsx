@@ -140,7 +140,7 @@ export const useListGroupUsers = ({
       const params = new URLSearchParams({
         offset: String(offset),
         limit: String(limit),
-        search,
+        ...(search && { search }),
         ...(filter && { filter })
       });
 
@@ -191,7 +191,7 @@ export const useListGroupMembers = ({
       const params = new URLSearchParams({
         offset: String(offset),
         limit: String(limit),
-        search,
+        ...(search && { search }),
         ...(orderBy && { orderBy: orderBy.toString() }),
         ...(orderDirection && { orderDirection })
       });
@@ -243,7 +243,7 @@ export const useListGroupMachineIdentities = ({
       const params = new URLSearchParams({
         offset: String(offset),
         limit: String(limit),
-        search,
+        ...(search && { search }),
         ...(filter && { filter })
       });
 
@@ -292,7 +292,7 @@ export const useListGroupProjects = ({
       const params = new URLSearchParams({
         offset: String(offset),
         limit: String(limit),
-        search,
+        ...(search && { search }),
         ...(filter && { filter }),
         ...(orderBy && { orderBy }),
         ...(orderDirection && { orderDirection })
