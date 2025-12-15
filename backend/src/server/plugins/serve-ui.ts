@@ -41,15 +41,15 @@ export const registerServeUI = async (
       // Define window.__toCdnUrl for Vite's experimental.renderBuiltUrl runtime support
       // This function is called by dynamically imported chunks to resolve CDN URLs
       const js = `
-window.__INFISICAL_RUNTIME_ENV__ = Object.freeze(${JSON.stringify(config)});
-window.__toCdnUrl = function(filename) {
-  var cdnHost = window.__INFISICAL_RUNTIME_ENV__.CDN_HOST || "";
-  if (cdnHost && filename.startsWith("assets/")) {
-    return cdnHost + "/" + filename;
-  }
-  return "/" + filename;
-};
-`.trim();
+        window.__INFISICAL_RUNTIME_ENV__ = Object.freeze(${JSON.stringify(config)});
+        window.__toCdnUrl = function(filename) {
+          var cdnHost = window.__INFISICAL_RUNTIME_ENV__.CDN_HOST || "";
+          if (cdnHost && filename.startsWith("assets/")) {
+            return cdnHost + "/" + filename;
+          }
+          return "/" + filename;
+        };
+      `.trim();
       return res.send(js);
     }
   });
@@ -67,11 +67,9 @@ window.__toCdnUrl = function(filename) {
         .replace(/src="\/assets\//g, `src="${cdnHost}/assets/`)
         .replace(/href="\/assets\//g, `href="${cdnHost}/assets/`);
 
-      const cspDirectives = ["script-src", "style-src", "font-src", "connect-src"];
-      for (const directive of cspDirectives) {
-        const regex = new RE2(`(${directive}\\s+'self')`, "g");
-        indexHtml = indexHtml.replace(regex, `$1 ${cdnHost}`);
-      }
+      indexHtml = indexHtml.replace(new RE2(`(__INFISICAL_CDN_HOST__)`, "g"), cdnHost);
+    } else {
+      indexHtml = indexHtml.replace(new RE2(`(__INFISICAL_CDN_HOST__)`, "g"), "");
     }
 
     await server.register(staticServe, {
