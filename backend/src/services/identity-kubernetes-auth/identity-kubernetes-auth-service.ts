@@ -902,7 +902,7 @@ export const identityKubernetesAuthServiceFactory = ({
     const effectiveKubernetesHost =
       kubernetesHost !== undefined ? kubernetesHost : identityKubernetesAuth.kubernetesHost;
     const effectiveGatewayId =
-      gatewayId !== undefined ? gatewayId : (identityKubernetesAuth.gatewayId ?? identityKubernetesAuth.gatewayV2Id);
+      gatewayId !== undefined ? gatewayId : (identityKubernetesAuth.gatewayV2Id ?? identityKubernetesAuth.gatewayId);
 
     const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,

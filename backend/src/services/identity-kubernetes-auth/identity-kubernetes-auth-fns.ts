@@ -1,4 +1,4 @@
-import { UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError } from "@app/lib/errors";
 
 /**
  * Extracts the K8s service account name and namespace
@@ -13,7 +13,7 @@ export const extractK8sUsername = (username: string) => {
       name: parts[3]
     };
   }
-  throw new UnauthorizedError({
+  throw new BadRequestError({
     name: "KubernetesUsernameParseError",
     message: `Invalid Kubernetes service account username format: "${username}". Expected format: system:serviceaccount:<namespace>:<name>`
   });
