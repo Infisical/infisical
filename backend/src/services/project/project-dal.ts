@@ -362,11 +362,25 @@ export const projectDALFactory = (db: TDbClient) => {
       .where(`${TableName.Groups}.orgId`, dto.orgId)
       .where(`${TableName.UserGroupMembership}.userId`, dto.actorId)
       .select(db.ref("id").withSchema(TableName.Groups));
+
+    const identityGroupMembershipSubquery = db
+      .replicaNode()(TableName.Groups)
+      .leftJoin(
+        TableName.IdentityGroupMembership,
+        `${TableName.IdentityGroupMembership}.groupId`,
+        `${TableName.Groups}.id`
+      )
+      .where(`${TableName.Groups}.orgId`, dto.orgId)
+      .where(`${TableName.IdentityGroupMembership}.identityId`, dto.actorId)
+      .select(db.ref("id").withSchema(TableName.Groups));
+
     const membershipSubQuery = db(TableName.Membership)
       .where(`${TableName.Membership}.scope`, AccessScope.Project)
       .where((qb) => {
         if (dto.actor === ActorType.IDENTITY) {
-          void qb.where(`${TableName.Membership}.actorIdentityId`, dto.actorId);
+          void qb
+            .where(`${TableName.Membership}.actorIdentityId`, dto.actorId)
+            .orWhereIn(`${TableName.Membership}.actorGroupId`, identityGroupMembershipSubquery);
         } else {
           void qb
             .where(`${TableName.Membership}.actorUserId`, dto.actorId)
