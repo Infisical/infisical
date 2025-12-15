@@ -702,6 +702,7 @@
               {
                 "group": "Infrastructure Integrations",
                 "pages": [
+                  "integrations/platforms/certificate-agent",
                   "documentation/platform/pki/k8s-cert-manager",
                   "documentation/platform/pki/integration-guides/gloo-mesh",
                   "documentation/platform/pki/integration-guides/windows-server-acme",
@@ -2525,6 +2526,8 @@
                 "pages": [
                   "api-reference/endpoints/certificates/list",
                   "api-reference/endpoints/certificates/read",
+                  "api-reference/endpoints/certificates/certificate-request",
+                  "api-reference/endpoints/certificates/create-certificate",
                   "api-reference/endpoints/certificates/renew",
                   "api-reference/endpoints/certificates/update-config",
                   "api-reference/endpoints/certificates/revoke",
