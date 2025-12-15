@@ -29,14 +29,7 @@ export default defineConfig(({ mode }) => {
     "0.0.1"
   ).replaceAll(".", "-");
 
-  // CDN HOST for static assets in /assets/* only.
-  // Docker: Set CDN_HOST env var at runtime (placeholder replaced at container startup).
-  // Direct build: Use --build-arg CDN_HOST=https://... or VITE_CDN_HOST env var.
-  // Default: Empty = same-origin asset loading.
-  const cdnHost = env.VITE_CDN_HOST || "";
-
   return {
-    base: "/",
     server: {
       allowedHosts,
       host: true,
@@ -60,12 +53,12 @@ export default defineConfig(({ mode }) => {
       }
     },
     experimental: {
-      // Only apply CDN HOST to files in /assets/* directory
-      renderBuiltUrl(filename) {
-        if (filename.startsWith("assets/") && cdnHost) {
-          return `${cdnHost}/${filename}`;
+      renderBuiltUrl(filename, { hostType }) {
+        if (hostType === "js") {
+          return { runtime: `window.__toCdnUrl(${JSON.stringify(filename)})` };
         }
-        return `/${filename}`;
+
+        return { relative: true };
       }
     },
     plugins: [
