@@ -13,6 +13,7 @@ import {
   useSubscription
 } from "@app/context";
 import { useDeleteWsEnvironment } from "@app/hooks/api";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AddEnvironmentModal } from "./AddEnvironmentModal";
@@ -26,9 +27,11 @@ export const EnvironmentSection = () => {
 
   const deleteWsEnvironment = useDeleteWsEnvironment();
 
+  const environmentLimit =
+    subscription.get(SubscriptionProductCategory.SecretManager, "environmentLimit") || 0;
   const isMoreEnvironmentsAllowed =
-    subscription?.environmentLimit && currentProject?.environments
-      ? currentProject.environments.length < subscription.environmentLimit
+    environmentLimit && currentProject?.environments
+      ? currentProject.environments.length <= environmentLimit
       : true;
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([

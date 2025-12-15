@@ -7,6 +7,7 @@ import { useSubscription } from "@app/context";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { SecretSync, useSecretSyncOptions } from "@app/hooks/api/secretSyncs";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 import { UpgradePlanModal } from "../license/UpgradePlanModal";
 
@@ -66,7 +67,11 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
               key={name}
               type="button"
               onClick={() =>
-                enterprise && !subscription.enterpriseSecretSyncs
+                enterprise &&
+                !subscription.get(
+                  SubscriptionProductCategory.SecretManager,
+                  "enterpriseSecretSyncs"
+                )
                   ? handlePopUpOpen("upgradePlan", {
                       isEnterpriseFeature: true,
                       text: "All Secret Syncs can be unlocked if you switch to Infisical Enterprise plan."

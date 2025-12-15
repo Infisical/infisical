@@ -50,8 +50,6 @@ import {
 
 type Props = {
   onAddNewProject: () => void;
-  onUpgradePlan: () => void;
-  isAddingProjectsAllowed: boolean;
   projectListView: ProjectListView;
   onProjectListViewChange: (value: ProjectListView) => void;
 };
@@ -67,8 +65,6 @@ enum ProjectsViewMode {
 
 export const MyProjectView = ({
   onAddNewProject,
-  onUpgradePlan,
-  isAddingProjectsAllowed,
   projectListView,
   onProjectListViewChange
 }: Props) => {
@@ -471,13 +467,7 @@ export const MyProjectView = ({
                   isDisabled={!isAllowed && !isOldProjectV1Allowed}
                   colorSchema="secondary"
                   leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                  onClick={() => {
-                    if (isAddingProjectsAllowed) {
-                      onAddNewProject();
-                    } else {
-                      onUpgradePlan();
-                    }
-                  }}
+                  onClick={onAddNewProject}
                   className="ml-2"
                 >
                   Add New Project

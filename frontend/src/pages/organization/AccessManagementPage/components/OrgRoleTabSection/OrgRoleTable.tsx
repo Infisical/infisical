@@ -58,6 +58,7 @@ import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useDeleteOrgRole, useGetOrgRoles, useUpdateOrg } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { TOrgRole } from "@app/hooks/api/roles/types";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { DuplicateOrgRoleModal } from "@app/pages/organization/RoleByIDPage/components/DuplicateOrgRoleModal";
 import { RoleModal } from "@app/pages/organization/RoleByIDPage/components/RoleModal";
 
@@ -97,7 +98,11 @@ export const OrgRoleTable = () => {
   const handleSetRoleAsDefault = async (defaultMembershipRoleSlug: string) => {
     const isCustomRole = isCustomOrgRole(defaultMembershipRoleSlug);
 
-    if (isCustomRole && subscription && !subscription?.rbac) {
+    if (
+      isCustomRole &&
+      subscription &&
+      !subscription?.get(SubscriptionProductCategory.Platform, "rbac")
+    ) {
       handlePopUpOpen("upgradePlan", {
         text: "Your current plan does not include access to set a custom default organization role. To unlock this feature, please upgrade to Infisical Pro plan."
       });

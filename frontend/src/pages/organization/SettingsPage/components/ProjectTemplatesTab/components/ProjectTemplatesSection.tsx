@@ -8,6 +8,7 @@ import { Button } from "@app/components/v2";
 import { DocumentationLinkBadge } from "@app/components/v3";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import { TProjectTemplate } from "@app/hooks/api/projectTemplates";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { EditProjectTemplateSection } from "./EditProjectTemplateSection";
@@ -49,7 +50,9 @@ export const ProjectTemplatesSection = () => {
                     type="submit"
                     leftIcon={<FontAwesomeIcon icon={faPlus} />}
                     onClick={() => {
-                      if (!subscription?.projectTemplates) {
+                      if (
+                        !subscription?.get(SubscriptionProductCategory.Platform, "projectTemplates")
+                      ) {
                         handlePopUpOpen("upgradePlan", {
                           isEnterpriseFeature: true
                         });

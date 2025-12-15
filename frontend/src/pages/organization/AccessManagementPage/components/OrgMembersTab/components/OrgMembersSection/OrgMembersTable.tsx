@@ -70,6 +70,7 @@ import {
   useUpdateOrgMembership
 } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { useResendOrgMemberInvitation } from "@app/hooks/api/users/mutation";
 import { OrgUser } from "@app/hooks/api/users/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -130,7 +131,11 @@ export const OrgMembersTable = ({
     // TODO: replace hardcoding default role
     const isCustomRole = !["admin", "member", "no-access"].includes(role);
 
-    if (isCustomRole && subscription && !subscription?.rbac) {
+    if (
+      isCustomRole &&
+      subscription &&
+      !subscription?.get(SubscriptionProductCategory.Platform, "rbac")
+    ) {
       handlePopUpOpen("upgradePlan", {
         text: "Your current plan does not include access to assigning custom roles to members. To unlock this feature, please upgrade to Infisical Pro plan."
       });

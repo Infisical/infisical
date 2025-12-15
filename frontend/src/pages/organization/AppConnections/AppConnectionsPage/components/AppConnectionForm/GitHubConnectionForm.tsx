@@ -39,6 +39,7 @@ import {
   useGetAppConnectionOption
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 import { GitHubFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import {
@@ -315,56 +316,57 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
                   </FormControl>
                 )}
               />
-              {subscription.gateway && instanceType === "server" && (
-                <OrgPermissionCan
-                  I={OrgGatewayPermissionActions.AttachGateways}
-                  a={OrgPermissionSubjects.Gateway}
-                >
-                  {(isAllowed) => (
-                    <Controller
-                      control={control}
-                      name="gatewayId"
-                      render={({ field: { value, onChange }, fieldState: { error } }) => (
-                        <FormControl
-                          isError={Boolean(error?.message)}
-                          errorText={error?.message}
-                          label="Gateway"
-                        >
-                          <Tooltip
-                            isDisabled={isAllowed}
-                            content="Restricted access. You don't have permission to attach gateways to resources."
+              {subscription.get(SubscriptionProductCategory.Platform, "gateway") &&
+                instanceType === "server" && (
+                  <OrgPermissionCan
+                    I={OrgGatewayPermissionActions.AttachGateways}
+                    a={OrgPermissionSubjects.Gateway}
+                  >
+                    {(isAllowed) => (
+                      <Controller
+                        control={control}
+                        name="gatewayId"
+                        render={({ field: { value, onChange }, fieldState: { error } }) => (
+                          <FormControl
+                            isError={Boolean(error?.message)}
+                            errorText={error?.message}
+                            label="Gateway"
                           >
-                            <div>
-                              <Select
-                                isDisabled={!isAllowed}
-                                value={value || (null as unknown as string)}
-                                onValueChange={onChange}
-                                className="w-full border border-mineshaft-500"
-                                dropdownContainerClassName="max-w-none"
-                                isLoading={isGatewaysLoading}
-                                placeholder="Default: Internet Gateway"
-                                position="popper"
-                              >
-                                <SelectItem
-                                  value={null as unknown as string}
-                                  onClick={() => onChange(null)}
+                            <Tooltip
+                              isDisabled={isAllowed}
+                              content="Restricted access. You don't have permission to attach gateways to resources."
+                            >
+                              <div>
+                                <Select
+                                  isDisabled={!isAllowed}
+                                  value={value || (null as unknown as string)}
+                                  onValueChange={onChange}
+                                  className="w-full border border-mineshaft-500"
+                                  dropdownContainerClassName="max-w-none"
+                                  isLoading={isGatewaysLoading}
+                                  placeholder="Default: Internet Gateway"
+                                  position="popper"
                                 >
-                                  Internet Gateway
-                                </SelectItem>
-                                {gateways?.map((el) => (
-                                  <SelectItem value={el.id} key={el.id}>
-                                    {el.name}
+                                  <SelectItem
+                                    value={null as unknown as string}
+                                    onClick={() => onChange(null)}
+                                  >
+                                    Internet Gateway
                                   </SelectItem>
-                                ))}
-                              </Select>
-                            </div>
-                          </Tooltip>
-                        </FormControl>
-                      )}
-                    />
-                  )}
-                </OrgPermissionCan>
-              )}
+                                  {gateways?.map((el) => (
+                                    <SelectItem value={el.id} key={el.id}>
+                                      {el.name}
+                                    </SelectItem>
+                                  ))}
+                                </Select>
+                              </div>
+                            </Tooltip>
+                          </FormControl>
+                        )}
+                      />
+                    )}
+                  </OrgPermissionCan>
+                )}
             </AccordionContent>
           </AccordionItem>
         </Accordion>

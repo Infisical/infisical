@@ -25,6 +25,7 @@ import { certKeyAlgorithms } from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { useGetOrgKmipConfig, useSetupOrgKmip } from "@app/hooks/api/kmip";
 import { OrgKmipConfig } from "@app/hooks/api/kmip/types";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 const orgConfigFormSchema = z.object({
   caKeyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
@@ -182,7 +183,10 @@ const OrgConfigSection = ({
             <Button
               className="mt-2"
               onClick={() => {
-                if (subscription && !subscription.kmip) {
+                if (
+                  subscription &&
+                  !subscription.get(SubscriptionProductCategory.CertificateManager, "kmip")
+                ) {
                   handlePopUpOpen("upgradePlan", {
                     isEnterpriseFeature: true
                   });

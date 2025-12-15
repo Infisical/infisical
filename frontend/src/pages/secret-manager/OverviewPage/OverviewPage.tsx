@@ -100,6 +100,7 @@ import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
 import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { ProjectEnv, SecretType, SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/types";
 import {
   useDynamicSecretOverview,
@@ -1167,7 +1168,12 @@ export const OverviewPage = () => {
                         <Button
                           leftIcon={<FontAwesomeIcon icon={faFingerprint} className="pr-2" />}
                           onClick={() => {
-                            if (subscription?.dynamicSecret) {
+                            if (
+                              subscription?.get(
+                                SubscriptionProductCategory.SecretManager,
+                                "dynamicSecret"
+                              )
+                            ) {
                               handlePopUpOpen("addDynamicSecret");
                               handlePopUpClose("misc");
                               return;
@@ -1193,7 +1199,12 @@ export const OverviewPage = () => {
                         <Button
                           leftIcon={<FontAwesomeIcon icon={faRotate} className="pr-2" />}
                           onClick={() => {
-                            if (subscription?.secretRotation) {
+                            if (
+                              subscription?.get(
+                                SubscriptionProductCategory.SecretManager,
+                                "secretRotation"
+                              )
+                            ) {
                               handlePopUpOpen("addSecretRotation");
                               handlePopUpClose("misc");
                               return;

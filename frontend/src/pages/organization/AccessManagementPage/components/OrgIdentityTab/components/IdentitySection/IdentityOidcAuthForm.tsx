@@ -24,6 +24,7 @@ import { useOrganization, useSubscription } from "@app/context";
 import { useAddIdentityOidcAuth, useUpdateIdentityOidcAuth } from "@app/hooks/api";
 import { useGetIdentityOidcAuth } from "@app/hooks/api/identities/queries";
 import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityFormTab } from "./types";
@@ -599,7 +600,12 @@ export const IdentityOidcAuthForm = ({
                       <Input
                         value={field.value}
                         onChange={(e) => {
-                          if (subscription?.ipAllowlisting) {
+                          if (
+                            subscription?.get(
+                              SubscriptionProductCategory.Platform,
+                              "ipAllowlisting"
+                            )
+                          ) {
                             field.onChange(e);
                             return;
                           }
@@ -616,7 +622,7 @@ export const IdentityOidcAuthForm = ({
               />
               <IconButton
                 onClick={() => {
-                  if (subscription?.ipAllowlisting) {
+                  if (subscription?.get(SubscriptionProductCategory.Platform, "ipAllowlisting")) {
                     removeAccessTokenTrustedIp(index);
                     return;
                   }
@@ -639,7 +645,7 @@ export const IdentityOidcAuthForm = ({
             <Button
               variant="outline_bg"
               onClick={() => {
-                if (subscription?.ipAllowlisting) {
+                if (subscription?.get(SubscriptionProductCategory.Platform, "ipAllowlisting")) {
                   appendAccessTokenTrustedIp({
                     ipAddress: "0.0.0.0/0"
                   });

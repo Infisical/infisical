@@ -38,6 +38,7 @@ import { useCreateWorkspace, useGetExternalKmsList, useGetUserProjects } from "@
 import { INTERNAL_KMS_KEY_ID } from "@app/hooks/api/kms/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { InfisicalProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 const formSchema = z.object({
   name: z.string().trim().min(1, "Required").max(64, "Too long, maximum length is 64 characters"),
@@ -121,7 +122,10 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
 
   const selectedProjectType = watch("type");
   const { data: projectTemplates = [] } = useListProjectTemplates({
-    enabled: Boolean(canReadProjectTemplates && subscription?.projectTemplates),
+    enabled: Boolean(
+      canReadProjectTemplates &&
+        subscription.get(SubscriptionProductCategory.Platform, "projectTemplates")
+    ),
     select: (template) => template.filter((el) => el.type === selectedProjectType)
   });
 
@@ -261,16 +265,21 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
                         Create this project from a template to provision it with custom environments
                         and roles.
                       </p>
-                      {subscription && !subscription.projectTemplates && (
-                        <p className="pt-2">Project templates are a paid feature.</p>
-                      )}
+                      {subscription &&
+                        !subscription.get(
+                          SubscriptionProductCategory.Platform,
+                          "projectTemplates"
+                        ) && <p className="pt-2">Project templates are a paid feature.</p>}
                     </>
                   }
                 >
                   <Select
                     defaultValue={InfisicalProjectTemplate.Default}
                     placeholder={InfisicalProjectTemplate.Default}
-                    isDisabled={!isAllowed || !subscription?.projectTemplates}
+                    isDisabled={
+                      !isAllowed ||
+                      !subscription.get(SubscriptionProductCategory.Platform, "projectTemplates")
+                    }
                     value={value}
                     onValueChange={onChange}
                     className="w-full"

@@ -6,6 +6,7 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { Tab, TabList, Tabs } from "@app/components/v2";
 import { useOrganization, useProject, useProjectPermission, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
 
@@ -18,7 +19,7 @@ export const PamLayout = () => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"]);
 
   useEffect(() => {
-    if (subscription && !subscription.pam) {
+    if (subscription && !subscription.get(SubscriptionProductCategory.Platform, "pam")) {
       handlePopUpOpen("upgradePlan", {
         description:
           "Your current plan does not provide access to Infisical PAM. To unlock this feature, please upgrade to Infisical Enterprise plan.",

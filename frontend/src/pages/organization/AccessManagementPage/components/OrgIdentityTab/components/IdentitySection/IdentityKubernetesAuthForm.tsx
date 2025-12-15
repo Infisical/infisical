@@ -41,6 +41,7 @@ import {
 } from "@app/hooks/api/identities/types";
 import { useGetVaultExternalMigrationConfigs } from "@app/hooks/api/migration/queries";
 import { VaultKubernetesAuthRole } from "@app/hooks/api/migration/types";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityFormTab } from "./types";
@@ -276,7 +277,7 @@ export const IdentityKubernetesAuthForm = ({
       }
 
       if (
-        subscription?.ipAllowlisting &&
+        subscription?.get(SubscriptionProductCategory.Platform, "ipAllowlisting") &&
         role.token_bound_cidrs &&
         role.token_bound_cidrs.length > 0
       ) {
@@ -701,7 +702,12 @@ export const IdentityKubernetesAuthForm = ({
                       <Input
                         value={field.value}
                         onChange={(e) => {
-                          if (subscription?.ipAllowlisting) {
+                          if (
+                            subscription?.get(
+                              SubscriptionProductCategory.Platform,
+                              "ipAllowlisting"
+                            )
+                          ) {
                             field.onChange(e);
                             return;
                           }
@@ -718,7 +724,7 @@ export const IdentityKubernetesAuthForm = ({
               />
               <IconButton
                 onClick={() => {
-                  if (subscription?.ipAllowlisting) {
+                  if (subscription?.get(SubscriptionProductCategory.Platform, "ipAllowlisting")) {
                     removeAccessTokenTrustedIp(index);
                     return;
                   }
@@ -741,7 +747,7 @@ export const IdentityKubernetesAuthForm = ({
             <Button
               variant="outline_bg"
               onClick={() => {
-                if (subscription?.ipAllowlisting) {
+                if (subscription?.get(SubscriptionProductCategory.Platform, "ipAllowlisting")) {
                   appendAccessTokenTrustedIp({
                     ipAddress: "0.0.0.0/0"
                   });

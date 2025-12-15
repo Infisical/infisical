@@ -36,6 +36,7 @@ import {
 import { useGetProjectRoles, useUpdateUserWorkspaceRole } from "@app/hooks/api";
 import { ProjectUserMembershipTemporaryMode } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 
 const roleFormSchema = z.object({
@@ -120,7 +121,11 @@ export const MemberRbacSection = ({ projectMember, onOpenUpgradeModal }: Props) 
       (el) => !Object.values(ProjectMembershipRole).includes(el.role as ProjectMembershipRole)
     );
 
-    if (hasCustomRoleSelected && subscription && !subscription?.rbac) {
+    if (
+      hasCustomRoleSelected &&
+      subscription &&
+      !subscription?.get(SubscriptionProductCategory.Platform, "rbac")
+    ) {
       onOpenUpgradeModal(
         "You can assign custom roles to members if you upgrade your Infisical plan."
       );

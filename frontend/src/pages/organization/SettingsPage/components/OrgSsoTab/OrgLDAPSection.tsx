@@ -9,6 +9,7 @@ import {
   useSubscription
 } from "@app/context";
 import { useCreateLDAPConfig, useGetLDAPConfig, useUpdateLDAPConfig } from "@app/hooks/api";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { LDAPGroupMapModal } from "./LDAPGroupMapModal";
@@ -32,7 +33,7 @@ export const OrgLDAPSection = (): JSX.Element => {
 
   const handleLDAPToggle = async (value: boolean) => {
     if (!currentOrg?.id) return;
-    if (!subscription?.ldap) {
+    if (!subscription?.get(SubscriptionProductCategory.Platform, "ldap")) {
       handlePopUpOpen("upgradePlan", {
         isEnterpriseFeature: true
       });
@@ -52,7 +53,7 @@ export const OrgLDAPSection = (): JSX.Element => {
 
   const addLDAPBtnClick = async () => {
     try {
-      if (subscription?.ldap && currentOrg) {
+      if (subscription?.get(SubscriptionProductCategory.Platform, "ldap") && currentOrg) {
         if (!data) {
           // case: LDAP is not configured
           // -> initialize empty LDAP configuration
@@ -82,7 +83,7 @@ export const OrgLDAPSection = (): JSX.Element => {
   };
 
   const openLDAPGroupMapModal = () => {
-    if (!subscription?.ldap) {
+    if (!subscription?.get(SubscriptionProductCategory.Platform, "ldap")) {
       handlePopUpOpen("upgradePlan", {
         isEnterpriseFeature: true
       });

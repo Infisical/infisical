@@ -23,6 +23,7 @@ import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/
 import { gatewaysQueryKeys } from "@app/hooks/api";
 import { HCVaultConnectionMethod, THCVaultConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 import {
   genericAppConnectionFieldsSchema,
@@ -128,7 +129,7 @@ export const HCVaultConnectionForm = ({ appConnection, onSubmit }: Props) => {
             </FormControl>
           )}
         />
-        {subscription.gateway && (
+        {subscription.get(SubscriptionProductCategory.Platform, "gateway") && (
           <OrgPermissionCan
             I={OrgGatewayPermissionActions.AttachGateways}
             a={OrgPermissionSubjects.Gateway}

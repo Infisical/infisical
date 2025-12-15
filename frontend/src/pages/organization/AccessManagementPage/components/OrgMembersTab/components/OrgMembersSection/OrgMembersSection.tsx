@@ -22,7 +22,6 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
-  useSubscription,
   useUser
 } from "@app/context";
 import { useDeleteOrgMembership, useGetOrgUsers, useUpdateOrgMembership } from "@app/hooks/api";
@@ -35,7 +34,6 @@ import { AddSubOrgMemberModal } from "./AddSubOrgMemberModal";
 import { OrgMembersTable } from "./OrgMembersTable";
 
 export const OrgMembersSection = () => {
-  const { subscription } = useSubscription();
   const { currentOrg, isSubOrganization } = useOrganization();
   const navigate = useNavigate();
   const orgId = currentOrg?.id ?? "";
@@ -78,24 +76,11 @@ export const OrgMembersSection = () => {
   const { mutateAsync: deleteBatchMutateAsync } = useDeleteOrgMembershipBatch();
   const { mutateAsync: updateOrgMembership } = useUpdateOrgMembership();
 
-  const isMoreIdentitiesAllowed = subscription?.identityLimit
-    ? subscription.identitiesUsed < subscription.identityLimit
-    : true;
-
-  const isEnterprise = subscription?.slug === "enterprise";
-
   const handleAddMemberModal = () => {
     if (currentOrg?.authEnforced) {
       createNotification({
         text: "You cannot manage users from Infisical when org-level auth is enforced for your organization",
         type: "error"
-      });
-      return;
-    }
-
-    if (!isMoreIdentitiesAllowed && !isEnterprise) {
-      handlePopUpOpen("upgradePlan", {
-        text: "You have reached the maximum number of members allowed on your current plan. Upgrade to Infisical Pro plan to add more members."
       });
       return;
     }

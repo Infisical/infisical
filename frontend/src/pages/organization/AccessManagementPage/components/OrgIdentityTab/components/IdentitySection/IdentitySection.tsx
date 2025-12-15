@@ -19,6 +19,7 @@ import { OrgPermissionMachineIdentityAuthTemplateActions } from "@app/context/Or
 import { withPermission } from "@app/hoc";
 import { useDeleteOrgIdentity } from "@app/hooks/api";
 import { useDeleteIdentityAuthTemplate } from "@app/hooks/api/identityAuthTemplates";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { IdentityAuthTemplateModal } from "./IdentityAuthTemplateModal";
@@ -58,12 +59,6 @@ export const IdentitySection = withPermission(
       "viewUsages",
       "addOptions"
     ] as const);
-
-    const isMoreIdentitiesAllowed = subscription?.identityLimit
-      ? subscription.identitiesUsed < subscription.identityLimit
-      : true;
-
-    const isEnterprise = subscription?.slug === "enterprise";
 
     const onDeleteIdentitySubmit = async (identityId: string) => {
       await deleteMutateAsync({
@@ -114,14 +109,6 @@ export const IdentitySection = withPermission(
                     type="submit"
                     leftIcon={<FontAwesomeIcon icon={faPlus} />}
                     onClick={() => {
-                      if (!isMoreIdentitiesAllowed && !isEnterprise) {
-                        handlePopUpOpen("upgradePlan", {
-                          description:
-                            "You can add more machine identities if you upgrade your Infisical Pro plan."
-                        });
-                        return;
-                      }
-
                       if (!isSubOrganization) {
                         setWizardStep(IdentityWizardSteps.CreateIdentity);
                       }
@@ -159,7 +146,13 @@ export const IdentitySection = withPermission(
                   type="submit"
                   leftIcon={<FontAwesomeIcon icon={faPlus} />}
                   onClick={() => {
-                    if (subscription && !subscription.machineIdentityAuthTemplates) {
+                    if (
+                      subscription &&
+                      !subscription.get(
+                        SubscriptionProductCategory.Platform,
+                        "machineIdentityAuthTemplates"
+                      )
+                    ) {
                       handlePopUpOpen("upgradePlan", {
                         isEnterpriseFeature: true,
                         text: "Your current plan does not include access to creating Machine Identity Auth Templates. To unlock this feature, please upgrade to Infisical Enterprise plan."

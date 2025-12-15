@@ -11,6 +11,7 @@ import {
   PamResourceType,
   useListPamResourceOptions
 } from "@app/hooks/api/pam";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 type Props = {
   onSelect: (resource: PamResourceType) => void;
@@ -66,7 +67,7 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
   });
 
   const handleResourceSelect = (resource: PamResourceType) => {
-    if (!subscription.pam) {
+    if (!subscription.get(SubscriptionProductCategory.Platform, "pam")) {
       handlePopUpOpen("upgradePlan", {
         text: "Your current plan does not include access to Infisical PAM. To unlock this feature, please upgrade to Infisical Enterprise plan.",
         isEnterpriseFeature: true

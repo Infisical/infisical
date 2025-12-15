@@ -919,7 +919,7 @@ const Page = () => {
             importedBy={importedBy}
             usedBySecretSyncs={usedBySecretSyncs}
             isPITEnabled={isPITEnabled}
-            hasPathPolicies={hasPathPolicies}
+            hasPathPolicies={Boolean(hasPathPolicies)}
             onRequestAccess={(params) => handlePopUpOpen("requestAccess", params)}
             onClearFilters={handleClearFilters}
           />

@@ -36,6 +36,7 @@ import {
 } from "@app/hooks/api";
 import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
 import { useGetAvailableTemplates } from "@app/hooks/api/identityAuthTemplates/queries";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { LockoutTab } from "./lockout/LockoutTab";
@@ -309,7 +310,7 @@ export const IdentityLdapAuthForm = ({
   }, [data, reset]);
 
   useEffect(() => {
-    if (!subscription?.ldap) {
+    if (!subscription?.get(SubscriptionProductCategory.Platform, "ldap")) {
       handlePopUpOpen("upgradePlan", {
         isEnterpriseFeature: true,
         featureName: "LDAP authentication"
@@ -828,7 +829,9 @@ export const IdentityLdapAuthForm = ({
                       <Input
                         value={field.value}
                         onChange={(e) => {
-                          if (subscription?.ipAllowlisting) {
+                          if (
+                            subscription.get(SubscriptionProductCategory.Platform, "ipAllowlisting")
+                          ) {
                             field.onChange(e);
                             return;
                           }
@@ -845,7 +848,7 @@ export const IdentityLdapAuthForm = ({
               />
               <IconButton
                 onClick={() => {
-                  if (subscription?.ipAllowlisting) {
+                  if (subscription.get(SubscriptionProductCategory.Platform, "ipAllowlisting")) {
                     removeAccessTokenTrustedIp(index);
                     return;
                   }
@@ -868,7 +871,7 @@ export const IdentityLdapAuthForm = ({
             <Button
               variant="outline_bg"
               onClick={() => {
-                if (subscription?.ipAllowlisting) {
+                if (subscription.get(SubscriptionProductCategory.Platform, "ipAllowlisting")) {
                   appendAccessTokenTrustedIp({
                     ipAddress: "0.0.0.0/0"
                   });

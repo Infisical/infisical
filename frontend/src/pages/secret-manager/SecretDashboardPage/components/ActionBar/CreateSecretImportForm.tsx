@@ -16,6 +16,7 @@ import {
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { useProject, useSubscription } from "@app/context";
 import { useCreateSecretImport } from "@app/hooks/api";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 const typeSchema = z.object({
   environment: z.object({ name: z.string(), slug: z.string() }),
@@ -70,7 +71,10 @@ export const CreateSecretImportForm = ({
     isReplication
   }: TFormSchema) => {
     try {
-      if (isReplication && !subscription?.secretApproval) {
+      if (
+        isReplication &&
+        !subscription?.get(SubscriptionProductCategory.SecretManager, "secretApproval")
+      ) {
         onUpgradePlan();
         return;
       }

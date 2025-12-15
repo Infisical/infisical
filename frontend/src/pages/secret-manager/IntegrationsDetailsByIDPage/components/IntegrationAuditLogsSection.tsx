@@ -4,6 +4,7 @@ import { EmptyState } from "@app/components/v2";
 import { useOrganization, useProject, useSubscription } from "@app/context";
 import { EventType } from "@app/hooks/api/auditLogs/enums";
 import { TIntegrationWithEnv } from "@app/hooks/api/integrations/types";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { LogsSection } from "@app/pages/organization/AuditLogsPage/components/LogsSection";
 
 // Add more events if needed
@@ -18,10 +19,11 @@ export const IntegrationAuditLogsSection = ({ integration }: Props) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
 
-  const auditLogsRetentionDays = subscription?.auditLogsRetentionDays ?? 30;
+  const auditLogsRetentionDays =
+    subscription?.get(SubscriptionProductCategory.Platform, "auditLogsRetentionDays") ?? 30;
 
   // eslint-disable-next-line no-nested-ternary
-  return subscription?.auditLogs ? (
+  return subscription?.get(SubscriptionProductCategory.Platform, "auditLogs") ? (
     <div className="h-full w-full min-w-204 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <p className="text-lg font-medium text-gray-200">Integration Logs</p>
@@ -53,7 +55,7 @@ export const IntegrationAuditLogsSection = ({ integration }: Props) => {
           <div>
             <p>
               Please{" "}
-              {subscription && subscription.slug !== null ? (
+              {subscription && subscription.productPlans?.[SubscriptionProductCategory.Platform] ? (
                 <Link
                   to="/organizations/$orgId/billing"
                   params={{ orgId: currentOrg.id }}

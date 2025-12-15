@@ -51,6 +51,7 @@ import { usePopUp } from "@app/hooks";
 import { useDeleteCertTemplateV2 } from "@app/hooks/api";
 import { useListCertificateTemplates } from "@app/hooks/api/certificateTemplates/queries";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 import { CertificateModal } from "../CertificatesPage/components/CertificateModal";
 import { CertificateTemplateEnrollmentModal } from "../CertificatesPage/components/CertificateTemplateEnrollmentModal";
@@ -110,7 +111,7 @@ export const PkiTemplateListPage = () => {
             />
           </div>
           <div className="container mx-auto mb-6 max-w-8xl rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-            {/* TODO: Use subscription.pkiLegacyTemplates to block legacy templates creation */}
+            {/* TODO: Use subscription.get(SubscriptionProductCategory.CertificateManager, "pkiLegacyTemplates") to block legacy templates creation */}
             <div className="mb-4 flex justify-between">
               <p className="text-xl font-medium text-mineshaft-100">Templates</p>
               <div className="flex w-full justify-end">
@@ -218,7 +219,12 @@ export const PkiTemplateListPage = () => {
                                       )}
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        if (!subscription.pkiEst) {
+                                        if (
+                                          !subscription.get(
+                                            SubscriptionProductCategory.CertificateManager,
+                                            "pkiEst"
+                                          )
+                                        ) {
                                           handlePopUpOpen("estUpgradePlan", {
                                             isEnterpriseFeature: true
                                           });

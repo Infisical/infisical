@@ -26,6 +26,7 @@ import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@a
 import { getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { TProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 import { DeleteProjectTemplateModal } from "./DeleteProjectTemplateModal";
 
@@ -37,7 +38,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
   const { subscription } = useSubscription();
 
   const { isPending, data: projectTemplates = [] } = useListProjectTemplates({
-    enabled: subscription?.projectTemplates
+    enabled: subscription?.get(SubscriptionProductCategory.Platform, "projectTemplates")
   });
 
   const [search, setSearch] = useState("");
@@ -73,13 +74,14 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
             </Tr>
           </THead>
           <TBody>
-            {subscription?.projectTemplates && isPending && (
-              <TableSkeleton
-                innerKey="project-templates-table"
-                columns={colSpan}
-                key="project-templates"
-              />
-            )}
+            {subscription?.get(SubscriptionProductCategory.Platform, "projectTemplates") &&
+              isPending && (
+                <TableSkeleton
+                  innerKey="project-templates-table"
+                  columns={colSpan}
+                  key="project-templates"
+                />
+              )}
             {filteredTemplates.map((template) => {
               const { id, name, roles, description, type } = template;
               return (
@@ -147,7 +149,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
                 </Tr>
               );
             })}
-            {(!subscription?.projectTemplates ||
+            {(!subscription?.get(SubscriptionProductCategory.Platform, "projectTemplates") ||
               (!isPending && filteredTemplates?.length === 0)) && (
               <Tr>
                 <Td colSpan={colSpan}>

@@ -14,6 +14,7 @@ import {
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 import { GroupModal } from "./GroupModal";
 import { GroupTable } from "./GroupsTable";
@@ -31,7 +32,7 @@ export const GroupsSection = () => {
   ] as const);
 
   const handleAddGroupModal = () => {
-    if (!subscription?.groups) {
+    if (!subscription?.get(SubscriptionProductCategory.Platform, "groups")) {
       handlePopUpOpen("upgradePlan", {
         text: "Managing groups can be unlocked if you upgrade to Infisical Enterprise plan.",
         isEnterpriseFeature: true

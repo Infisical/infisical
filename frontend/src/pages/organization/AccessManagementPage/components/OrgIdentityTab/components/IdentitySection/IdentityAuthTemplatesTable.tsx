@@ -44,6 +44,7 @@ import {
   TEMPLATE_UI_LABELS,
   useGetIdentityAuthTemplates
 } from "@app/hooks/api/identityAuthTemplates";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 enum TemplatesOrderBy {
@@ -94,7 +95,10 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
     limit,
     offset,
     search: debouncedSearch,
-    isDisabled: !subscription.machineIdentityAuthTemplates
+    isDisabled: !subscription.get(
+      SubscriptionProductCategory.Platform,
+      "machineIdentityAuthTemplates"
+    )
   });
 
   const { templates = [], totalCount = 0 } = data ?? {};
@@ -175,9 +179,11 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
             </Tr>
           </THead>
           <TBody>
-            {subscription.machineIdentityAuthTemplates && isPending && (
-              <TableSkeleton columns={4} innerKey="identity-auth-templates" />
-            )}
+            {subscription.get(
+              SubscriptionProductCategory.Platform,
+              "machineIdentityAuthTemplates"
+            ) &&
+              isPending && <TableSkeleton columns={4} innerKey="identity-auth-templates" />}
 
             {!isPending &&
               templates?.map((template) => (
@@ -271,7 +277,10 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
             onChangePerPage={handlePerPageChange}
           />
         )}
-        {!subscription.machineIdentityAuthTemplates && (
+        {!subscription.get(
+          SubscriptionProductCategory.Platform,
+          "machineIdentityAuthTemplates"
+        ) && (
           <EmptyState title="This feature has not been activated for your license." icon={faBan} />
         )}
         {!isPending && templates.length === 0 && (

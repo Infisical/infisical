@@ -15,6 +15,7 @@ import {
   useUpdateServerEncryptionStrategy
 } from "@app/hooks/api";
 import { RootKeyEncryptionStrategy } from "@app/hooks/api/admin/types";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 const formSchema = z.object({
   encryptionStrategy: z.nativeEnum(RootKeyEncryptionStrategy)
@@ -52,7 +53,7 @@ export const EncryptionPageForm = () => {
   const onSubmit = useCallback(async (formData: TForm) => {
     if (!subscription) return;
 
-    if (!subscription.hsm) {
+    if (!subscription.get(SubscriptionProductCategory.Platform, "hsm")) {
       handlePopUpOpen("upgradePlan", {
         isEnterpriseFeature: true,
         text: "Your current plan does not include access to Hardware Security Module (HSM). To unlock this feature, please upgrade to Infisical Enterprise plan."

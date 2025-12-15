@@ -164,7 +164,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
   });
 
   const { mutateAsync: updateRenewalConfig } = useUpdateRenewalConfig();
-  // TODO: Use subscription.pkiLegacyTemplates to block legacy templates creation
+  // TODO: Use subscription.get(SubscriptionProductCategory.CertificateManager, "pkiLegacyTemplates") to block legacy templates creation
   const isLegacyTemplatesEnabled = true;
 
   const { data: caData } = useListCasByProjectId(currentProject?.id ?? "");

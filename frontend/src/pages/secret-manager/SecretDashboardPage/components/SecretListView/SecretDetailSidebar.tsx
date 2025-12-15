@@ -61,6 +61,7 @@ import {
   useGetSecretValue
 } from "@app/hooks/api/dashboard/queries";
 import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { camelCaseToSpaces } from "@app/lib/fn/string";
@@ -260,7 +261,9 @@ export const SecretDetailSidebar = ({
     projectId: currentProject.id,
     environment,
     secretPath,
-    secretKey: subscription?.secretAccessInsights ? secretKey : ""
+    secretKey: subscription?.get(SubscriptionProductCategory.SecretManager, "secretAccessInsights")
+      ? secretKey
+      : ""
   });
 
   const handleTagSelect = (tag: WsTag) => {

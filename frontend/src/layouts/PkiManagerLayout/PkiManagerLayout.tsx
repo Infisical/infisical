@@ -7,6 +7,7 @@ import {
   useListWorkspaceCertificateTemplates,
   useListWorkspacePkiSubscribers
 } from "@app/hooks/api";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
 
@@ -25,7 +26,9 @@ export const PkiManagerLayout = () => {
   const hasExistingSubscribers = subscribers.length > 0;
   const hasExistingTemplates = templates.length > 0;
   const showLegacySection =
-    subscription.pkiLegacyTemplates || hasExistingSubscribers || hasExistingTemplates;
+    subscription.get(SubscriptionProductCategory.CertificateManager, "pkiLegacyTemplates") ||
+    hasExistingSubscribers ||
+    hasExistingTemplates;
 
   const location = useLocation();
   return (
@@ -93,7 +96,11 @@ export const PkiManagerLayout = () => {
                 </Link>
                 {showLegacySection && (
                   <>
-                    {(subscription.pkiLegacyTemplates || hasExistingSubscribers) && (
+                    {(subscription.get(
+                      SubscriptionProductCategory.CertificateManager,
+                      "pkiLegacyTemplates"
+                    ) ||
+                      hasExistingSubscribers) && (
                       <Link
                         to="/organizations/$orgId/projects/cert-manager/$projectId/subscribers"
                         params={{
@@ -106,7 +113,11 @@ export const PkiManagerLayout = () => {
                         )}
                       </Link>
                     )}
-                    {(subscription.pkiLegacyTemplates || hasExistingTemplates) && (
+                    {(subscription.get(
+                      SubscriptionProductCategory.CertificateManager,
+                      "pkiLegacyTemplates"
+                    ) ||
+                      hasExistingTemplates) && (
                       <Link
                         to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-templates"
                         params={{

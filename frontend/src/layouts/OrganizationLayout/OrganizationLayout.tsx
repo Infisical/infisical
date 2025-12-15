@@ -6,6 +6,7 @@ import { Banner } from "@app/components/page-frames/Banner";
 import { useServerConfig, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useFetchServerStatus } from "@app/hooks/api";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 import { AuditLogBanner } from "./components/AuditLogBanner";
 import { InsecureConnectionBanner } from "./components/InsecureConnectionBanner";
@@ -40,7 +41,11 @@ export const OrganizationLayout = () => {
           <OrgNavBar isHidden={isInsideProject} />
           {!isLoading && !isInsideProject && !serverDetails?.redisConfigured && <RedisBanner />}
           {!isLoading && !isInsideProject && !serverDetails?.emailConfigured && <SmtpBanner />}
-          {!isLoading && !isInsideProject && subscription.auditLogs && <AuditLogBanner />}
+          {!isLoading &&
+            !isInsideProject &&
+            subscription.get(SubscriptionProductCategory.Platform, "auditLogs") && (
+              <AuditLogBanner />
+            )}
           {!window.isSecureContext && !isInsideProject && <InsecureConnectionBanner />}
           <main
             className={twMerge(

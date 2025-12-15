@@ -26,6 +26,7 @@ import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { useGetExternalKmsList, useRemoveExternalKms } from "@app/hooks/api";
 import { ExternalKmsProvider } from "@app/hooks/api/kms/types";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 import { AddExternalKmsForm } from "./AddExternalKmsForm";
 import { EditExternalKmsCredentialsModal } from "./EditExternalKmsCredentialsModal";
@@ -73,7 +74,10 @@ export const OrgEncryptionTab = withPermission(
             {(isAllowed) => (
               <Button
                 onClick={() => {
-                  if (subscription && !subscription?.externalKms) {
+                  if (
+                    subscription &&
+                    !subscription?.get(SubscriptionProductCategory.Platform, "externalKms")
+                  ) {
                     handlePopUpOpen("upgradePlan", {
                       isEnterpriseFeature: true
                     });
@@ -116,7 +120,10 @@ export const OrgEncryptionTab = withPermission(
                     key={kms.id}
                     kms={kms}
                     handlePopUpOpen={handlePopUpOpen}
-                    subscription={subscription}
+                    hasExternalKms={subscription.get(
+                      SubscriptionProductCategory.Platform,
+                      "externalKms"
+                    )}
                   />
                 ))}
             </TBody>

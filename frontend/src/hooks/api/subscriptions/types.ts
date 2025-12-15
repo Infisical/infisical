@@ -1,38 +1,28 @@
+export enum SubscriptionProductCategory {
+  Platform = "platform",
+  SecretManager = "secret-manager",
+  CertificateManager = "cert-manager",
+  SecretScanning = "secret-scanning",
+  PAM = "pam"
+}
+
 export type SubscriptionPlan = {
+  _id: null;
+  version: number;
+  slug: string | null;
   productPlans: Record<string, string>;
-  id: string;
+  tier: -1;
+  memberLimit: null;
   membersUsed: number;
-  memberLimit: number;
-  identitiesUsed: number;
-  identityLimit: number;
-  auditLogs: boolean;
-  dynamicSecret: boolean;
-  auditLogsRetentionDays: number;
-  auditLogStreamLimit: number;
-  auditLogStreams: boolean;
-  customAlerts: boolean;
-  customRateLimits: boolean;
-  pitRecovery: boolean;
-  githubOrgSync: boolean;
-  subOrganization?: boolean;
-  ipAllowlisting: boolean;
-  rbac: boolean;
-  secretVersioning: boolean;
-  slug: string;
-  secretApproval: boolean;
-  secretRotation: boolean;
-  tier: number;
-  workspaceLimit: number;
+  trial_end: null;
+  has_used_trial: true;
+  workspaceLimit: null;
   workspacesUsed: number;
-  environmentLimit: number;
-  samlSSO: boolean;
-  sshHostGroups: boolean;
-  secretAccessInsights: boolean;
-  hsm: boolean;
-  oidcSSO: boolean;
-  scim: boolean;
-  ldap: boolean;
-  groups: boolean;
+  identityLimit: null;
+  identitiesUsed: number;
+  cardDeclined?: boolean;
+  cardDeclinedReason?: string;
+  cardDeclinedDays?: number;
   status:
     | "incomplete"
     | "incomplete_expired"
@@ -42,35 +32,78 @@ export type SubscriptionPlan = {
     | "canceled"
     | "unpaid"
     | null;
-  trial_end: number | null;
-  has_used_trial: boolean;
-  caCrl: boolean;
-  instanceUserManagement: boolean;
-  gateway: boolean;
-  externalKms: boolean;
-  pkiEst: boolean;
-  pkiAcme: boolean;
-  pkiLegacyTemplates: boolean;
-  enforceMfa: boolean;
-  enforceGoogleSSO: boolean;
-  projectTemplates: boolean;
-  kmip: boolean;
-  secretScanning: boolean;
-  enterpriseSecretSyncs: boolean;
-  enterpriseCertificateSyncs: boolean;
-  enterpriseAppConnections: boolean;
-  cardDeclined?: boolean;
-  cardDeclinedReason?: string;
-  cardDeclinedDays?: number;
-  machineIdentityAuthTemplates: boolean;
-  pam: boolean;
-  ai: boolean;
+  [SubscriptionProductCategory.Platform]: {
+    ipAllowlisting: false;
+    rbac: false;
+    githubOrgSync: false;
+    customRateLimits: false;
+    subOrganization: false;
+    secretScanning: false;
+    enterpriseAppConnections: false;
+    fips: false;
+    eventSubscriptions: false;
+    machineIdentityAuthTemplates: false;
+    pam: false;
+    ai: false;
+    enforceMfa: boolean;
+    projectTemplates: false;
+    instanceUserManagement: false;
+    externalKms: false;
+    hsm: false;
+    oidcSSO: false;
+    gateway: false;
+    scim: false;
+    ldap: false;
+    groups: false;
+    auditLogs: false;
+    auditLogsRetentionDays: number;
+    auditLogStreams: false;
+    auditLogStreamLimit: number;
+    samlSSO: false;
+    enforceGoogleSSO: false;
+    rateLimits: {
+      readLimit: number;
+      writeLimit: number;
+      secretsLimit: number;
+    };
+  };
+  [SubscriptionProductCategory.SecretManager]: {
+    enterpriseSecretSyncs: false;
+    secretApproval: false;
+    secretRotation: false;
+    dynamicSecret: false;
+    secretVersioning: true;
+    secretAccessInsights: false;
+    pitRecovery: false;
+    identityLimit: number;
+    identitiesUsed: number;
+    environmentLimit: number;
+    environmentsUsed: number;
+    projectLimit: null;
+    projectsUsed: number;
+  };
+  [SubscriptionProductCategory.CertificateManager]: {
+    enterpriseCertificateSyncs: false;
+    pkiEst: boolean;
+    pkiAcme: false;
+    kmip: false;
+    pkiLegacyTemplates: false;
+    caCrl: false;
+    projectLimit: null;
+    projectsUsed: number;
+  };
+  [SubscriptionProductCategory.PAM]: {
+    sshHostGroups: false;
+    identityLimit: null;
+    identitiesUsed: number;
+    projectLimit: null;
+    projectsUsed: number;
+  };
+  [SubscriptionProductCategory.SecretScanning]: {
+    sshHostGroups: false;
+    identityLimit: null;
+    identitiesUsed: number;
+    projectLimit: null;
+    projectsUsed: number;
+  };
 };
-
-export enum SubscriptionProducts {
-  Platform = "platform",
-  SecretManager = "secret-manager",
-  CertificateManager = "cert-manager",
-  SecretScanning = "secret-scanning",
-  PAM = "pam"
-}

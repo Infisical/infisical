@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import { useProject, useSubscription } from "@app/context";
 import { useGetAccessApprovalPolicies } from "@app/hooks/api";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 const matchesPath = (folderPath: string, pattern: string) => {
   const normalizedPath = folderPath === "/" ? "/" : folderPath.replace(/\/$/, "");
@@ -42,7 +43,7 @@ export const usePathAccessPolicies = ({ secretPath, environment }: Params) => {
   const { data: policies } = useGetAccessApprovalPolicies({
     projectSlug: currentProject.slug,
     options: {
-      enabled: subscription.secretApproval
+      enabled: subscription.get(SubscriptionProductCategory.SecretManager, "secretApproval")
     }
   });
 
@@ -54,8 +55,15 @@ export const usePathAccessPolicies = ({ secretPath, environment }: Params) => {
     );
 
     return {
-      hasPathPolicies: subscription.secretApproval && Boolean(pathPolicies?.length),
+      hasPathPolicies:
+        subscription.get(SubscriptionProductCategory.SecretManager, "secretApproval") &&
+        Boolean(pathPolicies?.length),
       pathPolicies
     };
-  }, [secretPath, environment, policies, subscription.secretApproval]);
+  }, [
+    secretPath,
+    environment,
+    policies,
+    subscription.get(SubscriptionProductCategory.SecretManager, "secretApproval")
+  ]);
 };

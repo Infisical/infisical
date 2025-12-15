@@ -13,6 +13,7 @@ import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { useGetLDAPConfig, useGetOIDCConfig, useGetSSOConfig } from "@app/hooks/api";
 import { LoginMethod } from "@app/hooks/api/admin/types";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 import { LDAPModal } from "./LDAPModal";
 import { OIDCModal } from "./OIDCModal";
@@ -92,7 +93,7 @@ export const OrgSsoTab = withPermission(
                 <Button
                   colorSchema="secondary"
                   onClick={() => {
-                    if (!subscription?.samlSSO) {
+                    if (!subscription?.get(SubscriptionProductCategory.Platform, "samlSSO")) {
                       handlePopUpOpen("upgradePlan", { featureName: "SAML SSO" });
                       return;
                     }
@@ -115,7 +116,7 @@ export const OrgSsoTab = withPermission(
                 <Button
                   colorSchema="secondary"
                   onClick={() => {
-                    if (!subscription?.oidcSSO) {
+                    if (!subscription?.get(SubscriptionProductCategory.Platform, "oidcSSO")) {
                       handlePopUpOpen("upgradePlan", { featureName: "OIDC SSO" });
                       return;
                     }
@@ -133,7 +134,7 @@ export const OrgSsoTab = withPermission(
                 <Button
                   colorSchema="secondary"
                   onClick={() => {
-                    if (!subscription?.ldap) {
+                    if (!subscription?.get(SubscriptionProductCategory.Platform, "ldap")) {
                       handlePopUpOpen("upgradePlan", {
                         featureName: "LDAP",
                         isEnterpriseFeature: true

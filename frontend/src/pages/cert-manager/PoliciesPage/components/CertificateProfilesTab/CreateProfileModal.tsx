@@ -32,6 +32,8 @@ import {
   useUpdateCertificateProfile
 } from "@app/hooks/api/certificateProfiles";
 import { useListCertificateTemplatesV2 } from "@app/hooks/api/certificateTemplates/queries";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
+import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const createSchema = z
   .object({
@@ -518,6 +520,19 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
   }, [isEdit, profile, isAzureAdcsCa, azureAdcsTemplatesData, setValue]);
 
   const onFormSubmit = async (data: FormData) => {
+    if (
+      !isEdit &&
+      !subscription?.get(SubscriptionProductCategory.CertificateManager, "pkiAcme") &&
+      data.enrollmentType === EnrollmentType.ACME
+    ) {
+      reset();
+      onClose();
+      handlePopUpOpen("upgradePlan", {
+        isEnterpriseFeature: true
+      });
+      return;
+    }
+
     if (!currentProject?.id && !isEdit) return;
 
     // Validate Azure ADCS template requirement

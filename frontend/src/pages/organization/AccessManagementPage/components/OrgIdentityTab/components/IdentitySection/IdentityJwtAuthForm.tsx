@@ -27,6 +27,7 @@ import { useAddIdentityJwtAuth, useUpdateIdentityJwtAuth } from "@app/hooks/api"
 import { IdentityJwtConfigurationType } from "@app/hooks/api/identities/enums";
 import { useGetIdentityJwtAuth } from "@app/hooks/api/identities/queries";
 import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityFormTab } from "./types";
@@ -612,7 +613,12 @@ export const IdentityJwtAuthForm = ({
                       <Input
                         value={field.value}
                         onChange={(e) => {
-                          if (subscription?.ipAllowlisting) {
+                          if (
+                            subscription?.get(
+                              SubscriptionProductCategory.Platform,
+                              "ipAllowlisting"
+                            )
+                          ) {
                             field.onChange(e);
                             return;
                           }
@@ -629,7 +635,7 @@ export const IdentityJwtAuthForm = ({
               />
               <IconButton
                 onClick={() => {
-                  if (subscription?.ipAllowlisting) {
+                  if (subscription?.get(SubscriptionProductCategory.Platform, "ipAllowlisting")) {
                     removeAccessTokenTrustedIp(index);
                     return;
                   }
@@ -652,7 +658,7 @@ export const IdentityJwtAuthForm = ({
             <Button
               variant="outline_bg"
               onClick={() => {
-                if (subscription?.ipAllowlisting) {
+                if (subscription?.get(SubscriptionProductCategory.Platform, "ipAllowlisting")) {
                   appendAccessTokenTrustedIp({
                     ipAddress: "0.0.0.0/0"
                   });

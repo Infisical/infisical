@@ -5,6 +5,7 @@ import { Link } from "@tanstack/react-router";
 import { useOrganization, useProject, useSubscription } from "@app/context";
 import { EventType } from "@app/hooks/api/auditLogs/enums";
 import { TPkiSync } from "@app/hooks/api/pkiSyncs";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { LogsSection } from "@app/pages/organization/AuditLogsPage/components/LogsSection";
 
 const PKI_SYNC_EVENTS = [
@@ -21,19 +22,20 @@ export const PkiSyncAuditLogsSection = ({ pkiSync }: Props) => {
   const { subscription } = useSubscription();
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
-  const auditLogsRetentionDays = subscription?.auditLogsRetentionDays ?? 30;
+  const auditLogsRetentionDays =
+    subscription?.get(SubscriptionProductCategory.Platform, "auditLogsRetentionDays") ?? 30;
 
   return (
     <div className="flex max-h-full w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
         <h3 className="text-lg font-medium text-mineshaft-100">Sync Logs</h3>
-        {subscription.auditLogs && (
+        {subscription.get(SubscriptionProductCategory.Platform, "auditLogs") && (
           <p className="text-xs text-bunker-300">
             Displaying audit logs from the last {Math.min(auditLogsRetentionDays, 60)} days
           </p>
         )}
       </div>
-      {subscription.auditLogs ? (
+      {subscription.get(SubscriptionProductCategory.Platform, "auditLogs") ? (
         <LogsSection
           refetchInterval={4000}
           showFilters={false}
@@ -52,7 +54,8 @@ export const PkiSyncAuditLogsSection = ({ pkiSync }: Props) => {
             <FontAwesomeIcon size="2x" icon={faFingerprint} />
             <p>
               Please{" "}
-              {subscription && subscription.slug !== null ? (
+              {subscription &&
+              subscription.productPlans?.[SubscriptionProductCategory.CertificateManager] ? (
                 <Link
                   to="/organizations/$orgId/billing"
                   params={{ orgId: currentOrg.id }}

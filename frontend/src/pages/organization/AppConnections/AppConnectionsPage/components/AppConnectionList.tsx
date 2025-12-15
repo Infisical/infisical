@@ -10,6 +10,7 @@ import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useAppConnectionOptions } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 type Props = {
   onSelect: (app: AppConnection) => void;
@@ -75,7 +76,8 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
               key={option.app}
               type="button"
               onClick={() =>
-                enterprise && !subscription.enterpriseAppConnections
+                enterprise &&
+                !subscription.get(SubscriptionProductCategory.Platform, "enterpriseAppConnections")
                   ? handlePopUpOpen("upgradePlan", {
                       isEnterpriseFeature: true
                     })

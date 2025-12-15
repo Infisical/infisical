@@ -15,6 +15,7 @@ import {
   useSubscription
 } from "@app/context";
 import { useLogoutUser, useUpdateOrg } from "@app/hooks/api";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 enum EnforceAuthType {
@@ -110,7 +111,7 @@ export const OrgGeneralAuthSection = ({
     if (!currentOrg?.id) return;
 
     if (type === EnforceAuthType.SAML) {
-      if (!subscription?.samlSSO) {
+      if (!subscription?.get(SubscriptionProductCategory.Platform, "samlSSO")) {
         handlePopUpOpen("upgradePlan");
         return;
       }
@@ -135,7 +136,7 @@ export const OrgGeneralAuthSection = ({
     }
 
     if (type === EnforceAuthType.GOOGLE) {
-      if (!subscription?.enforceGoogleSSO) {
+      if (!subscription?.get(SubscriptionProductCategory.Platform, "enforceGoogleSSO")) {
         handlePopUpOpen("upgradePlan");
         return;
       }
@@ -157,7 +158,7 @@ export const OrgGeneralAuthSection = ({
         type: "success"
       });
     } else if (type === EnforceAuthType.OIDC) {
-      if (!subscription?.oidcSSO) {
+      if (!subscription?.get(SubscriptionProductCategory.Platform, "oidcSSO")) {
         handlePopUpOpen("upgradePlan");
         return;
       }
@@ -187,7 +188,7 @@ export const OrgGeneralAuthSection = ({
   const handleEnableBypassOrgAuthToggle = async (value: boolean) => {
     try {
       if (!currentOrg?.id) return;
-      if (!subscription?.samlSSO) {
+      if (!subscription?.get(SubscriptionProductCategory.Platform, "samlSSO")) {
         handlePopUpOpen("upgradePlan");
         return;
       }

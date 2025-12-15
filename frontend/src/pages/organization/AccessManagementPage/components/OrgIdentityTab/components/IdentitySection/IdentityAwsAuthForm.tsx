@@ -24,6 +24,7 @@ import {
   useUpdateIdentityAwsAuth
 } from "@app/hooks/api";
 import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityFormTab } from "./types";
@@ -307,7 +308,12 @@ export const IdentityAwsAuthForm = ({
                       <Input
                         value={field.value}
                         onChange={(e) => {
-                          if (subscription?.ipAllowlisting) {
+                          if (
+                            subscription?.get(
+                              SubscriptionProductCategory.Platform,
+                              "ipAllowlisting"
+                            )
+                          ) {
                             field.onChange(e);
                             return;
                           }
@@ -324,7 +330,7 @@ export const IdentityAwsAuthForm = ({
               />
               <IconButton
                 onClick={() => {
-                  if (subscription?.ipAllowlisting) {
+                  if (subscription?.get(SubscriptionProductCategory.Platform, "ipAllowlisting")) {
                     removeAccessTokenTrustedIp(index);
                     return;
                   }
@@ -347,7 +353,7 @@ export const IdentityAwsAuthForm = ({
             <Button
               variant="outline_bg"
               onClick={() => {
-                if (subscription?.ipAllowlisting) {
+                if (subscription?.get(SubscriptionProductCategory.Platform, "ipAllowlisting")) {
                   appendAccessTokenTrustedIp({
                     ipAddress: "0.0.0.0/0"
                   });
