@@ -12,6 +12,7 @@ import {
 } from "@app/context";
 import { ProjectPermissionSecretScanningFindingActions } from "@app/context/ProjectPermissionContext/types";
 import { useGetSecretScanningUnresolvedFindingCount } from "@app/hooks/api/secretScanningV2";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
 
@@ -28,7 +29,7 @@ export const SecretScanningLayout = () => {
     currentProject.id,
     {
       enabled:
-        subscription.secretScanning &&
+        subscription.get(SubscriptionProductCategory.Platform, "secretScanning") &&
         permission.can(
           ProjectPermissionSecretScanningFindingActions.Read,
           ProjectPermissionSub.SecretScanningFindings

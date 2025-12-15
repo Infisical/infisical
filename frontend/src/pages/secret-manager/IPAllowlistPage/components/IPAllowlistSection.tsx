@@ -12,6 +12,7 @@ import {
   useSubscription
 } from "@app/context";
 import { useDeleteTrustedIp } from "@app/hooks/api";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { IPAllowlistModal } from "./IPAllowlistModal";
@@ -55,7 +56,7 @@ export const IPAllowlistSection = () => {
           {(isAllowed) => (
             <Button
               onClick={() => {
-                if (subscription?.ipAllowlisting) {
+                if (subscription?.get(SubscriptionProductCategory.Platform, "ipAllowlisting")) {
                   handlePopUpOpen("trustedIp");
                 } else {
                   handlePopUpOpen("upgradePlan");

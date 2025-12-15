@@ -1,11 +1,34 @@
+import { HelpCircleIcon } from "lucide-react";
+
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, Modal, ModalContent } from "@app/components/v2";
-import { OrgPermissionBillingActions, OrgPermissionSubjects, useSubscription } from "@app/context";
+import {
+  Button,
+  Card,
+  CardBody,
+  CardTitle,
+  Modal,
+  ModalContent,
+  Table,
+  TableContainer,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tooltip,
+  Tr
+} from "@app/components/v2";
+import {
+  OrgPermissionBillingActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useSubscription
+} from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { usePopUp } from "@app/hooks";
+import { useCreateCustomerPortalSession, useGetOrgBillingMetrics } from "@app/hooks/api";
 import { OrgPlanTable } from "@app/hooks/api/organization/types";
 import { SubscriptionProducts } from "@app/hooks/api/types";
-import { useMemo } from "react";
+
 import { ManagePlansTable } from "./ManagePlansTable";
 
 type Props = {
@@ -16,57 +39,20 @@ type Props = {
 export const PlanUsageStats = ({ selectedProduct, orgPlan }: Props) => {
   const { subscription } = useSubscription();
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp(["managePlan"]);
-
-  const metrics = useMemo(() => {
-    const selectedPlan = orgPlan?.productRows?.[selectedProduct];
-    if (selectedProduct === SubscriptionProducts.CertificateManager) {
-      const sanLimit = 3;
-      const sanUsed = 1;
-      const internalCaUsed = 1;
-      const internalCaLimit = 3;
-      return [
-        {
-          type: "san",
-          label: "SANs",
-          stats: { limit: sanLimit, used: sanUsed }
-        },
-        {
-          type: "internalCa",
-          label: "Internal CA",
-          stats: { limit: internalCaLimit, used: internalCaUsed }
-        }
-      ];
-    }
-
-    const identityLimit = 3;
-    const identityUsed = 1;
-    const projectUsed = 1;
-    const projectLimit = 3;
-    return [
-      {
-        type: "identities",
-        label: "Identities",
-        stats: {
-          limit: identityLimit,
-          available: identityUsed,
-          used: identityUsed,
-          label: "Identities"
-        }
-      },
-      {
-        type: "projects",
-        label: "Projects",
-        stats: { limit: projectLimit, used: projectUsed, label: "Projects" }
-      }
-    ];
-  }, [orgPlan, selectedProduct]);
+  const { currentOrg } = useOrganization();
+  const { data: billingMetrics, isPending: isBillingMetricsPending } = useGetOrgBillingMetrics(
+    currentOrg.id
+  );
+  const createCustomerPortalSession = useCreateCustomerPortalSession();
 
   return (
-    <div className="flex w-full gap-4">
+    <div className="flex w-full flex-col gap-2">
       <div className="flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
         <p className="mb-2 text-gray-400">Current plan</p>
         <p className="mb-8 text-2xl font-medium text-mineshaft-50 capitalize">
-          {subscription?.productPlans?.[selectedProduct]?.split("-").join(" ") || "-"}
+          {subscription?.version === 1
+            ? subscription?.slug
+            : subscription?.productPlans?.[selectedProduct]?.split("-").join(" ") || "-"}
         </p>
         {isInfisicalCloud() && (
           <OrgPermissionCan
@@ -74,58 +60,90 @@ export const PlanUsageStats = ({ selectedProduct, orgPlan }: Props) => {
             a={OrgPermissionSubjects.Billing}
           >
             {(isAllowed) => (
-              <Button
-                variant="plain"
-                colorSchema="secondary"
-                type="button"
-                onClick={async () => {
-                  handlePopUpOpen("managePlan");
-                }}
-                disabled={!isAllowed}
-                className="text-primary"
-              >
-                Manage plan &rarr;
-              </Button>
+              <div className="flex justify-between">
+                <Button
+                  variant="plain"
+                  colorSchema="secondary"
+                  type="button"
+                  onClick={async () => {
+                    handlePopUpOpen("managePlan");
+                  }}
+                  disabled={!isAllowed}
+                  className="text-primary"
+                >
+                  Manage plan &rarr;
+                </Button>
+                <Button
+                  variant="plain"
+                  colorSchema="secondary"
+                  type="button"
+                  onClick={async () => {
+                    if (!currentOrg?.id) return;
+                    const { url } = await createCustomerPortalSession.mutateAsync(currentOrg.id);
+                    window.location.href = url;
+                  }}
+                  disabled={!isAllowed}
+                  isLoading={createCustomerPortalSession.isPending}
+                >
+                  Update Card
+                </Button>
+              </div>
             )}
           </OrgPermissionCan>
         )}
       </div>
-      {metrics.map((el) => {
-        if (el.type === "identities") {
-          return (
-            <div className="flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
-              <p className="mb-2 text-gray-400">{el.label}</p>
-              <div className="mb-4 flex border-b border-mineshaft-600 pb-4 text-lg text-mineshaft-50 capitalize">
-                <div className="mr-2 flex flex-1 justify-between border-r border-mineshaft-400 pr-2">
-                  <div>Assigned</div>
-                  <div>{el.stats.used}</div>
-                </div>
-                <div className="flex flex-1 justify-between">
-                  <div>Available</div>
-                  <div>{(el.stats as { available: number })?.available}</div>
-                </div>
-              </div>
-              <div className="flex justify-between text-lg text-mineshaft-50 capitalize">
-                <div>Limit</div>
-                <div>{el.stats.limit}</div>
-              </div>
-            </div>
-          );
-        }
-        return (
-          <div className="flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
-            <p className="mb-2 text-gray-400">{el.label}</p>
-            <div className="mb-4 flex justify-between border-b border-mineshaft-600 pb-4 text-lg text-mineshaft-50 capitalize">
-              <div>Active</div>
-              <div>{el.stats.used}</div>
-            </div>
-            <div className="flex justify-between text-lg text-mineshaft-50 capitalize">
-              <div>Limit</div>
-              <div>{el.stats.limit}</div>
-            </div>
-          </div>
-        );
-      })}
+      <div>
+        {selectedProduct !== SubscriptionProducts.CertificateManager && (
+          <Card>
+            <CardTitle className="mb-0 flex items-center px-5">
+              Total Identity Seats
+              <Tooltip content="Assigned Explanation">
+                <HelpCircleIcon className="ml-2 text-gray-400" size={16} />
+              </Tooltip>
+            </CardTitle>
+            <CardBody className="p-0">
+              <Table>
+                <TBody>
+                  <Tr>
+                    <Td>Assigned</Td>
+                    <Td>1</Td>
+                  </Tr>
+                  <Tr>
+                    <Td>Available</Td>
+                    <Td>0</Td>
+                  </Tr>
+                </TBody>
+              </Table>
+            </CardBody>
+          </Card>
+        )}
+        {selectedProduct === SubscriptionProducts.CertificateManager && (
+          <TableContainer>
+            <Table>
+              <THead>
+                <Tr>
+                  <Th>Resource</Th>
+                  <Th>Usage</Th>
+                </Tr>
+              </THead>
+              <TBody>
+                <Tr>
+                  <Td>Certificate SANs</Td>
+                  <Td>{Number(billingMetrics?.certificateMetrics?.sanCount)}</Td>
+                </Tr>
+                <Tr>
+                  <Td>Certificate Wildcards</Td>
+                  <Td>{Number(billingMetrics?.certificateMetrics?.wildcardCount)}</Td>
+                </Tr>
+                <Tr>
+                  <Td>Internal CA</Td>
+                  <Td>{Number(billingMetrics?.usedCertManagerCas)}</Td>
+                </Tr>
+              </TBody>
+            </Table>
+          </TableContainer>
+        )}
+      </div>
       <Modal
         isOpen={popUp.managePlan.isOpen}
         onOpenChange={(open) => handlePopUpToggle("managePlan", open)}

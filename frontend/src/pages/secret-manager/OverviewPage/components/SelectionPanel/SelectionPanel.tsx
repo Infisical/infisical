@@ -17,6 +17,7 @@ import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionCo
 import { usePopUp } from "@app/hooks";
 import { useDeleteFolder, useDeleteSecretBatch } from "@app/hooks/api";
 import { ProjectSecretsImportedBy, UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import {
   SecretType,
   SecretV3RawSanitized,
@@ -104,7 +105,7 @@ export const SelectionPanel = ({
 
   const getDeleteModalSubTitle = () => {
     if (selectedFolderCount > 0) {
-      if (subscription?.pitRecovery) {
+      if (subscription?.get(SubscriptionProductCategory.SecretManager, "pitRecovery")) {
         return "All selected folders and their contents will be removed. You can reverse this action by rolling back to a previous commit.";
       }
       return "All selected folders and their contents will be removed. Rolling back to a previous commit isn't available on your current plan. Upgrade to enable this feature.";

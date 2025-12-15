@@ -15,6 +15,7 @@ import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/
 import { gatewaysQueryKeys } from "@app/hooks/api";
 import { OracleDBConnectionMethod, TOracleDBConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { PlatformManagedConfirmationModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components/AppConnectionForm/shared/PlatformManagedConfirmationModal";
 
 import {
@@ -98,7 +99,7 @@ export const OracleDBConnectionForm = ({ appConnection, onSubmit }: Props) => {
         }}
       >
         {!isUpdate && <GenericAppConnectionsFields />}
-        {subscription.gateway && (
+        {subscription.get(SubscriptionProductCategory.Platform, "gateway") && (
           <OrgPermissionCan
             I={OrgGatewayPermissionActions.AttachGateways}
             a={OrgPermissionSubjects.Gateway}

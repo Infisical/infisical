@@ -51,6 +51,7 @@ import {
   useAdminGetUsers,
   useRemoveUserServerAdminAccess
 } from "@app/hooks/api";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { User } from "@app/hooks/api/users/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { AddServerAdminModal } from "@app/pages/admin/AccessManagementPage/components/AddServerAdminModal";
@@ -223,7 +224,12 @@ const ServerAdminsPanelTable = ({
                                 }
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (!subscription?.instanceUserManagement) {
+                                  if (
+                                    !subscription?.get(
+                                      SubscriptionProductCategory.Platform,
+                                      "instanceUserManagement"
+                                    )
+                                  ) {
                                     handlePopUpOpen("upgradePlan", {
                                       username,
                                       id,

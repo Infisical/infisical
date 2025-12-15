@@ -32,6 +32,7 @@ import {
   useUpdateCertificateProfile
 } from "@app/hooks/api/certificateProfiles";
 import { useListCertificateTemplatesV2 } from "@app/hooks/api/certificateTemplates/queries";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const createSchema = z
@@ -532,7 +533,11 @@ export const CreateProfileModal = ({
   }, [isEdit, profile, isAzureAdcsCa, azureAdcsTemplatesData, setValue]);
 
   const onFormSubmit = async (data: FormData) => {
-    if (!isEdit && !subscription?.pkiAcme && data.enrollmentType === EnrollmentType.ACME) {
+    if (
+      !isEdit &&
+      !subscription?.get(SubscriptionProductCategory.CertificateManager, "pkiAcme") &&
+      data.enrollmentType === EnrollmentType.ACME
+    ) {
       reset();
       onClose();
       handlePopUpOpen("upgradePlan", {

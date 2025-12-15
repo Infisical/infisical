@@ -13,6 +13,7 @@ import {
   useSubscription
 } from "@app/context";
 import { useDeleteGroup } from "@app/hooks/api";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { OrgGroupModal } from "./OrgGroupModal";
@@ -31,7 +32,7 @@ export const OrgGroupsSection = () => {
   ] as const);
 
   const handleAddGroupModal = () => {
-    if (!subscription?.groups) {
+    if (!subscription?.get(SubscriptionProductCategory.Platform, "groups")) {
       handlePopUpOpen("upgradePlan", {
         text: "Your current plan does not allow adding groups. To unlock this feature, please upgrade to Infisical Enterprise plan.",
         isEnterpriseFeature: true

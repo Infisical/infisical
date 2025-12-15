@@ -7,6 +7,7 @@ import { Button } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 import { AuditLogStreamTable } from "./components/AuditLogStreamTable";
 import { AddAuditLogStreamModal } from "./components";
@@ -28,7 +29,10 @@ export const AuditLogStreamsTab = withPermission(
             {(isAllowed) => (
               <Button
                 onClick={() => {
-                  if (subscription && !subscription?.auditLogStreams) {
+                  if (
+                    subscription &&
+                    !subscription?.get(SubscriptionProductCategory.Platform, "auditLogStreams")
+                  ) {
                     handlePopUpOpen("upgradePlan", {
                       isEnterpriseFeature: true
                     });

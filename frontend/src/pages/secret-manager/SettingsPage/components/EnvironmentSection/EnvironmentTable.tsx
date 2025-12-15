@@ -22,6 +22,7 @@ import {
   useSubscription
 } from "@app/context";
 import { useUpdateWsEnvironment } from "@app/hooks/api";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -60,14 +61,16 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
     });
   };
 
+  const environmentLimit =
+    subscription.get(SubscriptionProductCategory.SecretManager, "environmentLimit") || 0;
   const isMoreEnvironmentsAllowed =
-    subscription?.environmentLimit && currentProject?.environments
-      ? currentProject.environments.length <= subscription.environmentLimit
+    environmentLimit && currentProject?.environments
+      ? currentProject.environments.length <= environmentLimit
       : true;
 
   const environmentsOverPlanLimit =
-    subscription?.environmentLimit && currentProject?.environments
-      ? Math.max(0, currentProject.environments.length - subscription.environmentLimit)
+    environmentLimit && currentProject?.environments
+      ? Math.max(0, currentProject.environments.length - environmentLimit)
       : 0;
 
   return (

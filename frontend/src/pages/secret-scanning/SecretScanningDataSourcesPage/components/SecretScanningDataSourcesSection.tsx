@@ -10,6 +10,7 @@ import { ProjectPermissionSub, useProject, useSubscription } from "@app/context"
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useListSecretScanningDataSources } from "@app/hooks/api/secretScanningV2";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 import { SecretScanningDataSourcesTable } from "./SecretScanningDataSourcesTable";
 
@@ -26,10 +27,13 @@ export const SecretScanningDataSourcesSection = () => {
   const { data: dataSources = [], isPending: isDataSourcesPending } =
     useListSecretScanningDataSources(currentProject.id, {
       refetchInterval: 30000,
-      enabled: subscription.secretScanning
+      enabled: subscription.get(SubscriptionProductCategory.Platform, "secretScanning")
     });
 
-  if (subscription.secretScanning && isDataSourcesPending)
+  if (
+    subscription.get(SubscriptionProductCategory.Platform, "secretScanning") &&
+    isDataSourcesPending
+  )
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center gap-2">
         <Spinner />
@@ -59,7 +63,7 @@ export const SecretScanningDataSourcesSection = () => {
                 type="submit"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
                 onClick={() => {
-                  if (!subscription.secretScanning) {
+                  if (!subscription.get(SubscriptionProductCategory.Platform, "secretScanning")) {
                     handlePopUpOpen("upgradePlan", {
                       isEnterpriseFeature: true
                     });

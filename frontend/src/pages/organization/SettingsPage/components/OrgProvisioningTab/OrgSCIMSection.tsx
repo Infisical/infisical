@@ -9,6 +9,7 @@ import {
   useSubscription
 } from "@app/context";
 import { useUpdateOrg } from "@app/hooks/api";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { ExternalGroupOrgRoleMappings } from "./ExternalGroupOrgRoleMappings";
@@ -26,7 +27,7 @@ export const OrgScimSection = () => {
   const { mutateAsync } = useUpdateOrg();
 
   const addScimTokenBtnClick = () => {
-    if (subscription?.scim) {
+    if (subscription?.get(SubscriptionProductCategory.Platform, "scim")) {
       handlePopUpOpen("scimToken");
     } else {
       handlePopUpOpen("upgradePlan", {
@@ -37,7 +38,7 @@ export const OrgScimSection = () => {
 
   const handleEnableSCIMToggle = async (value: boolean) => {
     if (!currentOrg?.id) return;
-    if (!subscription?.scim) {
+    if (!subscription?.get(SubscriptionProductCategory.Platform, "scim")) {
       handlePopUpOpen("upgradePlan", {
         isEnterpriseFeature: true
       });
@@ -84,7 +85,7 @@ export const OrgScimSection = () => {
               <Switch
                 id="enable-scim"
                 onCheckedChange={(value) => {
-                  if (subscription?.scim) {
+                  if (subscription?.get(SubscriptionProductCategory.Platform, "scim")) {
                     handleEnableSCIMToggle(value);
                   } else {
                     handlePopUpOpen("upgradePlan", {

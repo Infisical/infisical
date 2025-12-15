@@ -87,6 +87,7 @@ import { VaultImportStatus } from "@app/hooks/api/migration/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { ApiErrorTypes, SecretType, TApiErrors, WsTag } from "@app/hooks/api/types";
 import { SecretSearchInput } from "@app/pages/secret-manager/OverviewPage/components/SecretSearchInput";
 
@@ -878,7 +879,10 @@ export const ActionBar = ({
               <Button
                 variant="outline_bg"
                 onClick={() => {
-                  if (subscription && subscription.pitRecovery) {
+                  if (
+                    subscription &&
+                    subscription.get(SubscriptionProductCategory.SecretManager, "pitRecovery")
+                  ) {
                     onClickRollbackMode();
                     return;
                   }
@@ -994,7 +998,13 @@ export const ActionBar = ({
                     <Button
                       leftIcon={<FontAwesomeIcon icon={faFingerprint} className="pr-2" />}
                       onClick={() => {
-                        if (subscription && subscription.dynamicSecret) {
+                        if (
+                          subscription &&
+                          subscription.get(
+                            SubscriptionProductCategory.SecretManager,
+                            "dynamicSecret"
+                          )
+                        ) {
                           handlePopUpOpen("addDynamicSecret");
                           handlePopUpClose("misc");
                           return;
@@ -1024,7 +1034,13 @@ export const ActionBar = ({
                     <Button
                       leftIcon={<FontAwesomeIcon icon={faRotate} className="pr-2" />}
                       onClick={() => {
-                        if (subscription && subscription.secretRotation) {
+                        if (
+                          subscription &&
+                          subscription.get(
+                            SubscriptionProductCategory.SecretManager,
+                            "secretRotation"
+                          )
+                        ) {
                           handlePopUpOpen("addSecretRotation");
                           handlePopUpClose("misc");
                           return;

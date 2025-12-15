@@ -27,8 +27,7 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
-  useProject,
-  useSubscription
+  useProject
 } from "@app/context";
 import { getProjectHomePage } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
@@ -54,8 +53,6 @@ const ProjectSelectInner = () => {
   const { data: projects = [] } = useGetUserProjects();
   const { data: projectFavorites } = useGetUserProjectFavorites(currentOrg.id);
 
-  const { subscription } = useSubscription();
-
   const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
 
   const addProjectToFavorites = async (projectId: string) => {
@@ -71,10 +68,6 @@ const ProjectSelectInner = () => {
       projectFavorites: [...(projectFavorites || []).filter((entry) => entry !== projectId)]
     });
   };
-
-  const isAddingProjectsAllowed = subscription?.workspaceLimit
-    ? subscription.workspacesUsed < subscription.workspaceLimit
-    : true;
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "addNewWs",
@@ -206,9 +199,7 @@ const ProjectSelectInner = () => {
                   <DropdownMenuItem
                     isDisabled={!isAllowed && !isOldProjectPermissionAllowed}
                     icon={<FontAwesomeIcon icon={faPlus} />}
-                    onClick={() =>
-                      handlePopUpOpen(isAddingProjectsAllowed ? "addNewWs" : "upgradePlan")
-                    }
+                    onClick={() => handlePopUpOpen("addNewWs")}
                   >
                     New Project
                   </DropdownMenuItem>

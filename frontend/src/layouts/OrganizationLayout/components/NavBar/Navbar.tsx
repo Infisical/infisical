@@ -9,7 +9,6 @@ import {
   faChevronRight,
   faEnvelope,
   faExclamationTriangle,
-  faInfinity,
   faInfo,
   faInfoCircle,
   faPlus,
@@ -59,12 +58,12 @@ import {
   projectKeys,
   subOrganizationsQuery,
   useGetOrganizations,
-  useGetOrgTrialUrl,
   useLogoutUser
 } from "@app/hooks/api";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { Organization, SubscriptionPlan } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import { ProjectSelect } from "@app/layouts/ProjectLayout/components/ProjectSelect";
@@ -74,9 +73,14 @@ import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
 import { NewSubOrganizationForm } from "./NewSubOrganizationForm";
 import { NotificationDropdown } from "./NotificationDropdown";
 
-const getPlan = (subscription: SubscriptionPlan) => {
-  if (subscription.groups) return "Enterprise";
-  if (subscription.pitRecovery) return "Pro";
+const getPlan = (subscription: {
+  get: <C extends SubscriptionProductCategory, K extends keyof SubscriptionPlan[C]>(
+    category: C,
+    featureKey: K
+  ) => SubscriptionPlan[C][K] | undefined;
+}) => {
+  if (subscription.get(SubscriptionProductCategory.Platform, "groups")) return "Enterprise";
+  if (subscription.get(SubscriptionProductCategory.SecretManager, "pitRecovery")) return "Pro";
   return "Free";
 };
 
@@ -152,7 +156,7 @@ export const Navbar = () => {
   const subOrgQuery = subOrganizationsQuery.list({ limit: 500, isAccessible: true });
   const { data: subOrganizations = [] } = useQuery({
     ...subOrgQuery,
-    enabled: Boolean(subscription.subOrganization)
+    enabled: Boolean(subscription.get(SubscriptionProductCategory.Platform, "subOrganization"))
   });
 
   const isCardDeclined = Boolean(subscription?.cardDeclined);
@@ -265,8 +269,6 @@ export const Navbar = () => {
       navigateToAdminConsole();
     }
   };
-
-  const { mutateAsync } = useGetOrgTrialUrl();
 
   const logout = useLogoutUser();
   const logOutUser = async () => {
@@ -432,7 +434,7 @@ export const Navbar = () => {
                   </div>
                   {orgs?.map((org) => {
                     if (
-                      subscription.subOrganization &&
+                      subscription.get(SubscriptionProductCategory.Platform, "subOrganization") &&
                       (org.id === currentOrg?.id || org.id === currentOrg?.parentOrgId)
                     ) {
                       return (
@@ -617,32 +619,9 @@ export const Navbar = () => {
         )}
       </div>
 
-      {subscription && subscription.slug === "starter" && !subscription.has_used_trial ? (
-        <Tooltip content="Start Free Pro Trial">
-          <Button
-            variant="plain"
-            className="mr-2 border-mineshaft-500 px-2.5 py-1.5 whitespace-nowrap text-mineshaft-200 hover:bg-mineshaft-600"
-            leftIcon={<FontAwesomeIcon icon={faInfinity} />}
-            onClick={async () => {
-              if (!subscription || !rootOrg) return;
-
-              // direct user to start pro trial
-              const url = await mutateAsync({
-                orgId: rootOrg.id,
-                success_url: window.location.href
-              });
-
-              window.location.href = url;
-            }}
-          >
-            Free Pro Trial
-          </Button>
-        </Tooltip>
-      ) : (
-        <div className="mt-0.5 mr-3 hidden rounded-sm border border-mineshaft-400 px-1 text-xs text-mineshaft-100 no-underline! opacity-50 md:inline-block">
-          {getPlan(subscription)}
-        </div>
-      )}
+      <div className="mt-0.5 mr-3 hidden rounded-sm border border-mineshaft-400 px-1 text-xs text-mineshaft-100 no-underline! opacity-50 md:inline-block">
+        {getPlan(subscription)}
+      </div>
       {/* eslint-disable-next-line no-nested-ternary */}
       {!location.pathname.startsWith("/admin") ? (
         user.superAdmin ? (

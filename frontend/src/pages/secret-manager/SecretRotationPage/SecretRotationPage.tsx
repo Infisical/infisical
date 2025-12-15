@@ -55,6 +55,7 @@ import {
 } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { TSecretRotationProviderTemplate } from "@app/hooks/api/secretRotation/types";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { CreateRotationForm } from "@app/pages/secret-manager/SecretRotationPage/components/CreateRotationForm";
 
 const Page = () => {
@@ -120,7 +121,10 @@ const Page = () => {
   };
 
   const handleCreateRotation = (provider: TSecretRotationProviderTemplate) => {
-    if (subscription && !subscription?.secretRotation) {
+    if (
+      subscription &&
+      !subscription?.get(SubscriptionProductCategory.SecretManager, "secretRotation")
+    ) {
       handlePopUpOpen("upgradePlan");
       return;
     }

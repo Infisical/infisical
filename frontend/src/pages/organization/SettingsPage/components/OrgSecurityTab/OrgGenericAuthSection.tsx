@@ -10,6 +10,7 @@ import {
 } from "@app/context";
 import { useUpdateOrg } from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 export const OrgGenericAuthSection = () => {
@@ -21,7 +22,7 @@ export const OrgGenericAuthSection = () => {
 
   const handleEnforceMfaToggle = async (value: boolean) => {
     if (!currentOrg?.id) return;
-    if (!subscription?.enforceMfa) {
+    if (!subscription?.get(SubscriptionProductCategory.Platform, "enforceMfa")) {
       handlePopUpOpen("upgradePlan");
       return;
     }
@@ -39,7 +40,7 @@ export const OrgGenericAuthSection = () => {
 
   const handleUpdateSelectedMfa = async (selectedMfaMethod: MfaMethod) => {
     if (!currentOrg?.id) return;
-    if (!subscription?.enforceMfa) {
+    if (!subscription?.get(SubscriptionProductCategory.Platform, "enforceMfa")) {
       handlePopUpOpen("upgradePlan");
       return;
     }

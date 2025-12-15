@@ -55,6 +55,7 @@ import {
   useAdminGrantServerAdminAccess,
   useRemoveUserServerAdminAccess
 } from "@app/hooks/api";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { User } from "@app/hooks/api/users/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -253,7 +254,12 @@ const UserPanelTable = ({
                                   icon={<FontAwesomeIcon icon={faUserShield} />}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    if (!subscription?.instanceUserManagement) {
+                                    if (
+                                      !subscription?.get(
+                                        SubscriptionProductCategory.Platform,
+                                        "instanceUserManagement"
+                                      )
+                                    ) {
                                       handlePopUpOpen("upgradePlan", {
                                         username,
                                         id,
@@ -281,7 +287,12 @@ const UserPanelTable = ({
                                   }
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    if (!subscription?.instanceUserManagement) {
+                                    if (
+                                      !subscription?.get(
+                                        SubscriptionProductCategory.Platform,
+                                        "instanceUserManagement"
+                                      )
+                                    ) {
                                       handlePopUpOpen("upgradePlan", {
                                         username,
                                         id,

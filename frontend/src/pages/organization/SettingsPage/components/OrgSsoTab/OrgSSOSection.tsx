@@ -12,6 +12,7 @@ import {
   useSubscription
 } from "@app/context";
 import { useCreateSSOConfig, useGetSSOConfig, useUpdateSSOConfig } from "@app/hooks/api";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { SSOModal } from "./SSOModal";
@@ -35,7 +36,7 @@ export const OrgSSOSection = (): JSX.Element => {
   const handleSamlSSOToggle = async (value: boolean) => {
     if (!currentOrg?.id) return;
 
-    if (!subscription?.samlSSO) {
+    if (!subscription?.get(SubscriptionProductCategory.Platform, "samlSSO")) {
       handlePopUpOpen("upgradePlan", {
         text: "Your current plan does not include access to SAML SSO. To unlock this feature, please upgrade to Infisical Pro plan."
       });
@@ -56,7 +57,10 @@ export const OrgSSOSection = (): JSX.Element => {
   const handleSamlGroupManagement = async (value: boolean) => {
     if (!currentOrg?.id) return;
 
-    if (!subscription?.samlSSO || !subscription?.groups) {
+    if (
+      !subscription?.get(SubscriptionProductCategory.Platform, "samlSSO") ||
+      !subscription?.get(SubscriptionProductCategory.Platform, "groups")
+    ) {
       handlePopUpOpen("upgradePlan", {
         isEnterpriseFeature: true,
         text: "Your current plan does not include access to SAML group mapping. To unlock this feature, please upgrade to Infisical Enterprise plan."
@@ -77,7 +81,7 @@ export const OrgSSOSection = (): JSX.Element => {
 
   const addSSOBtnClick = async () => {
     try {
-      if (subscription?.samlSSO && currentOrg) {
+      if (subscription?.get(SubscriptionProductCategory.Platform, "samlSSO") && currentOrg) {
         if (!data) {
           // case: SAML SSO is not configured
           // -> initialize empty SAML SSO configuration

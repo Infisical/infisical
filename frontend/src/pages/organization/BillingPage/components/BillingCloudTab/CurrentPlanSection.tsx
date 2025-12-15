@@ -23,7 +23,7 @@ import {
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useGetOrgPlanTable } from "@app/hooks/api";
-import { SubscriptionProducts } from "@app/hooks/api/subscriptions/types";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 import { PlanUsageStats } from "./PlanUsageStats";
 
@@ -31,7 +31,7 @@ export const CurrentPlanSection = () => {
   const { currentOrg } = useOrganization();
   const { data, isPending } = useGetOrgPlanTable(currentOrg?.id ?? "");
   const [selectedSubscriptionProduct, setSelectedSubscriptionProduct] = useState(
-    SubscriptionProducts.Platform
+    SubscriptionProductCategory.Platform
   );
 
   const displayCell = (value: null | number | string | boolean) => {
@@ -53,7 +53,7 @@ export const CurrentPlanSection = () => {
   return (
     <div className="mb-6 rounded-lg">
       <div className="mb-4 flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
-        {Object.values(SubscriptionProducts).map((el) => (
+        {Object.values(SubscriptionProductCategory).map((el) => (
           <Button
             variant="outline_bg"
             onClick={() => {
@@ -69,55 +69,61 @@ export const CurrentPlanSection = () => {
           </Button>
         ))}
       </div>
-      <PlanUsageStats selectedProduct={selectedSubscriptionProduct} orgPlan={data} />
-      <TableContainer className="mt-4">
-        <Table>
-          <THead>
-            <Tr>
-              <Th className="w-1/3">Feature</Th>
-              <Th className="w-1/3">Allowed</Th>
-              <Th className="w-1/3">Used</Th>
-            </Tr>
-          </THead>
-          <TBody>
-            {!isPending &&
-              data &&
-              rowsToDisplay?.length &&
-              rowsToDisplay?.map(({ name, allowed, used }) => {
-                let toolTipText = null;
-                if (name === "Organization identity limit") {
-                  toolTipText =
-                    "Identity count is calculated by the total number of user identities and machine identities.";
-                }
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <PlanUsageStats selectedProduct={selectedSubscriptionProduct} orgPlan={data} />
+        </div>
+        <div>
+          <TableContainer>
+            <Table>
+              <THead>
+                <Tr>
+                  <Th>Feature</Th>
+                  <Th>Allowed</Th>
+                </Tr>
+              </THead>
+              <TBody>
+                {!isPending &&
+                  data &&
+                  Boolean(rowsToDisplay?.length) &&
+                  rowsToDisplay
+                    ?.filter((i) => typeof i.allowed === "boolean")
+                    ?.map(({ name, allowed }) => {
+                      let toolTipText = null;
+                      if (name === "Organization identity limit") {
+                        toolTipText =
+                          "Identity count is calculated by the total number of user identities and machine identities.";
+                      }
 
-                return (
-                  <Tr key={`current-plan-row-${name}`} className="h-12">
-                    <Td>
-                      <div className="flex items-center">
-                        {name}
-                        {toolTipText && (
-                          <Tooltip content={toolTipText}>
-                            <FontAwesomeIcon icon={faInfoCircle} className="ml-2" size="xs" />
-                          </Tooltip>
-                        )}
-                      </div>
+                      return (
+                        <Tr key={`current-plan-row-${name}`} className="h-12">
+                          <Td>
+                            <div className="flex items-center">
+                              {name}
+                              {toolTipText && (
+                                <Tooltip content={toolTipText}>
+                                  <FontAwesomeIcon icon={faInfoCircle} className="ml-2" size="xs" />
+                                </Tooltip>
+                              )}
+                            </div>
+                          </Td>
+                          <Td>{displayCell(allowed)}</Td>
+                        </Tr>
+                      );
+                    })}
+                {isPending && <TableSkeleton columns={2} innerKey="invoices" />}
+                {!isPending && !rowsToDisplay?.length && (
+                  <Tr>
+                    <Td colSpan={2}>
+                      <EmptyState title="No plan details found" icon={faFileInvoice} />
                     </Td>
-                    <Td>{displayCell(allowed)}</Td>
-                    <Td>{used}</Td>
                   </Tr>
-                );
-              })}
-            {isPending && <TableSkeleton columns={5} innerKey="invoices" />}
-            {!isPending && data && data?.rows?.length === 0 && (
-              <Tr>
-                <Td colSpan={3}>
-                  <EmptyState title="No plan details found" icon={faFileInvoice} />
-                </Td>
-              </Tr>
-            )}
-          </TBody>
-        </Table>
-      </TableContainer>
+                )}
+              </TBody>
+            </Table>
+          </TableContainer>
+        </div>
+      </div>
     </div>
   );
 };

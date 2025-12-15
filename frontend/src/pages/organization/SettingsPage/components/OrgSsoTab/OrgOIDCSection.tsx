@@ -13,6 +13,7 @@ import {
 } from "@app/context";
 import { useGetOIDCConfig } from "@app/hooks/api";
 import { useUpdateOIDCConfig } from "@app/hooks/api/oidcConfig/mutations";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { OIDCModal } from "./OIDCModal";
@@ -32,7 +33,7 @@ export const OrgOIDCSection = (): JSX.Element => {
   const handleOIDCToggle = async (value: boolean) => {
     if (!currentOrg?.id) return;
 
-    if (!subscription?.oidcSSO) {
+    if (!subscription?.get(SubscriptionProductCategory.Platform, "oidcSSO")) {
       handlePopUpOpen("upgradePlan");
       return;
     }
@@ -51,7 +52,7 @@ export const OrgOIDCSection = (): JSX.Element => {
   const handleOIDCGroupManagement = async (value: boolean) => {
     if (!currentOrg?.id) return;
 
-    if (!subscription?.oidcSSO) {
+    if (!subscription?.get(SubscriptionProductCategory.Platform, "oidcSSO")) {
       handlePopUpOpen("upgradePlan");
       return;
     }
@@ -68,7 +69,7 @@ export const OrgOIDCSection = (): JSX.Element => {
   };
 
   const addOidcButtonClick = async () => {
-    if (subscription?.oidcSSO && currentOrg) {
+    if (subscription?.get(SubscriptionProductCategory.Platform, "oidcSSO") && currentOrg) {
       handlePopUpOpen("addOIDC");
     } else {
       handlePopUpOpen("upgradePlan");

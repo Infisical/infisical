@@ -3,6 +3,7 @@ import { Outlet } from "@tanstack/react-router";
 import { Banner } from "@app/components/page-frames/Banner";
 import { useServerConfig, useSubscription } from "@app/context";
 import { useFetchServerStatus } from "@app/hooks/api";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { AuditLogBanner } from "@app/layouts/OrganizationLayout/components/AuditLogBanner";
 import { Navbar } from "@app/layouts/OrganizationLayout/components/NavBar";
 import { RedisBanner } from "@app/layouts/OrganizationLayout/components/RedisBanner";
@@ -27,7 +28,9 @@ export const AdminLayout = () => {
         <Navbar />
         {!isLoading && !serverDetails?.redisConfigured && <RedisBanner />}
         {!isLoading && !serverDetails?.emailConfigured && <SmtpBanner />}
-        {!isLoading && subscription.auditLogs && <AuditLogBanner />}
+        {!isLoading && subscription.get(SubscriptionProductCategory.Platform, "auditLogs") && (
+          <AuditLogBanner />
+        )}
         {!window.isSecureContext && <InsecureConnectionBanner />}
         <div className="flex grow flex-col overflow-y-hidden">
           <AdminNavBar />

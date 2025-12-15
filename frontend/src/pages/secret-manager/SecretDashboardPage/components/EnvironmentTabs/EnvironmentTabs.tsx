@@ -31,6 +31,7 @@ import {
 import { usePopUp } from "@app/hooks";
 import { projectKeys } from "@app/hooks/api";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { AddEnvironmentModal } from "@app/pages/secret-manager/SettingsPage/components/EnvironmentSection/AddEnvironmentModal";
 
 import { CompareEnvironments } from "../CompareEnvironments";
@@ -55,9 +56,11 @@ export const EnvironmentTabs = ({ secretPath }: Props) => {
 
   const { subscription } = useSubscription();
 
+  const environmentLimit =
+    subscription.get(SubscriptionProductCategory.SecretManager, "environmentLimit") || 0;
   const isMoreEnvironmentsAllowed =
-    subscription?.environmentLimit && currentProject?.environments
-      ? currentProject.environments.length < subscription.environmentLimit
+    environmentLimit && currentProject?.environments
+      ? currentProject.environments.length <= environmentLimit
       : true;
 
   const [isNavigating, setIsNavigating] = useState(false);

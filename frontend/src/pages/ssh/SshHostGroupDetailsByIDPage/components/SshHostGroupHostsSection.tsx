@@ -8,6 +8,7 @@ import { DeleteActionModal, IconButton } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useRemoveHostFromSshHostGroup } from "@app/hooks/api";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 import { AddHostGroupMemberModal } from "./AddHostGroupMemberModal";
 import { SshHostGroupHostsTable } from "./SshHostGroupHostsTable";
@@ -27,7 +28,7 @@ export const SshHostGroupHostsSection = ({ sshHostGroupId }: Props) => {
   const { mutateAsync: removeHostFromGroup } = useRemoveHostFromSshHostGroup();
 
   const handleAddSshHostModal = () => {
-    if (!subscription?.sshHostGroups) {
+    if (!subscription?.get(SubscriptionProductCategory.PAM, "sshHostGroups")) {
       handlePopUpOpen("upgradePlan", {
         text: "Managing SSH host groups can be unlocked if you upgrade to Infisical Enterprise plan.",
         isEnterpriseFeature: true

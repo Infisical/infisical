@@ -25,6 +25,7 @@ import {
   useSubscription
 } from "@app/context";
 import { useGetCaCertTemplates } from "@app/hooks/api";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -90,7 +91,12 @@ export const CertificateTemplatesTable = ({ handlePopUpOpen, caId }: Props) => {
                             {(isAllowed) => (
                               <DropdownMenuItem
                                 onClick={() => {
-                                  if (!subscription?.pkiEst) {
+                                  if (
+                                    !subscription?.get(
+                                      SubscriptionProductCategory.CertificateManager,
+                                      "pkiEst"
+                                    )
+                                  ) {
                                     handlePopUpOpen("upgradePlan", {
                                       isEnterpriseFeature: true
                                     });

@@ -57,6 +57,7 @@ import {
 import { useGetAccessApprovalPolicies } from "@app/hooks/api/accessApproval/queries";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { PolicyType } from "@app/hooks/api/policies/enums";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { Project, TAccessApprovalPolicy } from "@app/hooks/api/types";
 
 import { AccessPolicyForm } from "./components/AccessPolicyModal";
@@ -257,7 +258,10 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
             {(isAllowed) => (
               <Button
                 onClick={() => {
-                  if (subscription && !subscription?.secretApproval) {
+                  if (
+                    subscription &&
+                    !subscription?.get(SubscriptionProductCategory.SecretManager, "secretApproval")
+                  ) {
                     handlePopUpOpen("upgradePlan");
                     return;
                   }

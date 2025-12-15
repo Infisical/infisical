@@ -9,6 +9,7 @@ import { useProject, useProjectPermission, useSubscription } from "@app/context"
 import { usePopUp } from "@app/hooks";
 import { useUpdateWorkspaceAuditLogsRetention } from "@app/hooks/api/projects/queries";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 const formSchema = z.object({
   auditLogsRetentionDays: z.coerce.number().min(0)
@@ -32,14 +33,16 @@ export const AuditLogsRetentionSection = () => {
     resolver: zodResolver(formSchema),
     values: {
       auditLogsRetentionDays:
-        currentProject?.auditLogsRetentionDays ?? subscription?.auditLogsRetentionDays ?? 0
+        currentProject?.auditLogsRetentionDays ??
+        subscription?.get(SubscriptionProductCategory.Platform, "auditLogsRetentionDays") ??
+        0
     }
   });
 
   if (!currentProject) return null;
 
   const handleAuditLogsRetentionSubmit = async ({ auditLogsRetentionDays }: TForm) => {
-    if (!subscription?.auditLogs) {
+    if (!subscription?.get(SubscriptionProductCategory.Platform, "auditLogs")) {
       handlePopUpOpen("upgradePlan", {
         text: "Configuring audit logs retention can be unlocked if you upgrade to Infisical Pro plan."
       });
@@ -47,7 +50,11 @@ export const AuditLogsRetentionSection = () => {
       return;
     }
 
-    if (subscription && auditLogsRetentionDays > subscription?.auditLogsRetentionDays) {
+    if (
+      subscription &&
+      auditLogsRetentionDays >
+        (subscription?.get(SubscriptionProductCategory.Platform, "auditLogsRetentionDays") || 0)
+    ) {
       handlePopUpOpen("upgradePlan", {
         text: "Updating audit logs retention period to a higher value can be unlocked if you upgrade to Infisical Pro plan."
       });

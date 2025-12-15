@@ -13,6 +13,7 @@ import {
 import { Timezone } from "@app/helpers/datetime";
 import { withPermission, withProjectPermission } from "@app/hoc";
 import { Project } from "@app/hooks/api/projects/types";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { LogsDateFilter } from "./LogsDateFilter";
@@ -65,7 +66,7 @@ const LogsSectionComponent = ({
   );
 
   useEffect(() => {
-    if (subscription && !subscription.auditLogs) {
+    if (subscription && !subscription.get(SubscriptionProductCategory.Platform, "auditLogs")) {
       handlePopUpOpen("upgradePlan");
     }
   }, [subscription]);

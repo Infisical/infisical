@@ -162,40 +162,9 @@ export const PreviewSection = () => {
         )}
       {!isPending && subscription && data && (
         <div className="mb-6 flex">
-          {!subscription.productPlans && (
-            <div className="mr-4 flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-              <p className="mb-2 text-gray-400">Current plan</p>
-              <p className="mb-8 text-2xl font-medium text-mineshaft-50">
-                {`${formatPlanSlug(subscription.slug)} ${
-                  subscription.status === "trialing" ? "(Trial)" : ""
-                }`}
-              </p>
-              {isInfisicalCloud() && (
-                <OrgPermissionCan
-                  I={OrgPermissionBillingActions.ManageBilling}
-                  a={OrgPermissionSubjects.Billing}
-                >
-                  {(isAllowed) => (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (!currentOrg?.id) return;
-                        const { url } = await createCustomerPortalSession.mutateAsync(
-                          currentOrg.id
-                        );
-                        window.location.href = url;
-                      }}
-                      disabled={!isAllowed}
-                      className="text-primary"
-                    >
-                      Manage plan &rarr;
-                    </button>
-                  )}
-                </OrgPermissionCan>
-              )}
-            </div>
-          )}
-          {subscription.slug !== "enterprise" ? (
+          {(subscription.slug !== "enterprise" && subscription.version === 1) ||
+          (subscription.version === 2 &&
+            !Object.values(subscription.productPlans || {}).includes("enterprise")) ? (
             <div className="mr-4 flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
               <p className="mb-2 text-gray-400">Price</p>
               <p className="mb-8 text-2xl font-medium text-mineshaft-50">

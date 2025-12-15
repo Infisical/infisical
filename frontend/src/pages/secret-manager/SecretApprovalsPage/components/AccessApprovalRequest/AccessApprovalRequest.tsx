@@ -54,6 +54,7 @@ import {
 import { TAccessApprovalRequest } from "@app/hooks/api/accessApproval/types";
 import { EnforcementLevel } from "@app/hooks/api/policies/enums";
 import { queryClient } from "@app/hooks/api/reactQuery";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { ApprovalStatus, TWorkspaceUser } from "@app/hooks/api/types";
 
 import { RequestAccessModal } from "./components/RequestAccessModal";
@@ -310,7 +311,10 @@ export const AccessApprovalRequest = ({
           >
             <Button
               onClick={() => {
-                if (subscription && !subscription?.secretApproval) {
+                if (
+                  subscription &&
+                  !subscription?.get(SubscriptionProductCategory.SecretManager, "secretApproval")
+                ) {
                   handlePopUpOpen("upgradePlan", {
                     text: "Access requests feature can be unlocked if you upgrade to Infisical Pro plan."
                   });

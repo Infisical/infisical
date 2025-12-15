@@ -20,6 +20,7 @@ import { ProjectPermissionActions, ProjectPermissionSub, useSubscription } from 
 import { usePopUp } from "@app/hooks";
 import { useDeleteFolder, useUpdateFolder } from "@app/hooks/api";
 import { PendingAction, TSecretFolder } from "@app/hooks/api/secretFolders/types";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 import {
   PendingFolderCreate,
@@ -307,7 +308,7 @@ export const FolderListView = ({
         deleteKey={(popUp.deleteFolder?.data as TSecretFolder)?.name}
         title="Do you want to delete this folder?"
         subTitle={`This folder and all its contents will be removed. ${
-          subscription?.pitRecovery
+          subscription?.get(SubscriptionProductCategory.SecretManager, "pitRecovery")
             ? "You can reverse this action by rolling back to a previous commit."
             : "Rolling back to a previous commit isn't available on your current plan. Upgrade to enable this feature."
         }`}

@@ -10,6 +10,7 @@ import {
   useSyncAllGithubTeams,
   useUpdateGithubSyncOrgConfig
 } from "@app/hooks/api";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { GithubOrgSyncConfigModal } from "./GithubOrgSyncConfigModal";
@@ -24,14 +25,16 @@ export const OrgGithubSyncSection = () => {
 
   const githubOrgSyncConfig = useQuery({
     ...githubOrgSyncConfigQueryKeys.get(),
-    enabled: subscription.githubOrgSync,
+    enabled: subscription.get(SubscriptionProductCategory.Platform, "githubOrgSync"),
     retry: false
   });
 
   const updateGithubSyncOrgConfig = useUpdateGithubSyncOrgConfig();
   const syncAllTeamsMutation = useSyncAllGithubTeams();
 
-  const isPending = subscription.githubOrgSync && githubOrgSyncConfig.isPending;
+  const isPending =
+    subscription.get(SubscriptionProductCategory.Platform, "githubOrgSync") &&
+    githubOrgSyncConfig.isPending;
   const data = !isPending && !githubOrgSyncConfig?.isError ? githubOrgSyncConfig?.data : undefined;
 
   const handleBulkSync = async () => {
@@ -86,7 +89,7 @@ export const OrgGithubSyncSection = () => {
               {(isAllowed) => (
                 <Button
                   onClick={() =>
-                    subscription.githubOrgSync
+                    subscription.get(SubscriptionProductCategory.Platform, "githubOrgSync")
                       ? handlePopUpOpen("githubOrgSyncConfig")
                       : handlePopUpOpen("upgradePlan", {
                           isEnterpriseFeature: true

@@ -20,6 +20,7 @@ import {
 import { useOrganization, useSubscription } from "@app/context";
 import { findOrgMembershipRole, isCustomOrgRole } from "@app/helpers/roles";
 import { useGetOrgRoles, useUpdateOrgMembership } from "@app/hooks/api";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z.object({
@@ -135,7 +136,11 @@ export const UserOrgMembershipModal = ({ popUp, handlePopUpOpen, handlePopUpTogg
 
                     const isCustomRole = isCustomOrgRole(role.slug);
 
-                    if (isCustomRole && subscription && !subscription?.rbac) {
+                    if (
+                      isCustomRole &&
+                      subscription &&
+                      !subscription?.get(SubscriptionProductCategory.Platform, "rbac")
+                    ) {
                       handlePopUpOpen("upgradePlan", {
                         text: "Your current plan does not include access to assig custom roles to members. To unlock this feature, please upgrade to Infisical Pro plan."
                       });

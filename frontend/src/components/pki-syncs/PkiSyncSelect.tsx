@@ -7,6 +7,7 @@ import { useSubscription } from "@app/context";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { PkiSync, usePkiSyncOptions } from "@app/hooks/api/pkiSyncs";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 import { UpgradePlanModal } from "../license/UpgradePlanModal";
 
@@ -68,7 +69,11 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
               key={destination}
               type="button"
               onClick={() =>
-                enterprise && !subscription.enterpriseCertificateSyncs
+                enterprise &&
+                !subscription.get(
+                  SubscriptionProductCategory.CertificateManager,
+                  "enterpriseCertificateSyncs"
+                )
                   ? handlePopUpOpen("upgradePlan", {
                       isEnterpriseFeature: true,
                       text: "All Certificate Syncs can be unlocked if you switch to Infisical Enterprise plan."

@@ -16,7 +16,6 @@ import { Td, Tr } from "@app/components/v2/Table";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context/OrgPermissionContext";
 import { useToggle } from "@app/hooks";
 import { ExternalKmsProvider, KmsListEntry } from "@app/hooks/api/kms/types";
-import { SubscriptionPlan } from "@app/hooks/api/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -32,10 +31,10 @@ type Props = {
       isEnterpriseFeature?: boolean;
     }
   ) => void;
-  subscription: SubscriptionPlan;
+  hasExternalKms?: boolean;
 };
 
-export const ExternalKmsItem = ({ kms, handlePopUpOpen, subscription }: Props) => {
+export const ExternalKmsItem = ({ kms, handlePopUpOpen, hasExternalKms }: Props) => {
   const [isKmsIdCopied, { timedToggle: toggleKmsIdCopied }] = useToggle(false);
   const [isKmsAliasCopied, { timedToggle: toggleKmsAliasCopied }] = useToggle(false);
 
@@ -114,7 +113,7 @@ export const ExternalKmsItem = ({ kms, handlePopUpOpen, subscription }: Props) =
                     )}
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (subscription && !subscription?.externalKms) {
+                      if (!hasExternalKms) {
                         handlePopUpOpen("upgradePlan", {
                           isEnterpriseFeature: true
                         });
@@ -136,7 +135,7 @@ export const ExternalKmsItem = ({ kms, handlePopUpOpen, subscription }: Props) =
                     )}
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (subscription && !subscription?.externalKms) {
+                      if (!hasExternalKms) {
                         handlePopUpOpen("upgradePlan", {
                           isEnterpriseFeature: true
                         });

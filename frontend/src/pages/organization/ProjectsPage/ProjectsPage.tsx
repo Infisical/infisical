@@ -7,7 +7,7 @@ import { Outlet, useMatches } from "@tanstack/react-router";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { NewProjectModal } from "@app/components/projects";
 import { PageHeader } from "@app/components/v2";
-import { useOrganization, useSubscription } from "@app/context";
+import { useOrganization } from "@app/context";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AllProjectView } from "./components/AllProjectView";
@@ -64,11 +64,7 @@ export const ProjectsPage = () => {
     "upgradePlan"
   ] as const);
 
-  const { subscription } = useSubscription();
   const { isSubOrganization } = useOrganization();
-  const isAddingProjectsAllowed = subscription?.workspaceLimit
-    ? subscription.workspacesUsed < subscription.workspaceLimit
-    : true;
 
   if (hasChildRoute) {
     return <Outlet />;
@@ -88,16 +84,12 @@ export const ProjectsPage = () => {
       {projectListView === ProjectListView.MyProjects ? (
         <MyProjectView
           onAddNewProject={() => handlePopUpOpen("addNewWs")}
-          onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
-          isAddingProjectsAllowed={isAddingProjectsAllowed}
           projectListView={projectListView}
           onProjectListViewChange={handleSetProjectListView}
         />
       ) : (
         <AllProjectView
           onAddNewProject={() => handlePopUpOpen("addNewWs")}
-          onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
-          isAddingProjectsAllowed={isAddingProjectsAllowed}
           projectListView={projectListView}
           onProjectListViewChange={handleSetProjectListView}
         />

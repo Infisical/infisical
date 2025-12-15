@@ -3,6 +3,7 @@ import { faBan } from "@fortawesome/free-solid-svg-icons";
 import { AccessRestrictedBanner, ContentLoader, EmptyState } from "@app/components/v2";
 import { useProject, useSubscription } from "@app/context";
 import { useGetSecretScanningConfig } from "@app/hooks/api/secretScanningV2";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 import { SecretScanningConfigForm } from "./SecretScanningConfigForm";
 
@@ -11,10 +12,10 @@ export const ProjectScanningConfigTab = () => {
   const { subscription } = useSubscription();
   const { data: config, isPending: isConfigPending } = useGetSecretScanningConfig(
     currentProject.id,
-    { enabled: subscription.secretScanning }
+    { enabled: subscription.get(SubscriptionProductCategory.Platform, "secretScanning") }
   );
 
-  if (!subscription.secretScanning) {
+  if (!subscription.get(SubscriptionProductCategory.Platform, "secretScanning")) {
     return (
       <div className="mt-60 flex h-full w-full items-center justify-center px-20">
         <AccessRestrictedBanner

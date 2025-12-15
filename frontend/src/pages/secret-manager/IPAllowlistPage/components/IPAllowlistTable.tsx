@@ -22,6 +22,7 @@ import {
   useSubscription
 } from "@app/context";
 import { useGetTrustedIps } from "@app/hooks/api";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -93,7 +94,12 @@ export const IPAllowlistTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: 
                             <IconButton
                               className="mr-3 py-2"
                               onClick={() => {
-                                if (subscription?.ipAllowlisting) {
+                                if (
+                                  subscription?.get(
+                                    SubscriptionProductCategory.Platform,
+                                    "ipAllowlisting"
+                                  )
+                                ) {
                                   handlePopUpOpen("trustedIp", {
                                     trustedIpId: id,
                                     ipAddress,
@@ -121,7 +127,12 @@ export const IPAllowlistTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: 
                           {(isAllowed) => (
                             <IconButton
                               onClick={() => {
-                                if (subscription?.ipAllowlisting) {
+                                if (
+                                  subscription?.get(
+                                    SubscriptionProductCategory.Platform,
+                                    "ipAllowlisting"
+                                  )
+                                ) {
                                   handlePopUpOpen("deleteTrustedIp", {
                                     trustedIpId: id
                                   });

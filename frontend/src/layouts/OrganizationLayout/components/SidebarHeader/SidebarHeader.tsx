@@ -1,9 +1,15 @@
 import { useOrganization, useSubscription } from "@app/context";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { SubscriptionPlan } from "@app/hooks/api/types";
 
-const getPlan = (subscription: SubscriptionPlan) => {
-  if (subscription.groups) return "Enterprise Plan";
-  if (subscription.pitRecovery) return "Pro Plan";
+const getPlan = (subscription: {
+  get: <C extends SubscriptionProductCategory, K extends keyof SubscriptionPlan[C]>(
+    category: C,
+    featureKey: K
+  ) => SubscriptionPlan[C][K] | undefined;
+}) => {
+  if (subscription.get(SubscriptionProductCategory.Platform, "groups")) return "Enterprise Plan";
+  if (subscription.get(SubscriptionProductCategory.SecretManager, "pitRecovery")) return "Pro Plan";
   return "Free Plan";
 };
 

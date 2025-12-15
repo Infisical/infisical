@@ -52,6 +52,7 @@ import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useGetKmipClientsByProjectId } from "@app/hooks/api/kmip";
 import { KmipClientOrderBy, TKmipClient } from "@app/hooks/api/kmip/types";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 
 import { CreateKmipClientCertificateModal } from "./CreateKmipClientCertificateModal";
 import { DeleteKmipClientModal } from "./DeleteKmipClientModal";
@@ -169,7 +170,10 @@ export const KmipClientTable = () => {
                 type="submit"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
                 onClick={() => {
-                  if (subscription && !subscription.kmip) {
+                  if (
+                    subscription &&
+                    !subscription.get(SubscriptionProductCategory.CertificateManager, "kmip")
+                  ) {
                     handlePopUpOpen("upgradePlan", {
                       isEnterpriseFeature: true
                     });

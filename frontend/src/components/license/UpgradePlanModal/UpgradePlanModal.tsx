@@ -1,5 +1,4 @@
 import { useOrganization, useSubscription } from "@app/context";
-import { useGetOrgTrialUrl } from "@app/hooks/api";
 
 import { Button } from "../../v2/Button";
 import { Modal, ModalContent } from "../../v2/Modal";
@@ -19,13 +18,9 @@ export const UpgradePlanModal = ({
 }: Props): JSX.Element => {
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
-  const { mutateAsync, isPending } = useGetOrgTrialUrl();
 
   const getLink = () => {
     // self-hosting
-    if (!subscription || subscription.slug === null) {
-      return "https://infisical.com/scheduledemo";
-    }
 
     // Infisical cloud
     if (isEnterpriseFeature) {
@@ -41,19 +36,7 @@ export const UpgradePlanModal = ({
     try {
       if (!subscription || !currentOrg) return;
 
-      if (!subscription.has_used_trial && !isEnterpriseFeature) {
-        // direct user to start pro trial
-
-        const url = await mutateAsync({
-          orgId: currentOrg.id,
-          success_url: window.location.href
-        });
-
-        window.location.href = url;
-      } else {
-        // direct user to upgrade their plan
-        window.location.href = link;
-      }
+      window.location.href = link;
     } catch (err) {
       console.error(err);
     }
@@ -62,9 +45,6 @@ export const UpgradePlanModal = ({
     if (subscription) {
       if (isEnterpriseFeature) {
         return "Talk to Us";
-      }
-      if (!subscription.has_used_trial) {
-        return "Start Pro Free Trial";
       }
     }
     return "Upgrade Plan";
@@ -78,12 +58,7 @@ export const UpgradePlanModal = ({
           Upgrade and get access to this, as well as to other powerful enhancements.
         </p>
         <div className="mt-8 flex items-center">
-          <Button
-            isLoading={isPending}
-            colorSchema="primary"
-            onClick={handleUpgradeBtnClick}
-            className="mr-4"
-          >
+          <Button colorSchema="primary" onClick={handleUpgradeBtnClick} className="mr-4">
             {getUpgradePlanLabel()}
           </Button>
           <Button

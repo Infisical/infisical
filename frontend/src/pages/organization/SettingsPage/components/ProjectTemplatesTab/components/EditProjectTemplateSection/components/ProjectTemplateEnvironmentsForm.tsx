@@ -21,6 +21,7 @@ import {
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import { TProjectTemplate, useUpdateProjectTemplate } from "@app/hooks/api/projectTemplates";
+import { SubscriptionProductCategory } from "@app/hooks/api/subscriptions/types";
 import { slugSchema } from "@app/lib/schemas";
 
 type Props = {
@@ -84,8 +85,10 @@ export const ProjectTemplateEnvironmentsForm = ({
     });
   };
 
+  const environmentLimit =
+    subscription.get(SubscriptionProductCategory.SecretManager, "environmentLimit") || 0;
   const isEnvironmentLimitExceeded =
-    Boolean(subscription.environmentLimit) && environments.length >= subscription.environmentLimit;
+    Boolean(environmentLimit) && environments.length >= environmentLimit;
 
   return (
     <form
@@ -137,7 +140,7 @@ export const ProjectTemplateEnvironmentsForm = ({
                       I={OrgPermissionActions.Edit}
                       a={OrgPermissionSubjects.ProjectTemplates}
                       renderTooltip={isEnvironmentLimitExceeded ? true : undefined}
-                      allowedLabel={`Plan environment limit of ${subscription.environmentLimit} exceeded. Contact Infisical to increase limit.`}
+                      allowedLabel={`Plan environment limit of ${subscription.get(SubscriptionProductCategory.SecretManager, "environmentLimit")} exceeded. Contact Infisical to increase limit.`}
                     >
                       {(isAllowed) => (
                         <Button
