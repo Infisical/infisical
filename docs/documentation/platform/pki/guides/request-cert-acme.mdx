@@ -5,6 +5,7 @@ title: "Obtain a Certificate via ACME"
 import RequestCertSetup from "/snippets/documentation/platform/pki/guides/request-cert-setup.mdx";
 
 The [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme) lets any [ACME client](https://letsencrypt.org/docs/client-options/) obtain TLS certificates from Infisical using the [ACME protocol](https://en.wikipedia.org/wiki/Automatic_Certificate_Management_Environment).
+This includes ACME clients like [Certbot](https://certbot.eff.org/), [cert-manager](https://cert-manager.io/) in Kubernetes using the [ACME issuer type](https://cert-manager.io/docs/configuration/acme/), and more.
 
 Infisical currently supports the [HTTP-01 challenge type](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) for domain validation as part of the ACME enrollment method.
 

@@ -669,6 +669,7 @@
                   {
                     "group": "Guides",
                     "pages": [
+                      "documentation/platform/pki/guides/request-cert-agent",
                       "documentation/platform/pki/guides/request-cert-api",
                       "documentation/platform/pki/guides/request-cert-acme"
                     ]

@@ -4,7 +4,10 @@ title: "Request a Certificate via API"
 
 import RequestCertSetup from "/snippets/documentation/platform/pki/guides/request-cert-setup.mdx";
 
-The [API enrollment method](/documentation/platform/pki/enrollment-methods/api) lets clients programmatically request TLS and other X.509 certificates from Infisical.
+The [API enrollment method](/documentation/platform/pki/enrollment-methods/api) lets you programmatically request TLS and other X.509 certificates from Infisical.
+
+This is the most flexible way to request certificates from Infisical but requires you to implement certificate request and renewal logic on your own.
+For a more automated way to request certificates, we highly recommend you check out the guide for requesting certificates using the [Infisical Agent](/integrations/platforms/certificate-agent) [here](/documentation/platform/pki/guides/request-cert-agent).
 
 ## Diagram
 
@@ -17,18 +20,14 @@ sequenceDiagram
   participant Infis as Infisical
   participant CA as CA<br/>(Internal or External)
 
-  alt Issue Certificate
-    Client->>Infis: POST /issue-certificate<br/>(profileId, subject/SANs, ttl,<br/>key usages, etc.)
-  else Sign Certificate
-    Client->>Infis: POST /sign-certificate<br/>(profileId, CSR, ttl)
-  end
+  Client->>Infis: POST /certificate<br/>(profileId, conditional subject/SANs, ttl,<br/>key usages, conditional CSR, etc.)
 
   Infis->>Infis: Look up certificate profile<br/>(by profileId)
-  Infis->>Infis: Validate request or CSR<br/>against template constraints<br/>(CN/SAN rules, key usages, max TTL, etc.)
+  Infis->>Infis: Validate request or CSR<br/>against profile constraints<br/>(CN/SAN rules, key usages, max TTL, etc.)
 
-  alt Issue Certificate - Issuer Type = Self-Signed
+  alt Issuer Type = Self-Signed
     Infis->>Infis: Generate keypair<br/>and self-sign certificate
-  else Issue/Sign Certificate - Issuer Type = Internal CA
+  else Issuer Type = CA
     Infis->>CA: Request certificate issuance<br/>(CSR)
     CA-->>Infis: Signed certificate<br/>(+ chain)
   end
@@ -59,13 +58,12 @@ In the following steps, we explore an end-to-end workflow for requesting a certi
   </Step>
   <Step title="Request a certificate">
     Finally, follow the guide [here](/documentation/platform/pki/enrollment-methods/api#guide-to-certificate-enrollment-via-api) to request a certificate against the certificate profile
-    over the Web UI or by making an API request to either the [Issue Certificate](/api-reference/endpoints/certificates/issue-certificate) API endpoint or the [Sign Certificate](/api-reference/endpoints/certificates/sign-certificate) API endpoint
-    with a Certificate Signing Request (CSR).
+    over the Web UI or by making an API request the [Issue Certificate](/api-reference/endpoints/certificates/create-certificate) API endpoint with or without a certificate signing request (CSR).
     
     To renew a certificate on the client-side, you have two options:
 
-    - Make a request to issue a new certificate against the same [Issue Certificate](/api-reference/endpoints/certificates/issue-certificate) API endpoint.
-    - Make a request to the [Renew Certificate](/api-reference/endpoints/certificates/renew) API endpoint with the ID of the certificate you wish to renew. Note that this endpoint only works if the original certificate was issued through the [Issue Certificate](/api-reference/endpoints/certificates/issue-certificate) API endpoint.
+    - Make a request to issue a new certificate against the same [Issue Certificate](/api-reference/endpoints/certificates/create-certificate) API endpoint.
+    - Make a request to the [Renew Certificate](/api-reference/endpoints/certificates/renew) API endpoint with the ID of the certificate you wish to renew. Note that this endpoint only works if the original certificate was issued through the [Issue Certificate](/api-reference/endpoints/certificates/issue-certificate) API endpoint without a CSR.
 
     <Note>
         We recommend reading the guide [here](/documentation/platform/pki/certificates/certificates#guide-to-renewing-certificates) to learn more about all the ways to renew a certificate
