@@ -148,7 +148,7 @@ Here, select the certificate profile from step 1 that will be used to issue the 
     ```
 
     <Note>
-      Note: If the certificate is available to be issued immediately, the `certificate` field in the response will contain the certificate data. If issuance is delayed (for example, due to pending approval or additional processing), the `certificate` field will be `null` and you can use the `certificateRequestId` to poll for status or retrieve the certificate when it is ready.
+      Note: If the certificate is available to be issued immediately, the `certificate` field in the response will contain the certificate data. If issuance is delayed (for example, due to pending approval or additional processing), the `certificate` field will be `null` and you can use the `certificateRequestId` to poll for status or retrieve the certificate when it is ready using the [Get Certificate Request](/api-reference/endpoints/certificates/certificate-request) API endpoint.
 
       Also be sure to store the `privateKey` as it is only returned once here at the time of certificate issuance. The `certificate` and `certificateChain` will remain accessible and can be retrieved at any time.
 
