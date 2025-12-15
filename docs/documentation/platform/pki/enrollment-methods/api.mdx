@@ -100,32 +100,34 @@ Here, select the certificate profile from step 1 that will be used to issue the 
   </Step>
   <Step title="Issue a certificate">
 
-    To issue a certificate against the certificate profile, make an API request to the [Issue Certificate](/api-reference/endpoints/certificates/issue-certificate) API endpoint.
+    To issue a certificate against the certificate profile, make an API request to the [Issue Certificate](/api-reference/endpoints/certificates/create-certificate) API endpoint.
 
     ### Sample request
 
     ```bash Request
-    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/certificates/issue-certificate' \
+    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/certificates' \
       --header 'Authorization: Bearer <access-token>' \
       --header 'Content-Type: application/json' \
       --data-raw '{
           "profileId": "<certificate-profile-id>",
-          "commonName": "service.acme.com",
-          "ttl": "1y",
-          "signatureAlgorithm": "RSA-SHA256",
-          "keyAlgorithm": "RSA_2048",
-          "keyUsages": ["digital_signature", "key_encipherment"],
-          "extendedKeyUsages": ["server_auth"],
-          "altNames": [
-              {
-                  "type": "DNS",
-                  "value": "service.acme.com"
-              },
-              {
-                  "type": "DNS",
-                  "value": "www.service.acme.com"
-              }
-          ]
+          "attributes": {
+              "commonName": "service.acme.com",
+              "ttl": "1y",
+              "signatureAlgorithm": "RSA-SHA256",
+              "keyAlgorithm": "RSA_2048",
+              "keyUsages": ["digital_signature", "key_encipherment"],
+              "extendedKeyUsages": ["server_auth"],
+              "altNames": [
+                  {
+                      "type": "DNS",
+                      "value": "service.acme.com"
+                  },
+                  {
+                      "type": "DNS",
+                      "value": "www.service.acme.com"
+                  }
+              ]
+          }
       }'
     ```
 
@@ -133,31 +135,39 @@ Here, select the certificate profile from step 1 that will be used to issue the 
 
     ```bash Response
     {
-      "certificate": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
-      "certificateChain": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
-      "issuingCaCertificate": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
-      "privateKey": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...\n-----END PRIVATE KEY-----",
-      "serialNumber": "123456789012345678",
-      "certificateId": "880h3456-e29b-41d4-a716-446655440003"
+      "certificate": {
+        "certificate": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
+        "certificateChain": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
+        "issuingCaCertificate": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
+        "privateKey": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...\n-----END PRIVATE KEY-----",
+        "serialNumber": "123456789012345678",
+        "certificateId": "880h3456-e29b-41d4-a716-446655440003"
+      },
+      "certificateRequestId": "..."
     }
     ```
 
     <Note>
-      Make sure to store the `privateKey` as it is only returned once here at the time of certificate issuance. The `certificate` and `certificateChain` will remain accessible and can be retrieved at any time.
+      Note: If the certificate is available to be issued immediately, the `certificate` field in the response will contain the certificate data. If issuance is delayed (for example, due to pending approval or additional processing), the `certificate` field will be `null` and you can use the `certificateRequestId` to poll for status or retrieve the certificate when it is ready using the [Get Certificate Request](/api-reference/endpoints/certificates/certificate-request) API endpoint.
+
+      Also be sure to store the `privateKey` as it is only returned once here at the time of certificate issuance. The `certificate` and `certificateChain` will remain accessible and can be retrieved at any time.
+
     </Note>
 
-    If you have an external private key, you can also issue a certificate by making an API request containing a pem-encoded CSR (Certificate Signing Request) to the [Sign Certificate](/api-reference/endpoints/certificates/sign-certificate) API endpoint.
+    If you have an external private key, you can also issue a certificate by making an API request containing a pem-encoded CSR (Certificate Signing Request) to the same [Issue Certificate](/api-reference/endpoints/certificates/create-certificate) API endpoint.
 
      ### Sample request
 
     ```bash Request
-    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/certificates/sign-certificate' \
+    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/certificates' \
       --header 'Authorization: Bearer <access-token>' \
       --header 'Content-Type: application/json' \
       --data-raw '{
           "profileId": "<certificate-profile-id>",
           "csr": "-----BEGIN CERTIFICATE REQUEST-----\nMIICvDCCAaQCAQAwdzELMAkGA1UEBhMCVVMxDTALBgNVBAgMBE9oaW8...\n-----END CERTIFICATE REQUEST-----",
-          "ttl": "1y"
+          "attributes": {
+              "ttl": "1y"
+          }
       }'
     ```
 
@@ -165,11 +175,14 @@ Here, select the certificate profile from step 1 that will be used to issue the 
 
     ```bash Response
     {
-      "certificate": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
-      "certificateChain": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
-      "issuingCaCertificate": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
-      "serialNumber": "123456789012345679",
-      "certificateId": "990i4567-e29b-41d4-a716-446655440004"
+      "certificate": {
+        "certificate": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
+        "certificateChain": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
+        "issuingCaCertificate": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
+        "serialNumber": "123456789012345679",
+        "certificateId": "990i4567-e29b-41d4-a716-446655440004"
+      },
+      "certificateRequestId": "..."
     }
     ```
 
