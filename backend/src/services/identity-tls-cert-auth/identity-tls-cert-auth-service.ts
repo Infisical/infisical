@@ -46,7 +46,7 @@ type TIdentityTlsCertAuthServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
 };
 
 const parseSubjectDetails = (data: string) => {
@@ -68,7 +68,11 @@ export const identityTlsCertAuthServiceFactory = ({
   kmsService,
   orgDAL
 }: TIdentityTlsCertAuthServiceFactoryDep): TIdentityTlsCertAuthServiceFactory => {
-  const login: TIdentityTlsCertAuthServiceFactory["login"] = async ({ identityId, clientCertificate }) => {
+  const login: TIdentityTlsCertAuthServiceFactory["login"] = async ({
+    identityId,
+    clientCertificate,
+    subOrganizationName
+  }) => {
     const appCfg = getConfig();
     const identityTlsCertAuth = await identityTlsCertAuthDAL.findOne({ identityId });
     if (!identityTlsCertAuth) {
@@ -81,6 +85,10 @@ export const identityTlsCertAuthServiceFactory = ({
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const org = await orgDAL.findById(identity.orgId);
+    const isSubOrgIdentity = Boolean(org.rootOrgId);
+
+    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a subOrganizationName is specified
+    let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
     try {
       const { decryptor } = await kmsService.createCipherPairWithDataKey({
@@ -128,6 +136,30 @@ export const identityTlsCertAuthServiceFactory = ({
         }
       }
 
+      if (subOrganizationName) {
+        if (!isSubOrgIdentity) {
+          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: subOrganizationName });
+
+          if (!subOrg) {
+            throw new NotFoundError({ message: `Sub organization with name ${subOrganizationName} not found` });
+          }
+
+          const subOrgMembership = await membershipIdentityDAL.findOne({
+            scope: AccessScope.Organization,
+            actorIdentityId: identity.id,
+            scopeOrgId: subOrg.id
+          });
+
+          if (!subOrgMembership) {
+            throw new UnauthorizedError({
+              message: `Identity not authorized to access sub organization ${subOrganizationName}`
+            });
+          }
+
+          subOrganizationId = subOrg.id;
+        }
+      }
+
       // Generate the token
       const identityAccessToken = await identityTlsCertAuthDAL.transaction(async (tx) => {
         await membershipIdentityDAL.update(
@@ -157,7 +189,8 @@ export const identityTlsCertAuthServiceFactory = ({
             accessTokenMaxTTL: identityTlsCertAuth.accessTokenMaxTTL,
             accessTokenNumUses: 0,
             accessTokenNumUsesLimit: identityTlsCertAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.TLS_CERT_AUTH
+            authMethod: IdentityAuthMethod.TLS_CERT_AUTH,
+            subOrganizationId
           },
           tx
         );

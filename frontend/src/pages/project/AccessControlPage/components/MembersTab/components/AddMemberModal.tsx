@@ -151,6 +151,11 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
       type: "success"
     });
     handlePopUpToggle("addMember", false);
+    if (requesterEmail) {
+      navigate({
+        search: (prev) => ({ ...prev, requesterEmail: "" })
+      });
+    }
     reset();
   };
 
@@ -203,7 +208,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     <Modal
       isOpen={popUp?.addMember?.isOpen}
       onOpenChange={(isOpen) => {
-        if (!isOpen)
+        if (!isOpen && requesterEmail)
           navigate({
             search: (prev) => ({ ...prev, requesterEmail: "" })
           });

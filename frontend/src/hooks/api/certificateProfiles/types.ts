@@ -22,14 +22,25 @@ export type TCertificateProfile = {
   apiConfigId?: string;
   createdAt: string;
   updatedAt: string;
+  externalConfigs?: Record<string, unknown> | null;
+  certificateAuthority?: {
+    id: string;
+    projectId?: string;
+    status: string;
+    name: string;
+    isExternal?: boolean;
+    externalType?: string | null;
+  };
 };
 
 export type TCertificateProfileWithDetails = TCertificateProfile & {
   certificateAuthority?: {
     id: string;
-    projectId: string;
+    projectId?: string;
     status: string;
     name: string;
+    isExternal?: boolean;
+    externalType?: string | null;
   };
   certificateTemplate?: {
     id: string;
@@ -51,6 +62,7 @@ export type TCertificateProfileWithDetails = TCertificateProfile & {
   acmeConfig?: {
     id: string;
     directoryUrl: string;
+    skipDnsOwnershipVerification?: boolean;
   };
 };
 
@@ -72,6 +84,7 @@ export type TCreateCertificateProfileDTO = {
     renewBeforeDays?: number;
   };
   acmeConfig?: unknown;
+  externalConfigs?: Record<string, unknown> | null;
 };
 
 export type TUpdateCertificateProfileDTO = {
@@ -90,6 +103,7 @@ export type TUpdateCertificateProfileDTO = {
     renewBeforeDays?: number;
   };
   acmeConfig?: unknown;
+  externalConfigs?: Record<string, unknown> | null;
 };
 
 export type TDeleteCertificateProfileDTO = {

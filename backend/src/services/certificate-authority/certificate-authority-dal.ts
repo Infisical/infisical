@@ -4,6 +4,10 @@ import { TDbClient } from "@app/db";
 import { CertificateAuthoritiesSchema, TableName, TCertificateAuthorities } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindOpt } from "@app/lib/knex";
+import {
+  applyProcessedPermissionRulesToQuery,
+  type ProcessedPermissionRules
+} from "@app/lib/knex/permission-filter-utils";
 
 export type TCertificateAuthorityDALFactory = ReturnType<typeof certificateAuthorityDALFactory>;
 
@@ -220,10 +224,11 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
   const findWithAssociatedCa = async (
     filter: Parameters<(typeof caOrm)["find"]>[0] & { dn?: string; type?: string; serialNumber?: string },
     { offset, limit, sort = [["createdAt", "desc"]] }: TFindOpt<TCertificateAuthorities> = {},
+    permissionFilters?: ProcessedPermissionRules,
     tx?: Knex
   ) => {
     try {
-      const query = (tx || db.replicaNode())(TableName.CertificateAuthority)
+      let query = (tx || db.replicaNode())(TableName.CertificateAuthority)
         .leftJoin(
           TableName.InternalCertificateAuthority,
           `${TableName.CertificateAuthority}.id`,
@@ -267,6 +272,14 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
           db.ref("credentials").withSchema(TableName.ExternalCertificateAuthority).as("externalCredentials"),
           db.ref("appConnectionId").withSchema(TableName.ExternalCertificateAuthority).as("externalAppConnectionId")
         );
+
+      if (permissionFilters) {
+        query = applyProcessedPermissionRulesToQuery(
+          query,
+          TableName.CertificateAuthority,
+          permissionFilters
+        ) as typeof query;
+      }
 
       if (limit) void query.limit(limit);
       if (offset) void query.offset(offset);

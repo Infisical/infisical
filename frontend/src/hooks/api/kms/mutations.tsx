@@ -6,6 +6,7 @@ import { kmsKeys } from "./queries";
 import {
   AddExternalKmsType,
   ExternalKmsGcpSchemaType,
+  ExternalKmsProvider,
   KmsGcpKeyFetchAuthType,
   KmsType,
   UpdateExternalKmsType
@@ -14,11 +15,12 @@ import {
 export const useAddExternalKms = (orgId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ name, description, provider }: AddExternalKmsType) => {
-      const { data } = await apiRequest.post("/api/v1/external-kms", {
+    mutationFn: async ({ name, description, configuration }: AddExternalKmsType) => {
+      const providerPath = configuration.type === ExternalKmsProvider.Aws ? "aws" : "gcp";
+      const { data } = await apiRequest.post(`/api/v1/external-kms/${providerPath}`, {
         name,
         description,
-        provider
+        configuration: configuration.inputs
       });
 
       return data;
@@ -29,21 +31,21 @@ export const useAddExternalKms = (orgId: string) => {
   });
 };
 
-export const useUpdateExternalKms = (orgId: string) => {
+export const useUpdateExternalKms = (orgId: string, provider: ExternalKmsProvider) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
       kmsId,
       name,
       description,
-      provider
+      configuration
     }: {
       kmsId: string;
     } & UpdateExternalKmsType) => {
-      const { data } = await apiRequest.patch(`/api/v1/external-kms/${kmsId}`, {
+      const { data } = await apiRequest.patch(`/api/v1/external-kms/${provider}/${kmsId}`, {
         name,
         description,
-        provider
+        configuration: configuration?.inputs
       });
 
       return data;
@@ -58,8 +60,8 @@ export const useUpdateExternalKms = (orgId: string) => {
 export const useRemoveExternalKms = (orgId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (kmsId: string) => {
-      const { data } = await apiRequest.delete(`/api/v1/external-kms/${kmsId}`);
+    mutationFn: async ({ kmsId, provider }: { kmsId: string; provider: ExternalKmsProvider }) => {
+      const { data } = await apiRequest.delete(`/api/v1/external-kms/${provider}/${kmsId}`);
 
       return data;
     },
@@ -130,11 +132,19 @@ export const useExternalKmsFetchGcpKeys = (orgId: string) => {
         );
       }
 
-      const { data } = await apiRequest.post("/api/v1/external-kms/gcp/keys", {
-        authMethod: credential ? KmsGcpKeyFetchAuthType.Credential : KmsGcpKeyFetchAuthType.Kms,
-        region: gcpRegion,
-        ...rest
-      });
+      const requestBody = credential
+        ? {
+            authMethod: KmsGcpKeyFetchAuthType.Credential,
+            region: gcpRegion,
+            credential
+          }
+        : {
+            authMethod: KmsGcpKeyFetchAuthType.Kms,
+            region: gcpRegion,
+            kmsId
+          };
+
+      const { data } = await apiRequest.post("/api/v1/external-kms/gcp/keys", requestBody);
 
       return data;
     },

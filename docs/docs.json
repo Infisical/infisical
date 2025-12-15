@@ -130,6 +130,7 @@
                       "integrations/app-connections/laravel-forge",
                       "integrations/app-connections/ldap",
                       "integrations/app-connections/mssql",
+                      "integrations/app-connections/mongodb",
                       "integrations/app-connections/mysql",
                       "integrations/app-connections/netlify",
                       "integrations/app-connections/northflank",
@@ -444,6 +445,7 @@
                       "documentation/platform/secret-rotation/aws-iam-user-secret",
                       "documentation/platform/secret-rotation/azure-client-secret",
                       "documentation/platform/secret-rotation/ldap-password",
+                      "documentation/platform/secret-rotation/mongodb-credentials",
                       "documentation/platform/secret-rotation/mssql-credentials",
                       "documentation/platform/secret-rotation/mysql-credentials",
                       "documentation/platform/secret-rotation/okta-client-secret",
@@ -708,6 +710,7 @@
               {
                 "group": "Infrastructure Integrations",
                 "pages": [
+                  "integrations/platforms/certificate-agent",
                   "documentation/platform/pki/k8s-cert-manager",
                   "documentation/platform/pki/integration-guides/gloo-mesh",
                   "documentation/platform/pki/integration-guides/windows-server-acme",
@@ -783,7 +786,23 @@
                 "group": "Infisical PAM",
                 "pages": [
                   "documentation/platform/pam/overview",
-                  "documentation/platform/pam/session-recording"
+                  {
+                    "group": "Getting Started",
+                    "pages": [
+                      "documentation/platform/pam/getting-started/setup",
+                      "documentation/platform/pam/getting-started/resources",
+                      "documentation/platform/pam/getting-started/accounts"
+                    ]
+                  },
+                  "documentation/platform/pam/architecture"
+                ]
+              },
+              {
+                "group": "Product Reference",
+                "pages": [
+                  "documentation/platform/pam/product-reference/auditing",
+                  "documentation/platform/pam/product-reference/session-recording",
+                  "documentation/platform/pam/product-reference/credential-rotation"
                 ]
               }
             ]
@@ -1386,6 +1405,18 @@
                     ]
                   },
                   {
+                    "group": "MongoDB",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/mongodb/list",
+                      "api-reference/endpoints/app-connections/mongodb/available",
+                      "api-reference/endpoints/app-connections/mongodb/get-by-id",
+                      "api-reference/endpoints/app-connections/mongodb/get-by-name",
+                      "api-reference/endpoints/app-connections/mongodb/create",
+                      "api-reference/endpoints/app-connections/mongodb/update",
+                      "api-reference/endpoints/app-connections/mongodb/delete"
+                    ]
+                  },
+                  {
                     "group": "MySQL",
                     "pages": [
                       "api-reference/endpoints/app-connections/mysql/list",
@@ -1919,6 +1950,19 @@
                       "api-reference/endpoints/secret-rotations/mssql-credentials/list",
                       "api-reference/endpoints/secret-rotations/mssql-credentials/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/mssql-credentials/update"
+                    ]
+                  },
+                  {
+                    "group": "MongoDB Credentials",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/mongodb-credentials/create",
+                      "api-reference/endpoints/secret-rotations/mongodb-credentials/delete",
+                      "api-reference/endpoints/secret-rotations/mongodb-credentials/get-by-id",
+                      "api-reference/endpoints/secret-rotations/mongodb-credentials/get-by-name",
+                      "api-reference/endpoints/secret-rotations/mongodb-credentials/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/mongodb-credentials/list",
+                      "api-reference/endpoints/secret-rotations/mongodb-credentials/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/mongodb-credentials/update"
                     ]
                   },
                   {
@@ -2485,8 +2529,8 @@
                 "pages": [
                   "api-reference/endpoints/certificates/list",
                   "api-reference/endpoints/certificates/read",
-                  "api-reference/endpoints/certificates/issue-certificate",
-                  "api-reference/endpoints/certificates/sign-certificate",
+                  "api-reference/endpoints/certificates/certificate-request",
+                  "api-reference/endpoints/certificates/create-certificate",
                   "api-reference/endpoints/certificates/renew",
                   "api-reference/endpoints/certificates/update-config",
                   "api-reference/endpoints/certificates/revoke",
@@ -3036,6 +3080,186 @@
     {
       "source": "/documentation/platform/pki/est",
       "destination": "/documentation/platform/pki/enrollment-methods/est"
+    },
+    {
+      "source": "/api-reference/endpoints/integrations/create-auth",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/api-reference/endpoints/integrations/create",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/api-reference/endpoints/integrations/delete-auth-by-id",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/api-reference/endpoints/integrations/delete-auth",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/api-reference/endpoints/integrations/delete",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/api-reference/endpoints/integrations/find-auth",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/api-reference/endpoints/integrations/list-auth",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/api-reference/endpoints/integrations/list-project-integrations",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/api-reference/endpoints/integrations/update",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/api-reference/overview/examples/integration",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/documentation/platform/integrations",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cicd/circleci",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cicd/codefresh",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cicd/octopus-deploy",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cicd/rundeck",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cicd/travisci",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/aws-parameter-store",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/aws-secret-manager",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/azure-app-configuration",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/azure-devops",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/azure-key-vault",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/checkly",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/cloud-66",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/cloudflare-pages",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/cloudflare-workers",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/databricks",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/digital-ocean-app-platform",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/flyio",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/gcp-secret-manager",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/hashicorp-vault",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/hasura-cloud",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/heroku",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/laravel-forge",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/netlify",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/northflank",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/qovery",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/railway",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/render",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/supabase",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/terraform-cloud",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/vercel",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/windmill",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/overview",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/aws-amplify",
+      "destination": "/integrations/cicd/aws-amplify"
+    },
+    {
+      "source": "/integrations/cloud/teamcity",
+      "destination": "/integrations/secret-syncs/teamcity"
     }
   ]
 }

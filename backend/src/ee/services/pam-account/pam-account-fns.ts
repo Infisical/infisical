@@ -72,17 +72,24 @@ export const decryptAccount = async <
   account: T,
   projectId: string,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
-): Promise<T & { credentials: TPamAccountCredentials; lastRotationMessage: string | null }> => {
+): Promise<
+  Omit<T, "encryptedCredentials" | "encryptedLastRotationMessage"> & {
+    credentials: TPamAccountCredentials;
+    lastRotationMessage: string | null;
+  }
+> => {
+  const { encryptedCredentials, encryptedLastRotationMessage, ...rest } = account;
+
   return {
-    ...account,
+    ...rest,
     credentials: await decryptAccountCredentials({
-      encryptedCredentials: account.encryptedCredentials,
+      encryptedCredentials,
       projectId,
       kmsService
     }),
-    lastRotationMessage: account.encryptedLastRotationMessage
+    lastRotationMessage: encryptedLastRotationMessage
       ? await decryptAccountMessage({
-          encryptedMessage: account.encryptedLastRotationMessage,
+          encryptedMessage: encryptedLastRotationMessage,
           projectId,
           kmsService
         })

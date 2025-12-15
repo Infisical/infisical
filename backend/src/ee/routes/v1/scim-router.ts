@@ -57,7 +57,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         organizationId: z.string().trim(),
         description: z.string().trim().default(""),
-        ttlDays: z.number().min(0).default(0)
+        ttlDays: z.number().min(0).max(730).default(0)
       }),
       response: {
         200: z.object({

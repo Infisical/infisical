@@ -13,7 +13,8 @@ export const PkiAcmeEnrollmentConfigsSchema = z.object({
   id: z.string().uuid(),
   encryptedEabSecret: zodBuffer,
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  skipDnsOwnershipVerification: z.boolean().default(false)
 });
 
 export type TPkiAcmeEnrollmentConfigs = z.infer<typeof PkiAcmeEnrollmentConfigsSchema>;

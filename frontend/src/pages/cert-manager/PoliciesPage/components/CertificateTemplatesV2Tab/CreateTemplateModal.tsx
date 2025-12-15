@@ -258,7 +258,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
     };
   };
 
-  const { control, handleSubmit, reset, watch, setValue, formState } = useForm<
+  const { control, handleSubmit, reset, watch, setValue, formState, trigger } = useForm<
     FormData & { preset: TemplatePresetId }
   >({
     resolver: zodResolver(templateSchema),
@@ -286,10 +286,11 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
   };
   const watchedPreset = watch("preset") || TEMPLATE_PRESET_IDS.CUSTOM;
 
-  const handlePresetChange = (presetId: TemplatePresetId) => {
+  const handlePresetChange = async (presetId: TemplatePresetId) => {
     setValue("preset", presetId);
 
     if (presetId === TEMPLATE_PRESET_IDS.CUSTOM) {
+      await trigger();
       return;
     }
 
@@ -313,6 +314,8 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
       if (selectedPreset.formData.keyAlgorithm) {
         setValue("keyAlgorithm", selectedPreset.formData.keyAlgorithm);
       }
+
+      await trigger();
     }
   };
 

@@ -41,6 +41,7 @@ import {
   TGetUaClientSecretsDTO,
   TGetUaDTO,
   TGetUniversalAuthClientSecretByIdDTO,
+  TLoginUaDTO,
   TRevokeUaClientSecretDTO,
   TRevokeUaDTO,
   TUpdateUaDTO
@@ -54,7 +55,7 @@ type TIdentityUaServiceFactoryDep = {
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
   keyStore: Pick<
     TKeyStoreFactory,
     "setItemWithExpiry" | "getItem" | "deleteItem" | "getKeysByPattern" | "deleteItems" | "acquireLock"
@@ -79,7 +80,7 @@ export const identityUaServiceFactory = ({
   keyStore,
   identityDAL
 }: TIdentityUaServiceFactoryDep) => {
-  const login = async (clientId: string, clientSecret: string, ip: string) => {
+  const login = async ({ clientId, clientSecret, ip, subOrganizationName }: TLoginUaDTO) => {
     const appCfg = getConfig();
     const identityUa = await identityUaDAL.findOne({ clientId });
     if (!identityUa) {
@@ -90,6 +91,10 @@ export const identityUaServiceFactory = ({
 
     const identity = await identityDAL.findById(identityUa.identityId);
     const org = await orgDAL.findById(identity.orgId);
+    const isSubOrgIdentity = Boolean(org.rootOrgId);
+
+    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a subOrganizationName is specified
+    let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
     try {
       checkIPAgainstBlocklist({
@@ -229,6 +234,30 @@ export const identityUaServiceFactory = ({
               accessTokenMaxTTL: 1000000000
             };
 
+      if (subOrganizationName) {
+        if (!isSubOrgIdentity) {
+          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: subOrganizationName });
+
+          if (!subOrg) {
+            throw new NotFoundError({ message: `Sub organization with name ${subOrganizationName} not found` });
+          }
+
+          const subOrgMembership = await membershipIdentityDAL.findOne({
+            scope: AccessScope.Organization,
+            actorIdentityId: identity.id,
+            scopeOrgId: subOrg.id
+          });
+
+          if (!subOrgMembership) {
+            throw new UnauthorizedError({
+              message: `Identity not authorized to access sub organization ${subOrganizationName}`
+            });
+          }
+
+          subOrganizationId = subOrg.id;
+        }
+      }
+
       const identityAccessToken = await identityUaDAL.transaction(async (tx) => {
         const uaClientSecretDoc = await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
         await membershipIdentityDAL.update(
@@ -259,6 +288,7 @@ export const identityUaServiceFactory = ({
             accessTokenNumUsesLimit: identityUa.accessTokenNumUsesLimit,
             accessTokenPeriod: identityUa.accessTokenPeriod,
             authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+            subOrganizationId,
             ...accessTokenTTLParams
           },
           tx

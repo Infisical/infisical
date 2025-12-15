@@ -5,7 +5,6 @@ export enum IdentityProjectAdditionalPrivilegeTemporaryMode {
 }
 
 export type TIdentityProjectPrivilege = {
-  projectMembershipId: string;
   slug: string;
   id: string;
   createdAt: Date;

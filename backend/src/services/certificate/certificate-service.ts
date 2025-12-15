@@ -1,5 +1,5 @@
 /* eslint-disable no-await-in-loop */
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType } from "@app/db/schemas";
@@ -108,7 +108,11 @@ export const certificateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Read,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: cert.commonName,
+        altNames: cert.altNames ?? undefined,
+        serialNumber: cert.serialNumber
+      })
     );
 
     return {
@@ -140,7 +144,11 @@ export const certificateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.ReadPrivateKey,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: cert.commonName,
+        altNames: cert.altNames ?? undefined,
+        serialNumber: cert.serialNumber
+      })
     );
 
     const { certPrivateKey } = await getCertificateCredentials({
@@ -174,7 +182,11 @@ export const certificateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Delete,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: cert.commonName,
+        altNames: cert.altNames ?? undefined,
+        serialNumber: cert.serialNumber
+      })
     );
 
     const deletedCert = await certificateDAL.deleteById(cert.id);
@@ -234,7 +246,13 @@ export const certificateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Delete,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: cert.commonName,
+        altNames: cert.altNames ?? undefined,
+        serialNumber: cert.serialNumber,
+        friendlyName: cert.friendlyName,
+        status: cert.status
+      })
     );
 
     if (cert.status === CertStatus.REVOKED) throw new Error("Certificate already revoked");
@@ -309,7 +327,11 @@ export const certificateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Read,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: cert.commonName,
+        altNames: cert.altNames ?? undefined,
+        serialNumber: cert.serialNumber
+      })
     );
 
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
@@ -397,7 +419,7 @@ export const certificateServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Create,
+      ProjectPermissionCertificateActions.Import,
       ProjectPermissionSub.Certificates
     );
 
@@ -610,11 +632,23 @@ export const certificateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Read,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: cert.commonName,
+        altNames: cert.altNames ?? undefined,
+        serialNumber: cert.serialNumber,
+        friendlyName: cert.friendlyName,
+        status: cert.status
+      })
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.ReadPrivateKey,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: cert.commonName,
+        altNames: cert.altNames ?? undefined,
+        serialNumber: cert.serialNumber,
+        friendlyName: cert.friendlyName,
+        status: cert.status
+      })
     );
 
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
@@ -726,7 +760,13 @@ export const certificateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.ReadPrivateKey,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: cert.commonName,
+        altNames: cert.altNames ?? undefined,
+        serialNumber: cert.serialNumber,
+        friendlyName: cert.friendlyName,
+        status: cert.status
+      })
     );
 
     // Get certificate bundle (certificate, chain, private key)

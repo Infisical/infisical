@@ -72,7 +72,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.SIGN_INTERMEDIATE]: "Sign intermediate",
   [EventType.IMPORT_CA_CERT]: "Import CA certificate",
   [EventType.GET_CA_CRL]: "Get CA CRL",
-  [EventType.ISSUE_CERT]: "Issue certificate",
+  [EventType.ISSUE_CERT]: "Request certificate",
   [EventType.IMPORT_CERT]: "Import certificate",
   [EventType.GET_CERT]: "Get certificate",
   [EventType.DELETE_CERT]: "Delete certificate",
@@ -225,7 +225,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.UPDATE_PKI_SUBSCRIBER]: "Update PKI subscriber",
   [EventType.DELETE_PKI_SUBSCRIBER]: "Delete PKI subscriber",
   [EventType.GET_PKI_SUBSCRIBER]: "Get PKI subscriber",
-  [EventType.ISSUE_PKI_SUBSCRIBER_CERT]: "Issue PKI subscriber certificate",
+  [EventType.ISSUE_PKI_SUBSCRIBER_CERT]: "Request PKI subscriber certificate",
   [EventType.SIGN_PKI_SUBSCRIBER_CERT]: "Sign PKI subscriber certificate",
   [EventType.AUTOMATED_RENEW_SUBSCRIBER_CERT]: "Automated renew PKI subscriber certificate",
   [EventType.LIST_PKI_SUBSCRIBER_CERTS]: "List PKI subscriber certificates",
@@ -287,11 +287,26 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.DELETE_CERTIFICATE_PROFILE]: "Delete Certificate Profile",
   [EventType.GET_CERTIFICATE_PROFILE]: "Get Certificate Profile",
   [EventType.LIST_CERTIFICATE_PROFILES]: "List Certificate Profiles",
-  [EventType.ISSUE_CERTIFICATE_FROM_PROFILE]: "Issue Certificate From Profile",
+  [EventType.ISSUE_CERTIFICATE_FROM_PROFILE]: "Request Certificate From Profile",
   [EventType.SIGN_CERTIFICATE_FROM_PROFILE]: "Sign Certificate From Profile",
   [EventType.ORDER_CERTIFICATE_FROM_PROFILE]: "Order Certificate From Profile",
   [EventType.GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE]:
-    "Get Certificate Profile Latest Active Bundle"
+    "Get Certificate Profile Latest Active Bundle",
+
+  [EventType.APPROVAL_POLICY_CREATE]: "Create Approval Policy",
+  [EventType.APPROVAL_POLICY_UPDATE]: "Update Approval Policy",
+  [EventType.APPROVAL_POLICY_DELETE]: "Delete Approval Policy",
+  [EventType.APPROVAL_POLICY_LIST]: "List Approval Policies",
+  [EventType.APPROVAL_POLICY_GET]: "Get Approval Policy",
+  [EventType.APPROVAL_REQUEST_GET]: "Get Approval Request",
+  [EventType.APPROVAL_REQUEST_LIST]: "List Approval Requests",
+  [EventType.APPROVAL_REQUEST_CREATE]: "Create Approval Request",
+  [EventType.APPROVAL_REQUEST_APPROVE]: "Approve Approval Request",
+  [EventType.APPROVAL_REQUEST_REJECT]: "Reject Approval Request",
+  [EventType.APPROVAL_REQUEST_CANCEL]: "Cancel Approval Request",
+  [EventType.APPROVAL_REQUEST_GRANT_LIST]: "List Approval Request Grants",
+  [EventType.APPROVAL_REQUEST_GRANT_GET]: "Get Approval Request Grant",
+  [EventType.APPROVAL_REQUEST_GRANT_REVOKE]: "Revoke Approval Request Grant"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
@@ -309,7 +324,21 @@ const sharedProjectEvents = [
   EventType.REMOVE_PROJECT_MEMBER,
   EventType.CREATE_PROJECT_ROLE,
   EventType.UPDATE_PROJECT_ROLE,
-  EventType.DELETE_PROJECT_ROLE
+  EventType.DELETE_PROJECT_ROLE,
+  EventType.APPROVAL_POLICY_CREATE,
+  EventType.APPROVAL_POLICY_UPDATE,
+  EventType.APPROVAL_POLICY_DELETE,
+  EventType.APPROVAL_POLICY_LIST,
+  EventType.APPROVAL_POLICY_GET,
+  EventType.APPROVAL_REQUEST_GET,
+  EventType.APPROVAL_REQUEST_LIST,
+  EventType.APPROVAL_REQUEST_CREATE,
+  EventType.APPROVAL_REQUEST_APPROVE,
+  EventType.APPROVAL_REQUEST_REJECT,
+  EventType.APPROVAL_REQUEST_CANCEL,
+  EventType.APPROVAL_REQUEST_GRANT_LIST,
+  EventType.APPROVAL_REQUEST_GRANT_GET,
+  EventType.APPROVAL_REQUEST_GRANT_REVOKE
 ];
 
 export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {

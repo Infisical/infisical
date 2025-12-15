@@ -2,13 +2,13 @@ import { z } from "zod";
 
 import { PamResource } from "../pam-resource-enums";
 import {
+  BaseCreateGatewayPamResourceSchema,
   BaseCreatePamAccountSchema,
-  BaseCreatePamResourceSchema,
   BasePamAccountSchema,
   BasePamAccountSchemaWithResource,
   BasePamResourceSchema,
-  BaseUpdatePamAccountSchema,
-  BaseUpdatePamResourceSchema
+  BaseUpdateGatewayPamResourceSchema,
+  BaseUpdatePamAccountSchema
 } from "../pam-resource-schemas";
 import {
   BaseSqlAccountCredentialsSchema,
@@ -40,12 +40,12 @@ export const PostgresResourceListItemSchema = z.object({
   resource: z.literal(PamResource.Postgres)
 });
 
-export const CreatePostgresResourceSchema = BaseCreatePamResourceSchema.extend({
+export const CreatePostgresResourceSchema = BaseCreateGatewayPamResourceSchema.extend({
   connectionDetails: PostgresResourceConnectionDetailsSchema,
   rotationAccountCredentials: PostgresAccountCredentialsSchema.nullable().optional()
 });
 
-export const UpdatePostgresResourceSchema = BaseUpdatePamResourceSchema.extend({
+export const UpdatePostgresResourceSchema = BaseUpdateGatewayPamResourceSchema.extend({
   connectionDetails: PostgresResourceConnectionDetailsSchema.optional(),
   rotationAccountCredentials: PostgresAccountCredentialsSchema.nullable().optional()
 });

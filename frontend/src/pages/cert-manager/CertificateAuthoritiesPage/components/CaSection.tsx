@@ -4,7 +4,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import {
+  ProjectPermissionCertificateAuthorityActions,
+  ProjectPermissionSub,
+  useProject
+} from "@app/context";
 import { CaStatus, CaType, useDeleteCa, useUpdateCa } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -57,7 +61,7 @@ export const CaSection = () => {
       <div className="mb-4 flex justify-between">
         <p className="text-xl font-medium text-mineshaft-100">Internal Certificate Authorities</p>
         <ProjectPermissionCan
-          I={ProjectPermissionActions.Create}
+          I={ProjectPermissionCertificateAuthorityActions.Create}
           a={ProjectPermissionSub.CertificateAuthorities}
         >
           {(isAllowed) => (
@@ -100,6 +104,7 @@ export const CaSection = () => {
             : "This action will prevent the CA from issuing new certificates."
         }
         onChange={(isOpen) => handlePopUpToggle("caStatus", isOpen)}
+        buttonText="Confirm"
         deleteKey="confirm"
         onDeleteApproved={() =>
           onUpdateCaStatus(popUp?.caStatus?.data as { caId: string; status: CaStatus })

@@ -18,7 +18,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionSub, useProject } from "@app/context";
+import { ProjectPermissionSub } from "@app/context";
 import { useGetWorkspaceIntegrations } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
@@ -34,21 +34,27 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   type: ProjectType;
+  projectId?: string;
 };
 
 type ContentProps = {
   onClose: () => void;
 
+  // note(daniel): we allow projectId to be undefined because we use this component for project templates, in which case no project ID will be present.
+  projectId?: string;
   type: ProjectType;
 };
 
 type TForm = { permissions: Record<ProjectPermissionSub, boolean> };
 
-const Content = ({ onClose, type: projectType }: ContentProps) => {
+const Content = ({ onClose, projectId, type: projectType }: ContentProps) => {
   const rootForm = useFormContext<TFormSchema>();
   const [search, setSearch] = useState("");
-  const { currentProject } = useProject();
-  const { data: integrations = [] } = useGetWorkspaceIntegrations(currentProject?.id ?? "");
+  const isSecretManagerProject = projectType === ProjectType.SecretManager;
+  const { data: integrations = [] } = useGetWorkspaceIntegrations(projectId ?? "", {
+    enabled: Boolean(isSecretManagerProject && projectId),
+    refetchInterval: false
+  });
 
   const {
     control,
@@ -212,7 +218,7 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
   );
 };
 
-export const PolicySelectionModal = ({ isOpen, onOpenChange, type }: Props) => {
+export const PolicySelectionModal = ({ isOpen, onOpenChange, type, projectId }: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
@@ -220,7 +226,7 @@ export const PolicySelectionModal = ({ isOpen, onOpenChange, type }: Props) => {
         subTitle="Select one or more policies to add to this role."
         className="max-w-3xl"
       >
-        <Content onClose={() => onOpenChange(false)} type={type} />
+        <Content onClose={() => onOpenChange(false)} type={type} projectId={projectId} />
       </ModalContent>
     </Modal>
   );

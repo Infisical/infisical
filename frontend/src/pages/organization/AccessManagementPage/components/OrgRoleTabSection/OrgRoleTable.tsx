@@ -207,7 +207,7 @@ export const OrgRoleTable = () => {
               }}
               isDisabled={!isAllowed}
             >
-              Add Organization Role
+              Add {isSubOrganization ? "Sub-" : ""}Organization Role
             </Button>
           )}
         </OrgPermissionCan>
@@ -216,7 +216,7 @@ export const OrgRoleTable = () => {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search organization roles..."
+        placeholder={`Search ${isSubOrganization ? "sub-" : ""}organization roles...`}
         className="flex-1"
         containerClassName="mb-4"
       />

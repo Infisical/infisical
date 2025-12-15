@@ -18,7 +18,9 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
         .where(filter)
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.IdentityAccessToken}.identityId`)
         .select(selectAllTableCols(TableName.IdentityAccessToken))
-        .select(db.ref("orgId").withSchema(TableName.Identity).as("identityScopeOrgId"))
+        .select(db.ref("orgId").withSchema(TableName.Identity).as("identityOrgId"))
+        .select(db.ref("subOrganizationId").withSchema(TableName.IdentityAccessToken).as("subOrganizationId"))
+        .select(db.ref("name").withSchema(TableName.Identity).as("identityName"))
         .first();
 
       return doc;

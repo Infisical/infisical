@@ -11,6 +11,13 @@ export const AzureAdCsCertificateAuthorityConfigurationSchema = z.object({
   azureAdcsConnectionId: z.string().uuid().trim().describe("Azure ADCS Connection ID")
 });
 
+export const AzureAdCsCertificateAuthorityCredentialsSchema = z.object({
+  username: z.string(),
+  password: z.string(),
+  sslRejectUnauthorized: z.boolean().optional(),
+  sslCertificate: z.string().optional()
+});
+
 export const AzureAdCsCertificateAuthoritySchema = BaseCertificateAuthoritySchema.extend({
   type: z.literal(CaType.AZURE_AD_CS),
   configuration: AzureAdCsCertificateAuthorityConfigurationSchema
