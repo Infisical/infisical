@@ -662,7 +662,16 @@
                     "group": "Concepts",
                     "pages": [
                       "documentation/platform/pki/concepts/certificate-mgmt",
-                      "documentation/platform/pki/concepts/certificate-lifecycle"
+                      "documentation/platform/pki/concepts/certificate-lifecycle",
+                      "documentation/platform/pki/concepts/certificate-components"
+                    ]
+                  },
+                  {
+                    "group": "Guides",
+                    "pages": [
+                      "documentation/platform/pki/guides/request-cert-agent",
+                      "documentation/platform/pki/guides/request-cert-api",
+                      "documentation/platform/pki/guides/request-cert-acme"
                     ]
                   }
                 ]
@@ -702,6 +711,7 @@
               {
                 "group": "Infrastructure Integrations",
                 "pages": [
+                  "integrations/platforms/certificate-agent",
                   "documentation/platform/pki/k8s-cert-manager",
                   "documentation/platform/pki/integration-guides/gloo-mesh",
                   "documentation/platform/pki/integration-guides/windows-server-acme",
@@ -876,7 +886,12 @@
                   "api-reference/endpoints/groups/get-by-id",
                   "api-reference/endpoints/groups/add-group-user",
                   "api-reference/endpoints/groups/remove-group-user",
-                  "api-reference/endpoints/groups/list-group-users"
+                  "api-reference/endpoints/groups/list-group-users",
+                  "api-reference/endpoints/groups/add-group-machine-identity",
+                  "api-reference/endpoints/groups/remove-group-machine-identity",
+                  "api-reference/endpoints/groups/list-group-machine-identities",
+                  "api-reference/endpoints/groups/list-group-projects",
+                  "api-reference/endpoints/groups/list-group-members"
                 ]
               },
               {
@@ -2481,7 +2496,7 @@
             ]
           },
           {
-            "group": "Infisical PKI",
+            "group": "Certificate Management",
             "pages": [
               {
                 "group": "Certificate Authorities",
@@ -2520,6 +2535,8 @@
                 "pages": [
                   "api-reference/endpoints/certificates/list",
                   "api-reference/endpoints/certificates/read",
+                  "api-reference/endpoints/certificates/certificate-request",
+                  "api-reference/endpoints/certificates/create-certificate",
                   "api-reference/endpoints/certificates/renew",
                   "api-reference/endpoints/certificates/update-config",
                   "api-reference/endpoints/certificates/revoke",

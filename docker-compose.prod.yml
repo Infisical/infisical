@@ -9,7 +9,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-    image: infisical/infisical:latest-postgres
+    image: infisical/infisical:latest # PIN THIS TO A SPECIFIC TAG
     pull_policy: always
     env_file: .env
     ports:
