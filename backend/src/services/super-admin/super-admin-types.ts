@@ -64,6 +64,10 @@ export type TAdminIntegrationConfig = {
     clientSecret: string;
     clientId: string;
   };
+  govSlack: {
+    clientSecret: string;
+    clientId: string;
+  };
   microsoftTeams: {
     appId: string;
     clientSecret: string;

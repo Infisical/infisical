@@ -19,7 +19,7 @@ import { useUpdateServerConfig } from "@app/hooks/api";
 import { AdminIntegrationsConfig } from "@app/hooks/api/admin/types";
 
 const getCustomSlackAppCreationUrl = () =>
-  `https://api.slack.com/apps?new_app=1&manifest_json=${encodeURIComponent(
+  `https://api.slack-gov.com/apps?new_app=1&manifest_json=${encodeURIComponent(
     JSON.stringify({
       display_information: {
         name: "Infisical",
@@ -44,7 +44,7 @@ const getCustomSlackAppCreationUrl = () =>
         }
       },
       oauth_config: {
-        redirect_urls: [`${window.origin}/api/v1/workflow-integrations/slack/oauth_redirect`],
+        redirect_urls: [`${window.origin}/api/v1/workflow-integrations/slack/oauth_redirect_gov`],
         scopes: {
           bot: ["chat:write.public", "chat:write", "channels:read", "groups:read"]
         }
@@ -68,7 +68,7 @@ type Props = {
   adminIntegrationsConfig?: AdminIntegrationsConfig;
 };
 
-export const SlackIntegrationForm = ({ adminIntegrationsConfig }: Props) => {
+export const GovSlackIntegrationForm = ({ adminIntegrationsConfig }: Props) => {
   const { mutateAsync: updateAdminServerConfig } = useUpdateServerConfig();
   const [isSlackClientIdFocused, setIsSlackClientIdFocused] = useToggle();
   const [isSlackClientSecretFocused, setIsSlackClientSecretFocused] = useToggle();
@@ -84,20 +84,20 @@ export const SlackIntegrationForm = ({ adminIntegrationsConfig }: Props) => {
 
   const onSubmit = async (data: TSlackForm) => {
     await updateAdminServerConfig({
-      slackClientId: data.clientId,
-      slackClientSecret: data.clientSecret
+      govSlackClientId: data.clientId,
+      govSlackClientSecret: data.clientSecret
     });
 
     createNotification({
-      text: "Updated admin slack configuration",
+      text: "Updated admin gov slack configuration",
       type: "success"
     });
   };
 
   useEffect(() => {
     if (adminIntegrationsConfig) {
-      setValue("clientId", adminIntegrationsConfig.slack.clientId);
-      setValue("clientSecret", adminIntegrationsConfig.slack.clientSecret);
+      setValue("clientId", adminIntegrationsConfig.govSlack.clientId);
+      setValue("clientSecret", adminIntegrationsConfig.govSlack.clientSecret);
     }
   }, [adminIntegrationsConfig]);
 
@@ -108,20 +108,20 @@ export const SlackIntegrationForm = ({ adminIntegrationsConfig }: Props) => {
           <AccordionTrigger className="flex h-fit w-full justify-start rounded-md border border-mineshaft-500 bg-mineshaft-700 px-4 py-6 text-sm transition-colors data-[state=open]:rounded-b-none">
             <div className="text-md group order-1 ml-3 flex items-center gap-2">
               <BsSlack className="text-lg group-hover:text-primary-400" />
-              <div className="text-[15px] font-medium">Slack</div>
+              <div className="text-[15px] font-medium">GovSlack</div>
             </div>
           </AccordionTrigger>
           <AccordionContent childrenClassName="px-0 py-0">
             <div className="flex w-full flex-col justify-start rounded-md rounded-t-none border border-t-0 border-mineshaft-500 bg-mineshaft-700 px-4 py-4">
               <div className="mb-4 max-w-lg text-sm text-mineshaft-300">
-                Step 1: Create your Infisical Slack App
+                Step 1: Create your Infisical GovSlack App
               </div>
               <div className="mb-6">
                 <Button
                   colorSchema="secondary"
                   onClick={() => window.open(getCustomSlackAppCreationUrl())}
                 >
-                  Create Slack App
+                  Create GovSlack App
                 </Button>
               </div>
               <div className="mb-4 max-w-lg text-sm text-mineshaft-300">

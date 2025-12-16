@@ -6,13 +6,13 @@ import { logger } from "@app/lib/logger";
 import { TNotification, TriggerFeature } from "@app/lib/workflow-integrations/types";
 
 import { KmsDataKey } from "../kms/kms-types";
+import { SLACK_GOV_BASE_URL } from "./slack-constants";
 import { TSendSlackNotificationDTO } from "./slack-types";
 
 const COMPANY_BRAND_COLOR = "#e0ed34";
 const ERROR_COLOR = "#e74c3c";
 
-export const fetchSlackChannels = async (botKey: string) => {
-  const appCfg = getConfig();
+export const fetchSlackChannels = async (botKey: string, isGovSlack = false) => {
   const slackChannels: {
     name: string;
     id: string;
@@ -20,9 +20,8 @@ export const fetchSlackChannels = async (botKey: string) => {
 
   const webClientOptions: WebClientOptions = {};
 
-  if (appCfg.WORKFLOW_SLACK_GOV_ENABLED) {
-    const govBaseUrl = appCfg.WORKFLOW_SLACK_GOV_BASE_URL;
-    webClientOptions.slackApiUrl = `${govBaseUrl}/api`;
+  if (isGovSlack) {
+    webClientOptions.slackApiUrl = `${SLACK_GOV_BASE_URL}/api`;
   }
 
   const slackWebClient = new WebClient(botKey, webClientOptions);
@@ -277,7 +276,6 @@ export const sendSlackNotification = async ({
   targetChannelIds,
   slackIntegration
 }: TSendSlackNotificationDTO) => {
-  const appCfg = getConfig();
   const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
     type: KmsDataKey.Organization,
     orgId
@@ -288,9 +286,8 @@ export const sendSlackNotification = async ({
 
   const webClientOptions: WebClientOptions = {};
 
-  if (appCfg.WORKFLOW_SLACK_GOV_ENABLED) {
-    const govBaseUrl = appCfg.WORKFLOW_SLACK_GOV_BASE_URL;
-    webClientOptions.slackApiUrl = `${govBaseUrl}/api`;
+  if (slackIntegration.isGovSlack) {
+    webClientOptions.slackApiUrl = `${SLACK_GOV_BASE_URL}/api`;
   }
 
   const slackWebClient = new WebClient(botKey, webClientOptions);

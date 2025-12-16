@@ -246,8 +246,8 @@ const envSchema = z
     ),
     WORKFLOW_SLACK_CLIENT_ID: zpStr(z.string().optional()),
     WORKFLOW_SLACK_CLIENT_SECRET: zpStr(z.string().optional()),
-    WORKFLOW_SLACK_GOV_ENABLED: zodStrBool.default("false"),
-    WORKFLOW_SLACK_GOV_BASE_URL: zpStr(z.string().optional().default("https://slack-gov.com")),
+    WORKFLOW_GOV_SLACK_CLIENT_ID: zpStr(z.string().optional()),
+    WORKFLOW_GOV_SLACK_CLIENT_SECRET: zpStr(z.string().optional()),
     ENABLE_MSSQL_SECRET_ROTATION_ENCRYPT: zodStrBool.default("true"),
 
     // Special Detection Feature

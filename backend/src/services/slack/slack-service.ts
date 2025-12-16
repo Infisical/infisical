@@ -12,6 +12,7 @@ import { KmsDataKey } from "../kms/kms-types";
 import { getServerCfg } from "../super-admin/super-admin-service";
 import { TWorkflowIntegrationDALFactory } from "../workflow-integration/workflow-integration-dal";
 import { WorkflowIntegration } from "../workflow-integration/workflow-integration-types";
+import { SLACK_GOV_BASE_URL } from "./slack-constants";
 import { fetchSlackChannels } from "./slack-fns";
 import { TSlackIntegrationDALFactory } from "./slack-integration-dal";
 import {
@@ -58,7 +59,8 @@ export const slackServiceFactory = ({
     slackAppId,
     botAccessToken,
     slackBotId,
-    slackBotUserId
+    slackBotUserId,
+    isGovSlack = false
   }: TCompleteSlackIntegrationDTO) => {
     const { encryptor: orgDataKeyEncryptor } = await kmsService.createCipherPairWithDataKey({
       orgId,
@@ -90,7 +92,8 @@ export const slackServiceFactory = ({
           slackAppId,
           slackBotId,
           slackBotUserId,
-          encryptedBotAccessToken
+          encryptedBotAccessToken,
+          isGovSlack
         },
         tx
       );
@@ -135,29 +138,44 @@ export const slackServiceFactory = ({
     });
   };
 
-  const getSlackInstaller = async () => {
+  const getSlackInstaller = async (isGovSlack = false) => {
     const appCfg = getConfig();
     const serverCfg = await getServerCfg();
 
-    let slackClientId = appCfg.WORKFLOW_SLACK_CLIENT_ID as string;
-    let slackClientSecret = appCfg.WORKFLOW_SLACK_CLIENT_SECRET as string;
+    let slackClientId = "";
+    let slackClientSecret = "";
 
     const decrypt = kmsService.decryptWithRootKey();
 
-    if (serverCfg.encryptedSlackClientId) {
-      slackClientId = decrypt(Buffer.from(serverCfg.encryptedSlackClientId)).toString();
-    }
+    if (isGovSlack) {
+      slackClientId = appCfg.WORKFLOW_GOV_SLACK_CLIENT_ID as string;
+      slackClientSecret = appCfg.WORKFLOW_GOV_SLACK_CLIENT_SECRET as string;
 
-    if (serverCfg.encryptedSlackClientSecret) {
-      slackClientSecret = decrypt(Buffer.from(serverCfg.encryptedSlackClientSecret)).toString();
-    }
+      if (serverCfg.encryptedGovSlackClientId) {
+        slackClientId = decrypt(Buffer.from(serverCfg.encryptedGovSlackClientId)).toString();
+      }
 
+      if (serverCfg.encryptedGovSlackClientSecret) {
+        slackClientSecret = decrypt(Buffer.from(serverCfg.encryptedGovSlackClientSecret)).toString();
+      }
+    } else {
+      slackClientId = appCfg.WORKFLOW_SLACK_CLIENT_ID as string;
+      slackClientSecret = appCfg.WORKFLOW_SLACK_CLIENT_SECRET as string;
+
+      if (serverCfg.encryptedSlackClientId) {
+        slackClientId = decrypt(Buffer.from(serverCfg.encryptedSlackClientId)).toString();
+      }
+
+      if (serverCfg.encryptedSlackClientSecret) {
+        slackClientSecret = decrypt(Buffer.from(serverCfg.encryptedSlackClientSecret)).toString();
+      }
+    }
     if (!slackClientId || !slackClientSecret) {
       throw new BadRequestError({
-        message: `Invalid Slack configuration. ${
+        message: `Invalid ${isGovSlack ? "GovSlack" : "Slack"} configuration. ${
           appCfg.isCloud
             ? "Please contact the Infisical team."
-            : "Contact your instance admin to setup Slack integration in the Admin settings. Your configuration is missing Slack client ID and secret."
+            : `Contact your instance admin to setup Slack integration in the Admin settings. Your configuration is missing ${isGovSlack ? "GovSlack" : "Slack"} client ID and secret.`
         }`
       });
     }
@@ -180,6 +198,7 @@ export const slackServiceFactory = ({
             orgId: string;
             slug: string;
             description?: string;
+            isGovSlack?: boolean;
           };
 
           if (metadata.id) {
@@ -205,7 +224,8 @@ export const slackServiceFactory = ({
             slackAppId: installation.appId || "",
             botAccessToken: installation.bot?.token || "",
             slackBotId: installation.bot?.id || "",
-            slackBotUserId: installation.bot?.userId || ""
+            slackBotUserId: installation.bot?.userId || "",
+            isGovSlack: metadata.isGovSlack
           });
         },
         // for our use-case we don't need to implement this because this will only be used
@@ -220,11 +240,10 @@ export const slackServiceFactory = ({
       }
     };
 
-    if (appCfg.WORKFLOW_SLACK_GOV_ENABLED) {
-      const govBaseUrl = appCfg.WORKFLOW_SLACK_GOV_BASE_URL;
-      installProviderOptions.authorizationUrl = `${govBaseUrl}/oauth/v2/authorize`;
+    if (isGovSlack) {
+      installProviderOptions.authorizationUrl = `${SLACK_GOV_BASE_URL}/oauth/v2/authorize`;
       installProviderOptions.clientOptions = {
-        slackApiUrl: `${govBaseUrl}/api`
+        slackApiUrl: `${SLACK_GOV_BASE_URL}/api`
       };
     }
 
@@ -237,7 +256,8 @@ export const slackServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     slug,
-    description
+    description,
+    isGovSlack = false
   }: TGetSlackInstallUrlDTO) => {
     const appCfg = getConfig();
 
@@ -252,15 +272,16 @@ export const slackServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
 
-    const installer = await getSlackInstaller();
+    const installer = await getSlackInstaller(isGovSlack);
     const url = await installer.generateInstallUrl({
       scopes: ["chat:write.public", "chat:write", "channels:read", "groups:read"],
       metadata: JSON.stringify({
         slug,
         description,
-        orgId: actorOrgId
+        orgId: actorOrgId,
+        isGovSlack
       }),
-      redirectUri: `${appCfg.SITE_URL}/api/v1/workflow-integrations/slack/oauth_redirect`
+      redirectUri: `${appCfg.SITE_URL}/api/v1/workflow-integrations/slack/oauth_redirect${isGovSlack ? "_gov" : ""}`
     });
 
     return url;
@@ -287,14 +308,15 @@ export const slackServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
 
-    const installer = await getSlackInstaller();
+    const installer = await getSlackInstaller(slackIntegration.isGovSlack);
     const url = await installer.generateInstallUrl({
       scopes: ["chat:write.public", "chat:write", "channels:read", "groups:read"],
       metadata: JSON.stringify({
         id,
-        orgId: slackIntegration.orgId
+        orgId: slackIntegration.orgId,
+        isGovSlack: slackIntegration.isGovSlack
       }),
-      redirectUri: `${appCfg.SITE_URL}/api/v1/workflow-integrations/slack/oauth_redirect`
+      redirectUri: `${appCfg.SITE_URL}/api/v1/workflow-integrations/slack/oauth_redirect${slackIntegration.isGovSlack ? "_gov" : ""}`
     });
 
     return url;
@@ -386,7 +408,7 @@ export const slackServiceFactory = ({
       cipherTextBlob: slackIntegration.encryptedBotAccessToken
     }).toString("utf8");
 
-    return fetchSlackChannels(botKey);
+    return fetchSlackChannels(botKey, slackIntegration.isGovSlack);
   };
 
   const updateSlackIntegration = async ({

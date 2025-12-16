@@ -36,7 +36,9 @@ export const SuperAdminSchema = z.object({
   encryptedGitHubAppConnectionId: zodBuffer.nullable().optional(),
   encryptedGitHubAppConnectionPrivateKey: zodBuffer.nullable().optional(),
   encryptedEnvOverrides: zodBuffer.nullable().optional(),
-  fipsEnabled: z.boolean().default(false)
+  fipsEnabled: z.boolean().default(false),
+  encryptedGovSlackClientId: zodBuffer.nullable().optional(),
+  encryptedGovSlackClientSecret: zodBuffer.nullable().optional()
 });
 
 export type TSuperAdmin = z.infer<typeof SuperAdminSchema>;
