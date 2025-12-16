@@ -32,7 +32,7 @@ sequenceDiagram
     CA-->>Infis: Signed certificate<br/>(+ chain)
   end
 
-  Infis-->>Client: Return certificate, certificate chain,<br/>issuing CA certificate, serial number,<br/>certificate ID<br/>(and private key if server-generated)
+  Infis-->>Client: Return certificate, certificate chain,<br/>issuing CA certificate, serial number,<br/>certificate ID<br/>(and private key if server-generated)<br /> OR certificate request ID if async
 ```
 
 ## Guide
