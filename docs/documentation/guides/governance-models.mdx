@@ -54,7 +54,7 @@ With Project Templates, you can enforce a base set of environments while optiona
 
 ## Authentication and Identity
 
-How you manage identity—both for users and machines—tends to reflect your overall governance approach.
+How you manage identity—both for users and machines—significantly affects your governance strategy.
 
 ### User Authentication
 
@@ -193,6 +193,16 @@ Approval workflows integrate with [Slack](/documentation/platform/workflow-integ
 
 Who creates, rotates, and retires secrets—and how—depends on your governance model.
 
+### App Connections
+
+[App Connections](/integrations/app-connections/overview) are reusable integrations with third-party platforms like AWS, GCP, Azure, databases, and other services. They're required for secret rotation, dynamic secrets, and secret syncs—so how you manage them affects multiple workflows.
+
+| Approach | Centralized | Self-Service |
+|----------|-------------|--------------|
+| **Connection creation** | Platform team creates connections at the organization level and distributes access to projects | Teams create their own connections at the project level |
+| **Credential management** | Platform team manages service accounts and API keys used by connections | Teams manage credentials for their own connections |
+| **Access distribution** | Connections shared across multiple projects as needed | Each team maintains their own set of connections |
+
 ### Secret Creation and Ownership
 
 | Approach | Centralized | Self-Service |
@@ -209,9 +219,6 @@ Who creates, rotates, and retires secrets—and how—depends on your governance
 |----------|-------------|--------------|
 | **Rotation policies** | Defined and managed by platform team | Teams configure for their services |
 | **Rotation schedules** | Standardized intervals based on secret classification | Teams determine appropriate intervals |
-| **App Connections** | Managed centrally | Teams create their own connections |
-
-Infisical supports rotation for various credential types through [App Connections](/integrations/app-connections/overview), including database credentials, cloud provider keys, and third-party API tokens.
 
 ### Dynamic Secrets
 
@@ -464,6 +471,7 @@ Here's a quick reference for how key Infisical features map to each governance m
 | [Groups](/documentation/platform/groups) | IdP-synced membership | Local team management |
 | [Custom Roles](/documentation/platform/access-controls/role-based-access-controls) | Define organization-wide | Create project-specific |
 | [Approval Workflows](/documentation/platform/pr-workflows) | Require for all changes | Apply selectively |
+| [App Connections](/integrations/app-connections/overview) | Org-level connections distributed to projects | Teams create project-level connections |
 | [Secret Syncs](/integrations/secret-syncs/overview) | Platform-managed syncs to approved destinations | Teams configure their own syncs |
 | [Gateways](/documentation/platform/gateways/overview) | Shared infrastructure for private access | Team-deployed per network zone |
 | [Audit Logs](/documentation/platform/audit-logs) | Centralized monitoring | Project-level visibility |
