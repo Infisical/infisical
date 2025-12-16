@@ -389,7 +389,7 @@ export const aiMcpEndpointServiceFactory = ({
       enableJsonResponse: true
     });
 
-    return { server, transport };
+    return { server, transport, projectId: endpoint.projectId, endpointName: endpoint.name };
   };
 
   const createMcpEndpoint = async ({
@@ -662,7 +662,7 @@ export const aiMcpEndpointServiceFactory = ({
     );
 
     const toolConfigs = await aiMcpEndpointServerToolDAL.find({ aiMcpEndpointId: endpointId });
-    return toolConfigs;
+    return { tools: toolConfigs, projectId: endpoint.projectId, endpointName: endpoint.name };
   };
 
   const enableEndpointTool = async ({
@@ -692,20 +692,25 @@ export const aiMcpEndpointServiceFactory = ({
       ProjectPermissionSub.McpEndpoints
     );
 
+    // Get the tool name for audit logging
+    const serverTool = await aiMcpServerToolDAL.findById(serverToolId);
+    const toolName = serverTool?.name || "Unknown Tool";
+
     const existingConfig = await aiMcpEndpointServerToolDAL.findOne({
       aiMcpEndpointId: endpointId,
       aiMcpServerToolId: serverToolId
     });
 
     if (existingConfig) {
-      return existingConfig;
+      return { tool: existingConfig, projectId: endpoint.projectId, endpointName: endpoint.name, toolName };
     }
 
-    return aiMcpEndpointServerToolDAL.create({
+    const tool = await aiMcpEndpointServerToolDAL.create({
       aiMcpEndpointId: endpointId,
       aiMcpServerToolId: serverToolId,
       isEnabled: true
     });
+    return { tool, projectId: endpoint.projectId, endpointName: endpoint.name, toolName };
   };
 
   const disableEndpointTool = async ({
@@ -735,6 +740,10 @@ export const aiMcpEndpointServiceFactory = ({
       ProjectPermissionSub.McpEndpoints
     );
 
+    // Get the tool name for audit logging
+    const serverTool = await aiMcpServerToolDAL.findById(serverToolId);
+    const toolName = serverTool?.name || "Unknown Tool";
+
     const existingConfig = await aiMcpEndpointServerToolDAL.findOne({
       aiMcpEndpointId: endpointId,
       aiMcpServerToolId: serverToolId
@@ -743,6 +752,8 @@ export const aiMcpEndpointServiceFactory = ({
     if (existingConfig) {
       await aiMcpEndpointServerToolDAL.deleteById(existingConfig.id);
     }
+
+    return { projectId: endpoint.projectId, endpointName: endpoint.name, toolName };
   };
 
   const bulkUpdateEndpointTools = async ({
@@ -809,7 +820,7 @@ export const aiMcpEndpointServiceFactory = ({
       })
     );
 
-    return results;
+    return { tools: results, projectId: endpoint.projectId, endpointName: endpoint.name };
   };
 
   // OAuth 2.0 Methods
@@ -840,7 +851,9 @@ export const aiMcpEndpointServiceFactory = ({
       redirect_uris,
       response_types,
       token_endpoint_auth_method,
-      client_id_issued_at: now
+      client_id_issued_at: now,
+      projectId: endpoint.projectId,
+      endpointName: endpoint.name
     };
 
     await keyStore.setItemWithExpiry(
@@ -934,7 +947,7 @@ export const aiMcpEndpointServiceFactory = ({
     const url = new URL(redirectUri);
     url.searchParams.set("code", code);
     if (oauthClient.state) url.searchParams.set("state", String(oauthClient.state));
-    return url;
+    return { url, projectId: endpoint.projectId, endpointName: endpoint.name, clientId };
   };
 
   const oauthTokenExchange = async (dto: TOAuthTokenExchangeDTO) => {

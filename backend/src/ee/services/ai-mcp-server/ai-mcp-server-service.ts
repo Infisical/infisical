@@ -694,7 +694,7 @@ export const aiMcpServerServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.McpServers);
 
     const tools = await aiMcpServerToolDAL.find({ aiMcpServerId: serverId });
-    return tools;
+    return { tools, projectId: server.projectId, serverName: server.name };
   };
 
   const syncMcpServerTools = async ({
@@ -766,7 +766,7 @@ export const aiMcpServerServiceFactory = ({
 
     // Return the newly inserted tools
     const tools = await aiMcpServerToolDAL.find({ aiMcpServerId: serverId });
-    return tools;
+    return { tools, projectId: server.projectId, serverName: server.name };
   };
 
   /**

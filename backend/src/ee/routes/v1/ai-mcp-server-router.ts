@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { AiMcpServerToolsSchema } from "@app/db/schemas/ai-mcp-server-tools";
 import { AiMcpServersSchema } from "@app/db/schemas/ai-mcp-servers";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AiMcpServerAuthMethod, AiMcpServerCredentialMode } from "@app/ee/services/ai-mcp-server/ai-mcp-server-enum";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -189,6 +190,21 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
         ...req.body
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.body.projectId,
+        event: {
+          type: EventType.MCP_SERVER_CREATE,
+          metadata: {
+            serverId: mcpServer.id,
+            name: mcpServer.name,
+            url: mcpServer.url,
+            credentialMode: req.body.credentialMode,
+            authMethod: req.body.authMethod
+          }
+        }
+      });
+
       return { server: mcpServer };
     }
   });
@@ -222,6 +238,17 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.query.projectId,
+        event: {
+          type: EventType.MCP_SERVER_LIST,
+          metadata: {
+            count: mcpServers.length
+          }
+        }
+      });
+
       return {
         servers: mcpServers,
         totalCount: mcpServers.length
@@ -253,6 +280,18 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: mcpServer.projectId,
+        event: {
+          type: EventType.MCP_SERVER_GET,
+          metadata: {
+            serverId: mcpServer.id,
+            name: mcpServer.name
+          }
+        }
       });
 
       return { server: mcpServer };
@@ -290,6 +329,18 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: mcpServer.projectId,
+        event: {
+          type: EventType.MCP_SERVER_UPDATE,
+          metadata: {
+            serverId: mcpServer.id,
+            name: mcpServer.name
+          }
+        }
+      });
+
       return { server: mcpServer };
     }
   });
@@ -312,12 +363,25 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const tools = await server.services.aiMcpServer.listMcpServerTools({
+      const { tools, projectId, serverName } = await server.services.aiMcpServer.listMcpServerTools({
         serverId: req.params.serverId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.MCP_SERVER_LIST_TOOLS,
+          metadata: {
+            serverId: req.params.serverId,
+            serverName,
+            toolCount: tools.length
+          }
+        }
       });
 
       return { tools };
@@ -342,12 +406,25 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const tools = await server.services.aiMcpServer.syncMcpServerTools({
+      const { tools, projectId, serverName } = await server.services.aiMcpServer.syncMcpServerTools({
         serverId: req.params.serverId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.MCP_SERVER_SYNC_TOOLS,
+          metadata: {
+            serverId: req.params.serverId,
+            serverName,
+            toolCount: tools.length
+          }
+        }
       });
 
       return { tools };
@@ -378,6 +455,18 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: mcpServer.projectId,
+        event: {
+          type: EventType.MCP_SERVER_DELETE,
+          metadata: {
+            serverId: mcpServer.id,
+            name: mcpServer.name
+          }
+        }
       });
 
       return { server: mcpServer };

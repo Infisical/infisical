@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { AiMcpEndpointServerToolsSchema } from "@app/db/schemas/ai-mcp-endpoint-server-tools";
 import { AiMcpEndpointsSchema } from "@app/db/schemas/ai-mcp-endpoints";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -71,13 +72,31 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         throw new UnauthorizedError({ message: "Unauthorized" });
       }
 
-      const { server: mcpServer, transport } = await server.services.aiMcpEndpoint.interactWithMcp({
+      const {
+        server: mcpServer,
+        transport,
+        projectId,
+        endpointName
+      } = await server.services.aiMcpEndpoint.interactWithMcp({
         endpointId: req.params.endpointId,
         userId: req.permission.id,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.MCP_ENDPOINT_CONNECT,
+          metadata: {
+            endpointId: req.params.endpointId,
+            endpointName: endpointName || "",
+            userId: req.permission.id
+          }
+        }
       });
 
       // Close transport when client disconnects
@@ -152,6 +171,20 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         actorOrgId: req.permission.orgId
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.body.projectId,
+        event: {
+          type: EventType.MCP_ENDPOINT_CREATE,
+          metadata: {
+            endpointId: endpoint.id,
+            name: endpoint.name,
+            description: req.body.description,
+            serverIds: req.body.serverIds
+          }
+        }
+      });
+
       return { endpoint };
     }
   });
@@ -187,6 +220,17 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.query.projectId,
+        event: {
+          type: EventType.MCP_ENDPOINT_LIST,
+          metadata: {
+            count: endpoints.length
+          }
+        }
       });
 
       return {
@@ -227,6 +271,18 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         actorOrgId: req.permission.orgId
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: endpoint.projectId,
+        event: {
+          type: EventType.MCP_ENDPOINT_GET,
+          metadata: {
+            endpointId: endpoint.id,
+            name: endpoint.name
+          }
+        }
+      });
+
       return { endpoint };
     }
   });
@@ -264,6 +320,21 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         actorOrgId: req.permission.orgId
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: endpoint.projectId,
+        event: {
+          type: EventType.MCP_ENDPOINT_UPDATE,
+          metadata: {
+            endpointId: endpoint.id,
+            name: req.body.name,
+            description: req.body.description,
+            serverIds: req.body.serverIds,
+            piiFiltering: req.body.piiFiltering
+          }
+        }
+      });
+
       return { endpoint };
     }
   });
@@ -294,6 +365,18 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         actorOrgId: req.permission.orgId
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: endpoint.projectId,
+        event: {
+          type: EventType.MCP_ENDPOINT_DELETE,
+          metadata: {
+            endpointId: endpoint.id,
+            name: endpoint.name
+          }
+        }
+      });
+
       return { endpoint };
     }
   });
@@ -316,12 +399,25 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const tools = await server.services.aiMcpEndpoint.listEndpointTools({
+      const { tools, projectId, endpointName } = await server.services.aiMcpEndpoint.listEndpointTools({
         endpointId: req.params.endpointId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.MCP_ENDPOINT_LIST_TOOLS,
+          metadata: {
+            endpointId: req.params.endpointId,
+            endpointName,
+            toolCount: tools.length
+          }
+        }
       });
 
       return { tools };
@@ -347,13 +443,27 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const tool = await server.services.aiMcpEndpoint.enableEndpointTool({
+      const { tool, projectId, endpointName, toolName } = await server.services.aiMcpEndpoint.enableEndpointTool({
         endpointId: req.params.endpointId,
         serverToolId: req.params.serverToolId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.MCP_ENDPOINT_ENABLE_TOOL,
+          metadata: {
+            endpointId: req.params.endpointId,
+            endpointName,
+            serverToolId: req.params.serverToolId,
+            toolName
+          }
+        }
       });
 
       return { tool };
@@ -379,13 +489,27 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      await server.services.aiMcpEndpoint.disableEndpointTool({
+      const { projectId, endpointName, toolName } = await server.services.aiMcpEndpoint.disableEndpointTool({
         endpointId: req.params.endpointId,
         serverToolId: req.params.serverToolId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.MCP_ENDPOINT_DISABLE_TOOL,
+          metadata: {
+            endpointId: req.params.endpointId,
+            endpointName,
+            serverToolId: req.params.serverToolId,
+            toolName
+          }
+        }
       });
 
       return { message: "Tool disabled" };
@@ -418,13 +542,26 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const tools = await server.services.aiMcpEndpoint.bulkUpdateEndpointTools({
+      const { tools, projectId, endpointName } = await server.services.aiMcpEndpoint.bulkUpdateEndpointTools({
         endpointId: req.params.endpointId,
         tools: req.body.tools,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.MCP_ENDPOINT_BULK_UPDATE_TOOLS,
+          metadata: {
+            endpointId: req.params.endpointId,
+            endpointName,
+            toolsUpdated: req.body.tools.length
+          }
+        }
       });
 
       return { tools };
@@ -468,7 +605,25 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         endpointId: req.params.endpointId,
         ...req.body
       });
-      return payload;
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: payload.projectId,
+        event: {
+          type: EventType.MCP_ENDPOINT_OAUTH_CLIENT_REGISTER,
+          metadata: {
+            endpointId: req.params.endpointId,
+            endpointName: payload.endpointName,
+            clientId: payload.client_id,
+            clientName: payload.client_name
+          }
+        }
+      });
+
+      // Return without projectId/endpointName in response (not part of OAuth spec)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/naming-convention
+      const { projectId: __projectId, endpointName: __endpointName, ...responsePayload } = payload;
+      return responsePayload;
     }
   });
 
@@ -537,7 +692,12 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
       const userInfo = req.auth.authMode === AuthMode.JWT ? req.auth.user : null;
       if (!userInfo) throw new BadRequestError({ message: "User info not found" });
 
-      const redirectUri = await server.services.aiMcpEndpoint.oauthFinalize({
+      const {
+        url: redirectUri,
+        projectId,
+        endpointName,
+        clientId
+      } = await server.services.aiMcpEndpoint.oauthFinalize({
         endpointId: req.params.endpointId,
         clientId: req.body.client_id,
         codeChallenge: req.body.code_challenge,
@@ -551,6 +711,19 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         permission: req.permission,
         userAgent: req.auditLogInfo.userAgent || "",
         userIp: req.auditLogInfo.ipAddress || ""
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.MCP_ENDPOINT_OAUTH_AUTHORIZE,
+          metadata: {
+            endpointId: req.params.endpointId,
+            endpointName,
+            clientId
+          }
+        }
       });
 
       return { callbackUrl: redirectUri.toString() };

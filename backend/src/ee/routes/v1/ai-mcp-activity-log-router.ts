@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { AiMcpActivityLogsSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -49,6 +50,17 @@ export const registerAiMcpActivityLogRouter = async (server: FastifyZodProvider)
           endDate,
           offset,
           limit
+        }
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.MCP_ACTIVITY_LOG_LIST,
+          metadata: {
+            count: activityLogs.length
+          }
         }
       });
 

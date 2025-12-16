@@ -588,7 +588,33 @@ export enum EventType {
   RESPOND_TO_ACME_CHALLENGE = "respond-to-acme-challenge",
   PASS_ACME_CHALLENGE = "pass-acme-challenge",
   ATTEMPT_ACME_CHALLENGE = "attempt-acme-challenge",
-  FAIL_ACME_CHALLENGE = "fail-acme-challenge"
+  FAIL_ACME_CHALLENGE = "fail-acme-challenge",
+
+  // MCP Endpoints
+  MCP_ENDPOINT_CREATE = "mcp-endpoint-create",
+  MCP_ENDPOINT_UPDATE = "mcp-endpoint-update",
+  MCP_ENDPOINT_DELETE = "mcp-endpoint-delete",
+  MCP_ENDPOINT_GET = "mcp-endpoint-get",
+  MCP_ENDPOINT_LIST = "mcp-endpoint-list",
+  MCP_ENDPOINT_LIST_TOOLS = "mcp-endpoint-list-tools",
+  MCP_ENDPOINT_ENABLE_TOOL = "mcp-endpoint-enable-tool",
+  MCP_ENDPOINT_DISABLE_TOOL = "mcp-endpoint-disable-tool",
+  MCP_ENDPOINT_BULK_UPDATE_TOOLS = "mcp-endpoint-bulk-update-tools",
+  MCP_ENDPOINT_OAUTH_CLIENT_REGISTER = "mcp-endpoint-oauth-client-register",
+  MCP_ENDPOINT_OAUTH_AUTHORIZE = "mcp-endpoint-oauth-authorize",
+  MCP_ENDPOINT_CONNECT = "mcp-endpoint-connect",
+
+  // MCP Servers
+  MCP_SERVER_CREATE = "mcp-server-create",
+  MCP_SERVER_UPDATE = "mcp-server-update",
+  MCP_SERVER_DELETE = "mcp-server-delete",
+  MCP_SERVER_GET = "mcp-server-get",
+  MCP_SERVER_LIST = "mcp-server-list",
+  MCP_SERVER_LIST_TOOLS = "mcp-server-list-tools",
+  MCP_SERVER_SYNC_TOOLS = "mcp-server-sync-tools",
+
+  // MCP Activity Logs
+  MCP_ACTIVITY_LOG_LIST = "mcp-activity-log-list"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -4487,6 +4513,183 @@ interface FailAcmeChallengeEvent {
   };
 }
 
+interface McpEndpointCreateEvent {
+  type: EventType.MCP_ENDPOINT_CREATE;
+  metadata: {
+    endpointId: string;
+    name: string;
+    description?: string;
+    serverIds: string[];
+  };
+}
+
+interface McpEndpointUpdateEvent {
+  type: EventType.MCP_ENDPOINT_UPDATE;
+  metadata: {
+    endpointId: string;
+    name?: string;
+    description?: string;
+    serverIds?: string[];
+    piiFiltering?: boolean;
+  };
+}
+
+interface McpEndpointDeleteEvent {
+  type: EventType.MCP_ENDPOINT_DELETE;
+  metadata: {
+    endpointId: string;
+    name: string;
+  };
+}
+
+interface McpEndpointGetEvent {
+  type: EventType.MCP_ENDPOINT_GET;
+  metadata: {
+    endpointId: string;
+    name: string;
+  };
+}
+
+interface McpEndpointListEvent {
+  type: EventType.MCP_ENDPOINT_LIST;
+  metadata: {
+    count: number;
+  };
+}
+
+interface McpEndpointListToolsEvent {
+  type: EventType.MCP_ENDPOINT_LIST_TOOLS;
+  metadata: {
+    endpointId: string;
+    endpointName: string;
+    toolCount: number;
+  };
+}
+
+interface McpEndpointEnableToolEvent {
+  type: EventType.MCP_ENDPOINT_ENABLE_TOOL;
+  metadata: {
+    endpointId: string;
+    endpointName: string;
+    serverToolId: string;
+    toolName: string;
+  };
+}
+
+interface McpEndpointDisableToolEvent {
+  type: EventType.MCP_ENDPOINT_DISABLE_TOOL;
+  metadata: {
+    endpointId: string;
+    endpointName: string;
+    serverToolId: string;
+    toolName: string;
+  };
+}
+
+interface McpEndpointBulkUpdateToolsEvent {
+  type: EventType.MCP_ENDPOINT_BULK_UPDATE_TOOLS;
+  metadata: {
+    endpointId: string;
+    endpointName: string;
+    toolsUpdated: number;
+  };
+}
+
+interface McpEndpointOAuthClientRegisterEvent {
+  type: EventType.MCP_ENDPOINT_OAUTH_CLIENT_REGISTER;
+  metadata: {
+    endpointId: string;
+    endpointName: string;
+    clientId: string;
+    clientName: string;
+  };
+}
+
+interface McpEndpointOAuthAuthorizeEvent {
+  type: EventType.MCP_ENDPOINT_OAUTH_AUTHORIZE;
+  metadata: {
+    endpointId: string;
+    endpointName: string;
+    clientId: string;
+  };
+}
+
+interface McpEndpointConnectEvent {
+  type: EventType.MCP_ENDPOINT_CONNECT;
+  metadata: {
+    endpointId: string;
+    endpointName: string;
+    userId: string;
+  };
+}
+
+interface McpServerCreateEvent {
+  type: EventType.MCP_SERVER_CREATE;
+  metadata: {
+    serverId: string;
+    name: string;
+    url: string;
+    credentialMode: string;
+    authMethod: string;
+  };
+}
+
+interface McpServerUpdateEvent {
+  type: EventType.MCP_SERVER_UPDATE;
+  metadata: {
+    serverId: string;
+    name: string;
+  };
+}
+
+interface McpServerDeleteEvent {
+  type: EventType.MCP_SERVER_DELETE;
+  metadata: {
+    serverId: string;
+    name: string;
+  };
+}
+
+interface McpServerGetEvent {
+  type: EventType.MCP_SERVER_GET;
+  metadata: {
+    serverId: string;
+    name: string;
+  };
+}
+
+interface McpServerListEvent {
+  type: EventType.MCP_SERVER_LIST;
+  metadata: {
+    count: number;
+  };
+}
+
+interface McpServerListToolsEvent {
+  type: EventType.MCP_SERVER_LIST_TOOLS;
+  metadata: {
+    serverId: string;
+    serverName: string;
+    toolCount: number;
+  };
+}
+
+interface McpServerSyncToolsEvent {
+  type: EventType.MCP_SERVER_SYNC_TOOLS;
+  metadata: {
+    serverId: string;
+    serverName: string;
+    toolCount: number;
+  };
+}
+
+interface McpActivityLogListEvent {
+  type: EventType.MCP_ACTIVITY_LOG_LIST;
+  metadata: {
+    count: number;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -4896,4 +5099,24 @@ export type Event =
   | RespondToAcmeChallengeEvent
   | PassedAcmeChallengeEvent
   | AttemptAcmeChallengeEvent
-  | FailAcmeChallengeEvent;
+  | FailAcmeChallengeEvent
+  | McpEndpointCreateEvent
+  | McpEndpointUpdateEvent
+  | McpEndpointDeleteEvent
+  | McpEndpointGetEvent
+  | McpEndpointListEvent
+  | McpEndpointListToolsEvent
+  | McpEndpointEnableToolEvent
+  | McpEndpointDisableToolEvent
+  | McpEndpointBulkUpdateToolsEvent
+  | McpEndpointOAuthClientRegisterEvent
+  | McpEndpointOAuthAuthorizeEvent
+  | McpEndpointConnectEvent
+  | McpServerCreateEvent
+  | McpServerUpdateEvent
+  | McpServerDeleteEvent
+  | McpServerGetEvent
+  | McpServerListEvent
+  | McpServerListToolsEvent
+  | McpServerSyncToolsEvent
+  | McpActivityLogListEvent;

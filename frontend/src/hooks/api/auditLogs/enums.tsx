@@ -299,5 +299,31 @@ export enum EventType {
   APPROVAL_REQUEST_CANCEL = "approval-request-cancel",
   APPROVAL_REQUEST_GRANT_LIST = "approval-request-grant-list",
   APPROVAL_REQUEST_GRANT_GET = "approval-request-grant-get",
-  APPROVAL_REQUEST_GRANT_REVOKE = "approval-request-grant-revoke"
+  APPROVAL_REQUEST_GRANT_REVOKE = "approval-request-grant-revoke",
+
+  // MCP Endpoints
+  MCP_ENDPOINT_CREATE = "mcp-endpoint-create",
+  MCP_ENDPOINT_UPDATE = "mcp-endpoint-update",
+  MCP_ENDPOINT_DELETE = "mcp-endpoint-delete",
+  MCP_ENDPOINT_GET = "mcp-endpoint-get",
+  MCP_ENDPOINT_LIST = "mcp-endpoint-list",
+  MCP_ENDPOINT_LIST_TOOLS = "mcp-endpoint-list-tools",
+  MCP_ENDPOINT_ENABLE_TOOL = "mcp-endpoint-enable-tool",
+  MCP_ENDPOINT_DISABLE_TOOL = "mcp-endpoint-disable-tool",
+  MCP_ENDPOINT_BULK_UPDATE_TOOLS = "mcp-endpoint-bulk-update-tools",
+  MCP_ENDPOINT_OAUTH_CLIENT_REGISTER = "mcp-endpoint-oauth-client-register",
+  MCP_ENDPOINT_OAUTH_AUTHORIZE = "mcp-endpoint-oauth-authorize",
+  MCP_ENDPOINT_CONNECT = "mcp-endpoint-connect",
+
+  // MCP Servers
+  MCP_SERVER_CREATE = "mcp-server-create",
+  MCP_SERVER_UPDATE = "mcp-server-update",
+  MCP_SERVER_DELETE = "mcp-server-delete",
+  MCP_SERVER_GET = "mcp-server-get",
+  MCP_SERVER_LIST = "mcp-server-list",
+  MCP_SERVER_LIST_TOOLS = "mcp-server-list-tools",
+  MCP_SERVER_SYNC_TOOLS = "mcp-server-sync-tools",
+
+  // MCP Activity Logs
+  MCP_ACTIVITY_LOG_LIST = "mcp-activity-log-list"
 }
