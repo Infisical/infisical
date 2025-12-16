@@ -88,7 +88,6 @@ export const PamAccountsTable = ({ projectId }: Props) => {
   const navigate = useNavigate({ from: ROUTE_PATHS.Pam.AccountsPage.path });
   const { accessAwsIam, loadingAccountId } = useAccessAwsIamAccount();
   const { mutateAsync: checkPolicyMatch } = useCheckPolicyMatch();
-  const [requestAccountPath, setRequestAccountPath] = useState<string | undefined>();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "misc",
@@ -258,8 +257,7 @@ export const PamAccountsTable = ({ projectId }: Props) => {
       });
 
       // Open request access modal with pre-populated path
-      setRequestAccountPath(fullAccountPath);
-      handlePopUpOpen("requestAccount");
+      handlePopUpOpen("requestAccount", { accountPath: fullAccountPath });
       return;
     }
 
@@ -560,13 +558,8 @@ export const PamAccountsTable = ({ projectId }: Props) => {
       />
       <PamRequestAccountAccessModal
         isOpen={popUp.requestAccount.isOpen}
-        onOpenChange={(isOpen) => {
-          handlePopUpToggle("requestAccount", isOpen);
-          if (!isOpen) {
-            setRequestAccountPath(undefined);
-          }
-        }}
-        accountPath={requestAccountPath}
+        onOpenChange={(isOpen) => handlePopUpToggle("requestAccount", isOpen)}
+        accountPath={popUp.requestAccount.data?.accountPath}
       />
       <PamDeleteAccountModal
         isOpen={popUp.deleteAccount.isOpen}
