@@ -31,6 +31,7 @@ import {
 import { APPROVAL_POLICY_FACTORY_MAP } from "./approval-policy-factory";
 import {
   ApprovalPolicyStep,
+  TApprovalPolicyInputs,
   TApprovalRequest,
   TCreatePolicyDTO,
   TCreateRequestDTO,
@@ -883,6 +884,36 @@ export const approvalPolicyServiceFactory = ({
     return { grant: updatedGrant };
   };
 
+  const checkPolicyMatch = async (
+    policyType: ApprovalPolicyType,
+    { projectId, inputs }: { projectId: string; inputs: TApprovalPolicyInputs },
+    actor: OrgServiceActor
+  ) => {
+    await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorAuthMethod: actor.authMethod,
+      actorId: actor.id,
+      actorOrgId: actor.orgId,
+      projectId,
+      actionProjectType: ActionProjectType.Any
+    });
+
+    const fac = APPROVAL_POLICY_FACTORY_MAP[policyType](policyType);
+
+    const policy = await fac.matchPolicy(approvalPolicyDAL, projectId, inputs);
+
+    if (!policy) {
+      return { requiresApproval: false, hasActiveGrant: false };
+    }
+
+    const hasActiveGrant = await fac.canAccess(approvalRequestGrantsDAL, projectId, actor.id, inputs);
+
+    return {
+      requiresApproval: !hasActiveGrant,
+      hasActiveGrant
+    };
+  };
+
   return {
     create,
     list,
@@ -897,6 +928,7 @@ export const approvalPolicyServiceFactory = ({
     cancelRequest,
     listGrants,
     getGrantById,
-    revokeGrant
+    revokeGrant,
+    checkPolicyMatch
   };
 };

@@ -5,6 +5,8 @@ import { apiRequest } from "@app/config/request";
 import { approvalPolicyQuery } from "./queries";
 import {
   TApprovalPolicy,
+  TCheckPolicyMatchDTO,
+  TCheckPolicyMatchResult,
   TCreateApprovalPolicyDTO,
   TDeleteApprovalPolicyDTO,
   TUpdateApprovalPolicyDTO
@@ -53,6 +55,18 @@ export const useDeleteApprovalPolicy = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: approvalPolicyQuery.allKey() });
+    }
+  });
+};
+
+export const useCheckPolicyMatch = () => {
+  return useMutation({
+    mutationFn: async ({ policyType, projectId, inputs }: TCheckPolicyMatchDTO) => {
+      const { data } = await apiRequest.post<TCheckPolicyMatchResult>(
+        `/api/v1/approval-policies/${policyType}/check-policy-match`,
+        { projectId, inputs }
+      );
+      return data;
     }
   });
 };

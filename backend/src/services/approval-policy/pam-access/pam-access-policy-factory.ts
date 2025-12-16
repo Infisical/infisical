@@ -26,13 +26,16 @@ export const pamAccessPolicyFactory: TApprovalResourceFactory<
 
     let bestMatch: { policy: TPamAccessPolicy; wildcardCount: number; pathLength: number } | null = null;
 
+    const normalizedAccountPath = inputs.accountPath.startsWith("/") ? inputs.accountPath.slice(1) : inputs.accountPath;
+
     for (const policy of policies) {
       const p = policy as TPamAccessPolicy;
       for (const c of p.conditions.conditions) {
         // Find the most specific path pattern
         // TODO(andrey): Make matching logic more advanced by accounting for wildcard positions
         for (const pathPattern of c.accountPaths) {
-          if (picomatch(pathPattern)(inputs.accountPath)) {
+          const normalizedPathPattern = pathPattern.startsWith("/") ? pathPattern.slice(1) : pathPattern;
+          if (picomatch(normalizedPathPattern)(normalizedAccountPath)) {
             const wildcardCount = (pathPattern.match(/\*/g) || []).length;
             const pathLength = pathPattern.length;
 
