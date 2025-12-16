@@ -11,10 +11,7 @@ Octopus Deploy supports two methods for creating API keys: via a user profile or
 
 <Tabs>
 
-  <Tab title="Service Account API Key">
-    <Note>
-      Service accounts are recommended for production integrations as they provide better security and are not tied to individual user accounts.
-    </Note>
+  <Tab title="Service Account API Key (Recommended)">
 
     <Steps>
       <Step title='Navigate to Service Accounts'>
@@ -83,6 +80,10 @@ Octopus Deploy supports two methods for creating API keys: via a user profile or
   </Tab>
 
     <Tab title="User Profile API Key">
+
+    <Note>
+      Infisical recommends using a service account for production integrations as they provide better security and are not tied to individual user accounts.
+    </Note>
     <Steps>
       <Step title='Navigate to your user profile'>
         From your Octopus Deploy dashboard, click on your profile in the bottom left corner and select **My profile**.
@@ -171,7 +172,9 @@ Octopus Deploy supports two methods for creating API keys: via a user profile or
           "credentialsHash": "d41d8cd98f00b204e9800998ecf8427e",
           "app": "octopus-deploy",
           "method": "api-key",
-          "credentials": {}
+          "credentials": {
+            "instanceUrl": "https://your-instance.octopus.app",
+          }
       }
     }
     ```

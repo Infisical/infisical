@@ -1473,18 +1473,6 @@
                     ]
                   },
                   {
-                    "group": "Okta",
-                    "pages": [
-                      "api-reference/endpoints/app-connections/okta/list",
-                      "api-reference/endpoints/app-connections/okta/available",
-                      "api-reference/endpoints/app-connections/okta/get-by-id",
-                      "api-reference/endpoints/app-connections/okta/get-by-name",
-                      "api-reference/endpoints/app-connections/okta/create",
-                      "api-reference/endpoints/app-connections/okta/update",
-                      "api-reference/endpoints/app-connections/okta/delete"
-                    ]
-                  },
-                  {
                     "group": "Octopus Deploy",
                     "pages": [
                       "api-reference/endpoints/app-connections/octopus-deploy/list",
@@ -1496,6 +1484,19 @@
                       "api-reference/endpoints/app-connections/octopus-deploy/delete"
                     ]
                   },
+                  {
+                    "group": "Okta",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/okta/list",
+                      "api-reference/endpoints/app-connections/okta/available",
+                      "api-reference/endpoints/app-connections/okta/get-by-id",
+                      "api-reference/endpoints/app-connections/okta/get-by-name",
+                      "api-reference/endpoints/app-connections/okta/create",
+                      "api-reference/endpoints/app-connections/okta/update",
+                      "api-reference/endpoints/app-connections/okta/delete"
+                    ]
+                  },
+
                   {
                     "group": "OracleDB",
                     "pages": [

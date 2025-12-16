@@ -208,11 +208,11 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       secondaryText = destinationConfig.dataBagItemName;
       break;
     case SecretSync.OctopusDeploy:
-      primaryText = destinationConfig.spaceName || destinationConfig.spaceId;
-      secondaryText = destinationConfig.scope;
+      primaryText = destinationConfig.scope;
       if (destinationConfig.scope === OctopusDeploySyncScope.Project) {
-        secondaryText = destinationConfig.projectName || destinationConfig.projectId;
+        primaryText = destinationConfig.projectName || destinationConfig.projectId;
       }
+      secondaryText = destinationConfig.spaceName || destinationConfig.spaceId;
       break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
