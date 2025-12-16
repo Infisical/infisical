@@ -236,7 +236,7 @@ export const PamAccountsTable = ({ projectId }: Props) => {
 
   const resources = resourcesData?.resources || [];
 
-  async function accessAccount(account: TPamAccount) {
+  const accessAccount = async (account: TPamAccount) => {
     let fullAccountPath = account.name;
     const folderPath = account.folderId ? folderPaths[account.folderId] : undefined;
     if (folderPath) {
@@ -269,7 +269,7 @@ export const PamAccountsTable = ({ projectId }: Props) => {
     } else {
       handlePopUpOpen("accessAccount", account);
     }
-  }
+  };
 
   return (
     <div className="flex flex-col gap-4">
