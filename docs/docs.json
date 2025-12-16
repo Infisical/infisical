@@ -662,7 +662,16 @@
                     "group": "Concepts",
                     "pages": [
                       "documentation/platform/pki/concepts/certificate-mgmt",
-                      "documentation/platform/pki/concepts/certificate-lifecycle"
+                      "documentation/platform/pki/concepts/certificate-lifecycle",
+                      "documentation/platform/pki/concepts/certificate-components"
+                    ]
+                  },
+                  {
+                    "group": "Guides",
+                    "pages": [
+                      "documentation/platform/pki/guides/request-cert-agent",
+                      "documentation/platform/pki/guides/request-cert-api",
+                      "documentation/platform/pki/guides/request-cert-acme"
                     ]
                   }
                 ]
@@ -2482,7 +2491,7 @@
             ]
           },
           {
-            "group": "Infisical PKI",
+            "group": "Certificate Management",
             "pages": [
               {
                 "group": "Certificate Authorities",
