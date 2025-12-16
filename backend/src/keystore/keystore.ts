@@ -29,6 +29,7 @@ export const PgSqlLock = {
 
 // all the key prefixes used must be set here to avoid conflict
 export const KeyStorePrefixes = {
+  InfisicalVersion: "infisical-version",
   SecretReplication: "secret-replication-import-lock",
   KmsProjectDataKeyCreation: "kms-project-data-key-creation-lock",
   KmsProjectKeyCreation: "kms-project-key-creation-lock",

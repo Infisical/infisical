@@ -23,11 +23,6 @@ const virtualRouteFileChangeReloadPlugin: PluginOption = {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
   const allowedHosts = env.VITE_ALLOWED_HOSTS?.split(",") ?? [];
-  const version = (
-    env.INFISICAL_PLATFORM_VERSION ||
-    env.VITE_INFISICAL_PLATFORM_VERSION ||
-    "0.0.1"
-  ).replaceAll(".", "-");
 
   return {
     server: {
@@ -42,15 +37,6 @@ export default defineConfig(({ mode }) => {
       //     ws: true
       //   }
       // }
-    },
-    build: {
-      rollupOptions: {
-        output: {
-          entryFileNames: `assets/[name]-${version}-[hash].js`,
-          chunkFileNames: `assets/[name]-${version}-[hash].js`,
-          assetFileNames: `assets/[name]-${version}-[hash].[ext]`
-        }
-      }
     },
     plugins: [
       tsconfigPaths(),
