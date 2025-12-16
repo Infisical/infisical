@@ -188,7 +188,7 @@ export const injectIdentity = fp(
         }
         case AuthMode.MCP_JWT: {
           const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } =
-            await server.services.authToken.fnValidateJwtIdentity(token, subOrganizationSelector);
+            await server.services.authToken.fnValidateJwtIdentity(token);
           requestContext.set("orgId", orgId);
           requestContext.set("orgName", orgName);
           requestContext.set("userAuthInfo", { userId: user.id, email: user.email || "" });

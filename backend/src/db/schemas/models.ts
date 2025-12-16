@@ -347,6 +347,7 @@ export enum ActionProjectType {
   SSH = ProjectType.SSH,
   SecretScanning = ProjectType.SecretScanning,
   PAM = ProjectType.PAM,
+  AI = ProjectType.AI,
   // project operations that happen on all types
   Any = "any"
 }

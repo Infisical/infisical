@@ -1,9 +1,10 @@
+import { TProjectPermission } from "@app/lib/types";
+
 export type TCreateAiMcpEndpointDTO = {
-  projectId: string;
   name: string;
   description?: string;
   serverIds?: string[];
-};
+} & TProjectPermission;
 
 export type TUpdateAiMcpEndpointDTO = {
   endpointId: string;
@@ -11,24 +12,22 @@ export type TUpdateAiMcpEndpointDTO = {
   description?: string;
   serverIds?: string[];
   piiFiltering?: boolean;
-};
+} & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteAiMcpEndpointDTO = {
   endpointId: string;
-};
+} & Omit<TProjectPermission, "projectId">;
 
 export type TGetAiMcpEndpointDTO = {
   endpointId: string;
-};
+} & Omit<TProjectPermission, "projectId">;
 
 export type TInteractWithMcpDTO = {
   endpointId: string;
   userId: string;
-};
+} & Omit<TProjectPermission, "projectId">;
 
-export type TListAiMcpEndpointsDTO = {
-  projectId: string;
-};
+export type TListAiMcpEndpointsDTO = TProjectPermission;
 
 export type TAiMcpEndpointWithServers = {
   id: string;
@@ -45,17 +44,17 @@ export type TAiMcpEndpointWithServers = {
 
 export type TListEndpointToolsDTO = {
   endpointId: string;
-};
+} & Omit<TProjectPermission, "projectId">;
 
 export type TEnableEndpointToolDTO = {
   endpointId: string;
   serverToolId: string;
-};
+} & Omit<TProjectPermission, "projectId">;
 
 export type TDisableEndpointToolDTO = {
   endpointId: string;
   serverToolId: string;
-};
+} & Omit<TProjectPermission, "projectId">;
 
 export type TBulkUpdateEndpointToolsDTO = {
   endpointId: string;
@@ -63,7 +62,7 @@ export type TBulkUpdateEndpointToolsDTO = {
     serverToolId: string;
     isEnabled: boolean;
   }>;
-};
+} & Omit<TProjectPermission, "projectId">;
 
 export type TEndpointToolConfig = {
   id: string;
@@ -96,7 +95,6 @@ export type TOAuthFinalizeDTO = {
   redirectUri: string;
   resource: string;
   responseType: string;
-  projectId: string;
   path?: string;
   expiry: string;
   tokenId: string;
@@ -128,8 +126,7 @@ export type TOAuthTokenExchangeDTO = {
 // Personal credentials types
 export type TGetServersRequiringAuthDTO = {
   endpointId: string;
-  userId: string;
-};
+} & Omit<TProjectPermission, "projectId">;
 
 export type TServerAuthStatus = {
   id: string;
@@ -143,18 +140,13 @@ export type TServerAuthStatus = {
 export type TInitiateServerOAuthDTO = {
   endpointId: string;
   serverId: string;
-  actorId: string;
-  actor: string;
-  actorAuthMethod: string;
-  actorOrgId: string;
-};
+} & Omit<TProjectPermission, "projectId">;
 
 export type TSaveUserServerCredentialDTO = {
   endpointId: string;
   serverId: string;
-  userId: string;
   accessToken: string;
   refreshToken?: string;
   expiresAt?: number;
   tokenType?: string;
-};
+} & Omit<TProjectPermission, "projectId">;

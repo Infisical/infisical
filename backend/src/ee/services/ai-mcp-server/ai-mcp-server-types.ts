@@ -85,9 +85,6 @@ export type TInitiateOAuthDTO = {
   projectId: string;
   url: string;
   actorId: string;
-  actor: string;
-  actorAuthMethod: string;
-  actorOrgId: string;
   clientId?: string;
   clientSecret?: string;
 };

@@ -71,10 +71,7 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
         url: req.body.url,
         clientId: req.body.clientId,
         clientSecret: req.body.clientSecret,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod!,
-        actorOrgId: req.permission.orgId
+        actorId: req.permission.id
       });
 
       return result;

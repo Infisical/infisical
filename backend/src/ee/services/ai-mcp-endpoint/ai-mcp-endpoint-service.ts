@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 
+import { ForbiddenError } from "@casl/ability";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { Server as RawMcpServer } from "@modelcontextprotocol/sdk/server/index.js";
@@ -7,13 +8,14 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
+import { ActionProjectType } from "@app/db/schemas";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto as cryptoModule } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
-import { AuthTokenType } from "@app/services/auth/auth-type";
+import { ActorType, AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -25,7 +27,10 @@ import { AiMcpServerCredentialMode } from "../ai-mcp-server/ai-mcp-server-enum";
 import { TAiMcpServerServiceFactory } from "../ai-mcp-server/ai-mcp-server-service";
 import { TAiMcpServerToolDALFactory } from "../ai-mcp-server/ai-mcp-server-tool-dal";
 import { TAiMcpServerUserCredentialDALFactory } from "../ai-mcp-server/ai-mcp-server-user-credential-dal";
+import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { ProjectPermissionMcpEndpointActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TAiMcpEndpointDALFactory } from "./ai-mcp-endpoint-dal";
+import { AiMcpEndpointStatus } from "./ai-mcp-endpoint-enum";
 import { TAiMcpEndpointServerDALFactory } from "./ai-mcp-endpoint-server-dal";
 import { TAiMcpEndpointServerToolDALFactory } from "./ai-mcp-endpoint-server-tool-dal";
 import {
@@ -66,6 +71,7 @@ type TAiMcpEndpointServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
   authTokenService: Pick<TAuthTokenServiceFactory, "getUserTokenSessionById">;
   userDAL: TUserDALFactory;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
 // OAuth schemas for parsing cached data
@@ -122,7 +128,8 @@ export const aiMcpEndpointServiceFactory = ({
   kmsService,
   keyStore,
   authTokenService,
-  userDAL
+  userDAL,
+  permissionService
 }: TAiMcpEndpointServiceFactoryDep) => {
   // PII filtering utility - redacts sensitive information
   const applyPiiFiltering = (data: unknown): unknown => {
@@ -173,14 +180,34 @@ export const aiMcpEndpointServiceFactory = ({
     return data;
   };
 
-  const interactWithMcp = async ({ endpointId, userId }: TInteractWithMcpDTO) => {
+  const interactWithMcp = async ({
+    endpointId,
+    userId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TInteractWithMcpDTO) => {
     const appCfg = getConfig();
 
-    // Get the endpoint
     const endpoint = await aiMcpEndpointDAL.findById(endpointId);
     if (!endpoint) {
       throw new NotFoundError({ message: `MCP endpoint with ID '${endpointId}' not found` });
     }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: endpoint.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.AI
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionMcpEndpointActions.Connect,
+      ProjectPermissionSub.McpEndpoints
+    );
 
     const user = await userDAL.findById(userId);
     if (!user) {
@@ -323,7 +350,7 @@ export const aiMcpEndpointServiceFactory = ({
 
       try {
         // Apply PII filtering to arguments if enabled
-        const filteredArgs = endpoint.piiFiltering ? applyPiiFiltering(args) : args;
+        const filteredArgs = (endpoint.piiFiltering ? applyPiiFiltering(args) : args) as Record<string, unknown>;
 
         const result = await selectedMcpClient.client.callTool({
           name,
@@ -365,12 +392,51 @@ export const aiMcpEndpointServiceFactory = ({
     return { server, transport };
   };
 
-  const createMcpEndpoint = async ({ projectId, name, description, serverIds }: TCreateAiMcpEndpointDTO) => {
+  const createMcpEndpoint = async ({
+    projectId,
+    name,
+    description,
+    serverIds,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TCreateAiMcpEndpointDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.AI
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionMcpEndpointActions.Create,
+      ProjectPermissionSub.McpEndpoints
+    );
+
+    // Validate that all serverIds belong to the same project
+    if (serverIds && serverIds.length > 0) {
+      const servers = await aiMcpServerDAL.find({ $in: { id: serverIds } });
+
+      if (servers.length !== serverIds.length) {
+        throw new NotFoundError({ message: "One or more MCP servers not found" });
+      }
+
+      const invalidServers = servers.filter((server) => server.projectId !== projectId);
+      if (invalidServers.length > 0) {
+        throw new BadRequestError({
+          message: "All MCP servers must belong to the same project as the endpoint"
+        });
+      }
+    }
+
     const endpoint = await aiMcpEndpointDAL.create({
       projectId,
       name,
       description,
-      status: "active"
+      status: AiMcpEndpointStatus.ACTIVE
     });
 
     // Connect servers if provided
@@ -386,7 +452,27 @@ export const aiMcpEndpointServiceFactory = ({
     return endpoint;
   };
 
-  const listMcpEndpoints = async ({ projectId }: TListAiMcpEndpointsDTO): Promise<TAiMcpEndpointWithServers[]> => {
+  const listMcpEndpoints = async ({
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TListAiMcpEndpointsDTO): Promise<TAiMcpEndpointWithServers[]> => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.AI
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionMcpEndpointActions.Read,
+      ProjectPermissionSub.McpEndpoints
+    );
+
     const endpoints = await aiMcpEndpointDAL.find({ projectId });
 
     // Get connected servers count and tools count for each endpoint
@@ -406,11 +492,31 @@ export const aiMcpEndpointServiceFactory = ({
     return endpointsWithStats;
   };
 
-  const getMcpEndpointById = async ({ endpointId }: TGetAiMcpEndpointDTO) => {
+  const getMcpEndpointById = async ({
+    endpointId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TGetAiMcpEndpointDTO) => {
     const endpoint = await aiMcpEndpointDAL.findById(endpointId);
     if (!endpoint) {
       throw new NotFoundError({ message: `MCP endpoint with ID '${endpointId}' not found` });
     }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: endpoint.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.AI
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionMcpEndpointActions.Read,
+      ProjectPermissionSub.McpEndpoints
+    );
 
     const connectedServers = await aiMcpEndpointServerDAL.find({ aiMcpEndpointId: endpointId });
     const tools = await aiMcpEndpointServerToolDAL.find({ aiMcpEndpointId: endpointId });
@@ -428,12 +534,30 @@ export const aiMcpEndpointServiceFactory = ({
     name,
     description,
     serverIds,
-    piiFiltering
+    piiFiltering,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
   }: TUpdateAiMcpEndpointDTO) => {
     const endpoint = await aiMcpEndpointDAL.findById(endpointId);
     if (!endpoint) {
       throw new NotFoundError({ message: `MCP endpoint with ID '${endpointId}' not found` });
     }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: endpoint.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.AI
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionMcpEndpointActions.Edit,
+      ProjectPermissionSub.McpEndpoints
+    );
 
     const updateData: { name?: string; description?: string; piiFiltering?: boolean } = {};
     if (name !== undefined) updateData.name = name;
@@ -447,6 +571,22 @@ export const aiMcpEndpointServiceFactory = ({
 
     // Update server connections if provided
     if (serverIds !== undefined) {
+      // Validate that all serverIds belong to the same project
+      if (serverIds.length > 0) {
+        const servers = await aiMcpServerDAL.find({ $in: { id: serverIds } });
+
+        if (servers.length !== serverIds.length) {
+          throw new NotFoundError({ message: "One or more MCP servers not found" });
+        }
+
+        const invalidServers = servers.filter((server) => server.projectId !== endpoint.projectId);
+        if (invalidServers.length > 0) {
+          throw new BadRequestError({
+            message: "All MCP servers must belong to the same project as the endpoint"
+          });
+        }
+      }
+
       // Delete existing connections
       await aiMcpEndpointServerDAL.delete({ aiMcpEndpointId: endpointId });
 
@@ -464,33 +604,93 @@ export const aiMcpEndpointServiceFactory = ({
     return updatedEndpoint;
   };
 
-  const deleteMcpEndpoint = async ({ endpointId }: TDeleteAiMcpEndpointDTO) => {
+  const deleteMcpEndpoint = async ({
+    endpointId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TDeleteAiMcpEndpointDTO) => {
     const endpoint = await aiMcpEndpointDAL.findById(endpointId);
     if (!endpoint) {
       throw new NotFoundError({ message: `MCP endpoint with ID '${endpointId}' not found` });
     }
 
-    // Delete endpoint
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: endpoint.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.AI
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionMcpEndpointActions.Delete,
+      ProjectPermissionSub.McpEndpoints
+    );
+
     await aiMcpEndpointDAL.deleteById(endpointId);
 
     return endpoint;
   };
 
-  const listEndpointTools = async ({ endpointId }: TListEndpointToolsDTO) => {
+  const listEndpointTools = async ({
+    endpointId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TListEndpointToolsDTO) => {
     const endpoint = await aiMcpEndpointDAL.findById(endpointId);
     if (!endpoint) {
       throw new NotFoundError({ message: `MCP endpoint with ID '${endpointId}' not found` });
     }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: endpoint.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.AI
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionMcpEndpointActions.Read,
+      ProjectPermissionSub.McpEndpoints
+    );
 
     const toolConfigs = await aiMcpEndpointServerToolDAL.find({ aiMcpEndpointId: endpointId });
     return toolConfigs;
   };
 
-  const enableEndpointTool = async ({ endpointId, serverToolId }: TEnableEndpointToolDTO) => {
+  const enableEndpointTool = async ({
+    endpointId,
+    serverToolId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TEnableEndpointToolDTO) => {
     const endpoint = await aiMcpEndpointDAL.findById(endpointId);
     if (!endpoint) {
       throw new NotFoundError({ message: `MCP endpoint with ID '${endpointId}' not found` });
     }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: endpoint.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.AI
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionMcpEndpointActions.Edit,
+      ProjectPermissionSub.McpEndpoints
+    );
 
     const existingConfig = await aiMcpEndpointServerToolDAL.findOne({
       aiMcpEndpointId: endpointId,
@@ -508,11 +708,32 @@ export const aiMcpEndpointServiceFactory = ({
     });
   };
 
-  const disableEndpointTool = async ({ endpointId, serverToolId }: TDisableEndpointToolDTO) => {
+  const disableEndpointTool = async ({
+    endpointId,
+    serverToolId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TDisableEndpointToolDTO) => {
     const endpoint = await aiMcpEndpointDAL.findById(endpointId);
     if (!endpoint) {
       throw new NotFoundError({ message: `MCP endpoint with ID '${endpointId}' not found` });
     }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: endpoint.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.AI
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionMcpEndpointActions.Edit,
+      ProjectPermissionSub.McpEndpoints
+    );
 
     const existingConfig = await aiMcpEndpointServerToolDAL.findOne({
       aiMcpEndpointId: endpointId,
@@ -524,11 +745,32 @@ export const aiMcpEndpointServiceFactory = ({
     }
   };
 
-  const bulkUpdateEndpointTools = async ({ endpointId, tools }: TBulkUpdateEndpointToolsDTO) => {
+  const bulkUpdateEndpointTools = async ({
+    endpointId,
+    tools,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TBulkUpdateEndpointToolsDTO) => {
     const endpoint = await aiMcpEndpointDAL.findById(endpointId);
     if (!endpoint) {
       throw new NotFoundError({ message: `MCP endpoint with ID '${endpointId}' not found` });
     }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: endpoint.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.AI
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionMcpEndpointActions.Edit,
+      ProjectPermissionSub.McpEndpoints
+    );
 
     // Separate tools to enable and disable
     const toEnable = tools.filter((t) => t.isEnabled);
@@ -571,6 +813,7 @@ export const aiMcpEndpointServiceFactory = ({
   };
 
   // OAuth 2.0 Methods
+  // Called by MCP client during Dynamic Client Registration (DCR) - no auth required
   const oauthRegisterClient = async ({
     endpointId,
     client_name,
@@ -645,11 +888,25 @@ export const aiMcpEndpointServiceFactory = ({
     const isValidRedirectUri = oauthClient.redirect_uris.some((el) => new URL(el).toString() === redirectUri);
     if (!isValidRedirectUri) throw new BadRequestError({ message: "Redirect URI mismatch" });
 
-    // Verify endpoint exists
     const endpoint = await aiMcpEndpointDAL.findById(endpointId);
     if (!endpoint) {
       throw new NotFoundError({ message: `MCP endpoint with ID '${endpointId}' not found` });
     }
+
+    // Check Connect permission at authorization time
+    const { permission: projectPermission } = await permissionService.getProjectPermission({
+      actor: permission.type as ActorType,
+      actorId: permission.id,
+      projectId: endpoint.projectId,
+      actorAuthMethod: permission.authMethod as AuthMethod,
+      actorOrgId: permission.orgId,
+      actionProjectType: ActionProjectType.AI
+    });
+
+    ForbiddenError.from(projectPermission).throwUnlessCan(
+      ProjectPermissionMcpEndpointActions.Connect,
+      ProjectPermissionSub.McpEndpoints
+    );
 
     const code = crypto.randomBytes(32).toString("hex");
     await keyStore.setItemWithExpiry(
@@ -748,12 +1005,29 @@ export const aiMcpEndpointServiceFactory = ({
   // Get servers that require personal authentication for an endpoint
   const getServersRequiringAuth = async ({
     endpointId,
-    userId
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
   }: TGetServersRequiringAuthDTO): Promise<TServerAuthStatus[]> => {
     const endpoint = await aiMcpEndpointDAL.findById(endpointId);
     if (!endpoint) {
       throw new NotFoundError({ message: `MCP endpoint with ID '${endpointId}' not found` });
     }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: endpoint.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.AI
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionMcpEndpointActions.Read,
+      ProjectPermissionSub.McpEndpoints
+    );
 
     // Get connected servers
     const connectedServerLinks = await aiMcpEndpointServerDAL.find({ aiMcpEndpointId: endpointId });
@@ -777,7 +1051,7 @@ export const aiMcpEndpointServiceFactory = ({
     // Check which servers the user already has credentials for
     const serversWithAuthStatus = await Promise.all(
       personalServers.map(async (server) => {
-        const existingCredential = await aiMcpServerUserCredentialDAL.findByUserAndServer(userId, server.id);
+        const existingCredential = await aiMcpServerUserCredentialDAL.findByUserAndServer(actorId, server.id);
 
         return {
           id: server.id,
@@ -800,15 +1074,38 @@ export const aiMcpEndpointServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TInitiateServerOAuthDTO) => {
-    // Verify endpoint exists and server is connected
     const endpoint = await aiMcpEndpointDAL.findById(endpointId);
     if (!endpoint) {
       throw new NotFoundError({ message: `MCP endpoint with ID '${endpointId}' not found` });
     }
 
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: endpoint.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.AI
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionMcpEndpointActions.Connect,
+      ProjectPermissionSub.McpEndpoints
+    );
+
     const server = await aiMcpServerDAL.findById(serverId);
     if (!server) {
       throw new NotFoundError({ message: `MCP server with ID '${serverId}' not found` });
+    }
+
+    // Check that the server is linked to this endpoint
+    const serverLink = await aiMcpEndpointServerDAL.findOne({
+      aiMcpEndpointId: endpointId,
+      aiMcpServerId: serverId
+    });
+
+    if (!serverLink) {
+      throw new BadRequestError({ message: "This MCP server is not linked to the specified endpoint" });
     }
 
     if (server.credentialMode !== AiMcpServerCredentialMode.PERSONAL) {
@@ -823,9 +1120,6 @@ export const aiMcpEndpointServiceFactory = ({
       projectId: endpoint.projectId,
       url: server.url,
       actorId,
-      actor,
-      actorAuthMethod,
-      actorOrgId,
       clientId: oauthConfig?.clientId,
       clientSecret: oauthConfig?.clientSecret
     });
@@ -835,21 +1129,47 @@ export const aiMcpEndpointServiceFactory = ({
   const saveUserServerCredential = async ({
     endpointId,
     serverId,
-    userId,
     accessToken,
     refreshToken,
     expiresAt,
-    tokenType
+    tokenType,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
   }: TSaveUserServerCredentialDTO) => {
-    // Verify endpoint and server exist
     const endpoint = await aiMcpEndpointDAL.findById(endpointId);
     if (!endpoint) {
       throw new NotFoundError({ message: `MCP endpoint with ID '${endpointId}' not found` });
     }
 
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: endpoint.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.AI
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionMcpEndpointActions.Connect,
+      ProjectPermissionSub.McpEndpoints
+    );
+
     const server = await aiMcpServerDAL.findById(serverId);
     if (!server) {
       throw new NotFoundError({ message: `MCP server with ID '${serverId}' not found` });
+    }
+
+    // Check that the server is linked to this endpoint
+    const serverLink = await aiMcpEndpointServerDAL.findOne({
+      aiMcpEndpointId: endpointId,
+      aiMcpServerId: serverId
+    });
+
+    if (!serverLink) {
+      throw new BadRequestError({ message: "This MCP server is not linked to the specified endpoint" });
     }
 
     // Encrypt the credentials
@@ -871,7 +1191,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     // Upsert the credential
     await aiMcpServerUserCredentialDAL.upsertCredential({
-      userId,
+      userId: actorId,
       aiMcpServerId: serverId,
       encryptedCredentials
     });
