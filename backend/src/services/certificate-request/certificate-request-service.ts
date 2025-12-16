@@ -91,6 +91,7 @@ export const certificateRequestServiceFactory = ({
   permissionService
 }: TCertificateRequestServiceFactoryDep) => {
   const createCertificateRequest = async ({
+    acmeOrderId,
     actor,
     actorId,
     actorAuthMethod,
@@ -123,6 +124,7 @@ export const certificateRequestServiceFactory = ({
       {
         status,
         projectId,
+        acmeOrderId,
         ...validatedData
       },
       tx
@@ -170,13 +172,17 @@ export const certificateRequestServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId,
-    projectId,
     certificateRequestId
   }: TGetCertificateFromRequestDTO) => {
+    const certificateRequest = await certificateRequestDAL.findByIdWithCertificate(certificateRequestId);
+    if (!certificateRequest) {
+      throw new NotFoundError({ message: "Certificate request not found" });
+    }
+
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      projectId,
+      projectId: certificateRequest.projectId,
       actorAuthMethod,
       actorOrgId,
       actionProjectType: ActionProjectType.CertificateManager
@@ -187,25 +193,20 @@ export const certificateRequestServiceFactory = ({
       ProjectPermissionSub.Certificates
     );
 
-    const certificateRequest = await certificateRequestDAL.findByIdWithCertificate(certificateRequestId);
-    if (!certificateRequest) {
-      throw new NotFoundError({ message: "Certificate request not found" });
-    }
-
-    if (certificateRequest.projectId !== projectId) {
-      throw new NotFoundError({ message: "Certificate request not found" });
-    }
-
     // If no certificate is attached, return basic info
     if (!certificateRequest.certificate) {
       return {
-        status: certificateRequest.status as CertificateRequestStatus,
-        certificate: null,
-        privateKey: null,
-        serialNumber: null,
-        errorMessage: certificateRequest.errorMessage || null,
-        createdAt: certificateRequest.createdAt,
-        updatedAt: certificateRequest.updatedAt
+        certificateRequest: {
+          status: certificateRequest.status as CertificateRequestStatus,
+          certificate: null,
+          certificateId: null,
+          privateKey: null,
+          serialNumber: null,
+          errorMessage: certificateRequest.errorMessage || null,
+          createdAt: certificateRequest.createdAt,
+          updatedAt: certificateRequest.updatedAt
+        },
+        projectId: certificateRequest.projectId
       };
     }
 
@@ -240,13 +241,17 @@ export const certificateRequestServiceFactory = ({
     }
 
     return {
-      status: certificateRequest.status as CertificateRequestStatus,
-      certificate: certBody.certificate,
-      privateKey,
-      serialNumber: certificateRequest.certificate.serialNumber,
-      errorMessage: certificateRequest.errorMessage || null,
-      createdAt: certificateRequest.createdAt,
-      updatedAt: certificateRequest.updatedAt
+      certificateRequest: {
+        status: certificateRequest.status as CertificateRequestStatus,
+        certificate: certBody.certificate,
+        certificateId: certificateRequest.certificate.id,
+        privateKey,
+        serialNumber: certificateRequest.certificate.serialNumber,
+        errorMessage: certificateRequest.errorMessage || null,
+        createdAt: certificateRequest.createdAt,
+        updatedAt: certificateRequest.updatedAt
+      },
+      projectId: certificateRequest.projectId
     };
   };
 

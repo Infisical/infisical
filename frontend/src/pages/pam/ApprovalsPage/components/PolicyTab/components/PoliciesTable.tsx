@@ -98,9 +98,7 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
             <Tr>
               <Th className="w-10" />
               <Th>Policy Name</Th>
-              <Th>Max Approval Request TTL</Th>
-              <Th>Min Access Duration</Th>
-              <Th>Max Access Duration</Th>
+              <Th>Max. Access Duration</Th>
               <Th>Conditions</Th>
               <Th className="w-5" />
             </Tr>
@@ -117,7 +115,6 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
             {!isPoliciesLoading &&
               policies.map((policy) => {
                 const isExpanded = expandedRows.has(policy.id);
-                const maxTtl = policy.maxRequestTtl ? policy.maxRequestTtl : "No limit";
                 const conditionsCount = policy.conditions.conditions.length;
 
                 return (
@@ -144,8 +141,6 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
                         </IconButton>
                       </Td>
                       <Td>{policy.name}</Td>
-                      <Td>{maxTtl}</Td>
-                      <Td>{policy.constraints.constraints.accessDuration.min}</Td>
                       <Td>{policy.constraints.constraints.accessDuration.max}</Td>
                       <Td>
                         {conditionsCount} condition{conditionsCount !== 1 ? "s" : ""}
@@ -202,7 +197,7 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
                     {isExpanded && (
                       <Tr className="bg-mineshaft-800">
                         <Td colSpan={7} className="p-0">
-                          <div className="flex max-h-80 w-full gap-2 gap-4 overflow-auto overflow-x-hidden p-4">
+                          <div className="flex max-h-80 w-full gap-4 overflow-auto overflow-x-hidden p-4">
                             <div className="flex-1">
                               <div className="mb-2 text-sm font-medium text-mineshaft-300">
                                 Approval Conditions

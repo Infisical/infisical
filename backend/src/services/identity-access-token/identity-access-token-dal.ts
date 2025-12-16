@@ -32,7 +32,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
   const removeExpiredTokens = async (tx?: Knex) => {
     logger.info(`${QueueName.DailyResourceCleanUp}: remove expired access token started`);
 
-    const BATCH_SIZE = 10000;
+    const BATCH_SIZE = 5000;
     const MAX_RETRY_ON_FAILURE = 3;
     const QUERY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
     const MAX_TTL = 315_360_000; // Maximum TTL value in seconds (10 years)
@@ -101,7 +101,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
       } finally {
         // eslint-disable-next-line no-await-in-loop
         await new Promise((resolve) => {
-          setTimeout(resolve, 10); // time to breathe for db
+          setTimeout(resolve, 500); // time to breathe for db
         });
       }
       isRetrying = numberOfRetryOnFailure > 0;

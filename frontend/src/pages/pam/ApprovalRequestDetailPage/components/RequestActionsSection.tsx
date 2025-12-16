@@ -127,7 +127,7 @@ export const RequestActionsSection = ({ request }: Props) => {
               Review
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="start" title="Finish your review" className="w-96">
+          <PopoverContent align="start" title="Finish your review" className="w-96 pt-4">
             <FormLabel label="Finish your review" />
             <TextArea
               value={comment}

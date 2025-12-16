@@ -152,8 +152,11 @@ export const ApprovalRequestTab = () => {
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-xl font-medium text-mineshaft-100">Approval Requests</p>
+      <div className="mb-4">
+        <div className="flex items-center gap-x-2">
+          <p className="text-xl font-medium text-mineshaft-100">Access Requests</p>
+        </div>
+        <p className="text-sm text-bunker-300">View pending access requests to PAM accounts</p>
       </div>
       <div>
         <div className="flex gap-2">
@@ -262,7 +265,7 @@ export const ApprovalRequestTab = () => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-            placeholder="Search approval requests..."
+            placeholder="Search access requests..."
           />
         </div>
         <TableContainer className="mt-4">
@@ -271,7 +274,7 @@ export const ApprovalRequestTab = () => {
               <Tr>
                 <Th>Requester</Th>
                 <Th>Account Path</Th>
-                <Th>Duration</Th>
+                <Th>Access Duration</Th>
                 <Th>Status</Th>
                 <Th>Requested</Th>
               </Tr>
@@ -286,10 +289,7 @@ export const ApprovalRequestTab = () => {
                   return (
                     <Tr
                       key={request.id}
-                      className={twMerge(
-                        "cursor-pointer transition-colors hover:bg-mineshaft-700",
-                        needsApproval && "bg-primary/5 hover:bg-primary/10"
-                      )}
+                      className="cursor-pointer transition-colors hover:bg-mineshaft-700"
                       onClick={() => handleRowClick(request.id)}
                     >
                       <Td>

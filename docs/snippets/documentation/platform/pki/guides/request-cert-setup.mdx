@@ -1,0 +1,27 @@
+<Step title="Configure a Certificate Authority">
+    Before you can issue any certificate, you must first configure a [Certificate Authority (CA)](/documentation/platform/pki/ca/overview).
+    
+    The CA you configure will be used to issue the certificate back to your client; it can be either Internal or External:
+
+    - [Internal CA](/documentation/platform/pki/ca/private-ca): If you're building your own PKI and wish to issue certificates for internal use, you should
+    follow the guide [here](/documentation/platform/pki/ca/private-ca#guide-to-creating-a-ca-hierarchy) to create at minimum a root CA and an intermediate/issuing CA
+    within Infisical.
+
+    - [External CA](/documentation/platform/pki/ca/external-ca): If you have existing PKI infrastructure or wish to connect to a public CA (e.g. [Let's Encrypt](/documentation/platform/pki/ca/lets-encrypt), [DigiCert](/documentation/platform/pki/ca/digicert), etc.) to issue TLS certificates,
+    you should follow the documentation [here](/documentation/platform/pki/ca/external-ca) to configure an External CA.
+
+    <Note>
+        Note that if you're looking to issue self-signed certificates, you can skip this step and proceed to Step 3.
+    </Note>
+
+</Step>
+<Step title="Create a certificate template">
+    Next, follow the guide [here](/documentation/platform/pki/certificates/templates#guide-to-creating-a-certificate-template) to create a [certificate template](/documentation/platform/pki/certificates/templates).
+
+    The certificate template will constrain what attributes may or may not be allowed in the request to issue a certificate.
+    For example, you can specify that the requested common name must adhere to a specific format like `*.acme.com` and
+    that the maximum TTL cannot exceed 1 year.
+
+    If you're looking to issue TLS server certificates, you should select the **TLS Server Certificate** option under the **Template Preset** dropdown.
+
+</Step>

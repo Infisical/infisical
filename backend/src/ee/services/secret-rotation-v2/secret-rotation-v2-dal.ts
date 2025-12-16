@@ -214,7 +214,10 @@ export const secretRotationV2DALFactory = (
     tx?: Knex
   ) => {
     try {
-      const extendedQuery = baseSecretRotationV2Query({ filter, db, tx, options })
+      const { limit, offset = 0, sort, ...queryOptions } = options || {};
+      const baseOptions = { ...queryOptions };
+
+      const subquery = baseSecretRotationV2Query({ filter, db, tx, options: baseOptions })
         .join(
           TableName.SecretRotationV2SecretMapping,
           `${TableName.SecretRotationV2SecretMapping}.rotationId`,
@@ -233,6 +236,7 @@ export const secretRotationV2DALFactory = (
         )
         .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
         .select(
+          selectAllTableCols(TableName.SecretRotationV2),
           db.ref("id").withSchema(TableName.SecretV2).as("secretId"),
           db.ref("key").withSchema(TableName.SecretV2).as("secretKey"),
           db.ref("version").withSchema(TableName.SecretV2).as("secretVersion"),
@@ -252,18 +256,31 @@ export const secretRotationV2DALFactory = (
           db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"),
           db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
           db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
-          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
+          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue"),
+          db.raw(`DENSE_RANK() OVER (ORDER BY ${TableName.SecretRotationV2}."createdAt" DESC) as rank`)
         );
 
       if (search) {
-        void extendedQuery.where((query) => {
-          void query
+        void subquery.where((qb) => {
+          void qb
             .whereILike(`${TableName.SecretV2}.key`, `%${search}%`)
             .orWhereILike(`${TableName.SecretRotationV2}.name`, `%${search}%`);
         });
       }
 
-      const secretRotations = await extendedQuery;
+      let secretRotations: Awaited<typeof subquery>;
+      if (limit !== undefined) {
+        const rankOffset = offset + 1;
+        const queryWithLimit = (tx || db)
+          .with("inner", subquery)
+          .select("*")
+          .from("inner")
+          .where("inner.rank", ">=", rankOffset)
+          .andWhere("inner.rank", "<", rankOffset + limit);
+        secretRotations = (await queryWithLimit) as unknown as Awaited<typeof subquery>;
+      } else {
+        secretRotations = await subquery;
+      }
 
       if (!secretRotations.length) return [];
 

@@ -64,7 +64,7 @@ const Page = () => {
 
     handlePopUpClose("deletePkiSubscriber");
     navigate({
-      to: "/organizations/$orgId/projects/cert-management/$projectId/subscribers",
+      to: "/organizations/$orgId/projects/cert-manager/$projectId/subscribers",
       params: {
         orgId: currentOrg.id,
         projectId
@@ -77,7 +77,7 @@ const Page = () => {
       {data && (
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <Link
-            to="/organizations/$orgId/projects/cert-management/$projectId/subscribers"
+            to="/organizations/$orgId/projects/cert-manager/$projectId/subscribers"
             params={{
               orgId: currentOrg.id,
               projectId

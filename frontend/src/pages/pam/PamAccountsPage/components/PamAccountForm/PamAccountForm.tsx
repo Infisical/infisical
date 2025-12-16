@@ -9,6 +9,7 @@ import { DiscriminativePick } from "@app/types";
 
 import { PamAccountHeader } from "../PamAccountHeader";
 import { AwsIamAccountForm } from "./AwsIamAccountForm";
+import { KubernetesAccountForm } from "./KubernetesAccountForm";
 import { MySQLAccountForm } from "./MySQLAccountForm";
 import { PostgresAccountForm } from "./PostgresAccountForm";
 import { SshAccountForm } from "./SshAccountForm";
@@ -71,6 +72,14 @@ const CreateForm = ({
       return (
         <SshAccountForm onSubmit={onSubmit} resourceId={resourceId} resourceType={resourceType} />
       );
+    case PamResourceType.Kubernetes:
+      return (
+        <KubernetesAccountForm
+          onSubmit={onSubmit}
+          resourceId={resourceId}
+          resourceType={resourceType}
+        />
+      );
     case PamResourceType.AwsIam:
       return (
         <AwsIamAccountForm
@@ -109,6 +118,8 @@ const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
       return <MySQLAccountForm account={account as any} onSubmit={onSubmit} />;
     case PamResourceType.SSH:
       return <SshAccountForm account={account as any} onSubmit={onSubmit} />;
+    case PamResourceType.Kubernetes:
+      return <KubernetesAccountForm account={account as any} onSubmit={onSubmit} />;
     case PamResourceType.AwsIam:
       return <AwsIamAccountForm account={account as any} onSubmit={onSubmit} />;
     default:

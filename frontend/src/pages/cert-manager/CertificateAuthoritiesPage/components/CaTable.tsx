@@ -96,7 +96,7 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                     onClick={() =>
                       canReadCa &&
                       navigate({
-                        to: "/organizations/$orgId/projects/cert-management/$projectId/ca/$caId",
+                        to: "/organizations/$orgId/projects/cert-manager/$projectId/ca/$caId",
                         params: {
                           orgId: currentOrg.id,
                           projectId: currentProject.id,
