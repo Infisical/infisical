@@ -1,30 +1,23 @@
-import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { faFilterCircleXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-  FilterableSelect,
-  FormControl
+  FormControl,
+  Input
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { TAiMcpActivityLog } from "@app/hooks/api";
 
-export type TMCPActivityLogFilter = {
-  endpoint?: string;
-  tool?: string;
-  user?: string;
-};
+import { mcpActivityLogFilterFormSchema, TMCPActivityLogFilterFormData } from "./types";
 
 type Props = {
-  filter: TMCPActivityLogFilter;
-  setFilter: (filter: TMCPActivityLogFilter) => void;
-  activityLogs: TAiMcpActivityLog[];
+  filter: TMCPActivityLogFilterFormData;
+  setFilter: (filter: TMCPActivityLogFilterFormData) => void;
 };
 
 type FilterItemProps = {
@@ -52,34 +45,20 @@ const FilterItem = ({ label, onClear, children }: FilterItemProps) => {
   );
 };
 
-const getActiveFilterCount = (filter: TMCPActivityLogFilter): number => {
+const getActiveFilterCount = (filter: TMCPActivityLogFilterFormData): number => {
   let count = 0;
-  if (filter.endpoint) count += 1;
-  if (filter.tool) count += 1;
-  if (filter.user) count += 1;
+  if (filter.endpointName) count += 1;
+  if (filter.serverName) count += 1;
+  if (filter.toolName) count += 1;
+  if (filter.actor) count += 1;
   return count;
 };
 
-export const MCPActivityLogsFilter = ({ filter, setFilter, activityLogs }: Props) => {
-  const { control, handleSubmit, setValue, formState } = useForm<TMCPActivityLogFilter>({
+export const MCPActivityLogsFilter = ({ filter, setFilter }: Props) => {
+  const { control, handleSubmit, setValue, formState } = useForm<TMCPActivityLogFilterFormData>({
+    resolver: zodResolver(mcpActivityLogFilterFormSchema),
     values: filter
   });
-
-  // Generate filter options dynamically from activity logs
-  const endpointOptions = useMemo(() => {
-    const uniqueEndpoints = Array.from(new Set(activityLogs.map((log) => log.endpointName)));
-    return uniqueEndpoints.map((endpoint) => ({ label: endpoint, value: endpoint }));
-  }, [activityLogs]);
-
-  const toolOptions = useMemo(() => {
-    const uniqueTools = Array.from(new Set(activityLogs.map((log) => log.toolName)));
-    return uniqueTools.map((tool) => ({ label: tool, value: tool }));
-  }, [activityLogs]);
-
-  const userOptions = useMemo(() => {
-    const uniqueUsers = Array.from(new Set(activityLogs.map((log) => log.actor)));
-    return uniqueUsers.map((user) => ({ label: user, value: user }));
-  }, [activityLogs]);
 
   const activeFilterCount = getActiveFilterCount(filter);
 
@@ -110,9 +89,10 @@ export const MCPActivityLogsFilter = ({ filter, setFilter, activityLogs }: Props
                 <Button
                   onClick={() => {
                     setFilter({
-                      endpoint: undefined,
-                      tool: undefined,
-                      user: undefined
+                      endpointName: undefined,
+                      serverName: undefined,
+                      toolName: undefined,
+                      actor: undefined
                     });
                   }}
                   variant="link"
@@ -128,28 +108,49 @@ export const MCPActivityLogsFilter = ({ filter, setFilter, activityLogs }: Props
               <FilterItem
                 label="Endpoint"
                 onClear={() => {
-                  setValue("endpoint", undefined, { shouldDirty: true });
+                  setValue("endpointName", undefined, { shouldDirty: true });
                 }}
               >
                 <Controller
                   control={control}
-                  name="endpoint"
+                  name="endpointName"
                   render={({ field: { onChange, value }, fieldState: { error } }) => (
                     <FormControl
                       errorText={error?.message}
                       isError={Boolean(error)}
                       className="w-full"
                     >
-                      <FilterableSelect
-                        value={endpointOptions.find((opt) => opt.value === value) ?? null}
-                        isClearable
-                        onChange={(option) =>
-                          onChange((option as SingleValue<(typeof endpointOptions)[number]>)?.value)
-                        }
-                        placeholder="All endpoints"
-                        options={endpointOptions}
-                        getOptionValue={(option) => option.value}
-                        getOptionLabel={(option) => option.label}
+                      <Input
+                        value={value || ""}
+                        onChange={(e) => onChange(e.target.value || undefined)}
+                        placeholder="Filter by endpoint name"
+                        className="bg-mineshaft-800"
+                      />
+                    </FormControl>
+                  )}
+                />
+              </FilterItem>
+
+              <FilterItem
+                label="Server"
+                onClear={() => {
+                  setValue("serverName", undefined, { shouldDirty: true });
+                }}
+              >
+                <Controller
+                  control={control}
+                  name="serverName"
+                  render={({ field: { onChange, value }, fieldState: { error } }) => (
+                    <FormControl
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                      className="w-full"
+                    >
+                      <Input
+                        value={value || ""}
+                        onChange={(e) => onChange(e.target.value || undefined)}
+                        placeholder="Filter by server name"
+                        className="bg-mineshaft-800"
                       />
                     </FormControl>
                   )}
@@ -159,28 +160,23 @@ export const MCPActivityLogsFilter = ({ filter, setFilter, activityLogs }: Props
               <FilterItem
                 label="Tool"
                 onClear={() => {
-                  setValue("tool", undefined, { shouldDirty: true });
+                  setValue("toolName", undefined, { shouldDirty: true });
                 }}
               >
                 <Controller
                   control={control}
-                  name="tool"
+                  name="toolName"
                   render={({ field: { onChange, value }, fieldState: { error } }) => (
                     <FormControl
                       errorText={error?.message}
                       isError={Boolean(error)}
                       className="w-full"
                     >
-                      <FilterableSelect
-                        value={toolOptions.find((opt) => opt.value === value) ?? null}
-                        isClearable
-                        onChange={(option) =>
-                          onChange((option as SingleValue<(typeof toolOptions)[number]>)?.value)
-                        }
-                        placeholder="All tools"
-                        options={toolOptions}
-                        getOptionValue={(option) => option.value}
-                        getOptionLabel={(option) => option.label}
+                      <Input
+                        value={value || ""}
+                        onChange={(e) => onChange(e.target.value || undefined)}
+                        placeholder="Filter by tool name"
+                        className="bg-mineshaft-800"
                       />
                     </FormControl>
                   )}
@@ -190,28 +186,23 @@ export const MCPActivityLogsFilter = ({ filter, setFilter, activityLogs }: Props
               <FilterItem
                 label="User"
                 onClear={() => {
-                  setValue("user", undefined, { shouldDirty: true });
+                  setValue("actor", undefined, { shouldDirty: true });
                 }}
               >
                 <Controller
                   control={control}
-                  name="user"
+                  name="actor"
                   render={({ field: { onChange, value }, fieldState: { error } }) => (
                     <FormControl
                       errorText={error?.message}
                       isError={Boolean(error)}
                       className="w-full"
                     >
-                      <FilterableSelect
-                        value={userOptions.find((opt) => opt.value === value) ?? null}
-                        isClearable
-                        onChange={(option) =>
-                          onChange((option as SingleValue<(typeof userOptions)[number]>)?.value)
-                        }
-                        placeholder="All users"
-                        options={userOptions}
-                        getOptionValue={(option) => option.value}
-                        getOptionLabel={(option) => option.label}
+                      <Input
+                        value={value || ""}
+                        onChange={(e) => onChange(e.target.value || undefined)}
+                        placeholder="Filter by user"
+                        className="bg-mineshaft-800"
                       />
                     </FormControl>
                   )}

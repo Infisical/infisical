@@ -5,7 +5,7 @@ import { TProjectPermission } from "@app/lib/types";
 
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
-import { TAiMcpActivityLogDALFactory } from "./ai-mcp-activity-log-dal";
+import { TAiMcpActivityLogDALFactory, TFindActivityLogsQuery } from "./ai-mcp-activity-log-dal";
 
 export type TAiMcpActivityLogServiceFactory = ReturnType<typeof aiMcpActivityLogServiceFactory>;
 
@@ -14,7 +14,20 @@ export type TAiMcpActivityLogServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
-export type TListActivityLogsDTO = TProjectPermission;
+export type TListActivityLogsFilter = {
+  endpointName?: string;
+  serverName?: string;
+  toolName?: string;
+  actor?: string;
+  startDate?: string;
+  endDate?: string;
+  limit?: number;
+  offset?: number;
+};
+
+export type TListActivityLogsDTO = TProjectPermission & {
+  filter?: TListActivityLogsFilter;
+};
 
 export const aiMcpActivityLogServiceFactory = ({
   aiMcpActivityLogDAL,
@@ -24,7 +37,14 @@ export const aiMcpActivityLogServiceFactory = ({
     return aiMcpActivityLogDAL.create(activityLog);
   };
 
-  const listActivityLogs = async ({ projectId, actor, actorId, actorAuthMethod, actorOrgId }: TListActivityLogsDTO) => {
+  const listActivityLogs = async ({
+    projectId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    filter
+  }: TListActivityLogsDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -36,7 +56,12 @@ export const aiMcpActivityLogServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.McpActivityLogs);
 
-    return aiMcpActivityLogDAL.find({ projectId });
+    const query: TFindActivityLogsQuery = {
+      projectId,
+      ...filter
+    };
+
+    return aiMcpActivityLogDAL.find(query);
   };
 
   return {

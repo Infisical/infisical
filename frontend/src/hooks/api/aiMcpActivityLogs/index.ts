@@ -1,2 +1,2 @@
 export { aiMcpActivityLogKeys, useListAiMcpActivityLogs } from "./queries";
-export * from "./types";
+export type { TAiMcpActivityLog, TListAiMcpActivityLogsFilter } from "./types";

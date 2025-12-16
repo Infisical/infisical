@@ -1,11 +1,10 @@
 import { Fragment, useState } from "react";
-import { faFile, faSearch } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faFile } from "@fortawesome/free-solid-svg-icons";
+import ms from "ms";
 
 import {
   Button,
   EmptyState,
-  Input,
   Table,
   TableContainer,
   TableSkeleton,
@@ -15,73 +14,71 @@ import {
   Tr
 } from "@app/components/v2";
 import { useProject } from "@app/context";
+import { Timezone } from "@app/helpers/datetime";
 import { useListAiMcpActivityLogs } from "@app/hooks/api";
 
-import { MCPActivityLogsFilter, TMCPActivityLogFilter } from "./MCPActivityLogsFilter";
+import { MCPActivityLogsDateFilter } from "./MCPActivityLogsDateFilter";
+import { MCPActivityLogsFilter } from "./MCPActivityLogsFilter";
 import { MCPActivityLogsTableRow } from "./MCPActivityLogsTableRow";
+import {
+  MCPActivityLogDateFilterType,
+  TMCPActivityLogDateFilterFormData,
+  TMCPActivityLogFilterFormData
+} from "./types";
+
+const MCP_ACTIVITY_LOG_LIMIT = 30;
 
 export const MCPActivityLogsTab = () => {
   const { currentProject } = useProject();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filter, setFilter] = useState<TMCPActivityLogFilter>({
-    endpoint: undefined,
-    tool: undefined,
-    user: undefined
+  const [timezone, setTimezone] = useState<Timezone>(Timezone.Local);
+  const [logFilter, setLogFilter] = useState<TMCPActivityLogFilterFormData>({
+    endpointName: undefined,
+    serverName: undefined,
+    toolName: undefined,
+    actor: undefined
+  });
+  const [dateFilter, setDateFilter] = useState<TMCPActivityLogDateFilterFormData>({
+    startDate: new Date(Number(new Date()) - ms("1h")),
+    endDate: new Date(),
+    type: MCPActivityLogDateFilterType.Relative,
+    relativeModeValue: "1h"
   });
 
-  const { data: activityLogs = [], isPending: isLoading } = useListAiMcpActivityLogs({
-    projectId: currentProject?.id || ""
-  });
+  const { data, isPending, isFetchingNextPage, hasNextPage, fetchNextPage } =
+    useListAiMcpActivityLogs({
+      projectId: currentProject?.id || "",
+      limit: MCP_ACTIVITY_LOG_LIMIT,
+      startDate: dateFilter.startDate,
+      endDate: dateFilter.endDate,
+      endpointName: logFilter.endpointName,
+      serverName: logFilter.serverName,
+      toolName: logFilter.toolName,
+      actor: logFilter.actor
+    });
 
-  // Filter logs based on search and filter state
-  const filteredLogs = activityLogs.filter((log) => {
-    const matchesSearch =
-      searchQuery === "" ||
-      log.toolName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.endpointName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.actor.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesEndpoint = !filter.endpoint || log.endpointName === filter.endpoint;
-    const matchesTool = !filter.tool || log.toolName === filter.tool;
-    const matchesUser = !filter.user || log.actor === filter.user;
-
-    return matchesSearch && matchesEndpoint && matchesTool && matchesUser;
-  });
-
-  const isEmpty = !isLoading && filteredLogs.length === 0;
-  const hasMore = false; // Pagination not implemented yet
+  // Flatten pages into a single array
+  const activityLogs = data?.pages?.flat() ?? [];
+  const isEmpty = !isPending && activityLogs.length === 0;
 
   return (
-    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-2">
         <div>
           <div className="flex items-center gap-x-2 whitespace-nowrap">
-            <p className="text-xl font-semibold text-mineshaft-100">Activity Logs</p>
+            <p className="text-xl font-medium text-mineshaft-100">Activity Logs</p>
           </div>
-          <p className="text-sm text-bunker-300">
-            Monitor tool invocations and endpoint usage across your MCP infrastructure
-          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-          <MCPActivityLogsFilter
-            filter={filter}
-            setFilter={setFilter}
-            activityLogs={activityLogs}
+          <MCPActivityLogsDateFilter
+            filter={dateFilter}
+            setFilter={setDateFilter}
+            timezone={timezone}
+            setTimezone={setTimezone}
           />
+          <MCPActivityLogsFilter filter={logFilter} setFilter={setLogFilter} />
         </div>
       </div>
-
-      <div className="mb-4">
-        <Input
-          placeholder="Search logs..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faSearch} className="text-mineshaft-400" />}
-          className="w-full bg-mineshaft-800"
-        />
-      </div>
-
-      <div>
+      <div className="space-y-2">
         <TableContainer>
           <Table>
             <THead>
@@ -94,9 +91,9 @@ export const MCPActivityLogsTab = () => {
               </Tr>
             </THead>
             <TBody>
-              {isLoading && <TableSkeleton columns={5} innerKey="mcp-activity-logs" />}
-              {!isLoading &&
-                filteredLogs.map((log) => (
+              {isPending && <TableSkeleton columns={5} innerKey="mcp-activity-logs" />}
+              {!isPending &&
+                activityLogs.map((log) => (
                   <Fragment key={`mcp-activity-log-${log.id}`}>
                     <MCPActivityLogsTableRow activityLog={log} />
                   </Fragment>
@@ -111,18 +108,16 @@ export const MCPActivityLogsTab = () => {
             </TBody>
           </Table>
         </TableContainer>
-        {!isEmpty && hasMore && (
+        {!isEmpty && (
           <Button
             className="mt-4 px-4 py-3 text-sm"
             isFullWidth
             variant="outline_bg"
-            isLoading={false}
-            isDisabled={!hasMore}
-            onClick={() => {
-              // Pagination will be implemented later
-            }}
+            isLoading={isFetchingNextPage}
+            isDisabled={isFetchingNextPage || !hasNextPage}
+            onClick={() => fetchNextPage()}
           >
-            Load More
+            {hasNextPage ? "Load More" : "End of logs"}
           </Button>
         )}
       </div>
