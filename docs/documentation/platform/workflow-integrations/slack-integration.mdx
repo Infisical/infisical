@@ -62,10 +62,6 @@ This guide will provide step by step instructions on how to configure Slack inte
     ### Configure admin settings
     Note that this step only has to be done once for the entire instance.
 
-    <Info>
-      If you're using GovSlack, you'll need to enable GovSlack mode by setting `WORKFLOW_SLACK_GOV_ENABLED=true` and `WORKFLOW_SLACK_GOV_BASE_URL` environment variables. See the [GovSlack Support](#govslack-support) section for more details.
-    </Info>
-
     <Steps>
       <Step title="Navigate to the Integrations tab in the Admin settings">
         Before anything else, you need to setup the Slack app to be used by
@@ -97,6 +93,42 @@ This guide will provide step by step instructions on how to configure Slack inte
 
     </Steps>
 
+    ### Configure GovSlack admin settings (Optional)
+
+    If you're using GovSlack, you'll need to configure GovSlack credentials separately in the Admin settings.
+
+    <Steps>
+      <Step title="Navigate to the Integrations tab in the Admin settings">
+        In the Admin settings Integrations page, you'll see a separate **GovSlack** section below the Slack configuration.
+
+        Click the **Create GovSlack App** button. This will open up a new window with the
+        custom app creation flow on GovSlack at `https://api.slack-gov.com`.
+
+        ![admin-settings-govslack-overview](/images/platform/workflow-integrations/slack-integration/admin-govslack-integration-overview.png)
+      </Step>
+      <Step title="Create GovSlack app">
+        Select the GovSlack workspace you want to integrate with Infisical.
+
+        ![admin-govslack-app-workspace-select](/images/platform/workflow-integrations/slack-integration/admin-govslack-integration-app-workspace-select.png)
+
+
+        The configuration values of your custom GovSlack app will be pre-filled for you, similar to the standard Slack app creation process.
+
+        ![admin-govslack-app-summary](/images/platform/workflow-integrations/slack-integration/admin-govslack-integration-app-summary.png)
+
+        Once everything's confirmed, press Create.
+      </Step>
+      <Step title="Input GovSlack app credentials">
+        Copy the Client ID and Client Secret values from your newly created custom GovSlack app and add them to Infisical in the GovSlack section.
+
+        ![admin-govslack-app-credentials](/images/platform/workflow-integrations/slack-integration/admin-govslack-integration-app-credentials.png)
+
+        ![admin-govslack-app-credentials-form](/images/platform/workflow-integrations/slack-integration/admin-govslack-integration-app-credential-form.png)
+
+        Complete the admin setup by pressing **Save**.
+      </Step>
+    </Steps>
+
     ### Create Slack workflow integration
 
     <Steps>
@@ -110,6 +142,11 @@ This guide will provide step by step instructions on how to configure Slack inte
         ![org-slack-initial-add](/images/platform/workflow-integrations/slack-integration/org-slack-integration-initial-add.png)
 
         Give your Slack integration a descriptive alias. You will use this to select the Slack integration for your project.
+
+        <Info>
+          If GovSlack is configured in the Admin settings, you'll see an **Integration Type** dropdown where you can select either **Slack** or **GovSlack**. Select the appropriate type based on your workspace.
+        </Info>
+
         ![org-slack-add-form](/images/platform/workflow-integrations/slack-integration/org-slack-integration-add-form.png)
 
         Press **Connect Slack**. This opens up the Slack app installation flow. Select the Slack workspace you want to install the custom Slack app to and press **Install Infisical**.
@@ -158,37 +195,18 @@ Infisical supports integration with GovSlack workspaces. When enabled, Infisical
   instance administrator to enable this feature.
 </Info>
 
-### Enabling Slack Gov Mode
-
-To enable Slack Gov support, set the following environment variables:
-
-```bash
-WORKFLOW_SLACK_GOV_ENABLED=true
-WORKFLOW_SLACK_GOV_BASE_URL=https://slack-gov.com
-```
-
-<Note>
-  The `WORKFLOW_SLACK_GOV_BASE_URL` defaults to `https://slack-gov.com` if not
-  specified. If your organization uses a custom Slack Gov URL, update this value
-  accordingly.
-</Note>
-
-### Setting Up GovSlack Integration
-
-When GovSlack mode is enabled, the integration process is the same as the standard Slack integration. You can follow the steps in the [Self-hosted setup](#self-hosted-setup) section to set up the Slack integration.
-
 ## Using the Slack integration in your private channels
 
 <Steps>
-  <Step title="In the Apps section on Slack, find the Infisical app and view the app details">
+  <Step title='In the Apps section on Slack, find the Infisical app and view the app details'>
     ![private slack setup
     menu](/images/platform/workflow-integrations/slack-integration/private-slack-setup-menu.png)
   </Step>
-  <Step title="Select Add this app to a channel">
+  <Step title='Select Add this app to a channel'>
     ![private slack setup
     add](/images/platform/workflow-integrations/slack-integration/private-slack-setup-add.png)
   </Step>
-  <Step title="Find the private channel you want to setup notifications for and press Add">
+  <Step title='Find the private channel you want to setup notifications for and press Add'>
     ![private slack setup
     form](/images/platform/workflow-integrations/slack-integration/private-slack-setup-form.png)
     You can now view the private channels in the Slack channel selection fields!
@@ -238,6 +256,7 @@ The Slack integration supports the following events that can be configured for y
     - Direct link to review the updated request
 
     ![access request updated notification](/images/platform/workflow-integrations/slack-integration/access-request-updated-notification.png)
+
   </Tab>
 
   <Tab title="Secret Approval">
@@ -256,6 +275,7 @@ The Slack integration supports the following events that can be configured for y
     - Direct link to review and approve the secret changes
 
     ![secret approval notification](/images/platform/workflow-integrations/slack-integration/secret-approval-notification.png)
+
   </Tab>
 
   <Tab title="Secret Sync Error">
@@ -278,5 +298,6 @@ The Slack integration supports the following events that can be configured for y
     - Direct link to view and troubleshoot the sync configuration
 
     ![secret sync error notification](/images/platform/workflow-integrations/slack-integration/secret-sync-error-notification.png)
+
   </Tab>
 </Tabs>
