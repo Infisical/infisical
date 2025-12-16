@@ -1,3 +1,4 @@
+import { subject } from "@casl/ability";
 import { faCertificate, faEllipsis } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as x509 from "@peculiar/x509";
@@ -22,14 +23,15 @@ import {
   Tr
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionCertificateAuthorityActions, ProjectPermissionSub } from "@app/context";
 import { useGetCaCerts } from "@app/hooks/api";
 
 type Props = {
   caId: string;
+  caName: string;
 };
 
-export const CaCertificatesTable = ({ caId }: Props) => {
+export const CaCertificatesTable = ({ caId, caName }: Props) => {
   const { data: caCerts, isPending } = useGetCaCerts(caId);
 
   const downloadTxtFile = (filename: string, content: string) => {
@@ -77,8 +79,10 @@ export const CaCertificatesTable = ({ caId }: Props) => {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="p-1">
                         <ProjectPermissionCan
-                          I={ProjectPermissionActions.Edit}
-                          a={ProjectPermissionSub.Identity}
+                          I={ProjectPermissionCertificateAuthorityActions.Read}
+                          a={subject(ProjectPermissionSub.CertificateAuthorities, {
+                            name: caName
+                          })}
                         >
                           {(isAllowed) => (
                             <DropdownMenuItem
@@ -96,8 +100,10 @@ export const CaCertificatesTable = ({ caId }: Props) => {
                           )}
                         </ProjectPermissionCan>
                         <ProjectPermissionCan
-                          I={ProjectPermissionActions.Delete}
-                          a={ProjectPermissionSub.Identity}
+                          I={ProjectPermissionCertificateAuthorityActions.Read}
+                          a={subject(ProjectPermissionSub.CertificateAuthorities, {
+                            name: caName
+                          })}
                         >
                           {(isAllowed) => (
                             <DropdownMenuItem

@@ -4,6 +4,7 @@ import { ActionProjectType, TCertificateSyncs } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionPkiSyncActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -145,9 +146,10 @@ export const pkiSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPkiSyncActions.Create,
-      subscriber
-        ? subject(ProjectPermissionSub.PkiSyncs, { subscriberName: subscriber.name })
-        : ProjectPermissionSub.PkiSyncs
+      subject(ProjectPermissionSub.PkiSyncs, {
+        subscriberName: subscriber?.name,
+        name
+      })
     );
 
     // Get the destination app type based on PKI sync destination
@@ -235,9 +237,10 @@ export const pkiSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPkiSyncActions.Edit,
-      currentSubscriber
-        ? subject(ProjectPermissionSub.PkiSyncs, { subscriberName: currentSubscriber.name })
-        : ProjectPermissionSub.PkiSyncs
+      subject(ProjectPermissionSub.PkiSyncs, {
+        subscriberName: currentSubscriber?.name,
+        name: pkiSync.name
+      })
     );
 
     if (name && name !== pkiSync.name) {
@@ -331,9 +334,10 @@ export const pkiSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPkiSyncActions.Delete,
-      pkiSyncSubscriber
-        ? subject(ProjectPermissionSub.PkiSyncs, { subscriberName: pkiSyncSubscriber.name })
-        : ProjectPermissionSub.PkiSyncs
+      subject(ProjectPermissionSub.PkiSyncs, {
+        subscriberName: pkiSyncSubscriber?.name,
+        name: pkiSync.name
+      })
     );
 
     return pkiSyncDAL.deleteById(id);
@@ -354,7 +358,13 @@ export const pkiSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionPkiSyncActions.Read, ProjectPermissionSub.PkiSyncs);
 
-    const pkiSyncsWithSubscribers = await pkiSyncDAL.findByProjectIdWithSubscribers(projectId);
+    const processedRules = getProcessedPermissionRules(
+      permission,
+      ProjectPermissionPkiSyncActions.Read,
+      ProjectPermissionSub.PkiSyncs
+    );
+
+    const pkiSyncsWithSubscribers = await pkiSyncDAL.findByProjectIdWithSubscribers(projectId, processedRules);
 
     if (certificateId) {
       const syncsWithCertificateInfo = await Promise.all(
@@ -406,9 +416,10 @@ export const pkiSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPkiSyncActions.Read,
-      findSubscriber
-        ? subject(ProjectPermissionSub.PkiSyncs, { subscriberName: findSubscriber.name })
-        : ProjectPermissionSub.PkiSyncs
+      subject(ProjectPermissionSub.PkiSyncs, {
+        subscriberName: findSubscriber?.name,
+        name: pkiSync.name
+      })
     );
 
     const result = {
@@ -442,9 +453,10 @@ export const pkiSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPkiSyncActions.SyncCertificates,
-      syncSubscriber
-        ? subject(ProjectPermissionSub.PkiSyncs, { subscriberName: syncSubscriber.name })
-        : ProjectPermissionSub.PkiSyncs
+      subject(ProjectPermissionSub.PkiSyncs, {
+        subscriberName: syncSubscriber?.name,
+        name: pkiSync.name
+      })
     );
 
     await pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: id });
@@ -483,9 +495,10 @@ export const pkiSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPkiSyncActions.ImportCertificates,
-      importSubscriber
-        ? subject(ProjectPermissionSub.PkiSyncs, { subscriberName: importSubscriber.name })
-        : ProjectPermissionSub.PkiSyncs
+      subject(ProjectPermissionSub.PkiSyncs, {
+        subscriberName: importSubscriber?.name,
+        name: pkiSync.name
+      })
     );
 
     await pkiSyncQueue.queuePkiSyncImportCertificatesById({ syncId: id });
@@ -516,9 +529,10 @@ export const pkiSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPkiSyncActions.RemoveCertificates,
-      removeSubscriber
-        ? subject(ProjectPermissionSub.PkiSyncs, { subscriberName: removeSubscriber.name })
-        : ProjectPermissionSub.PkiSyncs
+      subject(ProjectPermissionSub.PkiSyncs, {
+        subscriberName: removeSubscriber?.name,
+        name: pkiSync.name
+      })
     );
 
     await pkiSyncQueue.queuePkiSyncRemoveCertificatesById({ syncId: id });
@@ -549,7 +563,18 @@ export const pkiSyncServiceFactory = ({
       projectId: pkiSync.projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionPkiSyncActions.Edit, ProjectPermissionSub.PkiSyncs);
+    let pkiSyncSubscriber;
+    if (pkiSync.subscriberId) {
+      pkiSyncSubscriber = await pkiSubscriberDAL.findById(pkiSync.subscriberId);
+    }
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionPkiSyncActions.Edit,
+      subject(ProjectPermissionSub.PkiSyncs, {
+        subscriberName: pkiSyncSubscriber?.name,
+        name: pkiSync.name
+      })
+    );
 
     await validateCertificatesProjectOwnership(certificateIds, pkiSync.projectId);
 
@@ -588,7 +613,12 @@ export const pkiSyncServiceFactory = ({
       projectId: pkiSync.projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionPkiSyncActions.Edit, ProjectPermissionSub.PkiSyncs);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionPkiSyncActions.Edit,
+      subject(ProjectPermissionSub.PkiSyncs, {
+        name: pkiSync.name
+      })
+    );
 
     const removedCount = await certificateSyncDAL.removeCertificates(pkiSyncId, certificateIds);
 
@@ -626,7 +656,12 @@ export const pkiSyncServiceFactory = ({
       projectId: pkiSync.projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionPkiSyncActions.Read, ProjectPermissionSub.PkiSyncs);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionPkiSyncActions.Read,
+      subject(ProjectPermissionSub.PkiSyncs, {
+        name: pkiSync.name
+      })
+    );
 
     const result = await certificateSyncDAL.findWithDetails({
       pkiSyncId,

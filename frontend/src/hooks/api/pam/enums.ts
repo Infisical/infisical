@@ -16,7 +16,8 @@ export enum PamResourceType {
   CockroachDB = "cockroachdb",
   Elasticsearch = "elasticsearch",
   Snowflake = "snowflake",
-  DynamoDB = "dynamodb"
+  DynamoDB = "dynamodb",
+  AwsIam = "aws-iam"
 }
 
 export enum PamResourceOrderBy {

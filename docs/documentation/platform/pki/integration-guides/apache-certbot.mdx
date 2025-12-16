@@ -29,7 +29,7 @@ Before you begin, make sure you have:
 
         From the ACME configuration, gather the following values:
 
-        - ACME Directory URL: The URL that Certbot will use to communicate with Infisical's ACME server. This takes the form `https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory`.
+        - ACME Directory URL: The URL that Certbot will use to communicate with Infisical's ACME server. This takes the form `https://your-infisical-instance.com/api/v1/cert-manager/certificate-profiles/{profile-id}/acme/directory`.
         - EAB Key Identifier (KID): A unique identifier that tells Infisical which ACME account is making the request.
         - EAB Secret: A secret key that authenticates your ACME client with Infisical.
 
@@ -56,7 +56,7 @@ Before you begin, make sure you have:
         ```bash
         sudo certbot certonly \
           --apache \
-          --server "https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory" \
+          --server "https://your-infisical-instance.com/api/v1/cert-manager/certificate-profiles/{profile-id}/acme/directory" \
           --eab-kid "your-eab-key-identifier" \
           --eab-hmac-key "your-eab-secret" \
           -d example.infisical.com \

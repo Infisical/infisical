@@ -272,7 +272,7 @@ const secretManagerIntegrationsRedirect = route("/integrations", [
   )
 ]);
 
-const certManagerRoutes = route("/organizations/$orgId/projects/cert-management/$projectId", [
+const certManagerRoutes = route("/organizations/$orgId/projects/cert-manager/$projectId", [
   layout("cert-manager-layout", "cert-manager/layout.tsx", [
     route("/policies", "cert-manager/PoliciesPage/route.tsx"),
     route("/subscribers", [
@@ -282,7 +282,7 @@ const certManagerRoutes = route("/organizations/$orgId/projects/cert-management/
     route("/certificate-templates", [index("cert-manager/PkiTemplateListPage/route.tsx")]),
     route("/certificate-authorities", "cert-manager/CertificateAuthoritiesPage/route.tsx"),
     route("/alerting", "cert-manager/AlertingPage/route.tsx"),
-    route("/ca/$caName", "cert-manager/CertAuthDetailsByIDPage/route.tsx"),
+    route("/ca/$caId", "cert-manager/CertAuthDetailsByIDPage/route.tsx"),
     route("/pki-collections/$collectionId", "cert-manager/PkiCollectionDetailsByIDPage/routes.tsx"),
     route("/integrations", [
       index("cert-manager/IntegrationsListPage/route.tsx"),
@@ -358,6 +358,8 @@ const pamRoutes = route("/organizations/$orgId/projects/pam/$projectId", [
     route("/resources", "pam/PamResourcesPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-pam.tsx"),
     route("/settings", "pam/SettingsPage/route.tsx"),
+    route("/approvals", "pam/ApprovalsPage/route.tsx"),
+    route("/approval-requests/$approvalRequestId", "pam/ApprovalRequestDetailPage/route.tsx"),
 
     // Access Management
     route("/access-management", "project/AccessControlPage/route-pam.tsx"),

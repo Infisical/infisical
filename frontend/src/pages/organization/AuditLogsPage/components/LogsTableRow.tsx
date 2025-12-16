@@ -1,7 +1,8 @@
 import { faCaretDown, faCaretRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { InfoIcon } from "lucide-react";
 
-import { Td, Tr } from "@app/components/v2";
+import { Td, Tooltip, Tr } from "@app/components/v2";
 import { formatDateTime, Timezone } from "@app/helpers/datetime";
 import { useToggle } from "@app/hooks";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
@@ -24,6 +25,15 @@ const Tag = ({ label, value }: TagProps) => {
     <div className="flex items-center space-x-1.5">
       <div className="rounded-sm bg-mineshaft-600 p-0.5 pl-1 font-mono">{label}:</div>
       <div>{value}</div>
+      {value === "unknownUser" && (
+        <Tooltip
+          side="right"
+          className="max-w-sm"
+          content="This action doesn't require authentication, so the requesting actor cannot be identified."
+        >
+          <InfoIcon size={14} className="text-mineshaft-300" />
+        </Tooltip>
+      )}
     </div>
   );
 };
@@ -57,6 +67,12 @@ export const LogsTableRow = ({ auditLog, rowNumber, timezone }: Props) => {
             )}
             {auditLog.actor.type === ActorType.IDENTITY && (
               <Tag label="identity_name" value={auditLog.actor.metadata.name} />
+            )}
+            {auditLog.actor.type === ActorType.ACME_PROFILE && (
+              <Tag label="acme_profile_id" value={auditLog.actor.metadata.profileId} />
+            )}
+            {auditLog.actor.type === ActorType.ACME_ACCOUNT && (
+              <Tag label="acme_account_id" value={auditLog.actor.metadata.accountId} />
             )}
           </div>
         </Td>

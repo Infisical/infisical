@@ -171,7 +171,7 @@ export const PkiSubscriberCertificatesTable = ({ subscriberName, handlePopUpOpen
                                     onClick={() =>
                                       handlePopUpOpen &&
                                       handlePopUpOpen("revokeCertificate", {
-                                        serialNumber: certificate.serialNumber
+                                        certificateId: certificate.id
                                       })
                                     }
                                     disabled={!isAllowed}

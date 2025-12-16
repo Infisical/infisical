@@ -1,6 +1,5 @@
 import { TProjectPermission } from "@app/lib/types";
 
-import { ACMESANType, CertificateOrderStatus } from "../certificate/certificate-types";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
@@ -45,7 +44,7 @@ export type TOrderCertificateFromProfileDTO = {
   profileId: string;
   certificateOrder: {
     altNames: Array<{
-      type: ACMESANType;
+      type: CertSubjectAlternativeNameType;
       value: string;
     }>;
     validity: {
@@ -58,6 +57,8 @@ export type TOrderCertificateFromProfileDTO = {
     notAfter?: Date;
     signatureAlgorithm?: string;
     keyAlgorithm?: string;
+    template?: string;
+    csr?: string;
   };
   removeRootsFromChain?: boolean;
 } & Omit<TProjectPermission, "projectId">;
@@ -69,34 +70,14 @@ export type TCertificateFromProfileResponse = {
   privateKey?: string;
   serialNumber: string;
   certificateId: string;
+  certificateRequestId: string;
   projectId: string;
   profileName: string;
   commonName: string;
 };
 
 export type TCertificateOrderResponse = {
-  orderId: string;
-  status: CertificateOrderStatus;
-  subjectAlternativeNames: Array<{
-    type: ACMESANType;
-    value: string;
-    status: CertificateOrderStatus;
-  }>;
-  authorizations: Array<{
-    identifier: {
-      type: ACMESANType;
-      value: string;
-    };
-    status: CertificateOrderStatus;
-    expires?: string;
-    challenges: Array<{
-      type: string;
-      status: CertificateOrderStatus;
-      url: string;
-      token: string;
-    }>;
-  }>;
-  finalize: string;
+  certificateRequestId: string;
   certificate?: string;
   projectId: string;
   profileName: string;
@@ -105,6 +86,7 @@ export type TCertificateOrderResponse = {
 export type TRenewCertificateDTO = {
   certificateId: string;
   removeRootsFromChain?: boolean;
+  certificateRequestId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateRenewalConfigDTO = {

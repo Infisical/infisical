@@ -1,5 +1,5 @@
 /* eslint-disable no-await-in-loop */
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType } from "@app/db/schemas";
@@ -52,7 +52,10 @@ import {
 } from "./certificate-types";
 
 type TCertificateServiceFactoryDep = {
-  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "deleteById" | "update" | "find" | "transaction" | "create">;
+  certificateDAL: Pick<
+    TCertificateDALFactory,
+    "findOne" | "deleteById" | "update" | "find" | "transaction" | "create" | "findById"
+  >;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
@@ -91,8 +94,8 @@ export const certificateServiceFactory = ({
   /**
    * Return details for certificate with serial number [serialNumber]
    */
-  const getCert = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertDTO) => {
-    const cert = await certificateDAL.findOne({ serialNumber });
+  const getCert = async ({ id, serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertDTO) => {
+    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -105,7 +108,11 @@ export const certificateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Read,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: cert.commonName,
+        altNames: cert.altNames ?? undefined,
+        serialNumber: cert.serialNumber
+      })
     );
 
     return {
@@ -117,13 +124,14 @@ export const certificateServiceFactory = ({
    * Get certificate private key.
    */
   const getCertPrivateKey = async ({
+    id,
     serialNumber,
     actorId,
     actorAuthMethod,
     actor,
     actorOrgId
   }: TGetCertPrivateKeyDTO) => {
-    const cert = await certificateDAL.findOne({ serialNumber });
+    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -136,7 +144,11 @@ export const certificateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.ReadPrivateKey,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: cert.commonName,
+        altNames: cert.altNames ?? undefined,
+        serialNumber: cert.serialNumber
+      })
     );
 
     const { certPrivateKey } = await getCertificateCredentials({
@@ -156,8 +168,8 @@ export const certificateServiceFactory = ({
   /**
    * Delete certificate with serial number [serialNumber]
    */
-  const deleteCert = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TDeleteCertDTO) => {
-    const cert = await certificateDAL.findOne({ serialNumber });
+  const deleteCert = async ({ id, serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TDeleteCertDTO) => {
+    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -170,7 +182,11 @@ export const certificateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Delete,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: cert.commonName,
+        altNames: cert.altNames ?? undefined,
+        serialNumber: cert.serialNumber
+      })
     );
 
     const deletedCert = await certificateDAL.deleteById(cert.id);
@@ -193,6 +209,7 @@ export const certificateServiceFactory = ({
    * of its issuing CA
    */
   const revokeCert = async ({
+    id,
     serialNumber,
     revocationReason,
     actorId,
@@ -200,7 +217,7 @@ export const certificateServiceFactory = ({
     actor,
     actorOrgId
   }: TRevokeCertDTO) => {
-    const cert = await certificateDAL.findOne({ serialNumber });
+    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
 
     if (!cert.caId) {
       throw new BadRequestError({
@@ -229,7 +246,13 @@ export const certificateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Delete,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: cert.commonName,
+        altNames: cert.altNames ?? undefined,
+        serialNumber: cert.serialNumber,
+        friendlyName: cert.friendlyName,
+        status: cert.status
+      })
     );
 
     if (cert.status === CertStatus.REVOKED) throw new Error("Certificate already revoked");
@@ -290,8 +313,8 @@ export const certificateServiceFactory = ({
    * Return certificate body and certificate chain for certificate with
    * serial number [serialNumber]
    */
-  const getCertBody = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertBodyDTO) => {
-    const cert = await certificateDAL.findOne({ serialNumber });
+  const getCertBody = async ({ id, serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertBodyDTO) => {
+    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -304,7 +327,11 @@ export const certificateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Read,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: cert.commonName,
+        altNames: cert.altNames ?? undefined,
+        serialNumber: cert.serialNumber
+      })
     );
 
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
@@ -392,7 +419,7 @@ export const certificateServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Create,
+      ProjectPermissionCertificateActions.Import,
       ProjectPermissionSub.Certificates
     );
 
@@ -584,8 +611,15 @@ export const certificateServiceFactory = ({
    * Return certificate body and certificate chain for certificate with
    * serial number [serialNumber]
    */
-  const getCertBundle = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertBundleDTO) => {
-    const cert = await certificateDAL.findOne({ serialNumber });
+  const getCertBundle = async ({
+    id,
+    serialNumber,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }: TGetCertBundleDTO) => {
+    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -598,11 +632,23 @@ export const certificateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Read,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: cert.commonName,
+        altNames: cert.altNames ?? undefined,
+        serialNumber: cert.serialNumber,
+        friendlyName: cert.friendlyName,
+        status: cert.status
+      })
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.ReadPrivateKey,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: cert.commonName,
+        altNames: cert.altNames ?? undefined,
+        serialNumber: cert.serialNumber,
+        friendlyName: cert.friendlyName,
+        status: cert.status
+      })
     );
 
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
@@ -673,12 +719,13 @@ export const certificateServiceFactory = ({
       certificate,
       certificateChain,
       privateKey,
-      serialNumber,
+      serialNumber: cert.serialNumber,
       cert
     };
   };
 
   const getCertPkcs12 = async ({
+    id,
     serialNumber,
     password,
     alias,
@@ -700,7 +747,7 @@ export const certificateServiceFactory = ({
     if (!alias || alias.trim() === "") {
       throw new BadRequestError({ message: "Alias is required for PKCS12 keystore generation" });
     }
-    const cert = await certificateDAL.findOne({ serialNumber });
+    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -713,12 +760,18 @@ export const certificateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.ReadPrivateKey,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: cert.commonName,
+        altNames: cert.altNames ?? undefined,
+        serialNumber: cert.serialNumber,
+        friendlyName: cert.friendlyName,
+        status: cert.status
+      })
     );
 
     // Get certificate bundle (certificate, chain, private key)
     const { certificate, certificateChain, privateKey } = await getCertBundle({
-      serialNumber,
+      id: cert.id,
       actor,
       actorId,
       actorAuthMethod,

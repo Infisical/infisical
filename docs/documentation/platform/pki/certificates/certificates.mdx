@@ -29,13 +29,13 @@ Refer to the documentation for each [enrollment method](/documentation/platform/
 ## Guide to Renewing Certificates
 
 To [renew a certificate](/documentation/platform/pki/concepts/certificate-lifecycle#renewal), you can either request a new certificate from a certificate profile or have the platform
-automatically request a new one for you. Whether you pursue a client-driven or server-driven approach is totally dependent on the enrollment method configured on your certificate
+automatically request a new one for you to be delivered downstream to a target destination. Whether you pursue a client-driven or server-driven approach is totally dependent on the enrollment method configured on your certificate
 profile as well as your infrastructure use-case.
 
 ### Client-Driven Certificate Renewal
 
 Client-driven certificate renewal is when renewal is initiated client-side by the end-entity consuming the certificate.
-This is the most common approach to certificate renewal and is suitable for most use-cases.
+More specifically, the client (e.g. [Infisical Agent](/integrations/platforms/certificate-agent), [ACME client](https://letsencrypt.org/docs/client-options/), etc.) monitors the certificate and makes a request for Infisical to issue a new certificate back to it when the existing certificate is nearing expiration. This is the most common approach to certificate renewal and is suitable for most use-cases.
 
 ### Server-Driven Certificate Renewal
 
@@ -222,7 +222,7 @@ openssl verify -verbose -crl_check -crl_download -CAfile chain.pem cert.pem
         ### Sample request
 
         ```bash Request
-        curl --location --request POST 'https://app.infisical.com/api/v1/pki/certificates/<cert-serial-number>/revoke' \
+        curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/certificates/<cert-id>/revoke' \
           --header 'Authorization: Bearer <access-token>' \
           --header 'Content-Type: application/json' \
           --data-raw '{
@@ -247,7 +247,7 @@ openssl verify -verbose -crl_check -crl_download -CAfile chain.pem cert.pem
         ### Sample request
 
         ```bash Request
-        curl --location --request GET 'https://app.infisical.com/api/v1/pki/ca/<ca-id>/crls' \
+        curl --location --request GET 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>/crls' \
           --header 'Authorization: Bearer <access-token>'
         ```
 

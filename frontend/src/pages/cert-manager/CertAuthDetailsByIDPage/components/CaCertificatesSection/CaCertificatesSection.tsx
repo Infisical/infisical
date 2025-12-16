@@ -2,9 +2,10 @@ import { CaCertificatesTable } from "./CaCertificatesTable";
 
 type Props = {
   caId: string;
+  caName: string;
 };
 
-export const CaCertificatesSection = ({ caId }: Props) => {
+export const CaCertificatesSection = ({ caId, caName }: Props) => {
   return (
     <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
@@ -21,7 +22,7 @@ export const CaCertificatesSection = ({ caId }: Props) => {
         </IconButton> */}
       </div>
       <div className="py-4">
-        <CaCertificatesTable caId={caId} />
+        <CaCertificatesTable caId={caId} caName={caName} />
       </div>
     </div>
   );

@@ -122,7 +122,7 @@ consisting of an (optional) root CA and an intermediate CA.
     ### Sample request
 
     ```bash Request
-    curl --location --request POST 'https://app.infisical.com/api/v1/pki/ca' \
+    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal' \
       --header 'Authorization: Bearer <access-token>' \
       --header 'Content-Type: application/json' \
       --data-raw '{
@@ -155,7 +155,7 @@ consisting of an (optional) root CA and an intermediate CA.
     ### Sample request
     
     ```bash Request
-    curl --location --request POST 'https://app.infisical.com/api/v1/pki/ca' \
+    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal' \
       --header 'Authorization: Bearer <access-token>' \
       --header 'Content-Type: application/json' \
       --data-raw '{
@@ -183,7 +183,7 @@ consisting of an (optional) root CA and an intermediate CA.
     ### Sample request
     
     ```bash Request
-    curl --location --request GET 'https://app.infisical.com/api/v1/pki/ca/<intermediate-ca-id>/csr' \
+    curl --location --request GET 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<intermediate-ca-id>/csr' \
       --header 'Authorization: Bearer <access-token>' \
       --data-raw ''
     ```
@@ -204,7 +204,7 @@ consisting of an (optional) root CA and an intermediate CA.
     ### Sample request
 
     ```bash Request
-    curl --location --request POST 'https://app.infisical.com/api/v1/pki/ca/<root-ca-id>/sign-intermediate' \
+    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<root-ca-id>/sign-intermediate' \
       --header 'Content-Type: application/json' \
       --data-raw '{
           "csr": "<csr>",
@@ -234,7 +234,7 @@ consisting of an (optional) root CA and an intermediate CA.
     ### Sample request
 
     ```bash Request
-    curl --location --request POST 'https://app.infisical.com/api/v1/pki/ca/<intermediate-ca-id>/import-certificate' \
+    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<intermediate-ca-id>/import-certificate' \
       --header 'Authorization: Bearer <access-token>' \
       --header 'Content-Type: application/json' \
       --data-raw '{
@@ -292,7 +292,7 @@ the certificate back to the intermediate CA.
     ### Sample request
 
     ```bash Request
-    curl --location --request POST 'https://app.infisical.com/api/v1/pki/ca/<ca-id>/renew' \
+    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>/renew' \
       --header 'Authorization: Bearer <access-token>' \
       --header 'Content-Type: application/json' \
       --data-raw '{

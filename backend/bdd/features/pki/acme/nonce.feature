@@ -2,13 +2,13 @@ Feature: Nonce
 
   Scenario: Generate a new nonce
     Given I have an ACME cert profile as "acme_profile"
-    When I send a "HEAD" request to "/api/v1/pki/acme/profiles/{acme_profile.id}/new-nonce"
+    When I send a "HEAD" request to "/api/v1/cert-manager/acme/profiles/{acme_profile.id}/new-nonce"
     Then the response status code should be "200"
     And the response header "Replay-Nonce" should contains non-empty value
 
   Scenario Outline: Send a bad nonce to account endpoints
     Given I have an ACME cert profile as "acme_profile"
-    When I have an ACME client connecting to "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory"
+    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/directory"
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
     And I memorize acme_account.uri with jq "capture("/(?<id>[^/]+)$") | .id" as account_id
     When I create certificate signing request as csr
@@ -40,18 +40,18 @@ Feature: Nonce
     And the value response with jq ".detail" should be equal to "Invalid nonce"
 
     Examples: Endpoints
-      | src_var | jq                                        | dest_var      | url                                                                                |
-      | order   | .                                         | not_used      | {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/accounts/{account_id}/orders |
-      | order   | .                                         | not_used      | {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-order                    |
-      | order   | .                                         | not_used      | {order.uri}                                                                        |
-      | order   | .                                         | not_used      | {order.uri}/finalize                                                               |
-      | order   | .                                         | not_used      | {order.uri}/certificate                                                            |
-      | order   | .authorizations[0].uri                    | auth_uri      | {auth_uri}                                                                         |
-      | order   | .authorizations[0].body.challenges[0].url | challenge_uri | {challenge_uri}                                                                    |
+      | src_var | jq                                        | dest_var      | url                                                                                         |
+      | order   | .                                         | not_used      | {BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/accounts/{account_id}/orders |
+      | order   | .                                         | not_used      | {BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/new-order                    |
+      | order   | .                                         | not_used      | {order.uri}                                                                                 |
+      | order   | .                                         | not_used      | {order.uri}/finalize                                                                        |
+      | order   | .                                         | not_used      | {order.uri}/certificate                                                                     |
+      | order   | .authorizations[0].uri                    | auth_uri      | {auth_uri}                                                                                  |
+      | order   | .authorizations[0].body.challenges[0].url | challenge_uri | {challenge_uri}                                                                             |
 
   Scenario Outline: Send the same nonce twice
     Given I have an ACME cert profile as "acme_profile"
-    When I have an ACME client connecting to "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory"
+    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/directory"
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
     And I memorize acme_account.uri with jq "capture("/(?<id>[^/]+)$") | .id" as account_id
     When I create certificate signing request as csr
@@ -65,13 +65,13 @@ Feature: Nonce
     And I sign the certificate signing request csr with private key cert_key and output it as csr_pem in PEM format
     And I submit the certificate signing request PEM csr_pem certificate order to the ACME server as order
     And I peak and memorize the next nonce as nonce_value
-    When I send a raw ACME request to "/api/v1/pki/acme/profiles/{acme_profile.id}/accounts/{account_id}/orders"
+    When I send a raw ACME request to "/api/v1/cert-manager/acme/profiles/{acme_profile.id}/accounts/{account_id}/orders"
       """
       {
         "protected": {
           "alg": "RS256",
           "nonce": "{nonce_value}",
-          "url": "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/accounts/{account_id}/orders",
+          "url": "{BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/accounts/{account_id}/orders",
           "kid": "{acme_account.uri}"
         },
         "payload": {}
@@ -97,11 +97,11 @@ Feature: Nonce
     And the value response with jq ".detail" should be equal to "Invalid nonce"
 
     Examples: Endpoints
-      | src_var | jq                                        | dest_var      | url                                                                                |
-      | order   | .                                         | not_used      | {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/accounts/{account_id}/orders |
-      | order   | .                                         | not_used      | {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-order                    |
-      | order   | .                                         | not_used      | {order.uri}                                                                        |
-      | order   | .                                         | not_used      | {order.uri}/finalize                                                               |
-      | order   | .                                         | not_used      | {order.uri}/certificate                                                            |
-      | order   | .authorizations[0].uri                    | auth_uri      | {auth_uri}                                                                         |
-      | order   | .authorizations[0].body.challenges[0].url | challenge_uri | {challenge_uri}                                                                    |
+      | src_var | jq                                        | dest_var      | url                                                                                         |
+      | order   | .                                         | not_used      | {BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/accounts/{account_id}/orders |
+      | order   | .                                         | not_used      | {BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/new-order                    |
+      | order   | .                                         | not_used      | {order.uri}                                                                                 |
+      | order   | .                                         | not_used      | {order.uri}/finalize                                                                        |
+      | order   | .                                         | not_used      | {order.uri}/certificate                                                                     |
+      | order   | .authorizations[0].uri                    | auth_uri      | {auth_uri}                                                                                  |
+      | order   | .authorizations[0].body.challenges[0].url | challenge_uri | {challenge_uri}                                                                             |

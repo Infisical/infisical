@@ -19,6 +19,7 @@ import { TScimDALFactory } from "@app/ee/services/scim/scim-dal";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, ScimRequestError, UnauthorizedError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { AuthTokenType } from "@app/services/auth/auth-type";
@@ -47,7 +48,7 @@ import { buildScimGroup, buildScimGroupList, buildScimUser, buildScimUserList, p
 import { TScimGroup, TScimServiceFactory } from "./scim-types";
 
 type TScimServiceFactoryDep = {
-  scimDAL: Pick<TScimDALFactory, "create" | "find" | "findById" | "deleteById">;
+  scimDAL: Pick<TScimDALFactory, "create" | "find" | "findById" | "deleteById" | "findExpiringTokens" | "update">;
   userDAL: Pick<
     TUserDALFactory,
     "find" | "findOne" | "create" | "transaction" | "findUserEncKeyByUserIdsBatch" | "findById" | "updateById"
@@ -71,7 +72,7 @@ type TScimServiceFactoryDep = {
     TGroupDALFactory,
     | "create"
     | "findOne"
-    | "findAllGroupPossibleMembers"
+    | "findAllGroupPossibleUsers"
     | "delete"
     | "findGroups"
     | "transaction"
@@ -389,15 +390,13 @@ export const scimServiceFactory = ({
           );
         }
       } else {
-        if (trustScimEmails) {
-          user = await userDAL.findOne(
-            {
-              email: email.toLowerCase(),
-              isEmailVerified: true
-            },
-            tx
-          );
-        }
+        user = await userDAL.findOne(
+          {
+            email: email.toLowerCase(),
+            isEmailVerified: true
+          },
+          tx
+        );
 
         if (!user) {
           const uniqueUsername = await normalizeUsername(
@@ -425,7 +424,8 @@ export const scimServiceFactory = ({
             aliasType,
             externalId,
             emails: email ? [email.toLowerCase()] : [],
-            orgId
+            orgId,
+            isEmailVerified: trustScimEmails
           },
           tx
         );
@@ -952,7 +952,7 @@ export const scimServiceFactory = ({
     }
 
     const users = await groupDAL
-      .findAllGroupPossibleMembers({
+      .findAllGroupPossibleUsers({
         orgId: group.orgId,
         groupId: group.id
       })
@@ -1237,6 +1237,70 @@ export const scimServiceFactory = ({
     return { scimTokenId: scimToken.id, orgId: scimToken.orgId };
   };
 
+  const notifyExpiringTokens: TScimServiceFactory["notifyExpiringTokens"] = async () => {
+    const appCfg = getConfig();
+    let processedCount = 0;
+    let hasMoreRecords = true;
+    let offset = 0;
+    const batchSize = 500;
+
+    while (hasMoreRecords) {
+      // eslint-disable-next-line no-await-in-loop
+      const expiringTokens = await scimDAL.findExpiringTokens(undefined, batchSize, offset);
+
+      if (expiringTokens.length === 0) {
+        hasMoreRecords = false;
+        break;
+      }
+
+      const successfullyNotifiedTokenIds: string[] = [];
+
+      // eslint-disable-next-line no-await-in-loop
+      await Promise.all(
+        expiringTokens.map(async (token) => {
+          try {
+            if (token.adminEmails.length === 0) {
+              // Still mark as notified to avoid repeated checks
+              successfullyNotifiedTokenIds.push(token.id);
+              return;
+            }
+
+            const createdOn = new Date(token.createdAt);
+            const expiringOn = new Date(createdOn.getTime() + Number(token.ttlDays) * 86400 * 1000);
+
+            await smtpService.sendMail({
+              recipients: token.adminEmails,
+              subjectLine: "SCIM Token Expiry Notice",
+              template: SmtpTemplates.ScimTokenExpired,
+              substitutions: {
+                tokenDescription: token.description,
+                orgName: token.orgName,
+                url: `${appCfg.SITE_URL}/organizations/${token.orgId}/settings?selectedTab=provisioning-settings`,
+                createdOn,
+                expiringOn
+              }
+            });
+
+            successfullyNotifiedTokenIds.push(token.id);
+          } catch (error) {
+            logger.error(error, `Failed to send expiration notification for SCIM token ${token.id}:`);
+          }
+        })
+      );
+
+      // Batch update all successfully notified tokens in a single query
+      if (successfullyNotifiedTokenIds.length > 0) {
+        // eslint-disable-next-line no-await-in-loop
+        await scimDAL.update({ $in: { id: successfullyNotifiedTokenIds } }, { expiryNotificationSent: true });
+      }
+
+      processedCount += expiringTokens.length;
+      offset += batchSize;
+    }
+
+    return processedCount;
+  };
+
   return {
     createScimToken,
     listScimTokens,
@@ -1253,6 +1317,7 @@ export const scimServiceFactory = ({
     deleteScimGroup,
     replaceScimGroup,
     updateScimGroup,
-    fnValidateScimToken
+    fnValidateScimToken,
+    notifyExpiringTokens
   };
 };

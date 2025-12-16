@@ -1,0 +1,55 @@
+name: Validate PR Title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  validate-pr-title:
+    name: Validate PR Title Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR Title Format
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const title = context.payload.pull_request.title;
+            
+            // Valid PR types based on pull_request_template.md
+            const validTypes = ['fix', 'feature', 'improvement', 'breaking', 'docs', 'chore'];
+            
+            // Regex pattern: type(optional-scope): short description
+            // - Type must be one of the valid types
+            // - Scope is optional, must be in parentheses, lowercase alphanumeric with hyphens
+            // - Followed by colon, space, and description (must start with lowercase letter)
+            const pattern = new RegExp(`^(${validTypes.join('|')})(\\([a-z0-9-]+\\))?: [a-z].+$`);
+            
+            if (!pattern.test(title)) {
+              const errorMessage = `
+            ❌ **Invalid PR Title Format**
+            
+            Your PR title: \`${title}\`
+            
+            **Expected format:** \`type(scope): short description\` (description must start with lowercase)
+            
+            **Valid types:**
+            - \`fix\` - Bug fixes
+            - \`feature\` - New features
+            - \`improvement\` - Enhancements to existing features
+            - \`breaking\` - Breaking changes
+            - \`docs\` - Documentation updates
+            - \`chore\` - Maintenance tasks
+            
+            **Scope:** Optional, short identifier in parentheses (e.g., \`(api)\`, \`(auth)\`, \`(ui)\`)
+            
+            **Examples:**
+            - \`fix: prevent crash on sync\`
+            - \`fix(api): handle null response from auth endpoint\`
+            - \`docs(cli): update installation guide\`
+            `;
+              
+              core.setFailed(errorMessage);
+            } else {
+              console.log(`✅ PR title is valid: "${title}"`);
+            }
+

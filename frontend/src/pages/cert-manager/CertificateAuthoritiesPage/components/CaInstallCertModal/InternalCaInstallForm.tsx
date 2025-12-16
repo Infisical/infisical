@@ -9,8 +9,8 @@ import { Button, FormControl, Input, Select, SelectItem } from "@app/components/
 import { useProject } from "@app/context";
 import {
   CaStatus,
-  useGetCaById,
   useGetCaCsr,
+  useGetInternalCaById,
   useImportCaCertificate,
   useListWorkspaceCas,
   useSignIntermediate
@@ -51,7 +51,7 @@ export const InternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
     projectId: currentProject.id,
     status: CaStatus.ACTIVE
   });
-  const { data: ca } = useGetCaById(caId);
+  const { data: ca } = useGetInternalCaById(caId);
   const { data: csr } = useGetCaCsr(caId);
 
   const { mutateAsync: signIntermediate } = useSignIntermediate();
@@ -83,18 +83,21 @@ export const InternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
 
   const parentCaId = watch("parentCaId");
 
-  const { data: parentCa } = useGetCaById(parentCaId);
+  const { data: parentCa } = useGetInternalCaById(parentCaId);
 
   useEffect(() => {
-    if (parentCa?.maxPathLength) {
+    if (parentCa?.configuration.maxPathLength) {
       setValue(
         "maxPathLength",
-        (parentCa.maxPathLength === -1 ? 3 : parentCa.maxPathLength - 1).toString()
+        (parentCa.configuration.maxPathLength === -1
+          ? 3
+          : parentCa.configuration.maxPathLength - 1
+        ).toString()
       );
     }
 
-    if (parentCa?.notAfter) {
-      const parentCaNotAfter = new Date(parentCa.notAfter);
+    if (parentCa?.configuration.notAfter) {
+      const parentCaNotAfter = new Date(parentCa.configuration.notAfter);
       const middleDate = getMiddleDate(new Date(), parentCaNotAfter);
       setValue("notAfter", format(middleDate, "yyyy-MM-dd"));
     }
@@ -197,7 +200,7 @@ export const InternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
               onValueChange={onChange}
               className="w-full"
             >
-              {generatePathLengthOpts(parentCa?.maxPathLength || 0).map((value) => (
+              {generatePathLengthOpts(parentCa?.configuration.maxPathLength || 0).map((value) => (
                 <SelectItem value={String(value)} key={`ca-path-length-${value}`}>
                   {`${value}`}
                 </SelectItem>

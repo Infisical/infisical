@@ -8,15 +8,15 @@
       http-equiv="Content-Security-Policy"
       content="
     default-src 'self'; 
-    connect-src 'self' https://*.posthog.com http://127.0.0.1:* https://cdn.jsdelivr.net/npm/@lottiefiles/dotlottie-web@0.38.2/dist/dotlottie-player.wasm; 
-    script-src 'self' https://*.posthog.com https://js.stripe.com https://api.stripe.com https://widget.intercom.io https://js.intercomcdn.com https://hcaptcha.com https://*.hcaptcha.com 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net/npm/@lottiefiles/dotlottie-web@0.38.2/dist/dotlottie-player.wasm; 
-    style-src 'self' 'unsafe-inline' https://hcaptcha.com https://*.hcaptcha.com; 
+    connect-src 'self' https://d1zwf0dwl0k2ky.cloudfront.net https://*.posthog.com http://127.0.0.1:* https://cdn.jsdelivr.net/npm/@lottiefiles/dotlottie-web@0.38.2/dist/dotlottie-player.wasm; 
+    script-src 'self' https://d1zwf0dwl0k2ky.cloudfront.net https://*.posthog.com https://js.stripe.com https://api.stripe.com https://widget.intercom.io https://js.intercomcdn.com https://hcaptcha.com https://*.hcaptcha.com 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net/npm/@lottiefiles/dotlottie-web@0.38.2/dist/dotlottie-player.wasm; 
+    style-src 'self' https://d1zwf0dwl0k2ky.cloudfront.net 'unsafe-inline' https://hcaptcha.com https://*.hcaptcha.com; 
     child-src https://api.stripe.com; 
     frame-src https://js.stripe.com/ https://api.stripe.com https://www.youtube.com/ https://hcaptcha.com https://*.hcaptcha.com; 
-    connect-src 'self' wss://nexus-websocket-a.intercom.io https://api-iam.intercom.io https://api.heroku.com/ https://id.heroku.com/oauth/authorize https://id.heroku.com/oauth/token https://checkout.stripe.com https://app.posthog.com https://api.stripe.com https://api.pwnedpasswords.com http://127.0.0.1:* https://hcaptcha.com https://*.hcaptcha.com; 
-    img-src 'self' https://static.intercomassets.com https://js.intercomcdn.com https://downloads.intercomcdn.com https://*.stripe.com https://i.ytimg.com/ data:; 
-    media-src https://js.intercomcdn.com; 
-    font-src 'self' https://fonts.intercomcdn.com/  https://fonts.gstatic.com; 
+    connect-src 'self' https://d1zwf0dwl0k2ky.cloudfront.net wss://nexus-websocket-a.intercom.io https://api-iam.intercom.io https://api.heroku.com/ https://id.heroku.com/oauth/authorize https://id.heroku.com/oauth/token https://checkout.stripe.com https://app.posthog.com https://api.stripe.com https://api.pwnedpasswords.com http://127.0.0.1:* https://hcaptcha.com https://*.hcaptcha.com; 
+    img-src 'self' https://d1zwf0dwl0k2ky.cloudfront.net https://static.intercomassets.com https://js.intercomcdn.com https://downloads.intercomcdn.com https://*.stripe.com https://i.ytimg.com/ data:; 
+    media-src https://d1zwf0dwl0k2ky.cloudfront.net https://js.intercomcdn.com; 
+    font-src 'self' https://d1zwf0dwl0k2ky.cloudfront.net https://fonts.intercomcdn.com/  https://fonts.gstatic.com; 
   "
     />
     <title>Infisical</title>

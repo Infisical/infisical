@@ -16,11 +16,6 @@ const secretsToBeAdded = [
   },
   {
     secretKey: "DB_PASSWORD",
-    secretValue: "OVERRIDE_THIS",
-    secretComment: "Another secret override"
-  },
-  {
-    secretKey: "DB_PASSWORD",
     secretValue: "example_password"
   },
   {
@@ -66,7 +61,7 @@ export const getProjectBaseURL = (type: ProjectType) => {
     case ProjectType.SecretManager:
       return "/organizations/$orgId/projects/secret-management/$projectId";
     case ProjectType.CertificateManager:
-      return "/organizations/$orgId/projects/cert-management/$projectId";
+      return "/organizations/$orgId/projects/cert-manager/$projectId";
     default:
       return `/organizations/$orgId/projects/${type}/$projectId` as const;
   }
@@ -79,7 +74,7 @@ export const getProjectHomePage = (type: ProjectType, environments: ProjectEnv[]
     case ProjectType.SecretManager:
       return "/organizations/$orgId/projects/secret-management/$projectId/overview" as const;
     case ProjectType.CertificateManager:
-      return "/organizations/$orgId/projects/cert-management/$projectId/policies" as const;
+      return "/organizations/$orgId/projects/cert-manager/$projectId/policies" as const;
     case ProjectType.SecretScanning:
       return `/organizations/$orgId/projects/${type}/$projectId/data-sources` as const;
     case ProjectType.PAM:
@@ -93,7 +88,7 @@ export const getProjectTitle = (type: ProjectType) => {
   const titleConvert = {
     [ProjectType.SecretManager]: "Secrets Management",
     [ProjectType.KMS]: "Key Management",
-    [ProjectType.CertificateManager]: "Cert Management",
+    [ProjectType.CertificateManager]: "Certificate Manager",
     [ProjectType.SSH]: "SSH",
     [ProjectType.SecretScanning]: "Secret Scanning",
     [ProjectType.PAM]: "PAM"
