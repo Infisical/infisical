@@ -97,6 +97,8 @@ export type TOAuthStatusResponse = {
   refreshToken?: string;
   expiresAt?: number;
   tokenType?: string;
+  clientId?: string;
+  clientSecret?: string;
 };
 
 // List MCP Servers DTO

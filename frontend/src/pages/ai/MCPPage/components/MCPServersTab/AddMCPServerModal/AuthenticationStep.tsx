@@ -72,6 +72,9 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
         { shouldDirty: true, shouldTouch: true, shouldValidate: true }
       );
 
+      setValue("oauthClientId", oauthStatus.clientId || "");
+      setValue("oauthClientSecret", oauthStatus.clientSecret || "");
+
       setIsOAuthPending(false);
       setOauthSessionId(null);
 

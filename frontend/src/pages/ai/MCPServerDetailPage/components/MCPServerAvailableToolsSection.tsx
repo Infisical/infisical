@@ -1,8 +1,4 @@
-import { faRefresh } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-
 import {
-  Button,
   EmptyState,
   Table,
   TableContainer,
@@ -13,7 +9,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { useListAiMcpServerTools, useSyncAiMcpServerTools } from "@app/hooks/api";
+import { useListAiMcpServerTools } from "@app/hooks/api";
 
 type Props = {
   serverId: string;
@@ -21,13 +17,13 @@ type Props = {
 
 export const MCPServerAvailableToolsSection = ({ serverId }: Props) => {
   const { data: toolsData, isPending } = useListAiMcpServerTools({ serverId });
-  const syncTools = useSyncAiMcpServerTools();
+  // const syncTools = useSyncAiMcpServerTools();
 
   const tools = toolsData?.tools || [];
 
-  const handleSyncTools = async () => {
-    await syncTools.mutateAsync({ serverId });
-  };
+  // const handleSyncTools = async () => {
+  //   await syncTools.mutateAsync({ serverId });
+  // };
 
   return (
     <div className="flex w-full flex-col rounded-lg border border-mineshaft-600 bg-mineshaft-900">
@@ -38,7 +34,7 @@ export const MCPServerAvailableToolsSection = ({ serverId }: Props) => {
             Tools provided by this MCP server that can be enabled in endpoints
           </p>
         </div>
-        <Button
+        {/* <Button
           variant="outline_bg"
           size="sm"
           leftIcon={<FontAwesomeIcon icon={faRefresh} />}
@@ -46,7 +42,7 @@ export const MCPServerAvailableToolsSection = ({ serverId }: Props) => {
           isLoading={syncTools.isPending}
         >
           Sync Tools
-        </Button>
+        </Button> */}
       </div>
       <div className="p-4">
         <TableContainer>

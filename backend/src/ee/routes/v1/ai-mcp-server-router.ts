@@ -144,7 +144,9 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
           accessToken: z.string().optional(),
           refreshToken: z.string().optional(),
           expiresAt: z.number().optional(),
-          tokenType: z.string().optional()
+          tokenType: z.string().optional(),
+          clientId: z.string().optional(),
+          clientSecret: z.string().optional()
         })
       }
     },
