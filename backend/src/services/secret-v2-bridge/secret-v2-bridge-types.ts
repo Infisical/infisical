@@ -50,6 +50,7 @@ export type TGetSecretsDTO = {
   limit?: number;
   search?: string;
   keys?: string[];
+  excludeRotatedSecrets?: boolean;
 } & TProjectPermission;
 
 export type TGetSecretsMissingReadValuePermissionDTO = Omit<
@@ -362,6 +363,7 @@ export type TFindSecretsByFolderIdsFilter = {
   includeTagsInSearch?: boolean;
   includeMetadataInSearch?: boolean;
   keys?: string[];
+  excludeRotatedSecrets?: boolean;
 };
 
 export type TGetSecretsRawByFolderMappingsDTO = {

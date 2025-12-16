@@ -19,8 +19,8 @@ import {
   CertExtendedKeyUsageType,
   CertIncludeType,
   CertKeyUsageType,
-  CertSubjectAttributeType,
-  CertSubjectAlternativeNameType
+  CertSubjectAlternativeNameType,
+  CertSubjectAttributeType
 } from "@app/services/certificate-common/certificate-constants";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";

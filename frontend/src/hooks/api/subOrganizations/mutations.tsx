@@ -11,10 +11,7 @@ export const useCreateSubOrganization = () => {
     mutationFn: async (dto: TCreateSubOrganizationDTO) => {
       const { data } = await apiRequest.post<{ organization: TSubOrganization }>(
         "/api/v1/sub-organizations",
-        dto,
-        {
-          headers: { "x-root-org": "discard" } // akhi/scott: this just tells the request to use the root org ID header
-        }
+        dto
       );
       return data;
     },

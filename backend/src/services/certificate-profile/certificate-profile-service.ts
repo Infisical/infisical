@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType } from "@app/db/schemas";
@@ -10,6 +10,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { buildUrl } from "@app/ee/services/pki-acme/pki-acme-fns";
+import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -299,7 +300,9 @@ export const certificateProfileServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateProfileActions.Create,
-      ProjectPermissionSub.CertificateProfiles
+      subject(ProjectPermissionSub.CertificateProfiles, {
+        slug: data.slug
+      })
     );
 
     const project = await projectDAL.findById(projectId);
@@ -400,7 +403,13 @@ export const certificateProfileServiceFactory = ({
         apiConfigId = apiConfig.id;
       } else if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
         const { encryptedEabSecret } = await generateAndEncryptAcmeEabSecret(projectId, kmsService, projectDAL);
-        const acmeConfig = await acmeEnrollmentConfigDAL.create({ encryptedEabSecret }, tx);
+        const acmeConfig = await acmeEnrollmentConfigDAL.create(
+          {
+            skipDnsOwnershipVerification: data.acmeConfig.skipDnsOwnershipVerification ?? false,
+            encryptedEabSecret
+          },
+          tx
+        );
         acmeConfigId = acmeConfig.id;
       }
 
@@ -454,7 +463,9 @@ export const certificateProfileServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateProfileActions.Edit,
-      ProjectPermissionSub.CertificateProfiles
+      subject(ProjectPermissionSub.CertificateProfiles, {
+        slug: existingProfile.slug
+      })
     );
 
     if (data.certificateTemplateId) {
@@ -500,7 +511,7 @@ export const certificateProfileServiceFactory = ({
     const updatedData =
       finalIssuerType === IssuerType.SELF_SIGNED && existingProfile.caId ? { ...data, caId: null } : data;
 
-    const { estConfig, apiConfig, ...profileUpdateData } = updatedData;
+    const { estConfig, apiConfig, acmeConfig, ...profileUpdateData } = updatedData;
 
     const updatedProfile = await certificateProfileDAL.transaction(async (tx) => {
       if (estConfig && existingProfile.estConfigId) {
@@ -542,6 +553,16 @@ export const certificateProfileServiceFactory = ({
         );
       }
 
+      if (acmeConfig && existingProfile.acmeConfigId) {
+        await acmeEnrollmentConfigDAL.updateById(
+          existingProfile.acmeConfigId,
+          {
+            skipDnsOwnershipVerification: acmeConfig.skipDnsOwnershipVerification ?? false
+          },
+          tx
+        );
+      }
+
       const profileResult = await certificateProfileDAL.updateById(profileId, profileUpdateData, tx);
       return profileResult;
     });
@@ -577,7 +598,9 @@ export const certificateProfileServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateProfileActions.Read,
-      ProjectPermissionSub.CertificateProfiles
+      subject(ProjectPermissionSub.CertificateProfiles, {
+        slug: profile.slug
+      })
     );
 
     const converted = convertDalToService(profile);
@@ -613,7 +636,9 @@ export const certificateProfileServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateProfileActions.Read,
-      ProjectPermissionSub.CertificateProfiles
+      subject(ProjectPermissionSub.CertificateProfiles, {
+        slug: profile.slug
+      })
     );
 
     if (profile.estConfig && profile.estConfig.caChain) {
@@ -687,7 +712,9 @@ export const certificateProfileServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateProfileActions.Read,
-      ProjectPermissionSub.CertificateProfiles
+      subject(ProjectPermissionSub.CertificateProfiles, {
+        slug
+      })
     );
 
     const profile = await certificateProfileDAL.findBySlugAndProjectId(slug, projectId);
@@ -739,21 +766,35 @@ export const certificateProfileServiceFactory = ({
       ProjectPermissionSub.CertificateProfiles
     );
 
-    const profiles = await certificateProfileDAL.findByProjectId(projectId, {
-      offset,
-      limit,
-      search,
-      enrollmentType,
-      issuerType,
-      caId
-    });
+    const processedRules = getProcessedPermissionRules(
+      permission,
+      ProjectPermissionCertificateProfileActions.Read,
+      ProjectPermissionSub.CertificateProfiles
+    );
 
-    const totalCount = await certificateProfileDAL.countByProjectId(projectId, {
-      search,
-      enrollmentType,
-      issuerType,
-      caId
-    });
+    const profiles = await certificateProfileDAL.findByProjectId(
+      projectId,
+      {
+        offset,
+        limit,
+        search,
+        enrollmentType,
+        issuerType,
+        caId
+      },
+      processedRules
+    );
+
+    const totalCount = await certificateProfileDAL.countByProjectId(
+      projectId,
+      {
+        search,
+        enrollmentType,
+        issuerType,
+        caId
+      },
+      processedRules
+    );
 
     const convertedProfiles = await Promise.all(
       profiles.map(async (profile) => {
@@ -838,7 +879,9 @@ export const certificateProfileServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateProfileActions.Delete,
-      ProjectPermissionSub.CertificateProfiles
+      subject(ProjectPermissionSub.CertificateProfiles, {
+        slug: profile.slug
+      })
     );
 
     const deletedProfile = await certificateProfileDAL.deleteById(profileId);
@@ -884,7 +927,9 @@ export const certificateProfileServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateProfileActions.Read,
-      ProjectPermissionSub.CertificateProfiles
+      subject(ProjectPermissionSub.CertificateProfiles, {
+        slug: profile.slug
+      })
     );
 
     const certificates = await certificateProfileDAL.getCertificatesByProfile(profileId, {
@@ -925,17 +970,9 @@ export const certificateProfileServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateProfileActions.Read,
-      ProjectPermissionSub.CertificateProfiles
-    );
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Read,
-      ProjectPermissionSub.Certificates
-    );
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.ReadPrivateKey,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.CertificateProfiles, {
+        slug: profile.slug
+      })
     );
 
     const cert = await certificateProfileDAL.getLatestActiveCertificateForProfile(profileId);
@@ -943,6 +980,24 @@ export const certificateProfileServiceFactory = ({
     if (!cert) {
       return null;
     }
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Read,
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: cert.commonName,
+        altNames: cert.altNames ?? undefined,
+        serialNumber: cert.serialNumber
+      })
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.ReadPrivateKey,
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: cert.commonName,
+        altNames: cert.altNames ?? undefined,
+        serialNumber: cert.serialNumber
+      })
+    );
 
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
 
@@ -1037,7 +1092,9 @@ export const certificateProfileServiceFactory = ({
 
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionCertificateProfileActions.Read,
-        ProjectPermissionSub.CertificateProfiles
+        subject(ProjectPermissionSub.CertificateProfiles, {
+          slug: profile.slug
+        })
       );
     }
 
@@ -1088,7 +1145,9 @@ export const certificateProfileServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateProfileActions.RevealAcmeEabSecret,
-      ProjectPermissionSub.CertificateProfiles
+      subject(ProjectPermissionSub.CertificateProfiles, {
+        slug: profile.slug
+      })
     );
 
     if (profile.enrollmentType !== EnrollmentType.ACME) {

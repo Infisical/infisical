@@ -158,20 +158,11 @@ const ProjectSelectInner = () => {
                         params: {
                           projectId: workspace.id,
                           orgId: workspace.orgId
-                        },
-                        search: {
-                          subOrganization: currentOrg?.subOrganization?.name
                         }
                       });
                       const urlInstance = new URL(
                         `${window.location.origin}${url.to.replaceAll("$orgId", url.params.orgId).replaceAll("$projectId", url.params.projectId)}`
                       );
-                      if (currentOrg?.subOrganization) {
-                        urlInstance.searchParams.set(
-                          "subOrganization",
-                          currentOrg.subOrganization.name
-                        );
-                      }
                       window.location.assign(urlInstance);
                     }}
                     icon={

@@ -176,7 +176,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           actor: req.permission.type,
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId
+          actorOrgId: req.permission.orgId,
+          isInternal: true
         });
         const caType = (ca?.externalCa?.type as CaType) ?? CaType.INTERNAL;
         useOrderFlow = caType !== CaType.INTERNAL;
@@ -315,13 +316,11 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         requestId: z.string().uuid()
       }),
-      query: z.object({
-        projectId: z.string().uuid()
-      }),
       response: {
         200: z.object({
           status: z.nativeEnum(CertificateRequestStatus),
           certificate: z.string().nullable(),
+          certificateId: z.string().nullable(),
           privateKey: z.string().nullable(),
           serialNumber: z.string().nullable(),
           errorMessage: z.string().nullable(),
@@ -332,18 +331,17 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const data = await server.services.certificateRequest.getCertificateFromRequest({
+      const { certificateRequest, projectId } = await server.services.certificateRequest.getCertificateFromRequest({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: (req.query as { projectId: string }).projectId,
         certificateRequestId: req.params.requestId
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: (req.query as { projectId: string }).projectId,
+        projectId,
         event: {
           type: EventType.GET_CERTIFICATE_REQUEST,
           metadata: {
@@ -351,7 +349,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
-      return data;
+      return certificateRequest;
     }
   });
 

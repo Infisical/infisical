@@ -59,6 +59,7 @@ export type TGetLdapAuthDTO = {
 
 export type TLoginLdapAuthDTO = {
   identityId: string;
+  subOrganizationName?: string;
 };
 
 export type TRevokeLdapAuthDTO = {

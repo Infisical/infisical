@@ -21,6 +21,9 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { AddPoliciesButton } from "./AddPoliciesButton";
 import { AppConnectionPermissionConditions } from "./AppConnectionPermissionConditions";
+import { CertificateAuthorityPermissionConditions } from "./CertificateAuthorityPermissionConditions";
+import { CertificatePermissionConditions } from "./CertificatePermissionConditions";
+import { CertificateProfilePermissionConditions } from "./CertificateProfilePermissionConditions";
 import { DynamicSecretPermissionConditions } from "./DynamicSecretPermissionConditions";
 import { GeneralPermissionConditions } from "./GeneralPermissionConditions";
 import { GeneralPermissionPolicies } from "./GeneralPermissionPolicies";
@@ -94,6 +97,18 @@ export const renderConditionalComponents = (
 
     if (subject === ProjectPermissionSub.PamAccounts) {
       return <PamAccountPermissionConditions isDisabled={isDisabled} />;
+    }
+
+    if (subject === ProjectPermissionSub.CertificateAuthorities) {
+      return <CertificateAuthorityPermissionConditions isDisabled={isDisabled} />;
+    }
+
+    if (subject === ProjectPermissionSub.Certificates) {
+      return <CertificatePermissionConditions isDisabled={isDisabled} />;
+    }
+
+    if (subject === ProjectPermissionSub.CertificateProfiles) {
+      return <CertificateProfilePermissionConditions isDisabled={isDisabled} />;
     }
 
     return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;
@@ -194,7 +209,11 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                   Save
                 </Button>
                 <div className="ml-2 border-l border-mineshaft-500 pl-4">
-                  <AddPoliciesButton isDisabled={isDisabled} projectType={currentProject.type} />
+                  <AddPoliciesButton
+                    isDisabled={isDisabled}
+                    projectType={currentProject.type}
+                    projectId={projectId}
+                  />
                 </div>
               </div>
             )}

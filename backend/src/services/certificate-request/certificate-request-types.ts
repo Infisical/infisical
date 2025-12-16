@@ -21,13 +21,14 @@ export type TCreateCertificateRequestDTO = TProjectPermission & {
   metadata?: string;
   status: CertificateRequestStatus;
   certificateId?: string;
+  acmeOrderId?: string;
 };
 
 export type TGetCertificateRequestDTO = TProjectPermission & {
   certificateRequestId: string;
 };
 
-export type TGetCertificateFromRequestDTO = TProjectPermission & {
+export type TGetCertificateFromRequestDTO = Omit<TProjectPermission, "projectId"> & {
   certificateRequestId: string;
 };
 

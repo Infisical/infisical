@@ -6,6 +6,7 @@ import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -90,6 +91,7 @@ export const certificateRequestServiceFactory = ({
   permissionService
 }: TCertificateRequestServiceFactoryDep) => {
   const createCertificateRequest = async ({
+    acmeOrderId,
     actor,
     actorId,
     actorAuthMethod,
@@ -110,8 +112,8 @@ export const certificateRequestServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateActions.Create,
-        ProjectPermissionSub.Certificates
+        ProjectPermissionCertificateProfileActions.IssueCert,
+        ProjectPermissionSub.CertificateProfiles
       );
     }
 
@@ -122,6 +124,7 @@ export const certificateRequestServiceFactory = ({
       {
         status,
         projectId,
+        acmeOrderId,
         ...validatedData
       },
       tx
@@ -169,13 +172,17 @@ export const certificateRequestServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId,
-    projectId,
     certificateRequestId
   }: TGetCertificateFromRequestDTO) => {
+    const certificateRequest = await certificateRequestDAL.findByIdWithCertificate(certificateRequestId);
+    if (!certificateRequest) {
+      throw new NotFoundError({ message: "Certificate request not found" });
+    }
+
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      projectId,
+      projectId: certificateRequest.projectId,
       actorAuthMethod,
       actorOrgId,
       actionProjectType: ActionProjectType.CertificateManager
@@ -186,25 +193,20 @@ export const certificateRequestServiceFactory = ({
       ProjectPermissionSub.Certificates
     );
 
-    const certificateRequest = await certificateRequestDAL.findByIdWithCertificate(certificateRequestId);
-    if (!certificateRequest) {
-      throw new NotFoundError({ message: "Certificate request not found" });
-    }
-
-    if (certificateRequest.projectId !== projectId) {
-      throw new NotFoundError({ message: "Certificate request not found" });
-    }
-
     // If no certificate is attached, return basic info
     if (!certificateRequest.certificate) {
       return {
-        status: certificateRequest.status as CertificateRequestStatus,
-        certificate: null,
-        privateKey: null,
-        serialNumber: null,
-        errorMessage: certificateRequest.errorMessage || null,
-        createdAt: certificateRequest.createdAt,
-        updatedAt: certificateRequest.updatedAt
+        certificateRequest: {
+          status: certificateRequest.status as CertificateRequestStatus,
+          certificate: null,
+          certificateId: null,
+          privateKey: null,
+          serialNumber: null,
+          errorMessage: certificateRequest.errorMessage || null,
+          createdAt: certificateRequest.createdAt,
+          updatedAt: certificateRequest.updatedAt
+        },
+        projectId: certificateRequest.projectId
       };
     }
 
@@ -217,30 +219,39 @@ export const certificateRequestServiceFactory = ({
       actorOrgId
     });
 
-    // Try to get private key (may fail if user doesn't have permission)
+    const canReadPrivateKey = permission.can(
+      ProjectPermissionCertificateActions.ReadPrivateKey,
+      ProjectPermissionSub.Certificates
+    );
+
     let privateKey: string | null = null;
-    try {
-      const certPrivateKey = await certificateService.getCertPrivateKey({
-        id: certificateRequest.certificate.id,
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      privateKey = certPrivateKey.certPrivateKey;
-    } catch (error) {
-      // Private key access denied - continue without it
-      privateKey = null;
+    if (canReadPrivateKey) {
+      try {
+        const certPrivateKey = await certificateService.getCertPrivateKey({
+          id: certificateRequest.certificate.id,
+          actor,
+          actorId,
+          actorAuthMethod,
+          actorOrgId
+        });
+        privateKey = certPrivateKey.certPrivateKey;
+      } catch (error) {
+        privateKey = null;
+      }
     }
 
     return {
-      status: certificateRequest.status as CertificateRequestStatus,
-      certificate: certBody.certificate,
-      privateKey,
-      serialNumber: certificateRequest.certificate.serialNumber,
-      errorMessage: certificateRequest.errorMessage || null,
-      createdAt: certificateRequest.createdAt,
-      updatedAt: certificateRequest.updatedAt
+      certificateRequest: {
+        status: certificateRequest.status as CertificateRequestStatus,
+        certificate: certBody.certificate,
+        certificateId: certificateRequest.certificate.id,
+        privateKey,
+        serialNumber: certificateRequest.certificate.serialNumber,
+        errorMessage: certificateRequest.errorMessage || null,
+        createdAt: certificateRequest.createdAt,
+        updatedAt: certificateRequest.updatedAt
+      },
+      projectId: certificateRequest.projectId
     };
   };
 

@@ -42,6 +42,7 @@ export enum TableName {
   GroupProjectMembershipRole = "group_project_membership_roles",
   ExternalGroupOrgRoleMapping = "external_group_org_role_mappings",
   UserGroupMembership = "user_group_membership",
+  IdentityGroupMembership = "identity_group_membership",
   UserAliases = "user_aliases",
   UserEncryptionKey = "user_encryption_keys",
   AuthTokens = "auth_tokens",
@@ -232,7 +233,17 @@ export enum TableName {
   AiMcpEndpoint = "ai_mcp_endpoints",
   AiMcpEndpointServer = "ai_mcp_endpoint_servers",
   AiMcpEndpointServerTool = "ai_mcp_endpoint_server_tools",
-  AiMcpActivityLog = "ai_mcp_activity_logs"
+  AiMcpActivityLog = "ai_mcp_activity_logs",
+
+  // Approval Policies
+  ApprovalPolicies = "approval_policies",
+  ApprovalPolicySteps = "approval_policy_steps",
+  ApprovalPolicyStepApprovers = "approval_policy_step_approvers",
+  ApprovalRequests = "approval_requests",
+  ApprovalRequestSteps = "approval_request_steps",
+  ApprovalRequestStepEligibleApprovers = "approval_request_step_eligible_approvers",
+  ApprovalRequestApprovals = "approval_request_approvals",
+  ApprovalRequestGrants = "approval_request_grants"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

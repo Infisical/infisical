@@ -37,4 +37,6 @@ export interface TApiConfigData {
   renewBeforeDays?: number;
 }
 
-export interface TAcmeConfigData {}
+export interface TAcmeConfigData {
+  skipDnsOwnershipVerification?: boolean;
+}

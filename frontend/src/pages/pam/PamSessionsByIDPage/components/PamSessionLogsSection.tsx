@@ -1,6 +1,16 @@
-import { PamResourceType, TPamCommandLog, TPamSession, TTerminalEvent } from "@app/hooks/api/pam";
+import { faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
+import {
+  PamResourceType,
+  THttpEvent,
+  TPamCommandLog,
+  TPamSession,
+  TTerminalEvent
+} from "@app/hooks/api/pam";
 
 import { CommandLogView } from "./CommandLogView";
+import { HttpEventView } from "./HttpEventView";
 import { TerminalEventView } from "./TerminalEventView";
 
 type Props = {
@@ -13,6 +23,8 @@ export const PamSessionLogsSection = ({ session }: Props) => {
   const isDatabaseSession =
     session.resourceType === PamResourceType.Postgres ||
     session.resourceType === PamResourceType.MySQL;
+  const isHttpSession = session.resourceType === PamResourceType.Kubernetes;
+  const isAwsIamSession = session.resourceType === PamResourceType.AwsIam;
   const hasLogs = session.logs.length > 0;
 
   return (
@@ -23,7 +35,28 @@ export const PamSessionLogsSection = ({ session }: Props) => {
 
       {isDatabaseSession && hasLogs && <CommandLogView logs={session.logs as TPamCommandLog[]} />}
       {isSSHSession && hasLogs && <TerminalEventView events={session.logs as TTerminalEvent[]} />}
-      {!hasLogs && (
+      {isHttpSession && hasLogs && <HttpEventView events={session.logs as THttpEvent[]} />}
+      {isAwsIamSession && (
+        <div className="flex grow items-center justify-center text-bunker-300">
+          <div className="text-center">
+            <div className="mb-2">AWS Console session activity is logged in AWS CloudTrail</div>
+            <div className="text-xs text-bunker-400">
+              View detailed activity logs for this session in your AWS CloudTrail console.
+              <br />
+              <a
+                href="https://console.aws.amazon.com/cloudtrail"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex items-center gap-1 text-primary-400 hover:text-primary-300"
+              >
+                Open AWS CloudTrail
+                <FontAwesomeIcon icon={faUpRightFromSquare} className="size-3" />
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+      {!hasLogs && !isAwsIamSession && (
         <div className="flex grow items-center justify-center text-bunker-300">
           <div className="text-center">
             <div className="mb-2">Session logs are not yet available</div>

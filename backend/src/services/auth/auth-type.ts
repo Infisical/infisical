@@ -42,6 +42,7 @@ export enum ActorType { // would extend to AWS, Azure, ...
   IDENTITY = "identity",
   Machine = "machine",
   SCIM_CLIENT = "scimClient",
+  ACME_PROFILE = "acmeProfile",
   ACME_ACCOUNT = "acmeAccount",
   UNKNOWN_USER = "unknownUser"
 }
@@ -56,6 +57,7 @@ export type AuthModeJwtTokenPayload = {
   tokenVersionId: string;
   accessVersion: number;
   organizationId?: string;
+  subOrganizationId?: string;
   isMfaVerified?: boolean;
   mfaMethod?: MfaMethod;
   mcp?: {
@@ -78,6 +80,7 @@ export type AuthModeRefreshJwtTokenPayload = {
   tokenVersionId: string;
   refreshVersion: number;
   organizationId?: string;
+  subOrganizationId?: string;
   isMfaVerified?: boolean;
   mfaMethod?: MfaMethod;
 };

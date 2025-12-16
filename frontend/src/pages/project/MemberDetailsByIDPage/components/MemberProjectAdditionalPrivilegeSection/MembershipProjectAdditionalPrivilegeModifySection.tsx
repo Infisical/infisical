@@ -1,5 +1,5 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
-import { faCaretDown, faChevronLeft, faClock, faSave } from "@fortawesome/free-solid-svg-icons";
+import { faCaretDown, faClock, faSave } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format, formatDistance } from "date-fns";
@@ -20,6 +20,7 @@ import {
   Tag,
   Tooltip
 } from "@app/components/v2";
+import { UnstableSeparator } from "@app/components/v3";
 import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
@@ -111,6 +112,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
 
   const {
     handleSubmit,
+    reset,
     formState: { isDirty, isSubmitting }
   } = form;
 
@@ -176,55 +178,9 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
-    >
+    <form className="flex flex-col gap-y-4" onSubmit={handleSubmit(onSubmit)}>
       <FormProvider {...form}>
-        <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
-          <Button
-            leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
-            className="text-lg font-medium text-mineshaft-100"
-            variant="link"
-            onClick={onGoBack}
-          >
-            Back
-          </Button>
-          <div className="flex items-center space-x-4">
-            {isDirty && (
-              <Button
-                className="mr-4 text-mineshaft-300"
-                variant="link"
-                isDisabled={isSubmitting}
-                isLoading={isSubmitting}
-                onClick={onGoBack}
-              >
-                Discard
-              </Button>
-            )}
-            <div className="flex items-center">
-              <Button
-                variant="outline_bg"
-                type="submit"
-                className={twMerge(
-                  "mr-4 h-10 border border-primary",
-                  isDirty && "bg-primary text-black"
-                )}
-                isDisabled={isSubmitting || !isDirty || isDisabled}
-                isLoading={isSubmitting}
-                leftIcon={<FontAwesomeIcon icon={faSave} />}
-              >
-                Save
-              </Button>
-              <AddPoliciesButton isDisabled={isDisabled} projectType={currentProject.type} />
-            </div>
-          </div>
-        </div>
-        <div className="mt-2 border-b border-gray-800 p-4 pt-2 first:rounded-t-md last:rounded-b-md">
-          <div className="text-lg">Overview</div>
-          <p className="mb-4 text-sm text-mineshaft-300">
-            Additional privileges take precedence over roles when permissions conflict
-          </p>
+        <div>
           <div className="flex items-end space-x-6">
             <div className="w-full max-w-md">
               <Controller
@@ -340,22 +296,61 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
             </div>
           </div>
         </div>
-        <div className="p-4">
-          <div className="mb-2 text-lg">Policies</div>
-          {(isCreate || !isPending) && <PermissionEmptyState />}
-          <div>
-            {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map((subject) => (
-              <GeneralPermissionPolicies
-                subject={subject}
-                actions={PROJECT_PERMISSION_OBJECT[subject].actions}
-                title={PROJECT_PERMISSION_OBJECT[subject].title}
-                key={`project-permission-${subject}`}
-                isDisabled={isDisabled}
-              >
-                {renderConditionalComponents(subject, isDisabled)}
-              </GeneralPermissionPolicies>
-            ))}
+        <UnstableSeparator />
+        <div>
+          <div className="mb-3 flex w-full items-center justify-between">
+            <div className="text-lg">Policies</div>
+            <div className="flex items-center space-x-4">
+              {isDirty && (
+                <Button
+                  className="mr-4 text-mineshaft-300"
+                  variant="link"
+                  isDisabled={isSubmitting}
+                  isLoading={isSubmitting}
+                  onClick={() => reset()}
+                >
+                  Discard Changes
+                </Button>
+              )}
+              <div className="flex items-center">
+                <AddPoliciesButton
+                  isDisabled={isDisabled}
+                  projectType={currentProject.type}
+                  projectId={projectId}
+                />
+              </div>
+            </div>
           </div>
+          {(isCreate || !isPending) && <PermissionEmptyState />}
+          <div className="scrollbar-thin max-h-[50vh] overflow-y-auto">
+            {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map(
+              (permissionSubject) => (
+                <GeneralPermissionPolicies
+                  subject={permissionSubject}
+                  actions={PROJECT_PERMISSION_OBJECT[permissionSubject].actions}
+                  title={PROJECT_PERMISSION_OBJECT[permissionSubject].title}
+                  key={`project-permission-${permissionSubject}`}
+                  isDisabled={isDisabled}
+                >
+                  {renderConditionalComponents(permissionSubject, isDisabled)}
+                </GeneralPermissionPolicies>
+              )
+            )}
+          </div>
+        </div>
+        <UnstableSeparator />
+        <div className="flex w-full items-center justify-end gap-x-2">
+          <Button colorSchema="secondary" variant="plain" onClick={onGoBack}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            isDisabled={isSubmitting || !isDirty || isDisabled}
+            isLoading={isSubmitting}
+            leftIcon={<FontAwesomeIcon icon={faSave} />}
+          >
+            Save
+          </Button>
         </div>
       </FormProvider>
     </form>

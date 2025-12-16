@@ -8,7 +8,6 @@ import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
-import { slugSchema } from "@app/server/lib/schemas";
 import { ActorType, AuthMethod, AuthMode, AuthModeJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
@@ -165,15 +164,10 @@ export const injectIdentity = fp(
 
       if (!authMode) return;
 
-      const subOrganizationSelector = req.headers?.["x-infisical-org"] as string | undefined;
-      if (subOrganizationSelector) {
-        await slugSchema().parseAsync(subOrganizationSelector);
-      }
-
       switch (authMode) {
         case AuthMode.JWT: {
           const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } =
-            await server.services.authToken.fnValidateJwtIdentity(token, subOrganizationSelector);
+            await server.services.authToken.fnValidateJwtIdentity(token);
           requestContext.set("orgId", orgId);
           requestContext.set("orgName", orgName);
           requestContext.set("userAuthInfo", { userId: user.id, email: user.email || "" });
@@ -214,11 +208,7 @@ export const injectIdentity = fp(
           break;
         }
         case AuthMode.IDENTITY_ACCESS_TOKEN: {
-          const identity = await server.services.identityAccessToken.fnValidateIdentityAccessToken(
-            token,
-            req.realIp,
-            subOrganizationSelector
-          );
+          const identity = await server.services.identityAccessToken.fnValidateIdentityAccessToken(token, req.realIp);
           const serverCfg = await getServerCfg();
           requestContext.set("orgId", identity.orgId);
           requestContext.set("orgName", identity.orgName);
@@ -257,9 +247,6 @@ export const injectIdentity = fp(
           const serviceToken = await server.services.serviceToken.fnValidateServiceToken(token);
           requestContext.set("orgId", serviceToken.orgId);
 
-          if (subOrganizationSelector)
-            throw new BadRequestError({ message: `Service token doesn't support sub organization selector` });
-
           req.auth = {
             orgId: serviceToken.orgId,
             rootOrgId: serviceToken.rootOrgId,
@@ -281,9 +268,6 @@ export const injectIdentity = fp(
         case AuthMode.SCIM_TOKEN: {
           const { orgId, scimTokenId } = await server.services.scim.fnValidateScimToken(token);
           requestContext.set("orgId", orgId);
-
-          if (subOrganizationSelector)
-            throw new BadRequestError({ message: `SCIM token doesn't support sub organization selector` });
 
           req.auth = {
             authMode: AuthMode.SCIM_TOKEN,

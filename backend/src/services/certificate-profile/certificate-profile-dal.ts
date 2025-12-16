@@ -4,6 +4,10 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
+import {
+  applyProcessedPermissionRulesToQuery,
+  type ProcessedPermissionRules
+} from "@app/lib/knex/permission-filter-utils";
 
 import {
   EnrollmentType,
@@ -164,7 +168,11 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db.ref("autoRenew").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigAutoRenew"),
           db.ref("renewBeforeDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigRenewBeforeDays"),
           db.ref("id").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeConfigId"),
-          db.ref("encryptedEabSecret").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeConfigEncryptedEabSecret")
+          db.ref("encryptedEabSecret").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeConfigEncryptedEabSecret"),
+          db
+            .ref("skipDnsOwnershipVerification")
+            .withSchema(TableName.PkiAcmeEnrollmentConfig)
+            .as("acmeConfigSkipDnsOwnershipVerification")
         )
         .where(`${TableName.PkiCertificateProfile}.id`, id)
         .first();
@@ -194,7 +202,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
       const acmeConfig = result.acmeConfigId
         ? ({
             id: result.acmeConfigId,
-            encryptedEabSecret: result.acmeConfigEncryptedEabSecret
+            encryptedEabSecret: result.acmeConfigEncryptedEabSecret,
+            skipDnsOwnershipVerification: result.acmeConfigSkipDnsOwnershipVerification ?? false
           } as TCertificateProfileWithConfigs["acmeConfig"])
         : undefined;
 
@@ -276,6 +285,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
       issuerType?: IssuerType;
       caId?: string;
     } = {},
+    processedRules?: ProcessedPermissionRules,
     tx?: Knex
   ): Promise<TCertificateProfile[] | TCertificateProfileWithConfigs[]> => {
     try {
@@ -308,7 +318,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         baseQuery = baseQuery.where(`${TableName.PkiCertificateProfile}.issuerType`, issuerType);
       }
 
-      const query = baseQuery
+      let query = baseQuery
         .leftJoin(
           TableName.CertificateAuthority,
           `${TableName.PkiCertificateProfile}.caId`,
@@ -351,8 +361,20 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.PkiApiEnrollmentConfig).as("apiId"),
           db.ref("autoRenew").withSchema(TableName.PkiApiEnrollmentConfig).as("apiAutoRenew"),
           db.ref("renewBeforeDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiRenewBeforeDays"),
-          db.ref("id").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeId")
+          db.ref("id").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeId"),
+          db
+            .ref("skipDnsOwnershipVerification")
+            .withSchema(TableName.PkiAcmeEnrollmentConfig)
+            .as("acmeSkipDnsOwnershipVerification")
         );
+
+      if (processedRules) {
+        query = applyProcessedPermissionRulesToQuery(
+          query,
+          TableName.PkiCertificateProfile,
+          processedRules
+        ) as typeof query;
+      }
 
       const results = (await query
         .orderBy(`${TableName.PkiCertificateProfile}.createdAt`, "desc")
@@ -380,7 +402,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
 
         const acmeConfig = result.acmeId
           ? {
-              id: result.acmeId as string
+              id: result.acmeId as string,
+              skipDnsOwnershipVerification: !!result.acmeSkipDnsOwnershipVerification
             }
           : undefined;
 
@@ -432,6 +455,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
       issuerType?: IssuerType;
       caId?: string;
     } = {},
+    processedRules?: ProcessedPermissionRules,
     tx?: Knex
   ): Promise<number> => {
     try {
@@ -457,6 +481,14 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
 
       if (issuerType) {
         query = query.where({ issuerType });
+      }
+
+      if (processedRules) {
+        query = applyProcessedPermissionRulesToQuery(
+          query,
+          TableName.PkiCertificateProfile,
+          processedRules
+        ) as typeof query;
       }
 
       const result = await query.count("*").first();

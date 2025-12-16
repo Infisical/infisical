@@ -88,8 +88,10 @@ export enum OrgPermissionGroupActions {
   Edit = "edit",
   Delete = "delete",
   GrantPrivileges = "grant-privileges",
+  AddIdentities = "add-identities",
   AddMembers = "add-members",
-  RemoveMembers = "remove-members"
+  RemoveMembers = "remove-members",
+  RemoveIdentities = "remove-identities"
 }
 
 export enum OrgPermissionBillingActions {
@@ -381,8 +383,10 @@ const buildAdminPermission = () => {
   can(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
   can(OrgPermissionGroupActions.Delete, OrgPermissionSubjects.Groups);
   can(OrgPermissionGroupActions.GrantPrivileges, OrgPermissionSubjects.Groups);
+  can(OrgPermissionGroupActions.AddIdentities, OrgPermissionSubjects.Groups);
   can(OrgPermissionGroupActions.AddMembers, OrgPermissionSubjects.Groups);
   can(OrgPermissionGroupActions.RemoveMembers, OrgPermissionSubjects.Groups);
+  can(OrgPermissionGroupActions.RemoveIdentities, OrgPermissionSubjects.Groups);
 
   can(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
   can(OrgPermissionBillingActions.ManageBilling, OrgPermissionSubjects.Billing);

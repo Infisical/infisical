@@ -18,8 +18,11 @@ import { IconButton, Modal, ModalContent, TableContainer, Tag, Tooltip } from "@
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretRotationActions } from "@app/context/ProjectPermissionContext/types";
 import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
+import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
+import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 
+import { SecretListView } from "../SecretListView";
 import { SecretRotationSecretRow } from "./SecretRotationSecretRow";
 
 type Props = {
@@ -28,6 +31,23 @@ type Props = {
   onRotate: () => void;
   onViewGeneratedCredentials: () => void;
   onDelete: () => void;
+  projectId: string;
+  secretPath?: string;
+  tags?: WsTag[];
+  isProtectedBranch?: boolean;
+  usedBySecretSyncs?: UsedBySecretSyncs[];
+  importedBy?: {
+    environment: { name: string; slug: string };
+    folders: {
+      name: string;
+      secrets?: { secretId: string; referencedSecretKey: string; referencedSecretEnv: string }[];
+      isImported: boolean;
+    }[];
+  }[];
+  colWidth: number;
+  getMergedSecretsWithPending: (
+    paramSecrets?: (SecretV3RawSanitized | null)[]
+  ) => SecretV3RawSanitized[];
 };
 
 export const SecretRotationItem = ({
@@ -35,16 +55,40 @@ export const SecretRotationItem = ({
   onEdit,
   onRotate,
   onViewGeneratedCredentials,
-  onDelete
+  onDelete,
+  projectId,
+  secretPath = "/",
+  tags = [],
+  isProtectedBranch = false,
+  usedBySecretSyncs,
+  importedBy,
+  colWidth,
+  getMergedSecretsWithPending
 }: Props) => {
   const { name, type, environment, folder, secrets, description } = secretRotation;
 
   const { name: rotationType, image } = SECRET_ROTATION_MAP[type];
   const [showSecrets, setShowSecrets] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   return (
     <>
-      <div className={twMerge("group flex border-b border-mineshaft-600 hover:bg-mineshaft-700")}>
+      <div
+        className={twMerge(
+          "group flex cursor-pointer border-b border-mineshaft-600 hover:bg-mineshaft-700"
+        )}
+        onClick={() => setIsExpanded(!isExpanded)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setIsExpanded(!isExpanded);
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        aria-expanded={isExpanded}
+        aria-label={`${isExpanded ? "Collapse" : "Expand"} rotation secrets for ${name}`}
+      >
         <div className="text- flex w-11 items-center py-2 pl-5 text-mineshaft-400">
           <FontAwesomeIcon icon={faRotate} />
         </div>
@@ -198,6 +242,20 @@ export const SecretRotationItem = ({
           </motion.div>
         </AnimatePresence>
       </div>
+      {isExpanded && (
+        <SecretListView
+          colWidth={colWidth}
+          secrets={getMergedSecretsWithPending(secretRotation.secrets) || []}
+          tags={tags}
+          environment={environment.slug}
+          projectId={projectId}
+          secretPath={secretPath}
+          isProtectedBranch={isProtectedBranch}
+          importedBy={importedBy}
+          usedBySecretSyncs={usedBySecretSyncs}
+          excludePendingCreates
+        />
+      )}
       <Modal onOpenChange={setShowSecrets} isOpen={showSecrets}>
         <ModalContent
           onOpenAutoFocus={(e) => e.preventDefault()}

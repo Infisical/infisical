@@ -7,6 +7,7 @@ import { registerDashboardRouter } from "@app/server/routes/v1/dashboard-router"
 import { registerSecretSyncRouter, SECRET_SYNC_REGISTER_ROUTER_MAP } from "@app/server/routes/v1/secret-sync-routers";
 
 import { registerAdminRouter } from "./admin-router";
+import { APPROVAL_POLICY_REGISTER_ROUTER_MAP } from "./approval-policy-routers";
 import { registerAuthRoutes } from "./auth-router";
 import { registerProjectBotRouter } from "./bot-router";
 import { registerCaRouter } from "./certificate-authority-router";
@@ -275,4 +276,14 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(registerEventRouter, { prefix: "/events" });
   await server.register(registerUpgradePathRouter, { prefix: "/upgrade-path" });
+
+  await server.register(
+    async (approvalPolicyRouter) => {
+      // Register policy type-specific endpoints
+      for await (const [type, router] of Object.entries(APPROVAL_POLICY_REGISTER_ROUTER_MAP)) {
+        await approvalPolicyRouter.register(router, { prefix: `/${type}` });
+      }
+    },
+    { prefix: "/approval-policies" }
+  );
 };

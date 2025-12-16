@@ -115,7 +115,7 @@ export const PasswordStep = ({
             return;
           }
 
-          await navigateUserToOrg(navigate, organizationId);
+          await navigateUserToOrg({ navigate, organizationId });
         };
 
         await finishWithOrgWorkflow();
@@ -131,7 +131,7 @@ export const PasswordStep = ({
         }
         // case: no orgs found, so we navigate the user to create an org
         else {
-          await navigateUserToOrg(navigate);
+          await navigateUserToOrg({ navigate });
         }
       }
     } catch (err: any) {
@@ -233,7 +233,7 @@ export const PasswordStep = ({
           }
           // case: no orgs found, so we navigate the user to create an org
           else {
-            await navigateUserToOrg(navigate);
+            await navigateUserToOrg({ navigate });
           }
         }
       } else {
@@ -254,7 +254,7 @@ export const PasswordStep = ({
 
           // case: organization ID is present from the provider auth token -- navigate directly to the org
           if (organizationId) {
-            await navigateUserToOrg(navigate, organizationId);
+            await navigateUserToOrg({ navigate, organizationId });
           }
           // case: no organization ID is present -- navigate to the select org page IF the user has any orgs
           // if the user has no orgs, navigate to the create org page
@@ -264,7 +264,7 @@ export const PasswordStep = ({
             if (userOrgs.length > 0) {
               navigateToSelectOrganization(undefined, isAdminLogin);
             } else {
-              await navigateUserToOrg(navigate);
+              await navigateUserToOrg({ navigate });
             }
           }
         }
@@ -316,7 +316,7 @@ export const PasswordStep = ({
     return (
       <EmailDuplicationConfirmation
         onRemoveDuplicateLater={() =>
-          navigateUserToOrg(navigate, organizationId).catch(() =>
+          navigateUserToOrg({ navigate, organizationId }).catch(() =>
             createNotification({ text: "Failed to navigate user", type: "error" })
           )
         }
