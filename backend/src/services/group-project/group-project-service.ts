@@ -10,7 +10,7 @@ import { TGroupDALFactory } from "../../ee/services/group/group-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 
 type TGroupProjectServiceFactoryDep = {
-  groupDAL: Pick<TGroupDALFactory, "findOne" | "findAllGroupPossibleMembers">;
+  groupDAL: Pick<TGroupDALFactory, "findOne" | "findAllGroupPossibleUsers">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "findProjectGhostUser" | "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
 };
@@ -51,7 +51,7 @@ export const groupProjectServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups);
 
-    const { members, totalCount } = await groupDAL.findAllGroupPossibleMembers({
+    const { members, totalCount } = await groupDAL.findAllGroupPossibleUsers({
       orgId: project.orgId,
       groupId: id,
       offset,

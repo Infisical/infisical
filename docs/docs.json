@@ -886,7 +886,12 @@
                   "api-reference/endpoints/groups/get-by-id",
                   "api-reference/endpoints/groups/add-group-user",
                   "api-reference/endpoints/groups/remove-group-user",
-                  "api-reference/endpoints/groups/list-group-users"
+                  "api-reference/endpoints/groups/list-group-users",
+                  "api-reference/endpoints/groups/add-group-machine-identity",
+                  "api-reference/endpoints/groups/remove-group-machine-identity",
+                  "api-reference/endpoints/groups/list-group-machine-identities",
+                  "api-reference/endpoints/groups/list-group-projects",
+                  "api-reference/endpoints/groups/list-group-members"
                 ]
               },
               {
