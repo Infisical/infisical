@@ -1,0 +1,479 @@
+---
+title: "Centralized vs. Self-Service Governance"
+sidebarTitle: "Governance Models"
+description: "Learn how to structure Infisical for centralized platform administration or team self-service autonomy"
+---
+
+Organizations adopt different approaches to secrets management governance based on their security requirements, compliance obligations, and team structures. Infisical supports a spectrum of governance models—from fully centralized platform administration to team-driven self-service.
+
+This guide covers how to configure Infisical for different governance approaches and what tradeoffs to consider.
+
+## Understanding the Spectrum
+
+Most organizations don't operate at the extremes. Instead, they land somewhere on a spectrum between two models:
+
+**Centralized Administration**: A dedicated platform or security team controls project creation, access policies, integrations, and secret lifecycle management. Application teams consume secrets but don't manage the underlying infrastructure.
+
+**Self-Service**: Teams have autonomy to create projects, manage their own access, configure integrations, and operate independently. Central teams provide guardrails and standards rather than direct management.
+
+<Note>
+The right model depends on your regulatory environment, team maturity, organizational scale, and security posture. Highly regulated industries often lean toward centralized control, while organizations with mature DevOps practices may benefit from self-service with guardrails.
+</Note>
+
+## Organizational Structure
+
+Project and environment structure is where governance decisions start to take shape.
+
+### Project Ownership
+
+| Approach | Centralized | Self-Service |
+|----------|-------------|--------------|
+| **Project creation** | Platform team creates all projects on behalf of application teams | Teams create their own projects as needed |
+| **Naming conventions** | Enforced through process and templates | Documented standards, team-enforced |
+| **Folder structure** | Predefined conventions (e.g., `/apps/{app-name}/{component}`) | Teams define hierarchies that fit their needs |
+
+### Project Templates
+
+[Project Templates](/documentation/platform/project-templates) allow you to define standard environments, roles, and settings that are applied when creating new projects. This feature supports both governance models:
+
+- **Centralized**: Require all projects to use approved templates, ensuring consistent environment structures and role definitions across the organization
+- **Self-Service**: Provide templates as a starting point that teams can build upon, reducing setup time while allowing customization
+
+<Info>
+Project Templates apply at creation time and don't propagate changes to existing projects. Plan your template strategy before widespread adoption.
+</Info>
+
+### Environment Strategy
+
+Environments define the deployment stages where secrets are managed.
+
+- **Standardized environments** (e.g., `dev`, `staging`, `prod`) provide consistency and simplify cross-team collaboration
+- **Custom environments** allow teams to model their specific deployment pipelines (e.g., `qa`, `uat`, `perf-test`, `prod-eu`, `prod-us`)
+
+With Project Templates, you can enforce a base set of environments while optionally allowing teams to add additional ones.
+
+## Authentication and Identity
+
+How you manage identity—both for users and machines—significantly affects your governance strategy.
+
+### User Authentication
+
+| Approach | Centralized | Self-Service |
+|----------|-------------|--------------|
+| **Login methods** | SSO enforced, local accounts disabled | SSO available, local accounts permitted |
+| **MFA** | Required organization-wide | Encouraged or optional |
+| **Session duration** | Short sessions enforced | Longer sessions permitted |
+
+Infisical supports multiple authentication methods that can be configured based on your requirements:
+
+- [SAML SSO](/documentation/platform/sso/overview) with providers like Okta, Azure AD, Google Workspace, and JumpCloud
+- [OIDC SSO](/documentation/platform/sso/general-oidc) for standards-based authentication
+- [LDAP](/documentation/platform/ldap/overview) for directory-based authentication
+
+### User Provisioning
+
+| Approach | Centralized | Self-Service |
+|----------|-------------|--------------|
+| **User onboarding** | Automatic via SCIM from identity provider | Direct invitations by project admins |
+| **Role assignment** | Mapped from IdP groups | Assigned manually per project |
+| **Offboarding** | Automatic deprovisioning via SCIM | Manual removal required |
+
+[SCIM provisioning](/documentation/platform/scim/overview) enables automatic user lifecycle management synced with your identity provider. Combined with [group mappings](/documentation/platform/scim/group-mappings), you can automatically assign organization roles based on IdP group membership.
+
+For organizations using SAML, [group membership mapping](/documentation/platform/sso/google-saml#saml-group-membership-mapping) synchronizes group memberships when users log in, ensuring access reflects current IdP state.
+
+### Machine Identity Management
+
+[Machine identities](/documentation/platform/identities/machine-identities) authenticate applications, services, and automated systems with Infisical. Your governance model shapes how these identities are managed:
+
+| Approach | Centralized | Self-Service |
+|----------|-------------|--------------|
+| **Identity creation** | Platform team creates all identities; teams submit requests | Teams create identities for their own projects |
+| **Auth method selection** | Standardized methods enforced (e.g., "Kubernetes Auth only in production") | Teams choose methods appropriate to their infrastructure |
+| **Credential management** | Platform team manages and distributes credentials | Teams manage their own identity credentials |
+
+Infisical supports multiple machine identity authentication methods:
+
+- [Universal Auth](/documentation/platform/identities/universal-auth) — Client ID/secret authentication for any environment
+- [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) — Native authentication using Kubernetes service accounts
+- [AWS Auth](/documentation/platform/identities/aws-auth) — Authentication using AWS IAM roles
+- [Azure Auth](/documentation/platform/identities/azure-auth) — Authentication using Azure managed identities
+- [GCP Auth](/documentation/platform/identities/gcp-auth) — Authentication using GCP service accounts
+- [OIDC Auth](/documentation/platform/identities/oidc-auth) — Authentication using OIDC identity tokens
+
+Centralized organizations often standardize on platform-native authentication methods (Kubernetes Auth, cloud provider auth) to eliminate static credentials, while self-service models may permit Universal Auth for flexibility.
+
+## Access Control
+
+Infisical's [role-based access control](/documentation/platform/access-controls/role-based-access-controls) operates at two levels: organization and project. How you configure these controls determines who can do what across your secrets infrastructure.
+
+### Organization-Level Roles
+
+[Organization roles](/documentation/platform/access-controls/role-based-access-controls#organization-level-access-controls) govern access to organization-wide resources like billing, member management, and identity provider configuration.
+
+| Role | Capabilities |
+|------|--------------|
+| **Admin** | Full access to all organization settings and all projects |
+| **Member** | Basic organization access; project access determined separately |
+| **Custom roles** | Tailored permissions for specific administrative functions |
+
+<Warning>
+The Admin role grants access to all projects in the organization. In both governance models, this role should be assigned sparingly to prevent unintended access to sensitive secrets.
+</Warning>
+
+### Project-Level Roles
+
+[Project roles](/documentation/platform/access-controls/role-based-access-controls#project-level-access-controls) control what users and machine identities can do within a specific project.
+
+| Approach | Centralized | Self-Service |
+|----------|-------------|--------------|
+| **Role definition** | Custom roles defined by platform team; teams assigned predefined roles | Teams create project-level custom roles as needed |
+| **Production access** | Restricted to specific roles; requires approval | Teams determine their own access patterns |
+| **Role assignment** | Managed through groups synced from IdP | Project admins assign roles directly |
+
+Built-in project roles include:
+- **Admin**: Full access to all environments, folders, secrets, and project settings
+- **Developer**: Standard access with restrictions on project administration and policy management
+- **Viewer**: Read-only access to secrets and project resources
+
+[Custom roles](/documentation/platform/access-controls/role-based-access-controls#creating-custom-roles) let you define granular permissions for specific environments, folder paths, and actions—useful for implementing least-privilege access.
+
+### Groups
+
+[Groups](/documentation/platform/groups) simplify access management by allowing you to assign roles to collections of users rather than individuals.
+
+Key behaviors:
+- Adding a group to a project grants all group members access with the assigned role(s)
+- Users inherit composite permissions from all groups they belong to
+- Group membership can be managed locally or synced from your identity provider via SCIM
+
+| Approach | Centralized | Self-Service |
+|----------|-------------|--------------|
+| **Group management** | Groups defined in IdP, synced via SCIM | Project admins create and manage local groups |
+| **Project membership** | Controlled through IdP group assignments | Direct group/user additions by project admins |
+
+### Temporary and Just-in-Time Access
+
+For sensitive environments, both governance models benefit from time-limited access:
+
+- [Temporary access](/documentation/platform/access-controls/temporary-access) grants permissions that automatically expire after a defined period
+- [Additional privileges](/documentation/platform/access-controls/additional-privileges) allow temporary elevation beyond a user's base role
+
+Centralized organizations typically require temporary access for production environments, while self-service models may use it selectively for high-risk operations.
+
+## Approval Workflows
+
+[Approval workflows](/documentation/platform/pr-workflows) add oversight to sensitive operations, supporting compliance requirements and change management practices.
+
+### Change Policies
+
+Change policies require approval before secrets can be modified in specific environments or folder paths. When a policy applies, proposed changes enter a review queue where designated approvers can approve and merge—or reject—the changes.
+
+| Approach | Centralized | Self-Service |
+|----------|-------------|--------------|
+| **Policy scope** | Required for all production environments | Teams define policies for their sensitive environments |
+| **Approvers** | Security team members or designated reviewers | Team leads or senior engineers |
+| **Bypass permissions** | Strictly limited | May allow emergency bypass for on-call |
+
+### Access Requests
+
+[Access requests](/documentation/platform/access-controls/access-requests) formalize the process of granting access to sensitive resources. Combined with temporary access, this enables just-in-time access patterns where users request and receive time-limited permissions.
+
+| Approach | Centralized | Self-Service |
+|----------|-------------|--------------|
+| **Request requirement** | Mandatory for production access | Optional or environment-specific |
+| **Approval workflow** | Formal review by security team | Peer approval or team lead sign-off |
+| **Access duration** | Strictly time-limited | Flexible based on need |
+
+### Notifications
+
+Approval workflows integrate with [Slack](/documentation/platform/workflow-integrations/slack-integration) and [Microsoft Teams](/documentation/platform/workflow-integrations/microsoft-teams-integration) to notify approvers in real-time, reducing delays in the approval process.
+
+## Secret Lifecycle
+
+Who creates, rotates, and retires secrets—and how—depends on your governance model.
+
+### App Connections
+
+[App Connections](/integrations/app-connections/overview) are reusable integrations with third-party platforms like AWS, GCP, Azure, databases, and other services. They're required for secret rotation, dynamic secrets, and secret syncs—so how you manage them affects multiple workflows.
+
+| Approach | Centralized | Self-Service |
+|----------|-------------|--------------|
+| **Connection creation** | Platform team creates connections at the organization level and distributes access to projects | Teams create their own connections at the project level |
+| **Credential management** | Platform team manages service accounts and API keys used by connections | Teams manage credentials for their own connections |
+| **Access distribution** | Connections shared across multiple projects as needed | Each team maintains their own set of connections |
+
+### Secret Creation and Ownership
+
+| Approach | Centralized | Self-Service |
+|----------|-------------|--------------|
+| **Shared secrets** | Platform team provisions infrastructure secrets (databases, APIs) | Teams request or create their own |
+| **Application secrets** | Teams manage within their designated paths | Teams have full ownership |
+| **Secret standards** | Naming conventions and metadata requirements enforced | Guidelines provided, team-enforced |
+
+### Secret Rotation
+
+[Secret rotation](/documentation/platform/secret-rotation/overview) automates credential lifecycle management, reducing the risk of long-lived secrets.
+
+| Approach | Centralized | Self-Service |
+|----------|-------------|--------------|
+| **Rotation policies** | Defined and managed by platform team | Teams configure for their services |
+| **Rotation schedules** | Standardized intervals based on secret classification | Teams determine appropriate intervals |
+
+### Dynamic Secrets
+
+[Dynamic secrets](/documentation/platform/dynamic-secrets/overview) generate short-lived credentials on demand, eliminating standing access to sensitive systems.
+
+| Approach | Centralized | Self-Service |
+|----------|-------------|--------------|
+| **Configuration** | Platform team sets up dynamic secret sources | Teams configure for their databases and services |
+| **Lease duration** | Standardized TTLs based on use case | Teams determine appropriate durations |
+| **Access control** | Restricted to specific roles | Available to authorized team members |
+
+### Secret Referencing Within Projects
+
+[Secret referencing](/documentation/platform/secret-references) and [imports](/documentation/platform/secret-references) allow secrets to be shared across environments and folders within the same project. This helps reduce duplication when the same secret is needed in multiple environments.
+
+| Approach | Centralized | Self-Service |
+|----------|-------------|--------------|
+| **Reference patterns** | Standardized import structures across projects | Teams define their own reference hierarchies |
+| **Base environment** | Platform team designates source environments for imports | Teams choose which environments to reference from |
+
+<Note>
+Projects in Infisical are isolated from one another. Secret referencing and imports work within a single project—you cannot reference secrets across different projects.
+</Note>
+
+## Integrations and Secret Delivery
+
+Infisical offers multiple methods for delivering secrets to applications and infrastructure.
+
+### Secret Syncs
+
+[Secret Syncs](/integrations/secret-syncs/overview) push secrets to third-party platforms like AWS Secrets Manager, Azure Key Vault, GCP Secret Manager, and others. Syncs keep external secret stores updated when values change in Infisical.
+
+| Approach | Centralized | Self-Service |
+|----------|-------------|--------------|
+| **Sync setup** | Platform team configures syncs to approved destinations | Teams configure syncs for their projects |
+| **Target platforms** | Limited to approved platforms | Teams choose appropriate destinations |
+| **Sync scope** | Standardized patterns (e.g., sync prod to AWS SM only) | Teams determine what to sync and where |
+
+### Kubernetes Integration
+
+For Kubernetes environments, two primary integration patterns are available:
+
+- [Infisical Kubernetes Operator](/integrations/platforms/kubernetes/infisical-operator) — Syncs secrets to Kubernetes Secrets resources
+- [Infisical Secrets Injector](/integrations/platforms/kubernetes-injector) — Injects secrets directly into pods at runtime
+
+| Approach | Centralized | Self-Service |
+|----------|-------------|--------------|
+| **Operator deployment** | Single cluster-wide instance managed by platform team | Teams may deploy namespace-scoped instances |
+| **Secret sync patterns** | Standardized CRD configurations | Teams define their own InfisicalSecret resources |
+
+### Agent and CLI
+
+The [Infisical Agent](/infisical-agent/overview) and [CLI](/cli/overview) provide flexible secret consumption patterns:
+
+| Approach | Centralized | Self-Service |
+|----------|-------------|--------------|
+| **Agent deployment** | Managed by platform team as infrastructure | Teams deploy and configure their own agents |
+| **CLI usage** | Standardized configurations provided | Teams use CLI as needed in their workflows |
+
+### Gateways
+
+[Gateways](/documentation/platform/gateways/overview) enable Infisical to securely access private resources—such as databases in isolated VPCs—without exposing them to the public internet. Gateways are lightweight components deployed within your private network that establish secure, outbound-only connections to Infisical.
+
+Gateways are essential for features that require direct access to private infrastructure:
+- [Dynamic secrets](/documentation/platform/dynamic-secrets/overview) for databases in private networks
+- [Secret rotation](/documentation/platform/secret-rotation/overview) for credentials stored in isolated systems
+- [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) token review for private clusters
+
+#### Gateway Architecture
+
+Gateways operate at two levels within Infisical:
+
+1. **Organization-level registration**: Gateways are registered and visible in Organization Settings → Access Control → Gateways. This provides central visibility into all gateway infrastructure.
+
+2. **Project-level linking**: When configuring features like dynamic secrets, teams select from available gateways to route requests through private networks.
+
+This architecture naturally supports a hybrid governance model where infrastructure teams manage gateway deployment while application teams consume them.
+
+#### Governance Considerations
+
+| Approach | Centralized | Self-Service |
+|----------|-------------|--------------|
+| **Gateway deployment** | Platform/infrastructure team deploys gateways in shared network zones | Teams deploy gateways in their own VPCs or network segments |
+| **Machine identity management** | Platform team creates and manages identities used by gateways | Teams create identities for gateways they deploy |
+| **Network configuration** | Central team manages firewall rules and network connectivity | Teams responsible for their own network access |
+| **Gateway selection** | Platform team links gateways to projects | Teams select from available gateways when configuring features |
+
+<Info>
+Each gateway requires a [machine identity](/documentation/platform/identities/machine-identities) for authentication. Your gateway governance model should align with your broader machine identity strategy.
+</Info>
+
+#### Common Patterns
+
+**Shared Gateway Model** (Centralized)
+
+A platform team deploys gateways in shared network zones that can reach common infrastructure (e.g., a central database cluster). Multiple projects link to these shared gateways, reducing deployment overhead and centralizing network management.
+
+This pattern works well when:
+- Multiple applications share common database infrastructure
+- Network access is controlled by a central team
+- You want to minimize the number of gateway deployments to manage
+
+**Team-Owned Gateway Model** (Self-Service)
+
+Each team deploys gateways within their own network boundaries (e.g., per-team VPCs or Kubernetes namespaces). Teams manage the full lifecycle of their gateways, including the machine identities that authenticate them.
+
+This pattern works well when:
+- Teams have isolated network environments
+- Teams have infrastructure expertise to deploy and maintain gateways
+- Strict network segmentation requires dedicated gateways per team
+
+**Hybrid Model**
+
+Platform team deploys and registers gateways, but application teams independently select which gateway to use when configuring dynamic secrets or rotation. This provides central oversight of infrastructure while giving teams flexibility in how they use it.
+
+For Kubernetes environments, gateways can also serve as token reviewers for [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth), eliminating the need for long-lived service account tokens. In this scenario, the gateway deployment often aligns with whoever manages the Kubernetes cluster.
+
+## Audit and Compliance
+
+Visibility into secrets access and changes is critical for security and compliance. Infisical provides audit capabilities at both organization and project levels.
+
+### Audit Logs
+
+[Audit logs](/documentation/platform/audit-logs) capture all platform activity including secret access, modifications, and administrative actions.
+
+| Level | Scope | Typical Access |
+|-------|-------|----------------|
+| **Organization** | All activity across all projects | Security team, compliance officers |
+| **Project** | Activity within a specific project | Project admins, team leads |
+
+| Approach | Centralized | Self-Service |
+|----------|-------------|--------------|
+| **Log access** | Security team has organization-wide visibility | Teams access only their project logs |
+| **Log retention** | Centrally managed retention policies | Platform-defined retention |
+| **Compliance reporting** | Platform team generates reports | Teams may generate their own project reports |
+
+### Audit Log Streaming
+
+[Audit log streaming](/documentation/platform/audit-log-streams/audit-log-streams) exports logs to external systems for long-term retention and analysis.
+
+Supported destinations include:
+- SIEM platforms (Splunk, Datadog, Elastic)
+- Cloud storage (AWS S3, Azure Blob Storage)
+- Log aggregators (Better Stack, generic HTTP endpoints)
+
+| Approach | Centralized | Self-Service |
+|----------|-------------|--------------|
+| **Stream configuration** | Platform team manages all log streams | N/A (organization-level feature) |
+| **SIEM integration** | Centralized security monitoring | Teams may not have direct SIEM access |
+
+## Security Controls
+
+Beyond access control, Infisical offers additional security settings.
+
+### Security Policies
+
+Organization-level [security policies](/documentation/platform/organization) allow you to enforce:
+- MFA requirements for all users
+- Session duration limits
+- Login restrictions
+
+### IP Access Controls
+
+Restrict API and dashboard access to specific IP ranges, useful for:
+- Limiting production access to corporate networks or VPNs
+- Restricting machine identity authentication to known infrastructure IPs
+
+### Encryption and Key Management
+
+| Feature | Description | Governance Consideration |
+|---------|-------------|-------------------------|
+| **External KMS** | Integrate with AWS KMS, GCP KMS, or Azure Key Vault | Centralized key management |
+| **BYOK** | Bring your own encryption keys | Enterprise key management policies |
+| **KMIP** | Connect to KMIP-compatible HSMs | Hardware-backed security requirements |
+
+These features are typically managed centrally regardless of overall governance model, as encryption infrastructure requires specialized expertise.
+
+## Choosing Your Model
+
+A few factors tend to push organizations toward one end of the spectrum or the other:
+
+### Factors Favoring Centralized Control
+
+- **Regulatory requirements**: SOC 2, HIPAA, PCI-DSS, and similar frameworks often require demonstrated control over secrets management
+- **Limited security expertise**: When application teams lack security experience, central management reduces risk
+- **Consistency requirements**: Large organizations benefit from standardized patterns across teams
+- **High-risk environments**: Financial services, healthcare, and government contexts often require strict oversight
+
+### Factors Favoring Self-Service
+
+- **Mature DevOps culture**: Teams with strong security awareness can manage their own secrets responsibly
+- **Speed of delivery**: Self-service reduces bottlenecks and accelerates development cycles
+- **Diverse technology stacks**: Teams using different platforms benefit from flexibility in integration choices
+- **Distributed organizations**: Global teams may need autonomy to operate across time zones
+
+### The Hybrid Approach
+
+Most organizations benefit from a hybrid model that combines central guardrails with team autonomy:
+
+**Platform team responsibilities:**
+- SSO and SCIM configuration
+- Project template creation and maintenance
+- Organization-wide security policies
+- Audit log streaming and compliance reporting
+- Approval workflow policies for production environments
+- Shared infrastructure secrets (databases, external APIs)
+
+**Application team responsibilities:**
+- Project creation (from approved templates)
+- Application-specific secret management
+- Integration configuration within their projects
+- Team-level access control within policy bounds
+- Secret rotation for team-owned credentials
+
+This balances compliance requirements with team velocity—central teams handle the infrastructure and guardrails, while application teams own their day-to-day secrets operations.
+
+## Implementation Considerations
+
+### Starting Centralized, Moving to Self-Service
+
+Organizations often begin with centralized control and gradually extend autonomy as teams demonstrate security maturity:
+
+1. **Phase 1**: Platform team manages all aspects; teams consume secrets via provided integrations
+2. **Phase 2**: Teams gain ability to manage secrets within their projects; platform team controls project creation and policies
+3. **Phase 3**: Teams can create projects from templates and configure integrations; platform team focuses on guardrails and compliance
+
+### Starting Self-Service, Adding Controls
+
+Organizations scaling from startup to enterprise may need to add centralization:
+
+1. **Phase 1**: Establish SSO and basic security policies
+2. **Phase 2**: Introduce project templates and approval workflows for production
+3. **Phase 3**: Implement SCIM provisioning and comprehensive audit streaming
+
+### Documentation and Training
+
+Regardless of model, invest in:
+- Clear documentation of secrets management standards and processes
+- Training for teams on Infisical features and security best practices
+- Runbooks for common operations (secret rotation, access requests, incident response)
+
+## Summary
+
+Here's a quick reference for how key Infisical features map to each governance model:
+
+| Feature | Centralized Use | Self-Service Use |
+|---------|-----------------|------------------|
+| [Project Templates](/documentation/platform/project-templates) | Enforce standards | Provide starting points |
+| [SCIM](/documentation/platform/scim/overview) | Automate user lifecycle | Supplement direct invitations |
+| [Groups](/documentation/platform/groups) | IdP-synced membership | Local team management |
+| [Custom Roles](/documentation/platform/access-controls/role-based-access-controls) | Define organization-wide | Create project-specific |
+| [Approval Workflows](/documentation/platform/pr-workflows) | Require for all changes | Apply selectively |
+| [App Connections](/integrations/app-connections/overview) | Org-level connections distributed to projects | Teams create project-level connections |
+| [Secret Syncs](/integrations/secret-syncs/overview) | Platform-managed syncs to approved destinations | Teams configure their own syncs |
+| [Gateways](/documentation/platform/gateways/overview) | Shared infrastructure for private access | Team-deployed per network zone |
+| [Audit Logs](/documentation/platform/audit-logs) | Centralized monitoring | Project-level visibility |
+
+Most organizations land somewhere in between—central control over identity, policies, and infrastructure with team ownership of secrets and integrations. You can start at either end of the spectrum and adjust as your needs change.

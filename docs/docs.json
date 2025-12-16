@@ -33,7 +33,10 @@
               },
               {
                 "group": "Guides",
-                "pages": ["documentation/guides/organization-structure"]
+                "pages": [
+                  "documentation/guides/governance-models",
+                  "documentation/guides/organization-structure"
+                ]
               }
             ]
           },
