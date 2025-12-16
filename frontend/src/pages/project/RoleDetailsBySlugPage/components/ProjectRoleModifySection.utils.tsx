@@ -68,7 +68,7 @@ const CertificateAuthorityPolicyActionSchema = z.object({
   [ProjectPermissionCertificateAuthorityActions.Delete]: z.boolean().optional(),
   [ProjectPermissionCertificateAuthorityActions.Edit]: z.boolean().optional(),
   [ProjectPermissionCertificateAuthorityActions.Read]: z.boolean().optional(),
-  [ProjectPermissionCertificateAuthorityActions.Renew]: z.boolean().optional(),
+  [ProjectPermissionCertificateAuthorityActions.Issue]: z.boolean().optional(),
   [ProjectPermissionCertificateAuthorityActions.SignIntermediate]: z.boolean().optional()
 });
 
@@ -875,7 +875,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           const canCreate = action.includes(ProjectPermissionCertificateAuthorityActions.Create);
           const canEdit = action.includes(ProjectPermissionCertificateAuthorityActions.Edit);
           const canDelete = action.includes(ProjectPermissionCertificateAuthorityActions.Delete);
-          const canRenew = action.includes(ProjectPermissionCertificateAuthorityActions.Renew);
+          const canIssue = action.includes(ProjectPermissionCertificateAuthorityActions.Issue);
           const canSignIntermediate = action.includes(
             ProjectPermissionCertificateAuthorityActions.SignIntermediate
           );
@@ -886,7 +886,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             [ProjectPermissionCertificateAuthorityActions.Create]: canCreate,
             [ProjectPermissionCertificateAuthorityActions.Edit]: canEdit,
             [ProjectPermissionCertificateAuthorityActions.Delete]: canDelete,
-            [ProjectPermissionCertificateAuthorityActions.Renew]: canRenew,
+            [ProjectPermissionCertificateAuthorityActions.Issue]: canIssue,
             [ProjectPermissionCertificateAuthorityActions.SignIntermediate]: canSignIntermediate,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
@@ -1657,7 +1657,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Create", value: ProjectPermissionCertificateAuthorityActions.Create },
       { label: "Modify", value: ProjectPermissionCertificateAuthorityActions.Edit },
       { label: "Remove", value: ProjectPermissionCertificateAuthorityActions.Delete },
-      { label: "Renew", value: ProjectPermissionCertificateAuthorityActions.Renew },
+      { label: "Issue", value: ProjectPermissionCertificateAuthorityActions.Issue },
       {
         label: "Sign Intermediate",
         value: ProjectPermissionCertificateAuthorityActions.SignIntermediate

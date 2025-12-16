@@ -76,7 +76,7 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionCertificateAuthorityActions.Create,
       ProjectPermissionCertificateAuthorityActions.Edit,
       ProjectPermissionCertificateAuthorityActions.Delete,
-      ProjectPermissionCertificateAuthorityActions.Renew,
+      ProjectPermissionCertificateAuthorityActions.Issue,
       ProjectPermissionCertificateAuthorityActions.SignIntermediate
     ],
     ProjectPermissionSub.CertificateAuthorities

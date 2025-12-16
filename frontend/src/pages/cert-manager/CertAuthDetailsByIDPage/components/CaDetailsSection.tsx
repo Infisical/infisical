@@ -158,7 +158,7 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
         </div>
         {ca.status === CaStatus.ACTIVE && (
           <ProjectPermissionCan
-            I={ProjectPermissionCertificateAuthorityActions.Renew}
+            I={ProjectPermissionCertificateAuthorityActions.Issue}
             a={subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })}
           >
             {(isAllowed) => {
