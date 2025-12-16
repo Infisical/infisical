@@ -139,7 +139,7 @@ export const handleAxiosHttpError = (
   }
 
   if (message) {
-    return new UnauthorizedError({
+    return new BadRequestError({
       message,
       name: `${prefix}TokenReviewRequestError`
     });
