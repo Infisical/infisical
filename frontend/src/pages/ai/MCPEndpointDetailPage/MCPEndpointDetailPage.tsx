@@ -27,8 +27,7 @@ import {
   MCPEndpointConnectedServersSection,
   MCPEndpointConnectionSection,
   MCPEndpointDetailsSection,
-  MCPEndpointToolSelectionSection,
-  MCPEndpointUsageStatisticsSection
+  MCPEndpointToolSelectionSection
 } from "./components";
 
 const PageContent = () => {
@@ -151,11 +150,6 @@ const PageContent = () => {
 
         {/* Right Column - Usage Statistics & Tool Selection */}
         <div className="flex flex-1 flex-col gap-4">
-          <MCPEndpointUsageStatisticsSection
-            endpointId={mcpEndpoint.id}
-            endpointName={mcpEndpoint.name}
-            projectId={mcpEndpoint.projectId}
-          />
           <MCPEndpointToolSelectionSection
             endpointId={mcpEndpoint.id}
             projectId={mcpEndpoint.projectId}

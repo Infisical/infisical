@@ -2,12 +2,11 @@ import { useMemo } from "react";
 import { faChartLine, faTools, faUsers } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useListAiMcpActivityLogs, useListEndpointTools } from "@app/hooks/api";
+import { TAiMcpActivityLog, useListEndpointTools } from "@app/hooks/api";
 
 type Props = {
   endpointId: string;
   endpointName: string;
-  projectId: string;
 };
 
 type StatCardProps = {
@@ -42,14 +41,8 @@ const StatCard = ({ icon, label, value, subtitle, trend }: StatCardProps) => {
   );
 };
 
-export const MCPEndpointUsageStatisticsSection = ({
-  endpointId,
-  endpointName,
-  projectId
-}: Props) => {
-  const { data: activityLogs = [] } = useListAiMcpActivityLogs({
-    projectId
-  });
+export const MCPEndpointUsageStatisticsSection = ({ endpointId, endpointName }: Props) => {
+  const activityLogs: TAiMcpActivityLog[] = [];
   const { data: endpointTools = [] } = useListEndpointTools({ endpointId });
 
   const statistics = useMemo(() => {

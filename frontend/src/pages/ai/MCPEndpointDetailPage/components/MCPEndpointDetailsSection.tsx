@@ -44,6 +44,8 @@ const getStatusColor = (status: string | null) => {
   return colors[status || "inactive"] || "bg-red-500";
 };
 
+const SHOW_PII_FILTERING_AND_RATE_LIMITING_SECTION = false;
+
 export const MCPEndpointDetailsSection = ({ endpoint, onEdit }: Props) => {
   const updateEndpoint = useUpdateAiMcpEndpoint();
   const [rateLimitSettings, setRateLimitSettings] = useState<RateLimitSettings>({
@@ -143,64 +145,67 @@ export const MCPEndpointDetailsSection = ({ endpoint, onEdit }: Props) => {
         <GenericFieldLabel label="Created">
           {format(new Date(endpoint.createdAt), "yyyy-MM-dd, hh:mm aaa")}
         </GenericFieldLabel>
-        <div className="border-t border-mineshaft-500 pt-3">
-          <div className="flex items-start justify-between">
-            <div className="flex flex-col gap-0.5">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-mineshaft-200">PII Filtering</span>
-                <Tooltip
-                  content="When enabled, personally identifiable information (credit cards, addresses, phone numbers, etc.) will be redacted in requests and responses"
-                  className="max-w-xs"
-                >
-                  <FontAwesomeIcon
-                    icon={faInfoCircle}
-                    className="cursor-default text-bunker-400 hover:text-bunker-300"
+        {SHOW_PII_FILTERING_AND_RATE_LIMITING_SECTION && (
+          <>
+            <div className="border-t border-mineshaft-500 pt-3">
+              <div className="flex items-start justify-between">
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-mineshaft-200">PII Filtering</span>
+                    <Tooltip
+                      content="When enabled, personally identifiable information (credit cards, addresses, phone numbers, etc.) will be redacted in requests and responses"
+                      className="max-w-xs"
+                    >
+                      <FontAwesomeIcon
+                        icon={faInfoCircle}
+                        className="cursor-default text-bunker-400 hover:text-bunker-300"
+                      />
+                    </Tooltip>
+                  </div>
+                  <span className="text-xs text-bunker-400">Redact sensitive data</span>
+                </div>
+                <Switch
+                  id={`pii-filtering-${endpoint.id}`}
+                  isChecked={endpoint.piiFiltering ?? false}
+                  onCheckedChange={handlePiiFilteringToggle}
+                  isDisabled={updateEndpoint.isPending}
+                />
+              </div>
+            </div>
+            <div className="pt-1">
+              <div className="flex items-start justify-between">
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-mineshaft-200">Rate Limiting</span>
+                  </div>
+                  <span className="text-xs text-bunker-400">Limit tool invocations per user</span>
+                </div>
+                <Switch
+                  id={`rate-limiting-${endpoint.id}`}
+                  isChecked={rateLimitSettings.enabled}
+                  onCheckedChange={handleRateLimitToggle}
+                />
+              </div>
+
+              {rateLimitSettings.enabled && (
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <Input
+                    type="number"
+                    value={rateLimitSettings.limit.toString()}
+                    onChange={(e) => handleRateLimitChange(e.target.value)}
+                    min={1}
+                    placeholder="100"
                   />
-                </Tooltip>
-              </div>
-              <span className="text-xs text-bunker-400">Redact sensitive data</span>
+                  <Select value={rateLimitSettings.timeUnit} onValueChange={handleTimeUnitChange}>
+                    <SelectItem value="minute">per minute</SelectItem>
+                    <SelectItem value="hour">per hour</SelectItem>
+                    <SelectItem value="day">per day</SelectItem>
+                  </Select>
+                </div>
+              )}
             </div>
-            <Switch
-              id={`pii-filtering-${endpoint.id}`}
-              isChecked={endpoint.piiFiltering ?? false}
-              onCheckedChange={handlePiiFilteringToggle}
-              isDisabled={updateEndpoint.isPending}
-            />
-          </div>
-        </div>
-
-        <div className="pt-1">
-          <div className="flex items-start justify-between">
-            <div className="flex flex-col gap-0.5">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-mineshaft-200">Rate Limiting</span>
-              </div>
-              <span className="text-xs text-bunker-400">Limit tool invocations per user</span>
-            </div>
-            <Switch
-              id={`rate-limiting-${endpoint.id}`}
-              isChecked={rateLimitSettings.enabled}
-              onCheckedChange={handleRateLimitToggle}
-            />
-          </div>
-
-          {rateLimitSettings.enabled && (
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              <Input
-                type="number"
-                value={rateLimitSettings.limit.toString()}
-                onChange={(e) => handleRateLimitChange(e.target.value)}
-                min={1}
-                placeholder="100"
-              />
-              <Select value={rateLimitSettings.timeUnit} onValueChange={handleTimeUnitChange}>
-                <SelectItem value="minute">per minute</SelectItem>
-                <SelectItem value="hour">per hour</SelectItem>
-                <SelectItem value="day">per day</SelectItem>
-              </Select>
-            </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -29,6 +29,8 @@ type AuthToken = {
 
 const STORAGE_KEY_PREFIX = "mcp_endpoint_tokens_";
 
+const SHOW_AUTH_TOKENS_SECTION = false;
+
 export const MCPEndpointConnectionSection = ({ endpoint }: Props) => {
   const [isCopied, setIsCopied] = useToggle(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useToggle(false);
@@ -165,78 +167,80 @@ export const MCPEndpointConnectionSection = ({ endpoint }: Props) => {
             </div>
           </GenericFieldLabel>
 
-          <div className="space-y-3 border-t border-mineshaft-500 pt-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm text-mineshaft-300">
-                <FontAwesomeIcon icon={faKey} className="text-xs" />
-                <span>Authentication Tokens</span>
+          {SHOW_AUTH_TOKENS_SECTION && (
+            <div className="space-y-3 border-t border-mineshaft-500 pt-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-mineshaft-300">
+                  <FontAwesomeIcon icon={faKey} className="text-xs" />
+                  <span>Authentication Tokens</span>
+                </div>
+                <Button
+                  variant="outline_bg"
+                  size="xs"
+                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                  onClick={setIsCreateModalOpen.on}
+                >
+                  Create
+                </Button>
               </div>
-              <Button
-                variant="outline_bg"
-                size="xs"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={setIsCreateModalOpen.on}
-              >
-                Create
-              </Button>
-            </div>
 
-            {authTokens.length > 0 && (
-              <div className="space-y-2">
-                {authTokens.map((token) => (
-                  <div
-                    key={token.id}
-                    className="flex items-center justify-between rounded border border-mineshaft-600 bg-mineshaft-800 px-3 py-2.5"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between">
-                        <h4 className="truncate text-sm font-medium text-mineshaft-100">
-                          {token.name}
-                        </h4>
-                        <Tooltip content="Delete token">
-                          <IconButton
-                            ariaLabel="Delete token"
-                            variant="plain"
-                            size="xs"
-                            onClick={() => handleDeleteToken(token.id)}
-                            className="text-red-500 hover:text-red-400"
-                          >
-                            <FontAwesomeIcon icon={faTrash} />
-                          </IconButton>
-                        </Tooltip>
-                      </div>
-                      <p className="mt-0.5 text-xs text-mineshaft-400">
-                        Created {formatDate(token.createdAt)}
-                      </p>
-                      <div className="mt-1.5 flex items-center gap-2">
-                        <code className="font-mono text-xs text-mineshaft-300">
-                          {truncateToken(token.token)}
-                        </code>
-                        <Tooltip content={copiedTokenId === token.id ? "Copied!" : "Copy token"}>
-                          <button
-                            type="button"
-                            onClick={() => handleCopyToken(token.token, token.id)}
-                            className="text-mineshaft-400 transition-colors hover:text-mineshaft-200"
-                          >
-                            <FontAwesomeIcon
-                              icon={copiedTokenId === token.id ? faCheck : faCopy}
-                              className="text-xs"
-                            />
-                          </button>
-                        </Tooltip>
+              {authTokens.length > 0 && (
+                <div className="space-y-2">
+                  {authTokens.map((token) => (
+                    <div
+                      key={token.id}
+                      className="flex items-center justify-between rounded border border-mineshaft-600 bg-mineshaft-800 px-3 py-2.5"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between">
+                          <h4 className="truncate text-sm font-medium text-mineshaft-100">
+                            {token.name}
+                          </h4>
+                          <Tooltip content="Delete token">
+                            <IconButton
+                              ariaLabel="Delete token"
+                              variant="plain"
+                              size="xs"
+                              onClick={() => handleDeleteToken(token.id)}
+                              className="text-red-500 hover:text-red-400"
+                            >
+                              <FontAwesomeIcon icon={faTrash} />
+                            </IconButton>
+                          </Tooltip>
+                        </div>
+                        <p className="mt-0.5 text-xs text-mineshaft-400">
+                          Created {formatDate(token.createdAt)}
+                        </p>
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <code className="font-mono text-xs text-mineshaft-300">
+                            {truncateToken(token.token)}
+                          </code>
+                          <Tooltip content={copiedTokenId === token.id ? "Copied!" : "Copy token"}>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyToken(token.token, token.id)}
+                              className="text-mineshaft-400 transition-colors hover:text-mineshaft-200"
+                            >
+                              <FontAwesomeIcon
+                                icon={copiedTokenId === token.id ? faCheck : faCopy}
+                                className="text-xs"
+                              />
+                            </button>
+                          </Tooltip>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
 
-            {authTokens.length === 0 && (
-              <p className="py-2 text-xs text-mineshaft-400 italic">
-                No authentication tokens created yet
-              </p>
-            )}
-          </div>
+              {authTokens.length === 0 && (
+                <p className="py-2 text-xs text-mineshaft-400 italic">
+                  No authentication tokens created yet
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
