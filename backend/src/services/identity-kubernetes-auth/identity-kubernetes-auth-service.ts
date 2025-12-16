@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
-import axios, { AxiosError } from "axios";
+import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import https from "https";
 import RE2 from "re2";
 
@@ -28,6 +28,7 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
+import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
 import {
   BadRequestError,
@@ -64,8 +65,9 @@ import {
   TUpdateKubernetesAuthDTO
 } from "./identity-kubernetes-auth-types";
 import {
+  GatewayRequestExecutor,
   validateKubernetesHostConnectivity,
-  validateTokenReviewerJwtPermissions
+  validateTokenReviewerPermissions
 } from "./identity-kubernetes-auth-validators";
 
 type TIdentityKubernetesAuthServiceFactoryDep = {
@@ -188,6 +190,70 @@ export const identityKubernetesAuthServiceFactory = ({
     );
 
     return callbackResult;
+  };
+
+  /**
+   * Supports two modes:
+   * - Gateway reviewer mode: Gateway uses its own service account (no kubernetesHost option)
+   * - API mode through gateway: Gateway proxies TCP connection to kubernetesHost (kubernetesHost option provided)
+   */
+  const $createGatewayValidationRequest = (
+    gatewayId: string,
+    options?: { kubernetesHost?: string; caCert?: string }
+  ): GatewayRequestExecutor => {
+    const useGatewayServiceAccount = !options?.kubernetesHost;
+
+    let targetHost: string | undefined;
+    let targetPort: number | undefined;
+    if (options?.kubernetesHost) {
+      const parsedUrl = new URL(options.kubernetesHost);
+      targetHost = parsedUrl.hostname;
+      targetPort = parsedUrl.port ? Number(parsedUrl.port) : 443;
+    }
+
+    return async <T>(method: "get" | "post", url: string, body?: object, headers?: Record<string, string>) => {
+      let response: AxiosResponse<T> | undefined;
+
+      await $gatewayProxyWrapper(
+        {
+          gatewayId,
+          reviewTokenThroughGateway: useGatewayServiceAccount,
+          targetHost,
+          targetPort,
+          caCert: options?.caCert
+        },
+        async (host: string, port: number, httpsAgent?: https.Agent) => {
+          const config: AxiosRequestConfig = {
+            headers: {
+              "Content-Type": "application/json",
+              ...(useGatewayServiceAccount
+                ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
+                : headers)
+            },
+            timeout: 10000,
+            signal: AbortSignal.timeout(10000),
+            validateStatus: () => true,
+            ...(httpsAgent ? { httpsAgent } : {})
+          };
+
+          if (method === "get") {
+            response = await request.get<T>(`${host}:${port}${url}`, config);
+          } else {
+            response = await request.post<T>(`${host}:${port}${url}`, body, config);
+          }
+          return response.data;
+        }
+      );
+
+      if (!response) {
+        throw new BadRequestError({
+          name: "GatewayConnectionError",
+          message: "Failed to get response from gateway"
+        });
+      }
+
+      return response;
+    };
   };
 
   const login = async ({ identityId, jwt: serviceAccountJwt, subOrganizationName }: TLoginKubernetesAuthDTO) => {
@@ -717,28 +783,39 @@ export const identityKubernetesAuthServiceFactory = ({
         OrgPermissionGatewayActions.AttachGateways,
         OrgPermissionSubjects.Gateway
       );
-    }
 
-    if (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && kubernetesHost && !gatewayId) {
+      if (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway) {
+        const gatewayExecutor = $createGatewayValidationRequest(gatewayId);
+        logger.info({ gatewayId }, "Validating gateway connectivity to Kubernetes");
+        await validateKubernetesHostConnectivity({ gatewayExecutor });
+        await validateTokenReviewerPermissions({ gatewayExecutor });
+      } else if (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && kubernetesHost) {
+        // API mode through gateway: gateway proxies requests with user's JWT
+        const gatewayExecutor = $createGatewayValidationRequest(gatewayId, {
+          kubernetesHost,
+          caCert: caCert || undefined
+        });
+        logger.info({ gatewayId, kubernetesHost }, "Validating Kubernetes connectivity through gateway");
+        await validateKubernetesHostConnectivity({ gatewayExecutor });
+        if (tokenReviewerJwt) {
+          await validateTokenReviewerPermissions({ gatewayExecutor, tokenReviewerJwt });
+        }
+      }
+    } else if (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && kubernetesHost) {
       logger.info({ kubernetesHost }, "Validating Kubernetes host connectivity for new auth method");
       await validateKubernetesHostConnectivity({
         kubernetesHost,
         caCert: caCert || undefined
       });
-    }
 
-    if (
-      tokenReviewerJwt &&
-      kubernetesHost &&
-      tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
-      !gatewayId
-    ) {
-      logger.info({ kubernetesHost }, "Validating token reviewer JWT permissions for new auth method");
-      await validateTokenReviewerJwtPermissions({
-        kubernetesHost,
-        tokenReviewerJwt,
-        caCert: caCert || undefined
-      });
+      if (tokenReviewerJwt) {
+        logger.info({ kubernetesHost }, "Validating token reviewer JWT permissions for new auth method");
+        await validateTokenReviewerPermissions({
+          kubernetesHost,
+          tokenReviewerJwt,
+          caCert: caCert || undefined
+        });
+      }
     }
 
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
@@ -920,33 +997,51 @@ export const identityKubernetesAuthServiceFactory = ({
       effectiveCaCert = undefined;
     }
 
-    if (
-      kubernetesHost &&
-      effectiveTokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
-      !effectiveGatewayId
-    ) {
-      logger.info({ kubernetesHost }, "Validating Kubernetes host connectivity for auth method update");
-      await validateKubernetesHostConnectivity({
-        kubernetesHost,
-        caCert: effectiveCaCert
-      });
-    }
+    if (effectiveGatewayId) {
+      if (effectiveTokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway) {
+        const gatewayExecutor = $createGatewayValidationRequest(effectiveGatewayId);
+        logger.info(
+          { gatewayId: effectiveGatewayId },
+          "Validating gateway connectivity to Kubernetes for auth method update"
+        );
 
-    if (
-      tokenReviewerJwt &&
-      effectiveKubernetesHost &&
-      effectiveTokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
-      !effectiveGatewayId
-    ) {
-      logger.info(
-        { kubernetesHost: effectiveKubernetesHost },
-        "Validating token reviewer JWT permissions for auth method update"
-      );
-      await validateTokenReviewerJwtPermissions({
-        kubernetesHost: effectiveKubernetesHost,
-        tokenReviewerJwt,
-        caCert: effectiveCaCert
-      });
+        await validateKubernetesHostConnectivity({ gatewayExecutor });
+        await validateTokenReviewerPermissions({ gatewayExecutor });
+      } else if (effectiveTokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && effectiveKubernetesHost) {
+        const gatewayExecutor = $createGatewayValidationRequest(effectiveGatewayId, {
+          kubernetesHost: effectiveKubernetesHost,
+          caCert: effectiveCaCert
+        });
+        logger.info(
+          { gatewayId: effectiveGatewayId, kubernetesHost: effectiveKubernetesHost },
+          "Validating Kubernetes connectivity through gateway for auth method update"
+        );
+
+        await validateKubernetesHostConnectivity({ gatewayExecutor });
+        if (tokenReviewerJwt) {
+          await validateTokenReviewerPermissions({ gatewayExecutor, tokenReviewerJwt });
+        }
+      }
+    } else if (effectiveTokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api) {
+      if (kubernetesHost) {
+        logger.info({ kubernetesHost }, "Validating Kubernetes host connectivity for auth method update");
+        await validateKubernetesHostConnectivity({
+          kubernetesHost,
+          caCert: effectiveCaCert
+        });
+      }
+
+      if (tokenReviewerJwt && effectiveKubernetesHost) {
+        logger.info(
+          { kubernetesHost: effectiveKubernetesHost },
+          "Validating token reviewer JWT permissions for auth method update"
+        );
+        await validateTokenReviewerPermissions({
+          kubernetesHost: effectiveKubernetesHost,
+          tokenReviewerJwt,
+          caCert: effectiveCaCert
+        });
+      }
     }
 
     const updateQuery: TIdentityKubernetesAuthsUpdate = {
