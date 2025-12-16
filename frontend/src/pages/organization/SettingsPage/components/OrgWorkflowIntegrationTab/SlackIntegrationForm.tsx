@@ -61,7 +61,6 @@ export const SlackIntegrationForm = ({ id, onClose }: Props) => {
         isGovSlack
       });
       if (slackInstallUrl) {
-        console.log("slackInstallUrl", slackInstallUrl);
         window.location.assign(slackInstallUrl);
       }
     } catch (err) {
