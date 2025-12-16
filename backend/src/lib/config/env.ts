@@ -229,6 +229,7 @@ const envSchema = z
     CAPTCHA_SECRET: zpStr(z.string().optional()),
     CAPTCHA_SITE_KEY: zpStr(z.string().optional()),
     INTERCOM_ID: zpStr(z.string().optional()),
+    CDN_HOST: zpStr(z.string().optional()),
 
     // TELEMETRY
     OTEL_TELEMETRY_COLLECTION_ENABLED: zodStrBool.default("false"),
