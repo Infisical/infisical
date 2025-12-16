@@ -2498,11 +2498,13 @@ export const registerRoutes = async (
     aiMcpServerToolDAL,
     aiMcpServerUserCredentialDAL,
     kmsService,
-    keyStore
+    keyStore,
+    permissionService
   });
 
   const aiMcpActivityLogService = aiMcpActivityLogServiceFactory({
-    aiMcpActivityLogDAL
+    aiMcpActivityLogDAL,
+    permissionService
   });
 
   const aiMcpEndpointService = aiMcpEndpointServiceFactory({

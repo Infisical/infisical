@@ -71,7 +71,10 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
         url: req.body.url,
         clientId: req.body.clientId,
         clientSecret: req.body.clientSecret,
-        actorId: req.permission.id
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
       });
 
       return result;
@@ -149,7 +152,10 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const result = await server.services.aiMcpServer.getOAuthStatus({
         sessionId: req.params.sessionId,
-        actorId: req.permission.id
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
       });
 
       return result;
@@ -174,11 +180,11 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const mcpServer = await server.services.aiMcpServer.createMcpServer({
-        ...req.body,
-        actorId: req.permission.id,
         actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod!,
-        actorOrgId: req.permission.orgId
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.body
       });
 
       return { server: mcpServer };
@@ -207,7 +213,11 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const mcpServers = await server.services.aiMcpServer.listMcpServers({
-        projectId: req.query.projectId
+        projectId: req.query.projectId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
       });
 
       return {
@@ -236,7 +246,11 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const mcpServer = await server.services.aiMcpServer.getMcpServerById({
-        serverId: req.params.serverId
+        serverId: req.params.serverId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
       });
 
       return { server: mcpServer };
@@ -267,7 +281,11 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const mcpServer = await server.services.aiMcpServer.updateMcpServer({
         serverId: req.params.serverId,
-        ...req.body
+        ...req.body,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
       });
 
       return { server: mcpServer };
@@ -293,7 +311,11 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const tools = await server.services.aiMcpServer.listMcpServerTools({
-        serverId: req.params.serverId
+        serverId: req.params.serverId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
       });
 
       return { tools };
@@ -319,7 +341,11 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const tools = await server.services.aiMcpServer.syncMcpServerTools({
-        serverId: req.params.serverId
+        serverId: req.params.serverId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
       });
 
       return { tools };
@@ -345,7 +371,11 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const mcpServer = await server.services.aiMcpServer.deleteMcpServer({
-        serverId: req.params.serverId
+        serverId: req.params.serverId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
       });
 
       return { server: mcpServer };

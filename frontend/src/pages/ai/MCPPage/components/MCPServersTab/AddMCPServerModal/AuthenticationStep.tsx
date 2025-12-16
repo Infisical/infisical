@@ -370,6 +370,7 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
                     value={field.value || ""}
                     placeholder="Optional client ID"
                     isDisabled={isOAuthPending || !!isOAuthAuthorized}
+                    autoComplete="one-time-code"
                   />
                 </FormControl>
               )}
@@ -390,6 +391,7 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
                     type="password"
                     placeholder="Optional client secret"
                     isDisabled={isOAuthPending || !!isOAuthAuthorized}
+                    autoComplete="new-password"
                   />
                 </FormControl>
               )}

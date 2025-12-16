@@ -22,7 +22,13 @@ export const registerAiMcpActivityLogRouter = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const activityLogs = await server.services.aiMcpActivityLog.listActivityLogs(req.query.projectId);
+      const activityLogs = await server.services.aiMcpActivityLog.listActivityLogs({
+        projectId: req.query.projectId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
 
       return activityLogs;
     }

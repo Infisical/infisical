@@ -1,3 +1,6 @@
+import { TProjectPermission } from "@app/lib/types";
+import { ActorAuthMethod } from "@app/services/auth/auth-type";
+
 import { AiMcpServerAuthMethod, AiMcpServerCredentialMode } from "./ai-mcp-server-enum";
 
 // OAuth types from MCP server
@@ -87,6 +90,9 @@ export type TInitiateOAuthDTO = {
   actorId: string;
   clientId?: string;
   clientSecret?: string;
+  actor?: string;
+  actorAuthMethod?: ActorAuthMethod;
+  actorOrgId?: string;
 };
 
 export type THandleOAuthCallbackDTO = {
@@ -96,11 +102,9 @@ export type THandleOAuthCallbackDTO = {
 
 export type TGetOAuthStatusDTO = {
   sessionId: string;
-  actorId: string;
-};
+} & Omit<TProjectPermission, "projectId">;
 
 export type TCreateAiMcpServerDTO = {
-  projectId: string;
   name: string;
   url: string;
   description?: string;
@@ -109,14 +113,28 @@ export type TCreateAiMcpServerDTO = {
   credentials: TBasicCredentials | TBearerCredentials | TOAuthCredentials;
   oauthClientId?: string;
   oauthClientSecret?: string;
-  actorId: string;
-  actor: string;
-  actorAuthMethod: string;
-  actorOrgId: string;
-};
+} & TProjectPermission;
+
+export type TListMcpServersDTO = TProjectPermission;
+
+export type TGetMcpServerByIdDTO = {
+  serverId: string;
+} & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateAiMcpServerDTO = {
   serverId: string;
   name?: string;
   description?: string;
-};
+} & Omit<TProjectPermission, "projectId">;
+
+export type TDeleteMcpServerDTO = {
+  serverId: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TListMcpServerToolsDTO = {
+  serverId: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TSyncMcpServerToolsDTO = {
+  serverId: string;
+} & Omit<TProjectPermission, "projectId">;

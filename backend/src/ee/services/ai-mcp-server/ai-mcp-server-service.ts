@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 
+import { ForbiddenError } from "@casl/ability";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore - MCP SDK uses ESM with .js extensions which don't resolve types with moduleResolution: "Node"
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -8,28 +9,37 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import axios, { AxiosError } from "axios";
 
+import { ActionProjectType } from "@app/db/schemas";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TAiMcpServerDALFactory } from "./ai-mcp-server-dal";
 import { AiMcpServerCredentialMode, AiMcpServerStatus } from "./ai-mcp-server-enum";
 import { TAiMcpServerToolDALFactory } from "./ai-mcp-server-tool-dal";
 import {
   TAiMcpServerCredentials,
   TCreateAiMcpServerDTO,
+  TDeleteMcpServerDTO,
+  TGetMcpServerByIdDTO,
   TGetOAuthStatusDTO,
   THandleOAuthCallbackDTO,
   TInitiateOAuthDTO,
+  TListMcpServersDTO,
+  TListMcpServerToolsDTO,
   TOAuthAuthorizationServerMetadata,
   TOAuthDynamicClientMetadata,
   TOAuthProtectedResourceMetadata,
   TOAuthSession,
   TOAuthTokenResponse,
+  TSyncMcpServerToolsDTO,
   TUpdateAiMcpServerDTO
 } from "./ai-mcp-server-types";
 import { TAiMcpServerUserCredentialDALFactory } from "./ai-mcp-server-user-credential-dal";
@@ -40,6 +50,7 @@ type TAiMcpServerServiceFactoryDep = {
   aiMcpServerUserCredentialDAL: TAiMcpServerUserCredentialDALFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
 export type TAiMcpServerServiceFactory = ReturnType<typeof aiMcpServerServiceFactory>;
@@ -115,7 +126,8 @@ export const aiMcpServerServiceFactory = ({
   aiMcpServerToolDAL,
   aiMcpServerUserCredentialDAL,
   kmsService,
-  keyStore
+  keyStore,
+  permissionService
 }: TAiMcpServerServiceFactoryDep) => {
   /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-redundant-type-constituents */
   const fetchMcpTools = async (serverUrl: string, accessToken: string): Promise<TMcpTool[]> => {
@@ -258,13 +270,34 @@ export const aiMcpServerServiceFactory = ({
    * Returns the authorization URL and session ID
    * Supports both DCR (Dynamic Client Registration) and hardcoded client credentials
    */
-  const initiateOAuth = async ({ projectId, url, actorId, clientId, clientSecret }: TInitiateOAuthDTO) => {
+  const initiateOAuth = async ({
+    projectId,
+    url,
+    actorId,
+    clientId,
+    clientSecret,
+    actor,
+    actorAuthMethod,
+    actorOrgId
+  }: TInitiateOAuthDTO) => {
     const appCfg = getConfig();
+
+    // Check permissions only when actor context is provided (called from router)
+    if (actor && actorAuthMethod && actorOrgId) {
+      const { permission } = await permissionService.getProjectPermission({
+        actor: actor as ActorType,
+        actorId,
+        projectId,
+        actorAuthMethod: actorAuthMethod as AuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.AI
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.McpServers);
+    }
 
     // 1. Discover OAuth metadata following RFC 9728 flow
     const { protectedResource, authServer } = await discoverOAuthMetadata(url);
-
-    logger.info({ protectedResource, authServer }, "Discovered OAuth metadata for MCP server");
 
     // 2. Generate session ID
     const sessionId = crypto.randomUUID();
@@ -420,7 +453,7 @@ export const aiMcpServerServiceFactory = ({
   /**
    * Get OAuth status for a session
    */
-  const getOAuthStatus = async ({ sessionId, actorId }: TGetOAuthStatusDTO) => {
+  const getOAuthStatus = async ({ sessionId, actorId, actor, actorAuthMethod, actorOrgId }: TGetOAuthStatusDTO) => {
     const sessionDataStr = await keyStore.getItem(KeyStorePrefixes.AiMcpServerOAuth(sessionId));
     if (!sessionDataStr) {
       return { authorized: false };
@@ -432,6 +465,17 @@ export const aiMcpServerServiceFactory = ({
     if (sessionData.actorId !== actorId) {
       throw new BadRequestError({ message: "Unauthorized to access this OAuth session" });
     }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor as ActorType,
+      actorId,
+      projectId: sessionData.projectId,
+      actorAuthMethod: actorAuthMethod as AuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.AI
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.McpServers);
 
     if (!sessionData.authorized) {
       return { authorized: false };
@@ -455,8 +499,23 @@ export const aiMcpServerServiceFactory = ({
     authMethod,
     credentials,
     oauthClientId,
-    oauthClientSecret
+    oauthClientSecret,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
   }: TCreateAiMcpServerDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.AI
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.McpServers);
+
     const encryptedCredentials = await encryptCredentials({
       projectId,
       credentials,
@@ -514,26 +573,60 @@ export const aiMcpServerServiceFactory = ({
     return server;
   };
 
-  const listMcpServers = async ({ projectId }: { projectId: string }) => {
+  const listMcpServers = async ({ projectId, actor, actorId, actorAuthMethod, actorOrgId }: TListMcpServersDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.AI
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.McpServers);
+
     const servers = await aiMcpServerDAL.find({ projectId });
     return servers;
   };
 
-  const getMcpServerById = async ({ serverId }: { serverId: string }) => {
+  const getMcpServerById = async ({ serverId, actor, actorId, actorAuthMethod, actorOrgId }: TGetMcpServerByIdDTO) => {
     const server = await aiMcpServerDAL.findById(serverId);
     if (!server) {
       throw new NotFoundError({ message: `MCP server with ID '${serverId}' not found` });
     }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: server.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.AI
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.McpServers);
+
     return server;
   };
 
   const updateMcpServer = async (dto: TUpdateAiMcpServerDTO) => {
-    const { serverId, name, description } = dto;
+    const { serverId, name, description, actor, actorId, actorAuthMethod, actorOrgId } = dto;
 
     const server = await aiMcpServerDAL.findById(serverId);
     if (!server) {
       throw new NotFoundError({ message: `MCP server with ID '${serverId}' not found` });
     }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: server.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.AI
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.McpServers);
 
     const updateData: { name?: string; description?: string } = {};
     if (name !== undefined) updateData.name = name;
@@ -544,31 +637,76 @@ export const aiMcpServerServiceFactory = ({
     return updatedServer;
   };
 
-  const deleteMcpServer = async ({ serverId }: { serverId: string }) => {
+  const deleteMcpServer = async ({ serverId, actor, actorId, actorAuthMethod, actorOrgId }: TDeleteMcpServerDTO) => {
     const server = await aiMcpServerDAL.findById(serverId);
     if (!server) {
       throw new NotFoundError({ message: `MCP server with ID '${serverId}' not found` });
     }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: server.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.AI
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.McpServers);
 
     await aiMcpServerDAL.deleteById(serverId);
     return server;
   };
 
-  const listMcpServerTools = async ({ serverId }: { serverId: string }) => {
+  const listMcpServerTools = async ({
+    serverId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TListMcpServerToolsDTO) => {
     const server = await aiMcpServerDAL.findById(serverId);
     if (!server) {
       throw new NotFoundError({ message: `MCP server with ID '${serverId}' not found` });
     }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: server.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.AI
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.McpServers);
 
     const tools = await aiMcpServerToolDAL.find({ aiMcpServerId: serverId });
     return tools;
   };
 
-  const syncMcpServerTools = async ({ serverId }: { serverId: string }) => {
+  const syncMcpServerTools = async ({
+    serverId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TSyncMcpServerToolsDTO) => {
     const server = await aiMcpServerDAL.findById(serverId);
     if (!server) {
       throw new NotFoundError({ message: `MCP server with ID '${serverId}' not found` });
     }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: server.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.AI
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.McpServers);
 
     if (!server.encryptedCredentials) {
       throw new BadRequestError({ message: "Server credentials not found" });
