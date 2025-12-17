@@ -28,6 +28,10 @@ const getMcpUrls = (siteUrl: string, endpointId: string) => {
 export const registerMcpEndpointMetadataRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
   const siteUrl = removeTrailingSlash(appCfg.SITE_URL || "");
+  if (!siteUrl) {
+    return; // SITE_URL not configured, skip MCP endpoint metadata registration
+  }
+
   const siteHost = new URL(siteUrl).host;
   const scopeAccess = `https://${siteHost}/mcp:access`;
 
@@ -61,6 +65,9 @@ export const registerMcpEndpointMetadataRouter = async (server: FastifyZodProvid
 export const registerMcpEndpointAuthServerMetadataRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
   const siteUrl = removeTrailingSlash(appCfg.SITE_URL || "");
+  if (!siteUrl) {
+    return; // SITE_URL not configured, skip MCP auth server metadata registration
+  }
   const siteHost = new URL(siteUrl).host;
   const scopeAccess = `https://${siteHost}/mcp:access`;
 
