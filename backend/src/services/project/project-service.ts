@@ -521,14 +521,6 @@ export const projectServiceFactory = ({
         await userDAL.deleteById(projectGhostUser.id, tx);
       }
 
-      await fnDeleteProjectSecretReminders(project.id, {
-        secretDAL,
-        secretV2BridgeDAL,
-        reminderService,
-        projectBotService,
-        folderDAL
-      });
-
       return delProject;
     });
 
