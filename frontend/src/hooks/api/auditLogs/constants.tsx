@@ -122,8 +122,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.CMEK_LIST_SIGNING_ALGORITHMS]: "List signing algorithms for KMS key",
   [EventType.CMEK_GET_PUBLIC_KEY]: "Get public key for KMS key",
   [EventType.UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS]:
-    "Update SSO group to organization role mapping",
-  [EventType.GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS]: "List SSO group to organization role mapping",
+    "Update SCIM group to organization role mapping",
+  [EventType.GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS]: "List SCIM group to organization role mapping",
   [EventType.GET_PROJECT_TEMPLATES]: "List project templates",
   [EventType.GET_PROJECT_TEMPLATE]: "Get project template",
   [EventType.CREATE_PROJECT_TEMPLATE]: "Create project template",

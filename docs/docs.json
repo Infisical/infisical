@@ -931,6 +931,18 @@
                   "api-reference/endpoints/organizations/saml-sso/update-saml-config",
                   "api-reference/endpoints/organizations/saml-sso/create-saml-config"
                 ]
+              },
+              {
+                "group": "SCIM",
+                "pages": [
+                  {
+                    "group": " Group to Org Role Mappings",
+                    "pages": [
+                      "api-reference/endpoints/organizations/scim/group-org-role-mappings/list",
+                      "api-reference/endpoints/organizations/scim/group-org-role-mappings/update"
+                    ]
+                  }
+                ]
               }
             ]
           },

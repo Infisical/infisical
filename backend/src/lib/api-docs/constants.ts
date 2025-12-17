@@ -77,6 +77,7 @@ export enum ApiDocsTags {
   OidcSso = "OIDC SSO",
   SamlSso = "SAML SSO",
   LdapSso = "LDAP SSO",
+  Scim = "SCIM",
   Events = "Event Subscriptions"
 }
 
@@ -3148,6 +3149,13 @@ export const LdapSso = {
     groupSearchFilter:
       "The template used when constructing the group membership query such as `(&(objectClass=posixGroup)(memberUid={{.Username}}))`. The template can access the following context variables: `[UserDN, UserName]`. The default is `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))` which is compatible with several common directory schemas.",
     caCert: "The CA certificate to use when verifying the LDAP server certificate."
+  }
+};
+
+export const Scim = {
+  UPDATE_GROUP_ORG_ROLE_MAPPINGS: {
+    groupName: "The name of the group in the SCIM provider.",
+    roleSlug: "The slug of the role that group members should be assigned when provisioned."
   }
 };
 

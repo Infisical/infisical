@@ -236,7 +236,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerUserEngagementRouter, { prefix: "/user-engagement" });
   await server.register(registerDashboardRouter, { prefix: "/dashboard" });
   await server.register(registerCmekRouter, { prefix: "/kms" });
-  await server.register(registerExternalGroupOrgRoleMappingRouter, { prefix: "/external-group-mappings" });
+  await server.register(registerExternalGroupOrgRoleMappingRouter, { prefix: "/scim/group-org-role-mappings" });
 
   await server.register(
     async (appConnectionRouter) => {
