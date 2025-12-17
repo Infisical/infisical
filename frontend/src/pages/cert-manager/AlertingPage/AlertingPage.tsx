@@ -32,10 +32,12 @@ export const AlertingPage = () => {
         <PageHeader
           scope={ProjectType.CertificateManager}
           title={
-            <div className="flex items-center gap-x-2">
+            <span className="inline-flex items-center gap-x-2">
               Alerting
-              <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/alerting" />
-            </div>
+              <span className="mt-0.5">
+                <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/alerting" />
+              </span>
+            </span>
           }
           description="Configure alerts for expiring certificates and CAs to maintain security and compliance."
         />
