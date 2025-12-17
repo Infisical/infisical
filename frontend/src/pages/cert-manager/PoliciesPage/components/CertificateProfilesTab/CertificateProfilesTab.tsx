@@ -6,6 +6,7 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
+import { DocumentationLinkBadge } from "@app/components/v3";
 import {
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
@@ -70,7 +71,10 @@ export const CertificateProfilesTab = () => {
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-mineshaft-100">Certificate Profiles</h2>
+          <div className="flex items-center gap-x-2">
+            <h2 className="text-xl font-semibold text-mineshaft-100">Certificate Profiles</h2>
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificates/profiles" />
+          </div>
           <p className="text-sm text-bunker-300">
             Unified certificate issuance configurations combining CA, template, and enrollment
             method
