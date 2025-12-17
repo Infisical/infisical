@@ -119,6 +119,16 @@ const envSchema = z
         })
         .default("{}")
     ),
+    ACME_DNS_RESOLVER_SERVERS: zpStr(
+      z
+        .string()
+        .optional()
+        .transform((val) => {
+          if (!val) return [];
+          return val.split(",");
+        })
+    ),
+    ACME_DNS_RESOLVE_RESOLVER_SERVERS_HOST_ENABLED: zodStrBool.default("false").optional(),
     DNS_MADE_EASY_SANDBOX_ENABLED: zodStrBool.default("false").optional(),
     // smtp options
     SMTP_HOST: zpStr(z.string().optional()),

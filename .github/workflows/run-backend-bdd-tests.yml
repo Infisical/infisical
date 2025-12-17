@@ -51,6 +51,9 @@ jobs:
           echo "ACME_DEVELOPMENT_MODE=true" >> .env
           echo "ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES={\"localhost\": \"host.docker.internal:8087\", \"infisical.com\": \"host.docker.internal:8087\", \"example.com\": \"host.docker.internal:8087\"}" >> .env
           echo "BDD_NOCK_API_ENABLED=true" >> .env
+          # use Technitium DNS server for BDD tests
+          echo "ACME_DNS_RESOLVE_RESOLVER_SERVERS_HOST_ENABLED=true" >> .env
+          echo "ACME_DNS_RESOLVER_SERVERS=technitium" >> .env
           # Skip upstream validation, otherwise the ACME client for the upstream will try to
           # validate the DNS records, which will fail because the DNS records are not actually created.
           echo "ACME_SKIP_UPSTREAM_VALIDATION=true" >> .env
