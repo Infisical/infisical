@@ -68,11 +68,16 @@ export const pamAccessPolicyFactory: TApprovalResourceFactory<
       revokedAt: null
     });
 
+    const normalizedAccountPath = inputs.accountPath.startsWith("/") ? inputs.accountPath.slice(1) : inputs.accountPath;
+
     // TODO(andrey): Move some of this check to be part of SQL query
     return grants.some((grant) => {
       const grantAttributes = grant.attributes as TPamAccessPolicyInputs;
-      const isMatch = picomatch(grantAttributes.accountPath);
-      return isMatch(inputs.accountPath) && (!grant.expiresAt || grant.expiresAt > new Date());
+      const normalizedGrantPath = grantAttributes.accountPath.startsWith("/")
+        ? grantAttributes.accountPath.slice(1)
+        : grantAttributes.accountPath;
+      const isMatch = picomatch(normalizedGrantPath);
+      return isMatch(normalizedAccountPath) && (!grant.expiresAt || grant.expiresAt > new Date());
     });
   };
 
