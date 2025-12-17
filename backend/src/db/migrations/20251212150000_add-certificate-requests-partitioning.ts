@@ -92,6 +92,7 @@ export async function up(knex: Knex): Promise<void> {
         t.string("signatureAlgorithm").nullable();
         t.text("errorMessage").nullable();
         t.text("metadata").nullable();
+        t.uuid("acmeOrderId").nullable();
 
         t.primary(["id", "createdAt"]);
       })
