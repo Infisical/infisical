@@ -111,6 +111,7 @@ export async function up(knex: Knex): Promise<void> {
       t.index("status");
       t.index(["projectId", "status"]);
       t.index(["projectId", "createdAt"]);
+      t.index("acmeOrderId", "certificate_requests_acme_order_id_idx");
     });
 
     // Create default partition
