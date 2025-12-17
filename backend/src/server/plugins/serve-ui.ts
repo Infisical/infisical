@@ -67,9 +67,12 @@ export const registerServeUI = async (
         .replace(/src="\/assets\//g, `src="${cdnHost}/assets/`)
         .replace(/href="\/assets\//g, `href="${cdnHost}/assets/`);
 
-      indexHtml = indexHtml.replace(new RE2(`(__INFISICAL_CDN_HOST__)`, "g"), cdnHost);
-    } else {
-      indexHtml = indexHtml.replace(new RE2(`(__INFISICAL_CDN_HOST__)`, "g"), "");
+      // Inject CDN host into CSP directives that need it
+      const cspDirectives = ["script-src", "style-src", "font-src", "connect-src", "media-src"];
+      for (const directive of cspDirectives) {
+        const regex = new RE2(`(${directive}\\s+'self')`, "g");
+        indexHtml = indexHtml.replace(regex, `$1 ${cdnHost}`);
+      }
     }
 
     await server.register(staticServe, {
