@@ -103,10 +103,6 @@ export const OrgGeneralAuthSection = ({
       }
     } catch (err) {
       console.error(err);
-      createNotification({
-        text: `Failed to enable ${enforcementTypeInModal === EnforceAuthType.SAML ? "SAML" : "Google"} SSO enforcement`,
-        type: "error"
-      });
     }
   };
 
@@ -342,7 +338,7 @@ export const OrgGeneralAuthSection = ({
                     <a
                       target="_blank"
                       className="underline underline-offset-2 hover:text-mineshaft-300"
-                      href="https://infisical.com/docs/documentation/platform/sso/overview#admin-login-portal"
+                      href="https://infisical.com/docs/documentation/platform/sso/overview#sso-break-glass"
                       rel="noreferrer"
                     >
                       Admin Login Portal
