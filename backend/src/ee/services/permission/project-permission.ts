@@ -28,7 +28,7 @@ export enum ProjectPermissionCertificateAuthorityActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  Issue = "issue",
+  IssueCACertificate = "issue-ca-certificate",
   SignIntermediate = "sign-intermediate"
 }
 
