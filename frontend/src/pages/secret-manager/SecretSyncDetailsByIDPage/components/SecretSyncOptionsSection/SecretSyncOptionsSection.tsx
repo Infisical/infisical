@@ -75,6 +75,7 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.Bitbucket:
     case SecretSync.LaravelForge:
     case SecretSync.Chef:
+    case SecretSync.OctopusDeploy:
       AdditionalSyncOptionsComponent = null;
       break;
     default:

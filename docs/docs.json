@@ -138,6 +138,7 @@
                       "integrations/app-connections/netlify",
                       "integrations/app-connections/northflank",
                       "integrations/app-connections/oci",
+                      "integrations/app-connections/octopus-deploy",
                       "integrations/app-connections/okta",
                       "integrations/app-connections/oracledb",
                       "integrations/app-connections/postgres",
@@ -566,6 +567,7 @@
                       "integrations/secret-syncs/netlify",
                       "integrations/secret-syncs/northflank",
                       "integrations/secret-syncs/oci-vault",
+                      "integrations/secret-syncs/octopus-deploy",
                       "integrations/secret-syncs/railway",
                       "integrations/secret-syncs/render",
                       "integrations/secret-syncs/supabase",
@@ -1486,6 +1488,18 @@
                     ]
                   },
                   {
+                    "group": "Octopus Deploy",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/octopus-deploy/list",
+                      "api-reference/endpoints/app-connections/octopus-deploy/available",
+                      "api-reference/endpoints/app-connections/octopus-deploy/get-by-id",
+                      "api-reference/endpoints/app-connections/octopus-deploy/get-by-name",
+                      "api-reference/endpoints/app-connections/octopus-deploy/create",
+                      "api-reference/endpoints/app-connections/octopus-deploy/update",
+                      "api-reference/endpoints/app-connections/octopus-deploy/delete"
+                    ]
+                  },
+                  {
                     "group": "Okta",
                     "pages": [
                       "api-reference/endpoints/app-connections/okta/list",
@@ -1497,6 +1511,7 @@
                       "api-reference/endpoints/app-connections/okta/delete"
                     ]
                   },
+
                   {
                     "group": "OracleDB",
                     "pages": [
@@ -2394,6 +2409,19 @@
                       "api-reference/endpoints/secret-syncs/oci-vault/sync-secrets",
                       "api-reference/endpoints/secret-syncs/oci-vault/import-secrets",
                       "api-reference/endpoints/secret-syncs/oci-vault/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Octopus Deploy",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/octopus-deploy/list",
+                      "api-reference/endpoints/secret-syncs/octopus-deploy/get-by-id",
+                      "api-reference/endpoints/secret-syncs/octopus-deploy/get-by-name",
+                      "api-reference/endpoints/secret-syncs/octopus-deploy/create",
+                      "api-reference/endpoints/secret-syncs/octopus-deploy/update",
+                      "api-reference/endpoints/secret-syncs/octopus-deploy/delete",
+                      "api-reference/endpoints/secret-syncs/octopus-deploy/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/octopus-deploy/remove-secrets"
                     ]
                   },
                   {

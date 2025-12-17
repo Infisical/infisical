@@ -2550,6 +2550,10 @@ export const AppConnections = {
       orgName: "The short name of the Chef organization to connect to.",
       userName: "The username used to access Chef.",
       privateKey: "The private key used to access Chef."
+    },
+    OCTOPUS_DEPLOY: {
+      instanceUrl: "The Octopus Deploy instance URL to connect to.",
+      apiKey: "The API key used to authenticate with Octopus Deploy."
     }
   }
 };
@@ -2709,6 +2713,14 @@ export const SecretSyncs = {
       serverName: "The name of the Laravel Forge server to sync secrets to.",
       siteId: "The ID of the Laravel Forge site to sync secrets to.",
       siteName: "The name of the Laravel Forge site to sync secrets to."
+    },
+    OCTOPUS_DEPLOY: {
+      spaceId: "The ID of the Octopus Deploy space to sync secrets to.",
+      spaceName: "The name of the Octopus Deploy space to sync secrets to.",
+      projectId: "The ID of the Octopus Deploy project to sync secrets to.",
+      projectName: "The name of the Octopus Deploy project to sync secrets to.",
+      scope: "The Octopus Deploy scope that secrets should be synced to.",
+      scopeValues: "The Octopus Deploy scope values that secrets should be synced to."
     },
     WINDMILL: {
       workspace: "The Windmill workspace to sync secrets to.",
