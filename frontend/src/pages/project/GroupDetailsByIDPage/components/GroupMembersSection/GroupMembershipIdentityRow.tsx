@@ -1,5 +1,6 @@
 import { faEllipsisV, faUser } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { HardDriveIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -12,29 +13,33 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/context";
-import { TGroupUser } from "@app/hooks/api/groups/types";
+import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/context";
+import { TGroupMemberMachineIdentity } from "@app/hooks/api/groups/types";
 
 type Props = {
-  user: TGroupUser;
-  onAssumePrivileges: (userId: string) => void;
+  identity: TGroupMemberMachineIdentity;
+  onAssumePrivileges: (identityId: string) => void;
 };
 
-export const GroupMembershipRow = ({
-  user: { firstName, lastName, joinedGroupAt, email, id },
+export const GroupMembershipIdentityRow = ({
+  identity: {
+    machineIdentity: { name },
+    joinedGroupAt,
+    id
+  },
   onAssumePrivileges
 }: Props) => {
   return (
-    <Tr className="items-center" key={`group-user-${id}`}>
-      <Td>
-        <p>{`${firstName ?? "-"} ${lastName ?? ""}`}</p>
+    <Tr className="items-center" key={`group-identity-${id}`}>
+      <Td className="pr-0">
+        <HardDriveIcon size={20} />
       </Td>
-      <Td>
-        <p>{email}</p>
+      <Td className="pl-2">
+        <p>{name}</p>
       </Td>
       <Td>
         <Tooltip content={new Date(joinedGroupAt).toLocaleString()}>
-          <p>{new Date(joinedGroupAt).toLocaleDateString()}</p>
+          <p className="inline-block">{new Date(joinedGroupAt).toLocaleDateString()}</p>
         </Tooltip>
       </Td>
       <Td>
@@ -52,8 +57,8 @@ export const GroupMembershipRow = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent sideOffset={2} align="end">
               <ProjectPermissionCan
-                I={ProjectPermissionMemberActions.AssumePrivileges}
-                a={ProjectPermissionSub.Member}
+                I={ProjectPermissionIdentityActions.AssumePrivileges}
+                a={ProjectPermissionSub.Identity}
               >
                 {(isAllowed) => {
                   return (

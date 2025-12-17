@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ms from "ms";
@@ -18,10 +17,8 @@ import {
 import { useProject } from "@app/context";
 import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import { useCreateApprovalRequest } from "@app/hooks/api/approvalRequests/mutations";
-import { TPamAccount } from "@app/hooks/api/pam";
 
 type Props = {
-  account?: TPamAccount;
   accountPath?: string;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -48,24 +45,15 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-const Content = ({ onOpenChange, account, accountPath }: Props) => {
+const Content = ({ onOpenChange, accountPath }: Props) => {
   const { projectId } = useProject();
   const { mutateAsync: createApprovalRequest, isPending: isSubmitting } =
     useCreateApprovalRequest();
 
-  const fullAccountPath = useMemo(() => {
-    const accountName = account?.name ?? "";
-    if (accountPath) {
-      const path = accountPath.replace(/^\/+|\/+$/g, "");
-      return `${path}/${accountName}`;
-    }
-    return accountName;
-  }, [account, accountPath]);
-
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      accountPath: fullAccountPath,
+      accountPath,
       accessDuration: "4h",
       justification: ""
     }
@@ -74,7 +62,7 @@ const Content = ({ onOpenChange, account, accountPath }: Props) => {
   const {
     control,
     handleSubmit,
-    formState: { isDirty }
+    formState: { isValid }
   } = form;
 
   const onSubmit = async (formData: FormData) => {
@@ -155,7 +143,7 @@ const Content = ({ onOpenChange, account, accountPath }: Props) => {
           type="submit"
           colorSchema="secondary"
           isLoading={isSubmitting}
-          isDisabled={isSubmitting || !isDirty}
+          isDisabled={isSubmitting || !isValid}
         >
           Request Access
         </Button>

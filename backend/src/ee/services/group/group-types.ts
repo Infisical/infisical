@@ -3,12 +3,16 @@ import { Knex } from "knex";
 import { TGroups } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { OrderByDirection, TGenericPermission } from "@app/lib/types";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
+
+import { TIdentityGroupMembershipDALFactory } from "./identity-group-membership-dal";
 
 export type TCreateGroupDTO = {
   name: string;
@@ -39,7 +43,25 @@ export type TListGroupUsersDTO = {
   limit: number;
   username?: string;
   search?: string;
-  filter?: EFilterReturnedUsers;
+  filter?: FilterReturnedUsers;
+} & TGenericPermission;
+
+export type TListGroupMachineIdentitiesDTO = {
+  id: string;
+  offset: number;
+  limit: number;
+  search?: string;
+  filter?: FilterReturnedMachineIdentities;
+} & TGenericPermission;
+
+export type TListGroupMembersDTO = {
+  id: string;
+  offset: number;
+  limit: number;
+  search?: string;
+  orderBy?: GroupMembersOrderBy;
+  orderDirection?: OrderByDirection;
+  memberTypeFilter?: FilterMemberType[];
 } & TGenericPermission;
 
 export type TListGroupProjectsDTO = {
@@ -47,8 +69,8 @@ export type TListGroupProjectsDTO = {
   offset: number;
   limit: number;
   search?: string;
-  filter?: EFilterReturnedProjects;
-  orderBy?: EGroupProjectsOrderBy;
+  filter?: FilterReturnedProjects;
+  orderBy?: GroupProjectsOrderBy;
   orderDirection?: OrderByDirection;
 } & TGenericPermission;
 
@@ -61,9 +83,19 @@ export type TAddUserToGroupDTO = {
   username: string;
 } & TGenericPermission;
 
+export type TAddMachineIdentityToGroupDTO = {
+  id: string;
+  identityId: string;
+} & TGenericPermission;
+
 export type TRemoveUserFromGroupDTO = {
   id: string;
   username: string;
+} & TGenericPermission;
+
+export type TRemoveMachineIdentityFromGroupDTO = {
+  id: string;
+  identityId: string;
 } & TGenericPermission;
 
 // group fns types
@@ -93,6 +125,14 @@ export type TAddUsersToGroupByUserIds = {
   tx?: Knex;
 };
 
+export type TAddIdentitiesToGroup = {
+  group: TGroups;
+  identityIds: string[];
+  identityDAL: Pick<TIdentityDALFactory, "transaction">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "insertMany">;
+  membershipDAL: Pick<TMembershipDALFactory, "find">;
+};
+
 export type TRemoveUsersFromGroupByUserIds = {
   group: TGroups;
   userIds: string[];
@@ -101,6 +141,14 @@ export type TRemoveUsersFromGroupByUserIds = {
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "delete">;
   tx?: Knex;
+};
+
+export type TRemoveIdentitiesFromGroup = {
+  group: TGroups;
+  identityIds: string[];
+  identityDAL: Pick<TIdentityDALFactory, "find" | "transaction">;
+  membershipDAL: Pick<TMembershipDALFactory, "find">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "delete">;
 };
 
 export type TConvertPendingGroupAdditionsToGroupMemberships = {
@@ -117,16 +165,30 @@ export type TConvertPendingGroupAdditionsToGroupMemberships = {
   tx?: Knex;
 };
 
-export enum EFilterReturnedUsers {
+export enum FilterReturnedUsers {
   EXISTING_MEMBERS = "existingMembers",
   NON_MEMBERS = "nonMembers"
 }
 
-export enum EFilterReturnedProjects {
+export enum FilterReturnedMachineIdentities {
+  ASSIGNED_MACHINE_IDENTITIES = "assignedMachineIdentities",
+  NON_ASSIGNED_MACHINE_IDENTITIES = "nonAssignedMachineIdentities"
+}
+
+export enum FilterReturnedProjects {
   ASSIGNED_PROJECTS = "assignedProjects",
   UNASSIGNED_PROJECTS = "unassignedProjects"
 }
 
-export enum EGroupProjectsOrderBy {
+export enum GroupProjectsOrderBy {
   Name = "name"
+}
+
+export enum GroupMembersOrderBy {
+  Name = "name"
+}
+
+export enum FilterMemberType {
+  USERS = "users",
+  MACHINE_IDENTITIES = "machineIdentities"
 }

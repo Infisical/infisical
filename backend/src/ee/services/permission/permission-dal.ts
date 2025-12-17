@@ -178,6 +178,16 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         .where(`${TableName.UserGroupMembership}.userId`, actorId)
         .select(db.ref("id").withSchema(TableName.Groups));
 
+      const identityGroupSubquery = (tx || db)(TableName.Groups)
+        .leftJoin(
+          TableName.IdentityGroupMembership,
+          `${TableName.IdentityGroupMembership}.groupId`,
+          `${TableName.Groups}.id`
+        )
+        .where(`${TableName.Groups}.orgId`, scopeData.orgId)
+        .where(`${TableName.IdentityGroupMembership}.identityId`, actorId)
+        .select(db.ref("id").withSchema(TableName.Groups));
+
       const docs = await (tx || db)
         .replicaNode()(TableName.Membership)
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
@@ -214,7 +224,9 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
               .where(`${TableName.Membership}.actorUserId`, actorId)
               .orWhereIn(`${TableName.Membership}.actorGroupId`, userGroupSubquery);
           } else if (actorType === ActorType.IDENTITY) {
-            void qb.where(`${TableName.Membership}.actorIdentityId`, actorId);
+            void qb
+              .where(`${TableName.Membership}.actorIdentityId`, actorId)
+              .orWhereIn(`${TableName.Membership}.actorGroupId`, identityGroupSubquery);
           }
         })
         .where((qb) => {
@@ -653,6 +665,15 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
     orgId: string
   ) => {
     try {
+      const identityGroupSubquery = db(TableName.Groups)
+        .leftJoin(
+          TableName.IdentityGroupMembership,
+          `${TableName.IdentityGroupMembership}.groupId`,
+          `${TableName.Groups}.id`
+        )
+        .where(`${TableName.Groups}.orgId`, orgId)
+        .select(db.ref("id").withSchema(TableName.Groups));
+
       const docs = await db
         .replicaNode()(TableName.Membership)
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
@@ -668,7 +689,11 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           void queryBuilder.on(`${TableName.Membership}.actorIdentityId`, `${TableName.IdentityMetadata}.identityId`);
         })
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
-        .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+        .where((qb) => {
+          void qb
+            .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+            .orWhereIn(`${TableName.Membership}.actorGroupId`, identityGroupSubquery);
+        })
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .where(`${TableName.Membership}.scopeProjectId`, projectId)
         .select(selectAllTableCols(TableName.MembershipRole))
