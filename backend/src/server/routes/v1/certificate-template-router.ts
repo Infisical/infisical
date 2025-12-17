@@ -4,6 +4,7 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import {
@@ -52,6 +53,29 @@ const templateV2KeyUsagesSchema = z
     {
       message: "Key usages must have at least one allowed, required, or denied value"
     }
+  )
+  .refine(
+    (data) => {
+      if (!data.denied || data.denied.length === 0) {
+        return true;
+      }
+      const deniedSet = new Set(data.denied);
+      const allowedSet = data.allowed ? new Set(data.allowed) : new Set();
+      const requiredSet = data.required ? new Set(data.required) : new Set();
+
+      for (const deniedValue of deniedSet) {
+        if (allowedSet.has(deniedValue)) {
+          return false;
+        }
+        if (requiredSet.has(deniedValue)) {
+          return false;
+        }
+      }
+      return true;
+    },
+    {
+      message: "A key usage cannot be both denied and present in the allowed or required arrays."
+    }
   );
 
 const templateV2ExtendedKeyUsagesSchema = z
@@ -69,6 +93,29 @@ const templateV2ExtendedKeyUsagesSchema = z
     },
     {
       message: "Extended key usages must have at least one allowed, required, or denied value"
+    }
+  )
+  .refine(
+    (data) => {
+      if (!data.denied || data.denied.length === 0) {
+        return true;
+      }
+      const deniedSet = new Set(data.denied);
+      const allowedSet = data.allowed ? new Set(data.allowed) : new Set();
+      const requiredSet = data.required ? new Set(data.required) : new Set();
+
+      for (const deniedValue of deniedSet) {
+        if (allowedSet.has(deniedValue)) {
+          return false;
+        }
+        if (requiredSet.has(deniedValue)) {
+          return false;
+        }
+      }
+      return true;
+    },
+    {
+      message: "An extended key usage cannot be both denied and present in the allowed or required arrays."
     }
   );
 
@@ -117,7 +164,7 @@ const templateV2AlgorithmsSchema = z.object({
 
 const createCertificateTemplateV2Schema = z.object({
   projectId: z.string().min(1),
-  name: z.string().min(1).max(255, "Name must be between 1 and 255 characters"),
+  name: slugSchema({ min: 1, max: 255, field: "Name" }),
   description: z.string().max(1000).optional(),
   subject: z.array(templateV2SubjectSchema).optional(),
   sans: z.array(templateV2SanSchema).optional(),
@@ -128,7 +175,7 @@ const createCertificateTemplateV2Schema = z.object({
 });
 
 const updateCertificateTemplateV2Schema = z.object({
-  name: z.string().min(1).max(255, "Name must be between 1 and 255 characters").optional(),
+  name: slugSchema({ min: 1, max: 255, field: "Name" }).optional(),
   description: z.string().max(1000).optional(),
   subject: z.array(templateV2SubjectSchema).optional(),
   sans: z.array(templateV2SanSchema).optional(),
