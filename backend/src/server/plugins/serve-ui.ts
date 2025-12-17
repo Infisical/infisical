@@ -68,7 +68,7 @@ export const registerServeUI = async (
         .replace(/href="\/assets\//g, `href="${cdnHost}/assets/`);
 
       // Inject CDN host into CSP directives that need it
-      const cspDirectives = ["script-src", "style-src", "font-src", "connect-src"];
+      const cspDirectives = ["script-src", "style-src", "font-src", "connect-src", "media-src"];
       for (const directive of cspDirectives) {
         const regex = new RE2(`(${directive}\\s+'self')`, "g");
         indexHtml = indexHtml.replace(regex, `$1 ${cdnHost}`);
