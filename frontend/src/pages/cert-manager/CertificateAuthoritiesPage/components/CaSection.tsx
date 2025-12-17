@@ -87,8 +87,9 @@ export const CaSection = () => {
       <CaTable handlePopUpOpen={handlePopUpOpen} />
       <DeleteActionModal
         isOpen={popUp.deleteCa.isOpen}
-        title={`Are you sure you want to remove the CA ${(popUp?.deleteCa?.data as { dn: string })?.dn || ""
-          } from the project?`}
+        title={`Are you sure you want to remove the CA ${
+          (popUp?.deleteCa?.data as { dn: string })?.dn || ""
+        } from the project?`}
         subTitle="This action will delete other CAs and certificates below it in your CA hierarchy."
         onChange={(isOpen) => handlePopUpToggle("deleteCa", isOpen)}
         deleteKey="confirm"
@@ -96,10 +97,11 @@ export const CaSection = () => {
       />
       <DeleteActionModal
         isOpen={popUp.caStatus.isOpen}
-        title={`Are you sure you want to ${(popUp?.caStatus?.data as { status: string })?.status === CaStatus.ACTIVE
+        title={`Are you sure you want to ${
+          (popUp?.caStatus?.data as { status: string })?.status === CaStatus.ACTIVE
             ? "enable"
             : "disable"
-          } the CA ${(popUp?.caStatus?.data as { dn: string })?.dn || ""} from the project?`}
+        } the CA ${(popUp?.caStatus?.data as { dn: string })?.dn || ""} from the project?`}
         subTitle={
           (popUp?.caStatus?.data as { status: string })?.status === CaStatus.ACTIVE
             ? "This action will allow the CA to start issuing certificates again."

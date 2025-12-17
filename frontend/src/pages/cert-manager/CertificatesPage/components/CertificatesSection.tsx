@@ -161,8 +161,9 @@ export const CertificatesSection = () => {
       />
       <DeleteActionModal
         isOpen={popUp.deleteCertificate.isOpen}
-        title={`Are you sure you want to remove the certificate ${(popUp?.deleteCertificate?.data as { commonName: string })?.commonName || ""
-          } from the project?`}
+        title={`Are you sure you want to remove the certificate ${
+          (popUp?.deleteCertificate?.data as { commonName: string })?.commonName || ""
+        } from the project?`}
         onChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() =>
