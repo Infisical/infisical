@@ -3,7 +3,9 @@ import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { TAiMcpServer, useDeleteAiMcpServer } from "@app/hooks/api";
 
 import { AddMCPServerModal } from "./AddMCPServerModal";
@@ -63,14 +65,22 @@ export const MCPServersTab = () => {
           </p>
         </div>
 
-        <Button
-          colorSchema="primary"
-          type="button"
-          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-          onClick={handleAddServer}
+        <ProjectPermissionCan
+          I={ProjectPermissionActions.Create}
+          a={ProjectPermissionSub.McpServers}
         >
-          Add MCP Server
-        </Button>
+          {(isAllowed) => (
+            <Button
+              colorSchema="primary"
+              type="button"
+              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              onClick={handleAddServer}
+              isDisabled={!isAllowed}
+            >
+              Add MCP Server
+            </Button>
+          )}
+        </ProjectPermissionCan>
       </div>
 
       <MCPServerList onEditServer={handleEditServer} onDeleteServer={handleDeleteServer} />

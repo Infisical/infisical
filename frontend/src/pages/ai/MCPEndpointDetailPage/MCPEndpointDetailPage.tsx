@@ -10,6 +10,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   ContentLoader,
@@ -20,6 +21,7 @@ import {
   DropdownMenuTrigger,
   EmptyState
 } from "@app/components/v2";
+import { ProjectPermissionMcpEndpointActions, ProjectPermissionSub } from "@app/context";
 import { useDeleteAiMcpEndpoint, useGetAiMcpEndpointById } from "@app/hooks/api";
 
 import { EditMCPEndpointModal } from "../MCPPage/components/MCPEndpointsTab/EditMCPEndpointModal";
@@ -98,7 +100,7 @@ const PageContent = () => {
       <button
         type="button"
         onClick={handleBack}
-        className="mb-4 flex items-center gap-1 text-sm text-bunker-300 hover:text-primary-400"
+        className="mb-4 flex w-fit items-center gap-1 text-sm text-bunker-300 hover:text-primary-400"
       >
         <FontAwesomeIcon icon={faChevronLeft} className="text-xs" />
         MCP Endpoints
@@ -121,13 +123,34 @@ const PageContent = () => {
                 <FontAwesomeIcon icon={faEllipsisV} />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setIsEditModalOpen(true)}>
-                Edit Endpoint
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsDeleteModalOpen(true)} className="text-red-500">
-                Delete Endpoint
-              </DropdownMenuItem>
+            <DropdownMenuContent align="end" sideOffset={6}>
+              <ProjectPermissionCan
+                I={ProjectPermissionMcpEndpointActions.Edit}
+                a={ProjectPermissionSub.McpEndpoints}
+              >
+                {(isAllowed) => (
+                  <DropdownMenuItem
+                    onClick={() => setIsEditModalOpen(true)}
+                    isDisabled={!isAllowed}
+                  >
+                    Edit Endpoint
+                  </DropdownMenuItem>
+                )}
+              </ProjectPermissionCan>
+              <ProjectPermissionCan
+                I={ProjectPermissionMcpEndpointActions.Delete}
+                a={ProjectPermissionSub.McpEndpoints}
+              >
+                {(isAllowed) => (
+                  <DropdownMenuItem
+                    onClick={() => setIsDeleteModalOpen(true)}
+                    className="text-red-500"
+                    isDisabled={!isAllowed}
+                  >
+                    Delete Endpoint
+                  </DropdownMenuItem>
+                )}
+              </ProjectPermissionCan>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   ContentLoader,
@@ -15,6 +16,7 @@ import {
   DropdownMenuTrigger,
   EmptyState
 } from "@app/components/v2";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useDeleteAiMcpServer, useGetAiMcpServerById } from "@app/hooks/api";
 
 import { EditMCPServerModal } from "../MCPPage/components/MCPServersTab/EditMCPServerModal";
@@ -118,12 +120,33 @@ const PageContent = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setIsEditModalOpen(true)}>
-                Edit Server
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsDeleteModalOpen(true)} className="text-red-500">
-                Delete Server
-              </DropdownMenuItem>
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Edit}
+                a={ProjectPermissionSub.McpServers}
+              >
+                {(isAllowed) => (
+                  <DropdownMenuItem
+                    onClick={() => setIsEditModalOpen(true)}
+                    isDisabled={!isAllowed}
+                  >
+                    Edit Server
+                  </DropdownMenuItem>
+                )}
+              </ProjectPermissionCan>
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Delete}
+                a={ProjectPermissionSub.McpServers}
+              >
+                {(isAllowed) => (
+                  <DropdownMenuItem
+                    onClick={() => setIsDeleteModalOpen(true)}
+                    className="text-red-500"
+                    isDisabled={!isAllowed}
+                  >
+                    Delete Server
+                  </DropdownMenuItem>
+                )}
+              </ProjectPermissionCan>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

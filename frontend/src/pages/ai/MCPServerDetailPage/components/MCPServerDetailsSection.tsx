@@ -2,7 +2,9 @@ import { faEdit } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
+import { ProjectPermissionCan } from "@app/components/permissions";
 import { GenericFieldLabel, IconButton } from "@app/components/v2";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { AiMcpServerStatus, TAiMcpServer } from "@app/hooks/api";
 
 type Props = {
@@ -33,14 +35,19 @@ export const MCPServerDetailsSection = ({ server, onEdit }: Props) => {
     <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
         <h3 className="text-lg font-medium text-mineshaft-100">Details</h3>
-        <IconButton
-          variant="plain"
-          colorSchema="secondary"
-          ariaLabel="Edit server details"
-          onClick={onEdit}
-        >
-          <FontAwesomeIcon icon={faEdit} />
-        </IconButton>
+        <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.McpServers}>
+          {(isAllowed) => (
+            <IconButton
+              variant="plain"
+              colorSchema="secondary"
+              ariaLabel="Edit server details"
+              onClick={onEdit}
+              isDisabled={!isAllowed}
+            >
+              <FontAwesomeIcon icon={faEdit} />
+            </IconButton>
+          )}
+        </ProjectPermissionCan>
       </div>
       <div className="space-y-3">
         <GenericFieldLabel label="Name">{server.name}</GenericFieldLabel>

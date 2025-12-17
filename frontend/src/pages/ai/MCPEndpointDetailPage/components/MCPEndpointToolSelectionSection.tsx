@@ -11,6 +11,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createNotification } from "@app/components/notifications";
 import { Input, Switch, Tooltip } from "@app/components/v2";
 import {
+  ProjectPermissionMcpEndpointActions,
+  ProjectPermissionSub,
+  useProjectPermission
+} from "@app/context";
+import {
   TAiMcpEndpointToolConfig,
   useDisableEndpointTool,
   useEnableEndpointTool,
@@ -33,6 +38,7 @@ type ServerToolsSectionProps = {
   toolConfigs: TAiMcpEndpointToolConfig[];
   onToolToggle: (serverToolId: string, isEnabled: boolean) => void;
   isUpdating: boolean;
+  canEdit: boolean;
 };
 
 const ServerToolsSection = ({
@@ -42,7 +48,8 @@ const ServerToolsSection = ({
   searchQuery,
   toolConfigs,
   onToolToggle,
-  isUpdating
+  isUpdating,
+  canEdit
 }: ServerToolsSectionProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -126,7 +133,7 @@ const ServerToolsSection = ({
                   id={`tool-${tool.id}`}
                   isChecked={isToolEnabled(tool.id)}
                   onCheckedChange={(checked) => onToolToggle(tool.id, checked)}
-                  isDisabled={isUpdating}
+                  isDisabled={isUpdating || !canEdit}
                 />
               </div>
             ))}
@@ -145,6 +152,12 @@ const ServerToolsSection = ({
 
 export const MCPEndpointToolSelectionSection = ({ endpointId, projectId, serverIds }: Props) => {
   const [searchQuery, setSearchQuery] = useState("");
+
+  const { permission } = useProjectPermission();
+  const canEdit = permission.can(
+    ProjectPermissionMcpEndpointActions.Edit,
+    ProjectPermissionSub.McpEndpoints
+  );
 
   const { data: serversData } = useListAiMcpServers({ projectId });
   const { data: toolConfigs = [] } = useListEndpointTools({ endpointId });
@@ -212,6 +225,7 @@ export const MCPEndpointToolSelectionSection = ({ endpointId, projectId, serverI
               toolConfigs={toolConfigs}
               onToolToggle={handleToolToggle}
               isUpdating={enableTool.isPending || disableTool.isPending}
+              canEdit={canEdit}
             />
           ))
         )}

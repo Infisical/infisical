@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +14,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { AiMcpServerStatus, TAiMcpServer } from "@app/hooks/api";
 
@@ -97,25 +99,41 @@ export const MCPServerRow = ({ server, onEditServer, onDeleteServer }: Props) =>
             >
               Copy Server ID
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                onEditServer(server);
-              }}
-              icon={<FontAwesomeIcon icon={faEdit} className="w-3" />}
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Edit}
+              a={ProjectPermissionSub.McpServers}
             >
-              Edit Server
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                onDeleteServer(server);
-              }}
-              icon={<FontAwesomeIcon icon={faTrash} className="w-3" />}
-              className="text-red-500 hover:text-red-400"
+              {(isAllowed) => (
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEditServer(server);
+                  }}
+                  icon={<FontAwesomeIcon icon={faEdit} className="w-3" />}
+                  isDisabled={!isAllowed}
+                >
+                  Edit Server
+                </DropdownMenuItem>
+              )}
+            </ProjectPermissionCan>
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Delete}
+              a={ProjectPermissionSub.McpServers}
             >
-              Delete Server
-            </DropdownMenuItem>
+              {(isAllowed) => (
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteServer(server);
+                  }}
+                  icon={<FontAwesomeIcon icon={faTrash} className="w-3" />}
+                  className="text-red-500 hover:text-red-400"
+                  isDisabled={!isAllowed}
+                >
+                  Delete Server
+                </DropdownMenuItem>
+              )}
+            </ProjectPermissionCan>
           </DropdownMenuContent>
         </DropdownMenu>
       </Td>

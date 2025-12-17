@@ -3,7 +3,9 @@ import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
+import { ProjectPermissionMcpEndpointActions, ProjectPermissionSub } from "@app/context";
 import { TAiMcpEndpoint, useDeleteAiMcpEndpoint } from "@app/hooks/api";
 
 import { AddMCPEndpointModal } from "./AddMCPEndpointModal";
@@ -63,14 +65,22 @@ export const MCPEndpointsTab = () => {
           </p>
         </div>
 
-        <Button
-          colorSchema="primary"
-          type="button"
-          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-          onClick={handleCreateEndpoint}
+        <ProjectPermissionCan
+          I={ProjectPermissionMcpEndpointActions.Create}
+          a={ProjectPermissionSub.McpEndpoints}
         >
-          Create Endpoint
-        </Button>
+          {(isAllowed) => (
+            <Button
+              colorSchema="primary"
+              type="button"
+              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              onClick={handleCreateEndpoint}
+              isDisabled={!isAllowed}
+            >
+              Create Endpoint
+            </Button>
+          )}
+        </ProjectPermissionCan>
       </div>
 
       <MCPEndpointList

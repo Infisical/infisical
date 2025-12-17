@@ -3,7 +3,9 @@ import { faCheck, faPencil, faServer, faTimes } from "@fortawesome/free-solid-sv
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import { Checkbox, IconButton, Spinner } from "@app/components/v2";
+import { ProjectPermissionMcpEndpointActions, ProjectPermissionSub } from "@app/context";
 import { useListAiMcpServers, useUpdateAiMcpEndpoint } from "@app/hooks/api";
 
 type Props = {
@@ -96,14 +98,25 @@ export const MCPEndpointConnectedServersSection = ({ endpointId, projectId, serv
             </IconButton>
           </div>
         ) : (
-          <IconButton
-            ariaLabel="Edit connected servers"
-            variant="plain"
-            size="sm"
-            onClick={handleStartEdit}
+          <ProjectPermissionCan
+            I={ProjectPermissionMcpEndpointActions.Edit}
+            a={ProjectPermissionSub.McpEndpoints}
           >
-            <FontAwesomeIcon icon={faPencil} className="text-bunker-300 hover:text-mineshaft-100" />
-          </IconButton>
+            {(isAllowed) => (
+              <IconButton
+                ariaLabel="Edit connected servers"
+                variant="plain"
+                size="sm"
+                onClick={handleStartEdit}
+                isDisabled={!isAllowed}
+              >
+                <FontAwesomeIcon
+                  icon={faPencil}
+                  className="text-bunker-300 hover:text-mineshaft-100"
+                />
+              </IconButton>
+            )}
+          </ProjectPermissionCan>
         )}
       </div>
       <div className="space-y-2">
