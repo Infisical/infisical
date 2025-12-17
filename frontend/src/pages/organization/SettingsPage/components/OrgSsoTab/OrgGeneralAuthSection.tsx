@@ -75,6 +75,10 @@ export const OrgGeneralAuthSection = ({
           type: "success"
         });
 
+        handlePopUpToggle("enforceSamlSsoConfirmation", false);
+        setBypassEnabledInModal(false);
+        setEnforcementTypeInModal(null);
+
         await logout.mutateAsync();
         window.open(`/api/v1/sso/redirect/saml2/organizations/${currentOrg.slug}`);
         window.close();
@@ -89,14 +93,14 @@ export const OrgGeneralAuthSection = ({
           type: "success"
         });
 
+        handlePopUpToggle("enforceSamlSsoConfirmation", false);
+        setBypassEnabledInModal(false);
+        setEnforcementTypeInModal(null);
+
         await logout.mutateAsync();
         window.open(`/api/v1/sso/redirect/google?org_slug=${currentOrg.slug}`);
         window.close();
       }
-
-      handlePopUpToggle("enforceSamlSsoConfirmation", false);
-      setBypassEnabledInModal(false);
-      setEnforcementTypeInModal(null);
     } catch (err) {
       console.error(err);
       createNotification({
@@ -434,16 +438,14 @@ export const OrgGeneralAuthSection = ({
           )}
 
           <div className="mt-6 flex gap-2">
-            <ModalClose asChild>
-              <Button
-                onClick={handleEnforceSsoConfirm}
-                className="mr-4"
-                size="sm"
-                colorSchema="primary"
-              >
-                Enable Enforcement
-              </Button>
-            </ModalClose>
+            <Button
+              onClick={handleEnforceSsoConfirm}
+              className="mr-4"
+              size="sm"
+              colorSchema="primary"
+            >
+              Enable Enforcement
+            </Button>
             <ModalClose asChild>
               <Button
                 colorSchema="secondary"
