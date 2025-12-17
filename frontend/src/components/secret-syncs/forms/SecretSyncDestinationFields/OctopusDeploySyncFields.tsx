@@ -30,6 +30,15 @@ import { OctopusDeploySyncScope } from "@app/hooks/api/secretSyncs/types/octopus
 
 import { TSecretSyncForm } from "../schemas";
 
+const EMPTY_SCOPE_VALUES = {
+  environments: [],
+  roles: [],
+  processes: [],
+  actions: [],
+  machines: [],
+  channels: []
+};
+
 export const OctopusDeploySyncFields = () => {
   const { control, setValue } = useFormContext<
     TSecretSyncForm & { destination: SecretSync.OctopusDeploy }
@@ -65,7 +74,7 @@ export const OctopusDeploySyncFields = () => {
           setValue("destinationConfig.spaceName", "");
           setValue("destinationConfig.projectId", "");
           setValue("destinationConfig.projectName", "");
-          setValue("destinationConfig.scopeValues", undefined);
+          setValue("destinationConfig.scopeValues", EMPTY_SCOPE_VALUES);
         }}
       />
 
@@ -108,7 +117,7 @@ export const OctopusDeploySyncFields = () => {
                       setValue("destinationConfig.spaceName", selectedSpace?.name ?? "");
                       setValue("destinationConfig.projectId", "");
                       setValue("destinationConfig.projectName", "");
-                      setValue("destinationConfig.scopeValues", undefined);
+                      setValue("destinationConfig.scopeValues", EMPTY_SCOPE_VALUES);
                     }}
                     options={spaces}
                     placeholder={spaces?.length ? "Select a space..." : "No spaces found..."}
@@ -136,7 +145,7 @@ export const OctopusDeploySyncFields = () => {
                       onChange(val);
                       setValue("destinationConfig.projectId", "");
                       setValue("destinationConfig.projectName", "");
-                      setValue("destinationConfig.scopeValues", undefined);
+                      setValue("destinationConfig.scopeValues", EMPTY_SCOPE_VALUES);
                     }}
                     className="w-full border border-mineshaft-500 capitalize"
                     position="popper"
@@ -183,7 +192,7 @@ export const OctopusDeploySyncFields = () => {
                         const selectedProject = option as SingleValue<TOctopusDeployProject>;
                         onChange(selectedProject?.id ?? null);
                         setValue("destinationConfig.projectName", selectedProject?.name ?? "");
-                        setValue("destinationConfig.scopeValues", undefined);
+                        setValue("destinationConfig.scopeValues", EMPTY_SCOPE_VALUES);
                       }}
                       options={projects}
                       placeholder={
@@ -227,7 +236,7 @@ export const OctopusDeploySyncFields = () => {
                         const selectedIds = (options as MultiValue<TScopeValueOption>).map(
                           (opt) => opt.id
                         );
-                        onChange(selectedIds.length > 0 ? selectedIds : undefined);
+                        onChange(selectedIds);
                       }}
                       options={scopeValuesData?.environments || []}
                       placeholder={
@@ -266,7 +275,7 @@ export const OctopusDeploySyncFields = () => {
                         const selectedIds = (options as MultiValue<TScopeValueOption>).map(
                           (opt) => opt.id
                         );
-                        onChange(selectedIds.length > 0 ? selectedIds : undefined);
+                        onChange(selectedIds);
                       }}
                       options={scopeValuesData?.roles || []}
                       placeholder={
@@ -306,7 +315,7 @@ export const OctopusDeploySyncFields = () => {
                         const selectedIds = (options as MultiValue<TScopeValueOption>).map(
                           (opt) => opt.id
                         );
-                        onChange(selectedIds.length > 0 ? selectedIds : undefined);
+                        onChange(selectedIds);
                       }}
                       options={scopeValuesData?.machines || []}
                       placeholder={
@@ -345,7 +354,7 @@ export const OctopusDeploySyncFields = () => {
                         const selectedIds = (options as MultiValue<TScopeValueOption>).map(
                           (opt) => opt.id
                         );
-                        onChange(selectedIds.length > 0 ? selectedIds : undefined);
+                        onChange(selectedIds);
                       }}
                       options={scopeValuesData?.processes || []}
                       placeholder={
@@ -384,7 +393,7 @@ export const OctopusDeploySyncFields = () => {
                         const selectedIds = (options as MultiValue<TScopeValueOption>).map(
                           (opt) => opt.id
                         );
-                        onChange(selectedIds.length > 0 ? selectedIds : undefined);
+                        onChange(selectedIds);
                       }}
                       options={scopeValuesData?.actions || []}
                       placeholder={
@@ -424,7 +433,7 @@ export const OctopusDeploySyncFields = () => {
                         const selectedIds = (options as MultiValue<TScopeValueOption>).map(
                           (opt) => opt.id
                         );
-                        onChange(selectedIds.length > 0 ? selectedIds : undefined);
+                        onChange(selectedIds);
                       }}
                       options={scopeValuesData?.channels || []}
                       placeholder={
