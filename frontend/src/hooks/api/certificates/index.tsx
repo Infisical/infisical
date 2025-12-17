@@ -7,4 +7,16 @@ export {
   useRevokeCert,
   useUpdateRenewalConfig
 } from "./mutations";
-export { useGetCert, useGetCertBody } from "./queries";
+export {
+  useGetCert,
+  useGetCertBody,
+  useGetCertBundle,
+  useGetCertificateRequest,
+  useListCertificateRequests
+} from "./queries";
+export type {
+  TCertificateRequestDetails,
+  TCertificateRequestListItem,
+  TListCertificateRequestsParams,
+  TListCertificateRequestsResponse
+} from "./types";

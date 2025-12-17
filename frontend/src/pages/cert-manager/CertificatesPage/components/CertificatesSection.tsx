@@ -1,4 +1,4 @@
-import { faArrowRight, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
@@ -6,7 +6,6 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import {
   ProjectPermissionCertificateActions,
-  ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub,
   useProject
 } from "@app/context";
@@ -16,14 +15,20 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { CertificateCertModal } from "./CertificateCertModal";
 import { CertificateExportModal, ExportOptions } from "./CertificateExportModal";
 import { CertificateImportModal } from "./CertificateImportModal";
-import { CertificateIssuanceModal } from "./CertificateIssuanceModal";
 import { CertificateManagePkiSyncsModal } from "./CertificateManagePkiSyncsModal";
 import { CertificateManageRenewalModal } from "./CertificateManageRenewalModal";
 import { CertificateRenewalModal } from "./CertificateRenewalModal";
 import { CertificateRevocationModal } from "./CertificateRevocationModal";
 import { CertificatesTable } from "./CertificatesTable";
 
-export const CertificatesSection = () => {
+type CertificatesSectionProps = {
+  externalFilter?: {
+    certificateId?: string;
+    search?: string;
+  };
+};
+
+export const CertificatesSection = ({ externalFilter }: CertificatesSectionProps) => {
   const { currentProject } = useProject();
   const { mutateAsync: deleteCert } = useDeleteCert();
   const { mutateAsync: downloadCertPkcs12 } = useDownloadCertPkcs12();
@@ -121,26 +126,9 @@ export const CertificatesSection = () => {
               </Button>
             )}
           </ProjectPermissionCan>
-          <ProjectPermissionCan
-            I={ProjectPermissionCertificateProfileActions.IssueCert}
-            a={ProjectPermissionSub.CertificateProfiles}
-          >
-            {(isAllowed) => (
-              <Button
-                colorSchema="primary"
-                type="submit"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handlePopUpOpen("issueCertificate")}
-                isDisabled={!isAllowed}
-              >
-                Request
-              </Button>
-            )}
-          </ProjectPermissionCan>
         </div>
       </div>
-      <CertificatesTable handlePopUpOpen={handlePopUpOpen} />
-      <CertificateIssuanceModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <CertificatesTable handlePopUpOpen={handlePopUpOpen} externalFilter={externalFilter} />
       <CertificateImportModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateExportModal

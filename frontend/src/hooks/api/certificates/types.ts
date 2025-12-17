@@ -136,3 +136,40 @@ export type TCertificateRequestDetails = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type TCertificateRequestListItem = {
+  id: string;
+  status: "pending" | "issued" | "failed";
+  commonName: string | null;
+  altNames: string | null;
+  profileId: string | null;
+  profileName: string | null;
+  caId: string | null;
+  certificateId: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+  certificate: {
+    id: string;
+    serialNumber: string;
+    status: string;
+  } | null;
+};
+
+export type TListCertificateRequestsResponse = {
+  certificateRequests: TCertificateRequestListItem[];
+  totalCount: number;
+};
+
+export type TListCertificateRequestsParams = {
+  projectSlug: string;
+  offset?: number;
+  limit?: number;
+  search?: string;
+  status?: "pending" | "issued" | "failed";
+  fromDate?: Date;
+  toDate?: Date;
+  profileIds?: string[];
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+};

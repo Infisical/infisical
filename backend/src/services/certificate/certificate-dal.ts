@@ -13,6 +13,11 @@ import { CertStatus } from "./certificate-types";
 
 export type TCertificateDALFactory = ReturnType<typeof certificateDALFactory>;
 
+const isValidUUID = (str: string): boolean => {
+  const uuidRegex = new RE2("^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", "i");
+  return uuidRegex.test(str);
+};
+
 export const certificateDALFactory = (db: TDbClient) => {
   const certificateOrm = ormify(db, TableName.Certificate);
 
@@ -48,11 +53,21 @@ export const certificateDALFactory = (db: TDbClient) => {
   const countCertificatesInProject = async ({
     projectId,
     friendlyName,
-    commonName
+    commonName,
+    search,
+    status,
+    profileIds,
+    fromDate,
+    toDate
   }: {
     projectId: string;
     friendlyName?: string;
     commonName?: string;
+    search?: string;
+    status?: string | string[];
+    profileIds?: string[];
+    fromDate?: Date;
+    toDate?: Date;
   }) => {
     try {
       interface CountResult {
@@ -73,6 +88,63 @@ export const certificateDALFactory = (db: TDbClient) => {
       if (commonName) {
         const sanitizedValue = String(commonName).replace(new RE2("[%_\\\\]", "g"), "\\$&");
         query = query.andWhere(`${TableName.Certificate}.commonName`, "like", `%${sanitizedValue}%`);
+      }
+
+      if (search) {
+        const sanitizedValue = String(search).replace(new RE2("[%_\\\\]", "g"), "\\$&");
+        query = query.andWhere(function () {
+          void this.where(`${TableName.Certificate}.commonName`, "like", `%${sanitizedValue}%`)
+            .orWhere(`${TableName.Certificate}.altNames`, "like", `%${sanitizedValue}%`)
+            .orWhere(`${TableName.Certificate}.serialNumber`, "like", `%${sanitizedValue}%`)
+            .orWhere(`${TableName.Certificate}.friendlyName`, "like", `%${sanitizedValue}%`);
+
+          if (isValidUUID(sanitizedValue)) {
+            void this.orWhere(`${TableName.Certificate}.id`, sanitizedValue);
+          }
+        });
+      }
+
+      if (status) {
+        const now = new Date();
+        const statuses = Array.isArray(status) ? status : [status];
+
+        query = query.andWhere(function () {
+          statuses.forEach((statusValue, index) => {
+            const whereMethod = index === 0 ? "where" : "orWhere";
+
+            if (statusValue === "active") {
+              void this[whereMethod](function () {
+                void this.where(`${TableName.Certificate}.notAfter`, ">", now).andWhere(
+                  `${TableName.Certificate}.status`,
+                  "!=",
+                  "revoked"
+                );
+              });
+            } else if (statusValue === "expired") {
+              void this[whereMethod](function () {
+                void this.where(`${TableName.Certificate}.notAfter`, "<=", now).andWhere(
+                  `${TableName.Certificate}.status`,
+                  "!=",
+                  "revoked"
+                );
+              });
+            } else {
+              void this[whereMethod](`${TableName.Certificate}.status`, statusValue);
+            }
+          });
+        });
+      }
+
+      if (fromDate) {
+        query = query.andWhere(`${TableName.Certificate}.createdAt`, ">=", fromDate);
+      }
+
+      if (toDate) {
+        query = query.andWhere(`${TableName.Certificate}.createdAt`, "<=", toDate);
+      }
+
+      if (profileIds) {
+        query = query.whereIn(`${TableName.Certificate}.profileId`, profileIds);
       }
 
       const count = await query.count("*").first();
@@ -275,7 +347,17 @@ export const certificateDALFactory = (db: TDbClient) => {
   };
 
   const findWithPrivateKeyInfo = async (
-    filter: Partial<TCertificates & { friendlyName?: string; commonName?: string }>,
+    filter: Partial<
+      TCertificates & {
+        friendlyName?: string;
+        commonName?: string;
+        search?: string;
+        status?: string | string[];
+        profileIds?: string[];
+        fromDate?: Date;
+        toDate?: Date;
+      }
+    >,
     options?: { offset?: number; limit?: number; sort?: [string, "asc" | "desc"][] },
     permissionFilters?: ProcessedPermissionRules
   ): Promise<(TCertificates & { hasPrivateKey: boolean })[]> => {
@@ -286,16 +368,80 @@ export const certificateDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.Certificate))
         .select(db.ref(`${TableName.CertificateSecret}.certId`).as("privateKeyRef"));
 
-      Object.entries(filter).forEach(([key, value]) => {
+      const { friendlyName, commonName, search, status, profileIds, fromDate, toDate, ...regularFilters } = filter;
+
+      Object.entries(regularFilters).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
-          if (key === "friendlyName" || key === "commonName") {
-            const sanitizedValue = String(value).replace(new RE2("[%_\\\\]", "g"), "\\$&");
-            query = query.andWhere(`${TableName.Certificate}.${key}`, "like", `%${sanitizedValue}%`);
-          } else {
-            query = query.andWhere(`${TableName.Certificate}.${key}`, value);
-          }
+          query = query.andWhere(`${TableName.Certificate}.${key}`, value);
         }
       });
+
+      if (friendlyName) {
+        const sanitizedValue = String(friendlyName).replace(new RE2("[%_\\\\]", "g"), "\\$&");
+        query = query.andWhere(`${TableName.Certificate}.friendlyName`, "like", `%${sanitizedValue}%`);
+      }
+
+      if (commonName) {
+        const sanitizedValue = String(commonName).replace(new RE2("[%_\\\\]", "g"), "\\$&");
+        query = query.andWhere(`${TableName.Certificate}.commonName`, "like", `%${sanitizedValue}%`);
+      }
+
+      if (search) {
+        const sanitizedValue = String(search).replace(new RE2("[%_\\\\]", "g"), "\\$&");
+        query = query.andWhere(function () {
+          void this.where(`${TableName.Certificate}.commonName`, "like", `%${sanitizedValue}%`)
+            .orWhere(`${TableName.Certificate}.altNames`, "like", `%${sanitizedValue}%`)
+            .orWhere(`${TableName.Certificate}.serialNumber`, "like", `%${sanitizedValue}%`)
+            .orWhere(`${TableName.Certificate}.friendlyName`, "like", `%${sanitizedValue}%`);
+
+          if (isValidUUID(sanitizedValue)) {
+            void this.orWhere(`${TableName.Certificate}.id`, sanitizedValue);
+          }
+        });
+      }
+
+      if (status) {
+        const now = new Date();
+        const statuses = Array.isArray(status) ? status : [status];
+
+        query = query.andWhere(function () {
+          statuses.forEach((statusValue, index) => {
+            const whereMethod = index === 0 ? "where" : "orWhere";
+
+            if (statusValue === "active") {
+              void this[whereMethod](function () {
+                void this.where(`${TableName.Certificate}.notAfter`, ">", now).andWhere(
+                  `${TableName.Certificate}.status`,
+                  "!=",
+                  "revoked"
+                );
+              });
+            } else if (statusValue === "expired") {
+              void this[whereMethod](function () {
+                void this.where(`${TableName.Certificate}.notAfter`, "<=", now).andWhere(
+                  `${TableName.Certificate}.status`,
+                  "!=",
+                  "revoked"
+                );
+              });
+            } else {
+              void this[whereMethod](`${TableName.Certificate}.status`, statusValue);
+            }
+          });
+        });
+      }
+
+      if (fromDate) {
+        query = query.andWhere(`${TableName.Certificate}.createdAt`, ">=", fromDate);
+      }
+
+      if (toDate) {
+        query = query.andWhere(`${TableName.Certificate}.createdAt`, "<=", toDate);
+      }
+
+      if (profileIds) {
+        query = query.whereIn(`${TableName.Certificate}.profileId`, profileIds);
+      }
 
       if (permissionFilters) {
         query = applyProcessedPermissionRulesToQuery(query, TableName.Certificate, permissionFilters) as typeof query;
