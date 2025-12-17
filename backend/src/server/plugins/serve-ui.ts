@@ -79,7 +79,8 @@ export const registerServeUI = async (
       root: frontendPath,
       wildcard: false,
       maxAge: "30d",
-      immutable: true
+      immutable: true,
+      index: false
     });
 
     server.route({
