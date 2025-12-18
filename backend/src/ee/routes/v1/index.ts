@@ -229,9 +229,9 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (aiRouter) => {
-      await aiRouter.register(registerAiMcpServerRouter, { prefix: "/mcp-servers" });
-      await aiRouter.register(registerAiMcpEndpointRouter, { prefix: "/mcp-endpoints" });
-      await aiRouter.register(registerAiMcpActivityLogRouter, { prefix: "/mcp-activity-logs" });
+      await aiRouter.register(registerAiMcpServerRouter, { prefix: "/mcp/servers" });
+      await aiRouter.register(registerAiMcpEndpointRouter, { prefix: "/mcp/endpoints" });
+      await aiRouter.register(registerAiMcpActivityLogRouter, { prefix: "/mcp/activity-logs" });
     },
     { prefix: "/ai" }
   );

@@ -6,12 +6,12 @@ import { readLimit } from "@app/server/config/rateLimiter";
 
 const getMcpUrls = (siteUrl: string, endpointId: string) => {
   // The MCP resource/connect URL
-  const resourceUrl = `${siteUrl}/api/v1/ai/mcp-endpoints/${endpointId}/connect`;
+  const resourceUrl = `${siteUrl}/api/v1/ai/mcp/endpoints/${endpointId}/connect`;
   // The authorization server issuer (RFC 8414: metadata at /.well-known/oauth-authorization-server/{path})
   const authServerIssuer = `${siteUrl}/mcp-endpoints/${endpointId}`;
 
   // OAuth endpoint URLs
-  const apiBaseUrl = `${siteUrl}/api/v1/ai/mcp-endpoints/${endpointId}`;
+  const apiBaseUrl = `${siteUrl}/api/v1/ai/mcp/endpoints/${endpointId}`;
   const tokenEndpointUrl = `${apiBaseUrl}/oauth/token`;
   const authorizeEndpointUrl = `${apiBaseUrl}/oauth/authorize`;
   const registrationEndpointUrl = `${apiBaseUrl}/oauth/register`;

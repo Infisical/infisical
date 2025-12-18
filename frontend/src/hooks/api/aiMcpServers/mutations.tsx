@@ -21,7 +21,7 @@ export const useCreateAiMcpServer = () => {
     mutationFn: async (data) => {
       const { data: response } = await apiRequest.post<{
         server: TAiMcpServer;
-      }>("/api/v1/ai/mcp-servers", data);
+      }>("/api/v1/ai/mcp/servers", data);
       return response.server;
     },
     onSuccess: (_, { projectId }) => {
@@ -39,7 +39,7 @@ export const useUpdateAiMcpServer = () => {
     mutationFn: async ({ serverId, ...data }) => {
       const { data: response } = await apiRequest.patch<{
         server: TAiMcpServer;
-      }>(`/api/v1/ai/mcp-servers/${serverId}`, data);
+      }>(`/api/v1/ai/mcp/servers/${serverId}`, data);
       return response.server;
     },
     onSuccess: (server, { serverId }) => {
@@ -60,7 +60,7 @@ export const useDeleteAiMcpServer = () => {
     mutationFn: async ({ serverId }) => {
       const { data: response } = await apiRequest.delete<{
         server: TAiMcpServer;
-      }>(`/api/v1/ai/mcp-servers/${serverId}`);
+      }>(`/api/v1/ai/mcp/servers/${serverId}`);
       return response.server;
     },
     onSuccess: (server, { serverId }) => {
@@ -78,7 +78,7 @@ export const useInitiateOAuth = () => {
   return useMutation<TInitiateOAuthResponse, object, TInitiateOAuthDTO>({
     mutationFn: async (data) => {
       const { data: response } = await apiRequest.post<TInitiateOAuthResponse>(
-        "/api/v1/ai/mcp-servers/oauth/initiate",
+        "/api/v1/ai/mcp/servers/oauth/initiate",
         data
       );
       return response;
@@ -93,7 +93,7 @@ export const useSyncAiMcpServerTools = () => {
     mutationFn: async ({ serverId }) => {
       const { data: response } = await apiRequest.post<{
         tools: TAiMcpServerTool[];
-      }>(`/api/v1/ai/mcp-servers/${serverId}/tools/sync`);
+      }>(`/api/v1/ai/mcp/servers/${serverId}/tools/sync`);
       return response;
     },
     onSuccess: (_, { serverId }) => {

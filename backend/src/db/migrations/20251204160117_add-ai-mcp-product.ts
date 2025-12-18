@@ -9,7 +9,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("name").notNullable();
       t.string("url").notNullable();
-      t.string("description");
+      t.text("description");
       t.string("status");
       t.string("credentialMode");
       t.string("authMethod");
@@ -38,7 +38,7 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.createTable(TableName.AiMcpEndpoint, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("name").notNullable();
-      t.string("description");
+      t.text("description");
       t.string("status");
       t.boolean("piiFiltering").defaultTo(false).notNullable();
       t.string("projectId").notNullable();
@@ -104,7 +104,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  // await dropOnUpdateTrigger(knex, TableName.AiMcpServerUserCredential);
+  await dropOnUpdateTrigger(knex, TableName.AiMcpServerUserCredential);
   await knex.schema.dropTableIfExists(TableName.AiMcpServerUserCredential);
 
   await knex.schema.dropTableIfExists(TableName.AiMcpEndpointServerTool);

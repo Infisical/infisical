@@ -10,6 +10,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import axios, { AxiosError } from "axios";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
@@ -19,6 +20,7 @@ import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TAiMcpServerDALFactory } from "./ai-mcp-server-dal";
@@ -51,6 +53,7 @@ type TAiMcpServerServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TAiMcpServerServiceFactory = ReturnType<typeof aiMcpServerServiceFactory>;
@@ -137,7 +140,8 @@ export const aiMcpServerServiceFactory = ({
   aiMcpServerUserCredentialDAL,
   kmsService,
   keyStore,
-  permissionService
+  permissionService,
+  licenseService
 }: TAiMcpServerServiceFactoryDep) => {
   /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-redundant-type-constituents */
   const fetchMcpTools = async (serverUrl: string, accessToken: string): Promise<TMcpTool[]> => {
@@ -199,6 +203,9 @@ export const aiMcpServerServiceFactory = ({
     authServer: TOAuthAuthorizationServerMetadata;
   }> => {
     let resourceMetadataUrl: string | null = null;
+
+    const url = new URL(mcpUrl);
+    await verifyHostInputValidity(url.hostname, true);
 
     // 1. Try to access the MCP server to get WWW-Authenticate header
     try {
@@ -306,6 +313,9 @@ export const aiMcpServerServiceFactory = ({
       ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.McpServers);
     }
 
+    const urlObj = new URL(url);
+    await verifyHostInputValidity(urlObj.hostname, true);
+
     // 1. Discover OAuth metadata following RFC 9728 flow
     const { protectedResource, authServer } = await discoverOAuthMetadata(url);
 
@@ -313,7 +323,7 @@ export const aiMcpServerServiceFactory = ({
     const sessionId = crypto.randomUUID();
 
     // 3. Build redirect URI
-    const redirectUri = `${appCfg.SITE_URL}/api/v1/ai/mcp-servers/oauth/callback`;
+    const redirectUri = `${appCfg.SITE_URL}/api/v1/ai/mcp/servers/oauth/callback`;
 
     // 4. Get client credentials - either from DCR or hardcoded
     let resolvedClientId: string;
@@ -517,6 +527,13 @@ export const aiMcpServerServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TCreateAiMcpServerDTO) => {
+    const orgLicensePlan = await licenseService.getPlan(actorOrgId);
+    if (!orgLicensePlan.ai) {
+      throw new BadRequestError({
+        message: "AI operation failed due to organization plan restrictions."
+      });
+    }
+
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,

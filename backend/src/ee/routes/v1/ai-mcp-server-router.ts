@@ -2,8 +2,8 @@ import { z } from "zod";
 
 import { AiMcpServerToolsSchema } from "@app/db/schemas/ai-mcp-server-tools";
 import { AiMcpServersSchema } from "@app/db/schemas/ai-mcp-servers";
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AiMcpServerAuthMethod, AiMcpServerCredentialMode } from "@app/ee/services/ai-mcp-server/ai-mcp-server-enum";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";

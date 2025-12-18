@@ -39,7 +39,7 @@ export const MCPEndpointConnectionSection = ({ endpoint }: Props) => {
   const [copiedTokenId, setCopiedTokenId] = useState<string | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
 
-  const endpointUrl = `${window.location.origin}/api/v1/ai/mcp-endpoints/${endpoint.id}/connect`;
+  const endpointUrl = `${window.location.origin}/api/v1/ai/mcp/endpoints/${endpoint.id}/connect`;
   const storageKey = `${STORAGE_KEY_PREFIX}${endpoint.id}`;
 
   // Load tokens from localStorage on mount

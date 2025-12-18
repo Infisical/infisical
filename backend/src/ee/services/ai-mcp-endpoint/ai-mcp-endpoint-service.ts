@@ -27,6 +27,7 @@ import { AiMcpServerCredentialMode } from "../ai-mcp-server/ai-mcp-server-enum";
 import { TAiMcpServerServiceFactory } from "../ai-mcp-server/ai-mcp-server-service";
 import { TAiMcpServerToolDALFactory } from "../ai-mcp-server/ai-mcp-server-tool-dal";
 import { TAiMcpServerUserCredentialDALFactory } from "../ai-mcp-server/ai-mcp-server-user-credential-dal";
+import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionMcpEndpointActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TAiMcpEndpointDALFactory } from "./ai-mcp-endpoint-dal";
@@ -72,6 +73,7 @@ type TAiMcpEndpointServiceFactoryDep = {
   authTokenService: Pick<TAuthTokenServiceFactory, "getUserTokenSessionById">;
   userDAL: TUserDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 // OAuth schemas for parsing cached data
@@ -129,57 +131,9 @@ export const aiMcpEndpointServiceFactory = ({
   keyStore,
   authTokenService,
   userDAL,
-  permissionService
+  permissionService,
+  licenseService
 }: TAiMcpEndpointServiceFactoryDep) => {
-  // PII filtering utility - redacts sensitive information
-  const applyPiiFiltering = (data: unknown): unknown => {
-    if (typeof data === "string") {
-      let filtered = data;
-
-      // Redact SSN (matches formats: 123-45-6789, 123456789)
-      filtered = filtered.replace(/\b\d{3}-?\d{2}-?\d{4}\b/g, "<REDACTED>");
-
-      // Redact Phone Numbers (matches various formats)
-      // Matches: (123) 456-7890, 123-456-7890, 123.456.7890, 1234567890, +1 123 456 7890
-      filtered = filtered.replace(/(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g, "<REDACTED>");
-
-      // Redact Email Addresses
-      filtered = filtered.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, "<REDACTED>");
-
-      // Redact Passport Numbers (matches common formats)
-      // Matches: US (9 digits), international alphanumeric (e.g., AB1234567, P12345678)
-      filtered = filtered.replace(/\b[A-Z]{1,2}\d{6,9}\b/g, "<REDACTED>");
-      filtered = filtered.replace(/\bP\d{8}\b/g, "<REDACTED>");
-
-      // Redact Driver's License Numbers (matches common US state formats)
-      // Matches various state formats: alphanumeric combinations typically 6-20 characters
-      // Examples: CA: A1234567, TX: 12345678, NY: 123456789, FL: A123-456-78-901-0
-      filtered = filtered.replace(/\b[A-Z]{1,2}[-\s]?\d{6,8}\b/g, "<REDACTED>");
-      filtered = filtered.replace(/\b\d{7,9}\b/g, "<REDACTED>");
-      filtered = filtered.replace(/\b[A-Z]\d{3}-\d{3}-\d{2}-\d{3}-\d\b/g, "<REDACTED>");
-
-      // Redact State ID Numbers (similar patterns to driver's licenses)
-      // Matches alphanumeric state ID formats
-      filtered = filtered.replace(/\b[A-Z]{1,3}\d{5,12}\b/g, "<REDACTED>");
-
-      return filtered;
-    }
-
-    if (Array.isArray(data)) {
-      return data.map((item) => applyPiiFiltering(item));
-    }
-
-    if (data && typeof data === "object") {
-      const filtered: Record<string, unknown> = {};
-      for (const [key, value] of Object.entries(data)) {
-        filtered[key] = applyPiiFiltering(value);
-      }
-      return filtered;
-    }
-
-    return data;
-  };
-
   const interactWithMcp = async ({
     endpointId,
     userId,
@@ -349,34 +303,58 @@ export const aiMcpEndpointServiceFactory = ({
       }
 
       try {
-        // Apply PII filtering to arguments if enabled
-        const filteredArgs = (endpoint.piiFiltering ? applyPiiFiltering(args) : args) as Record<string, unknown>;
-
         const result = await selectedMcpClient.client.callTool({
           name,
-          arguments: filteredArgs
+          arguments: args
         });
-
-        // Apply PII filtering to result if enabled
-        const filteredResult = endpoint.piiFiltering ? applyPiiFiltering(result) : result;
 
         await aiMcpActivityLogService.createActivityLog({
           endpointName: endpoint.name,
           serverName: selectedMcpClient.server.name,
           toolName: name,
           actor: user.email || "",
-          request: filteredArgs, // Log filtered args
-          response: filteredResult, // Log filtered response
+          request: args,
+          response: result,
           projectId: endpoint.projectId
         });
 
-        return filteredResult as Record<string, unknown>;
+        return result as Record<string, unknown>;
       } catch (error) {
+        // Log the full error internally for system administrators
+        logger.error(
+          {
+            error,
+            endpointName: endpoint.name,
+            serverName: selectedMcpClient.server.name,
+            toolName: name,
+            actor: user.email || "",
+            projectId: endpoint.projectId
+          },
+          "Tool call failed"
+        );
+
+        // Log failed activity with full error details for user visibility in activity logs
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        await aiMcpActivityLogService
+          .createActivityLog({
+            endpointName: endpoint.name,
+            serverName: selectedMcpClient.server.name,
+            toolName: name,
+            actor: user.email || "",
+            request: args,
+            response: { error: errorMessage },
+            projectId: endpoint.projectId
+          })
+          .catch((logError) => {
+            logger.error({ error: logError }, "Failed to log tool call error activity");
+          });
+
+        // Return generic error to client to avoid information leakage
         return {
           content: [
             {
               type: "text",
-              text: `Error: ${error instanceof Error ? error.message : "Unknown error"}`
+              text: "Tool execution failed"
             }
           ],
           isError: true
@@ -402,6 +380,13 @@ export const aiMcpEndpointServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TCreateAiMcpEndpointDTO) => {
+    const orgLicensePlan = await licenseService.getPlan(actorOrgId);
+    if (!orgLicensePlan.ai) {
+      throw new BadRequestError({
+        message: "AI operation failed due to organization plan restrictions."
+      });
+    }
+
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,

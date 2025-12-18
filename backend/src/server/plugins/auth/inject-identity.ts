@@ -141,7 +141,7 @@ export const injectIdentity = fp(
         return;
       }
 
-      if (req.url === "/api/v1/ai/mcp-servers/oauth/callback") {
+      if (req.url === "/api/v1/ai/mcp/servers/oauth/callback") {
         return;
       }
 

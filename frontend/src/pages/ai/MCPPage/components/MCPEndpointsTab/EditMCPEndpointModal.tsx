@@ -25,7 +25,7 @@ import {
 const EditMCPEndpointFormSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(64, "Name must be 64 characters or less"),
   description: z.string().trim().max(256, "Description must be 256 characters or less").optional(),
-  serverIds: z.array(z.string()).default([])
+  serverIds: z.array(z.string().uuid()).default([])
 });
 
 type TEditMCPEndpointForm = z.infer<typeof EditMCPEndpointFormSchema>;

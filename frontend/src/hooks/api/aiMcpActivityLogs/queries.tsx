@@ -22,7 +22,7 @@ export const useListAiMcpActivityLogs = (
     queryFn: async ({ pageParam }) => {
       try {
         const { data } = await apiRequest.get<{ activityLogs: TAiMcpActivityLog[] }>(
-          "/api/v1/ai/mcp-activity-logs",
+          "/api/v1/ai/mcp/activity-logs",
           {
             params: {
               projectId: filters.projectId,
