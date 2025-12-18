@@ -57,15 +57,13 @@ export const kmsKeyRotationQueueServiceFactory = async ({
           return;
         }
 
-        // Process in batches - mark as queued AFTER successfully queueing each batch
-        // This prevents keys being stuck if the process crashes mid-way
+        // Process in batches - queue and mark each key individually to ensure consistency
         for (let i = 0; i < keysToRotate.length; i += KMS_ROTATION_CONSTANTS.QUEUE_BATCH_SIZE) {
           const batch = keysToRotate.slice(i, i + KMS_ROTATION_CONSTANTS.QUEUE_BATCH_SIZE);
 
-          // Queue the jobs first
-          // eslint-disable-next-line no-await-in-loop
-          await Promise.all(
-            batch.map((key) => {
+          // Queue each key individually and mark as queued only after successful queue
+          for (const key of batch) {
+            try {
               logger.info(
                 `kmsKeyRotationQueue: Queueing rotation [kmsKeyId=${key.kmsKeyId}] [keyName=${key.keyName}] [nextRotationAt=${key.nextRotationAt?.toISOString()}]`
               );
@@ -73,7 +71,8 @@ export const kmsKeyRotationQueueServiceFactory = async ({
               // Use nextRotationAt in jobId for deduplication - if process crashes and restarts,
               // the same jobId will be generated, allowing the queue to deduplicate
               const jobId = `kms-key-rotation-${key.kmsKeyId}-${key.nextRotationAt?.getTime() ?? currentTime.getTime()}`;
-              return queueService.queuePg(
+              // eslint-disable-next-line no-await-in-loop
+              await queueService.queuePg(
                 QueueJobs.KmsKeyRotationRotateKey,
                 {
                   kmsKeyId: key.kmsKeyId,
@@ -90,13 +89,15 @@ export const kmsKeyRotationQueueServiceFactory = async ({
                   retryBackoff: true
                 }
               );
-            })
-          );
 
-          // Only mark as queued AFTER jobs are successfully queued
-          const batchIds = batch.map((key) => key.id);
-          // eslint-disable-next-line no-await-in-loop
-          await internalKmsDAL.markKeysAsQueued(batchIds, true);
+              // Only mark as queued AFTER job is successfully queued
+              // eslint-disable-next-line no-await-in-loop
+              await internalKmsDAL.markKeysAsQueued([key.id], false);
+            } catch (err) {
+              logger.error(err, `kmsKeyRotationQueue: Failed to queue key [kmsKeyId=${key.kmsKeyId}]`);
+              // Continue with next key - don't let one failure stop the batch
+            }
+          }
         }
       } catch (error) {
         logger.error(error, "kmsKeyRotationQueue: Queue Rotations Error:");

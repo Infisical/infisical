@@ -97,8 +97,8 @@ const parseV02Header = (blob: Buffer): { keyVersion: number; encryptedData: Buff
   if (headerEnd === -1) return null;
 
   const keyVersion = parseInt(blob.toString("utf8", 3, headerEnd), 10);
-  if (Number.isNaN(keyVersion) || keyVersion < 1 || keyVersion > 10_000_000) {
-    throw new BadRequestError({ message: `Invalid key version in ciphertext: ${keyVersion}` });
+  if (Number.isNaN(keyVersion) || keyVersion < 1 || keyVersion > Number.MAX_SAFE_INTEGER) {
+    throw new BadRequestError({ message: "Invalid key version in ciphertext" });
   }
 
   return { keyVersion, encryptedData: blob.subarray(headerEnd + 1) };
