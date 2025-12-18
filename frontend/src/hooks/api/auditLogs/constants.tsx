@@ -306,7 +306,19 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.APPROVAL_REQUEST_CANCEL]: "Cancel Approval Request",
   [EventType.APPROVAL_REQUEST_GRANT_LIST]: "List Approval Request Grants",
   [EventType.APPROVAL_REQUEST_GRANT_GET]: "Get Approval Request Grant",
-  [EventType.APPROVAL_REQUEST_GRANT_REVOKE]: "Revoke Approval Request Grant"
+  [EventType.APPROVAL_REQUEST_GRANT_REVOKE]: "Revoke Approval Request Grant",
+
+  [EventType.CREATE_DYNAMIC_SECRET]: "Create Dynamic Secret",
+  [EventType.UPDATE_DYNAMIC_SECRET]: "Update Dynamic Secret",
+  [EventType.DELETE_DYNAMIC_SECRET]: "Delete Dynamic Secret",
+  [EventType.GET_DYNAMIC_SECRET]: "Get Dynamic Secret",
+  [EventType.LIST_DYNAMIC_SECRETS]: "List Dynamic Secrets",
+
+  [EventType.CREATE_DYNAMIC_SECRET_LEASE]: "Create Dynamic Secret Lease",
+  [EventType.DELETE_DYNAMIC_SECRET_LEASE]: "Delete Dynamic Secret Lease",
+  [EventType.RENEW_DYNAMIC_SECRET_LEASE]: "Renew Dynamic Secret Lease",
+  [EventType.LIST_DYNAMIC_SECRET_LEASES]: "List Dynamic Secret Leases",
+  [EventType.GET_DYNAMIC_SECRET_LEASE]: "Get Dynamic Secret Lease"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {

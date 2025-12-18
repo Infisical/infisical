@@ -9,6 +9,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { extractObjectFieldPaths } from "@app/lib/fn";
 import { OrderByDirection } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -42,6 +43,34 @@ type TDynamicSecretServiceFactoryDep = {
   gatewayDAL: Pick<TGatewayDALFactory, "findOne" | "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne" | "find">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
+};
+
+const getUpdatedFieldPaths = (
+  oldData: Record<string, unknown> | null | undefined,
+  newData: Record<string, unknown> | null | undefined
+): string[] => {
+  const updatedPaths = new Set<string>();
+
+  if (!newData || typeof newData !== "object") {
+    return [];
+  }
+
+  if (!oldData || typeof oldData !== "object") {
+    return [];
+  }
+
+  Object.keys(newData).forEach((key) => {
+    const oldValue = oldData?.[key];
+    const newValue = newData[key];
+
+    if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+      // Extract paths from the new value
+      const paths = extractObjectFieldPaths(newValue, key);
+      paths.forEach((path) => updatedPaths.add(path));
+    }
+  });
+
+  return Array.from(updatedPaths).sort();
 };
 
 export const dynamicSecretServiceFactory = ({
@@ -191,7 +220,13 @@ export const dynamicSecretServiceFactory = ({
       return cfg;
     });
 
-    return { ...dynamicSecretCfg, inputs };
+    return {
+      ...dynamicSecretCfg,
+      inputs,
+      projectId: project.id,
+      environment: environmentSlug,
+      secretPath: path
+    };
   };
 
   const updateByName: TDynamicSecretServiceFactory["updateByName"] = async ({
@@ -278,7 +313,25 @@ export const dynamicSecretServiceFactory = ({
       secretManagerDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedInput }).toString()
     ) as object;
     const newInput = { ...decryptedStoredInput, ...(inputs || {}) };
+    const oldInput = await selectedProvider.validateProviderInputs(decryptedStoredInput, { projectId });
     const updatedInput = await selectedProvider.validateProviderInputs(newInput, { projectId });
+
+    const updatedFields = getUpdatedFieldPaths(
+      {
+        ...(oldInput as object),
+        maxTTL: dynamicSecretCfg.maxTTL,
+        defaultTTL: dynamicSecretCfg.defaultTTL,
+        name: dynamicSecretCfg.name,
+        usernameTemplate
+      },
+      {
+        ...(updatedInput as object),
+        maxTTL,
+        defaultTTL,
+        name: newName ?? name,
+        usernameTemplate
+      }
+    );
 
     let selectedGatewayId: string | null = null;
     let isGatewayV1 = true;
@@ -357,7 +410,13 @@ export const dynamicSecretServiceFactory = ({
       return cfg;
     });
 
-    return { ...updatedDynamicCfg, inputs: updatedInput };
+    return {
+      dynamicSecret: updatedDynamicCfg,
+      updatedFields,
+      projectId: project.id,
+      environment: environmentSlug,
+      secretPath: path
+    };
   };
 
   const deleteByName: TDynamicSecretServiceFactory["deleteByName"] = async ({
@@ -412,7 +471,12 @@ export const dynamicSecretServiceFactory = ({
       await Promise.all(leases.map(({ id: leaseId }) => dynamicSecretQueueService.unsetLeaseRevocation(leaseId)));
 
       const deletedDynamicSecretCfg = await dynamicSecretDAL.deleteById(dynamicSecretCfg.id);
-      return deletedDynamicSecretCfg;
+      return {
+        ...deletedDynamicSecretCfg,
+        environment: environmentSlug,
+        secretPath: path,
+        projectId: project.id
+      };
     }
     // if leases exist we should flag it as deleting and then remove leases in background
     // then delete the main one
@@ -421,11 +485,21 @@ export const dynamicSecretServiceFactory = ({
         status: DynamicSecretStatus.Deleting
       });
       await dynamicSecretQueueService.pruneDynamicSecret(updatedDynamicSecretCfg.id);
-      return updatedDynamicSecretCfg;
+      return {
+        ...updatedDynamicSecretCfg,
+        environment: environmentSlug,
+        secretPath: path,
+        projectId: project.id
+      };
     }
     // if no leases just delete the config
     const deletedDynamicSecretCfg = await dynamicSecretDAL.deleteById(dynamicSecretCfg.id);
-    return deletedDynamicSecretCfg;
+    return {
+      ...deletedDynamicSecretCfg,
+      projectId: project.id,
+      environment: environmentSlug,
+      secretPath: path
+    };
   };
 
   const getDetails: TDynamicSecretServiceFactory["getDetails"] = async ({
@@ -491,7 +565,13 @@ export const dynamicSecretServiceFactory = ({
       projectId
     })) as object;
 
-    return { ...dynamicSecretCfg, inputs: providerInputs };
+    return {
+      ...dynamicSecretCfg,
+      inputs: providerInputs,
+      projectId: project.id,
+      environment: environmentSlug,
+      secretPath: path
+    };
   };
 
   // get unique dynamic secret count across multiple envs
@@ -622,16 +702,21 @@ export const dynamicSecretServiceFactory = ({
       }
     );
 
-    return dynamicSecretCfg.filter((dynamicSecret) => {
-      return permission.can(
-        ProjectPermissionDynamicSecretActions.ReadRootCredential,
-        subject(ProjectPermissionSub.DynamicSecrets, {
-          environment: environmentSlug,
-          secretPath: path,
-          metadata: dynamicSecret.metadata
-        })
-      );
-    });
+    return {
+      dynamicSecrets: dynamicSecretCfg.filter((dynamicSecret) => {
+        return permission.can(
+          ProjectPermissionDynamicSecretActions.ReadRootCredential,
+          subject(ProjectPermissionSub.DynamicSecrets, {
+            environment: environmentSlug,
+            secretPath: path,
+            metadata: dynamicSecret.metadata
+          })
+        );
+      }),
+      environment: environmentSlug,
+      secretPath: path,
+      projectId
+    };
   };
 
   const listDynamicSecretsByFolderIds: TDynamicSecretServiceFactory["listDynamicSecretsByFolderIds"] = async (
