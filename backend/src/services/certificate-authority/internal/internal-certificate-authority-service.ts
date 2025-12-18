@@ -62,6 +62,7 @@ import {
   TCreateCaDTO,
   TDeleteCaDTO,
   TGenerateRootCaCertificateDTO,
+  TGetCaCertByIdDTO,
   TGetCaCertDTO,
   TGetCaCertificateTemplatesDTO,
   TGetCaCertsDTO,
@@ -556,6 +557,7 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     let certificate = "";
     let certificateChain = "";
+    let newCertId = "";
 
     switch (ca.internalCa.type) {
       case InternalCaType.ROOT: {
@@ -610,6 +612,8 @@ export const internalCertificateAuthorityServiceFactory = ({
             },
             tx
           );
+
+          newCertId = newCaCert.id;
 
           await internalCertificateAuthorityDAL.update(
             {
@@ -753,6 +757,8 @@ export const internalCertificateAuthorityServiceFactory = ({
             tx
           );
 
+          newCertId = newCaCert.id;
+
           await internalCertificateAuthorityDAL.update(
             {
               caId: ca.id
@@ -780,6 +786,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       certificate,
       certificateChain,
       serialNumber,
+      certId: newCertId,
       ca: {
         ...ca,
         ...ca.internalCa
@@ -854,6 +861,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       certificate: caCert,
       certificateChain: caCertChain,
       serialNumber,
+      certId: ca.internalCa.activeCaCertId,
       ca: expandInternalCa(ca)
     };
   };
@@ -889,6 +897,61 @@ export const internalCertificateAuthorityServiceFactory = ({
     const caCertObj = new x509.X509Certificate(decryptedCaCert);
 
     return caCertObj;
+  };
+
+  const getCaCertByIdWithAuth = async ({
+    caId,
+    certId,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }: TGetCaCertByIdDTO) => {
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+    if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: ca.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateAuthorityActions.Read,
+      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
+    );
+
+    const caCert = await certificateAuthorityCertDAL.findOne({
+      caId,
+      id: certId
+    });
+
+    if (!caCert) {
+      throw new NotFoundError({ message: `Certificate with ID '${certId}' not found for CA with ID '${caId}'` });
+    }
+
+    const {
+      caCert: certificate,
+      caCertChain: certificateChain,
+      serialNumber
+    } = await getCaCertChain({
+      caCertId: certId,
+      certificateAuthorityDAL,
+      certificateAuthorityCertDAL,
+      projectDAL,
+      kmsService
+    });
+
+    return {
+      certificate,
+      certificateChain,
+      serialNumber,
+      certId,
+      ca: expandInternalCa(ca)
+    };
   };
 
   /**
@@ -1296,10 +1359,16 @@ export const internalCertificateAuthorityServiceFactory = ({
       parentCaId
     });
 
+    const updatedCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
+    if (!updatedCa.internalCa?.activeCaCertId) {
+      throw new Error("Failed to get certificate ID after import");
+    }
+
     return {
       certificate: signedResult.certificate,
       certificateChain: signedResult.certificateChain,
-      serialNumber: signedResult.serialNumber
+      serialNumber: signedResult.serialNumber,
+      certId: updatedCa.internalCa.activeCaCertId
     };
   };
 
@@ -2275,6 +2344,7 @@ export const internalCertificateAuthorityServiceFactory = ({
         certificate: cert.toString("pem"),
         certificateChain: "",
         serialNumber,
+        certId: caCert.id,
         ca: expandInternalCa(updatedCa)
       };
     });
@@ -2290,6 +2360,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     getCaCerts,
     getCaCert,
     getCaCertById,
+    getCaCertByIdWithAuth,
     signIntermediate,
     importCertToCa,
     generateIntermediateCaCertificate,

@@ -93,12 +93,13 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
         200: z.object({
           certificate: z.string().trim().describe(CERTIFICATE_AUTHORITIES.RENEW_CA_CERT.certificate),
           certificateChain: z.string().trim().describe(CERTIFICATE_AUTHORITIES.RENEW_CA_CERT.certificateChain),
-          serialNumber: z.string().trim().describe(CERTIFICATE_AUTHORITIES.RENEW_CA_CERT.serialNumber)
+          serialNumber: z.string().trim().describe(CERTIFICATE_AUTHORITIES.RENEW_CA_CERT.serialNumber),
+          certId: z.string().describe("Certificate ID")
         })
       }
     },
     handler: async (req) => {
-      const { certificate, certificateChain, serialNumber, ca } =
+      const { certificate, certificateChain, serialNumber, certId, ca } =
         await server.services.internalCertificateAuthority.renewCaCert({
           caId: req.params.caId,
           actor: req.permission.type,
@@ -123,7 +124,8 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       return {
         certificate,
         certificateChain,
-        serialNumber
+        serialNumber,
+        certId
       };
     }
   });
@@ -159,7 +161,8 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
             .string()
             .trim()
             .describe(CERTIFICATE_AUTHORITIES.GENERATE_CA_CERTIFICATE.certificateChain),
-          serialNumber: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GENERATE_CA_CERTIFICATE.serialNumber)
+          serialNumber: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GENERATE_CA_CERTIFICATE.serialNumber),
+          certId: z.string().describe("Certificate ID")
         })
       }
     },
@@ -169,6 +172,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       let certificate: string;
       let certificateChain: string;
       let serialNumber: string;
+      let certId: string;
       let ca: { id: string; dn: string; projectId: string };
 
       if (parentCaId) {
@@ -187,6 +191,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
         certificate = intermediateCert.certificate;
         certificateChain = intermediateCert.certificateChain;
         serialNumber = intermediateCert.serialNumber;
+        certId = intermediateCert.certId;
 
         ca = await server.services.internalCertificateAuthority.getCaById({
           caId: req.params.caId,
@@ -210,6 +215,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
         certificate = rootCert.certificate;
         certificateChain = rootCert.certificateChain;
         serialNumber = rootCert.serialNumber;
+        certId = rootCert.certId;
         ca = rootCert.ca;
       }
 
@@ -230,7 +236,8 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       return {
         certificate,
         certificateChain,
-        serialNumber
+        serialNumber,
+        certId
       };
     }
   });
@@ -255,6 +262,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
             certificate: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CA_CERTS.certificate),
             certificateChain: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CA_CERTS.certificateChain),
             serialNumber: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CA_CERTS.serialNumber),
+            certId: z.string().describe("Certificate ID"),
             version: z.number().describe(CERTIFICATE_AUTHORITIES.GET_CA_CERTS.version)
           })
         )
@@ -303,12 +311,13 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
         200: z.object({
           certificate: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CERT.certificate),
           certificateChain: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CERT.certificateChain),
-          serialNumber: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CERT.serialNumber)
+          serialNumber: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CERT.serialNumber),
+          certId: z.string().describe("Certificate ID")
         })
       }
     },
     handler: async (req) => {
-      const { certificate, certificateChain, serialNumber, ca } =
+      const { certificate, certificateChain, serialNumber, certId, ca } =
         await server.services.internalCertificateAuthority.getCaCert({
           caId: req.params.caId,
           actor: req.permission.type,
@@ -332,7 +341,64 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       return {
         certificate,
         certificateChain,
-        serialNumber
+        serialNumber,
+        certId
+      };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:caId/certificate/:certId",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description: "Get a specific CA certificate by ID",
+      params: z.object({
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CERT.caId),
+        certId: z.string().trim().describe("Certificate ID to retrieve")
+      }),
+      response: {
+        200: z.object({
+          certificate: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CERT.certificate),
+          certificateChain: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CERT.certificateChain),
+          serialNumber: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CERT.serialNumber),
+          certId: z.string().describe("Certificate ID")
+        })
+      }
+    },
+    handler: async (req) => {
+      const { certificate, certificateChain, serialNumber, certId, ca } =
+        await server.services.internalCertificateAuthority.getCaCertByIdWithAuth({
+          caId: req.params.caId,
+          certId: req.params.certId,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.GET_CA_CERT,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn
+          }
+        }
+      });
+
+      return {
+        certificate,
+        certificateChain,
+        serialNumber,
+        certId
       };
     }
   });

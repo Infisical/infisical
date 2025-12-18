@@ -114,6 +114,11 @@ export type TGetCaCertDTO = {
   caId: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TGetCaCertByIdDTO = {
+  caId: string;
+  certId: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TSignIntermediateDTO = {
   isInternal?: boolean;
 } & (
