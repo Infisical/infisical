@@ -16,7 +16,7 @@ jobs:
             const title = context.payload.pull_request.title;
             
             // Valid PR types based on pull_request_template.md
-            const validTypes = ['fix', 'feature', 'improvement', 'breaking', 'docs', 'chore'];
+            const validTypes = ['fix', 'feature', 'improvement', 'breaking', 'docs', 'chore', 'feat'];
             
             // Regex pattern: type(optional-scope): short description
             // - Type must be one of the valid types
