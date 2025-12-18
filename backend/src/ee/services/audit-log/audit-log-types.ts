@@ -4594,10 +4594,7 @@ interface UpdateDynamicSecretEvent {
     dynamicSecretName: string;
     dynamicSecretId: string;
     dynamicSecretType: string;
-    newDynamicSecretName?: string;
-    newDefaultTTL?: string;
-    newMaxTTL?: string | null;
-    newUsernameTemplate?: string | null;
+    updatedFields: string[];
 
     environment: string;
     secretPath: string;

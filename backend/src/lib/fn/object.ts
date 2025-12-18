@@ -134,3 +134,67 @@ export const deterministicStringify = (value: unknown): string => {
 
   return JSON.stringify(value);
 };
+
+/**
+ * Recursively extracts all field paths from a nested object structure.
+ * Returns an array of dot-notation paths (e.g., ["password", "username", "field.nestedField"])
+ */
+export const extractObjectFieldPaths = (obj: unknown, prefix = ""): string[] => {
+  const paths: string[] = [];
+
+  if (obj === null || obj === undefined) {
+    return paths;
+  }
+
+  if (typeof obj !== "object") {
+    // return the path if it exists
+    if (prefix) {
+      paths.push(prefix);
+    }
+    return paths;
+  }
+
+  if (Array.isArray(obj)) {
+    // for arrays, we log the array itself and optionally nested paths
+    if (prefix) {
+      paths.push(prefix);
+    }
+    // we just want to know the array field changed
+    obj.forEach((item, index) => {
+      if (typeof item === "object" && item !== null) {
+        const nestedPaths = extractObjectFieldPaths(item, `${prefix}[${index}]`);
+        paths.push(...nestedPaths);
+      }
+    });
+    return paths;
+  }
+
+  // for objects, extract all keys and recurse
+  const keys = Object.keys(obj);
+  if (keys.length === 0 && prefix) {
+    // empty object with prefix
+    paths.push(prefix);
+  }
+
+  keys.forEach((key) => {
+    const currentPath = prefix ? `${prefix}.${key}` : key;
+    const value = (obj as Record<string, unknown>)[key];
+
+    if (value === null || value === undefined) {
+      paths.push(currentPath);
+    } else if (typeof value === "object") {
+      // recurse into nested objects/arrays
+      const nestedPaths = extractObjectFieldPaths(value, currentPath);
+      if (nestedPaths.length === 0) {
+        // if nested object is empty, add the path itself
+        paths.push(currentPath);
+      } else {
+        paths.push(...nestedPaths);
+      }
+    } else {
+      paths.push(currentPath);
+    }
+  });
+
+  return paths;
+};

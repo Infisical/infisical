@@ -89,9 +89,13 @@ export type TDynamicSecretServiceFactory = {
   create: (
     arg: TCreateDynamicSecretDTO
   ) => Promise<TDynamicSecrets & { projectId: string; environment: string; secretPath: string }>;
-  updateByName: (
-    arg: TUpdateDynamicSecretDTO
-  ) => Promise<TDynamicSecrets & { projectId: string; environment: string; secretPath: string }>;
+  updateByName: (arg: TUpdateDynamicSecretDTO) => Promise<{
+    dynamicSecret: TDynamicSecrets;
+    updatedFields: string[];
+    projectId: string;
+    environment: string;
+    secretPath: string;
+  }>;
   deleteByName: (
     arg: TDeleteDynamicSecretDTO
   ) => Promise<TDynamicSecrets & { projectId: string; environment: string; secretPath: string }>;

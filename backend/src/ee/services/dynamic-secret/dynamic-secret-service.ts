@@ -9,6 +9,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { extractObjectFieldPaths } from "@app/lib/fn";
 import { OrderByDirection } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -42,6 +43,34 @@ type TDynamicSecretServiceFactoryDep = {
   gatewayDAL: Pick<TGatewayDALFactory, "findOne" | "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne" | "find">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
+};
+
+const getUpdatedFieldPaths = (
+  oldData: Record<string, unknown> | null | undefined,
+  newData: Record<string, unknown> | null | undefined
+): string[] => {
+  const updatedPaths = new Set<string>();
+
+  if (!newData || typeof newData !== "object") {
+    return [];
+  }
+
+  if (!oldData || typeof oldData !== "object") {
+    return [];
+  }
+
+  Object.keys(newData).forEach((key) => {
+    const oldValue = oldData?.[key];
+    const newValue = newData[key];
+
+    if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+      // Extract paths from the new value
+      const paths = extractObjectFieldPaths(newValue, key);
+      paths.forEach((path) => updatedPaths.add(path));
+    }
+  });
+
+  return Array.from(updatedPaths).sort();
 };
 
 export const dynamicSecretServiceFactory = ({
@@ -284,7 +313,25 @@ export const dynamicSecretServiceFactory = ({
       secretManagerDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedInput }).toString()
     ) as object;
     const newInput = { ...decryptedStoredInput, ...(inputs || {}) };
+    const oldInput = await selectedProvider.validateProviderInputs(decryptedStoredInput, { projectId });
     const updatedInput = await selectedProvider.validateProviderInputs(newInput, { projectId });
+
+    const updatedFields = getUpdatedFieldPaths(
+      {
+        ...(oldInput as object),
+        maxTTL: dynamicSecretCfg.maxTTL,
+        defaultTTL: dynamicSecretCfg.defaultTTL,
+        name: dynamicSecretCfg.name,
+        usernameTemplate
+      },
+      {
+        ...(updatedInput as object),
+        maxTTL,
+        defaultTTL,
+        name: newName ?? name,
+        usernameTemplate
+      }
+    );
 
     let selectedGatewayId: string | null = null;
     let isGatewayV1 = true;
@@ -364,8 +411,8 @@ export const dynamicSecretServiceFactory = ({
     });
 
     return {
-      ...updatedDynamicCfg,
-      inputs: updatedInput,
+      dynamicSecret: updatedDynamicCfg,
+      updatedFields,
       projectId: project.id,
       environment: environmentSlug,
       secretPath: path

@@ -182,38 +182,36 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const dynamicSecretCfg = await server.services.dynamicSecret.updateByName({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        name: req.params.name,
-        path: req.body.path,
-        projectSlug: req.body.projectSlug,
-        environmentSlug: req.body.environmentSlug,
-        ...req.body.data
-      });
+      const { dynamicSecret, updatedFields, projectId, environment, secretPath } =
+        await server.services.dynamicSecret.updateByName({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          name: req.params.name,
+          path: req.body.path,
+          projectSlug: req.body.projectSlug,
+          environmentSlug: req.body.environmentSlug,
+          ...req.body.data
+        });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: dynamicSecretCfg.projectId,
+        projectId,
         event: {
           type: EventType.UPDATE_DYNAMIC_SECRET,
           metadata: {
-            dynamicSecretName: dynamicSecretCfg.name,
-            newDynamicSecretName: req.body.data.newName,
-            dynamicSecretType: dynamicSecretCfg.type,
-            dynamicSecretId: dynamicSecretCfg.id,
-            newDefaultTTL: req.body.data.defaultTTL,
-            newMaxTTL: req.body.data.maxTTL,
-            newUsernameTemplate: req.body.data.usernameTemplate,
-            environment: dynamicSecretCfg.environment,
-            secretPath: dynamicSecretCfg.secretPath,
-            projectId: dynamicSecretCfg.projectId
+            dynamicSecretName: dynamicSecret.name,
+            dynamicSecretType: dynamicSecret.type,
+            dynamicSecretId: dynamicSecret.id,
+            environment,
+            secretPath,
+            projectId,
+            updatedFields
           }
         }
       });
-      return { dynamicSecret: dynamicSecretCfg };
+      return { dynamicSecret };
     }
   });
 
@@ -428,7 +426,6 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
             environment,
             secretPath,
             projectId,
-
             leaseCount: leases.length
           }
         }
