@@ -40,7 +40,6 @@ import { CertificateIssuanceModal } from "../../CertificatesPage/components/Cert
 import { CertificateRequestRow } from "./CertificateRequestRow";
 
 const PAGE_SIZE = 20;
-const DATE_RANGE_DAYS = 90;
 const SEARCH_DEBOUNCE_DELAY = 500;
 
 type CertificateRequestStatus = "pending" | "issued" | "failed";
@@ -78,15 +77,6 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
     limit: 100
   });
 
-  const { fromDate, toDate } = useMemo(() => {
-    const now = Date.now();
-    const daysInMs = DATE_RANGE_DAYS * 24 * 60 * 60 * 1000;
-    return {
-      fromDate: new Date(now - daysInMs),
-      toDate: new Date(now)
-    };
-  }, []);
-
   const profileIds = useMemo(() => {
     return appliedProfileIds.length > 0 ? appliedProfileIds : undefined;
   }, [appliedProfileIds]);
@@ -100,19 +90,9 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
       sortOrder: "desc",
       ...(debouncedSearch && { search: debouncedSearch }),
       ...(appliedFilters.status && { status: appliedFilters.status }),
-      ...(profileIds && { profileIds }),
-      fromDate,
-      toDate
+      ...(profileIds && { profileIds })
     }),
-    [
-      currentProject?.slug,
-      currentPage,
-      debouncedSearch,
-      appliedFilters.status,
-      profileIds,
-      fromDate,
-      toDate
-    ]
+    [currentProject?.slug, currentPage, debouncedSearch, appliedFilters.status, profileIds]
   );
 
   const {
@@ -193,7 +173,7 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
           value={pendingSearch}
           onChange={(e) => setPendingSearch(e.target.value)}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search by SAN, CN or Profile Name..."
+          placeholder="Search by SAN or CN"
           className="flex-1"
         />
         <DropdownMenu>

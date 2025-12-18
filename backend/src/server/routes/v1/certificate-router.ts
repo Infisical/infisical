@@ -372,10 +372,11 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         fromDate: z.coerce.date().optional(),
         toDate: z.coerce.date().optional(),
         profileIds: z
-          .union([z.string().uuid(), z.array(z.string().uuid())])
-          .transform((val) => (Array.isArray(val) ? val : [val]))
+          .string()
+          .transform((val) => val.split(",").map((id) => id.trim()))
+          .pipe(z.array(z.string().uuid()))
           .optional()
-          .describe("Filter by profile IDs"),
+          .describe("Comma-separated list of profile IDs"),
         sortBy: z.string().trim().optional(),
         sortOrder: z.enum(["asc", "desc"]).optional()
       }),

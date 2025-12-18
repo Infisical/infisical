@@ -89,7 +89,7 @@ export const CertificateRequestRow = ({ request, onViewCertificates }: Props) =>
               disabled={!request.certificateId}
               className="flex items-center gap-2"
             >
-              View in Certificates
+              View Certificate
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

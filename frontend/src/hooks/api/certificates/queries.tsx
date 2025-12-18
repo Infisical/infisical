@@ -79,37 +79,39 @@ export const useGetCertBundle = (serialNumber: string) => {
   });
 };
 
+const DATE_RANGE_DAYS = 90;
+
 export const useListCertificateRequests = (params: TListCertificateRequestsParams) => {
   return useQuery({
     queryKey: certKeys.listCertificateRequests(params),
     queryFn: async () => {
-      const searchParams = new URLSearchParams();
-
-      searchParams.append("projectSlug", params.projectSlug);
-
-      if (params.offset !== undefined) searchParams.append("offset", params.offset.toString());
-      if (params.limit !== undefined) searchParams.append("limit", params.limit.toString());
-      if (params.search) searchParams.append("search", params.search);
-      if (params.status) searchParams.append("status", params.status);
-      if (params.fromDate) searchParams.append("fromDate", params.fromDate.toISOString());
-      if (params.toDate) searchParams.append("toDate", params.toDate.toISOString());
-      if (params.profileIds && params.profileIds.length > 0) {
-        params.profileIds.forEach((id) => {
-          searchParams.append("profileIds", id);
-        });
-      }
-      if (params.sortBy) searchParams.append("sortBy", params.sortBy);
-      if (params.sortOrder) searchParams.append("sortOrder", params.sortOrder);
+      const now = Date.now();
+      const daysInMs = DATE_RANGE_DAYS * 24 * 60 * 60 * 1000;
+      const fromDate = params.fromDate || new Date(now - daysInMs);
+      const toDate = params.toDate || new Date(now);
 
       const { data } = await apiRequest.get<TListCertificateRequestsResponse>(
-        `/api/v1/cert-manager/certificates/certificate-requests?${searchParams.toString()}`
+        "/api/v1/cert-manager/certificates/certificate-requests",
+        {
+          params: {
+            projectSlug: params.projectSlug,
+            ...(params.offset !== undefined && { offset: params.offset }),
+            ...(params.limit !== undefined && { limit: params.limit }),
+            ...(params.search && { search: params.search }),
+            ...(params.status && { status: params.status }),
+            fromDate: fromDate.toISOString(),
+            toDate: toDate.toISOString(),
+            ...(params.profileIds &&
+              params.profileIds.length > 0 && { profileIds: params.profileIds.join(",") }),
+            ...(params.sortBy && { sortBy: params.sortBy }),
+            ...(params.sortOrder && { sortOrder: params.sortOrder })
+          }
+        }
       );
       return data;
     },
     enabled: Boolean(params.projectSlug),
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchInterval: false
+    placeholderData: (previousData) => previousData
   });
 };
 

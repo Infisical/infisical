@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { Knex } from "knex";
 
 import { TableName } from "../schemas";

@@ -1,9 +1,9 @@
 import { Knex } from "knex";
-import RE2 from "re2";
 
 import { TDbClient } from "@app/db";
 import { TableName, TCertificateRequests, TCertificates } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import {
   applyProcessedPermissionRulesToQuery,
@@ -15,10 +15,12 @@ type TCertificateRequestWithCertificate = TCertificateRequests & {
   profileName: string | null;
 };
 
-type TCertificateRequestQueryResult = {
-  certificate: string | null;
+type TCertificateRequestQueryResult = TCertificateRequests & {
+  certId: string | null;
+  certSerialNumber: string | null;
+  certStatus: string | null;
   profileName: string | null;
-} & Omit<TCertificateRequests, "certificate">;
+};
 
 export type TCertificateRequestDALFactory = ReturnType<typeof certificateRequestDALFactory>;
 
@@ -41,31 +43,27 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
         .where(`${TableName.CertificateRequests}.id`, id)
         .select(selectAllTableCols(TableName.CertificateRequests))
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
-        .select(db.raw(`row_to_json(${TableName.Certificate}.*) as certificate`))
+        .select(db.ref("id").withSchema(TableName.Certificate).as("certId"))
+        .select(db.ref("serialNumber").withSchema(TableName.Certificate).as("certSerialNumber"))
+        .select(db.ref("status").withSchema(TableName.Certificate).as("certStatus"))
         .first()) as TCertificateRequestQueryResult | undefined;
 
       if (!result) return null;
 
-      const { certificate: certificateJson, profileName, ...certificateRequestData } = result;
+      const { certId, certSerialNumber, certStatus, profileName, ...certificateRequestData } = result;
 
-      let parsedCertificate: TCertificates | null = null;
-      if (certificateJson && typeof certificateJson === "string") {
-        try {
-          const parsed = JSON.parse(certificateJson) as Record<string, unknown>;
-          if (parsed && typeof parsed === "object" && "id" in parsed) {
-            parsedCertificate = parsed as TCertificates;
-          }
-        } catch {
-          // Ignore parsing errors
-        }
-      } else if (certificateJson && typeof certificateJson === "object" && "id" in certificateJson) {
-        parsedCertificate = certificateJson as TCertificates;
-      }
+      const certificate: TCertificates | null = certId
+        ? ({
+            id: certId,
+            serialNumber: certSerialNumber,
+            status: certStatus
+          } as TCertificates)
+        : null;
 
       return {
         ...certificateRequestData,
         profileName: profileName || null,
-        certificate: parsedCertificate
+        certificate
       };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificate request by ID with certificate" });
@@ -144,12 +142,12 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       }
 
       if (search) {
-        const sanitizedSearch = String(search).replace(new RE2("[%_\\\\]", "g"), "\\$&");
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+        const sanitizedSearch = sanitizeSqlLikeString(search);
         query = query.where((builder) => {
           void builder
             .whereILike(`${TableName.CertificateRequests}.commonName`, `%${sanitizedSearch}%`)
-            .orWhereILike(`${TableName.CertificateRequests}.altNames`, `%${sanitizedSearch}%`)
-            .orWhereILike(`${TableName.CertificateRequests}.status`, `%${sanitizedSearch}%`);
+            .orWhereILike(`${TableName.CertificateRequests}.altNames`, `%${sanitizedSearch}%`);
         });
       }
 
@@ -212,12 +210,12 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       }
 
       if (search) {
-        const sanitizedSearch = String(search).replace(new RE2("[%_\\\\]", "g"), "\\$&");
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+        const sanitizedSearch = sanitizeSqlLikeString(search);
         query = query.where((builder) => {
           void builder
             .whereILike(`${TableName.CertificateRequests}.commonName`, `%${sanitizedSearch}%`)
-            .orWhereILike(`${TableName.CertificateRequests}.altNames`, `%${sanitizedSearch}%`)
-            .orWhereILike(`${TableName.CertificateRequests}.status`, `%${sanitizedSearch}%`);
+            .orWhereILike(`${TableName.CertificateRequests}.altNames`, `%${sanitizedSearch}%`);
         });
       }
 
@@ -297,16 +295,18 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       query = query
         .select(selectAllTableCols(TableName.CertificateRequests))
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
-        .select(db.raw(`row_to_json(${TableName.Certificate}.*) as certificate`))
+        .select(db.ref("id").withSchema(TableName.Certificate).as("certId"))
+        .select(db.ref("serialNumber").withSchema(TableName.Certificate).as("certSerialNumber"))
+        .select(db.ref("status").withSchema(TableName.Certificate).as("certStatus"))
         .where(`${TableName.CertificateRequests}.projectId`, projectId);
 
       if (search) {
-        const sanitizedSearch = String(search).replace(new RE2("[%_\\\\]", "g"), "\\$&");
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+        const sanitizedSearch = sanitizeSqlLikeString(search);
         query = query.where((builder) => {
           void builder
             .whereILike(`${TableName.CertificateRequests}.commonName`, `%${sanitizedSearch}%`)
-            .orWhereILike(`${TableName.CertificateRequests}.altNames`, `%${sanitizedSearch}%`)
-            .orWhereILike(`${TableName.CertificateRequests}.status`, `%${sanitizedSearch}%`);
+            .orWhereILike(`${TableName.CertificateRequests}.altNames`, `%${sanitizedSearch}%`);
         });
       }
 
@@ -336,26 +336,20 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
         .limit(limit)) as TCertificateRequestQueryResult[];
 
       return results.map((row): TCertificateRequestWithCertificate => {
-        const { certificate: certificateJson, profileName: rowProfileName, ...certificateRequestData } = row;
+        const { certId, certSerialNumber, certStatus, profileName: rowProfileName, ...certificateRequestData } = row;
 
-        let parsedCertificate: TCertificates | null = null;
-        if (certificateJson && typeof certificateJson === "string") {
-          try {
-            const parsed = JSON.parse(certificateJson) as Record<string, unknown>;
-            if (parsed && typeof parsed === "object" && "id" in parsed) {
-              parsedCertificate = parsed as TCertificates;
-            }
-          } catch {
-            // Ignore parsing errors
-          }
-        } else if (certificateJson && typeof certificateJson === "object" && "id" in certificateJson) {
-          parsedCertificate = certificateJson as TCertificates;
-        }
+        const certificate: TCertificates | null = certId
+          ? ({
+              id: certId,
+              serialNumber: certSerialNumber,
+              status: certStatus
+            } as TCertificates)
+          : null;
 
         return {
           ...certificateRequestData,
           profileName: rowProfileName || null,
-          certificate: parsedCertificate
+          certificate
         };
       });
     } catch (error) {

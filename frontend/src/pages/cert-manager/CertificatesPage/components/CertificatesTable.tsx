@@ -231,7 +231,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
           value={pendingSearch}
           onChange={(e) => setPendingSearch(e.target.value)}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search by SAN, CN, ID or Serial Number..."
+          placeholder="Search by SAN, CN, ID or Serial Number"
           className="flex-1"
         />
         <DropdownMenu>
