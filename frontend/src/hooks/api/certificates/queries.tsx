@@ -87,24 +87,21 @@ export const useListCertificateRequests = (params: TListCertificateRequestsParam
     queryFn: async () => {
       const now = Date.now();
       const daysInMs = DATE_RANGE_DAYS * 24 * 60 * 60 * 1000;
-      const fromDate = params.fromDate || new Date(now - daysInMs);
-      const toDate = params.toDate || new Date(now);
 
       const { data } = await apiRequest.get<TListCertificateRequestsResponse>(
         "/api/v1/cert-manager/certificates/certificate-requests",
         {
           params: {
             projectSlug: params.projectSlug,
-            ...(params.offset !== undefined && { offset: params.offset }),
-            ...(params.limit !== undefined && { limit: params.limit }),
-            ...(params.search && { search: params.search }),
-            ...(params.status && { status: params.status }),
-            fromDate: fromDate.toISOString(),
-            toDate: toDate.toISOString(),
-            ...(params.profileIds &&
-              params.profileIds.length > 0 && { profileIds: params.profileIds.join(",") }),
-            ...(params.sortBy && { sortBy: params.sortBy }),
-            ...(params.sortOrder && { sortOrder: params.sortOrder })
+            offset: params.offset,
+            limit: params.limit,
+            search: params.search,
+            status: params.status,
+            fromDate: (params.fromDate || new Date(now - daysInMs)).toISOString(),
+            toDate: (params.toDate || new Date(now)).toISOString(),
+            profileIds: params.profileIds?.join(","),
+            sortBy: params.sortBy,
+            sortOrder: params.sortOrder
           }
         }
       );
