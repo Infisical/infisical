@@ -854,7 +854,7 @@ export const approvalPolicyServiceFactory = ({
       ProjectPermissionSub.ApprovalRequestGrants
     );
 
-    let status = grant.status;
+    let { status } = grant;
     if (
       grant.status === ApprovalRequestGrantStatus.Active &&
       grant.expiresAt &&
