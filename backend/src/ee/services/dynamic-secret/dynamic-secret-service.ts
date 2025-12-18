@@ -191,7 +191,13 @@ export const dynamicSecretServiceFactory = ({
       return cfg;
     });
 
-    return { ...dynamicSecretCfg, inputs };
+    return {
+      ...dynamicSecretCfg,
+      inputs,
+      projectId: project.id,
+      environment: environmentSlug,
+      secretPath: path
+    };
   };
 
   const updateByName: TDynamicSecretServiceFactory["updateByName"] = async ({
@@ -357,7 +363,13 @@ export const dynamicSecretServiceFactory = ({
       return cfg;
     });
 
-    return { ...updatedDynamicCfg, inputs: updatedInput };
+    return {
+      ...updatedDynamicCfg,
+      inputs: updatedInput,
+      projectId: project.id,
+      environment: environmentSlug,
+      secretPath: path
+    };
   };
 
   const deleteByName: TDynamicSecretServiceFactory["deleteByName"] = async ({
@@ -412,7 +424,12 @@ export const dynamicSecretServiceFactory = ({
       await Promise.all(leases.map(({ id: leaseId }) => dynamicSecretQueueService.unsetLeaseRevocation(leaseId)));
 
       const deletedDynamicSecretCfg = await dynamicSecretDAL.deleteById(dynamicSecretCfg.id);
-      return deletedDynamicSecretCfg;
+      return {
+        ...deletedDynamicSecretCfg,
+        environment: environmentSlug,
+        secretPath: path,
+        projectId: project.id
+      };
     }
     // if leases exist we should flag it as deleting and then remove leases in background
     // then delete the main one
@@ -421,11 +438,21 @@ export const dynamicSecretServiceFactory = ({
         status: DynamicSecretStatus.Deleting
       });
       await dynamicSecretQueueService.pruneDynamicSecret(updatedDynamicSecretCfg.id);
-      return updatedDynamicSecretCfg;
+      return {
+        ...updatedDynamicSecretCfg,
+        environment: environmentSlug,
+        secretPath: path,
+        projectId: project.id
+      };
     }
     // if no leases just delete the config
     const deletedDynamicSecretCfg = await dynamicSecretDAL.deleteById(dynamicSecretCfg.id);
-    return deletedDynamicSecretCfg;
+    return {
+      ...deletedDynamicSecretCfg,
+      projectId: project.id,
+      environment: environmentSlug,
+      secretPath: path
+    };
   };
 
   const getDetails: TDynamicSecretServiceFactory["getDetails"] = async ({
@@ -491,7 +518,13 @@ export const dynamicSecretServiceFactory = ({
       projectId
     })) as object;
 
-    return { ...dynamicSecretCfg, inputs: providerInputs };
+    return {
+      ...dynamicSecretCfg,
+      inputs: providerInputs,
+      projectId: project.id,
+      environment: environmentSlug,
+      secretPath: path
+    };
   };
 
   // get unique dynamic secret count across multiple envs
@@ -622,16 +655,21 @@ export const dynamicSecretServiceFactory = ({
       }
     );
 
-    return dynamicSecretCfg.filter((dynamicSecret) => {
-      return permission.can(
-        ProjectPermissionDynamicSecretActions.ReadRootCredential,
-        subject(ProjectPermissionSub.DynamicSecrets, {
-          environment: environmentSlug,
-          secretPath: path,
-          metadata: dynamicSecret.metadata
-        })
-      );
-    });
+    return {
+      dynamicSecrets: dynamicSecretCfg.filter((dynamicSecret) => {
+        return permission.can(
+          ProjectPermissionDynamicSecretActions.ReadRootCredential,
+          subject(ProjectPermissionSub.DynamicSecrets, {
+            environment: environmentSlug,
+            secretPath: path,
+            metadata: dynamicSecret.metadata
+          })
+        );
+      }),
+      environment: environmentSlug,
+      secretPath: path,
+      projectId
+    };
   };
 
   const listDynamicSecretsByFolderIds: TDynamicSecretServiceFactory["listDynamicSecretsByFolderIds"] = async (

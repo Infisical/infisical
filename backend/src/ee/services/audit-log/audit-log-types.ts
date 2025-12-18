@@ -588,7 +588,21 @@ export enum EventType {
   RESPOND_TO_ACME_CHALLENGE = "respond-to-acme-challenge",
   PASS_ACME_CHALLENGE = "pass-acme-challenge",
   ATTEMPT_ACME_CHALLENGE = "attempt-acme-challenge",
-  FAIL_ACME_CHALLENGE = "fail-acme-challenge"
+  FAIL_ACME_CHALLENGE = "fail-acme-challenge",
+
+  // Dynamic Secrets
+  CREATE_DYNAMIC_SECRET = "create-dynamic-secret",
+  UPDATE_DYNAMIC_SECRET = "update-dynamic-secret",
+  DELETE_DYNAMIC_SECRET = "delete-dynamic-secret",
+  GET_DYNAMIC_SECRET = "get-dynamic-secret",
+  LIST_DYNAMIC_SECRETS = "list-dynamic-secrets",
+
+  // Dynamic Secret Leases
+  CREATE_DYNAMIC_SECRET_LEASE = "create-dynamic-secret-lease",
+  DELETE_DYNAMIC_SECRET_LEASE = "delete-dynamic-secret-lease",
+  RENEW_DYNAMIC_SECRET_LEASE = "renew-dynamic-secret-lease",
+  LIST_DYNAMIC_SECRET_LEASES = "list-dynamic-secret-leases",
+  GET_DYNAMIC_SECRET_LEASE = "get-dynamic-secret-lease"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -4487,6 +4501,160 @@ interface FailAcmeChallengeEvent {
   };
 }
 
+interface GetDynamicSecretLeaseEvent {
+  type: EventType.GET_DYNAMIC_SECRET_LEASE;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    leaseId: string;
+    leaseExternalEntityId: string;
+    leaseExpireAt: Date;
+
+    projectId: string;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface RenewDynamicSecretLeaseEvent {
+  type: EventType.RENEW_DYNAMIC_SECRET_LEASE;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    leaseId: string;
+    leaseExternalEntityId: string;
+    newLeaseExpireAt: Date;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface CreateDynamicSecretLeaseEvent {
+  type: EventType.CREATE_DYNAMIC_SECRET_LEASE;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    leaseId: string;
+    leaseExternalEntityId: string;
+    leaseExpireAt: Date;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface DeleteDynamicSecretLeaseEvent {
+  type: EventType.DELETE_DYNAMIC_SECRET_LEASE;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    leaseId: string;
+    leaseExternalEntityId: string;
+    leaseStatus?: string | null;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+
+    isForced: boolean;
+  };
+}
+
+interface CreateDynamicSecretEvent {
+  type: EventType.CREATE_DYNAMIC_SECRET;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretType: string;
+    dynamicSecretId: string;
+    defaultTTL: string;
+    maxTTL?: string | null;
+    gatewayV2Id?: string | null;
+    usernameTemplate?: string | null;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface UpdateDynamicSecretEvent {
+  type: EventType.UPDATE_DYNAMIC_SECRET;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+    newDynamicSecretName?: string;
+    newDefaultTTL?: string;
+    newMaxTTL?: string | null;
+    newUsernameTemplate?: string | null;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface DeleteDynamicSecretEvent {
+  type: EventType.DELETE_DYNAMIC_SECRET;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface GetDynamicSecretEvent {
+  type: EventType.GET_DYNAMIC_SECRET;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface ListDynamicSecretsEvent {
+  type: EventType.LIST_DYNAMIC_SECRETS;
+  metadata: {
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface ListDynamicSecretLeasesEvent {
+  type: EventType.LIST_DYNAMIC_SECRET_LEASES;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+
+    leaseCount: number;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -4896,4 +5064,14 @@ export type Event =
   | RespondToAcmeChallengeEvent
   | PassedAcmeChallengeEvent
   | AttemptAcmeChallengeEvent
-  | FailAcmeChallengeEvent;
+  | FailAcmeChallengeEvent
+  | CreateDynamicSecretEvent
+  | UpdateDynamicSecretEvent
+  | DeleteDynamicSecretEvent
+  | GetDynamicSecretEvent
+  | ListDynamicSecretsEvent
+  | ListDynamicSecretLeasesEvent
+  | CreateDynamicSecretLeaseEvent
+  | DeleteDynamicSecretLeaseEvent
+  | RenewDynamicSecretLeaseEvent
+  | GetDynamicSecretLeaseEvent;

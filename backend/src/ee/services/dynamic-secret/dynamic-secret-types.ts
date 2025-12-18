@@ -86,11 +86,24 @@ export type TGetDynamicSecretsCountDTO = Omit<TListDynamicSecretsDTO, "projectSl
 };
 
 export type TDynamicSecretServiceFactory = {
-  create: (arg: TCreateDynamicSecretDTO) => Promise<TDynamicSecrets>;
-  updateByName: (arg: TUpdateDynamicSecretDTO) => Promise<TDynamicSecrets>;
-  deleteByName: (arg: TDeleteDynamicSecretDTO) => Promise<TDynamicSecrets>;
-  getDetails: (arg: TDetailsDynamicSecretDTO) => Promise<TDynamicSecretWithMetadata>;
-  listDynamicSecretsByEnv: (arg: TListDynamicSecretsDTO) => Promise<TDynamicSecretWithMetadata[]>;
+  create: (
+    arg: TCreateDynamicSecretDTO
+  ) => Promise<TDynamicSecrets & { projectId: string; environment: string; secretPath: string }>;
+  updateByName: (
+    arg: TUpdateDynamicSecretDTO
+  ) => Promise<TDynamicSecrets & { projectId: string; environment: string; secretPath: string }>;
+  deleteByName: (
+    arg: TDeleteDynamicSecretDTO
+  ) => Promise<TDynamicSecrets & { projectId: string; environment: string; secretPath: string }>;
+  getDetails: (
+    arg: TDetailsDynamicSecretDTO
+  ) => Promise<TDynamicSecretWithMetadata & { projectId: string; environment: string; secretPath: string }>;
+  listDynamicSecretsByEnv: (arg: TListDynamicSecretsDTO) => Promise<{
+    dynamicSecrets: Array<TDynamicSecretWithMetadata>;
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  }>;
   listDynamicSecretsByEnvs: (
     arg: TListDynamicSecretsMultiEnvDTO
   ) => Promise<Array<TDynamicSecretWithMetadata & { environment: string }>>;

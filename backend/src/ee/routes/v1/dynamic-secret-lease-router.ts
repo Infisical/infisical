@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { DynamicSecretLeasesSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, DYNAMIC_SECRET_LEASES } from "@app/lib/api-docs";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
@@ -48,14 +49,35 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { data, lease, dynamicSecret } = await server.services.dynamicSecretLease.create({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        name: req.body.dynamicSecretName,
-        ...req.body
+      const { data, lease, dynamicSecret, projectId, environment, secretPath } =
+        await server.services.dynamicSecretLease.create({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          name: req.body.dynamicSecretName,
+          ...req.body
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.CREATE_DYNAMIC_SECRET_LEASE,
+          metadata: {
+            dynamicSecretName: dynamicSecret.name,
+            dynamicSecretType: dynamicSecret.type,
+            dynamicSecretId: dynamicSecret.id,
+            projectId,
+            environment,
+            secretPath,
+            leaseId: lease.id,
+            leaseExternalEntityId: lease.externalEntityId,
+            leaseExpireAt: lease.expireAt
+          }
+        }
       });
+
       return { lease, data, dynamicSecret };
     }
   });
@@ -92,14 +114,36 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const lease = await server.services.dynamicSecretLease.revokeLease({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        leaseId: req.params.leaseId,
-        ...req.body
+      const { lease, dynamicSecret, projectId, environment, secretPath } =
+        await server.services.dynamicSecretLease.revokeLease({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          leaseId: req.params.leaseId,
+          ...req.body
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.DELETE_DYNAMIC_SECRET_LEASE,
+          metadata: {
+            dynamicSecretName: dynamicSecret.name,
+            dynamicSecretType: dynamicSecret.type,
+            dynamicSecretId: dynamicSecret.id,
+            leaseId: lease.id,
+            leaseExternalEntityId: lease.externalEntityId,
+            leaseStatus: lease.status,
+            environment,
+            secretPath,
+            projectId,
+            isForced: req.body.isForced
+          }
+        }
       });
+
       return { lease };
     }
   });
@@ -147,14 +191,35 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const lease = await server.services.dynamicSecretLease.renewLease({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        leaseId: req.params.leaseId,
-        ...req.body
+      const { lease, dynamicSecret, projectId, environment, secretPath } =
+        await server.services.dynamicSecretLease.renewLease({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          leaseId: req.params.leaseId,
+          ...req.body
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.RENEW_DYNAMIC_SECRET_LEASE,
+          metadata: {
+            dynamicSecretName: dynamicSecret.name,
+            dynamicSecretType: dynamicSecret.type,
+            dynamicSecretId: dynamicSecret.id,
+            leaseId: lease.id,
+            leaseExternalEntityId: lease.externalEntityId,
+            newLeaseExpireAt: lease.expireAt,
+            environment,
+            secretPath,
+            projectId
+          }
+        }
       });
+
       return { lease };
     }
   });
@@ -191,15 +256,41 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const lease = await server.services.dynamicSecretLease.getLeaseDetails({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        leaseId: req.params.leaseId,
-        ...req.query
+      const { lease, dynamicSecret, projectId, environment, secretPath } =
+        await server.services.dynamicSecretLease.getLeaseDetails({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          leaseId: req.params.leaseId,
+          ...req.query
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.GET_DYNAMIC_SECRET_LEASE,
+          metadata: {
+            dynamicSecretName: dynamicSecret.name,
+            dynamicSecretId: dynamicSecret.id,
+            dynamicSecretType: dynamicSecret.type,
+            leaseId: lease.id,
+            leaseExternalEntityId: lease.externalEntityId,
+            leaseExpireAt: lease.expireAt,
+            environment,
+            secretPath,
+            projectId
+          }
+        }
       });
-      return { lease };
+
+      return {
+        lease: {
+          ...lease,
+          dynamicSecret
+        }
+      };
     }
   });
 };
