@@ -820,7 +820,18 @@ export const approvalPolicyServiceFactory = ({
     );
 
     const grants = await approvalRequestGrantsDAL.find({ projectId, type: policyType });
-    return { grants };
+    const updatedGrants = grants.map((grant) => {
+      if (
+        grant.status === ApprovalRequestGrantStatus.Active &&
+        grant.expiresAt &&
+        new Date(grant.expiresAt) < new Date()
+      ) {
+        return { ...grant, status: ApprovalRequestGrantStatus.Expired };
+      }
+      return grant;
+    });
+
+    return { grants: updatedGrants };
   };
 
   const getGrantById = async (grantId: string, actor: OrgServiceActor) => {
@@ -843,7 +854,15 @@ export const approvalPolicyServiceFactory = ({
       ProjectPermissionSub.ApprovalRequestGrants
     );
 
-    return { grant };
+    let { status } = grant;
+    if (
+      grant.status === ApprovalRequestGrantStatus.Active &&
+      grant.expiresAt &&
+      new Date(grant.expiresAt) < new Date()
+    ) {
+      status = ApprovalRequestGrantStatus.Expired;
+    }
+    return { grant: { ...grant, status } };
   };
 
   const revokeGrant = async (
