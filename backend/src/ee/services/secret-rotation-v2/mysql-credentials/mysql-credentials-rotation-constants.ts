@@ -15,6 +15,7 @@ GRANT ALL PRIVILEGES ON my_database.* TO 'infisical_user'@'%';
 
 -- apply the privilege changes
 FLUSH PRIVILEGES;`,
+    rotationStatement: `ALTER USER '{{username}}'@'%' IDENTIFIED BY '{{password}}'`,
     secretsMapping: {
       username: "MYSQL_USERNAME",
       password: "MYSQL_PASSWORD"

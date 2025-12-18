@@ -1,3 +1,4 @@
+import handlebars from "handlebars";
 import { Knex } from "knex";
 
 import {
@@ -44,13 +45,19 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
 > = (secretRotation, _appConnectionDAL, _kmsService, gatewayService, gatewayV2Service) => {
   const {
     connection,
-    parameters: { username1, username2 },
+    parameters: {
+      username1,
+      username2,
+      rotationStatement: userProvidedRotationStatement,
+      passwordRequirements: userProvidedPasswordRequirements
+    },
     activeIndex,
     secretsMapping
   } = secretRotation;
 
-  const passwordRequirement =
+  const defaultPasswordRequirement =
     connection.app === AppConnection.OracleDB ? ORACLE_PASSWORD_REQUIREMENTS : DEFAULT_PASSWORD_REQUIREMENTS;
+  const passwordRequirement = userProvidedPasswordRequirements || defaultPasswordRequirement;
 
   const executeOperation = <T>(
     operation: (client: Knex) => Promise<T>,
@@ -96,7 +103,19 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
       await executeOperation(async (client) => {
         await client.transaction(async (tx) => {
           for await (const credentials of credentialsSet) {
-            await tx.raw(...SQL_CONNECTION_ALTER_LOGIN_STATEMENT[connection.app](credentials));
+            if (userProvidedRotationStatement) {
+              const revokeStatement = handlebars.compile(userProvidedRotationStatement)({
+                username: credentials.username,
+                password: credentials.password,
+                database: connection.credentials.database
+              });
+              const queries = revokeStatement.toString().split(";").filter(Boolean);
+              for await (const query of queries) {
+                await tx.raw(query);
+              }
+            } else {
+              await tx.raw(...SQL_CONNECTION_ALTER_LOGIN_STATEMENT[connection.app](credentials));
+            }
           }
         });
       });
