@@ -199,7 +199,7 @@ export const OrgRoleTable = () => {
         <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Role}>
           {(isAllowed) => (
             <Button
-              colorSchema="secondary"
+              variant="outline_bg"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => {
@@ -207,7 +207,7 @@ export const OrgRoleTable = () => {
               }}
               isDisabled={!isAllowed}
             >
-              Add Role
+              Add {isSubOrganization ? "Sub-" : ""}Organization Role
             </Button>
           )}
         </OrgPermissionCan>
@@ -216,7 +216,7 @@ export const OrgRoleTable = () => {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search roles..."
+        placeholder={`Search ${isSubOrganization ? "sub-" : ""}organization roles...`}
         className="flex-1"
         containerClassName="mb-4"
       />
@@ -441,7 +441,7 @@ export const OrgRoleTable = () => {
           <EmptyState
             title={
               roles?.length
-                ? "No roles match search..."
+                ? "No organization roles match search..."
                 : "This organization does not have any roles"
             }
             icon={roles?.length ? faSearch : undefined}

@@ -57,7 +57,7 @@ export const IntegrationsListPage = () => {
         <div className="mb-8">
           <PageHeader
             scope={ProjectType.SecretManager}
-            title="Integrations"
+            title="Project Integrations"
             description="Manage integrations with third-party services."
           />
           <Tabs orientation="vertical" value={selectedTab} onValueChange={updateSelectedTab}>
@@ -65,14 +65,14 @@ export const IntegrationsListPage = () => {
               <Tab variant="project" value={IntegrationsListPageTabs.SecretSyncs}>
                 Secret Syncs
               </Tab>
-              <Tab variant="project" value={IntegrationsListPageTabs.NativeIntegrations}>
-                Native Integrations
-              </Tab>
               <Tab variant="project" value={IntegrationsListPageTabs.FrameworkIntegrations}>
                 Framework Integrations
               </Tab>
               <Tab variant="project" value={IntegrationsListPageTabs.InfrastructureIntegrations}>
                 Infrastructure Integrations
+              </Tab>
+              <Tab variant="project" value={IntegrationsListPageTabs.NativeIntegrations}>
+                Native Integrations
               </Tab>
             </TabList>
             <TabPanel value={IntegrationsListPageTabs.SecretSyncs}>
@@ -84,6 +84,12 @@ export const IntegrationsListPage = () => {
                 <SecretSyncsTab />
               </ProjectPermissionCan>
             </TabPanel>
+            <TabPanel value={IntegrationsListPageTabs.FrameworkIntegrations}>
+              <FrameworkIntegrationTab />
+            </TabPanel>
+            <TabPanel value={IntegrationsListPageTabs.InfrastructureIntegrations}>
+              <InfrastructureIntegrationTab />
+            </TabPanel>
             <TabPanel value={IntegrationsListPageTabs.NativeIntegrations}>
               <ProjectPermissionCan
                 renderGuardBanner
@@ -92,12 +98,6 @@ export const IntegrationsListPage = () => {
               >
                 <NativeIntegrationsTab />
               </ProjectPermissionCan>
-            </TabPanel>
-            <TabPanel value={IntegrationsListPageTabs.FrameworkIntegrations}>
-              <FrameworkIntegrationTab />
-            </TabPanel>
-            <TabPanel value={IntegrationsListPageTabs.InfrastructureIntegrations}>
-              <InfrastructureIntegrationTab />
             </TabPanel>
           </Tabs>
         </div>

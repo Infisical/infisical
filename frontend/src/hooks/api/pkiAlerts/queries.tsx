@@ -8,6 +8,7 @@ export const pkiAlertKeys = {
   getPkiAlertById: (alertId: string) => [{ alertId }, "alert"]
 };
 
+// TODO: DEPRECATE
 export const useGetPkiAlertById = (alertId: string) => {
   return useQuery({
     queryKey: pkiAlertKeys.getPkiAlertById(alertId),

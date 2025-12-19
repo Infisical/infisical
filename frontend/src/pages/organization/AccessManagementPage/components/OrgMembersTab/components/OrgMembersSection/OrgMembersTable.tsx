@@ -336,7 +336,7 @@ export const OrgMembersTable = ({
               </DropdownSubMenuTrigger>
               <DropdownSubMenuContent className="max-h-80 thin-scrollbar overflow-y-auto rounded-l-none">
                 <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
-                  Apply Roles to Filter Users
+                  Filter {isSubOrganization ? "Sub-" : ""}Organization Users by Role
                 </DropdownMenuLabel>
                 {roles?.map(({ id, slug, name }) => (
                   <DropdownMenuItem
@@ -365,7 +365,7 @@ export const OrgMembersTable = ({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search members..."
+          placeholder={`Search ${isSubOrganization ? "sub-" : ""}organization users...`}
         />
       </div>
       <TableContainer className="mt-4">
@@ -434,7 +434,7 @@ export const OrgMembersTable = ({
               </Th>
               <Th className="w-1/3">
                 <div className="flex items-center">
-                  Role
+                  {isSubOrganization ? "Sub-" : ""}Organization Role
                   <IconButton
                     variant="plain"
                     className={`ml-2 ${orderBy === OrgMembersOrderBy.Role ? "" : "opacity-30"}`}
@@ -727,8 +727,8 @@ export const OrgMembersTable = ({
           <EmptyState
             title={
               members.length
-                ? "No organization members match search..."
-                : "No organization members found"
+                ? `No ${isSubOrganization ? "sub-" : ""}organization users match search...`
+                : `No ${isSubOrganization ? "sub-" : ""}organization users found`
             }
             icon={members.length ? faSearch : faUsers}
           />

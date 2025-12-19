@@ -6,22 +6,18 @@ import { PamAccountOrderBy, PamAccountView } from "./pam-account-enums";
 // DTOs
 export type TCreateAccountDTO = Pick<
   TPamAccount,
-  | "name"
-  | "description"
-  | "credentials"
-  | "folderId"
-  | "resourceId"
-  | "rotationEnabled"
-  | "rotationIntervalSeconds"
-  | "requireMfa"
->;
+  "name" | "description" | "credentials" | "folderId" | "resourceId" | "rotationIntervalSeconds" | "requireMfa"
+> & {
+  rotationEnabled?: boolean;
+};
 
 export type TUpdateAccountDTO = Partial<Omit<TCreateAccountDTO, "folderId" | "resourceId">> & {
   accountId: string;
 };
 
 export type TAccessAccountDTO = {
-  accountId: string;
+  accountPath: string;
+  projectId: string;
   actorEmail: string;
   actorIp: string;
   actorName: string;

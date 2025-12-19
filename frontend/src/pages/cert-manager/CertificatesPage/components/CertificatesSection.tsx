@@ -1,9 +1,10 @@
-import { faArrowRight, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
+import { DocumentationLinkBadge } from "@app/components/v3";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub,
@@ -15,14 +16,20 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { CertificateCertModal } from "./CertificateCertModal";
 import { CertificateExportModal, ExportOptions } from "./CertificateExportModal";
 import { CertificateImportModal } from "./CertificateImportModal";
-import { CertificateIssuanceModal } from "./CertificateIssuanceModal";
 import { CertificateManagePkiSyncsModal } from "./CertificateManagePkiSyncsModal";
 import { CertificateManageRenewalModal } from "./CertificateManageRenewalModal";
 import { CertificateRenewalModal } from "./CertificateRenewalModal";
 import { CertificateRevocationModal } from "./CertificateRevocationModal";
 import { CertificatesTable } from "./CertificatesTable";
 
-export const CertificatesSection = () => {
+type CertificatesSectionProps = {
+  externalFilter?: {
+    certificateId?: string;
+    search?: string;
+  };
+};
+
+export const CertificatesSection = ({ externalFilter }: CertificatesSectionProps) => {
   const { currentProject } = useProject();
   const { mutateAsync: deleteCert } = useDeleteCert();
   const { mutateAsync: downloadCertPkcs12 } = useDownloadCertPkcs12();
@@ -39,11 +46,11 @@ export const CertificatesSection = () => {
     "managePkiSyncs"
   ] as const);
 
-  const onRemoveCertificateSubmit = async (serialNumber: string) => {
+  const onRemoveCertificateSubmit = async (id: string) => {
     if (!currentProject?.slug) return;
 
     await deleteCert({
-      serialNumber,
+      id,
       projectId: currentProject.id
     });
 
@@ -57,7 +64,13 @@ export const CertificatesSection = () => {
 
   const handleCertificateExport = async (
     format: "pem" | "pkcs12",
-    serialNumber: string,
+    {
+      certificateId,
+      serialNumber
+    }: {
+      certificateId: string;
+      serialNumber: string;
+    },
     options?: ExportOptions
   ) => {
     if (format === "pem") {
@@ -75,7 +88,7 @@ export const CertificatesSection = () => {
 
       try {
         await downloadCertPkcs12({
-          serialNumber,
+          certificateId,
           projectSlug: currentProject.slug,
           password: options.pkcs12.password,
           alias: options.pkcs12.alias
@@ -97,13 +110,16 @@ export const CertificatesSection = () => {
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">
-        <p className="text-xl font-medium text-mineshaft-100">Certificates</p>
-        <ProjectPermissionCan
-          I={ProjectPermissionCertificateActions.Create}
-          a={ProjectPermissionSub.Certificates}
-        >
-          {(isAllowed) => (
-            <div className="flex gap-2">
+        <div className="flex items-center gap-x-2">
+          <p className="text-xl font-medium text-mineshaft-100">Certificates</p>
+          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificates/overview" />
+        </div>
+        <div className="flex gap-2">
+          <ProjectPermissionCan
+            I={ProjectPermissionCertificateActions.Import}
+            a={ProjectPermissionSub.Certificates}
+          >
+            {(isAllowed) => (
               <Button
                 variant="outline_bg"
                 leftIcon={<FontAwesomeIcon icon={faArrowRight} />}
@@ -112,21 +128,11 @@ export const CertificatesSection = () => {
               >
                 Import
               </Button>
-              <Button
-                colorSchema="primary"
-                type="submit"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handlePopUpOpen("issueCertificate")}
-                isDisabled={!isAllowed}
-              >
-                Issue
-              </Button>
-            </div>
-          )}
-        </ProjectPermissionCan>
+            )}
+          </ProjectPermissionCan>
+        </div>
       </div>
-      <CertificatesTable handlePopUpOpen={handlePopUpOpen} />
-      <CertificateIssuanceModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <CertificatesTable handlePopUpOpen={handlePopUpOpen} externalFilter={externalFilter} />
       <CertificateImportModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateExportModal
@@ -150,7 +156,7 @@ export const CertificatesSection = () => {
         deleteKey="confirm"
         onDeleteApproved={() =>
           onRemoveCertificateSubmit(
-            (popUp?.deleteCertificate?.data as { serialNumber: string })?.serialNumber
+            (popUp?.deleteCertificate?.data as { certificateId: string })?.certificateId
           )
         }
       />

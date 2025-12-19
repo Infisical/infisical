@@ -214,6 +214,8 @@ export const serviceTokenServiceFactory = ({
         break;
       }
 
+      const successfullyNotifiedTokenIds: string[] = [];
+
       // eslint-disable-next-line no-await-in-loop
       await Promise.all(
         expiringTokens.map(async (token) => {
@@ -228,12 +230,18 @@ export const serviceTokenServiceFactory = ({
                 url: `${appCfg.SITE_URL}/organizations/${token.orgId}/projects/secret-management/${token.projectId}/access-management?selectedTab=service-tokens`
               }
             });
-            await serviceTokenDAL.update({ id: token.id }, { expiryNotificationSent: true });
+            successfullyNotifiedTokenIds.push(token.id);
           } catch (error) {
             logger.error(error, `Failed to send expiration notification for token ${token.id}:`);
           }
         })
       );
+
+      // Batch update all successfully notified tokens in a single query
+      if (successfullyNotifiedTokenIds.length > 0) {
+        // eslint-disable-next-line no-await-in-loop
+        await serviceTokenDAL.update({ $in: { id: successfullyNotifiedTokenIds } }, { expiryNotificationSent: true });
+      }
 
       processedCount += expiringTokens.length;
       offset += batchSize;

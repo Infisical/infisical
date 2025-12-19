@@ -24,14 +24,16 @@ export const pkiAlertsV2Keys = {
 };
 
 const fetchPkiAlertsV2 = async (params: TGetPkiAlertsV2): Promise<TGetPkiAlertsV2Response> => {
-  const { data } = await apiRequest.get<TGetPkiAlertsV2Response>("/api/v2/pki/alerts", {
+  const { data } = await apiRequest.get<TGetPkiAlertsV2Response>("/api/v1/cert-manager/alerts", {
     params
   });
   return data;
 };
 
 const fetchPkiAlertV2ById = async ({ alertId }: TGetPkiAlertV2ById): Promise<TPkiAlertV2> => {
-  const { data } = await apiRequest.get<{ alert: TPkiAlertV2 }>(`/api/v2/pki/alerts/${alertId}`);
+  const { data } = await apiRequest.get<{ alert: TPkiAlertV2 }>(
+    `/api/v1/cert-manager/alerts/${alertId}`
+  );
   return data.alert;
 };
 
@@ -40,7 +42,7 @@ const fetchPkiAlertV2MatchingCertificates = async (
 ): Promise<TGetPkiAlertV2MatchingCertificatesResponse> => {
   const { alertId, ...queryParams } = params;
   const { data } = await apiRequest.get<TGetPkiAlertV2MatchingCertificatesResponse>(
-    `/api/v2/pki/alerts/${alertId}/certificates`,
+    `/api/v1/cert-manager/alerts/${alertId}/certificates`,
     { params: queryParams }
   );
   return data;
@@ -50,7 +52,7 @@ const fetchPkiAlertV2CurrentMatchingCertificates = async (
   params: TGetPkiAlertV2CurrentMatchingCertificates
 ): Promise<TGetPkiAlertV2CurrentMatchingCertificatesResponse> => {
   const { data } = await apiRequest.post<TGetPkiAlertV2CurrentMatchingCertificatesResponse>(
-    "/api/v2/pki/alerts/preview/certificates",
+    "/api/v1/cert-manager/alerts/preview/certificates",
     params
   );
   return data;

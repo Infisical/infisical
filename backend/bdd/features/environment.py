@@ -23,6 +23,9 @@ CERT_CA_ID = os.environ.get("CERT_CA_ID")
 CERT_TEMPLATE_ID = os.environ.get("CERT_TEMPLATE_ID")
 AUTH_TOKEN = os.environ.get("INFISICAL_TOKEN")
 BOOTSTRAP_INFISICAL = int(os.environ.get("BOOTSTRAP_INFISICAL", 0))
+TECHNITIUM_URL = os.environ.get("TECHNITIUM_URL", "http://localhost:5380")
+TECHNITIUM_USER = os.environ.get("TECHNITIUM_USER", "admin")
+TECHNITIUM_PASSWORD = os.environ.get("TECHNITIUM_PASSWORD", "infisical")
 
 
 # Called mostly from a CI to setup the new Infisical instance to get it ready for BDD tests
@@ -87,14 +90,13 @@ def bootstrap_infisical(context: Context):
 
         ca_slug = faker.slug()
         resp = client.post(
-            "/api/v1/pki/ca/internal",
+            "/api/v1/cert-manager/ca/internal",
             headers=headers,
             json={
                 "projectId": project["id"],
                 "name": ca_slug,
                 "type": "internal",
                 "status": "active",
-                "enableDirectIssuance": True,
                 "configuration": {
                     "type": "root",
                     "organization": "Infisican Inc",
@@ -115,7 +117,7 @@ def bootstrap_infisical(context: Context):
 
         cert_template_slug = faker.slug()
         resp = client.post(
-            "/api/v2/certificate-templates",
+            "/api/v1/cert-manager/certificate-templates",
             headers=headers,
             json={
                 "projectId": project["id"],
@@ -189,6 +191,9 @@ def before_all(context: Context):
     base_vars = {
         "BASE_URL": BASE_URL,
         "PEBBLE_URL": PEBBLE_URL,
+        "TECHNITIUM_URL": TECHNITIUM_URL,
+        "TECHNITIUM_USER": TECHNITIUM_USER,
+        "TECHNITIUM_PASSWORD": TECHNITIUM_PASSWORD,
     }
     if BOOTSTRAP_INFISICAL:
         details = bootstrap_infisical(context)
@@ -207,6 +212,7 @@ def before_all(context: Context):
         }
     context._initial_vars = vars
     context.http_client = httpx.Client(base_url=BASE_URL)
+    context.technitium_http_client = httpx.Client(base_url=TECHNITIUM_URL)
 
 
 def before_scenario(context: Context, scenario: typing.Any):

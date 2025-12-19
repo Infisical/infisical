@@ -78,12 +78,13 @@ export const OrgIdentityLinkForm = ({ onClose }: Props) => {
         control={control}
         name="identity"
         render={({ field: { onChange, value }, fieldState: { error } }) => (
-          <FormControl label="Identity" errorText={error?.message} isError={Boolean(error)}>
+          <FormControl label="Machine Identity" errorText={error?.message} isError={Boolean(error)}>
             <FilterableSelect
               value={value}
               onChange={onChange}
-              placeholder="Select identity..."
+              placeholder="Select machine identity..."
               // onInputChange={setSearchValue}
+              autoFocus
               options={rootOrgIdentities}
               getOptionValue={(option) => option.id}
               getOptionLabel={(option) => option.name}

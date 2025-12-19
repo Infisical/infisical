@@ -17,6 +17,7 @@ import {
   NotFoundError,
   OidcAuthError,
   PermissionBoundaryError,
+  PolicyViolationError,
   RateLimitError,
   ScimRequestError,
   UnauthorizedError
@@ -259,6 +260,14 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
           detail: error.message
           // TODO: add subproblems if they exist
         });
+    } else if (error instanceof PolicyViolationError) {
+      void res.status(HttpStatusCodes.Forbidden).send({
+        reqId: req.id,
+        statusCode: HttpStatusCodes.Forbidden,
+        error: "PolicyViolationError",
+        message: error.message,
+        details: error.details
+      });
     } else {
       void res.status(HttpStatusCodes.InternalServerError).send({
         reqId: req.id,

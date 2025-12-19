@@ -191,12 +191,15 @@ export const fetchWorkspaceIntegrations = async (projectId: string) => {
   return data.integrations;
 };
 
-export const useGetWorkspaceIntegrations = (projectId: string) =>
+export const useGetWorkspaceIntegrations = (
+  projectId: string,
+  options?: { enabled?: boolean; refetchInterval?: number | false }
+) =>
   useQuery({
     queryKey: projectKeys.getProjectIntegrations(projectId),
     queryFn: () => fetchWorkspaceIntegrations(projectId),
-    enabled: Boolean(projectId),
-    refetchInterval: 4000
+    enabled: Boolean(projectId) && (options?.enabled ?? true),
+    refetchInterval: options?.refetchInterval ?? 4000
   });
 
 export const createWorkspace = (
@@ -513,7 +516,12 @@ export const useListWorkspaceCertificates = ({
   limit,
   friendlyName,
   commonName,
-  forPkiSync
+  forPkiSync,
+  search,
+  status,
+  profileIds,
+  fromDate,
+  toDate
 }: {
   projectId: string;
   offset: number;
@@ -521,6 +529,11 @@ export const useListWorkspaceCertificates = ({
   friendlyName?: string;
   commonName?: string;
   forPkiSync?: boolean;
+  search?: string;
+  status?: string | string[];
+  profileIds?: string[];
+  fromDate?: Date;
+  toDate?: Date;
 }) => {
   return useQuery({
     queryKey: projectKeys.specificProjectCertificates({
@@ -529,7 +542,12 @@ export const useListWorkspaceCertificates = ({
       limit,
       friendlyName,
       commonName,
-      forPkiSync
+      forPkiSync,
+      search,
+      status,
+      profileIds,
+      fromDate,
+      toDate
     }),
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -545,6 +563,29 @@ export const useListWorkspaceCertificates = ({
       }
       if (forPkiSync) {
         params.append("forPkiSync", "true");
+      }
+      if (search) {
+        params.append("search", search);
+      }
+      if (status) {
+        if (Array.isArray(status)) {
+          status.forEach((statusValue) => {
+            params.append("status", statusValue);
+          });
+        } else {
+          params.append("status", status);
+        }
+      }
+      if (fromDate) {
+        params.append("fromDate", fromDate.toISOString());
+      }
+      if (toDate) {
+        params.append("toDate", toDate.toISOString());
+      }
+      if (profileIds && profileIds.length > 0) {
+        profileIds.forEach((id) => {
+          params.append("profileIds", id);
+        });
       }
 
       const {

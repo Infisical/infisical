@@ -92,7 +92,8 @@ export const pamResourceServiceFactory = ({
       resourceType,
       connectionDetails,
       gatewayId,
-      gatewayV2Service
+      gatewayV2Service,
+      projectId
     );
 
     const validatedConnectionDetails = await factory.validateConnection();
@@ -162,7 +163,8 @@ export const pamResourceServiceFactory = ({
         resource.resourceType as PamResource,
         connectionDetails,
         resource.gatewayId,
-        gatewayV2Service
+        gatewayV2Service,
+        resource.projectId
       );
       const validatedConnectionDetails = await factory.validateConnection();
       const encryptedConnectionDetails = await encryptResourceConnectionDetails({
@@ -189,7 +191,8 @@ export const pamResourceServiceFactory = ({
           resource.resourceType as PamResource,
           decryptedConnectionDetails,
           resource.gatewayId,
-          gatewayV2Service
+          gatewayV2Service,
+          resource.projectId
         );
 
         let finalCredentials = { ...rotationAccountCredentials };

@@ -19,21 +19,23 @@ where you can manage various aspects of its lifecycle including deployment to cl
 
 ## Guide to Issuing Certificates
 
-To issue a certificate, you must first create a [certificate profile](/documentation/platform/pki/certificates/profiles) and a [certificate template](/documentation/platform/pki/certificates/templates) to go along with it.
+To [issue a certificate](/documentation/platform/pki/concepts/certificate-lifecycle#enrollment-request-%2F-issuance), you must first create a [certificate profile](/documentation/platform/pki/certificates/profiles) and a [certificate template](/documentation/platform/pki/certificates/templates) to go along with it.
 
-The [enrollment method](/documentation/platform/pki/enrollment-methods/overview) configured on the certificate profile determines how a certificate is issued for it.
-Refer to the documentation for each enrollment method to learn more about how to issue certificates using it.
+- Self-Signed Certificates: To issue a [self-signed certificate](https://en.wikipedia.org/wiki/Self-signed_certificate), you must configure the certificate profile to use the `Self-Signed` issuer type. You can then use the [API enrollment method](/documentation/platform/pki/enrollment-methods/api) to request a self-signed certificate against it.
+- CA-Issued Certificates: To issue a certificate from a certificate authority, you must configure the certificate profile to use the `Certificate Authority` issuer type and select the [issuing CA](/documentation/platform/pki/ca/overview) to use. You can then use one of the [enrollment methods](/documentation/platform/pki/enrollment-methods/overview) to request a certificate against it.
+
+Refer to the documentation for each [enrollment method](/documentation/platform/pki/enrollment-methods/overview) to learn more about how to issue certificates using it.
 
 ## Guide to Renewing Certificates
 
 To [renew a certificate](/documentation/platform/pki/concepts/certificate-lifecycle#renewal), you can either request a new certificate from a certificate profile or have the platform
-automatically request a new one for you. Whether you pursue a client-driven or server-driven approach is totally dependent on the enrollment method configured on your certificate
+automatically request a new one for you to be delivered downstream to a target destination. Whether you pursue a client-driven or server-driven approach is totally dependent on the enrollment method configured on your certificate
 profile as well as your infrastructure use-case.
 
 ### Client-Driven Certificate Renewal
 
 Client-driven certificate renewal is when renewal is initiated client-side by the end-entity consuming the certificate.
-This is the most common approach to certificate renewal and is suitable for most use-cases.
+More specifically, the client (e.g. [Infisical Agent](/integrations/platforms/certificate-agent), [ACME client](https://letsencrypt.org/docs/client-options/), etc.) monitors the certificate and makes a request for Infisical to issue a new certificate back to it when the existing certificate is nearing expiration. This is the most common approach to certificate renewal and is suitable for most use-cases.
 
 ### Server-Driven Certificate Renewal
 
@@ -220,7 +222,7 @@ openssl verify -verbose -crl_check -crl_download -CAfile chain.pem cert.pem
         ### Sample request
 
         ```bash Request
-        curl --location --request POST 'https://app.infisical.com/api/v1/pki/certificates/<cert-serial-number>/revoke' \
+        curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/certificates/<cert-id>/revoke' \
           --header 'Authorization: Bearer <access-token>' \
           --header 'Content-Type: application/json' \
           --data-raw '{
@@ -245,7 +247,7 @@ openssl verify -verbose -crl_check -crl_download -CAfile chain.pem cert.pem
         ### Sample request
 
         ```bash Request
-        curl --location --request GET 'https://app.infisical.com/api/v1/pki/ca/<ca-id>/crls' \
+        curl --location --request GET 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>/crls' \
           --header 'Authorization: Bearer <access-token>'
         ```
 

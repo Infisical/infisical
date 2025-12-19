@@ -4,6 +4,7 @@ import { IdentityAccessTokensSchema, IdentityTokenAuthsSchema } from "@app/db/sc
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, TOKEN_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
@@ -307,7 +308,8 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         identityId: z.string().describe(TOKEN_AUTH.CREATE_TOKEN.identityId)
       }),
       body: z.object({
-        name: z.string().optional().describe(TOKEN_AUTH.CREATE_TOKEN.name)
+        name: z.string().optional().describe(TOKEN_AUTH.CREATE_TOKEN.name),
+        subOrganizationName: slugSchema().optional().describe(TOKEN_AUTH.CREATE_TOKEN.subOrganizationName)
       }),
       response: {
         200: z.object({
@@ -408,6 +410,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     }
   });
 
+  // deprecated - use the GET /token-auth/tokens/:tokenId instead, this endpoint will be removed in the future
   server.route({
     method: "GET",
     url: "/token-auth/identities/:identityId/tokens/:tokenId",
@@ -416,7 +419,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      hide: false,
+      hide: true,
       tags: [ApiDocsTags.TokenAuth],
       description: "Get token for machine identity with Token Auth",
       security: [
@@ -436,13 +439,11 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     },
     handler: async (req) => {
       const { token, identityMembershipOrg } = await server.services.identityTokenAuth.getTokenAuthTokenById({
-        identityId: req.params.identityId,
         tokenId: req.params.tokenId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        isActorSuperAdmin: isSuperAdmin(req.auth)
+        actorAuthMethod: req.permission.authMethod
       });
 
       await server.services.auditLog.createAuditLog({
@@ -452,6 +453,57 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
           type: EventType.GET_TOKEN_IDENTITY_TOKEN_AUTH,
           metadata: {
             identityId: token.identityId,
+            identityName: identityMembershipOrg.identity.name,
+            tokenId: token.id
+          }
+        }
+      });
+
+      return { token };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/token-auth/tokens/:tokenId",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.TokenAuth],
+      description: "Get token for machine identity with Token Auth",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        tokenId: z.string().describe(TOKEN_AUTH.GET_TOKEN.tokenId)
+      }),
+      response: {
+        200: z.object({
+          token: IdentityAccessTokensSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const { token, identityMembershipOrg } = await server.services.identityTokenAuth.getTokenAuthTokenById({
+        tokenId: req.params.tokenId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identityMembershipOrg.scopeOrgId,
+        event: {
+          type: EventType.GET_TOKEN_IDENTITY_TOKEN_AUTH,
+          metadata: {
+            identityId: identityMembershipOrg.identity.id,
             identityName: identityMembershipOrg.identity.name,
             tokenId: token.id
           }

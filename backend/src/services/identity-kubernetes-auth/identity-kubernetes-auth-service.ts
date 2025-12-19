@@ -78,7 +78,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
   gatewayV2Service: TGatewayV2ServiceFactory;
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
 };
 
 export type TIdentityKubernetesAuthServiceFactory = ReturnType<typeof identityKubernetesAuthServiceFactory>;
@@ -185,7 +185,7 @@ export const identityKubernetesAuthServiceFactory = ({
     return callbackResult;
   };
 
-  const login = async ({ identityId, jwt: serviceAccountJwt }: TLoginKubernetesAuthDTO) => {
+  const login = async ({ identityId, jwt: serviceAccountJwt, subOrganizationName }: TLoginKubernetesAuthDTO) => {
     const appCfg = getConfig();
     const identityKubernetesAuth = await identityKubernetesAuthDAL.findOne({ identityId });
     if (!identityKubernetesAuth) {
@@ -198,6 +198,10 @@ export const identityKubernetesAuthServiceFactory = ({
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const org = await orgDAL.findById(identity.orgId);
+    const isSubOrgIdentity = Boolean(org.rootOrgId);
+
+    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a subOrganizationName is specified
+    let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
     try {
       const { decryptor } = await kmsService.createCipherPairWithDataKey({
@@ -270,7 +274,13 @@ export const identityKubernetesAuthServiceFactory = ({
             }
           )
           .catch((err) => {
+            const tokenReviewerJwtSnippet = `${tokenReviewerJwt?.substring?.(0, 10) || ""}...${tokenReviewerJwt?.substring?.(tokenReviewerJwt.length - 10) || ""}`;
+            const serviceAccountJwtSnippet = `${serviceAccountJwt?.substring?.(0, 10) || ""}...${serviceAccountJwt?.substring?.(serviceAccountJwt.length - 10) || ""}`;
             if (err instanceof AxiosError) {
+              logger.error(
+                { response: err.response, host, port, tokenReviewerJwtSnippet, serviceAccountJwtSnippet },
+                "tokenReviewCallbackRaw: Kubernetes token review request error (request error)"
+              );
               if (err.response) {
                 const { message } = err?.response?.data as unknown as { message?: string };
 
@@ -281,6 +291,11 @@ export const identityKubernetesAuthServiceFactory = ({
                   });
                 }
               }
+            } else {
+              logger.error(
+                { error: err as Error, host, port, tokenReviewerJwtSnippet, serviceAccountJwtSnippet },
+                "tokenReviewCallbackRaw: Kubernetes token review request error (non-request error)"
+              );
             }
             throw err;
           });
@@ -448,6 +463,30 @@ export const identityKubernetesAuthServiceFactory = ({
           });
       }
 
+      if (subOrganizationName) {
+        if (!isSubOrgIdentity) {
+          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: subOrganizationName });
+
+          if (!subOrg) {
+            throw new NotFoundError({ message: `Sub organization with name ${subOrganizationName} not found` });
+          }
+
+          const subOrgMembership = await membershipIdentityDAL.findOne({
+            scope: AccessScope.Organization,
+            actorIdentityId: identity.id,
+            scopeOrgId: subOrg.id
+          });
+
+          if (!subOrgMembership) {
+            throw new UnauthorizedError({
+              message: `Identity not authorized to access sub organization ${subOrganizationName}`
+            });
+          }
+
+          subOrganizationId = subOrg.id;
+        }
+      }
+
       const identityAccessToken = await identityKubernetesAuthDAL.transaction(async (tx) => {
         await membershipIdentityDAL.update(
           identity.projectId
@@ -476,7 +515,8 @@ export const identityKubernetesAuthServiceFactory = ({
             accessTokenMaxTTL: identityKubernetesAuth.accessTokenMaxTTL,
             accessTokenNumUses: 0,
             accessTokenNumUsesLimit: identityKubernetesAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.KUBERNETES_AUTH
+            authMethod: IdentityAuthMethod.KUBERNETES_AUTH,
+            subOrganizationId
           },
           tx
         );

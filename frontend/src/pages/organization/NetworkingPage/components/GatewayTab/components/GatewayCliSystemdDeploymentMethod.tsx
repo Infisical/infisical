@@ -55,10 +55,10 @@ const formSchemaWithIdentity = baseFormSchema.extend({
         id: z.string(),
         name: z.string()
       },
-      { required_error: "Identity is required" }
+      { required_error: "Machine identity is required" }
     )
     .nullable()
-    .refine((val) => val !== null, { message: "Identity is required" })
+    .refine((val) => val !== null, { message: "Machine identity is required" })
 });
 
 const formSchemaWithToken = baseFormSchema.extend({
@@ -297,8 +297,8 @@ export const GatewayCliSystemdDeploymentMethod = () => {
       {canCreateToken && autogenerateToken ? (
         <>
           <FormLabel
-            label="Identity"
-            tooltipText="The identity that your gateway will use for authentication."
+            label="Machine Identity"
+            tooltipText="The machine identity that your gateway will use for authentication."
             className="mt-4"
           />
           <FilterableSelect
@@ -312,7 +312,7 @@ export const GatewayCliSystemdDeploymentMethod = () => {
               )
             }
             isLoading={isIdentitiesLoading}
-            placeholder="Select identity..."
+            placeholder="Select machine identity..."
             options={identityMembershipOrgs.map((membership) => membership.identity)}
             getOptionValue={(option) => option.id}
             getOptionLabel={(option) => option.name}
@@ -322,14 +322,14 @@ export const GatewayCliSystemdDeploymentMethod = () => {
       ) : (
         <>
           <FormLabel
-            label="Identity Token"
-            tooltipText="The identity token that your gateway will use for authentication."
+            label="Machine Identity Token"
+            tooltipText="The machine identity token that your gateway will use for authentication."
             className="mt-4"
           />
           <Input
             value={identityToken}
             onChange={(e) => setIdentityToken(e.target.value)}
-            placeholder="Enter identity token..."
+            placeholder="Enter machine identity token..."
             isError={Boolean(errors.identityToken)}
           />
           {errors.identityToken && <p className="mt-1 text-sm text-red">{errors.identityToken}</p>}
@@ -347,15 +347,15 @@ export const GatewayCliSystemdDeploymentMethod = () => {
             className="mr-2"
           >
             <div className="flex items-center">
-              <span>Automatically enable token auth and generate a token for identity</span>
+              <span>Automatically enable token auth and generate a token for machine identity</span>
               <Tooltip
                 className="max-w-md"
                 content={
                   <>
-                    Token authentication will be automatically enabled for the selected identity if
-                    it isn&apos;t already configured. By default, it will be configured to allow all
-                    IP addresses with a token TTL of 30 days. You can manage these settings in
-                    Access Control.
+                    Token authentication will be automatically enabled for the selected machine
+                    identity if it isn&apos;t already configured. By default, it will be configured
+                    to allow all IP addresses with a token TTL of 30 days. You can manage these
+                    settings in Access Control.
                     <br />
                     <br />A token will automatically be generated to be used with the CLI command.
                   </>

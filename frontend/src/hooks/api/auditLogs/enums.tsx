@@ -4,6 +4,8 @@ export enum ActorType {
   USER = "user",
   SERVICE = "service",
   IDENTITY = "identity",
+  ACME_PROFILE = "acmeProfile",
+  ACME_ACCOUNT = "acmeAccount",
   UNKNOWN_USER = "unknownUser"
 }
 
@@ -282,5 +284,34 @@ export enum EventType {
   ISSUE_CERTIFICATE_FROM_PROFILE = "issue-certificate-from-profile",
   SIGN_CERTIFICATE_FROM_PROFILE = "sign-certificate-from-profile",
   ORDER_CERTIFICATE_FROM_PROFILE = "order-certificate-from-profile",
-  GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE = "get-certificate-profile-latest-active-bundle"
+  GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE = "get-certificate-profile-latest-active-bundle",
+
+  APPROVAL_POLICY_CREATE = "approval-policy-create",
+  APPROVAL_POLICY_UPDATE = "approval-policy-update",
+  APPROVAL_POLICY_DELETE = "approval-policy-delete",
+  APPROVAL_POLICY_LIST = "approval-policy-list",
+  APPROVAL_POLICY_GET = "approval-policy-get",
+  APPROVAL_REQUEST_GET = "approval-request-get",
+  APPROVAL_REQUEST_LIST = "approval-request-list",
+  APPROVAL_REQUEST_CREATE = "approval-request-create",
+  APPROVAL_REQUEST_APPROVE = "approval-request-approve",
+  APPROVAL_REQUEST_REJECT = "approval-request-reject",
+  APPROVAL_REQUEST_CANCEL = "approval-request-cancel",
+  APPROVAL_REQUEST_GRANT_LIST = "approval-request-grant-list",
+  APPROVAL_REQUEST_GRANT_GET = "approval-request-grant-get",
+  APPROVAL_REQUEST_GRANT_REVOKE = "approval-request-grant-revoke",
+
+  // Dynamic Secrets
+  CREATE_DYNAMIC_SECRET = "create-dynamic-secret",
+  UPDATE_DYNAMIC_SECRET = "update-dynamic-secret",
+  DELETE_DYNAMIC_SECRET = "delete-dynamic-secret",
+  GET_DYNAMIC_SECRET = "get-dynamic-secret",
+  LIST_DYNAMIC_SECRETS = "list-dynamic-secrets",
+
+  // Dynamic Secret Leases
+  CREATE_DYNAMIC_SECRET_LEASE = "create-dynamic-secret-lease",
+  DELETE_DYNAMIC_SECRET_LEASE = "delete-dynamic-secret-lease",
+  RENEW_DYNAMIC_SECRET_LEASE = "renew-dynamic-secret-lease",
+  LIST_DYNAMIC_SECRET_LEASES = "list-dynamic-secret-leases",
+  GET_DYNAMIC_SECRET_LEASE = "get-dynamic-secret-lease"
 }

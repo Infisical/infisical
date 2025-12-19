@@ -121,6 +121,9 @@ const Page = () => {
   const tableRef = useRef<HTMLTableElement>(null);
 
   const [isVisible, setIsVisible] = useState(false);
+  const [selectedDynamicSecretId, setSelectedDynamicSecretId] = useState<string | null>(
+    routerQueryParams.dynamicSecretId || ""
+  );
   const { isBatchMode, pendingChanges } = useBatchMode();
   const { loadPendingChanges, setExistingKeys } = useBatchModeActions();
 
@@ -164,6 +167,28 @@ const Page = () => {
   useEffect(() => {
     if (isVisible) setIsVisible(false);
   }, [environment]);
+
+  useEffect(() => {
+    if (routerQueryParams.dynamicSecretId !== null) {
+      setSelectedDynamicSecretId(routerQueryParams.dynamicSecretId);
+
+      navigate({
+        search: (prev) => ({
+          ...prev,
+          dynamicSecretId: undefined
+        })
+      });
+
+      // if any of the router query params are changed, we have to clear the selected dynamic secret id to avoid re-rendering the lease modal when it suddendly becomes available
+    } else {
+      setSelectedDynamicSecretId(null);
+    }
+  }, [
+    routerQueryParams.filterBy,
+    routerQueryParams.search,
+    routerQueryParams.secretPath,
+    routerQueryParams.tags
+  ]);
 
   const canReadSecret = hasSecretReadValueOrDescribePermission(
     permission,
@@ -660,12 +685,17 @@ const Page = () => {
     setDebouncedSearchFilter("");
   };
 
-  const getMergedSecretsWithPending = () => {
+  const getMergedSecretsWithPending = (
+    paramSecrets?: (SecretV3RawSanitized | null)[]
+  ): SecretV3RawSanitized[] => {
+    const sanitizedParamSecrets = paramSecrets?.filter(Boolean) as
+      | SecretV3RawSanitized[]
+      | undefined;
     if (!isBatchMode || pendingChanges.secrets.length === 0) {
-      return secrets;
+      return sanitizedParamSecrets || secrets || [];
     }
 
-    const mergedSecrets = [...(secrets || [])] as (SecretV3RawSanitized & {
+    const mergedSecrets = [...(sanitizedParamSecrets || secrets || [])] as (SecretV3RawSanitized & {
       originalKey?: string;
     })[];
 
@@ -1039,6 +1069,7 @@ const Page = () => {
               )}
               {canReadDynamicSecret && Boolean(dynamicSecrets?.length) && (
                 <DynamicSecretListView
+                  selectedDynamicSecretId={selectedDynamicSecretId}
                   environment={environment}
                   projectSlug={projectSlug}
                   secretPath={secretPath}
@@ -1046,7 +1077,17 @@ const Page = () => {
                 />
               )}
               {canReadSecretRotations && Boolean(secretRotations?.length) && (
-                <SecretRotationListView secretRotations={secretRotations} />
+                <SecretRotationListView
+                  secretRotations={secretRotations}
+                  colWidth={colWidth}
+                  tags={tags}
+                  projectId={projectId}
+                  secretPath={secretPath}
+                  isProtectedBranch={isProtectedBranch}
+                  importedBy={importedBy}
+                  usedBySecretSyncs={usedBySecretSyncs}
+                  getMergedSecretsWithPending={getMergedSecretsWithPending}
+                />
               )}
               {canReadSecret && Boolean(mergedSecrets?.length) && (
                 <SecretListView

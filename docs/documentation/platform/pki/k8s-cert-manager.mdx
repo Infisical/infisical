@@ -1,0 +1,267 @@
+---
+title: "Kubernetes cert-manager"
+description: "Learn how to automatically provision and manage TLS certificates in Kubernetes using Infisical"
+---
+
+## Concept
+
+This guide demonstrates how to use Infisical to issue TLS certificates back to your Kubernetes environment using [cert-manager](https://cert-manager.io/).
+
+It uses the [ACME issuer type](https://cert-manager.io/docs/configuration/acme/) to request and renew certificates automatically from Infisical
+using the [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme) configured on a [certificate profile](/documentation/platform/pki/certificates/profiles). The issuer is perfect at obtaining X.509 certificates for Ingresses and other Kubernetes resources and can automatically renew them before expiration.
+
+The typical workflow involves installing `cert-manager` and configuring resources that represent the connection details to Infisical as well as the certificates you want to issue.
+Each issued certificate and its corresponding private key are stored in a Kubernetes `Secret`.
+
+We recommend reading the official [cert-manager documentation](https://cert-manager.io/docs/) for a complete overview.
+For the ACME-specific configuration, refer to the [ACME section](https://cert-manager.io/docs/configuration/acme/).
+
+## Workflow
+
+A typical workflow for using cert-manager with Infisical via ACME consists of the following steps:
+
+1. Create a [certificate profile](/documentation/platform/pki/certificates/profiles) in Infisical with the [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme) configured on it.
+2. Install `cert-manager` in your Kubernetes cluster.
+3. Create a Kubernetes `Secret` containing the EAB (External Account Binding) credentials for the ACME certificate profile.
+4. Create an `Issuer` or `ClusterIssuer` resource that connects to the desired Infisical [certificate profile](/documentation/platform/pki/certificates/profiles).
+5. Create a `Certificate` resource defining the certificate you wish to issue and the target `Secret` where the certificate and private key will be stored.
+6. Use the resulting Kubernetes `Secret` in your Ingresses or other resources.
+
+## Guide
+
+The following steps show how to install cert-manager (using `kubectl`) and obtain certificates from Infisical.
+
+<Steps>
+  <Step title="Create a certificate profile with ACME as the enrollment method in Infisical">
+
+    Follow the instructions [here](/documentation/platform/pki/enrollment-methods/acme) to create a certificate profile that uses ACME enrollment.
+
+    After completion, you will have the following values:
+    - **ACME Directory URL**
+    - **EAB Key ID (KID)**
+    - **EAB Secret**
+
+    These will be needed in later steps.
+
+    <Note>
+      Currently, the Infisical ACME enrollment method only supports authentication via dedicated EAB credentials generated per certificate profile.
+
+      Support for [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) is planned for the near future.
+    </Note>
+
+  </Step>
+  <Step title="Install cert-manager">
+
+    Install cert-manager in your Kubernetes cluster by following the official guide [here](https://cert-manager.io/docs/installation/) or by applying the manifest directly:
+
+    ```bash
+    kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.19.1/cert-manager.yaml
+    ```
+
+  </Step>
+  <Step title="Create a Kubernetes Secret for the Infisical ACME EAB credentials">
+    Create a Kubernetes `Secret` that contains the **EAB Secret (HMAC key)** obtained in step 1.
+    The cert-manager uses this secret to authenticate with the Infisical ACME server.
+
+    <Tabs>
+        <Tab title="kubectl command">
+            ```bash
+            kubectl create secret generic infisical-acme-eab-secret \
+                --namespace <namespace_you_want_to_issue_certificates_in> \
+                --from-literal=eabSecret=<eab_secret>
+            ```
+        </Tab>
+        <Tab title="Configuration file">
+            ```yaml acme-eab-secret.yaml
+            apiVersion: v1
+            kind: Secret
+            metadata:
+                name: infisical-acme-eab-secret
+                namespace: <namespace_you_want_to_issue_certificates_in>
+            data:
+                eabSecret: <eab_secret>
+            ```
+
+            ```bash
+            kubectl apply -f acme-eab-secret.yaml
+            ```
+        </Tab>
+    </Tabs>
+
+  </Step>
+  <Step title="Create the cert-manager Issuer connecting to Infisical ACME server">
+    Next, create a cert-manager `Issuer` (or `ClusterIssuer`) by replacing the placeholders `<acme_server_url>`, `<your_email>`, and `<acme_eab_kid>` in the configuration below and applying it.
+    This resource configures cert-manager to use your Infisical PKI collection's ACME server for certificate issuance.
+
+    ```yaml issuer-infisical.yaml
+    apiVersion: cert-manager.io/v1
+    kind: Issuer
+    metadata:
+        name: issuer-infisical
+        namespace: <namespace_you_want_to_issue_certificates_in>
+    spec:
+        acme:
+            # ACME server URL from your Infisical certificate profile (Step 1)
+            server: <acme_server_url>
+            # Email address for ACME account
+            # (any valid email works; currently ignored by Infisical)
+            email: <your_email>
+            externalAccountBinding:
+                # EAB Key ID from Step 1
+                keyID: <acme_eab_kid>
+                # Reference to the Kubernetes Secret containing the EAB
+                # HMAC key (created in Step 3)
+                keySecretRef:
+                    name: infisical-acme-eab-secret
+                    key: eabSecret
+            privateKeySecretRef:
+                name: issuer-infisical-account-key
+            solvers:
+            - http01:
+                ingress:
+                    # Replace with your actual ingress class if different
+                    className: nginx
+    ```
+
+    ```
+    kubectl apply -f issuer-infisical.yaml
+    ```
+
+    You can check that the issuer was created successfully by running the following command:
+
+    ```bash
+    kubectl get issuers.cert-manager.io -n <namespace_of_issuer> -o wide
+    ```
+
+    ```bash
+    NAME               AGE
+    issuer-infisical   21h
+    ```
+
+    <Note>
+        - Currently, the [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme) only supports the [HTTP-01 challenge](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) method. Support for the [DNS-01 challenge](https://letsencrypt.org/docs/challenge-types/#dns-01-challenge) method is planned for a future release. If domain ownership validation is not desired, you can disable it by enabling the **Skip DNS ownership validation** option in your ACME certificate profile configuration.
+        - An `Issuer` is namespace-scoped. Certificates can only be issued using an `Issuer` that exists in the same namespace as the `Certificate` resource.
+        - If you need to issue certificates across multiple namespaces with a single resource, create a `ClusterIssuer` instead. The configuration is identical except `kind: ClusterIssuer` and no `metadata.namespace`.
+        - More details: https://cert-manager.io/docs/configuration/acme/
+    </Note>
+
+  </Step>
+  <Step title="Create the Certificate">
+
+    Finally, request a certificate from Infisical ACME server by creating a cert-manager `Certificate` resource.
+    This configuration file specifies the details of the (end-entity/leaf) certificate to be issued.
+
+    ```yaml certificate-issuer.yaml
+    apiVersion: cert-manager.io/v1
+    kind: Certificate
+    metadata:
+        name: certificate-by-issuer
+        namespace: <namespace_you_want_to_issue_certificates_in>
+    spec:
+        dnsNames:
+        - certificate-by-issuer.example.com
+        # name of the resulting Kubernetes Secret
+        secretName: certificate-by-issuer
+        # total validity period of the certificate
+        duration: 48h
+        # cert-manager will attempt renewal 12 hours before expiry
+        renewBefore: 12h
+        privateKey:
+            algorithm: ECDSA
+            # uses NIST P-256 curve
+            size: 256
+        issuerRef:
+            name: issuer-infisical
+    ```
+
+    The above sample configuration file specifies a certificate to be issued with the dns name `certificate-by-issuer.example.com` and ECDSA private key using the P-256 curve, valid for 48 hours; the certificate will be automatically renewed by `cert-manager` 12 hours before expiry.
+    The certificate is issued by the issuer `issuer-infisical` created in the previous step and the resulting certificate and private key will be stored in a secret named `certificate-by-issuer`.
+
+    Note that the full list of the fields supported on the `Certificate` resource can be found in the API reference documentation [here](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1.CertificateSpec).
+
+    You can check that the certificate was created successfully by running the following command:
+
+    ```bash
+    kubectl get certificates -n <namespace_of_your_certificate> -o wide
+    ```
+
+    ```bash
+    NAME                    READY   SECRET                  ISSUER             STATUS                                          AGE
+    certificate-by-issuer   True    certificate-by-issuer   issuer-infisical   Certificate is up to date and has not expired   20h
+    ```
+
+  </Step>
+  <Step title="Use Certificate in Kubernetes Secret">
+    Since the actual certificate and private key are stored in a Kubernetes secret, we can check that the secret was created successfully by running the following command:
+
+    ```bash
+    kubectl get secret certificate-by-issuer -n <namespace_of_your_certificate>
+    ```
+
+    ```bash
+    NAME                    TYPE                DATA   AGE
+    certificate-by-issuer   kubernetes.io/tls   2      26h
+    ```
+
+    We can `describe` the secret to get more information about it:
+
+    ```bash
+    kubectl describe secret certificate-by-issuer -n default
+    ```
+
+    ```bash
+    Name:         certificate-by-issuer
+    Namespace:    default
+    Labels:       controller.cert-manager.io/fao=true
+    Annotations:  cert-manager.io/alt-names:
+                cert-manager.io/certificate-name: certificate-by-issuer
+                cert-manager.io/common-name:
+                cert-manager.io/alt-names: certificate-by-issuer.example.com
+                cert-manager.io/ip-sans:
+                cert-manager.io/issuer-group: cert-manager.io
+                cert-manager.io/issuer-kind: Issuer
+                cert-manager.io/issuer-name: issuer-infisical
+                cert-manager.io/uri-sans:
+
+    Type:  kubernetes.io/tls
+
+    Data
+    ====
+    ca.crt: 1306 bytes
+    tls.crt: 2380 bytes
+    tls.key:  227 bytes
+    ```
+
+    Here, `ca.crt` is the Root CA certificate, `tls.crt` is the requested certificate followed by the certificate chain, and `tls.key` is the private key for the certificate.
+
+    We can decode the certificate and print it out using `openssl`:
+
+    ```bash
+    kubectl get secret certificate-by-issuer -n default -o jsonpath='{.data.tls\.crt}' | base64 --decode | openssl x509 -text -noout
+    ```
+
+    In any case, the certificate is ready to be used as Kubernetes Secret by your Kubernetes resources.
+
+  </Step>
+
+</Steps>
+
+## FAQ
+
+<AccordionGroup>
+<Accordion title="What fields can be configured on the Certificate resource?">
+    The full list of the fields supported on the `Certificate` resource can be found in the API reference documentation [here](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1.CertificateSpec).
+
+    <Note>
+        Currently, not all fields are supported by the Infisical PKI ACME server.
+    </Note>
+
+</Accordion>
+<Accordion title="Can certificates be renewed automatically?">
+    Yes. `cert-manager` will automatically renew certificates according to the `renewBefore` threshold of expiry as
+    specified in the corresponding `Certificate` resource.
+
+    You can read more about the `renewBefore` field [here](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1.CertificateSpec).
+
+</Accordion>
+</AccordionGroup>

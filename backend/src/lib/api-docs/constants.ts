@@ -77,6 +77,7 @@ export enum ApiDocsTags {
   OidcSso = "OIDC SSO",
   SamlSso = "SAML SSO",
   LdapSso = "LDAP SSO",
+  Scim = "SCIM",
   Events = "Event Subscriptions"
 }
 
@@ -106,6 +107,25 @@ export const GROUPS = {
     filterUsers:
       "Whether to filter the list of returned users. 'existingMembers' will only return existing users in the group, 'nonMembers' will only return users not in the group, undefined will return all users in the organization."
   },
+  LIST_MACHINE_IDENTITIES: {
+    id: "The ID of the group to list identities for.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity.",
+    limit: "The number of identities to return.",
+    search: "The text string that machine identity name will be filtered by.",
+    filterMachineIdentities:
+      "Whether to filter the list of returned identities. 'assignedMachineIdentities' will only return identities assigned to the group, 'nonAssignedMachineIdentities' will only return identities not assigned to the group, undefined will return all identities in the organization."
+  },
+  LIST_MEMBERS: {
+    id: "The ID of the group to list members for.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th member.",
+    limit: "The number of members to return.",
+    search:
+      "The text string that member email(in case of users) or name(in case of machine identities) will be filtered by.",
+    orderBy: "The column to order members by.",
+    orderDirection: "The direction to order members in.",
+    memberTypeFilter:
+      "Filter members by type. Can be a single value ('users' or 'machineIdentities') or an array of values. If not specified, both users and machine identities will be returned."
+  },
   LIST_PROJECTS: {
     id: "The ID of the group to list projects for.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th project.",
@@ -120,12 +140,20 @@ export const GROUPS = {
     id: "The ID of the group to add the user to.",
     username: "The username of the user to add to the group."
   },
+  ADD_MACHINE_IDENTITY: {
+    id: "The ID of the group to add the machine identity to.",
+    machineIdentityId: "The ID of the machine identity to add to the group."
+  },
   GET_BY_ID: {
     id: "The ID of the group to fetch."
   },
   DELETE_USER: {
     id: "The ID of the group to remove the user from.",
     username: "The username of the user to remove from the group."
+  },
+  DELETE_MACHINE_IDENTITY: {
+    id: "The ID of the group to remove the machine identity from.",
+    machineIdentityId: "The ID of the machine identity to remove from the group."
   }
 } as const;
 
@@ -170,10 +198,13 @@ export const IDENTITIES = {
   }
 } as const;
 
+const IDENTITY_AUTH_SUB_ORGANIZATION_NAME = "sub-organization name to scope the token to";
+
 export const UNIVERSAL_AUTH = {
   LOGIN: {
     clientId: "Your Machine Identity Client ID.",
-    clientSecret: "Your Machine Identity Client Secret."
+    clientSecret: "Your Machine Identity Client Secret.",
+    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -247,7 +278,8 @@ export const LDAP_AUTH = {
   LOGIN: {
     identityId: "The ID of the machine identity to login.",
     username: "The username of the LDAP user to login.",
-    password: "The password of the LDAP user to login."
+    password: "The password of the LDAP user to login.",
+    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     templateId: "The ID of the identity auth template to attach the configuration onto.",
@@ -312,7 +344,8 @@ export const ALICLOUD_AUTH = {
     Timestamp: "The timestamp of the request in UTC, formatted as 'YYYY-MM-DDTHH:mm:ssZ'.",
     SignatureVersion: "The signature version. For STS GetCallerIdentity, this should be '1.0'.",
     SignatureNonce: "A unique random string to prevent replay attacks.",
-    Signature: "The signature string calculated based on the request parameters and AccessKey Secret."
+    Signature: "The signature string calculated based on the request parameters and AccessKey Secret.",
+    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -340,7 +373,8 @@ export const ALICLOUD_AUTH = {
 
 export const TLS_CERT_AUTH = {
   LOGIN: {
-    identityId: "The ID of the machine identity to login."
+    identityId: "The ID of the machine identity to login.",
+    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -378,7 +412,8 @@ export const AWS_AUTH = {
       "The base64-encoded HTTP URL used in the signed request. Most likely, the base64-encoding of https://sts.amazonaws.com/.",
     iamRequestBody:
       "The base64-encoded body of the signed request. Most likely, the base64-encoding of Action=GetCallerIdentity&Version=2011-06-15.",
-    iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request."
+    iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request.",
+    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -416,7 +451,8 @@ export const OCI_AUTH = {
   LOGIN: {
     identityId: "The ID of the machine identity to login.",
     userOcid: "The OCID of the user attempting login.",
-    headers: "The headers of the signed request."
+    headers: "The headers of the signed request.",
+    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -448,7 +484,8 @@ export const OCI_AUTH = {
 
 export const AZURE_AUTH = {
   LOGIN: {
-    identityId: "The ID of the machine identity to login."
+    identityId: "The ID of the machine identity to login.",
+    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -482,7 +519,8 @@ export const AZURE_AUTH = {
 
 export const GCP_AUTH = {
   LOGIN: {
-    identityId: "The ID of the machine identity to login."
+    identityId: "The ID of the machine identity to login.",
+    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -520,7 +558,8 @@ export const GCP_AUTH = {
 
 export const KUBERNETES_AUTH = {
   LOGIN: {
-    identityId: "The ID of the machine identity to login."
+    identityId: "The ID of the machine identity to login.",
+    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -600,7 +639,8 @@ export const TOKEN_AUTH = {
   },
   CREATE_TOKEN: {
     identityId: "The ID of the machine identity to create the token for.",
-    name: "The name of the token to create."
+    name: "The name of the token to create.",
+    subOrganizationName: "The sub organization name to scope the token to."
   },
   UPDATE_TOKEN: {
     tokenId: "The ID of the token to update metadata for.",
@@ -613,7 +653,8 @@ export const TOKEN_AUTH = {
 
 export const OIDC_AUTH = {
   LOGIN: {
-    identityId: "The ID of the machine identity to login."
+    identityId: "The ID of the machine identity to login.",
+    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -653,7 +694,8 @@ export const OIDC_AUTH = {
 
 export const JWT_AUTH = {
   LOGIN: {
-    identityId: "The ID of the machine identity to login."
+    identityId: "The ID of the machine identity to login.",
+    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -1962,9 +2004,11 @@ export const CERTIFICATE_AUTHORITIES = {
 
 export const CERTIFICATES = {
   GET: {
+    id: "The ID of the certificate to get.",
     serialNumber: "The serial number of the certificate to get."
   },
   REVOKE: {
+    id: "The ID of the certificate to revoke.",
     serialNumber:
       "The serial number of the certificate to revoke. The revoked certificate will be added to the certificate revocation list (CRL) of the CA.",
     revocationReason: "The reason for revoking the certificate.",
@@ -1972,9 +2016,11 @@ export const CERTIFICATES = {
     serialNumberRes: "The serial number of the revoked certificate."
   },
   DELETE: {
+    id: "The ID of the certificate to delete.",
     serialNumber: "The serial number of the certificate to delete."
   },
   GET_CERT: {
+    id: "The ID of the certificate to get the certificate body and certificate chain for.",
     serialNumber: "The serial number of the certificate to get the certificate body and certificate chain for.",
     certificate: "The certificate body of the certificate.",
     certificateChain: "The certificate chain of the certificate.",
@@ -2504,6 +2550,10 @@ export const AppConnections = {
       orgName: "The short name of the Chef organization to connect to.",
       userName: "The username used to access Chef.",
       privateKey: "The private key used to access Chef."
+    },
+    OCTOPUS_DEPLOY: {
+      instanceUrl: "The Octopus Deploy instance URL to connect to.",
+      apiKey: "The API key used to authenticate with Octopus Deploy."
     }
   }
 };
@@ -2663,6 +2713,14 @@ export const SecretSyncs = {
       serverName: "The name of the Laravel Forge server to sync secrets to.",
       siteId: "The ID of the Laravel Forge site to sync secrets to.",
       siteName: "The name of the Laravel Forge site to sync secrets to."
+    },
+    OCTOPUS_DEPLOY: {
+      spaceId: "The ID of the Octopus Deploy space to sync secrets to.",
+      spaceName: "The name of the Octopus Deploy space to sync secrets to.",
+      projectId: "The ID of the Octopus Deploy project to sync secrets to.",
+      projectName: "The name of the Octopus Deploy project to sync secrets to.",
+      scope: "The Octopus Deploy scope that secrets should be synced to.",
+      scopeValues: "The Octopus Deploy scope values that secrets should be synced to."
     },
     WINDMILL: {
       workspace: "The Windmill workspace to sync secrets to.",
@@ -2856,6 +2914,12 @@ export const SecretRotations = {
     },
     REDIS_CREDENTIALS: {
       permissionScope: "The ACL permission scope to assign to the issued Redis users."
+    },
+    MONGODB_CREDENTIALS: {
+      username1:
+        "The username of the first MongoDB user to rotate passwords for. This user must already exist in your database.",
+      username2:
+        "The username of the second MongoDB user to rotate passwords for. This user must already exist in your database."
     }
   },
   SECRETS_MAPPING: {
@@ -2886,6 +2950,10 @@ export const SecretRotations = {
     OKTA_CLIENT_SECRET: {
       clientId: "The name of the secret that the client ID will be mapped to.",
       clientSecret: "The name of the secret that the rotated client secret will be mapped to."
+    },
+    MONGODB_CREDENTIALS: {
+      username: "The name of the secret that the active username will be mapped to.",
+      password: "The name of the secret that the generated password will be mapped to."
     }
   }
 };
@@ -3093,6 +3161,13 @@ export const LdapSso = {
     groupSearchFilter:
       "The template used when constructing the group membership query such as `(&(objectClass=posixGroup)(memberUid={{.Username}}))`. The template can access the following context variables: `[UserDN, UserName]`. The default is `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))` which is compatible with several common directory schemas.",
     caCert: "The CA certificate to use when verifying the LDAP server certificate."
+  }
+};
+
+export const Scim = {
+  UPDATE_GROUP_ORG_ROLE_MAPPINGS: {
+    groupName: "The name of the group in the SCIM provider.",
+    roleSlug: "The slug of the role that group members should be assigned when provisioned."
   }
 };
 

@@ -80,6 +80,8 @@ export const ResourceSelect = ({ onSubmit, projectId }: Props) => {
                       return;
                     }
 
+                    // Clear search when a value is selected so the selected label is shown
+                    setSearch("");
                     onChange(newValue);
                   }}
                   isLoading={isPending}

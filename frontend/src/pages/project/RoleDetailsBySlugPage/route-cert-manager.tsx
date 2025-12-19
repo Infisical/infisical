@@ -5,7 +5,7 @@ import { ProjectAccessControlTabs } from "@app/types/project";
 import { RoleDetailsBySlugPage } from "./RoleDetailsBySlugPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-management/$projectId/_cert-manager-layout/roles/$roleSlug"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/roles/$roleSlug"
 )({
   component: RoleDetailsBySlugPage,
   beforeLoad: ({ context, params }) => {
@@ -15,7 +15,7 @@ export const Route = createFileRoute(
         {
           label: "Access Control",
           link: linkOptions({
-            to: "/organizations/$orgId/projects/cert-management/$projectId/access-management",
+            to: "/organizations/$orgId/projects/cert-manager/$projectId/access-management",
             params: {
               orgId: params.orgId,
               projectId: params.projectId

@@ -85,7 +85,6 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         isInternal: false,
         actorOrgId: req.permission.orgId,
-        enableDirectIssuance: !req.body.requireTemplateForIssuance,
         ...req.body
       });
 
@@ -220,7 +219,6 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         isInternal: false,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        enableDirectIssuance: !req.body.requireTemplateForIssuance,
         ...req.body
       });
 
@@ -617,6 +615,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  // TODO: DEPRECATE
   server.route({
     method: "POST",
     url: "/:caId/issue-certificate",
@@ -625,7 +624,6 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      hide: false,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Issue certificate from CA",
       params: z.object({
@@ -711,6 +709,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  // TODO: DEPRECATE
   server.route({
     method: "POST",
     url: "/:caId/sign-certificate",
@@ -719,7 +718,6 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      hide: false,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Sign certificate from CA",
       params: z.object({
@@ -805,6 +803,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  // TODO: DEPRECATE
   server.route({
     method: "GET",
     url: "/:caId/certificate-templates",
@@ -813,7 +812,6 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      hide: false,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get list of certificate templates for the CA",
       params: z.object({
@@ -854,6 +852,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  // TODO: DEPRECATE
   server.route({
     method: "GET",
     url: "/:caId/crls",
@@ -862,7 +861,6 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      hide: false,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get list of CRLs of the CA",
       params: z.object({

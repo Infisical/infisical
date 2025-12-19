@@ -12,6 +12,7 @@ const SecretDashboardPageQueryParamsSchema = z.object({
   search: z.string().catch(""),
   tags: z.string().catch(""),
   filterBy: z.string().catch(""),
+  dynamicSecretId: z.string().catch(""),
   connectionId: z.string().optional(),
   connectionName: z.string().optional()
 });
@@ -26,7 +27,8 @@ export const Route = createFileRoute(
         secretPath: "/",
         search: "",
         tags: "",
-        filterBy: ""
+        filterBy: "",
+        dynamicSecretId: ""
       })
     ]
   },

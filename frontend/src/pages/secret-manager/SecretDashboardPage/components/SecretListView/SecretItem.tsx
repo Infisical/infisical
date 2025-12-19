@@ -47,13 +47,9 @@ import { faEyeSlash, faKey, faRotate, faWarning } from "@fortawesome/free-solid-
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { format } from "date-fns";
 import { CreateReminderForm } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CreateReminderForm";
-import {
-  dashboardKeys,
-  fetchSecretValue,
-  useGetSecretValue
-} from "@app/hooks/api/dashboard/queries";
+import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
 import { createNotification } from "@app/components/notifications";
-import { useQueryClient } from "@tanstack/react-query";
+import { DashboardSecretValue } from "@app/hooks/api/dashboard/types";
 import {
   FontAwesomeSpriteName,
   formSchema,
@@ -124,7 +120,6 @@ export const SecretItem = memo(
     const { removePendingChange } = useBatchModeActions();
 
     const [isFieldFocused, setIsFieldFocused] = useToggle();
-    const queryClient = useQueryClient();
 
     const canFetchSecretValue =
       !originalSecret.secretValueHidden &&
@@ -142,7 +137,8 @@ export const SecretItem = memo(
     const {
       data: secretValueData,
       isPending: isPendingSecretValueData,
-      isError: isErrorFetchingSecretValue
+      isError: isErrorFetchingSecretValue,
+      refetch: refetchSecretValueData
     } = useGetSecretValue(fetchSecretValueParams, {
       enabled: canFetchSecretValue && (isVisible || isFieldFocused)
     });
@@ -210,7 +206,6 @@ export const SecretItem = memo(
       watch,
       setValue,
       reset,
-      getValues,
       trigger,
       formState: { isDirty, isSubmitting, errors },
       getFieldState
@@ -386,37 +381,25 @@ export const SecretItem = memo(
       }
     };
 
-    const fetchValue = async () => {
-      if (secretValueData) return secretValueData;
-
-      try {
-        const data = await fetchSecretValue(fetchSecretValueParams);
-
-        queryClient.setQueryData(dashboardKeys.getSecretValue(fetchSecretValueParams), data);
-
-        return data;
-      } catch (e) {
-        console.error(e);
+    const fetchValue = async (): Promise<DashboardSecretValue | undefined> => {
+      const { data, isRefetchError } = await refetchSecretValueData();
+      if (isRefetchError) {
         createNotification({
           type: "error",
           text: "Failed to fetch secret value"
         });
-        throw e;
       }
+      if (!data) return undefined;
+
+      return data;
     };
 
     const copyTokenToClipboard = async () => {
-      if (hasFetchedSecretValue) {
-        const [overrideValue, value] = getValues(["value", "valueOverride"]);
-        if (isOverridden) {
-          navigator.clipboard.writeText(value as string);
-        } else {
-          navigator.clipboard.writeText(overrideValue as string);
-        }
-      } else {
-        const data = await fetchValue();
-        navigator.clipboard.writeText((data.valueOverride ?? data.value) as string);
-      }
+      const data = await fetchValue();
+      if (!data) return;
+
+      navigator.clipboard.writeText(data.valueOverride ?? data.value);
+
       setIsSecValueCopied.on();
     };
 
@@ -750,7 +733,7 @@ export const SecretItem = memo(
                     {(isAllowed) => (
                       <IconButton
                         ariaLabel="override-value"
-                        isDisabled={!isAllowed}
+                        isDisabled={!isAllowed || isRotatedSecret}
                         variant="plain"
                         size="sm"
                         onClick={handleOverrideClick}
@@ -759,7 +742,13 @@ export const SecretItem = memo(
                           isOverridden && "w-5 text-primary"
                         )}
                       >
-                        <Tooltip content={`${isOverridden ? "Remove" : "Add"} Override`}>
+                        <Tooltip
+                          content={
+                            isRotatedSecret
+                              ? "Unavailable for rotated secrets"
+                              : `${isOverridden ? "Remove" : "Add"} Override`
+                          }
+                        >
                           <FontAwesomeSymbol
                             symbolName={FontAwesomeSpriteName.Override}
                             className="h-3.5 w-3.5"

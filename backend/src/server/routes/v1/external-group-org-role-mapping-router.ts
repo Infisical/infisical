@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { ExternalGroupOrgRoleMappingsSchema } from "@app/db/schemas/external-group-org-role-mappings";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ApiDocsTags, Scim } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -16,6 +17,8 @@ export const registerExternalGroupOrgRoleMappingRouter = async (server: FastifyZ
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Scim],
       response: {
         200: ExternalGroupOrgRoleMappingsSchema.array()
       }
@@ -44,11 +47,13 @@ export const registerExternalGroupOrgRoleMappingRouter = async (server: FastifyZ
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Scim],
       body: z.object({
         mappings: z
           .object({
-            groupName: z.string().trim().min(1),
-            roleSlug: slugSchema({ max: 64 })
+            groupName: z.string().trim().min(1).describe(Scim.UPDATE_GROUP_ORG_ROLE_MAPPINGS.groupName),
+            roleSlug: slugSchema({ max: 64 }).describe(Scim.UPDATE_GROUP_ORG_ROLE_MAPPINGS.roleSlug)
           })
           .array()
       }),

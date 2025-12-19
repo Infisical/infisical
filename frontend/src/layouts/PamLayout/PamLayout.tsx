@@ -29,8 +29,8 @@ export const PamLayout = () => {
 
   return (
     <>
-      <div className="dark flex h-full w-full flex-col overflow-x-hidden">
-        <div className="border-b border-mineshaft-600 bg-mineshaft-900">
+      <div className="dark flex h-full w-full flex-col overflow-x-hidden bg-mineshaft-900">
+        <div className="border-y border-t-project/10 border-b-project/5 bg-gradient-to-b from-project/[0.075] to-project/[0.025] px-4 pt-0.5">
           <motion.div
             key="menu-project-items"
             initial={{ x: -150 }}
@@ -68,6 +68,23 @@ export const PamLayout = () => {
                     }}
                   >
                     {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Sessions</Tab>}
+                  </Link>
+                  <Link
+                    to="/organizations/$orgId/projects/pam/$projectId/approvals"
+                    params={{
+                      orgId: currentOrg.id,
+                      projectId: currentProject.id
+                    }}
+                  >
+                    {({ isActive }) => (
+                      <Tab
+                        value={
+                          isActive || location.pathname.match(/\/approvals\/|\/i/) ? "selected" : ""
+                        }
+                      >
+                        Approvals
+                      </Tab>
+                    )}
                   </Link>
                   <Link
                     to="/organizations/$orgId/projects/pam/$projectId/access-management"

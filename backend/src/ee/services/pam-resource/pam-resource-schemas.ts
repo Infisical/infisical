@@ -3,6 +3,18 @@ import { z } from "zod";
 import { PamAccountsSchema, PamResourcesSchema } from "@app/db/schemas";
 import { slugSchema } from "@app/server/lib/schemas";
 
+export const GatewayAccessResponseSchema = z.object({
+  sessionId: z.string(),
+  relayClientCertificate: z.string(),
+  relayClientPrivateKey: z.string(),
+  relayServerCertificateChain: z.string(),
+  gatewayClientCertificate: z.string(),
+  gatewayClientPrivateKey: z.string(),
+  gatewayServerCertificateChain: z.string(),
+  relayHost: z.string(),
+  metadata: z.record(z.string(), z.string().optional()).optional()
+});
+
 // Resources
 export const BasePamResourceSchema = PamResourcesSchema.omit({
   encryptedConnectionDetails: true,
@@ -10,16 +22,26 @@ export const BasePamResourceSchema = PamResourcesSchema.omit({
   resourceType: true
 });
 
-export const BaseCreatePamResourceSchema = z.object({
+const CoreCreatePamResourceSchema = z.object({
   projectId: z.string().uuid(),
-  gatewayId: z.string().uuid(),
   name: slugSchema({ field: "name" })
 });
 
-export const BaseUpdatePamResourceSchema = z.object({
-  gatewayId: z.string().uuid().optional(),
+export const BaseCreateGatewayPamResourceSchema = CoreCreatePamResourceSchema.extend({
+  gatewayId: z.string().uuid()
+});
+
+export const BaseCreatePamResourceSchema = CoreCreatePamResourceSchema;
+
+const CoreUpdatePamResourceSchema = z.object({
   name: slugSchema({ field: "name" }).optional()
 });
+
+export const BaseUpdateGatewayPamResourceSchema = CoreUpdatePamResourceSchema.extend({
+  gatewayId: z.string().uuid().optional()
+});
+
+export const BaseUpdatePamResourceSchema = CoreUpdatePamResourceSchema;
 
 // Accounts
 export const BasePamAccountSchema = PamAccountsSchema.omit({

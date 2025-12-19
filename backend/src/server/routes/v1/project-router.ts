@@ -1209,7 +1209,16 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .boolean()
           .default(false)
           .optional()
-          .describe("Retrieve only certificates available for PKI sync")
+          .describe("Retrieve only certificates available for PKI sync"),
+        search: z.string().trim().optional().describe("Search by SAN, CN, certificate ID, or serial number"),
+        status: z.string().optional().describe("Filter by certificate status"),
+        profileIds: z
+          .union([z.string().uuid(), z.array(z.string().uuid())])
+          .transform((val) => (Array.isArray(val) ? val : [val]))
+          .optional()
+          .describe("Filter by profile IDs"),
+        fromDate: z.coerce.date().optional().describe("Filter certificates created from this date"),
+        toDate: z.coerce.date().optional().describe("Filter certificates created until this date")
       }),
       response: {
         200: z.object({

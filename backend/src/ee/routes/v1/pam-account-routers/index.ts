@@ -1,4 +1,14 @@
 import {
+  CreateAwsIamAccountSchema,
+  SanitizedAwsIamAccountWithResourceSchema,
+  UpdateAwsIamAccountSchema
+} from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
+import {
+  CreateKubernetesAccountSchema,
+  SanitizedKubernetesAccountWithResourceSchema,
+  UpdateKubernetesAccountSchema
+} from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
+import {
   CreateMySQLAccountSchema,
   SanitizedMySQLAccountWithResourceSchema,
   UpdateMySQLAccountSchema
@@ -43,6 +53,24 @@ export const PAM_ACCOUNT_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fasti
       accountResponseSchema: SanitizedSSHAccountWithResourceSchema,
       createAccountSchema: CreateSSHAccountSchema,
       updateAccountSchema: UpdateSSHAccountSchema
+    });
+  },
+  [PamResource.Kubernetes]: async (server: FastifyZodProvider) => {
+    registerPamResourceEndpoints({
+      server,
+      resourceType: PamResource.Kubernetes,
+      accountResponseSchema: SanitizedKubernetesAccountWithResourceSchema,
+      createAccountSchema: CreateKubernetesAccountSchema,
+      updateAccountSchema: UpdateKubernetesAccountSchema
+    });
+  },
+  [PamResource.AwsIam]: async (server: FastifyZodProvider) => {
+    registerPamResourceEndpoints({
+      server,
+      resourceType: PamResource.AwsIam,
+      accountResponseSchema: SanitizedAwsIamAccountWithResourceSchema,
+      createAccountSchema: CreateAwsIamAccountSchema,
+      updateAccountSchema: UpdateAwsIamAccountSchema
     });
   }
 };

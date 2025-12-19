@@ -12,6 +12,7 @@ import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router"
 import { registerKubernetesDynamicSecretLeaseRouter } from "./dynamic-secret-lease-routers/kubernetes-lease-router";
 import { registerDynamicSecretRouter } from "./dynamic-secret-router";
 import { registerExternalKmsRouter } from "./external-kms-router";
+import { EXTERNAL_KMS_REGISTER_ROUTER_MAP } from "./external-kms-routers";
 import { registerGatewayRouter } from "./gateway-router";
 import { registerGithubOrgSyncRouter } from "./github-org-sync-router";
 import { registerGroupRouter } from "./group-router";
@@ -110,7 +111,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       await pkiRouter.register(registerCaCrlRouter, { prefix: "/crl" });
       await pkiRouter.register(registerPkiAcmeRouter, { prefix: "/acme" });
     },
-    { prefix: "/pki" }
+    { prefix: "/cert-manager" }
   );
 
   await server.register(
@@ -162,9 +163,19 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     { prefix: "/additional-privilege" }
   );
 
-  await server.register(registerExternalKmsRouter, {
-    prefix: "/external-kms"
-  });
+  await server.register(
+    async (externalKmsRouter) => {
+      await externalKmsRouter.register(registerExternalKmsRouter);
+
+      // Provider-specific endpoints
+      await Promise.all(
+        Object.entries(EXTERNAL_KMS_REGISTER_ROUTER_MAP).map(([provider, router]) =>
+          externalKmsRouter.register(router, { prefix: `/${provider}` })
+        )
+      );
+    },
+    { prefix: "/external-kms" }
+  );
   await server.register(registerIdentityTemplateRouter, { prefix: "/identity-templates" });
 
   await server.register(registerProjectTemplateRouter, { prefix: "/project-templates" });

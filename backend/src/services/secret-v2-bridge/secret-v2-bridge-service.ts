@@ -483,8 +483,8 @@ export const secretV2BridgeServiceFactory = ({
       });
       if (!sharedSecretToModify)
         throw new NotFoundError({ message: `Secret with name ${inputSecret.secretName} not found` });
-      if (sharedSecretToModify.isRotatedSecret && (inputSecret.newSecretName || inputSecret.secretValue))
-        throw new BadRequestError({ message: "Cannot update rotated secret name or value" });
+      if (sharedSecretToModify.isRotatedSecret && inputSecret.newSecretName)
+        throw new BadRequestError({ message: "Cannot update rotated secret name" });
       secretId = sharedSecretToModify.id;
       secret = sharedSecretToModify;
     }
@@ -888,6 +888,7 @@ export const secretV2BridgeServiceFactory = ({
     | "tagSlugs"
     | "environment"
     | "search"
+    | "excludeRotatedSecrets"
   >) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -1934,8 +1935,14 @@ export const secretV2BridgeServiceFactory = ({
           if (el.isRotatedSecret) {
             const input = secretsToUpdateGroupByPath[secretPath].find((i) => i.secretKey === el.key);
 
-            if (input && (input.newSecretName || input.secretValue))
-              throw new BadRequestError({ message: `Cannot update rotated secret name or value: ${el.key}` });
+            if (input) {
+              if (input.newSecretName) {
+                delete input.newSecretName;
+              }
+              if (input.secretValue !== undefined) {
+                delete input.secretValue;
+              }
+            }
           }
         });
 
@@ -2061,8 +2068,11 @@ export const secretV2BridgeServiceFactory = ({
           commitChanges,
           inputSecrets: secretsToUpdate.map((el) => {
             const originalSecret = secretsToUpdateInDBGroupedByKey[el.secretKey][0];
+            const shouldUpdateValue = !originalSecret.isRotatedSecret && typeof el.secretValue !== "undefined";
+            const shouldUpdateName = !originalSecret.isRotatedSecret && el.newSecretName;
+
             const encryptedValue =
-              typeof el.secretValue !== "undefined"
+              shouldUpdateValue && el.secretValue !== undefined
                 ? {
                     encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(el.secretValue) }).cipherTextBlob,
                     references: secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences
@@ -2077,7 +2087,7 @@ export const secretV2BridgeServiceFactory = ({
                   (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
                 ),
                 skipMultilineEncoding: el.skipMultilineEncoding,
-                key: el.newSecretName || el.secretKey,
+                key: shouldUpdateName ? el.newSecretName : el.secretKey,
                 tags: el.tagIds,
                 secretMetadata: el.secretMetadata,
                 ...encryptedValue
@@ -2254,7 +2264,8 @@ export const secretV2BridgeServiceFactory = ({
         ]
       }
     });
-    if (secretsToDelete.length !== inputSecrets.length)
+    const secretsToDeleteSet = new Set(secretsToDelete.map((el) => el.key));
+    if (secretsToDeleteSet.size !== inputSecrets.length)
       throw new NotFoundError({
         message: `One or more secrets does not exist: ${secretsToDelete.map((el) => el.key).join(", ")}`
       });

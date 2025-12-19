@@ -205,13 +205,15 @@ export const OrgMembersSection = () => {
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-x-2">
-            <p className="text-xl font-medium text-mineshaft-100">Users</p>
+            <p className="text-xl font-medium text-mineshaft-100">
+              {isSubOrganization ? "Sub-" : ""}Organization Users
+            </p>
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/user-identities" />
           </div>
           <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
             {(isAllowed) => (
               <Button
-                colorSchema="secondary"
+                variant="outline_bg"
                 type="submit"
                 leftIcon={<UserPlusIcon size={16} />}
                 onClick={() =>
@@ -219,7 +221,9 @@ export const OrgMembersSection = () => {
                 }
                 isDisabled={!isAllowed}
               >
-                {isSubOrganization ? "Add Members" : "Invite Members"}
+                {isSubOrganization
+                  ? "Add Users to Sub-Organization"
+                  : "Invite Users to Organization"}
               </Button>
             )}
           </OrgPermissionCan>
@@ -240,7 +244,7 @@ export const OrgMembersSection = () => {
           isOpen={popUp.addMemberToSubOrg.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("addMemberToSubOrg", isOpen)}
         >
-          <ModalContent title="Add member from your organization">
+          <ModalContent title="Add member from your organization" bodyClassName="overflow-visible">
             <AddSubOrgMemberModal onClose={() => handlePopUpClose("addMemberToSubOrg")} />
           </ModalContent>
         </Modal>

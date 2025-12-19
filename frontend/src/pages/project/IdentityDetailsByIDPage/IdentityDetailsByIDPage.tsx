@@ -1,24 +1,37 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
-import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { formatRelative } from "date-fns";
+import { ChevronLeftIcon, EllipsisIcon, InfoIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan, ProjectPermissionCan } from "@app/components/permissions";
 import {
-  Alert,
-  AlertDescription,
-  Button,
   ConfirmActionModal,
   DeleteActionModal,
   EmptyState,
   PageHeader,
-  Spinner
+  Tooltip
 } from "@app/components/v2";
+import {
+  OrgIcon,
+  SubOrgIcon,
+  UnstableAlert,
+  UnstableAlertDescription,
+  UnstableAlertTitle,
+  UnstableButton,
+  UnstableCard,
+  UnstableCardContent,
+  UnstableCardDescription,
+  UnstableCardHeader,
+  UnstableCardTitle,
+  UnstableDropdownMenu,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuTrigger,
+  UnstablePageLoader
+} from "@app/components/v3";
 import {
   OrgPermissionIdentityActions,
   OrgPermissionSubjects,
@@ -36,7 +49,7 @@ import {
   useGetProjectIdentityMembershipV2
 } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
-import { projectIdentityQuery } from "@app/hooks/api/projectIdentity";
+import { projectIdentityQuery, useDeleteProjectIdentity } from "@app/hooks/api/projectIdentity";
 import { ProjectIdentityAuthenticationSection } from "@app/pages/project/IdentityDetailsByIDPage/components/ProjectIdentityAuthSection";
 import { ProjectIdentityDetailsSection } from "@app/pages/project/IdentityDetailsByIDPage/components/ProjectIdentityDetailsSection";
 import { ProjectAccessControlTabs } from "@app/types/project";
@@ -56,12 +69,9 @@ const Page = () => {
   const { data: identityMembershipDetails, isPending: isMembershipDetailsLoading } =
     useGetProjectIdentityMembershipV2(projectId, identityId);
 
-  const { mutateAsync: deleteMutateAsync, isPending: isDeletingIdentity } =
-    useDeleteProjectIdentityMembership();
+  const { mutateAsync: removeIdentityMutateAsync } = useDeleteProjectIdentityMembership();
 
   const isProjectIdentity = Boolean(identityMembershipDetails?.identity.projectId);
-  const isNonScopedIdentity =
-    !isProjectIdentity && currentOrg.id !== identityMembershipDetails?.identity?.orgId;
 
   const {
     data: identity,
@@ -75,7 +85,10 @@ const Page = () => {
     enabled: isProjectIdentity
   });
 
+  const { mutateAsync: deleteIdentity } = useDeleteProjectIdentity();
+
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
+    "removeIdentity",
     "deleteIdentity",
     "assumePrivileges"
   ] as const);
@@ -92,9 +105,9 @@ const Page = () => {
         onSuccess: () => {
           createNotification({
             type: "success",
-            text: "Identity privilege assumption has started"
+            text: "Machine identity privilege assumption has started"
           });
-          const url = `${getProjectHomePage(currentProject.type, currentProject.environments)}${isSubOrganization && isNonScopedIdentity ? `?subOrganization=${currentOrg.slug}` : ""}`;
+          const url = getProjectHomePage(currentProject.type, currentProject.environments);
           window.location.assign(
             url.replace("$orgId", currentOrg.id).replace("$projectId", currentProject.id)
           );
@@ -104,15 +117,15 @@ const Page = () => {
   };
 
   const onRemoveIdentitySubmit = async () => {
-    await deleteMutateAsync({
+    await removeIdentityMutateAsync({
       identityId,
       projectId
     });
     createNotification({
-      text: "Successfully removed identity from project",
+      text: "Successfully removed machine identity from project",
       type: "success"
     });
-    handlePopUpClose("deleteIdentity");
+    handlePopUpClose("removeIdentity");
     navigate({
       to: `${getProjectBaseURL(currentProject.type)}/access-management` as const,
       params: {
@@ -125,16 +138,41 @@ const Page = () => {
     });
   };
 
+  const handleDeleteIdentity = async () => {
+    if (!identity) return;
+
+    try {
+      await deleteIdentity({
+        identityId: identity.id,
+        projectId: identity.projectId!
+      });
+
+      navigate({
+        to: `${getProjectBaseURL(currentProject.type)}/access-management`,
+        search: {
+          selectedTab: "identities"
+        }
+      });
+    } catch {
+      createNotification({
+        type: "error",
+        text: "Failed to delete project machine identity"
+      });
+    }
+  };
+
   if (isMembershipDetailsLoading || (isProjectIdentity && isProjectIdentityPending)) {
-    return (
-      <div className="flex w-full items-center justify-center p-24">
-        <Spinner />
-      </div>
-    );
+    return <UnstablePageLoader />;
   }
 
+  const isOrgIdentity = !isProjectIdentity;
+  const isSubOrgIdentity =
+    isOrgIdentity &&
+    isSubOrganization &&
+    currentOrg.rootOrgId !== identityMembershipDetails?.identity.orgId;
+
   return (
-    <div className="mx-auto flex max-w-8xl flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex max-w-8xl flex-col">
       {identityMembershipDetails ? (
         <>
           <Link
@@ -146,127 +184,139 @@ const Page = () => {
             search={{
               selectedTab: ProjectAccessControlTabs.Identities
             }}
-            className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
+            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
           >
-            <FontAwesomeIcon icon={faChevronLeft} />
-            Identities
+            <ChevronLeftIcon size={16} />
+            Project Machine Identities
           </Link>
           <PageHeader
             scope={currentProject.type}
-            title={identityMembershipDetails?.identity?.name}
-            description={`Identity ${isProjectIdentity ? "created" : "added"} on ${identityMembershipDetails?.createdAt && formatRelative(new Date(identityMembershipDetails?.createdAt || ""), new Date())}`}
-            className={!isProjectIdentity ? "mb-4" : undefined}
+            description={`Configure and manage${isProjectIdentity ? " machine identity and " : " "}project access control`}
+            title={identityMembershipDetails.identity.name}
           >
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline_bg"
-                size="xs"
-                onClick={() => {
-                  navigator.clipboard.writeText(identityMembershipDetails.id);
-                  createNotification({
-                    text: "Membership ID copied to clipboard",
-                    type: "success"
-                  });
-                }}
-              >
-                Copy Membership ID
-              </Button>
-              <ProjectPermissionCan
-                I={ProjectPermissionIdentityActions.AssumePrivileges}
-                a={subject(ProjectPermissionSub.Identity, {
-                  identityId: identityMembershipDetails?.identity.id
-                })}
-                renderTooltip
-                allowedLabel="Assume privileges of the user"
-                passThrough={false}
-              >
-                {(isAllowed) => (
-                  <Button
-                    variant="outline_bg"
-                    size="xs"
-                    isDisabled={!isAllowed}
-                    onClick={() => handlePopUpOpen("assumePrivileges")}
-                  >
-                    Assume Privileges
-                  </Button>
-                )}
-              </ProjectPermissionCan>
-              {!isProjectIdentity && (
+            <UnstableDropdownMenu>
+              <UnstableDropdownMenuTrigger asChild>
+                <UnstableButton variant="outline">
+                  Options
+                  <EllipsisIcon />
+                </UnstableButton>
+              </UnstableDropdownMenuTrigger>
+              <UnstableDropdownMenuContent align="end">
+                <UnstableDropdownMenuItem
+                  onClick={() => {
+                    navigator.clipboard.writeText(identityMembershipDetails.identity.id);
+                    createNotification({
+                      text: "Machine identity ID copied to clipboard",
+                      type: "info"
+                    });
+                  }}
+                >
+                  Copy Machine Identity ID
+                </UnstableDropdownMenuItem>
+                <ProjectPermissionCan
+                  I={ProjectPermissionIdentityActions.AssumePrivileges}
+                  a={subject(ProjectPermissionSub.Identity, {
+                    identityId: identityMembershipDetails?.identity.id
+                  })}
+                >
+                  {(isAllowed) => (
+                    <UnstableDropdownMenuItem
+                      isDisabled={!isAllowed}
+                      onClick={() => handlePopUpOpen("assumePrivileges")}
+                    >
+                      Assume Privileges
+                      <Tooltip
+                        side="bottom"
+                        content="Assume the privileges of this machine identity, allowing you to replicate their access behavior."
+                      >
+                        <div>
+                          <InfoIcon className="text-muted" />
+                        </div>
+                      </Tooltip>
+                    </UnstableDropdownMenuItem>
+                  )}
+                </ProjectPermissionCan>
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Delete}
                   a={subject(ProjectPermissionSub.Identity, {
                     identityId: identityMembershipDetails?.identity?.id
                   })}
-                  renderTooltip
-                  allowedLabel="Remove from project"
                 >
                   {(isAllowed) => (
-                    <Button
-                      colorSchema="danger"
-                      variant="outline_bg"
-                      size="xs"
+                    <UnstableDropdownMenuItem
+                      variant="danger"
                       isDisabled={!isAllowed}
-                      isLoading={isDeletingIdentity}
-                      onClick={() => handlePopUpOpen("deleteIdentity")}
+                      onClick={() =>
+                        isProjectIdentity
+                          ? handlePopUpOpen("deleteIdentity")
+                          : handlePopUpOpen("removeIdentity")
+                      }
                     >
-                      Remove Identity
-                    </Button>
+                      {isProjectIdentity ? "Delete Machine Identity" : "Remove From Project"}
+                    </UnstableDropdownMenuItem>
                   )}
                 </ProjectPermissionCan>
-              )}
-            </div>
+              </UnstableDropdownMenuContent>
+            </UnstableDropdownMenu>
           </PageHeader>
-          {!isProjectIdentity && (
-            <Alert hideTitle iconClassName="text-info" className="mb-4 border-info/50 bg-info/10">
-              <AlertDescription>
-                This identity is managed by your organization.{" "}
-                <OrgPermissionCan
-                  I={OrgPermissionIdentityActions.Read}
-                  an={OrgPermissionSubjects.Identity}
-                >
-                  {(isAllowed) =>
-                    isAllowed ? (
-                      <Link
-                        to="/organizations/$orgId/identities/$identityId"
-                        params={{
-                          identityId,
-                          orgId: currentOrg.id
-                        }}
-                      >
-                        <span className="cursor-pointer text-info underline underline-offset-2">
-                          Click here to manage identity.
-                        </span>
-                      </Link>
-                    ) : null
-                  }
-                </OrgPermissionCan>
-              </AlertDescription>
-            </Alert>
-          )}
-          <div className="flex gap-x-4">
-            {identity ? (
-              <div className="flex w-72 flex-col gap-y-4">
-                <ProjectIdentityDetailsSection
-                  identity={identity}
-                  membership={identityMembershipDetails!}
-                />
+          <div className="flex flex-col gap-5 lg:flex-row">
+            <ProjectIdentityDetailsSection
+              identity={identity || { ...identityMembershipDetails?.identity, projectId: "" }}
+              isOrgIdentity={isOrgIdentity}
+              isSubOrgIdentity={isSubOrgIdentity}
+              membership={identityMembershipDetails!}
+            />
+
+            <div className="flex flex-1 flex-col gap-y-5">
+              {identity ? (
                 <ProjectIdentityAuthenticationSection
                   identity={identity}
                   refetchIdentity={() => refetchIdentity()}
                 />
-              </div>
-            ) : (
-              <div>
-                <div className="flex w-72 flex-col gap-y-4">
-                  <ProjectIdentityDetailsSection
-                    identity={{ ...identityMembershipDetails?.identity, projectId: "" }}
-                    isOrgIdentity
-                    membership={identityMembershipDetails!}
-                  />
-                </div>
-              </div>
-            )}
-            <div className="flex-1">
+              ) : (
+                <UnstableCard>
+                  <UnstableCardHeader>
+                    <UnstableCardTitle>Authentication</UnstableCardTitle>
+                    <UnstableCardDescription>
+                      Configure authentication methods
+                    </UnstableCardDescription>
+                  </UnstableCardHeader>
+                  <UnstableCardContent>
+                    <UnstableAlert variant={isSubOrgIdentity ? "sub-org" : "org"}>
+                      {isSubOrgIdentity ? <SubOrgIcon /> : <OrgIcon />}
+                      <UnstableAlertTitle>
+                        Machine identity managed by {isSubOrgIdentity ? "sub-" : ""}organization
+                      </UnstableAlertTitle>
+                      <UnstableAlertDescription>
+                        <p>
+                          This machine identity&apos;s authentication methods are managed by your
+                          {isSubOrgIdentity ? "sub-" : ""}organization. <br /> To make changes,{" "}
+                          <OrgPermissionCan
+                            I={OrgPermissionIdentityActions.Read}
+                            an={OrgPermissionSubjects.Identity}
+                          >
+                            {(isAllowed) =>
+                              isAllowed ? (
+                                <Link
+                                  to="/organizations/$orgId/identities/$identityId"
+                                  className="inline-block cursor-pointer text-foreground underline underline-offset-2"
+                                  params={{
+                                    identityId,
+                                    orgId: identityMembershipDetails.identity.orgId
+                                  }}
+                                >
+                                  go to {isSubOrgIdentity ? "sub-" : ""}organization access control
+                                </Link>
+                              ) : null
+                            }
+                          </OrgPermissionCan>
+                          .
+                        </p>
+                      </UnstableAlertDescription>
+                    </UnstableAlert>
+                  </UnstableCardContent>
+                </UnstableCard>
+              )}
               <IdentityRoleDetailsSection
                 identityMembershipDetails={identityMembershipDetails}
                 isMembershipDetailsLoading={isMembershipDetailsLoading}
@@ -277,24 +327,31 @@ const Page = () => {
             </div>
           </div>
           <DeleteActionModal
-            isOpen={popUp.deleteIdentity.isOpen}
+            isOpen={popUp.removeIdentity.isOpen}
             title={`Are you sure you want to remove ${identityMembershipDetails?.identity?.name} from the project?`}
-            onChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
+            onChange={(isOpen) => handlePopUpToggle("removeIdentity", isOpen)}
             deleteKey="remove"
             onDeleteApproved={() => onRemoveIdentitySubmit()}
           />
           <ConfirmActionModal
             isOpen={popUp.assumePrivileges.isOpen}
             confirmKey="assume"
-            title="Do you want to assume privileges of this identity?"
-            subTitle="This will set your privileges to those of the identity for the next hour."
+            title="Do you want to assume privileges of this machine identity?"
+            subTitle="This will set your privileges to those of the machine identity for the next hour."
             onChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
             onConfirmed={handleAssumePrivileges}
             buttonText="Confirm"
           />
+          <DeleteActionModal
+            isOpen={popUp.deleteIdentity.isOpen}
+            title={`Are you sure you want to delete ${identity?.name}?`}
+            onChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
+            deleteKey="confirm"
+            onDeleteApproved={handleDeleteIdentity}
+          />
         </>
       ) : (
-        <EmptyState title="Error: Unable to find the identity." className="py-12" />
+        <EmptyState title="Error: Unable to find the machine identity." className="py-12" />
       )}
     </div>
   );

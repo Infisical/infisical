@@ -3,14 +3,16 @@ import { WorkflowIntegrationPlatform } from "../workflowIntegrations/types";
 import { TListProjectIdentitiesDTO, TSearchProjectsDTO } from "./types";
 
 export const projectKeys = {
-  getProjectById: (projectId: string) => ["projects", { projectId }] as const,
+  allProjectQueries: () => ["projects"] as const,
+  getProjectById: (projectId: string) =>
+    [...projectKeys.allProjectQueries(), { projectId }] as const,
   getProjectSecrets: (projectId: string) => [{ projectId }, "project-secrets"] as const,
   getProjectIndexStatus: (projectId: string) => [{ projectId }, "project-index-status"] as const,
   getProjectUpgradeStatus: (projectId: string) => [{ projectId }, "project-upgrade-status"],
   getProjectMemberships: (orgId: string) => [{ orgId }, "project-memberships"],
   getProjectAuthorization: (projectId: string) => [{ projectId }, "project-authorizations"],
   getProjectIntegrations: (projectId: string) => [{ projectId }, "project-integrations"],
-  getAllUserProjects: () => ["projects"] as const,
+  getAllUserProjects: () => [...projectKeys.allProjectQueries()] as const,
   getProjectAuditLogs: (projectId: string) => [{ projectId }, "project-audit-logs"] as const,
   getProjectUsers: (
     projectId: string,
@@ -28,7 +30,8 @@ export const projectKeys = {
   // allows invalidation using above key without knowing params
   getProjectIdentityMembershipsWithParams: ({ projectId, ...params }: TListProjectIdentitiesDTO) =>
     [...projectKeys.getProjectIdentityMemberships(projectId), params] as const,
-  searchProject: (dto: TSearchProjectsDTO) => ["search-projects", dto] as const,
+  searchProject: (dto: TSearchProjectsDTO) =>
+    [...projectKeys.allProjectQueries(), "search-projects", dto] as const,
   getProjectGroupMemberships: (projectId: string) => [{ projectId }, "project-groups"] as const,
   getProjectGroupMembershipDetails: (projectId: string, groupId: string) =>
     [{ projectId, groupId }, "project-group-membership-details"] as const,
@@ -44,7 +47,12 @@ export const projectKeys = {
     limit,
     friendlyName,
     commonName,
-    forPkiSync
+    forPkiSync,
+    search,
+    status,
+    profileIds,
+    fromDate,
+    toDate
   }: {
     projectId: string;
     offset: number;
@@ -52,10 +60,26 @@ export const projectKeys = {
     friendlyName?: string;
     commonName?: string;
     forPkiSync?: boolean;
+    search?: string;
+    status?: string | string[];
+    profileIds?: string[];
+    fromDate?: Date;
+    toDate?: Date;
   }) =>
     [
       ...projectKeys.forProjectCertificates(projectId),
-      { offset, limit, friendlyName, commonName, forPkiSync }
+      {
+        offset,
+        limit,
+        friendlyName,
+        commonName,
+        forPkiSync,
+        search,
+        status,
+        profileIds,
+        fromDate,
+        toDate
+      }
     ] as const,
   getProjectPkiAlerts: (projectId: string) => [{ projectId }, "project-pki-alerts"] as const,
   getProjectPkiSubscribers: (projectId: string) =>

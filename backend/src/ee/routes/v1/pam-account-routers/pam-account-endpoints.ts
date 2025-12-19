@@ -22,7 +22,7 @@ export const registerPamResourceEndpoints = <C extends TPamAccount>({
     folderId?: C["folderId"];
     name: C["name"];
     description?: C["description"];
-    rotationEnabled: C["rotationEnabled"];
+    rotationEnabled?: C["rotationEnabled"];
     rotationIntervalSeconds?: C["rotationIntervalSeconds"];
     requireMfa?: C["requireMfa"];
   }>;
@@ -67,7 +67,7 @@ export const registerPamResourceEndpoints = <C extends TPamAccount>({
             folderId: req.body.folderId,
             name: req.body.name,
             description: req.body.description,
-            rotationEnabled: req.body.rotationEnabled,
+            rotationEnabled: req.body.rotationEnabled ?? false,
             rotationIntervalSeconds: req.body.rotationIntervalSeconds,
             requireMfa: req.body.requireMfa
           }

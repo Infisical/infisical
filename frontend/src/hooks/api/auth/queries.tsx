@@ -59,10 +59,12 @@ export const loginLDAPRedirect = async (loginLDAPDetails: LoginLDAPDTO) => {
   return data;
 };
 
-export const selectOrganization = async (data: {
+export type SelectOrganizationParams = {
   organizationId: string;
   userAgent?: UserAgentType;
-}) => {
+};
+
+export const selectOrganization = async (data: SelectOrganizationParams) => {
   const { data: res } = await apiRequest.post<{
     token: string;
     isMfaEnabled: boolean;
@@ -74,7 +76,7 @@ export const selectOrganization = async (data: {
 export const useSelectOrganization = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (details: { organizationId: string; userAgent?: UserAgentType }) => {
+    mutationFn: async (details: SelectOrganizationParams) => {
       const data = await selectOrganization(details);
 
       // If a custom user agent is set, then this session is meant for another consuming application, not the web application.

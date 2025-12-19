@@ -17,7 +17,6 @@ import {
 } from "@app/context";
 import { useDeleteOrgIdentity, useGetOrgIdentityMembershipById } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
-import { ViewIdentityAuthModal } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuthModal/ViewIdentityAuthModal";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { IdentityAuthMethodModal } from "../AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
@@ -55,7 +54,7 @@ const Page = () => {
     });
 
     createNotification({
-      text: "Successfully deleted identity",
+      text: "Successfully deleted machine identity",
       type: "success"
     });
 
@@ -82,11 +81,11 @@ const Page = () => {
             className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
           >
             <FontAwesomeIcon icon={faChevronLeft} />
-            Identities
+            Organization Machine Identities
           </Link>
           <PageHeader
             scope={isSubOrganization ? "namespace" : "org"}
-            description={`${isSubOrganization ? "Sub-" : ""}Organization Identity`}
+            description={`${isSubOrganization ? "Sub-" : ""}Organization Machine Identity`}
             title={data.identity.name}
           >
             <div className="flex items-center gap-2">
@@ -111,7 +110,7 @@ const Page = () => {
                         })
                       }
                     >
-                      Unlink Identity
+                      Unlink Machine Identity
                     </Button>
                   )}
                 </OrgPermissionCan>
@@ -125,14 +124,16 @@ const Page = () => {
                 identityId={identityId}
                 handlePopUpOpen={handlePopUpOpen}
               />
+            </div>
+            <div className="flex flex-1 flex-col gap-y-4">
               {!isAuthHidden && (
                 <IdentityAuthenticationSection
                   identityId={identityId}
                   handlePopUpOpen={handlePopUpOpen}
                 />
               )}
+              <IdentityProjectsSection identityId={identityId} />
             </div>
-            <IdentityProjectsSection identityId={identityId} />
           </div>
         </div>
       )}
@@ -142,7 +143,7 @@ const Page = () => {
       >
         <ModalContent
           bodyClassName="overflow-visible"
-          title={`${popUp?.identity?.data ? "Update" : "Create"} Identity`}
+          title={`${popUp?.identity?.data ? "Update" : "Create"} Machine Identity`}
         >
           <OrgIdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         </ModalContent>
@@ -170,14 +171,6 @@ const Page = () => {
             (popUp?.deleteIdentity?.data as { identityId: string })?.identityId
           )
         }
-      />
-      <ViewIdentityAuthModal
-        isOpen={popUp.viewAuthMethod.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("viewAuthMethod", isOpen)}
-        authMethod={popUp.viewAuthMethod.data?.authMethod}
-        lockedOut={popUp.viewAuthMethod.data?.lockedOut || false}
-        identityId={identityId}
-        onResetAllLockouts={popUp.viewAuthMethod.data?.refetchIdentity}
       />
     </div>
   );
