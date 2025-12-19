@@ -33,3 +33,7 @@ export const sanitizeString = (dto: { unsanitizedString: string; tokens: string[
   });
   return sanitizedWords.join("");
 };
+
+export const sanitizeSqlLikeString = (value: string): string => {
+  return String(value).replace(new RE2("[%_\\\\]", "g"), "\\$&");
+};

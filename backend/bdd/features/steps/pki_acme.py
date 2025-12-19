@@ -266,9 +266,7 @@ def step_impl(context: Context, ca_id: str, template_id: str, profile_var: str):
     )
 
 
-@given(
-    'I create an ACME profile with config as "{profile_var}"'
-)
+@given('I create an ACME profile with config as "{profile_var}"')
 def step_impl(context: Context, profile_var: str):
     profile_slug = faker.slug()
     jwt_token = context.vars["AUTH_TOKEN"]
@@ -1028,6 +1026,58 @@ def step_impl(context: Context, wait_time: str, var_path: str, hostname: str):
 def step_impl(context: Context, var_path: str, hostname: str):
     challenge = eval_var(context, var_path, as_json=False)
     serve_challenges(context=context, challenges=[challenge])
+
+
+@then("I add domain {domain} challenge response DNS records for {var_path}")
+def step_impl(context: Context, domain: str, var_path: str):
+    client = context.technitium_http_client
+    challenge = eval_var(context, var_path, as_json=False)
+
+    zone = domain
+    domain = f"{challenge.chall.LABEL}.{domain}"
+    value = challenge.chall.validation(context.acme_client.net.key)
+
+    resp = client.post(
+        "/api/user/login",
+        data={
+            "user": context.vars["TECHNITIUM_USER"],
+            "pass": context.vars["TECHNITIUM_PASSWORD"],
+        },
+    )
+    resp.raise_for_status()
+
+    token = resp.json()["token"]
+    resp = client.post(
+        "/api/zones/create",
+        params=dict(
+            token=token,
+            zone=zone,
+            type="Primary",
+        ),
+    )
+    resp.raise_for_status()
+    error_msg = resp.json().get("errorMessage")
+    if error_msg is not None and not error_msg.startswith("Zone already exists:"):
+        raise RuntimeError(f"Unexpected error while creating zone {zone}: {error_msg}")
+
+    resp = client.post(
+        "/api/zones/records/add",
+        params=dict(
+            token=token,
+            zone=zone,
+            domain=domain,
+            type="TXT",
+            text=value,
+        ),
+    )
+    resp.raise_for_status()
+    error_msg = resp.json().get("errorMessage")
+    if error_msg is not None and not error_msg.startswith(
+        "Cannot add record: record already exists"
+    ):
+        raise RuntimeError(
+            f"Unexpected error while creating TXT record {domain} for zone {zone}: {error_msg}"
+        )
 
 
 @then("I tell ACME server that {var_path} is ready to be verified")

@@ -55,34 +55,36 @@ export type TDynamicSecretLeaseServiceFactory = {
     lease: TDynamicSecretLeases;
     dynamicSecret: TDynamicSecretWithMetadata;
     data: unknown;
+    projectId: string;
+    environment: string;
+    secretPath: string;
   }>;
-  listLeases: (arg: TListDynamicSecretLeasesDTO) => Promise<TDynamicSecretLeases[]>;
-  revokeLease: (arg: TDeleteDynamicSecretLeaseDTO) => Promise<TDynamicSecretLeases>;
-  renewLease: (arg: TRenewDynamicSecretLeaseDTO) => Promise<TDynamicSecretLeases>;
+  listLeases: (arg: TListDynamicSecretLeasesDTO) => Promise<{
+    leases: TDynamicSecretLeases[];
+    dynamicSecret: TDynamicSecretWithMetadata;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+  }>;
+  revokeLease: (arg: TDeleteDynamicSecretLeaseDTO) => Promise<{
+    lease: TDynamicSecretLeases;
+    dynamicSecret: TDynamicSecretWithMetadata;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+  }>;
+  renewLease: (arg: TRenewDynamicSecretLeaseDTO) => Promise<{
+    lease: TDynamicSecretLeases;
+    dynamicSecret: TDynamicSecretWithMetadata;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+  }>;
   getLeaseDetails: (arg: TDetailsDynamicSecretLeaseDTO) => Promise<{
-    dynamicSecret: {
-      id: string;
-      name: string;
-      version: number;
-      type: string;
-      defaultTTL: string;
-      maxTTL: string | null | undefined;
-      encryptedInput: Buffer;
-      folderId: string;
-      status: string | null | undefined;
-      statusDetails: string | null | undefined;
-      createdAt: Date;
-      updatedAt: Date;
-    };
-    version: number;
-    id: string;
-    createdAt: Date;
-    updatedAt: Date;
-    externalEntityId: string;
-    expireAt: Date;
-    dynamicSecretId: string;
-    status?: string | null | undefined;
-    config?: unknown;
-    statusDetails?: string | null | undefined;
+    dynamicSecret: TDynamicSecretWithMetadata;
+    lease: TDynamicSecretLeases;
+    projectId: string;
+    environment: string;
+    secretPath: string;
   }>;
 };

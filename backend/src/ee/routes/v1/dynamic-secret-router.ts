@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { DynamicSecretLeasesSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { DynamicSecretProviderSchema } from "@app/ee/services/dynamic-secret/providers/models";
 import { ApiDocsTags, DYNAMIC_SECRETS } from "@app/lib/api-docs";
 import { removeTrailingSlash } from "@app/lib/fn";
@@ -98,6 +99,27 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         actorOrgId: req.permission.orgId,
         ...req.body
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: dynamicSecretCfg.projectId,
+        event: {
+          type: EventType.CREATE_DYNAMIC_SECRET,
+          metadata: {
+            dynamicSecretName: dynamicSecretCfg.name,
+            dynamicSecretType: dynamicSecretCfg.type,
+            dynamicSecretId: dynamicSecretCfg.id,
+            defaultTTL: dynamicSecretCfg.defaultTTL,
+            maxTTL: dynamicSecretCfg.maxTTL,
+            gatewayV2Id: dynamicSecretCfg.gatewayV2Id,
+            usernameTemplate: dynamicSecretCfg.usernameTemplate,
+            environment: dynamicSecretCfg.environment,
+            secretPath: dynamicSecretCfg.secretPath,
+            projectId: dynamicSecretCfg.projectId
+          }
+        }
+      });
+
       return { dynamicSecret: dynamicSecretCfg };
     }
   });
@@ -160,18 +182,36 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const dynamicSecretCfg = await server.services.dynamicSecret.updateByName({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        name: req.params.name,
-        path: req.body.path,
-        projectSlug: req.body.projectSlug,
-        environmentSlug: req.body.environmentSlug,
-        ...req.body.data
+      const { dynamicSecret, updatedFields, projectId, environment, secretPath } =
+        await server.services.dynamicSecret.updateByName({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          name: req.params.name,
+          path: req.body.path,
+          projectSlug: req.body.projectSlug,
+          environmentSlug: req.body.environmentSlug,
+          ...req.body.data
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.UPDATE_DYNAMIC_SECRET,
+          metadata: {
+            dynamicSecretName: dynamicSecret.name,
+            dynamicSecretType: dynamicSecret.type,
+            dynamicSecretId: dynamicSecret.id,
+            environment,
+            secretPath,
+            projectId,
+            updatedFields
+          }
+        }
       });
-      return { dynamicSecret: dynamicSecretCfg };
+      return { dynamicSecret };
     }
   });
 
@@ -209,6 +249,23 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         name: req.params.name,
         ...req.body
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: dynamicSecretCfg.projectId,
+        event: {
+          type: EventType.DELETE_DYNAMIC_SECRET,
+          metadata: {
+            dynamicSecretName: dynamicSecretCfg.name,
+            dynamicSecretType: dynamicSecretCfg.type,
+            dynamicSecretId: dynamicSecretCfg.id,
+            environment: dynamicSecretCfg.environment,
+            secretPath: dynamicSecretCfg.secretPath,
+            projectId: dynamicSecretCfg.projectId
+          }
+        }
+      });
+
       return { dynamicSecret: dynamicSecretCfg };
     }
   });
@@ -249,6 +306,22 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         ...req.query
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: dynamicSecretCfg.projectId,
+        event: {
+          type: EventType.GET_DYNAMIC_SECRET,
+          metadata: {
+            dynamicSecretName: dynamicSecretCfg.name,
+            dynamicSecretType: dynamicSecretCfg.type,
+            dynamicSecretId: dynamicSecretCfg.id,
+            environment: dynamicSecretCfg.environment,
+            secretPath: dynamicSecretCfg.secretPath,
+            projectId: dynamicSecretCfg.projectId
+          }
+        }
+      });
+
       return { dynamicSecret: dynamicSecretCfg };
     }
   });
@@ -275,14 +348,29 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const dynamicSecretCfgs = await server.services.dynamicSecret.listDynamicSecretsByEnv({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        ...req.query
+      const { dynamicSecrets, environment, secretPath, projectId } =
+        await server.services.dynamicSecret.listDynamicSecretsByEnv({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          ...req.query
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.LIST_DYNAMIC_SECRETS,
+          metadata: {
+            environment,
+            secretPath,
+            projectId
+          }
+        }
       });
-      return { dynamicSecrets: dynamicSecretCfgs };
+
+      return { dynamicSecrets };
     }
   });
 
@@ -316,14 +404,33 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const leases = await server.services.dynamicSecretLease.listLeases({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        name: req.params.name,
-        ...req.query
+      const { leases, dynamicSecret, projectId, environment, secretPath } =
+        await server.services.dynamicSecretLease.listLeases({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          name: req.params.name,
+          ...req.query
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.LIST_DYNAMIC_SECRET_LEASES,
+          metadata: {
+            dynamicSecretName: dynamicSecret.name,
+            dynamicSecretType: dynamicSecret.type,
+            dynamicSecretId: dynamicSecret.id,
+            environment,
+            secretPath,
+            projectId,
+            leaseCount: leases.length
+          }
+        }
       });
+
       return { leases };
     }
   });

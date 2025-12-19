@@ -41,6 +41,7 @@ import { MySqlConnectionForm } from "./MySqlConnectionForm";
 import { NetlifyConnectionForm } from "./NetlifyConnectionForm";
 import { NorthflankConnectionForm } from "./NorthflankConnectionForm";
 import { OCIConnectionForm } from "./OCIConnectionForm";
+import { OctopusDeployConnectionForm } from "./OctopusDeployConnectionForm";
 import { OktaConnectionForm } from "./OktaConnectionForm";
 import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
@@ -176,6 +177,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       return <RedisConnectionForm onSubmit={onSubmit} />;
     case AppConnection.MongoDB:
       return <MongoDBConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.OctopusDeploy:
+      return <OctopusDeployConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -336,6 +339,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <RedisConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.MongoDB:
       return <MongoDBConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.OctopusDeploy:
+      return <OctopusDeployConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

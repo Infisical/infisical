@@ -395,6 +395,7 @@ export enum EventType {
   CREATE_CERTIFICATE_REQUEST = "create-certificate-request",
   GET_CERTIFICATE_REQUEST = "get-certificate-request",
   GET_CERTIFICATE_FROM_REQUEST = "get-certificate-from-request",
+  LIST_CERTIFICATE_REQUESTS = "list-certificate-requests",
   ATTEMPT_CREATE_SLACK_INTEGRATION = "attempt-create-slack-integration",
   ATTEMPT_REINSTALL_SLACK_INTEGRATION = "attempt-reinstall-slack-integration",
   GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
@@ -615,7 +616,21 @@ export enum EventType {
   MCP_SERVER_SYNC_TOOLS = "mcp-server-sync-tools",
 
   // MCP Activity Logs
-  MCP_ACTIVITY_LOG_LIST = "mcp-activity-log-list"
+  MCP_ACTIVITY_LOG_LIST = "mcp-activity-log-list",
+
+  // Dynamic Secrets
+  CREATE_DYNAMIC_SECRET = "create-dynamic-secret",
+  UPDATE_DYNAMIC_SECRET = "update-dynamic-secret",
+  DELETE_DYNAMIC_SECRET = "delete-dynamic-secret",
+  GET_DYNAMIC_SECRET = "get-dynamic-secret",
+  LIST_DYNAMIC_SECRETS = "list-dynamic-secrets",
+
+  // Dynamic Secret Leases
+  CREATE_DYNAMIC_SECRET_LEASE = "create-dynamic-secret-lease",
+  DELETE_DYNAMIC_SECRET_LEASE = "delete-dynamic-secret-lease",
+  RENEW_DYNAMIC_SECRET_LEASE = "renew-dynamic-secret-lease",
+  LIST_DYNAMIC_SECRET_LEASES = "list-dynamic-secret-leases",
+  GET_DYNAMIC_SECRET_LEASE = "get-dynamic-secret-lease"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -4316,6 +4331,18 @@ interface GetCertificateFromRequestEvent {
   };
 }
 
+interface ListCertificateRequestsEvent {
+  type: EventType.LIST_CERTIFICATE_REQUESTS;
+  metadata: {
+    offset: number;
+    limit: number;
+    search?: string;
+    status?: string;
+    count: number;
+    certificateRequestIds: string[];
+  };
+}
+
 interface ApprovalPolicyCreateEvent {
   type: EventType.APPROVAL_POLICY_CREATE;
   metadata: {
@@ -4701,6 +4728,157 @@ interface McpActivityLogListEvent {
   };
 }
 
+interface GetDynamicSecretLeaseEvent {
+  type: EventType.GET_DYNAMIC_SECRET_LEASE;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    leaseId: string;
+    leaseExternalEntityId: string;
+    leaseExpireAt: Date;
+
+    projectId: string;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface RenewDynamicSecretLeaseEvent {
+  type: EventType.RENEW_DYNAMIC_SECRET_LEASE;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    leaseId: string;
+    leaseExternalEntityId: string;
+    newLeaseExpireAt: Date;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface CreateDynamicSecretLeaseEvent {
+  type: EventType.CREATE_DYNAMIC_SECRET_LEASE;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    leaseId: string;
+    leaseExternalEntityId: string;
+    leaseExpireAt: Date;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface DeleteDynamicSecretLeaseEvent {
+  type: EventType.DELETE_DYNAMIC_SECRET_LEASE;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    leaseId: string;
+    leaseExternalEntityId: string;
+    leaseStatus?: string | null;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+
+    isForced: boolean;
+  };
+}
+
+interface CreateDynamicSecretEvent {
+  type: EventType.CREATE_DYNAMIC_SECRET;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretType: string;
+    dynamicSecretId: string;
+    defaultTTL: string;
+    maxTTL?: string | null;
+    gatewayV2Id?: string | null;
+    usernameTemplate?: string | null;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface UpdateDynamicSecretEvent {
+  type: EventType.UPDATE_DYNAMIC_SECRET;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+    updatedFields: string[];
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface DeleteDynamicSecretEvent {
+  type: EventType.DELETE_DYNAMIC_SECRET;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface GetDynamicSecretEvent {
+  type: EventType.GET_DYNAMIC_SECRET;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface ListDynamicSecretsEvent {
+  type: EventType.LIST_DYNAMIC_SECRETS;
+  metadata: {
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface ListDynamicSecretLeasesEvent {
+  type: EventType.LIST_DYNAMIC_SECRET_LEASES;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+
+    leaseCount: number;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -5083,6 +5261,7 @@ export type Event =
   | CreateCertificateRequestEvent
   | GetCertificateRequestEvent
   | GetCertificateFromRequestEvent
+  | ListCertificateRequestsEvent
   | AutomatedRenewCertificate
   | AutomatedRenewCertificateFailed
   | UserLoginEvent
@@ -5131,4 +5310,14 @@ export type Event =
   | McpServerListEvent
   | McpServerListToolsEvent
   | McpServerSyncToolsEvent
-  | McpActivityLogListEvent;
+  | McpActivityLogListEvent
+  | CreateDynamicSecretEvent
+  | UpdateDynamicSecretEvent
+  | DeleteDynamicSecretEvent
+  | GetDynamicSecretEvent
+  | ListDynamicSecretsEvent
+  | ListDynamicSecretLeasesEvent
+  | CreateDynamicSecretLeaseEvent
+  | DeleteDynamicSecretLeaseEvent
+  | RenewDynamicSecretLeaseEvent
+  | GetDynamicSecretLeaseEvent;

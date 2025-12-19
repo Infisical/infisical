@@ -52,6 +52,15 @@ export default defineConfig(({ mode }) => {
         }
       }
     },
+    experimental: {
+      renderBuiltUrl(filename, { hostType }) {
+        if (hostType === "js") {
+          return { runtime: `window.__toCdnUrl(${JSON.stringify(filename)})` };
+        }
+
+        return { relative: true };
+      }
+    },
     plugins: [
       tsconfigPaths(),
       nodePolyfills({

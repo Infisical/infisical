@@ -140,6 +140,11 @@ The Infisical Agent Injector supports the following annotations:
     This will ensure that no new leases are created except those initially created in the init container. The sidecar container will register the leases created in the init container and start managing them from that point onwards.
   </Accordion>
 
+  <Accordion title="org.infisical.com/agent-image">
+    Specify a custom agent image to use for the agent sidecar / init container(s). Example: `infisical/cli:0.43.32`.
+    If not specified, the most recent stable version of the Infisical Agent will be used.
+  </Accordion>
+
   <Accordion title="org.infisical.com/agent-revoke-on-shutdown">
     Whether to revoke all managed dynamic secret leases and machine identity access tokens on shutdown. Defaults to `false`.
     

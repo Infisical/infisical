@@ -7,6 +7,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import {
   TApprovalPolicy,
+  TApprovalPolicyInputs,
   TCreatePolicyDTO,
   TCreateRequestDTO,
   TUpdatePolicyDTO
@@ -21,7 +22,8 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
   policyResponseSchema,
   createRequestSchema,
   requestResponseSchema,
-  grantResponseSchema
+  grantResponseSchema,
+  inputsSchema
 }: {
   server: FastifyZodProvider;
   policyType: ApprovalPolicyType;
@@ -41,6 +43,7 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
   createRequestSchema: z.ZodType<TCreateRequestDTO>;
   requestResponseSchema: z.ZodTypeAny;
   grantResponseSchema: z.ZodTypeAny;
+  inputsSchema: z.ZodType<TApprovalPolicyInputs>;
 }) => {
   // Policies
   server.route({
@@ -620,6 +623,33 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
       });
 
       return { grant };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/check-policy-match",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Check if a resource path matches any approval policy and if the user has an active grant",
+      body: z.object({
+        projectId: z.string().uuid(),
+        inputs: inputsSchema
+      }),
+      response: {
+        200: z.object({
+          requiresApproval: z.boolean(),
+          hasActiveGrant: z.boolean()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const result = await server.services.approvalPolicy.checkPolicyMatch(policyType, req.body, req.permission);
+
+      return result;
     }
   });
 };

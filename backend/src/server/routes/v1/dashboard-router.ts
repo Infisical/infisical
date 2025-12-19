@@ -359,6 +359,21 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           // get the count of unique dynamic secret names to properly adjust remaining limit
           const uniqueDynamicSecretsCount = new Set(dynamicSecrets.map((dynamicSecret) => dynamicSecret.name)).size;
 
+          if (dynamicSecrets.length) {
+            await server.services.auditLog.createAuditLog({
+              ...req.auditLogInfo,
+              projectId,
+              event: {
+                type: EventType.LIST_DYNAMIC_SECRETS,
+                metadata: {
+                  environment: [...new Set(dynamicSecrets.map((dynamicSecret) => dynamicSecret.environment))].join(","),
+                  secretPath,
+                  projectId
+                }
+              }
+            });
+          }
+
           remainingLimit -= uniqueDynamicSecretsCount;
           adjustedOffset = 0;
         } else {
@@ -738,7 +753,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             reminder: Awaited<ReturnType<typeof server.services.reminder.getRemindersForDashboard>>[string] | null;
           })[]
         | undefined;
-      let dynamicSecrets: Awaited<ReturnType<typeof server.services.dynamicSecret.listDynamicSecretsByEnv>> | undefined;
+      let dynamicSecrets:
+        | Awaited<ReturnType<typeof server.services.dynamicSecret.listDynamicSecretsByEnv>>["dynamicSecrets"]
+        | undefined;
       let secretRotations:
         | (Awaited<ReturnType<typeof server.services.secretRotationV2.getDashboardSecretRotations>>[number] & {
             secrets: (NonNullable<
@@ -923,7 +940,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           });
 
           if (remainingLimit > 0 && totalDynamicSecretCount > adjustedOffset) {
-            dynamicSecrets = await server.services.dynamicSecret.listDynamicSecretsByEnv({
+            const { dynamicSecrets: dynamicSecretCfgs } = await server.services.dynamicSecret.listDynamicSecretsByEnv({
               actor: req.permission.type,
               actorId: req.permission.id,
               actorAuthMethod: req.permission.authMethod,
@@ -937,6 +954,23 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               limit: remainingLimit,
               offset: adjustedOffset
             });
+
+            if (dynamicSecretCfgs.length) {
+              await server.services.auditLog.createAuditLog({
+                ...req.auditLogInfo,
+                projectId,
+                event: {
+                  type: EventType.LIST_DYNAMIC_SECRETS,
+                  metadata: {
+                    environment,
+                    secretPath,
+                    projectId
+                  }
+                }
+              });
+            }
+
+            dynamicSecrets = dynamicSecretCfgs;
 
             remainingLimit -= dynamicSecrets.length;
             adjustedOffset = 0;
@@ -1262,6 +1296,27 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       }
 
       const sliceQuickSearch = <T>(array: T[]) => array.slice(0, 25);
+
+      const filteredDynamicSecrets = sliceQuickSearch(
+        searchPath ? dynamicSecrets.filter((dynamicSecret) => dynamicSecret.path.endsWith(searchPath)) : dynamicSecrets
+      );
+
+      if (filteredDynamicSecrets?.length) {
+        await server.services.auditLog.createAuditLog({
+          projectId,
+          ...req.auditLogInfo,
+          event: {
+            type: EventType.LIST_DYNAMIC_SECRETS,
+            metadata: {
+              environment: [...new Set(filteredDynamicSecrets.map((dynamicSecret) => dynamicSecret.environment))].join(
+                ","
+              ),
+              secretPath: [...new Set(filteredDynamicSecrets.map((dynamicSecret) => dynamicSecret.path))].join(","),
+              projectId
+            }
+          }
+        });
+      }
 
       return {
         secrets: sliceQuickSearch(

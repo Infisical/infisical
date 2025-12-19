@@ -68,16 +68,11 @@ import { NotificationType } from "../notification/notification-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TPkiAlertDALFactory } from "../pki-alert/pki-alert-dal";
 import { TPkiCollectionDALFactory } from "../pki-collection/pki-collection-dal";
-import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { getPredefinedRoles } from "../project-role/project-role-fns";
-import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TRoleDALFactory } from "../role/role-dal";
-import { TSecretDALFactory } from "../secret/secret-dal";
-import { fnDeleteProjectSecretReminders } from "../secret/secret-fns";
 import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
-import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TProjectSlackConfigDALFactory } from "../slack/project-slack-config-dal";
 import { validateSlackChannelsField } from "../slack/slack-auth-validators";
 import { TSlackIntegrationDALFactory } from "../slack/slack-integration-dal";
@@ -133,10 +128,7 @@ type TProjectServiceFactoryDep = {
   projectSshConfigDAL: Pick<TProjectSshConfigDALFactory, "transaction" | "create" | "findOne" | "updateById">;
   projectQueue: TProjectQueueFactory;
   userDAL: TUserDALFactory;
-  projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   folderDAL: Pick<TSecretFolderDALFactory, "insertMany" | "findByProjectId">;
-  secretDAL: Pick<TSecretDALFactory, "find">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "insertMany" | "find">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectGhostUser" | "findAllProjectMembers">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "create" | "findOne" | "delete">;
@@ -192,7 +184,6 @@ type TProjectServiceFactoryDep = {
     | "createCipherPairWithDataKey"
   >;
   projectTemplateService: TProjectTemplateServiceFactory;
-  reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
@@ -201,11 +192,8 @@ export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
 export const projectServiceFactory = ({
   projectDAL,
   projectSshConfigDAL,
-  secretDAL,
-  secretV2BridgeDAL,
   projectQueue,
   permissionService,
-  projectBotService,
   orgDAL,
   userDAL,
   folderDAL,
@@ -232,7 +220,6 @@ export const projectServiceFactory = ({
   microsoftTeamsIntegrationDAL,
   projectTemplateService,
   smtpService,
-  reminderService,
   notificationService,
   membershipIdentityDAL,
   membershipUserDAL,
@@ -520,14 +507,6 @@ export const projectServiceFactory = ({
       if (projectGhostUser) {
         await userDAL.deleteById(projectGhostUser.id, tx);
       }
-
-      await fnDeleteProjectSecretReminders(project.id, {
-        secretDAL,
-        secretV2BridgeDAL,
-        reminderService,
-        projectBotService,
-        folderDAL
-      });
 
       return delProject;
     });
@@ -942,6 +921,11 @@ export const projectServiceFactory = ({
     friendlyName,
     commonName,
     forPkiSync = false,
+    search,
+    status,
+    profileIds,
+    fromDate,
+    toDate,
     actorId,
     actorOrgId,
     actorAuthMethod,
@@ -968,7 +952,12 @@ export const projectServiceFactory = ({
     const regularFilters = {
       projectId,
       ...(friendlyName && { friendlyName }),
-      ...(commonName && { commonName })
+      ...(commonName && { commonName }),
+      ...(search && { search }),
+      ...(status && { status: Array.isArray(status) ? status[0] : status }),
+      ...(profileIds && { profileIds }),
+      ...(fromDate && { fromDate }),
+      ...(toDate && { toDate })
     };
     const permissionFilters = getProcessedPermissionRules(
       permission,
@@ -991,7 +980,12 @@ export const projectServiceFactory = ({
     const countFilter = {
       projectId,
       ...(regularFilters.friendlyName && { friendlyName: String(regularFilters.friendlyName) }),
-      ...(regularFilters.commonName && { commonName: String(regularFilters.commonName) })
+      ...(regularFilters.commonName && { commonName: String(regularFilters.commonName) }),
+      ...(regularFilters.search && { search: String(regularFilters.search) }),
+      ...(regularFilters.status && { status: String(regularFilters.status) }),
+      ...(regularFilters.profileIds && { profileIds: regularFilters.profileIds }),
+      ...(regularFilters.fromDate && { fromDate: regularFilters.fromDate }),
+      ...(regularFilters.toDate && { toDate: regularFilters.toDate })
     };
 
     const count = forPkiSync
