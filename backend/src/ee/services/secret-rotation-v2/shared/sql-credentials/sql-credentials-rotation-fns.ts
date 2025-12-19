@@ -89,6 +89,22 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
     }
   };
 
+  const $executeQuery = async (tx: Knex, username: string, password: string) => {
+    if (userProvidedRotationStatement) {
+      const revokeStatement = handlebars.compile(userProvidedRotationStatement)({
+        username,
+        password,
+        database: connection.credentials.database
+      });
+      const queries = revokeStatement.toString().split(";").filter(Boolean);
+      for await (const query of queries) {
+        await tx.raw(query);
+      }
+    } else {
+      await tx.raw(...SQL_CONNECTION_ALTER_LOGIN_STATEMENT[connection.app]({ username, password }));
+    }
+  };
+
   const issueCredentials: TRotationFactoryIssueCredentials<TSqlCredentialsRotationGeneratedCredentials> = async (
     callback
   ) => {
@@ -103,19 +119,7 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
       await executeOperation(async (client) => {
         await client.transaction(async (tx) => {
           for await (const credentials of credentialsSet) {
-            if (userProvidedRotationStatement) {
-              const revokeStatement = handlebars.compile(userProvidedRotationStatement)({
-                username: credentials.username,
-                password: credentials.password,
-                database: connection.credentials.database
-              });
-              const queries = revokeStatement.toString().split(";").filter(Boolean);
-              for await (const query of queries) {
-                await tx.raw(query);
-              }
-            } else {
-              await tx.raw(...SQL_CONNECTION_ALTER_LOGIN_STATEMENT[connection.app](credentials));
-            }
+            await $executeQuery(tx, credentials.username, credentials.password);
           }
         });
       });
@@ -144,7 +148,7 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
         await client.transaction(async (tx) => {
           for await (const credentials of revokedCredentials) {
             // invalidate previous passwords
-            await tx.raw(...SQL_CONNECTION_ALTER_LOGIN_STATEMENT[connection.app](credentials));
+            await $executeQuery(tx, credentials.username, credentials.password);
           }
         });
       });
@@ -167,7 +171,7 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
 
     try {
       await executeOperation(async (client) => {
-        await client.raw(...SQL_CONNECTION_ALTER_LOGIN_STATEMENT[connection.app](credentials));
+        await $executeQuery(client, credentials.username, credentials.password);
       });
     } catch (error) {
       throw new Error(redactPasswords(error, [credentials]));

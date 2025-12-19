@@ -16,7 +16,9 @@ import { SecretNameSchema } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 export const MongoDBCredentialsRotationGeneratedCredentialsSchema = SqlCredentialsRotationGeneratedCredentialsSchema;
-export const MongoDBCredentialsRotationParametersSchema = SqlCredentialsRotationParametersSchema;
+export const MongoDBCredentialsRotationParametersSchema = SqlCredentialsRotationParametersSchema.omit({
+  rotationStatement: true
+});
 export const MongoDBCredentialsRotationTemplateSchema = SqlCredentialsRotationTemplateSchema.omit({
   rotationStatement: true
 });
