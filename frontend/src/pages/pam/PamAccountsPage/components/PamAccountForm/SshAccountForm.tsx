@@ -16,6 +16,7 @@ import { PamResourceType, TSSHAccount } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 import { SSHAuthMethod } from "@app/hooks/api/pam/types/ssh-resource";
 
+import { SshCaSetupSection } from "../../../components/SshCaSetupSection";
 import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
 
 type Props = {
@@ -57,7 +58,7 @@ const formSchema = genericAccountFieldsSchema.extend({
 
 type FormData = z.infer<typeof formSchema>;
 
-const SshAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
+const SshAccountFields = ({ isUpdate, resourceId }: { isUpdate: boolean; resourceId: string }) => {
   const { control, setValue } = useFormContext();
   const [showPassword, setShowPassword] = useState(false);
 
@@ -185,17 +186,14 @@ const SshAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
         />
       )}
 
-      {authMethod === SSHAuthMethod.Certificate && (
-        <p className="mb-0 text-xs text-mineshaft-400">
-          Certificate-based authentication will use the certificate configured on the SSH resource.
-        </p>
-      )}
+      {authMethod === SSHAuthMethod.Certificate && <SshCaSetupSection resourceId={resourceId} />}
     </div>
   );
 };
 
-export const SshAccountForm = ({ account, onSubmit }: Props) => {
+export const SshAccountForm = ({ account, resourceId, onSubmit }: Props) => {
   const isUpdate = Boolean(account);
+  const effectiveResourceId = resourceId || account?.resource.id || "";
 
   const getDefaultCredentials = () => {
     if (!account) return undefined;
@@ -248,7 +246,7 @@ export const SshAccountForm = ({ account, onSubmit }: Props) => {
         }}
       >
         <GenericAccountFields />
-        <SshAccountFields isUpdate={isUpdate} />
+        <SshAccountFields isUpdate={isUpdate} resourceId={effectiveResourceId} />
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"
