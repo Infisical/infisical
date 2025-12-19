@@ -164,12 +164,22 @@ export const pamAccountServiceFactory = ({
       kmsService
     });
 
+    // Decrypt resource metadata if available
+    const resourceMetadata = resource.encryptedResourceMetadata
+      ? await decryptResourceMetadata({
+          encryptedMetadata: resource.encryptedResourceMetadata,
+          projectId: resource.projectId,
+          kmsService
+        })
+      : undefined;
+
     const factory = PAM_RESOURCE_FACTORY_MAP[resource.resourceType as PamResource](
       resource.resourceType as PamResource,
       connectionDetails,
       resource.gatewayId,
       gatewayV2Service,
-      resource.projectId
+      resource.projectId,
+      resourceMetadata
     );
     const validatedCredentials = await factory.validateAccountCredentials(credentials);
 
@@ -280,12 +290,22 @@ export const pamAccountServiceFactory = ({
         kmsService
       });
 
+      // Decrypt resource metadata if available
+      const resourceMetadata = resource.encryptedResourceMetadata
+        ? await decryptResourceMetadata({
+            encryptedMetadata: resource.encryptedResourceMetadata,
+            projectId: account.projectId,
+            kmsService
+          })
+        : undefined;
+
       const factory = PAM_RESOURCE_FACTORY_MAP[resource.resourceType as PamResource](
         resource.resourceType as PamResource,
         connectionDetails,
         resource.gatewayId,
         gatewayV2Service,
-        account.projectId
+        account.projectId,
+        resourceMetadata
       );
 
       const decryptedCredentials = await decryptAccountCredentials({
