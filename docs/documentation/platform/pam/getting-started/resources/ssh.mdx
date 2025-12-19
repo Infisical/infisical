@@ -39,12 +39,12 @@ Infisical PAM supports three authentication methods for SSH:
 
 ### Certificate-Based Authentication
 
-Certificate-based authentication is the most secure option. Instead of storing static credentials, Infisical generates short-lived SSH certificates on-demand for each session.
+Certificate-based authentication allows for the use of ephemeral credentials. Infisical generates short-lived SSH certificates on-demand for each session.
 
 **Benefits:**
-- **No static credentials**: Certificates are generated per-session and expire automatically
-- **Centralized trust**: Servers trust the Infisical CA, not individual keys
-- **Simplified key management**: No need to distribute or rotate SSH keys
+- **Ephemeral access**: Certificates are generated per-session and expire automatically
+- **Centralized trust**: Servers trust the Infisical CA to authorize connections
+- **Simplified management**: Infisical handles the certificate lifecycle for each connection
 - **Audit trail**: Each certificate is tied to a specific user and session
 
 ```mermaid
@@ -70,7 +70,7 @@ sequenceDiagram
 
 Before configuring SSH access in Infisical PAM, ensure you have:
 
-1. **An Infisical Gateway** deployed in the same network as your SSH servers
+1. **An Infisical Gateway** deployed with network reachability to your SSH servers
 2. **Network connectivity** from the Gateway to your SSH servers on port 22 (or custom SSH port)
 3. **SSH server credentials** (password, private key, or CA setup for certificate auth)
 
@@ -268,7 +268,5 @@ Once your resource and accounts are configured, users can access SSH servers thr
     ```bash
     infisical pam ssh access-account /production-server/ubuntu-admin --project-id 00000000-0000-0000-0000-000000000000 --duration 1h
     ```
-
-    This will establish a secure SSH session through the Gateway. For certificate authentication, Infisical automatically generates the credentials before connecting.
   </Step>
 </Steps>
