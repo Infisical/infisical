@@ -185,14 +185,14 @@ export const authSignupServiceFactory = ({
         },
         { tx }
       );
-      const duplicateUserIds = duplicateUsers
+      const nonAcceptedDuplicateUserIds = duplicateUsers
         .filter((duplicateUser) => duplicateUser.id !== user.id)
         .map((duplicateUser) => duplicateUser.id);
-      if (duplicateUserIds.length > 0) {
+      if (nonAcceptedDuplicateUserIds.length > 0) {
         await userDAL.delete(
           {
             $in: {
-              id: duplicateUserIds
+              id: nonAcceptedDuplicateUserIds
             }
           },
           tx
@@ -370,14 +370,14 @@ export const authSignupServiceFactory = ({
         },
         { tx }
       );
-      const duplicateUserIds = duplicateUsers
+      const nonAcceptedDuplicateUserIds = duplicateUsers
         .filter((duplicateUser) => duplicateUser.id !== user.id)
         .map((duplicateUser) => duplicateUser.id);
-      if (duplicateUserIds.length > 0) {
+      if (nonAcceptedDuplicateUserIds.length > 0) {
         await userDAL.delete(
           {
             $in: {
-              id: duplicateUserIds
+              id: nonAcceptedDuplicateUserIds
             }
           },
           tx
