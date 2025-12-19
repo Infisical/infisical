@@ -160,12 +160,18 @@ DB_READ_REPLICAS=[{"DB_CONNECTION_URI":""}]
 
 ### Redis
 
-Redis is used for caching and background tasks. You can use either a standalone Redis instance or a Redis Sentinel setup.
+Redis is used for caching and background tasks. You can use either a standalone Redis instance, Redis Sentinel, or Redis Cluster setup.
 
 <Tabs>
   <Tab title="Redis Standalone">
     <ParamField query="REDIS_URL" type="string" default="none" required>
-      Redis connection string.
+      Redis connection string. For SSL/TLS connections, use the `rediss://` protocol (note the double 's').
+      
+      Examples:
+      - Without SSL: `redis://localhost:6379`
+      - With SSL: `rediss://localhost:6379`
+      - With authentication: `redis://:password@localhost:6379`
+      - With SSL and authentication: `rediss://:password@localhost:6379`
     </ParamField>
   </Tab>
   <Tab title="Redis Sentinel">
@@ -239,6 +245,19 @@ Redis is used for caching and background tasks. You can use either a standalone 
 
   </Tab>
 </Tabs>
+
+### Redis with SSL/TLS
+
+To connect to Redis with SSL/TLS, use the `rediss://` protocol (note the double 's') in your connection string.
+
+If your Redis server uses a certificate signed by a private CA or a self-signed certificate, set the `NODE_EXTRA_CA_CERTS` environment variable to the path of your CA certificate file:
+
+```bash
+REDIS_URL=rediss://your-redis-host:6379
+NODE_EXTRA_CA_CERTS=/path/to/ca.crt
+```
+
+For Redis Sentinel or Cluster mode, use the `REDIS_SENTINEL_ENABLE_TLS` or `REDIS_CLUSTER_ENABLE_TLS` environment variables respectively.
 
 ## Email Service
 
