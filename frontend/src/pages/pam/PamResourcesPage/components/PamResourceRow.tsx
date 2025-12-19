@@ -1,7 +1,8 @@
-import { faEdit, faEllipsisV, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faCopy, faEdit, faEllipsisV, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   DropdownMenu,
@@ -16,6 +17,7 @@ import {
 import { HighlightText } from "@app/components/v2/HighlightText";
 import { Badge } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { useToggle } from "@app/hooks";
 import { PAM_RESOURCE_TYPE_MAP, TPamResource } from "@app/hooks/api/pam";
 
 type Props = {
@@ -26,9 +28,23 @@ type Props = {
 };
 
 export const PamResourceRow = ({ resource, onUpdate, onDelete, search }: Props) => {
-  const { name, resourceType } = resource;
+  const { id, name, resourceType } = resource;
 
   const { image, name: resourceTypeName } = PAM_RESOURCE_TYPE_MAP[resourceType];
+
+  const [isIdCopied, setIsIdCopied] = useToggle(false);
+
+  const handleCopyId = () => {
+    setIsIdCopied.on();
+    navigator.clipboard.writeText(id);
+
+    createNotification({
+      text: "Resource ID copied to clipboard",
+      type: "info"
+    });
+
+    setTimeout(() => setIsIdCopied.off(), 2000);
+  };
 
   return (
     <Tr className={twMerge("group h-10")}>
@@ -61,6 +77,15 @@ export const PamResourceRow = ({ resource, onUpdate, onDelete, search }: Props) 
               </IconButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent sideOffset={2} align="end">
+              <DropdownMenuItem
+                icon={<FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCopyId();
+                }}
+              >
+                Copy Resource ID
+              </DropdownMenuItem>
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Edit}
                 a={ProjectPermissionSub.PamResources}
