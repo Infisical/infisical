@@ -68,6 +68,12 @@ export const mfaSessionServiceFactory = ({
       });
     }
 
+    if (mfaSession.mfaMethod !== mfaMethod) {
+      throw new BadRequestError({
+        message: "MFA method does not match the session"
+      });
+    }
+
     // Verify the session belongs to the current user
     if (mfaSession.userId !== userId) {
       throw new ForbiddenRequestError({

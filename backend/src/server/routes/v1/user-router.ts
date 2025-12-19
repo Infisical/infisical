@@ -357,7 +357,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
                 attestationObject: z.string()
               })
               .passthrough(),
-            clientExtensionResults: z.record(z.unknown()).optional(),
+            clientExtensionResults: z.record(z.unknown()).default({}),
             type: z.literal("public-key")
           })
           .passthrough(),
@@ -376,7 +376,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.webAuthn.verifyRegistrationResponse({
         userId: req.permission.id,
-        registrationResponse: req.body.registrationResponse as unknown as RegistrationResponseJSON,
+        registrationResponse: req.body.registrationResponse as RegistrationResponseJSON,
         name: req.body.name
       });
     }
@@ -437,7 +437,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.webAuthn.verifyAuthenticationResponse({
         userId: req.permission.id,
-        authenticationResponse: req.body.authenticationResponse as unknown as AuthenticationResponseJSON
+        authenticationResponse: req.body.authenticationResponse as AuthenticationResponseJSON
       });
     }
   });

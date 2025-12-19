@@ -661,12 +661,8 @@ export const pamAccountServiceFactory = ({
 
       // Determine which MFA method to use
       // Priority: org-enforced > user-selected > email as fallback
-      const orgMfaMethod = org.enforceMfa
-        ? ((org.selectedMfaMethod as MfaMethod | null) ?? MfaMethod.EMAIL)
-        : undefined;
-      const userMfaMethod = actorUser.isMfaEnabled
-        ? ((actorUser.selectedMfaMethod as MfaMethod | null) ?? MfaMethod.EMAIL)
-        : undefined;
+      const orgMfaMethod = org.enforceMfa ? (org.selectedMfaMethod as MfaMethod | null) : undefined;
+      const userMfaMethod = actorUser.isMfaEnabled ? (actorUser.selectedMfaMethod as MfaMethod | null) : undefined;
       const mfaMethod = (orgMfaMethod ?? userMfaMethod ?? MfaMethod.EMAIL) as MfaMethod;
 
       // Create MFA session
@@ -706,7 +702,7 @@ export const pamAccountServiceFactory = ({
       // Verify the session is for the same account
       if (mfaSession.resourceId !== account.id) {
         throw new BadRequestError({
-          message: "MFA session is for a different resource"
+          message: "MFA session is for a different account"
         });
       }
 

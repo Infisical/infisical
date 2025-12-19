@@ -16,7 +16,6 @@ import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { TWebAuthnCredentialDALFactory } from "./webauthn-credential-dal";
-import { verifyCredentialOwnership } from "./webauthn-fns";
 import {
   TDeleteWebAuthnCredentialDTO,
   TGenerateAuthenticationOptionsDTO,
@@ -91,7 +90,6 @@ export const webAuthnServiceFactory = ({
         transports: cred.transports as AuthenticatorTransportFuture[]
       })),
       authenticatorSelection: {
-        authenticatorAttachment: "platform",
         requireResidentKey: true,
         residentKey: "required",
         userVerification: "required"
@@ -240,7 +238,7 @@ export const webAuthnServiceFactory = ({
     }
 
     // Verify the credential belongs to the user
-    if (!verifyCredentialOwnership(userId, credential.userId)) {
+    if (userId !== credential.userId) {
       throw new ForbiddenRequestError({
         message: "Credential does not belong to this user"
       });
@@ -333,7 +331,7 @@ export const webAuthnServiceFactory = ({
       });
     }
 
-    if (!verifyCredentialOwnership(userId, credential.userId)) {
+    if (userId !== credential.userId) {
       throw new ForbiddenRequestError({
         message: "Credential does not belong to this user"
       });
@@ -358,7 +356,7 @@ export const webAuthnServiceFactory = ({
       });
     }
 
-    if (!verifyCredentialOwnership(userId, credential.userId)) {
+    if (userId !== credential.userId) {
       throw new ForbiddenRequestError({
         message: "Credential does not belong to this user"
       });
