@@ -385,7 +385,7 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        endpointId: z.string().trim().min(1)
+        endpointId: z.string().uuid().trim().min(1)
       }),
       response: {
         200: z.object({
@@ -573,7 +573,7 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        endpointId: z.string().trim().min(1)
+        endpointId: z.string().uuid().trim().min(1)
       }),
       body: z.object({
         redirect_uris: z.array(z.string()),

@@ -8,13 +8,13 @@ description: "Learn what the Model Context Protocol is and how Infisical helps y
 
 The [Model Context Protocol (MCP)](https://modelcontextprotocol.io) is an open standard that enables AI assistants and agents to securely connect to external data sources and tools. It provides a unified way for AI systems to interact with services like Notion, GitHub, Slack, databases, and more.
 
-Think of MCP as a universal adapter between AI systems and the tools they need to be useful. Instead of building custom integrations for each AI platform and each tool, MCP provides a standardized protocol that any AI client can use to connect to any MCP-compatible server.
+Think of MCP as a universal adapter between AI systems and the tools they need. Instead of building custom integrations for each AI platform and each tool, MCP provides a standardized protocol that any AI client can use to connect to any MCP-compatible server.
 
 ## How Does MCP Work?
 
 MCP follows a client-server architecture:
 
-- **MCP Clients**: AI applications like Claude Desktop, ChatGPT, or custom AI agents that need to access external tools.
+- **MCP Clients**: AI applications like Claude, ChatGPT, or custom AI agents that need to access external tools.
 - **MCP Servers**: Services that expose tools and capabilities through the MCP protocol. These can be first-party servers (like Notion's official MCP server) or custom servers you build.
 
 When an AI assistant needs to perform an action—like searching Notion, creating a GitHub issue, or querying a database—it communicates with the appropriate MCP server using the standardized protocol.

@@ -6,7 +6,7 @@ description: "Learn how to create and manage MCP endpoints for AI clients."
 
 ## Concept
 
-MCP Endpoints are the entry points that AI clients (like Claude, ChatGPT, or custom agents) use to access your configured MCP servers. Instead of connecting AI clients directly to individual MCP servers, you connect them to an MCP endpoint which acts as a secure gateway.
+MCP Endpoints are the entry points that AI clients (like Claude, ChatGPT, or custom agents) use to access your configured MCP Servers. Instead of connecting AI clients directly to individual MCP servers, you connect them to an Infisical MCP Endpoint which acts as a secure gateway.
 
 This architecture provides several benefits:
 
@@ -52,8 +52,8 @@ In the following steps, we explore how to create an MCP endpoint and connect it 
         Enter the following details for your endpoint:
 
         - **Name**: A friendly name to identify this endpoint (e.g., "Engineering Team Endpoint")
-        - **Description**: (Optional) A description of the endpoint's purpose
-        - **Connected Servers**: Select the MCP servers to make available through this endpoint
+        - **Description (Optional)**: A description of the endpoint's purpose
+        - **Connected Servers**: A selection of the MCP servers to make available through this endpoint
 
         ![mcp endpoint create](/images/platform/ai/mcp/mcp-endpoints-create.png)
       </Step>
@@ -82,10 +82,10 @@ In the following steps, we explore how to create an MCP endpoint and connect it 
 Once you have your endpoint URL, you can connect AI clients to it.
 
 <Tabs>
-  <Tab title="Claude Desktop">
-    Add the endpoint to your Claude Desktop MCP configuration:
+  <Tab title="Claude">
+    Add the endpoint to your Claude MCP configuration:
 
-    1. Open Claude Desktop settings
+    1. Open Claude settings
     2. Navigate to the MCP section
     3. Add a new server with your Infisical endpoint URL
     4. Click **Connect**
