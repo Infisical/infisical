@@ -25,6 +25,7 @@ import { EnrollmentType } from "@app/services/certificate-profile/certificate-pr
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
 import { TCertificateFromProfileResponse } from "@app/services/certificate-v3/certificate-v3-types";
+import { ProjectFilterType } from "@app/services/project/project-types";
 
 import { booleanSchema } from "../sanitizedSchemas";
 
@@ -350,6 +351,123 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         }
       });
       return certificateRequest;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/certificate-requests",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
+      querystring: z.object({
+        projectSlug: z.string().min(1).trim(),
+        offset: z.coerce.number().min(0).default(0),
+        limit: z.coerce.number().min(1).max(100).default(20),
+        search: z.string().trim().optional(),
+        status: z.nativeEnum(CertificateRequestStatus).optional(),
+        fromDate: z.coerce.date().optional(),
+        toDate: z.coerce.date().optional(),
+        profileIds: z
+          .string()
+          .transform((val) => val.split(",").map((id) => id.trim()))
+          .pipe(z.array(z.string().uuid()))
+          .optional()
+          .describe("Comma-separated list of profile IDs"),
+        sortBy: z.string().trim().optional(),
+        sortOrder: z.enum(["asc", "desc"]).optional()
+      }),
+      response: {
+        200: z.object({
+          certificateRequests: z.array(
+            z.object({
+              id: z.string(),
+              status: z.nativeEnum(CertificateRequestStatus),
+              commonName: z.string().nullable(),
+              altNames: z.string().nullable(),
+              profileId: z.string().nullable(),
+              profileName: z.string().nullable(),
+              caId: z.string().nullable(),
+              certificateId: z.string().nullable(),
+              errorMessage: z.string().nullable(),
+              createdAt: z.date(),
+              updatedAt: z.date(),
+              certificate: z
+                .object({
+                  id: z.string(),
+                  serialNumber: z.string(),
+                  status: z.string()
+                })
+                .nullable()
+            })
+          ),
+          totalCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const project = await server.services.project.getAProject({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        filter: {
+          type: ProjectFilterType.SLUG,
+          slug: req.query.projectSlug,
+          orgId: req.permission.orgId
+        }
+      });
+
+      const { certificateRequests, totalCount } = await server.services.certificateRequest.listCertificateRequests({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: project.id,
+        offset: req.query.offset,
+        limit: req.query.limit,
+        search: req.query.search,
+        status: req.query.status,
+        fromDate: req.query.fromDate,
+        toDate: req.query.toDate,
+        profileIds: req.query.profileIds,
+        sortBy: req.query.sortBy,
+        sortOrder: req.query.sortOrder
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: project.id,
+        event: {
+          type: EventType.LIST_CERTIFICATE_REQUESTS,
+          metadata: {
+            offset: req.query.offset,
+            limit: req.query.limit,
+            search: req.query.search,
+            status: req.query.status,
+            count: certificateRequests.length,
+            certificateRequestIds: certificateRequests.map((certReq) => certReq.id)
+          }
+        }
+      });
+
+      return {
+        certificateRequests: certificateRequests.map((certReq) => ({
+          ...certReq,
+          profileId: certReq.profileId ?? null,
+          caId: certReq.caId ?? null,
+          certificateId: certReq.certificateId ?? null,
+          commonName: certReq.commonName ?? null,
+          altNames: certReq.altNames ?? null,
+          errorMessage: certReq.errorMessage ?? null,
+          profileName: certReq.profileName ?? null
+        })),
+        totalCount
+      };
     }
   });
 

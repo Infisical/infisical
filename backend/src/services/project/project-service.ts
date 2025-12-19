@@ -921,6 +921,11 @@ export const projectServiceFactory = ({
     friendlyName,
     commonName,
     forPkiSync = false,
+    search,
+    status,
+    profileIds,
+    fromDate,
+    toDate,
     actorId,
     actorOrgId,
     actorAuthMethod,
@@ -947,7 +952,12 @@ export const projectServiceFactory = ({
     const regularFilters = {
       projectId,
       ...(friendlyName && { friendlyName }),
-      ...(commonName && { commonName })
+      ...(commonName && { commonName }),
+      ...(search && { search }),
+      ...(status && { status: Array.isArray(status) ? status[0] : status }),
+      ...(profileIds && { profileIds }),
+      ...(fromDate && { fromDate }),
+      ...(toDate && { toDate })
     };
     const permissionFilters = getProcessedPermissionRules(
       permission,
@@ -970,7 +980,12 @@ export const projectServiceFactory = ({
     const countFilter = {
       projectId,
       ...(regularFilters.friendlyName && { friendlyName: String(regularFilters.friendlyName) }),
-      ...(regularFilters.commonName && { commonName: String(regularFilters.commonName) })
+      ...(regularFilters.commonName && { commonName: String(regularFilters.commonName) }),
+      ...(regularFilters.search && { search: String(regularFilters.search) }),
+      ...(regularFilters.status && { status: String(regularFilters.status) }),
+      ...(regularFilters.profileIds && { profileIds: regularFilters.profileIds }),
+      ...(regularFilters.fromDate && { fromDate: regularFilters.fromDate }),
+      ...(regularFilters.toDate && { toDate: regularFilters.toDate })
     };
 
     const count = forPkiSync

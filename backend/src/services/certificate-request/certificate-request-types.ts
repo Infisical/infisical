@@ -42,3 +42,15 @@ export type TAttachCertificateToRequestDTO = {
   certificateRequestId: string;
   certificateId: string;
 };
+
+export type TListCertificateRequestsDTO = TProjectPermission & {
+  offset?: number;
+  limit?: number;
+  search?: string;
+  status?: CertificateRequestStatus;
+  fromDate?: Date;
+  toDate?: Date;
+  profileIds?: string[];
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+};
