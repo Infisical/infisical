@@ -9,13 +9,21 @@ import {
   TAwsIamAccountCredentials
 } from "@app/ee/services/pam-resource/aws-iam";
 import { PAM_RESOURCE_FACTORY_MAP } from "@app/ee/services/pam-resource/pam-resource-factory";
-import { decryptResource, decryptResourceConnectionDetails } from "@app/ee/services/pam-resource/pam-resource-fns";
+import {
+  decryptResource,
+  decryptResourceConnectionDetails,
+  decryptResourceMetadata
+} from "@app/ee/services/pam-resource/pam-resource-fns";
+import { SSHAuthMethod } from "@app/ee/services/pam-resource/ssh/ssh-resource-enums";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
   ProjectPermissionPamAccountActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { createSshCert, createSshKeyPair } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
+import { SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
+import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import {
   BadRequestError,
@@ -46,7 +54,7 @@ import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { PamResource } from "../pam-resource/pam-resource-enums";
 import { TPamAccountCredentials } from "../pam-resource/pam-resource-types";
 import { TSqlAccountCredentials, TSqlResourceConnectionDetails } from "../pam-resource/shared/sql/sql-resource-types";
-import { TSSHAccountCredentials } from "../pam-resource/ssh/ssh-resource-types";
+import { TSSHAccountCredentials, TSSHResourceMetadata } from "../pam-resource/ssh/ssh-resource-types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -156,12 +164,22 @@ export const pamAccountServiceFactory = ({
       kmsService
     });
 
+    // Decrypt resource metadata if available
+    const resourceMetadata = resource.encryptedResourceMetadata
+      ? await decryptResourceMetadata({
+          encryptedMetadata: resource.encryptedResourceMetadata,
+          projectId: resource.projectId,
+          kmsService
+        })
+      : undefined;
+
     const factory = PAM_RESOURCE_FACTORY_MAP[resource.resourceType as PamResource](
       resource.resourceType as PamResource,
       connectionDetails,
       resource.gatewayId,
       gatewayV2Service,
-      resource.projectId
+      resource.projectId,
+      resourceMetadata
     );
     const validatedCredentials = await factory.validateAccountCredentials(credentials);
 
@@ -272,12 +290,22 @@ export const pamAccountServiceFactory = ({
         kmsService
       });
 
+      // Decrypt resource metadata if available
+      const resourceMetadata = resource.encryptedResourceMetadata
+        ? await decryptResourceMetadata({
+            encryptedMetadata: resource.encryptedResourceMetadata,
+            projectId: account.projectId,
+            kmsService
+          })
+        : undefined;
+
       const factory = PAM_RESOURCE_FACTORY_MAP[resource.resourceType as PamResource](
         resource.resourceType as PamResource,
         connectionDetails,
         resource.gatewayId,
         gatewayV2Service,
-        account.projectId
+        account.projectId,
+        resourceMetadata
       );
 
       const decryptedCredentials = await decryptAccountCredentials({
@@ -855,6 +883,57 @@ export const pamAccountServiceFactory = ({
         startedAt: new Date()
       });
       sessionStarted = true;
+    }
+
+    // Handle SSH certificate-based authentication
+    if (decryptedResource.resourceType === PamResource.SSH) {
+      const accountCredentials = decryptedAccount.credentials as TSSHAccountCredentials;
+
+      if (accountCredentials.authMethod === SSHAuthMethod.Certificate) {
+        if (!resource.encryptedResourceMetadata) {
+          throw new BadRequestError({
+            message: "SSH resource does not have a CA configured for certificate-based authentication"
+          });
+        }
+
+        const metadata = await decryptResourceMetadata<TSSHResourceMetadata>({
+          encryptedMetadata: resource.encryptedResourceMetadata,
+          projectId: session.projectId,
+          kmsService
+        });
+
+        const { caPrivateKey, caKeyAlgorithm } = metadata;
+
+        // Generate a new key pair for the user
+        const keyAlgorithm = (caKeyAlgorithm as SshCertKeyAlgorithm) || SshCertKeyAlgorithm.ED25519;
+        const { publicKey, privateKey } = await createSshKeyPair(keyAlgorithm);
+
+        // Calculate TTL from session expiry
+        const ttlSeconds = Math.max(Math.floor((session.expiresAt.getTime() - Date.now()) / 1000), 60);
+
+        // Sign the public key with the CA to create a certificate
+        const { signedPublicKey } = await createSshCert({
+          caPrivateKey,
+          clientPublicKey: publicKey,
+          keyId: `pam-session-${session.id}`,
+          principals: [accountCredentials.username],
+          requestedTtl: `${ttlSeconds}s`,
+          certType: SshCertType.USER
+        });
+
+        return {
+          credentials: {
+            ...decryptedResource.connectionDetails,
+            authMethod: SSHAuthMethod.Certificate,
+            username: accountCredentials.username,
+            privateKey,
+            certificate: signedPublicKey
+          },
+          projectId: project.id,
+          account,
+          sessionStarted
+        };
+      }
     }
 
     return {

@@ -1,11 +1,11 @@
-import { FormProvider, useForm } from "react-hook-form";
+import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Button, ModalClose } from "@app/components/v2";
+import { Button, FormControl, Input, ModalClose } from "@app/components/v2";
 import { PamResourceType, TSSHResource } from "@app/hooks/api/pam";
 
-import { SshResourceFields } from "./shared/SshResourceFields";
+import { SshCaSetupSection } from "../../../components/SshCaSetupSection";
 import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
 
 type Props = {
@@ -40,6 +40,7 @@ export const SSHResourceForm = ({ resource, onSubmit }: Props) => {
   });
 
   const {
+    control,
     handleSubmit,
     formState: { isSubmitting, isDirty }
   } = form;
@@ -48,7 +49,39 @@ export const SSHResourceForm = ({ resource, onSubmit }: Props) => {
     <FormProvider {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
         <GenericResourceFields />
-        <SshResourceFields />
+        <div className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3 pb-0">
+          <div className="mt-[0.675rem] flex items-start gap-2">
+            <Controller
+              name="connectionDetails.host"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  className="flex-1"
+                  errorText={error?.message}
+                  isError={Boolean(error?.message)}
+                  label="Host"
+                >
+                  <Input placeholder="example.com or 192.168.1.1" {...field} />
+                </FormControl>
+              )}
+            />
+            <Controller
+              name="connectionDetails.port"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  className="w-28"
+                  errorText={error?.message}
+                  isError={Boolean(error?.message)}
+                  label="Port"
+                >
+                  <Input type="number" {...field} />
+                </FormControl>
+              )}
+            />
+          </div>
+        </div>
+        {isUpdate && <SshCaSetupSection resourceId={resource!.id} isOptional className="mb-4" />}
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"

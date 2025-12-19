@@ -25,11 +25,11 @@ import {
   UpdateSSHAccountSchema
 } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
 
-import { registerPamResourceEndpoints } from "./pam-account-endpoints";
+import { registerPamAccountEndpoints } from "./pam-account-endpoints";
 
 export const PAM_ACCOUNT_REGISTER_ROUTER_MAP: Record<PamResource, (server: FastifyZodProvider) => Promise<void>> = {
   [PamResource.Postgres]: async (server: FastifyZodProvider) => {
-    registerPamResourceEndpoints({
+    registerPamAccountEndpoints({
       server,
       resourceType: PamResource.Postgres,
       accountResponseSchema: SanitizedPostgresAccountWithResourceSchema,
@@ -38,7 +38,7 @@ export const PAM_ACCOUNT_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fasti
     });
   },
   [PamResource.MySQL]: async (server: FastifyZodProvider) => {
-    registerPamResourceEndpoints({
+    registerPamAccountEndpoints({
       server,
       resourceType: PamResource.MySQL,
       accountResponseSchema: SanitizedMySQLAccountWithResourceSchema,
@@ -47,7 +47,7 @@ export const PAM_ACCOUNT_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fasti
     });
   },
   [PamResource.SSH]: async (server: FastifyZodProvider) => {
-    registerPamResourceEndpoints({
+    registerPamAccountEndpoints({
       server,
       resourceType: PamResource.SSH,
       accountResponseSchema: SanitizedSSHAccountWithResourceSchema,
@@ -56,7 +56,7 @@ export const PAM_ACCOUNT_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fasti
     });
   },
   [PamResource.Kubernetes]: async (server: FastifyZodProvider) => {
-    registerPamResourceEndpoints({
+    registerPamAccountEndpoints({
       server,
       resourceType: PamResource.Kubernetes,
       accountResponseSchema: SanitizedKubernetesAccountWithResourceSchema,
@@ -65,7 +65,7 @@ export const PAM_ACCOUNT_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fasti
     });
   },
   [PamResource.AwsIam]: async (server: FastifyZodProvider) => {
-    registerPamResourceEndpoints({
+    registerPamAccountEndpoints({
       server,
       resourceType: PamResource.AwsIam,
       accountResponseSchema: SanitizedAwsIamAccountWithResourceSchema,

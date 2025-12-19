@@ -796,7 +796,15 @@
                     "group": "Getting Started",
                     "pages": [
                       "documentation/platform/pam/getting-started/setup",
-                      "documentation/platform/pam/getting-started/resources",
+                      {
+                        "group": "Resources",
+                        "pages": [
+                          "documentation/platform/pam/getting-started/resources",
+                          "documentation/platform/pam/getting-started/resources/aws-iam",
+                          "documentation/platform/pam/getting-started/resources/kubernetes",
+                          "documentation/platform/pam/getting-started/resources/ssh"
+                        ]
+                      },
                       "documentation/platform/pam/getting-started/accounts"
                     ]
                   },

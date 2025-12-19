@@ -30,7 +30,8 @@ import {
   TSSHAccount,
   TSSHAccountCredentials,
   TSSHResource,
-  TSSHResourceConnectionDetails
+  TSSHResourceConnectionDetails,
+  TSSHResourceMetadata
 } from "./ssh/ssh-resource-types";
 
 // Resource types
@@ -41,6 +42,7 @@ export type TPamResourceConnectionDetails =
   | TSSHResourceConnectionDetails
   | TKubernetesResourceConnectionDetails
   | TAwsIamResourceConnectionDetails;
+export type TPamResourceMetadata = TSSHResourceMetadata;
 
 // Account types
 export type TPamAccount = TPostgresAccount | TMySQLAccount | TSSHAccount | TAwsIamAccount | TKubernetesAccount;
@@ -87,7 +89,8 @@ export type TPamResourceFactory<T extends TPamResourceConnectionDetails, C exten
   connectionDetails: T,
   gatewayId: string | null | undefined,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  projectId: string | null | undefined
+  projectId: string | null | undefined,
+  resourceMetadata?: TPamResourceMetadata
 ) => {
   validateConnection: TPamResourceFactoryValidateConnection<T>;
   validateAccountCredentials: TPamResourceFactoryValidateAccountCredentials<C>;
