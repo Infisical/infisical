@@ -200,7 +200,14 @@ Certificate authentication requires additional setup on your SSH server to trust
 
     <Warning>
       **Manual setup**: If you prefer to configure the server manually, you can download just the CA public key and configure sshd yourself:
+
+      ```bash
+      curl -H "Authorization: Bearer <YOUR_TOKEN>" \
+        "https://app.infisical.com/api/v1/pam/resources/ssh/<RESOURCE_ID>/ssh-ca-public-key" \
+        | sudo tee /etc/ssh/infisical_ca.pub
+      ```
       
+      Then configure sshd:
       1. Add to `/etc/ssh/sshd_config`:
          ```
          TrustedUserCAKeys /etc/ssh/infisical_ca.pub

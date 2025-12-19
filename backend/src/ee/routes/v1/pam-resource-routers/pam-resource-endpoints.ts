@@ -199,6 +199,32 @@ export const registerPamResourceEndpoints = <T extends TPamResource>({
   });
 };
 
+export const registerSshCaPublicKeyEndpoint = (server: FastifyZodProvider) => {
+  server.route({
+    method: "GET",
+    url: "/:resourceId/ssh-ca-public-key",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Get the SSH CA public key for the PAM resource",
+      params: z.object({
+        resourceId: z.string().uuid()
+      }),
+      response: {
+        200: z.string()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req, reply) => {
+      const { caPublicKey } = await server.services.pamResource.getOrCreateSshCa(req.params.resourceId, req.permission);
+
+      void reply.header("Content-Type", "text/plain; charset=utf-8");
+      return caPublicKey;
+    }
+  });
+};
+
 export const registerSshCaSetupEndpoint = (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
