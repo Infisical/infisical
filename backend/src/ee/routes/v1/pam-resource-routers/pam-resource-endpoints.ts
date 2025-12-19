@@ -284,7 +284,6 @@ echo ""
 echo "==> Setup complete!"
 echo ""
 echo "Your SSH server is now configured to trust certificates signed by the Infisical CA."
-echo "Users with valid certificates can now authenticate without passwords."
 echo ""
 `;
 
