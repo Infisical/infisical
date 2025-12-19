@@ -7,5 +7,10 @@ export type TAiMcpEndpointServerToolDALFactory = ReturnType<typeof aiMcpEndpoint
 export const aiMcpEndpointServerToolDALFactory = (db: TDbClient) => {
   const aiMcpEndpointServerToolOrm = ormify(db, TableName.AiMcpEndpointServerTool);
 
-  return aiMcpEndpointServerToolOrm;
+  const countByEndpointId = async (aiMcpEndpointId: string) => {
+    const result = await db.replicaNode()(TableName.AiMcpEndpointServerTool).where({ aiMcpEndpointId }).count().first();
+    return Number(result?.count ?? 0);
+  };
+
+  return { ...aiMcpEndpointServerToolOrm, countByEndpointId };
 };

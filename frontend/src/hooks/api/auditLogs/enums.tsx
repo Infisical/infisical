@@ -314,6 +314,7 @@ export enum EventType {
   MCP_ENDPOINT_OAUTH_CLIENT_REGISTER = "mcp-endpoint-oauth-client-register",
   MCP_ENDPOINT_OAUTH_AUTHORIZE = "mcp-endpoint-oauth-authorize",
   MCP_ENDPOINT_CONNECT = "mcp-endpoint-connect",
+  MCP_ENDPOINT_SAVE_USER_CREDENTIAL = "mcp-endpoint-save-user-credential",
 
   // MCP Servers
   MCP_SERVER_CREATE = "mcp-server-create",

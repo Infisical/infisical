@@ -40,7 +40,7 @@ const requireMcpAuthHook = (
     return;
   }
 
-  if (auth.authMode === AuthMode.MCP_JWT && !req.permission.orgId) {
+  if (!req.permission.orgId) {
     void reply.status(401).send({ message: "Unauthorized: organization context required" });
     return;
   }
@@ -56,7 +56,7 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        endpointId: z.string().trim().min(1)
+        endpointId: z.string().uuid().trim().min(1)
       })
     },
     url: "/:endpointId/connect",
@@ -64,11 +64,7 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
     handler: async (req, res) => {
       await res.hijack(); // allow manual control of the underlying res
 
-      if (req.auth.authMode !== AuthMode.MCP_JWT) {
-        throw new UnauthorizedError({ message: "Unauthorized" });
-      }
-
-      if (req.params.endpointId !== req.auth.token.mcp?.endpointId) {
+      if (req.auth.authMode === AuthMode.MCP_JWT && req.params.endpointId !== req.auth.token.mcp?.endpointId) {
         throw new UnauthorizedError({ message: "Unauthorized" });
       }
 
@@ -120,7 +116,7 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
 
     schema: {
       params: z.object({
-        endpointId: z.string().trim().min(1)
+        endpointId: z.string().uuid().trim().min(1)
       })
     },
     onRequest: (req, reply, done) => requireMcpAuthHook(req, reply, done, req.params.endpointId),
@@ -147,7 +143,7 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       body: z.object({
-        projectId: z.string().trim().min(1),
+        projectId: z.string().uuid().trim().min(1),
         name: z.string().trim().min(1).max(64),
         description: z.string().trim().max(256).optional(),
         serverIds: z.array(z.string().uuid()).default([])
@@ -197,7 +193,7 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       querystring: z.object({
-        projectId: z.string().trim().min(1)
+        projectId: z.string().uuid().trim().min(1)
       }),
       response: {
         200: z.object({
@@ -248,7 +244,7 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        endpointId: z.string().trim().min(1)
+        endpointId: z.string().uuid().trim().min(1)
       }),
       response: {
         200: z.object({
@@ -295,7 +291,7 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        endpointId: z.string().trim().min(1)
+        endpointId: z.string().uuid().trim().min(1)
       }),
       body: z.object({
         name: z.string().trim().min(1).max(64).optional(),
@@ -347,7 +343,7 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        endpointId: z.string().trim().min(1)
+        endpointId: z.string().uuid().trim().min(1)
       }),
       response: {
         200: z.object({
@@ -432,8 +428,8 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        endpointId: z.string().trim().min(1),
-        serverToolId: z.string().trim().min(1)
+        endpointId: z.string().uuid().trim().min(1),
+        serverToolId: z.string().uuid().trim().min(1)
       }),
       response: {
         200: z.object({
@@ -478,8 +474,8 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        endpointId: z.string().trim().min(1),
-        serverToolId: z.string().trim().min(1)
+        endpointId: z.string().uuid().trim().min(1),
+        serverToolId: z.string().uuid().trim().min(1)
       }),
       response: {
         200: z.object({
@@ -524,7 +520,7 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        endpointId: z.string().trim().min(1)
+        endpointId: z.string().uuid().trim().min(1)
       }),
       body: z.object({
         tools: z.array(
@@ -620,10 +616,7 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         }
       });
 
-      // Return without projectId/endpointName in response (not part of OAuth spec)
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/naming-convention
-      const { projectId: __projectId, endpointName: __endpointName, ...responsePayload } = payload;
-      return responsePayload;
+      return payload;
     }
   });
 
@@ -636,7 +629,7 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        endpointId: z.string().trim().min(1)
+        endpointId: z.string().uuid().trim().min(1)
       }),
       querystring: z.object({
         response_type: z.string(),
@@ -670,7 +663,7 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        endpointId: z.string().trim().min(1)
+        endpointId: z.string().uuid().trim().min(1)
       }),
       body: z.object({
         response_type: z.string(),
@@ -738,7 +731,7 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        endpointId: z.string().trim().min(1)
+        endpointId: z.string().uuid().trim().min(1)
       }),
       body: z.object({
         grant_type: z.literal("authorization_code"),
@@ -774,7 +767,7 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        endpointId: z.string().trim().min(1)
+        endpointId: z.string().uuid().trim().min(1)
       }),
       response: {
         200: z.object({
@@ -812,8 +805,8 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        endpointId: z.string().trim().min(1),
-        serverId: z.string().trim().min(1)
+        endpointId: z.string().uuid().trim().min(1),
+        serverId: z.string().uuid().trim().min(1)
       }),
       response: {
         200: z.object({
@@ -846,8 +839,8 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        endpointId: z.string().trim().min(1),
-        serverId: z.string().trim().min(1)
+        endpointId: z.string().uuid().trim().min(1),
+        serverId: z.string().uuid().trim().min(1)
       }),
       body: z.object({
         accessToken: z.string().min(1),
@@ -863,17 +856,32 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const result = await server.services.aiMcpEndpoint.saveUserServerCredential({
-        endpointId: req.params.endpointId,
-        serverId: req.params.serverId,
-        ...req.body,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+      const { success, projectId, endpointName, serverName } =
+        await server.services.aiMcpEndpoint.saveUserServerCredential({
+          endpointId: req.params.endpointId,
+          serverId: req.params.serverId,
+          ...req.body,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.MCP_ENDPOINT_SAVE_USER_CREDENTIAL,
+          metadata: {
+            endpointId: req.params.endpointId,
+            endpointName,
+            serverId: req.params.serverId,
+            serverName
+          }
+        }
       });
 
-      return result;
+      return { success };
     }
   });
 };

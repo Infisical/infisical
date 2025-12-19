@@ -72,10 +72,9 @@ const refreshOAuthToken = async (
   clientId: string,
   clientSecret?: string
 ): Promise<{ accessToken: string; refreshToken?: string; expiresAt?: number }> => {
-  const issuer = new URL(serverUrl).origin;
-  const { data: serverMetadata } = await request.get<TOAuthAuthorizationServerMetadata>(
-    `${issuer}/.well-known/oauth-authorization-server`
-  );
+  const serverUrlObj = new URL(serverUrl);
+  const metadataUrl = `${serverUrlObj.origin}/.well-known/oauth-authorization-server${serverUrlObj.pathname !== "/" ? serverUrlObj.pathname : ""}`;
+  const { data: serverMetadata } = await request.get<TOAuthAuthorizationServerMetadata>(metadataUrl);
 
   const tokenParams: Record<string, string> = {
     grant_type: "refresh_token",

@@ -321,6 +321,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.MCP_ENDPOINT_OAUTH_CLIENT_REGISTER]: "Register MCP OAuth Client",
   [EventType.MCP_ENDPOINT_OAUTH_AUTHORIZE]: "Authorize MCP OAuth Client",
   [EventType.MCP_ENDPOINT_CONNECT]: "Connect to MCP Endpoint",
+  [EventType.MCP_ENDPOINT_SAVE_USER_CREDENTIAL]: "Save MCP Server User Credential",
 
   // MCP Servers
   [EventType.MCP_SERVER_CREATE]: "Create MCP Server",
@@ -405,6 +406,7 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.MCP_ENDPOINT_OAUTH_CLIENT_REGISTER,
     EventType.MCP_ENDPOINT_OAUTH_AUTHORIZE,
     EventType.MCP_ENDPOINT_CONNECT,
+    EventType.MCP_ENDPOINT_SAVE_USER_CREDENTIAL,
     // MCP Servers
     EventType.MCP_SERVER_CREATE,
     EventType.MCP_SERVER_UPDATE,

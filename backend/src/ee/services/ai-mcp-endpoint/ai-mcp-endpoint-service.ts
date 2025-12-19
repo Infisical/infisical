@@ -117,7 +117,6 @@ const computePkceChallenge = (codeVerifier: string) => {
 
 export type TAiMcpEndpointServiceFactory = ReturnType<typeof aiMcpEndpointServiceFactory>;
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
 export const aiMcpEndpointServiceFactory = ({
   aiMcpEndpointDAL,
   aiMcpEndpointServerDAL,
@@ -335,19 +334,15 @@ export const aiMcpEndpointServiceFactory = ({
 
         // Log failed activity with full error details for user visibility in activity logs
         const errorMessage = error instanceof Error ? error.message : String(error);
-        await aiMcpActivityLogService
-          .createActivityLog({
-            endpointName: endpoint.name,
-            serverName: selectedMcpClient.server.name,
-            toolName: name,
-            actor: user.email || "",
-            request: args,
-            response: { error: errorMessage },
-            projectId: endpoint.projectId
-          })
-          .catch((logError) => {
-            logger.error({ error: logError }, "Failed to log tool call error activity");
-          });
+        await aiMcpActivityLogService.createActivityLog({
+          endpointName: endpoint.name,
+          serverName: selectedMcpClient.server.name,
+          toolName: name,
+          actor: user.email || "",
+          request: args,
+          response: { error: errorMessage },
+          projectId: endpoint.projectId
+        });
 
         // Return generic error to client to avoid information leakage
         return {
@@ -463,13 +458,15 @@ export const aiMcpEndpointServiceFactory = ({
     // Get connected servers count and tools count for each endpoint
     const endpointsWithStats = await Promise.all(
       endpoints.map(async (endpoint) => {
-        const connectedServers = await aiMcpEndpointServerDAL.find({ aiMcpEndpointId: endpoint.id });
-        const tools = await aiMcpEndpointServerToolDAL.find({ aiMcpEndpointId: endpoint.id });
+        const [connectedServersCount, activeToolsCount] = await Promise.all([
+          aiMcpEndpointServerDAL.countByEndpointId(endpoint.id),
+          aiMcpEndpointServerToolDAL.countByEndpointId(endpoint.id)
+        ]);
 
         return {
           ...endpoint,
-          connectedServers: connectedServers.length,
-          activeTools: tools.length
+          connectedServers: connectedServersCount,
+          activeTools: activeToolsCount
         };
       })
     );
@@ -503,13 +500,15 @@ export const aiMcpEndpointServiceFactory = ({
       ProjectPermissionSub.McpEndpoints
     );
 
-    const connectedServers = await aiMcpEndpointServerDAL.find({ aiMcpEndpointId: endpointId });
-    const tools = await aiMcpEndpointServerToolDAL.find({ aiMcpEndpointId: endpointId });
+    const [connectedServers, activeToolsCount] = await Promise.all([
+      aiMcpEndpointServerDAL.find({ aiMcpEndpointId: endpointId }),
+      aiMcpEndpointServerToolDAL.countByEndpointId(endpointId)
+    ]);
 
     return {
       ...endpoint,
       connectedServers: connectedServers.length,
-      activeTools: tools.length,
+      activeTools: activeToolsCount,
       serverIds: connectedServers.map((s) => s.aiMcpServerId)
     };
   };
@@ -1194,7 +1193,12 @@ export const aiMcpEndpointServiceFactory = ({
       encryptedCredentials
     });
 
-    return { success: true };
+    return {
+      success: true,
+      projectId: endpoint.projectId,
+      endpointName: endpoint.name,
+      serverName: server.name
+    };
   };
 
   return {

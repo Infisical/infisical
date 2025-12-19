@@ -10,7 +10,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 
 // Common fields for MCP server creation
 const CreateMcpServerBaseSchema = z.object({
-  projectId: z.string().trim().min(1),
+  projectId: z.string().uuid().trim().min(1),
   name: z.string().trim().min(1).max(64),
   url: z.string().trim().url(),
   description: z.string().trim().max(256).optional(),
@@ -53,7 +53,7 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        projectId: z.string().trim().min(1),
+        projectId: z.string().uuid().trim().min(1),
         url: z.string().trim().url(),
         clientId: z.string().trim().min(1).optional(),
         clientSecret: z.string().trim().min(1).optional()
@@ -137,7 +137,7 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       params: z.object({
-        sessionId: z.string()
+        sessionId: z.string().uuid().trim().min(1)
       }),
       response: {
         200: z.object({
@@ -217,9 +217,7 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       querystring: z.object({
-        projectId: z.string().trim().min(1),
-        limit: z.coerce.number().min(1).max(100).default(100),
-        offset: z.coerce.number().min(0).default(0)
+        projectId: z.string().uuid().trim().min(1)
       }),
       response: {
         200: z.object({
@@ -264,7 +262,7 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       params: z.object({
-        serverId: z.string().trim().min(1)
+        serverId: z.string().uuid().trim().min(1)
       }),
       response: {
         200: z.object({
@@ -306,7 +304,7 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       params: z.object({
-        serverId: z.string().trim().min(1)
+        serverId: z.string().uuid().trim().min(1)
       }),
       body: z.object({
         name: z.string().trim().min(1).max(64).optional(),
@@ -353,7 +351,7 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       params: z.object({
-        serverId: z.string().trim().min(1)
+        serverId: z.string().uuid().trim().min(1)
       }),
       response: {
         200: z.object({
@@ -396,7 +394,7 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       params: z.object({
-        serverId: z.string().trim().min(1)
+        serverId: z.string().uuid().trim().min(1)
       }),
       response: {
         200: z.object({
@@ -439,7 +437,7 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       params: z.object({
-        serverId: z.string().trim().min(1)
+        serverId: z.string().uuid().trim().min(1)
       }),
       response: {
         200: z.object({
