@@ -66,12 +66,14 @@ export const BaseCreatePamAccountSchema = z.object({
   name: slugSchema({ field: "name" }),
   description: z.string().max(512).nullable().optional(),
   rotationEnabled: z.boolean(),
-  rotationIntervalSeconds: z.number().min(3600).nullable().optional()
+  rotationIntervalSeconds: z.number().min(3600).nullable().optional(),
+  requireMfa: z.boolean().optional().default(false)
 });
 
 export const BaseUpdatePamAccountSchema = z.object({
   name: slugSchema({ field: "name" }).optional(),
   description: z.string().max(512).nullable().optional(),
   rotationEnabled: z.boolean().optional(),
-  rotationIntervalSeconds: z.number().min(3600).nullable().optional()
+  rotationIntervalSeconds: z.number().min(3600).nullable().optional(),
+  requireMfa: z.boolean().optional()
 });

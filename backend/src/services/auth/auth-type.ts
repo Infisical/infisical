@@ -96,5 +96,6 @@ export type AuthModeProviderSignUpTokenPayload = {
 
 export enum MfaMethod {
   EMAIL = "email",
-  TOTP = "totp"
+  TOTP = "totp",
+  WEBAUTHN = "webauthn"
 }

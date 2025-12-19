@@ -149,5 +149,6 @@ export enum UserAgentType {
 
 export enum MfaMethod {
   EMAIL = "email",
-  TOTP = "totp"
+  TOTP = "totp",
+  WEBAUTHN = "webauthn"
 }

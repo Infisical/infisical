@@ -160,6 +160,7 @@ export enum TableName {
   InternalKms = "internal_kms",
   InternalKmsKeyVersion = "internal_kms_key_version",
   TotpConfig = "totp_configs",
+  WebAuthnCredential = "webauthn_credentials",
   // @depreciated
   KmsKeyVersion = "kms_key_versions",
   WorkflowIntegrations = "workflow_integrations",

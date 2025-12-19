@@ -186,4 +186,37 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
       return handleMfaVerification(req, res, server, req.body.recoveryCode, MfaMethod.TOTP, true);
     }
   });
+
+  // WebAuthn MFA routes
+  server.route({
+    method: "GET",
+    url: "/mfa/check/webauthn",
+    config: {
+      rateLimit: mfaRateLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          hasPasskeys: z.boolean()
+        })
+      }
+    },
+    handler: async (req) => {
+      try {
+        const credentials = await server.services.webAuthn.getUserWebAuthnCredentials({
+          userId: req.mfa.userId
+        });
+
+        return {
+          hasPasskeys: credentials.length > 0
+        };
+      } catch (error) {
+        if (error instanceof NotFoundError) {
+          return { hasPasskeys: false };
+        }
+
+        throw error;
+      }
+    }
+  });
 };

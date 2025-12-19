@@ -115,6 +115,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         accountPath: z.string().trim(),
         projectId: z.string().uuid(),
+        mfaSessionId: z.string().optional(),
         duration: z
           .string()
           .min(1)
