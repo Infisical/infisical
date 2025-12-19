@@ -1,0 +1,1 @@
+export { MCPEndpointDetailPage } from "./MCPEndpointDetailPage";

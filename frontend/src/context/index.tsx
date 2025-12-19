@@ -27,6 +27,7 @@ export {
   ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSshHostActions,
+  ProjectPermissionMcpEndpointActions,
   ProjectPermissionSub,
   useProjectPermission
 } from "./ProjectPermissionContext";

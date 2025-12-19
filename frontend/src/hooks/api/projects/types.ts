@@ -14,7 +14,8 @@ export enum ProjectType {
   KMS = "kms",
   SSH = "ssh",
   SecretScanning = "secret-scanning",
-  PAM = "pam"
+  PAM = "pam",
+  AI = "ai"
 }
 
 export enum ProjectUserMembershipTemporaryMode {

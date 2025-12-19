@@ -228,6 +228,14 @@ export enum ProjectPermissionPamSessionActions {
   // Terminate = "terminate"
 }
 
+export enum ProjectPermissionMcpEndpointActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  Connect = "connect"
+}
+
 export enum ProjectPermissionApprovalRequestActions {
   Read = "read",
   Create = "create"
@@ -350,6 +358,9 @@ export enum ProjectPermissionSub {
   PamResources = "pam-resources",
   PamAccounts = "pam-accounts",
   PamSessions = "pam-sessions",
+  McpEndpoints = "mcp-endpoints",
+  McpServers = "mcp-servers",
+  McpActivityLogs = "mcp-activity-logs",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants"
 }
@@ -591,6 +602,9 @@ export type ProjectPermissionSet =
     ]
   | [ProjectPermissionPamSessionActions, ProjectPermissionSub.PamSessions]
   | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
-  | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants];
+  | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
+  | [ProjectPermissionMcpEndpointActions, ProjectPermissionSub.McpEndpoints]
+  | [ProjectPermissionActions, ProjectPermissionSub.McpServers]
+  | [ProjectPermissionActions, ProjectPermissionSub.McpActivityLogs];
 
 export type TProjectPermission = MongoAbility<ProjectPermissionSet>;
