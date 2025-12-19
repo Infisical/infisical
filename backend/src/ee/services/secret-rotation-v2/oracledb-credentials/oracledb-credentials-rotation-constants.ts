@@ -12,6 +12,7 @@ CREATE USER INFISICAL_USER IDENTIFIED BY "temporary_password";
 
 -- grant all privileges
 GRANT ALL PRIVILEGES TO INFISICAL_USER;`,
+    rotationStatement: `ALTER USER "{{username}}" IDENTIFIED BY "{{password}}"`,
     secretsMapping: {
       username: "ORACLEDB_USERNAME",
       password: "ORACLEDB_PASSWORD"

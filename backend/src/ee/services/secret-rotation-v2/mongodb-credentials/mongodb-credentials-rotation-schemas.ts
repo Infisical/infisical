@@ -16,8 +16,13 @@ import { SecretNameSchema } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 export const MongoDBCredentialsRotationGeneratedCredentialsSchema = SqlCredentialsRotationGeneratedCredentialsSchema;
-export const MongoDBCredentialsRotationParametersSchema = SqlCredentialsRotationParametersSchema;
-export const MongoDBCredentialsRotationTemplateSchema = SqlCredentialsRotationTemplateSchema;
+export const MongoDBCredentialsRotationParametersSchema = SqlCredentialsRotationParametersSchema.omit({
+  rotationStatement: true,
+  passwordRequirements: true
+});
+export const MongoDBCredentialsRotationTemplateSchema = SqlCredentialsRotationTemplateSchema.omit({
+  rotationStatement: true
+});
 
 const MongoDBCredentialsRotationSecretsMappingSchema = z.object({
   username: SecretNameSchema.describe(SecretRotations.SECRETS_MAPPING.MONGODB_CREDENTIALS.username),
