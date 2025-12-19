@@ -73,8 +73,21 @@ const refreshOAuthToken = async (
   clientSecret?: string
 ): Promise<{ accessToken: string; refreshToken?: string; expiresAt?: number }> => {
   const serverUrlObj = new URL(serverUrl);
-  const metadataUrl = `${serverUrlObj.origin}/.well-known/oauth-authorization-server${serverUrlObj.pathname !== "/" ? serverUrlObj.pathname : ""}`;
-  const { data: serverMetadata } = await request.get<TOAuthAuthorizationServerMetadata>(metadataUrl);
+
+  // Try both URL formats - some servers use origin-only, others use origin + pathname
+  let serverMetadata: TOAuthAuthorizationServerMetadata;
+
+  try {
+    // First try: origin-only format
+    const originOnlyUrl = `${serverUrlObj.origin}/.well-known/oauth-authorization-server`;
+    const { data } = await request.get<TOAuthAuthorizationServerMetadata>(originOnlyUrl);
+    serverMetadata = data;
+  } catch {
+    // Second try: origin + pathname format
+    const pathnameUrl = `${serverUrlObj.origin}/.well-known/oauth-authorization-server${serverUrlObj.pathname !== "/" ? serverUrlObj.pathname : ""}`;
+    const { data } = await request.get<TOAuthAuthorizationServerMetadata>(pathnameUrl);
+    serverMetadata = data;
+  }
 
   const tokenParams: Record<string, string> = {
     grant_type: "refresh_token",
@@ -271,12 +284,22 @@ export const aiMcpServerServiceFactory = ({
 
     // 3. Get the authorization server URL and fetch its metadata
     const authServerUrl = protectedResource.authorization_servers[0];
-
-    // Authorization server metadata is at /.well-known/oauth-authorization-server relative to the issuer
     const authServerUrlObj = new URL(authServerUrl);
-    const authServerMetadataUrl = `${authServerUrlObj.origin}/.well-known/oauth-authorization-server${authServerUrlObj.pathname !== "/" ? authServerUrlObj.pathname : ""}`;
 
-    const { data: authServer } = await request.get<TOAuthAuthorizationServerMetadata>(authServerMetadataUrl);
+    // Try both URL formats - some servers use origin-only, others use origin + pathname
+    let authServer: TOAuthAuthorizationServerMetadata;
+
+    try {
+      // First try: origin-only format
+      const originOnlyUrl = `${authServerUrlObj.origin}/.well-known/oauth-authorization-server`;
+      const { data } = await request.get<TOAuthAuthorizationServerMetadata>(originOnlyUrl);
+      authServer = data;
+    } catch {
+      // Second try: origin + pathname format
+      const pathnameUrl = `${authServerUrlObj.origin}/.well-known/oauth-authorization-server${authServerUrlObj.pathname !== "/" ? authServerUrlObj.pathname : ""}`;
+      const { data } = await request.get<TOAuthAuthorizationServerMetadata>(pathnameUrl);
+      authServer = data;
+    }
 
     return { protectedResource, authServer };
   };
