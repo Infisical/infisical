@@ -86,7 +86,7 @@ const PROJECT_TYPE_MENU_ITEMS = [
     value: ProjectType.PAM
   },
   {
-    label: "AI",
+    label: "Agentic Manager",
     value: ProjectType.AI
   }
 ];

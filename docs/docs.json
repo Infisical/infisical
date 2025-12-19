@@ -812,6 +812,31 @@
                 ]
               }
             ]
+          },
+          {
+            "item": "Agentic Manager",
+            "groups": [
+              {
+                "group": "Agentic Manager",
+                "pages": [
+                  "documentation/platform/agentic-manager/overview",
+                  {
+                    "group": "Concepts",
+                    "pages": [
+                      "documentation/platform/agentic-manager/concepts/mcp-overview"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Product Reference",
+                "pages": [
+                  "documentation/platform/agentic-manager/mcp-servers",
+                  "documentation/platform/agentic-manager/mcp-endpoints",
+                  "documentation/platform/agentic-manager/activity-logs"
+                ]
+              }
+            ]
           }
         ]
       },
