@@ -9,7 +9,11 @@ import {
   TAwsIamAccountCredentials
 } from "@app/ee/services/pam-resource/aws-iam";
 import { PAM_RESOURCE_FACTORY_MAP } from "@app/ee/services/pam-resource/pam-resource-factory";
-import { decryptResource, decryptResourceConnectionDetails } from "@app/ee/services/pam-resource/pam-resource-fns";
+import {
+  decryptResource,
+  decryptResourceConnectionDetails,
+  decryptResourceMetadata
+} from "@app/ee/services/pam-resource/pam-resource-fns";
 import { SSHAuthMethod } from "@app/ee/services/pam-resource/ssh/ssh-resource-enums";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -50,7 +54,7 @@ import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { PamResource } from "../pam-resource/pam-resource-enums";
 import { TPamAccountCredentials } from "../pam-resource/pam-resource-types";
 import { TSqlAccountCredentials, TSqlResourceConnectionDetails } from "../pam-resource/shared/sql/sql-resource-types";
-import { TSSHAccountCredentials } from "../pam-resource/ssh/ssh-resource-types";
+import { TSSHAccountCredentials, TSSHResourceMetadata } from "../pam-resource/ssh/ssh-resource-types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -866,23 +870,22 @@ export const pamAccountServiceFactory = ({
       const accountCredentials = decryptedAccount.credentials as TSSHAccountCredentials;
 
       if (accountCredentials.authMethod === SSHAuthMethod.Certificate) {
-        if (!resource.encryptedCaPrivateKey) {
+        if (!resource.encryptedResourceMetadata) {
           throw new BadRequestError({
             message: "SSH resource does not have a CA configured for certificate-based authentication"
           });
         }
 
-        const { decryptor } = await kmsService.createCipherPairWithDataKey({
-          type: KmsDataKey.SecretManager,
-          projectId: session.projectId
+        const metadata = await decryptResourceMetadata<TSSHResourceMetadata>({
+          encryptedMetadata: resource.encryptedResourceMetadata,
+          projectId: session.projectId,
+          kmsService
         });
 
-        const caPrivateKey = decryptor({
-          cipherTextBlob: resource.encryptedCaPrivateKey
-        }).toString("utf8");
+        const { caPrivateKey, caKeyAlgorithm } = metadata;
 
         // Generate a new key pair for the user
-        const keyAlgorithm = (resource.caKeyAlgorithm as SshCertKeyAlgorithm) || SshCertKeyAlgorithm.ED25519;
+        const keyAlgorithm = (caKeyAlgorithm as SshCertKeyAlgorithm) || SshCertKeyAlgorithm.ED25519;
         const { publicKey, privateKey } = await createSshKeyPair(keyAlgorithm);
 
         // Calculate TTL from session expiry

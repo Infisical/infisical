@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { TPamResource } from "@app/ee/services/pam-resource/pam-resource-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";

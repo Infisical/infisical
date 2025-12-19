@@ -93,6 +93,13 @@ export const UpdateSSHResourceSchema = BaseUpdateGatewayPamResourceSchema.extend
   rotationAccountCredentials: SSHAccountCredentialsSchema.nullable().optional()
 });
 
+// Resource Metadata
+export const SSHResourceMetadataSchema = z.object({
+  caPrivateKey: z.string(),
+  caPublicKey: z.string(),
+  caKeyAlgorithm: z.string()
+});
+
 // Accounts
 export const SSHAccountSchema = BasePamAccountSchema.extend({
   credentials: SSHAccountCredentialsSchema

@@ -9,7 +9,6 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "../license/license-service";
@@ -20,10 +19,13 @@ import { PAM_RESOURCE_FACTORY_MAP } from "./pam-resource-factory";
 import {
   decryptResource,
   decryptResourceConnectionDetails,
+  decryptResourceMetadata,
   encryptResourceConnectionDetails,
+  encryptResourceMetadata,
   listResourceOptions
 } from "./pam-resource-fns";
 import { TCreateResourceDTO, TListResourcesDTO, TUpdateResourceDTO } from "./pam-resource-types";
+import { TSSHResourceMetadata } from "./ssh/ssh-resource-types";
 
 type TPamResourceServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;
@@ -312,29 +314,37 @@ export const pamResourceServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.PamResources);
 
-    if (resource.caPublicKey) {
-      return { caPublicKey: resource.caPublicKey };
+    // Check if metadata already exists with CA
+    if (resource.encryptedResourceMetadata) {
+      const metadata = await decryptResourceMetadata<TSSHResourceMetadata>({
+        encryptedMetadata: resource.encryptedResourceMetadata,
+        projectId: resource.projectId,
+        kmsService
+      });
+      return { caPublicKey: metadata.caPublicKey };
     }
 
     // Generate new CA key pair
     const keyAlgorithm = SshCertKeyAlgorithm.ED25519;
     const { publicKey, privateKey } = await createSshKeyPair(keyAlgorithm);
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId: resource.projectId
-    });
+    const metadata: TSSHResourceMetadata = {
+      caPrivateKey: privateKey,
+      caPublicKey: publicKey.trim(),
+      caKeyAlgorithm: keyAlgorithm
+    };
 
-    const encryptedCaPrivateKey = encryptor({ plainText: Buffer.from(privateKey, "utf8") }).cipherTextBlob;
-    const caPublicKey = publicKey.trim();
+    const encryptedResourceMetadata = await encryptResourceMetadata({
+      metadata,
+      projectId: resource.projectId,
+      kmsService
+    });
 
     await pamResourceDAL.updateById(resourceId, {
-      encryptedCaPrivateKey,
-      caPublicKey,
-      caKeyAlgorithm: keyAlgorithm
+      encryptedResourceMetadata
     });
 
-    return { caPublicKey };
+    return { caPublicKey: metadata.caPublicKey };
   };
 
   return {

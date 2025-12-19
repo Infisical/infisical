@@ -30,7 +30,8 @@ import {
   TSSHAccount,
   TSSHAccountCredentials,
   TSSHResource,
-  TSSHResourceConnectionDetails
+  TSSHResourceConnectionDetails,
+  TSSHResourceMetadata
 } from "./ssh/ssh-resource-types";
 
 // Resource types
@@ -41,6 +42,7 @@ export type TPamResourceConnectionDetails =
   | TSSHResourceConnectionDetails
   | TKubernetesResourceConnectionDetails
   | TAwsIamResourceConnectionDetails;
+export type TPamResourceMetadata = TSSHResourceMetadata;
 
 // Account types
 export type TPamAccount = TPostgresAccount | TMySQLAccount | TSSHAccount | TAwsIamAccount | TKubernetesAccount;
