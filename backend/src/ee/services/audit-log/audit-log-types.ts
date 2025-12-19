@@ -4297,6 +4297,8 @@ interface ListCertificateRequestsEvent {
     limit: number;
     search?: string;
     status?: string;
+    count: number;
+    certificateRequestIds: string[];
   };
 }
 

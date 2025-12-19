@@ -220,9 +220,17 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
     setPendingProfileIds([]);
   };
 
-  const isTableFiltered = Boolean(
-    appliedSearch || appliedFilters.status || appliedProfileIds.length
-  );
+  const isTableFiltered = Boolean(appliedFilters.status || appliedProfileIds.length);
+
+  const hasFilterChanges = useMemo(() => {
+    const pendingStatus = pendingFilters.status ?? undefined;
+    const appliedStatus = appliedFilters.status ?? undefined;
+    const statusChanged = pendingStatus !== appliedStatus;
+    const profileIdsChanged =
+      JSON.stringify([...pendingProfileIds].sort()) !==
+      JSON.stringify([...appliedProfileIds].sort());
+    return statusChanged || profileIdsChanged;
+  }, [pendingFilters.status, appliedFilters.status, pendingProfileIds, appliedProfileIds]);
 
   return (
     <div>
@@ -261,7 +269,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                     <button
                       type="button"
                       onClick={handleClearFilters}
-                      className="text-primary hover:text-primary-600"
+                      className="cursor-pointer text-primary hover:text-primary-600"
                     >
                       Clear filters
                     </button>
@@ -278,7 +286,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                     <button
                       type="button"
                       onClick={handleClearProfiles}
-                      className="text-xs text-primary hover:text-primary-600"
+                      className="cursor-pointer text-xs text-primary hover:text-primary-600"
                     >
                       Clear
                     </button>
@@ -316,7 +324,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                     <button
                       type="button"
                       onClick={handleClearStatus}
-                      className="text-xs text-primary hover:text-primary-600"
+                      className="cursor-pointer text-xs text-primary hover:text-primary-600"
                     >
                       Clear
                     </button>
@@ -332,6 +340,8 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                   }}
                   placeholder="All statuses"
                   className="w-full border-mineshaft-600 bg-mineshaft-700 text-bunker-200"
+                  position="popper"
+                  dropdownContainerClassName="max-w-none"
                 >
                   <SelectItem value="all">All statuses</SelectItem>
                   <SelectItem value={CertificateStatus.Active}>Active</SelectItem>
@@ -349,10 +359,7 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                   }}
                   className="w-full bg-primary font-medium text-black hover:bg-primary-600"
                   size="sm"
-                  disabled={
-                    pendingFilters.status === appliedFilters.status &&
-                    JSON.stringify(pendingProfileIds) === JSON.stringify(appliedProfileIds)
-                  }
+                  isDisabled={!hasFilterChanges}
                 >
                   Apply Filters
                 </Button>
@@ -503,11 +510,13 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild className="rounded-lg">
-                          <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                            <Tooltip content="More options">
-                              <FontAwesomeIcon size="lg" icon={faEllipsis} />
-                            </Tooltip>
-                          </div>
+                          <IconButton
+                            variant="plain"
+                            ariaLabel="More options"
+                            className="h-max bg-transparent p-0"
+                          >
+                            <FontAwesomeIcon size="lg" icon={faEllipsis} />
+                          </IconButton>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="p-1">
                           <ProjectPermissionCan

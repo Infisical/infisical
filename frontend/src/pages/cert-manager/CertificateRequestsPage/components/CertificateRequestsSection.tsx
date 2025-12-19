@@ -63,6 +63,7 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
   const [appliedFilters, setAppliedFilters] = useState<CertificateRequestFilters>({});
 
   const [currentPage, setCurrentPage] = useState(1);
+  const [perPage, setPerPage] = useState(PAGE_SIZE);
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["issueCertificate"] as const);
 
@@ -84,15 +85,15 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
   const queryParams: TListCertificateRequestsParams = useMemo(
     () => ({
       projectSlug: currentProject?.slug || "",
-      offset: (currentPage - 1) * PAGE_SIZE,
-      limit: PAGE_SIZE,
+      offset: (currentPage - 1) * perPage,
+      limit: perPage,
       sortBy: "createdAt",
       sortOrder: "desc",
       ...(debouncedSearch && { search: debouncedSearch }),
       ...(appliedFilters.status && { status: appliedFilters.status }),
       ...(profileIds && { profileIds })
     }),
-    [currentProject?.slug, currentPage, debouncedSearch, appliedFilters.status, profileIds]
+    [currentProject?.slug, currentPage, perPage, debouncedSearch, appliedFilters.status, profileIds]
   );
 
   const {
@@ -130,14 +131,18 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
   };
 
   const isTableFiltered = useMemo(
-    () => Boolean(debouncedSearch || appliedFilters.status || appliedProfileIds.length),
-    [debouncedSearch, appliedFilters.status, appliedProfileIds.length]
+    () => Boolean(appliedFilters.status || appliedProfileIds.length),
+    [appliedFilters.status, appliedProfileIds.length]
   );
 
   const hasPendingChanges = useMemo(() => {
-    if (pendingFilters.status !== appliedFilters.status) return true;
-    if (pendingProfileIds.length !== appliedProfileIds.length) return true;
-    return pendingProfileIds.some((id, index) => id !== appliedProfileIds[index]);
+    const pendingStatus = pendingFilters.status ?? undefined;
+    const appliedStatus = appliedFilters.status ?? undefined;
+    const statusChanged = pendingStatus !== appliedStatus;
+    const profileIdsChanged =
+      JSON.stringify([...pendingProfileIds].sort()) !==
+      JSON.stringify([...appliedProfileIds].sort());
+    return statusChanged || profileIdsChanged;
   }, [pendingFilters.status, appliedFilters.status, pendingProfileIds, appliedProfileIds]);
 
   return (
@@ -203,7 +208,7 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
                     <button
                       type="button"
                       onClick={handleClearFilters}
-                      className="text-primary hover:text-primary-600"
+                      className="cursor-pointer text-primary hover:text-primary-600"
                     >
                       Clear filters
                     </button>
@@ -220,7 +225,7 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
                     <button
                       type="button"
                       onClick={handleClearProfiles}
-                      className="text-xs text-primary hover:text-primary-600"
+                      className="cursor-pointer text-xs text-primary hover:text-primary-600"
                     >
                       Clear
                     </button>
@@ -258,7 +263,7 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
                     <button
                       type="button"
                       onClick={handleClearStatus}
-                      className="text-xs text-primary hover:text-primary-600"
+                      className="cursor-pointer text-xs text-primary hover:text-primary-600"
                     >
                       Clear
                     </button>
@@ -274,6 +279,8 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
                   }}
                   placeholder="All events"
                   className="w-full border-mineshaft-600 bg-mineshaft-700 text-bunker-200"
+                  position="popper"
+                  dropdownContainerClassName="max-w-none"
                 >
                   <SelectItem value="all">All events</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
@@ -287,7 +294,7 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
                   onClick={handleApplyFilters}
                   className="w-full bg-primary font-medium text-black hover:bg-primary-600"
                   size="sm"
-                  disabled={!hasPendingChanges}
+                  isDisabled={!hasPendingChanges}
                 >
                   Apply
                 </Button>
@@ -349,10 +356,11 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
             <Pagination
               count={certificateRequestsData.totalCount}
               page={currentPage}
-              perPage={PAGE_SIZE}
+              perPage={perPage}
               onChangePage={(page) => setCurrentPage(page)}
-              onChangePerPage={() => {
+              onChangePerPage={(newPerPage) => {
                 setCurrentPage(1);
+                setPerPage(newPerPage);
               }}
             />
           </div>

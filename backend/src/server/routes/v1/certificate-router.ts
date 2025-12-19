@@ -448,7 +448,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             offset: req.query.offset,
             limit: req.query.limit,
             search: req.query.search,
-            status: req.query.status
+            status: req.query.status,
+            count: certificateRequests.length,
+            certificateRequestIds: certificateRequests.map((certReq) => certReq.id)
           }
         }
       });

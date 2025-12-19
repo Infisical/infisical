@@ -9,6 +9,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  IconButton,
   Td,
   Tooltip,
   Tr
@@ -77,13 +78,15 @@ export const CertificateRequestRow = ({ request, onViewCertificates }: Props) =>
       <Td>
         <DropdownMenu>
           <DropdownMenuTrigger asChild className="rounded-lg">
-            <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-              <Tooltip content="More options">
-                <FontAwesomeIcon size="lg" icon={faEllipsis} />
-              </Tooltip>
-            </div>
+            <IconButton
+              variant="plain"
+              ariaLabel="More options"
+              className="h-max bg-transparent p-0"
+            >
+              <FontAwesomeIcon size="lg" icon={faEllipsis} />
+            </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" sideOffset={3}>
             <DropdownMenuItem
               onClick={() => request.certificateId && onViewCertificates?.(request.certificateId)}
               disabled={!request.certificateId}
