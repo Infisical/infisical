@@ -62,7 +62,13 @@ export const SignUpPage = () => {
     navigate({ to: "/admin" });
   };
 
-  if (config?.initialized) return <ContentLoader text="Redirecting to admin page..." />;
+  if (config?.initialized) {
+    return (
+      <div className="flex min-h-screen flex-col justify-center bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
+        <ContentLoader text="Redirecting to admin page..." />
+      </div>
+    );
+  }
 
   return (
     <div className="flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6">

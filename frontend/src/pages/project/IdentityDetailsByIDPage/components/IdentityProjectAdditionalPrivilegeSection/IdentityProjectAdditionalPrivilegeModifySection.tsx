@@ -114,6 +114,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
 
   const {
     handleSubmit,
+    reset,
     formState: { isDirty, isSubmitting }
   } = form;
 
@@ -310,7 +311,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                   variant="link"
                   isDisabled={isSubmitting}
                   isLoading={isSubmitting}
-                  onClick={onGoBack}
+                  onClick={() => reset()}
                 >
                   Discard Changes
                 </Button>

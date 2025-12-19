@@ -1,7 +1,6 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
-import { DropdownMenu } from "@radix-ui/react-dropdown-menu";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon, InfoIcon } from "lucide-react";
@@ -17,6 +16,7 @@ import {
 } from "@app/components/v2";
 import {
   OrgIcon,
+  SubOrgIcon,
   UnstableAlert,
   UnstableAlertDescription,
   UnstableAlertTitle,
@@ -26,6 +26,7 @@ import {
   UnstableCardDescription,
   UnstableCardHeader,
   UnstableCardTitle,
+  UnstableDropdownMenu,
   UnstableDropdownMenuContent,
   UnstableDropdownMenuItem,
   UnstableDropdownMenuTrigger,
@@ -63,7 +64,7 @@ const Page = () => {
     select: (el) => el.identityId as string
   });
   const { currentProject, projectId } = useProject();
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
 
   const { data: identityMembershipDetails, isPending: isMembershipDetailsLoading } =
     useGetProjectIdentityMembershipV2(projectId, identityId);
@@ -164,6 +165,12 @@ const Page = () => {
     return <UnstablePageLoader />;
   }
 
+  const isOrgIdentity = !isProjectIdentity;
+  const isSubOrgIdentity =
+    isOrgIdentity &&
+    isSubOrganization &&
+    currentOrg.rootOrgId !== identityMembershipDetails?.identity.orgId;
+
   return (
     <div className="mx-auto flex max-w-8xl flex-col">
       {identityMembershipDetails ? (
@@ -187,7 +194,7 @@ const Page = () => {
             description={`Configure and manage${isProjectIdentity ? " machine identity and " : " "}project access control`}
             title={identityMembershipDetails.identity.name}
           >
-            <DropdownMenu>
+            <UnstableDropdownMenu>
               <UnstableDropdownMenuTrigger asChild>
                 <UnstableButton variant="outline">
                   Options
@@ -197,7 +204,7 @@ const Page = () => {
               <UnstableDropdownMenuContent align="end">
                 <UnstableDropdownMenuItem
                   onClick={() => {
-                    navigator.clipboard.writeText(identityMembershipDetails.id);
+                    navigator.clipboard.writeText(identityMembershipDetails.identity.id);
                     createNotification({
                       text: "Machine identity ID copied to clipboard",
                       type: "info"
@@ -211,7 +218,6 @@ const Page = () => {
                   a={subject(ProjectPermissionSub.Identity, {
                     identityId: identityMembershipDetails?.identity.id
                   })}
-                  passThrough={false}
                 >
                   {(isAllowed) => (
                     <UnstableDropdownMenuItem
@@ -221,7 +227,7 @@ const Page = () => {
                       Assume Privileges
                       <Tooltip
                         side="bottom"
-                        content="Assume the privileges of the machine identity, allowing you to replicate their access behavior."
+                        content="Assume the privileges of this machine identity, allowing you to replicate their access behavior."
                       >
                         <div>
                           <InfoIcon className="text-muted" />
@@ -251,12 +257,13 @@ const Page = () => {
                   )}
                 </ProjectPermissionCan>
               </UnstableDropdownMenuContent>
-            </DropdownMenu>
+            </UnstableDropdownMenu>
           </PageHeader>
           <div className="flex flex-col gap-5 lg:flex-row">
             <ProjectIdentityDetailsSection
               identity={identity || { ...identityMembershipDetails?.identity, projectId: "" }}
-              isOrgIdentity={!isProjectIdentity}
+              isOrgIdentity={isOrgIdentity}
+              isSubOrgIdentity={isSubOrgIdentity}
               membership={identityMembershipDetails!}
             />
 
@@ -275,15 +282,15 @@ const Page = () => {
                     </UnstableCardDescription>
                   </UnstableCardHeader>
                   <UnstableCardContent>
-                    <UnstableAlert variant="org">
-                      <OrgIcon />
+                    <UnstableAlert variant={isSubOrgIdentity ? "sub-org" : "org"}>
+                      {isSubOrgIdentity ? <SubOrgIcon /> : <OrgIcon />}
                       <UnstableAlertTitle>
-                        Machine identity managed by organization
+                        Machine identity managed by {isSubOrgIdentity ? "sub-" : ""}organization
                       </UnstableAlertTitle>
                       <UnstableAlertDescription>
                         <p>
-                          This machine identity&apos;s authentication methods are controlled by your
-                          organization. To make changes,{" "}
+                          This machine identity&apos;s authentication methods are managed by your
+                          {isSubOrgIdentity ? "sub-" : ""}organization. <br /> To make changes,{" "}
                           <OrgPermissionCan
                             I={OrgPermissionIdentityActions.Read}
                             an={OrgPermissionSubjects.Identity}
@@ -295,10 +302,10 @@ const Page = () => {
                                   className="inline-block cursor-pointer text-foreground underline underline-offset-2"
                                   params={{
                                     identityId,
-                                    orgId: currentOrg.id
+                                    orgId: identityMembershipDetails.identity.orgId
                                   }}
                                 >
-                                  go to organization access control
+                                  go to {isSubOrgIdentity ? "sub-" : ""}organization access control
                                 </Link>
                               ) : null
                             }

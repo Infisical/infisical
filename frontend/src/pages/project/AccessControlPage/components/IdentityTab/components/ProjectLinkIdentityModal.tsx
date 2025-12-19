@@ -113,6 +113,7 @@ export const ProjectLinkIdentityModal = ({ handlePopUpToggle }: Props) => {
               onChange={onChange}
               isLoading={isMembershipsLoading}
               placeholder="Select machine identity..."
+              autoFocus
               // onInputChange={setSearchValue}
               options={filteredIdentityMembershipOrgs.map((membership) => ({
                 name: membership.name,

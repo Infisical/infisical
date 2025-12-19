@@ -48,6 +48,7 @@ export const PamAddAccountModal = ({
             onComplete={(account) => {
               if (onComplete) onComplete(account);
               onOpenChange(false);
+              setSelectedResource(null);
             }}
             onBack={() => setSelectedResource(null)}
             resourceId={selectedResource.id}

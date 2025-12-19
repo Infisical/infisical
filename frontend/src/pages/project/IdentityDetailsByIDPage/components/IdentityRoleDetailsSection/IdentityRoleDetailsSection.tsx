@@ -96,9 +96,7 @@ export const IdentityRoleDetailsSection = ({
   return (
     <>
       <UnstableCard>
-        <UnstableCardHeader
-        // className="border-b"
-        >
+        <UnstableCardHeader>
           <UnstableCardTitle>Project Roles</UnstableCardTitle>
           <UnstableCardDescription>
             Manage roles assigned to this machine identity
@@ -208,8 +206,6 @@ export const IdentityRoleDetailsSection = ({
                                 a={subject(ProjectPermissionSub.Identity, {
                                   identityId: identityMembershipDetails.identity.id
                                 })}
-                                renderTooltip
-                                allowedLabel="Remove Role"
                               >
                                 {(isAllowed) => (
                                   <UnstableDropdownMenuItem
@@ -223,7 +219,6 @@ export const IdentityRoleDetailsSection = ({
                                     isDisabled={!isAllowed}
                                     variant="danger"
                                   >
-                                    {/* <TrashIcon /> */}
                                     Remove Role
                                   </UnstableDropdownMenuItem>
                                 )}

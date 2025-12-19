@@ -200,6 +200,11 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.Users, `${TableName.Users}.id`, `${TableName.SecretVersionV2}.userActorId`)
         .leftJoin(TableName.Identity, `${TableName.Identity}.id`, `${TableName.SecretVersionV2}.identityActorId`)
         .leftJoin(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
+        .leftJoin(
+          TableName.IdentityGroupMembership,
+          `${TableName.IdentityGroupMembership}.identityId`,
+          `${TableName.Identity}.id`
+        )
         .leftJoin(TableName.Membership, (qb) => {
           void qb
             .on(`${TableName.Membership}.scope`, db.raw("?", [AccessScope.Project]))
@@ -208,7 +213,8 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
               void sqb
                 .on(`${TableName.Membership}.actorUserId`, `${TableName.SecretVersionV2}.userActorId`)
                 .orOn(`${TableName.Membership}.actorIdentityId`, `${TableName.SecretVersionV2}.identityActorId`)
-                .orOn(`${TableName.Membership}.actorGroupId`, `${TableName.UserGroupMembership}.groupId`);
+                .orOn(`${TableName.Membership}.actorGroupId`, `${TableName.UserGroupMembership}.groupId`)
+                .orOn(`${TableName.Membership}.actorGroupId`, `${TableName.IdentityGroupMembership}.groupId`);
             });
         })
         .leftJoin(TableName.SecretV2, `${TableName.SecretVersionV2}.secretId`, `${TableName.SecretV2}.id`)

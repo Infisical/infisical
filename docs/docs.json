@@ -33,7 +33,10 @@
               },
               {
                 "group": "Guides",
-                "pages": ["documentation/guides/organization-structure"]
+                "pages": [
+                  "documentation/guides/governance-models",
+                  "documentation/guides/organization-structure"
+                ]
               }
             ]
           },
@@ -135,6 +138,7 @@
                       "integrations/app-connections/netlify",
                       "integrations/app-connections/northflank",
                       "integrations/app-connections/oci",
+                      "integrations/app-connections/octopus-deploy",
                       "integrations/app-connections/okta",
                       "integrations/app-connections/oracledb",
                       "integrations/app-connections/postgres",
@@ -563,6 +567,7 @@
                       "integrations/secret-syncs/netlify",
                       "integrations/secret-syncs/northflank",
                       "integrations/secret-syncs/oci-vault",
+                      "integrations/secret-syncs/octopus-deploy",
                       "integrations/secret-syncs/railway",
                       "integrations/secret-syncs/render",
                       "integrations/secret-syncs/supabase",
@@ -662,7 +667,16 @@
                     "group": "Concepts",
                     "pages": [
                       "documentation/platform/pki/concepts/certificate-mgmt",
-                      "documentation/platform/pki/concepts/certificate-lifecycle"
+                      "documentation/platform/pki/concepts/certificate-lifecycle",
+                      "documentation/platform/pki/concepts/certificate-components"
+                    ]
+                  },
+                  {
+                    "group": "Guides",
+                    "pages": [
+                      "documentation/platform/pki/guides/request-cert-agent",
+                      "documentation/platform/pki/guides/request-cert-api",
+                      "documentation/platform/pki/guides/request-cert-acme"
                     ]
                   }
                 ]
@@ -702,6 +716,7 @@
               {
                 "group": "Infrastructure Integrations",
                 "pages": [
+                  "integrations/platforms/certificate-agent",
                   "documentation/platform/pki/k8s-cert-manager",
                   "documentation/platform/pki/integration-guides/gloo-mesh",
                   "documentation/platform/pki/integration-guides/windows-server-acme",
@@ -884,7 +899,12 @@
                   "api-reference/endpoints/groups/get-by-id",
                   "api-reference/endpoints/groups/add-group-user",
                   "api-reference/endpoints/groups/remove-group-user",
-                  "api-reference/endpoints/groups/list-group-users"
+                  "api-reference/endpoints/groups/list-group-users",
+                  "api-reference/endpoints/groups/add-group-machine-identity",
+                  "api-reference/endpoints/groups/remove-group-machine-identity",
+                  "api-reference/endpoints/groups/list-group-machine-identities",
+                  "api-reference/endpoints/groups/list-group-projects",
+                  "api-reference/endpoints/groups/list-group-members"
                 ]
               },
               {
@@ -920,6 +940,18 @@
                   "api-reference/endpoints/organizations/saml-sso/get-saml-config",
                   "api-reference/endpoints/organizations/saml-sso/update-saml-config",
                   "api-reference/endpoints/organizations/saml-sso/create-saml-config"
+                ]
+              },
+              {
+                "group": "SCIM",
+                "pages": [
+                  {
+                    "group": " Group to Org Role Mappings",
+                    "pages": [
+                      "api-reference/endpoints/organizations/scim/group-org-role-mappings/list",
+                      "api-reference/endpoints/organizations/scim/group-org-role-mappings/update"
+                    ]
+                  }
                 ]
               }
             ]
@@ -1464,6 +1496,18 @@
                     ]
                   },
                   {
+                    "group": "Octopus Deploy",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/octopus-deploy/list",
+                      "api-reference/endpoints/app-connections/octopus-deploy/available",
+                      "api-reference/endpoints/app-connections/octopus-deploy/get-by-id",
+                      "api-reference/endpoints/app-connections/octopus-deploy/get-by-name",
+                      "api-reference/endpoints/app-connections/octopus-deploy/create",
+                      "api-reference/endpoints/app-connections/octopus-deploy/update",
+                      "api-reference/endpoints/app-connections/octopus-deploy/delete"
+                    ]
+                  },
+                  {
                     "group": "Okta",
                     "pages": [
                       "api-reference/endpoints/app-connections/okta/list",
@@ -1475,6 +1519,7 @@
                       "api-reference/endpoints/app-connections/okta/delete"
                     ]
                   },
+
                   {
                     "group": "OracleDB",
                     "pages": [
@@ -2375,6 +2420,19 @@
                     ]
                   },
                   {
+                    "group": "Octopus Deploy",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/octopus-deploy/list",
+                      "api-reference/endpoints/secret-syncs/octopus-deploy/get-by-id",
+                      "api-reference/endpoints/secret-syncs/octopus-deploy/get-by-name",
+                      "api-reference/endpoints/secret-syncs/octopus-deploy/create",
+                      "api-reference/endpoints/secret-syncs/octopus-deploy/update",
+                      "api-reference/endpoints/secret-syncs/octopus-deploy/delete",
+                      "api-reference/endpoints/secret-syncs/octopus-deploy/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/octopus-deploy/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "Railway",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/railway/list",
@@ -2489,7 +2547,7 @@
             ]
           },
           {
-            "group": "Infisical PKI",
+            "group": "Certificate Management",
             "pages": [
               {
                 "group": "Certificate Authorities",
@@ -2528,6 +2586,8 @@
                 "pages": [
                   "api-reference/endpoints/certificates/list",
                   "api-reference/endpoints/certificates/read",
+                  "api-reference/endpoints/certificates/certificate-request",
+                  "api-reference/endpoints/certificates/create-certificate",
                   "api-reference/endpoints/certificates/renew",
                   "api-reference/endpoints/certificates/update-config",
                   "api-reference/endpoints/certificates/revoke",
@@ -3077,6 +3137,186 @@
     {
       "source": "/documentation/platform/pki/est",
       "destination": "/documentation/platform/pki/enrollment-methods/est"
+    },
+    {
+      "source": "/api-reference/endpoints/integrations/create-auth",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/api-reference/endpoints/integrations/create",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/api-reference/endpoints/integrations/delete-auth-by-id",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/api-reference/endpoints/integrations/delete-auth",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/api-reference/endpoints/integrations/delete",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/api-reference/endpoints/integrations/find-auth",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/api-reference/endpoints/integrations/list-auth",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/api-reference/endpoints/integrations/list-project-integrations",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/api-reference/endpoints/integrations/update",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/api-reference/overview/examples/integration",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/documentation/platform/integrations",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cicd/circleci",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cicd/codefresh",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cicd/octopus-deploy",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cicd/rundeck",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cicd/travisci",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/aws-parameter-store",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/aws-secret-manager",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/azure-app-configuration",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/azure-devops",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/azure-key-vault",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/checkly",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/cloud-66",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/cloudflare-pages",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/cloudflare-workers",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/databricks",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/digital-ocean-app-platform",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/flyio",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/gcp-secret-manager",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/hashicorp-vault",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/hasura-cloud",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/heroku",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/laravel-forge",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/netlify",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/northflank",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/qovery",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/railway",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/render",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/supabase",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/terraform-cloud",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/vercel",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/windmill",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/overview",
+      "destination": "/integrations/secret-syncs"
+    },
+    {
+      "source": "/integrations/cloud/aws-amplify",
+      "destination": "/integrations/cicd/aws-amplify"
+    },
+    {
+      "source": "/integrations/cloud/teamcity",
+      "destination": "/integrations/secret-syncs/teamcity"
     }
   ]
 }

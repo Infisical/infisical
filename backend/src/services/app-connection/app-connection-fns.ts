@@ -129,6 +129,11 @@ import {
   NorthflankConnectionMethod,
   validateNorthflankConnectionCredentials
 } from "./northflank";
+import {
+  getOctopusDeployConnectionListItem,
+  OctopusDeployConnectionMethod,
+  validateOctopusDeployConnectionCredentials
+} from "./octopus-deploy";
 import { getOktaConnectionListItem, OktaConnectionMethod, validateOktaConnectionCredentials } from "./okta";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
 import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } from "./railway";
@@ -211,6 +216,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getHerokuConnectionListItem(),
     getRenderConnectionListItem(),
     getLaravelForgeConnectionListItem(),
+    getOctopusDeployConnectionListItem(),
     getFlyioConnectionListItem(),
     getGitLabConnectionListItem(),
     getCloudflareConnectionListItem(),
@@ -360,7 +366,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Okta]: validateOktaConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Chef]: validateChefConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Redis]: validateRedisConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.MongoDB]: validateMongoDBConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.MongoDB]: validateMongoDBConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.OctopusDeploy]: validateOctopusDeployConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -430,6 +437,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "Simple Bind";
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
+    case OctopusDeployConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
@@ -510,7 +518,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Redis]: platformManagedCredentialsNotSupported,
   [AppConnection.MongoDB]: platformManagedCredentialsNotSupported,
   [AppConnection.LaravelForge]: platformManagedCredentialsNotSupported,
-  [AppConnection.Chef]: platformManagedCredentialsNotSupported
+  [AppConnection.Chef]: platformManagedCredentialsNotSupported,
+  [AppConnection.OctopusDeploy]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

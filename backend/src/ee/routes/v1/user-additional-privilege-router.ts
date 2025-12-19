@@ -142,6 +142,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         data: {
           ...req.body,
           ...req.body.type,
+          name: req.body.slug,
           permissions: req.body.permissions
             ? // eslint-disable-next-line @typescript-eslint/ban-ts-comment
               // @ts-ignore-error this is valid ts

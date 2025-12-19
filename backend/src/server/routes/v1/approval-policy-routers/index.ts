@@ -2,6 +2,7 @@ import { ApprovalPolicyType } from "@app/services/approval-policy/approval-polic
 import {
   CreatePamAccessPolicySchema,
   CreatePamAccessRequestSchema,
+  PamAccessPolicyInputsSchema,
   PamAccessPolicySchema,
   PamAccessRequestGrantSchema,
   PamAccessRequestSchema,
@@ -23,7 +24,8 @@ export const APPROVAL_POLICY_REGISTER_ROUTER_MAP: Record<
       policyResponseSchema: PamAccessPolicySchema,
       createRequestSchema: CreatePamAccessRequestSchema,
       requestResponseSchema: PamAccessRequestSchema,
-      grantResponseSchema: PamAccessRequestGrantSchema
+      grantResponseSchema: PamAccessRequestGrantSchema,
+      inputsSchema: PamAccessPolicyInputsSchema
     });
   }
 };

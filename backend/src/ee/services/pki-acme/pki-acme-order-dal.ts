@@ -4,6 +4,7 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
+import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 
 export type TPkiAcmeOrderDALFactory = ReturnType<typeof pkiAcmeOrderDALFactory>;
 
@@ -16,6 +17,43 @@ export const pkiAcmeOrderDALFactory = (db: TDbClient) => {
       return order || null;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find PKI ACME order by id for finalization" });
+    }
+  };
+
+  const findWithCertificateRequestForSync = async (id: string, tx?: Knex) => {
+    try {
+      const order = await (tx || db)(TableName.PkiAcmeOrder)
+        .leftJoin(
+          TableName.CertificateRequests,
+          `${TableName.PkiAcmeOrder}.id`,
+          `${TableName.CertificateRequests}.acmeOrderId`
+        )
+        .select(
+          selectAllTableCols(TableName.PkiAcmeOrder),
+          db.ref("id").withSchema(TableName.CertificateRequests).as("certificateRequestId"),
+          db.ref("status").withSchema(TableName.CertificateRequests).as("certificateRequestStatus"),
+          db.ref("certificateId").withSchema(TableName.CertificateRequests).as("certificateId")
+        )
+        .forUpdate(TableName.PkiAcmeOrder)
+        .where(`${TableName.PkiAcmeOrder}.id`, id)
+        .first();
+      if (!order) {
+        return null;
+      }
+      const { certificateRequestId, certificateRequestStatus, certificateId, ...details } = order;
+      return {
+        ...details,
+        certificateRequest:
+          certificateRequestId && certificateRequestStatus
+            ? {
+                id: certificateRequestId,
+                status: certificateRequestStatus as CertificateRequestStatus,
+                certificateId
+              }
+            : undefined
+      };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find PKI ACME order by id with certificate request" });
     }
   };
 
@@ -72,6 +110,7 @@ export const pkiAcmeOrderDALFactory = (db: TDbClient) => {
   return {
     ...pkiAcmeOrderOrm,
     findByIdForFinalization,
+    findWithCertificateRequestForSync,
     findByAccountAndOrderIdWithAuthorizations,
     listByAccountId
   };

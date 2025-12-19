@@ -3,25 +3,34 @@ import { useTranslation } from "react-i18next";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { formatRelative } from "date-fns";
+import { EllipsisIcon, InfoIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  Button,
   ConfirmActionModal,
   DeleteActionModal,
   EmptyState,
   PageHeader,
-  Spinner
+  Spinner,
+  Tooltip
 } from "@app/components/v2";
+import {
+  Badge,
+  UnstableButton,
+  UnstableDropdownMenu,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuTrigger
+} from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useOrganization,
-  useProject
+  useProject,
+  useUser
 } from "@app/context";
 import { getProjectBaseURL, getProjectHomePage } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
@@ -35,6 +44,7 @@ import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { MemberProjectAdditionalPrivilegeSection } from "./components/MemberProjectAdditionalPrivilegeSection";
 import { MemberRoleDetailsSection } from "./components/MemberRoleDetailsSection";
+import { ProjectMemberDetailsSection } from "./components/ProjectMemberDetailsSection";
 
 export const Page = () => {
   const navigate = useNavigate();
@@ -44,12 +54,14 @@ export const Page = () => {
   });
   const { currentOrg } = useOrganization();
   const { currentProject, projectId } = useProject();
+  const {
+    user: { id: currentUserId }
+  } = useUser();
 
   const { data: membershipDetails, isPending: isMembershipDetailsLoading } =
     useGetWorkspaceUserDetails(projectId, membershipId);
 
-  const { mutateAsync: removeUserFromWorkspace, isPending: isRemovingUserFromWorkspace } =
-    useDeleteUserFromWorkspace();
+  const { mutateAsync: removeUserFromWorkspace } = useDeleteUserFromWorkspace();
   const assumePrivileges = useAssumeProjectPrivileges();
 
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
@@ -112,8 +124,10 @@ export const Page = () => {
     );
   }
 
+  const isOwnProjectMembershipDetails = currentUserId === membershipDetails?.user?.id;
+
   return (
-    <div className="mx-auto flex max-w-8xl flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex max-w-8xl flex-col">
       {membershipDetails ? (
         <>
           <Link
@@ -125,7 +139,7 @@ export const Page = () => {
             search={{
               selectedTab: ProjectAccessControlTabs.Member
             }}
-            className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
+            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
           >
             <FontAwesomeIcon icon={faChevronLeft} />
             Project Users
@@ -135,62 +149,100 @@ export const Page = () => {
             title={
               membershipDetails.user.firstName || membershipDetails.user.lastName
                 ? `${membershipDetails.user.firstName} ${membershipDetails.user.lastName}`
-                : "-"
+                : membershipDetails.user.email ||
+                  membershipDetails.user.username ||
+                  membershipDetails.inviteEmail ||
+                  "Unnamed User"
             }
-            description={`User joined on ${membershipDetails?.createdAt && formatRelative(new Date(membershipDetails?.createdAt || ""), new Date())}`}
+            description="Configure and manage project access control"
           >
-            <ProjectPermissionCan
-              I={ProjectPermissionMemberActions.AssumePrivileges}
-              a={ProjectPermissionSub.Member}
-              renderTooltip
-              allowedLabel="Assume privileges of the user"
-              passThrough={false}
-            >
-              {(isAllowed) => (
-                <Button
-                  variant="outline_bg"
-                  size="xs"
-                  isDisabled={!isAllowed}
-                  isLoading={assumePrivileges.isPending}
-                  onClick={() =>
-                    handlePopUpOpen("assumePrivileges", { userId: membershipDetails?.user?.id })
-                  }
-                >
-                  Assume Privileges
-                </Button>
-              )}
-            </ProjectPermissionCan>
-
-            <ProjectPermissionCan
-              I={ProjectPermissionMemberActions.Delete}
-              a={ProjectPermissionSub.Member}
-              renderTooltip
-              allowedLabel="Remove from project"
-            >
-              {(isAllowed) => (
-                <Button
-                  colorSchema="danger"
-                  variant="outline_bg"
-                  size="xs"
-                  isDisabled={!isAllowed}
-                  isLoading={isRemovingUserFromWorkspace}
-                  onClick={() => handlePopUpOpen("removeMember")}
-                >
-                  Remove User
-                </Button>
-              )}
-            </ProjectPermissionCan>
+            {isOwnProjectMembershipDetails ? (
+              <Tooltip
+                side="right"
+                content="You cannot modify your own membership. Ask a project admin to make changes to your membership."
+              >
+                <Badge variant="info" className="ml-2">
+                  <InfoIcon /> Your project membership
+                </Badge>
+              </Tooltip>
+            ) : (
+              <UnstableDropdownMenu>
+                <UnstableDropdownMenuTrigger asChild>
+                  <UnstableButton variant="outline">
+                    Options
+                    <EllipsisIcon />
+                  </UnstableButton>
+                </UnstableDropdownMenuTrigger>
+                <UnstableDropdownMenuContent align="end">
+                  <UnstableDropdownMenuItem
+                    onClick={() => {
+                      navigator.clipboard.writeText(membershipDetails.user.id);
+                      createNotification({
+                        text: "User ID copied to clipboard",
+                        type: "info"
+                      });
+                    }}
+                  >
+                    Copy User ID
+                  </UnstableDropdownMenuItem>
+                  <ProjectPermissionCan
+                    I={ProjectPermissionMemberActions.AssumePrivileges}
+                    a={ProjectPermissionSub.Member}
+                  >
+                    {(isAllowed) => (
+                      <UnstableDropdownMenuItem
+                        isDisabled={!isAllowed}
+                        onClick={() =>
+                          handlePopUpOpen("assumePrivileges", {
+                            userId: membershipDetails.user.id
+                          })
+                        }
+                      >
+                        Assume Privileges
+                        <Tooltip
+                          side="bottom"
+                          content="Assume the privileges of this user, allowing you to replicate their access behavior."
+                        >
+                          <div>
+                            <InfoIcon className="text-muted" />
+                          </div>
+                        </Tooltip>
+                      </UnstableDropdownMenuItem>
+                    )}
+                  </ProjectPermissionCan>
+                  <ProjectPermissionCan
+                    I={ProjectPermissionMemberActions.Delete}
+                    a={ProjectPermissionSub.Member}
+                  >
+                    {(isAllowed) => (
+                      <UnstableDropdownMenuItem
+                        variant="danger"
+                        isDisabled={!isAllowed}
+                        onClick={() => handlePopUpOpen("removeMember")}
+                      >
+                        Remove User From Project
+                      </UnstableDropdownMenuItem>
+                    )}
+                  </ProjectPermissionCan>
+                </UnstableDropdownMenuContent>
+              </UnstableDropdownMenu>
+            )}
           </PageHeader>
-          <MemberRoleDetailsSection
-            membershipDetails={membershipDetails}
-            isMembershipDetailsLoading={isMembershipDetailsLoading}
-            onOpenUpgradeModal={() =>
-              handlePopUpOpen("upgradePlan", {
-                text: "Assigning custom roles to members can be unlocked if you upgrade to Infisical Pro plan."
-              })
-            }
-          />
-          <MemberProjectAdditionalPrivilegeSection membershipDetails={membershipDetails} />
+          <div className="flex flex-col gap-5 lg:flex-row">
+            <ProjectMemberDetailsSection membership={membershipDetails} />
+            <div className="flex flex-1 flex-col gap-y-5">
+              <MemberRoleDetailsSection
+                membershipDetails={membershipDetails}
+                isMembershipDetailsLoading={isMembershipDetailsLoading}
+                onOpenUpgradeModal={() =>
+                  handlePopUpOpen("upgradePlan", {
+                    text: "Assigning custom roles to members can be unlocked if you upgrade to Infisical Pro plan."
+                  })
+                }
+              />
+              <MemberProjectAdditionalPrivilegeSection membershipDetails={membershipDetails} />
+            </div>
+          </div>
           <DeleteActionModal
             isOpen={popUp.removeMember.isOpen}
             deleteKey="remove"

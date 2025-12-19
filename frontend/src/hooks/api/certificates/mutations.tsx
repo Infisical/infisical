@@ -212,6 +212,9 @@ export const useUnifiedCertificateIssuance = () => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.forProjectCertificates(projectSlug)
       });
+      queryClient.invalidateQueries({
+        queryKey: ["certificateRequests", "list", projectSlug]
+      });
     }
   });
 };
