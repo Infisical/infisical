@@ -5,6 +5,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { createSshKeyPair } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
@@ -324,27 +325,43 @@ export const pamResourceServiceFactory = ({
       return { caPublicKey: metadata.caPublicKey };
     }
 
-    // Generate new CA key pair
-    const keyAlgorithm = SshCertKeyAlgorithm.ED25519;
-    const { publicKey, privateKey } = await createSshKeyPair(keyAlgorithm);
+    // Transaction with advisory lock to prevent race conditions
+    const caPublicKey = await pamResourceDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.PamResourceSshCaInit(resourceId)]);
 
-    const metadata: TSSHResourceMetadata = {
-      caPrivateKey: privateKey,
-      caPublicKey: publicKey.trim(),
-      caKeyAlgorithm: keyAlgorithm
-    };
+      // Re-check after acquiring lock in case another transaction created it
+      const currentResource = await pamResourceDAL.findById(resourceId, tx);
+      if (currentResource?.encryptedResourceMetadata) {
+        const metadata = await decryptResourceMetadata<TSSHResourceMetadata>({
+          encryptedMetadata: currentResource.encryptedResourceMetadata,
+          projectId: currentResource.projectId,
+          kmsService
+        });
+        return metadata.caPublicKey;
+      }
 
-    const encryptedResourceMetadata = await encryptResourceMetadata({
-      metadata,
-      projectId: resource.projectId,
-      kmsService
+      // Generate new CA key pair
+      const keyAlgorithm = SshCertKeyAlgorithm.ED25519;
+      const { publicKey, privateKey } = await createSshKeyPair(keyAlgorithm);
+
+      const metadata: TSSHResourceMetadata = {
+        caPrivateKey: privateKey,
+        caPublicKey: publicKey.trim(),
+        caKeyAlgorithm: keyAlgorithm
+      };
+
+      const encryptedResourceMetadata = await encryptResourceMetadata({
+        metadata,
+        projectId: resource.projectId,
+        kmsService
+      });
+
+      await pamResourceDAL.updateById(resourceId, { encryptedResourceMetadata }, tx);
+
+      return metadata.caPublicKey;
     });
 
-    await pamResourceDAL.updateById(resourceId, {
-      encryptedResourceMetadata
-    });
-
-    return { caPublicKey: metadata.caPublicKey };
+    return { caPublicKey };
   };
 
   return {
