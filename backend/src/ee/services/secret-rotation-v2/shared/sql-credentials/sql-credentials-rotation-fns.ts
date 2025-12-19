@@ -110,10 +110,11 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
   ) => {
     // For SQL, since we get existing users, we change both their passwords
     // on issue to invalidate their existing passwords
-    const credentialsSet = [
-      { username: username1, password: generatePassword(passwordRequirement) },
-      { username: username2, password: generatePassword(passwordRequirement) }
-    ];
+    const credentialsSet = [{ username: username1, password: generatePassword(passwordRequirement) }];
+    // if both are same username like for mysql dual password rotation - we don't want to reissue twice loosing first cred access
+    if (username1 !== username2) {
+      credentialsSet.push({ username: username2, password: generatePassword(passwordRequirement) });
+    }
 
     try {
       await executeOperation(async (client) => {
