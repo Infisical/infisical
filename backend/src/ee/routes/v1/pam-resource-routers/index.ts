@@ -25,7 +25,7 @@ import {
   UpdateSSHResourceSchema
 } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
 
-import { registerPamResourceEndpoints } from "./pam-resource-endpoints";
+import { registerPamResourceEndpoints, registerSshCaSetupEndpoint } from "./pam-resource-endpoints";
 
 export const PAM_RESOURCE_REGISTER_ROUTER_MAP: Record<PamResource, (server: FastifyZodProvider) => Promise<void>> = {
   [PamResource.Postgres]: async (server: FastifyZodProvider) => {
@@ -54,6 +54,7 @@ export const PAM_RESOURCE_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fast
       createResourceSchema: CreateSSHResourceSchema,
       updateResourceSchema: UpdateSSHResourceSchema
     });
+    registerSshCaSetupEndpoint(server);
   },
   [PamResource.Kubernetes]: async (server: FastifyZodProvider) => {
     registerPamResourceEndpoints({

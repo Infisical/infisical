@@ -1,9 +1,7 @@
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { TPamResource } from "@app/ee/services/pam-resource/pam-resource-types";
-import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -198,7 +196,9 @@ export const registerPamResourceEndpoints = <T extends TPamResource>({
       return { resource };
     }
   });
+};
 
+export const registerSshCaSetupEndpoint = (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/:resourceId/ssh-ca-setup",
@@ -216,10 +216,6 @@ export const registerPamResourceEndpoints = <T extends TPamResource>({
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req, reply) => {
-      if (resourceType !== PamResource.SSH) {
-        throw new BadRequestError({ message: "This endpoint is only available for SSH resources" });
-      }
-
       const { caPublicKey } = await server.services.pamResource.getOrCreateSshCa(req.params.resourceId, req.permission);
 
       const setupScript = `#!/bin/bash
