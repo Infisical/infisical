@@ -67,7 +67,7 @@ function UnstableButtonGroupSeparator({
       data-slot="button-group-separator"
       orientation={orientation}
       className={cn(
-        "relative !m-0 self-stretch bg-input data-[orientation=vertical]:h-auto",
+        "bg-input relative !m-0 self-stretch data-[orientation=vertical]:h-auto",
         className
       )}
       {...props}
