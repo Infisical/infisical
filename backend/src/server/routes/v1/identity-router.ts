@@ -20,7 +20,10 @@ const searchResourceZodValidate = zodValidateCharacters([
   CharacterType.AlphaNumeric,
   CharacterType.Spaces,
   CharacterType.Underscore,
-  CharacterType.Hyphen
+  CharacterType.Hyphen,
+  CharacterType.ForwardSlash
+  // TODO: scott - adding forwardslash for quick fix but we don't constrain identity name creation - not sure why we added this but we should evaluate if needed and if so make consistent with
+  // the actual name limitations
 ]);
 
 export const registerIdentityRouter = async (server: FastifyZodProvider) => {

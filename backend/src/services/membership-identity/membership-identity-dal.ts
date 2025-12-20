@@ -253,15 +253,12 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
           }
         });
 
-      if (filter.limit) void paginatedIdentitys.limit(filter.limit);
-      if (filter.offset) void paginatedIdentitys.offset(filter.offset);
-
       if (filter.name || filter.role) {
         buildKnexFilterForSearchResource(
           paginatedIdentitys,
           {
-            name: filter.name!,
-            role: filter.role!
+            ...(filter.name && { name: filter.name }),
+            ...(filter.role && { role: filter.role })
           },
           (attr) => {
             switch (attr) {
@@ -275,6 +272,17 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
           }
         );
       }
+
+      const countQuery = await paginatedIdentitys
+        .clone()
+        .select(
+          db.raw(
+            `count(${TableName.Membership}."actorIdentityId") OVER(PARTITION BY ${TableName.Membership}."scopeOrgId") as total`
+          )
+        );
+
+      if (filter.limit) void paginatedIdentitys.limit(filter.limit);
+      if (filter.offset) void paginatedIdentitys.offset(filter.offset);
 
       const docs = await (tx || db.replicaNode())(TableName.Membership)
         .whereNotNull(`${TableName.Membership}.actorIdentityId`)
@@ -308,11 +316,6 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
             .as("membershipRoleTemporaryAccessEndTime"),
           db.ref("createdAt").withSchema(TableName.MembershipRole).as("membershipRoleCreatedAt"),
           db.ref("updatedAt").withSchema(TableName.MembershipRole).as("membershipRoleUpdatedAt")
-        )
-        .select(
-          db.raw(
-            `count(${TableName.Membership}."actorIdentityId") OVER(PARTITION BY ${TableName.Membership}."scopeOrgId") as total`
-          )
         );
 
       const data = sqlNestRelationships({
@@ -368,7 +371,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
           }
         ]
       });
-      return { data, totalCount: Number((data?.[0] as unknown as { total: number })?.total ?? 0) };
+      return { data, totalCount: Number((countQuery?.[0] as unknown as { total: number })?.total ?? 0) };
     } catch (error) {
       throw new DatabaseError({ error, name: "MembershipfindIdentity" });
     }
