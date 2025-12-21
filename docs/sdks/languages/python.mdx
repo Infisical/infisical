@@ -390,7 +390,7 @@ updated_secret = client.dynamic_secrets.update(
     new_name="postgres-dev-updated",  # Optional
     inputs={"port": 5433},  # Optional - updated provider inputs
     metadata=[{"key": "team", "value": "platform"}],  # Optional
-    username_template="dev-{{identity.name}}  # Optional
+    username_template="dev-{{identity.name}}"  # Optional
 )
 ```
 
