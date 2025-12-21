@@ -150,7 +150,7 @@ export const DynamicSecretListView = ({
                     metadata: secret.metadata
                   })}
                   renderTooltip
-                  allowedLabel="Edit"
+                  allowedLabel="Generate Lease"
                 >
                   {(isAllowed) => (
                     <Button
