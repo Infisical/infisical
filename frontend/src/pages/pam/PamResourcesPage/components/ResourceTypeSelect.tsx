@@ -77,7 +77,6 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
     if (
       resource === PamResourceType.RDP ||
       resource === PamResourceType.MCP ||
-      resource === PamResourceType.Redis ||
       resource === PamResourceType.MongoDB ||
       resource === PamResourceType.WebApp ||
       resource === PamResourceType.Cassandra ||
@@ -120,6 +119,7 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
 
           return (
             <button
+              key={option.resource}
               type="button"
               onClick={() => handleResourceSelect(option.resource)}
               className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"
