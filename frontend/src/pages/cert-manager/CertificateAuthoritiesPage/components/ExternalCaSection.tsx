@@ -4,7 +4,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import { DocumentationLinkBadge } from "@app/components/v3";
+import {
+  ProjectPermissionCertificateAuthorityActions,
+  ProjectPermissionSub,
+  useProject
+} from "@app/context";
 import { CaStatus, CaType, useDeleteCa, useUpdateCa } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -22,10 +27,10 @@ export const ExternalCaSection = () => {
     "caStatus" // enable / disable
   ] as const);
 
-  const onRemoveCaSubmit = async (caName: string, type: CaType) => {
+  const onRemoveCaSubmit = async (id: string, type: CaType) => {
     if (!currentProject?.id) return;
 
-    await deleteCa({ caName, type, projectId: currentProject.id });
+    await deleteCa({ id, type, projectId: currentProject.id });
 
     createNotification({
       text: "Successfully deleted CA",
@@ -36,17 +41,17 @@ export const ExternalCaSection = () => {
   };
 
   const onUpdateCaStatus = async ({
-    name,
+    caId,
     type,
     status
   }: {
-    name: string;
+    caId: string;
     type: CaType;
     status: CaStatus;
   }) => {
     if (!currentProject?.slug) return;
 
-    await updateCa({ caName: name, type, status, projectId: currentProject.id });
+    await updateCa({ id: caId, type, status });
 
     createNotification({
       text: `Successfully ${status === CaStatus.ACTIVE ? "enabled" : "disabled"} CA`,
@@ -59,9 +64,12 @@ export const ExternalCaSection = () => {
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">
-        <p className="text-xl font-medium text-mineshaft-100">External Certificate Authorities</p>
+        <div className="flex items-center gap-x-2">
+          <p className="text-xl font-medium text-mineshaft-100">External Certificate Authorities</p>
+          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/ca/external-ca" />
+        </div>
         <ProjectPermissionCan
-          I={ProjectPermissionActions.Create}
+          I={ProjectPermissionCertificateAuthorityActions.Create}
           a={ProjectPermissionSub.CertificateAuthorities}
         >
           {(isAllowed) => (
@@ -88,7 +96,7 @@ export const ExternalCaSection = () => {
         deleteKey="confirm"
         onDeleteApproved={() =>
           onRemoveCaSubmit(
-            (popUp?.deleteCa?.data as { name: string })?.name,
+            (popUp?.deleteCa?.data as { caId: string })?.caId,
             (popUp?.deleteCa?.data as { type: CaType })?.type
           )
         }
@@ -110,7 +118,7 @@ export const ExternalCaSection = () => {
         deleteKey="confirm"
         onDeleteApproved={() =>
           onUpdateCaStatus(
-            popUp?.caStatus?.data as { name: string; type: CaType; status: CaStatus }
+            popUp?.caStatus?.data as { caId: string; type: CaType; status: CaStatus }
           )
         }
       />

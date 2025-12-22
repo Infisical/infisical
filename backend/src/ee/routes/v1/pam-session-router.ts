@@ -2,14 +2,26 @@ import { z } from "zod";
 
 import { PamSessionsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { KubernetesSessionCredentialsSchema } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
 import { MySQLSessionCredentialsSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PostgresSessionCredentialsSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
-import { PamSessionCommandLogSchema, SanitizedSessionSchema } from "@app/ee/services/pam-session/pam-session-schemas";
+import { SSHSessionCredentialsSchema } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
+import {
+  HttpEventSchema,
+  PamSessionCommandLogSchema,
+  SanitizedSessionSchema,
+  TerminalEventSchema
+} from "@app/ee/services/pam-session/pam-session-schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-const SessionCredentialsSchema = z.union([PostgresSessionCredentialsSchema, MySQLSessionCredentialsSchema]);
+const SessionCredentialsSchema = z.union([
+  SSHSessionCredentialsSchema,
+  PostgresSessionCredentialsSchema,
+  MySQLSessionCredentialsSchema,
+  KubernetesSessionCredentialsSchema
+]);
 
 export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
   // Meant to be hit solely by gateway identities
@@ -32,17 +44,15 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { credentials, projectId, account } = await server.services.pamAccount.getSessionCredentials(
-        req.params.sessionId,
-        req.permission
-      );
+      const { credentials, projectId, account, sessionStarted } =
+        await server.services.pamAccount.getSessionCredentials(req.params.sessionId, req.permission);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
         projectId,
         event: {
-          type: EventType.PAM_SESSION_START,
+          type: EventType.PAM_SESSION_CREDENTIALS_GET,
           metadata: {
             sessionId: req.params.sessionId,
             accountName: account.name
@@ -50,7 +60,22 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { credentials };
+      if (sessionStarted) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId,
+          event: {
+            type: EventType.PAM_SESSION_START,
+            metadata: {
+              sessionId: req.params.sessionId,
+              accountName: account.name
+            }
+          }
+        });
+      }
+
+      return { credentials: credentials as z.infer<typeof SessionCredentialsSchema> };
     }
   });
 
@@ -67,7 +92,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         sessionId: z.string().uuid()
       }),
       body: z.object({
-        logs: PamSessionCommandLogSchema.array()
+        logs: z.array(z.union([PamSessionCommandLogSchema, TerminalEventSchema, HttpEventSchema]))
       }),
       response: {
         200: z.object({

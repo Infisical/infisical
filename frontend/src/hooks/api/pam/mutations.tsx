@@ -31,7 +31,7 @@ export const useCreatePamResource = () => {
       return data.resource;
     },
     onSuccess: ({ projectId }) => {
-      queryClient.invalidateQueries({ queryKey: pamKeys.listResources(projectId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.listResources({ projectId }) });
     }
   });
 };
@@ -48,7 +48,7 @@ export const useUpdatePamResource = () => {
       return data.resource;
     },
     onSuccess: ({ projectId }) => {
-      queryClient.invalidateQueries({ queryKey: pamKeys.listResources(projectId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.listResources({ projectId }) });
     }
   });
 };
@@ -64,7 +64,7 @@ export const useDeletePamResource = () => {
       return data.resource;
     },
     onSuccess: ({ projectId }) => {
-      queryClient.invalidateQueries({ queryKey: pamKeys.listResources(projectId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.listResources({ projectId }) });
     }
   });
 };
@@ -82,7 +82,7 @@ export const useCreatePamAccount = () => {
       return data.account;
     },
     onSuccess: ({ projectId }) => {
-      queryClient.invalidateQueries({ queryKey: pamKeys.listAccounts(projectId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.listAccounts({ projectId }) });
     }
   });
 };
@@ -99,7 +99,7 @@ export const useUpdatePamAccount = () => {
       return data.account;
     },
     onSuccess: ({ projectId }) => {
-      queryClient.invalidateQueries({ queryKey: pamKeys.listAccounts(projectId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.listAccounts({ projectId }) });
     }
   });
 };
@@ -115,7 +115,46 @@ export const useDeletePamAccount = () => {
       return data.account;
     },
     onSuccess: ({ projectId }) => {
-      queryClient.invalidateQueries({ queryKey: pamKeys.listAccounts(projectId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.listAccounts({ projectId }) });
+    }
+  });
+};
+
+export type TAccessPamAccountDTO = {
+  accountId: string;
+  accountPath: string;
+  projectId: string;
+  duration: string;
+};
+
+export type TAccessPamAccountResponse = {
+  sessionId: string;
+  resourceType: string;
+  consoleUrl?: string;
+  metadata?: Record<string, string | undefined>;
+  relayClientCertificate?: string;
+  relayClientPrivateKey?: string;
+  relayServerCertificateChain?: string;
+  gatewayClientCertificate?: string;
+  gatewayClientPrivateKey?: string;
+  gatewayServerCertificateChain?: string;
+  relayHost?: string;
+};
+
+export const useAccessPamAccount = () => {
+  return useMutation({
+    mutationFn: async ({ accountId, accountPath, projectId, duration }: TAccessPamAccountDTO) => {
+      const { data } = await apiRequest.post<TAccessPamAccountResponse>(
+        "/api/v1/pam/accounts/access",
+        {
+          accountId,
+          accountPath,
+          projectId,
+          duration
+        }
+      );
+
+      return data;
     }
   });
 };
@@ -130,7 +169,7 @@ export const useCreatePamFolder = () => {
       return data.folder;
     },
     onSuccess: ({ projectId }) => {
-      queryClient.invalidateQueries({ queryKey: pamKeys.listAccounts(projectId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.listAccounts({ projectId }) });
     }
   });
 };
@@ -147,7 +186,7 @@ export const useUpdatePamFolder = () => {
       return data.folder;
     },
     onSuccess: ({ projectId }) => {
-      queryClient.invalidateQueries({ queryKey: pamKeys.listAccounts(projectId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.listAccounts({ projectId }) });
     }
   });
 };
@@ -163,7 +202,7 @@ export const useDeletePamFolder = () => {
       return data.folder;
     },
     onSuccess: ({ projectId }) => {
-      queryClient.invalidateQueries({ queryKey: pamKeys.listAccounts(projectId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.listAccounts({ projectId }) });
     }
   });
 };

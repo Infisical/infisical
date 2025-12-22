@@ -10,6 +10,8 @@ import {
   faArrowRight,
   faArrowRightToBracket,
   faArrowUp,
+  faCheck,
+  faCopy,
   faFilter,
   faFingerprint,
   faFolder,
@@ -20,7 +22,7 @@ import {
   faRotate
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, useNavigate, useRouter, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -79,6 +81,7 @@ import {
   usePopUp,
   useResetPageHelper,
   useResizableHeaderHeight,
+  useTimedReset,
   useToggle
 } from "@app/hooks";
 import {
@@ -165,6 +168,11 @@ export const OverviewPage = () => {
       search: el.search
     })
   });
+
+  const orgId = useParams({
+    from: ROUTE_PATHS.SecretManager.OverviewPage.id,
+    select: (el) => el.orgId
+  });
   const [scrollOffset, setScrollOffset] = useState(0);
   const [debouncedScrollOffset] = useDebounce(scrollOffset);
   const { permission } = useProjectPermission();
@@ -187,6 +195,15 @@ export const OverviewPage = () => {
     } else {
       localStorage.setItem("overview-collapse-environments", "true");
     }
+  };
+
+  const [copiedSlug, , setCopiedSlug] = useTimedReset<string>({
+    initialState: ""
+  });
+
+  const copyToClipboard = (value: string, slug: string) => {
+    navigator.clipboard.writeText(value);
+    setCopiedSlug(slug);
   };
 
   const [filter, setFilter] = useState<Filter>(DEFAULT_FILTER_STATE);
@@ -658,8 +675,9 @@ export const OverviewPage = () => {
     const envIndex = visibleEnvs.findIndex((el) => slug === el.slug);
     if (envIndex !== -1) {
       navigate({
-        to: "/projects/secret-management/$projectId/secrets/$envSlug",
+        to: "/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug",
         params: {
+          orgId,
           projectId,
           envSlug: slug
         },
@@ -915,12 +933,12 @@ export const OverviewPage = () => {
         <div className="flex w-full items-baseline justify-between">
           <PageHeader
             scope={ProjectType.SecretManager}
-            title="Overview"
+            title="Project Overview"
             description={
               <p className="text-md text-bunker-300">
                 Inject your secrets using
                 <a
-                  className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                  className="ml-1 text-mineshaft-200 underline decoration-mineshaft-400/65 underline-offset-3 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
                   href="https://infisical.com/docs/cli/overview"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -929,7 +947,7 @@ export const OverviewPage = () => {
                 </a>
                 ,
                 <a
-                  className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                  className="ml-1 text-mineshaft-200 underline decoration-mineshaft-400/65 underline-offset-3 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
                   href="https://infisical.com/docs/documentation/getting-started/api"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -938,7 +956,7 @@ export const OverviewPage = () => {
                 </a>
                 ,
                 <a
-                  className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                  className="ml-1 text-mineshaft-200 underline decoration-mineshaft-400/65 underline-offset-3 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
                   href="https://infisical.com/docs/sdks/overview"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -947,7 +965,7 @@ export const OverviewPage = () => {
                 </a>
                 , and
                 <a
-                  className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                  className="ml-1 text-mineshaft-200 underline decoration-mineshaft-400/65 underline-offset-3 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
                   href="https://infisical.com/docs/documentation/getting-started/introduction"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -959,9 +977,9 @@ export const OverviewPage = () => {
             }
           />
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <FolderBreadCrumbs secretPath={secretPath} onResetSearch={handleResetSearch} />
-          <div className="flex flex-row items-center justify-center space-x-2">
+          <div className="flex flex-row flex-wrap items-center gap-2">
             {isTableFiltered && (
               <Button
                 variant="plain"
@@ -1318,19 +1336,33 @@ export const OverviewPage = () => {
                       >
                         <Tooltip
                           content={
-                            collapseEnvironments ? (
-                              <p className="whitespace-break-spaces">{name}</p>
-                            ) : (
-                              ""
-                            )
+                            <div className="flex flex-col gap-2">
+                              {collapseEnvironments ? (
+                                <p className="whitespace-break-spaces text-mineshaft-300">{name}</p>
+                              ) : (
+                                ""
+                              )}
+                              <div className="flex items-center gap-2">
+                                <p className="text-xs text-mineshaft-300">{slug}</p>
+                                <IconButton
+                                  variant="plain"
+                                  colorSchema="secondary"
+                                  ariaLabel="Copy environment slug"
+                                  onClick={() => copyToClipboard(slug, slug)}
+                                >
+                                  <FontAwesomeIcon icon={copiedSlug === slug ? faCheck : faCopy} />
+                                </IconButton>
+                              </div>
+                            </div>
                           }
                           side="bottom"
-                          sideOffset={-1}
-                          align="end"
+                          sideOffset={5}
+                          align="center"
                           className="max-w-xl text-xs normal-case"
                           rootProps={{
-                            disableHoverableContent: true
+                            disableHoverableContent: false
                           }}
+                          key={`tooltip-${name}-${index + 1}`}
                         >
                           <div
                             className={twMerge(
@@ -1417,8 +1449,9 @@ export const OverviewPage = () => {
                         iconSize="3x"
                       >
                         <Link
-                          to="/projects/secret-management/$projectId/settings"
+                          to="/organizations/$orgId/projects/secret-management/$projectId/settings"
                           params={{
+                            orgId,
                             projectId
                           }}
                           hash="environments"

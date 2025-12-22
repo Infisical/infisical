@@ -16,11 +16,6 @@ const secretsToBeAdded = [
   },
   {
     secretKey: "DB_PASSWORD",
-    secretValue: "OVERRIDE_THIS",
-    secretComment: "Another secret override"
-  },
-  {
-    secretKey: "DB_PASSWORD",
     secretValue: "example_password"
   },
   {
@@ -64,11 +59,11 @@ export const initProjectHelper = async ({ projectName }: { projectName: string }
 export const getProjectBaseURL = (type: ProjectType) => {
   switch (type) {
     case ProjectType.SecretManager:
-      return "/projects/secret-management/$projectId";
+      return "/organizations/$orgId/projects/secret-management/$projectId";
     case ProjectType.CertificateManager:
-      return "/projects/cert-management/$projectId";
+      return "/organizations/$orgId/projects/cert-manager/$projectId";
     default:
-      return `/projects/${type}/$projectId` as const;
+      return `/organizations/$orgId/projects/${type}/$projectId` as const;
   }
 };
 
@@ -77,15 +72,17 @@ export const getProjectBaseURL = (type: ProjectType) => {
 export const getProjectHomePage = (type: ProjectType, environments: ProjectEnv[]) => {
   switch (type) {
     case ProjectType.SecretManager:
-      return "/projects/secret-management/$projectId/overview" as const;
+      return "/organizations/$orgId/projects/secret-management/$projectId/overview" as const;
     case ProjectType.CertificateManager:
-      return "/projects/cert-management/$projectId/policies" as const;
+      return "/organizations/$orgId/projects/cert-manager/$projectId/policies" as const;
     case ProjectType.SecretScanning:
-      return `/projects/${type}/$projectId/data-sources` as const;
+      return `/organizations/$orgId/projects/${type}/$projectId/data-sources` as const;
     case ProjectType.PAM:
-      return `/projects/${type}/$projectId/accounts` as const;
+      return `/organizations/$orgId/projects/${type}/$projectId/accounts` as const;
+    case ProjectType.AI:
+      return `/organizations/$orgId/projects/${type}/$projectId/overview` as const;
     default:
-      return `/projects/${type}/$projectId/overview` as const;
+      return `/organizations/$orgId/projects/${type}/$projectId/overview` as const;
   }
 };
 
@@ -93,10 +90,11 @@ export const getProjectTitle = (type: ProjectType) => {
   const titleConvert = {
     [ProjectType.SecretManager]: "Secrets Management",
     [ProjectType.KMS]: "Key Management",
-    [ProjectType.CertificateManager]: "Cert Management",
+    [ProjectType.CertificateManager]: "Certificate Manager",
     [ProjectType.SSH]: "SSH",
     [ProjectType.SecretScanning]: "Secret Scanning",
-    [ProjectType.PAM]: "PAM"
+    [ProjectType.PAM]: "PAM",
+    [ProjectType.AI]: "Agentic Manager"
   };
   return titleConvert[type];
 };
@@ -108,7 +106,8 @@ export const getProjectLottieIcon = (type: ProjectType) => {
     [ProjectType.CertificateManager]: "note",
     [ProjectType.SSH]: "terminal",
     [ProjectType.SecretScanning]: "secret-scan",
-    [ProjectType.PAM]: "groups"
+    [ProjectType.PAM]: "groups",
+    [ProjectType.AI]: "moving-block"
   };
   return titleConvert[type];
 };

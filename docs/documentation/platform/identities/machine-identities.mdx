@@ -16,15 +16,37 @@ Key Features:
 - Role Assignment: Identities must be assigned [roles](/documentation/platform/access-controls/role-based-access-controls). These roles determine the scope of access to resources, either at the organization level or project level.
 - Auth/Token Configuration: Identities must be configured with corresponding authentication methods and access token properties to securely interact with the Infisical API.
 
+## Scopes
+
+Identities can be created either at the organization-level or the project-level. Outside of identity management and scope of operation, organization and project identities are functionally identical.
+
+- Project identities are managed at the project-level and can only operate within their respective project.
+Project-level identities are useful for organizations that delegate responsibility to autonomous teams via projects.
+
+- Organization identities are managed at the organization-level and can be assigned to one or more projects, as well as
+perform organization-level operations. Organization-level identities are useful for organizations that have cross-project operations.
+
 ## Workflow
 
-A typical workflow for using identities consists of four steps:
+<Tabs>
+    <Tab title="Project Identities">
+        A typical workflow for using project identities consists of three steps:
 
-1. Creating the identity with a name and [role](/documentation/platform/access-controls/role-based-access-controls) in Organization Access Control > Machine Identities.
-   This step also involves configuring an authentication method for it.
-2. Adding the identity to the project(s) you want it to have access to.
-3. Authenticating the identity with the Infisical API based on the configured authentication method on it and receiving a short-lived access token back.
-4. Authenticating subsequent requests with the Infisical API using the short-lived access token.
+        1. Creating the identity with a name and [role](/documentation/platform/access-controls/role-based-access-controls) in Project > Access Control > Machine Identities.
+        This step also involves configuring an authentication method for it.
+        2. Authenticating the identity with the Infisical API based on the configured authentication method on it and receiving a short-lived access token back.
+        3. Authenticating subsequent requests with the Infisical API using the short-lived access token.
+    </Tab>
+    <Tab title="Organization Identities">
+        A typical workflow for using organization identities consists of four steps:
+
+        1. Creating the identity with a name and [role](/documentation/platform/access-controls/role-based-access-controls) in Organization > Access Control > Machine Identities.
+        This step also involves configuring an authentication method for it.
+        2. Adding the identity to the project(s) you want it to have access to.
+        3. Authenticating the identity with the Infisical API based on the configured authentication method on it and receiving a short-lived access token back.
+        4. Authenticating subsequent requests with the Infisical API using the short-lived access token.
+    </Tab>
+</Tabs>
 
 ## Authentication Methods
 

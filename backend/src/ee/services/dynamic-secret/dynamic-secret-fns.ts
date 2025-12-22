@@ -6,6 +6,8 @@ import { BadRequestError } from "@app/lib/errors";
 import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { getDbConnectionHost } from "@app/lib/knex";
 
+const ERROR_MESSAGE = "Invalid host";
+
 export const verifyHostInputValidity = async (host: string, isGateway = false) => {
   const appCfg = getConfig();
 
@@ -40,13 +42,13 @@ export const verifyHostInputValidity = async (host: string, isGateway = false) =
     }
   }
 
-  const normalizedHost = host.split(":")[0];
+  const normalizedHost = host.split(":")[0].toLowerCase();
   const inputHostIps: string[] = [];
   if (net.isIPv4(host)) {
     inputHostIps.push(host);
   } else {
     if (normalizedHost === "localhost" || normalizedHost === "host.docker.internal") {
-      throw new BadRequestError({ message: "Invalid db host" });
+      throw new BadRequestError({ message: ERROR_MESSAGE });
     }
     try {
       const resolvedIps = await dns.resolve4(host);
@@ -62,10 +64,10 @@ export const verifyHostInputValidity = async (host: string, isGateway = false) =
 
   if (!(appCfg.DYNAMIC_SECRET_ALLOW_INTERNAL_IP || appCfg.ALLOW_INTERNAL_IP_CONNECTIONS)) {
     const isInternalIp = inputHostIps.some((el) => isPrivateIp(el));
-    if (isInternalIp) throw new BadRequestError({ message: "Invalid db host" });
+    if (isInternalIp) throw new BadRequestError({ message: ERROR_MESSAGE });
   }
 
   const isAppUsedIps = inputHostIps.some((el) => exclusiveIps.includes(el));
-  if (isAppUsedIps) throw new BadRequestError({ message: "Invalid db host" });
+  if (isAppUsedIps) throw new BadRequestError({ message: ERROR_MESSAGE });
   return inputHostIps;
 };

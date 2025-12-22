@@ -233,6 +233,10 @@ export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetai
   gatewayV2Service
 ) => {
   const validateConnection = async () => {
+    if (!gatewayId) {
+      throw new BadRequestError({ message: "Gateway ID is required" });
+    }
+
     try {
       await executeWithGateway({ connectionDetails, gatewayId, resourceType }, gatewayV2Service, async (client) => {
         await client.validate(true);
@@ -255,6 +259,10 @@ export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetai
     credentials
   ) => {
     try {
+      if (!gatewayId) {
+        throw new BadRequestError({ message: "Gateway ID is required" });
+      }
+
       await executeWithGateway(
         {
           connectionDetails,
@@ -296,6 +304,10 @@ export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetai
     currentCredentials
   ) => {
     const newPassword = alphaNumericNanoId(32);
+    if (!gatewayId) {
+      throw new BadRequestError({ message: "Gateway ID is required" });
+    }
+
     try {
       return await executeWithGateway(
         {
@@ -337,9 +349,24 @@ export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetai
     }
   };
 
+  const handleOverwritePreventionForCensoredValues = async (
+    updatedAccountCredentials: TSqlAccountCredentials,
+    currentCredentials: TSqlAccountCredentials
+  ) => {
+    if (updatedAccountCredentials.password === "__INFISICAL_UNCHANGED__") {
+      return {
+        ...updatedAccountCredentials,
+        password: currentCredentials.password
+      };
+    }
+
+    return updatedAccountCredentials;
+  };
+
   return {
     validateConnection,
     validateAccountCredentials,
-    rotateAccountCredentials
+    rotateAccountCredentials,
+    handleOverwritePreventionForCensoredValues
   };
 };

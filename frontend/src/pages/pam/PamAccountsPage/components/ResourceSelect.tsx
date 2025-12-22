@@ -1,11 +1,12 @@
+import { useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { SingleValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Button, FilterableSelect, FormControl, ModalClose, Spinner } from "@app/components/v2";
+import { Button, FilterableSelect, FormControl, ModalClose } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
-import { usePopUp } from "@app/hooks";
+import { useDebounce, usePopUp } from "@app/hooks";
 import { PamResourceType, useListPamResources } from "@app/hooks/api/pam";
 
 import { PamAddResourceModal } from "../../PamResourcesPage/components/PamAddResourceModal";
@@ -28,7 +29,17 @@ type FormData = z.infer<typeof formSchema>;
 
 export const ResourceSelect = ({ onSubmit, projectId }: Props) => {
   const { permission } = useProjectPermission();
-  const { isPending, data: resources } = useListPamResources(projectId);
+
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search, 350);
+
+  const { isPending, data } = useListPamResources({
+    projectId,
+    limit: 100,
+    search: debouncedSearch
+  });
+
+  const resources = data?.resources || [];
 
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["addResource"] as const);
 
@@ -43,15 +54,6 @@ export const ResourceSelect = ({ onSubmit, projectId }: Props) => {
     ProjectPermissionSub.PamResources
   );
 
-  if (isPending) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center py-2.5">
-        <Spinner size="lg" className="text-mineshaft-500" />
-        <p className="mt-4 text-sm text-mineshaft-400">Loading options...</p>
-      </div>
-    );
-  }
-
   return (
     <>
       <FormProvider {...form}>
@@ -65,6 +67,12 @@ export const ResourceSelect = ({ onSubmit, projectId }: Props) => {
               <FormControl isError={Boolean(error)} errorText={error?.message} label="Resource">
                 <FilterableSelect
                   value={value}
+                  inputValue={search}
+                  onInputChange={(val, actionMeta) => {
+                    if (actionMeta.action === "input-change") {
+                      setSearch(val);
+                    }
+                  }}
                   onChange={(newValue) => {
                     if ((newValue as SingleValue<{ id: string }>)?.id === "_create") {
                       handlePopUpOpen("addResource");
@@ -72,6 +80,8 @@ export const ResourceSelect = ({ onSubmit, projectId }: Props) => {
                       return;
                     }
 
+                    // Clear search when a value is selected so the selected label is shown
+                    setSearch("");
                     onChange(newValue);
                   }}
                   isLoading={isPending}

@@ -30,6 +30,7 @@ import { Badge } from "@app/components/v3";
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
+  useOrganization,
   useProject
 } from "@app/context";
 import { useListWorkspacePkiSubscribers } from "@app/hooks/api";
@@ -49,6 +50,7 @@ type Props = {
 
 export const PkiSubscribersTable = ({ handlePopUpOpen }: Props) => {
   const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { data, isPending } = useListWorkspacePkiSubscribers(currentProject?.id || "");
   return (
@@ -75,8 +77,9 @@ export const PkiSubscribersTable = ({ handlePopUpOpen }: Props) => {
                     key={`pki-subscriber-${subscriber.id}`}
                     onClick={() =>
                       navigate({
-                        to: "/projects/cert-management/$projectId/subscribers/$subscriberName",
+                        to: "/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName",
                         params: {
+                          orgId: currentOrg.id,
                           projectId: currentProject.id,
                           subscriberName: subscriber.name
                         }

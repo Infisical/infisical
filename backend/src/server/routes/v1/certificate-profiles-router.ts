@@ -8,7 +8,8 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertStatus } from "@app/services/certificate/certificate-types";
-import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
+import { ExternalConfigUnionSchema } from "@app/services/certificate-profile/certificate-profile-external-config-schemas";
+import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 
 export const registerCertificateProfilesRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -23,7 +24,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       body: z
         .object({
           projectId: z.string().min(1),
-          caId: z.string().uuid(),
+          caId: z.string().uuid().optional(),
           certificateTemplateId: z.string().uuid(),
           slug: z
             .string()
@@ -32,6 +33,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
             .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens"),
           description: z.string().max(1000).optional(),
           enrollmentType: z.nativeEnum(EnrollmentType),
+          issuerType: z.nativeEnum(IssuerType).default(IssuerType.CA),
           estConfig: z
             .object({
               disableBootstrapCaValidation: z.boolean().default(false),
@@ -45,53 +47,117 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
               renewBeforeDays: z.number().min(1).max(30).optional()
             })
             .optional(),
-          acmeConfig: z.object({}).optional()
+          acmeConfig: z
+            .object({
+              skipDnsOwnershipVerification: z.boolean().optional()
+            })
+            .optional(),
+          externalConfigs: ExternalConfigUnionSchema
         })
         .refine(
           (data) => {
             if (data.enrollmentType === EnrollmentType.EST) {
-              if (!data.estConfig) {
-                return false;
-              }
-              if (data.apiConfig) {
-                return false;
-              }
-              if (data.acmeConfig) {
-                return false;
-              }
-            }
-            if (data.enrollmentType === EnrollmentType.API) {
-              if (!data.apiConfig) {
-                return false;
-              }
-              if (data.estConfig) {
-                return false;
-              }
-              if (data.acmeConfig) {
-                return false;
-              }
-            }
-            if (data.enrollmentType === EnrollmentType.ACME) {
-              if (!data.acmeConfig) {
-                return false;
-              }
-              if (data.estConfig) {
-                return false;
-              }
-              if (data.apiConfig) {
-                return false;
-              }
+              return !!data.estConfig;
             }
             return true;
           },
           {
-            message:
-              "EST enrollment type requires EST configuration and cannot have API or ACME configuration. API enrollment type requires API configuration and cannot have EST or ACME configuration. ACME enrollment type requires ACME configuration and cannot have EST or API configuration."
+            message: "EST enrollment type requires EST configuration"
+          }
+        )
+        .refine(
+          (data) => {
+            if (data.enrollmentType === EnrollmentType.API) {
+              return !!data.apiConfig;
+            }
+            return true;
+          },
+          {
+            message: "API enrollment type requires API configuration"
+          }
+        )
+        .refine(
+          (data) => {
+            if (data.enrollmentType === EnrollmentType.ACME) {
+              return !!data.acmeConfig;
+            }
+            return true;
+          },
+          {
+            message: "ACME enrollment type requires ACME configuration"
+          }
+        )
+        .refine(
+          (data) => {
+            if (data.enrollmentType === EnrollmentType.EST) {
+              return !data.apiConfig && !data.acmeConfig;
+            }
+            return true;
+          },
+          {
+            message: "EST enrollment type cannot have API or ACME configuration"
+          }
+        )
+        .refine(
+          (data) => {
+            if (data.enrollmentType === EnrollmentType.API) {
+              return !data.estConfig && !data.acmeConfig;
+            }
+            return true;
+          },
+          {
+            message: "API enrollment type cannot have EST or ACME configuration"
+          }
+        )
+        .refine(
+          (data) => {
+            if (data.enrollmentType === EnrollmentType.ACME) {
+              return !data.estConfig && !data.apiConfig;
+            }
+            return true;
+          },
+          {
+            message: "ACME enrollment type cannot have EST or API configuration"
+          }
+        )
+        .refine(
+          (data) => {
+            if (data.issuerType === IssuerType.CA) {
+              return !!data.caId;
+            }
+            return true;
+          },
+          {
+            message: "CA issuer type requires a CA ID"
+          }
+        )
+        .refine(
+          (data) => {
+            if (data.issuerType === IssuerType.SELF_SIGNED) {
+              return !data.caId;
+            }
+            return true;
+          },
+          {
+            message: "Self-signed issuer type cannot have a CA ID"
+          }
+        )
+        .refine(
+          (data) => {
+            if (data.issuerType === IssuerType.SELF_SIGNED) {
+              return data.enrollmentType === EnrollmentType.API;
+            }
+            return true;
+          },
+          {
+            message: "Self-signed issuer type only supports API enrollment"
           }
         ),
       response: {
         200: z.object({
-          certificateProfile: PkiCertificateProfilesSchema
+          certificateProfile: PkiCertificateProfilesSchema.extend({
+            externalConfigs: ExternalConfigUnionSchema
+          })
         })
       }
     },
@@ -115,7 +181,8 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
             certificateProfileId: certificateProfile.id,
             name: certificateProfile.slug,
             projectId: certificateProfile.projectId,
-            enrollmentType: certificateProfile.enrollmentType
+            enrollmentType: certificateProfile.enrollmentType,
+            issuerType: certificateProfile.issuerType
           }
         }
       });
@@ -139,11 +206,21 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
         limit: z.coerce.number().min(1).max(100).default(20),
         search: z.string().optional(),
         enrollmentType: z.nativeEnum(EnrollmentType).optional(),
+        issuerType: z.nativeEnum(IssuerType).optional(),
         caId: z.string().uuid().optional()
       }),
       response: {
         200: z.object({
           certificateProfiles: PkiCertificateProfilesSchema.extend({
+            certificateAuthority: z
+              .object({
+                id: z.string(),
+                status: z.string(),
+                name: z.string(),
+                isExternal: z.boolean().optional(),
+                externalType: z.string().nullable().optional()
+              })
+              .optional(),
             metrics: z
               .object({
                 profileId: z.string(),
@@ -172,9 +249,11 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
             acmeConfig: z
               .object({
                 id: z.string(),
-                directoryUrl: z.string()
+                directoryUrl: z.string(),
+                skipDnsOwnershipVerification: z.boolean().optional()
               })
-              .optional()
+              .optional(),
+            externalConfigs: ExternalConfigUnionSchema
           }).array(),
           totalCount: z.number()
         })
@@ -220,12 +299,16 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       response: {
         200: z.object({
           certificateProfile: PkiCertificateProfilesSchema.extend({
+            externalConfigs: ExternalConfigUnionSchema
+          }).extend({
             certificateAuthority: z
               .object({
                 id: z.string(),
                 projectId: z.string(),
                 status: z.string(),
-                name: z.string()
+                name: z.string(),
+                isExternal: z.boolean().optional(),
+                externalType: z.string().nullable().optional()
               })
               .optional(),
             certificateTemplate: z
@@ -250,7 +333,8 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
                 autoRenew: z.boolean(),
                 renewBeforeDays: z.number().optional()
               })
-              .optional()
+              .optional(),
+            externalConfigs: ExternalConfigUnionSchema
           })
         })
       }
@@ -298,7 +382,9 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       }),
       response: {
         200: z.object({
-          certificateProfile: PkiCertificateProfilesSchema
+          certificateProfile: PkiCertificateProfilesSchema.extend({
+            externalConfigs: ExternalConfigUnionSchema
+          })
         })
       }
     },
@@ -339,6 +425,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
             .optional(),
           description: z.string().max(1000).optional(),
           enrollmentType: z.nativeEnum(EnrollmentType).optional(),
+          issuerType: z.nativeEnum(IssuerType).optional(),
           estConfig: z
             .object({
               disableBootstrapCaValidation: z.boolean().default(false),
@@ -351,7 +438,13 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
               autoRenew: z.boolean().default(false),
               renewBeforeDays: z.number().min(1).max(30).optional()
             })
-            .optional()
+            .optional(),
+          acmeConfig: z
+            .object({
+              skipDnsOwnershipVerification: z.boolean().optional()
+            })
+            .optional(),
+          externalConfigs: ExternalConfigUnionSchema
         })
         .refine(
           (data) => {
@@ -373,7 +466,9 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
         ),
       response: {
         200: z.object({
-          certificateProfile: PkiCertificateProfilesSchema
+          certificateProfile: PkiCertificateProfilesSchema.extend({
+            externalConfigs: ExternalConfigUnionSchema
+          })
         })
       }
     },
@@ -418,7 +513,9 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       }),
       response: {
         200: z.object({
-          certificateProfile: PkiCertificateProfilesSchema
+          certificateProfile: PkiCertificateProfilesSchema.extend({
+            externalConfigs: ExternalConfigUnionSchema
+          })
         })
       }
     },

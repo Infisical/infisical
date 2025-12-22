@@ -27,6 +27,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { GroupCreateUpdateModal } from "./components/GroupCreateUpdateModal";
 import { GroupDetailsSection } from "./components/GroupDetailsSection";
 import { GroupMembersSection } from "./components/GroupMembersSection";
+import { GroupProjectsSection } from "./components/GroupProjectsSection";
 
 export enum TabSections {
   Member = "members",
@@ -44,7 +45,7 @@ const Page = () => {
 
   const { data, isPending } = useGetGroupById(groupId);
 
-  const { isSubOrganization } = useOrganization();
+  const { isSubOrganization, currentOrg } = useOrganization();
 
   const { mutateAsync: deleteMutateAsync } = useDeleteGroup();
 
@@ -62,7 +63,8 @@ const Page = () => {
       type: "success"
     });
     navigate({
-      to: "/organization/access-management" as const,
+      to: "/organizations/$orgId/access-management" as const,
+      params: { orgId: currentOrg.id },
       search: {
         selectedTab: TabSections.Groups
       }
@@ -78,14 +80,15 @@ const Page = () => {
       {data && (
         <div className="mx-auto w-full max-w-8xl">
           <Link
-            to="/organization/access-management"
+            to="/organizations/$orgId/access-management"
+            params={{ orgId: currentOrg.id }}
             search={{
               selectedTab: TabSections.Groups
             }}
             className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
           >
             <FontAwesomeIcon icon={faChevronLeft} />
-            Groups
+            {isSubOrganization ? "Sub-" : ""}Organization Groups
           </Link>
           <PageHeader
             scope={isSubOrganization ? "namespace" : "org"}
@@ -150,11 +153,14 @@ const Page = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           </PageHeader>
-          <div className="flex">
-            <div className="mr-4 w-96">
+          <div className="flex flex-col gap-4 md:flex-row">
+            <div className="w-full md:w-96">
               <GroupDetailsSection groupId={groupId} handlePopUpOpen={handlePopUpOpen} />
             </div>
-            <GroupMembersSection groupId={groupId} groupSlug={data.group.slug} />
+            <div className="flex grow flex-col gap-4">
+              <GroupMembersSection groupId={groupId} groupSlug={data.group.slug} />
+              <GroupProjectsSection groupId={groupId} groupSlug={data.group.slug} />
+            </div>
           </div>
         </div>
       )}

@@ -41,10 +41,10 @@ const formSchemaWithIdentity = baseFormSchema.extend({
         id: z.string(),
         name: z.string()
       },
-      { required_error: "Identity is required" }
+      { required_error: "Machine identity is required" }
     )
     .nullable()
-    .refine((val) => val !== null, { message: "Identity is required" })
+    .refine((val) => val !== null, { message: "Machine identity is required" })
 });
 
 const formSchemaWithToken = baseFormSchema.extend({
@@ -156,15 +156,6 @@ export const RelayCliDeploymentMethod = () => {
     }
   };
 
-  const handleIdentityChange = (
-    selectedIdentity: SingleValue<{
-      id: string;
-      name: string;
-    }>
-  ) => {
-    setIdentity(selectedIdentity);
-  };
-
   const command = useMemo(() => {
     return `infisical relay start --name=${name} --domain=${siteURL} --host=${host} --token=${identityToken}`;
   }, [name, siteURL, host, identityToken]);
@@ -238,14 +229,14 @@ export const RelayCliDeploymentMethod = () => {
       {canCreateToken && autogenerateToken ? (
         <>
           <FormLabel
-            label="Identity"
-            tooltipText="The identity that your relay will use for authentication."
+            label="Machine Identity"
+            tooltipText="The machine identity that your relay will use for authentication."
             className="mt-4"
           />
           <FilterableSelect
             value={identity}
             onChange={(e) =>
-              handleIdentityChange(
+              setIdentity(
                 e as SingleValue<{
                   id: string;
                   name: string;
@@ -253,7 +244,7 @@ export const RelayCliDeploymentMethod = () => {
               )
             }
             isLoading={isIdentitiesLoading}
-            placeholder="Select identity..."
+            placeholder="Select machine identity..."
             options={identityMembershipOrgs.map((membership) => membership.identity)}
             getOptionValue={(option) => option.id}
             getOptionLabel={(option) => option.name}
@@ -263,14 +254,14 @@ export const RelayCliDeploymentMethod = () => {
       ) : (
         <>
           <FormLabel
-            label="Identity Token"
-            tooltipText="The identity token that your relay will use for authentication."
+            label="Machine Identity Token"
+            tooltipText="The machine identity token that your relay will use for authentication."
             className="mt-4"
           />
           <Input
             value={identityToken}
             onChange={(e) => setIdentityToken(e.target.value)}
-            placeholder="Enter identity token..."
+            placeholder="Enter machine identity token..."
             isError={Boolean(errors.identityToken)}
           />
           {errors.identityToken && <p className="mt-1 text-sm text-red">{errors.identityToken}</p>}
@@ -288,15 +279,15 @@ export const RelayCliDeploymentMethod = () => {
             className="mr-2"
           >
             <div className="flex items-center">
-              <span>Automatically enable token auth and generate a token for identity</span>
+              <span>Automatically enable token auth and generate a token for machine identity</span>
               <Tooltip
                 className="max-w-md"
                 content={
                   <>
-                    Token authentication will be automatically enabled for the selected identity if
-                    it isn&apos;t already configured. By default, it will be configured to allow all
-                    IP addresses with a token TTL of 30 days. You can manage these settings in
-                    Access Control.
+                    Token authentication will be automatically enabled for the selected machine
+                    identity if it isn&apos;t already configured. By default, it will be configured
+                    to allow all IP addresses with a token TTL of 30 days. You can manage these
+                    settings in Access Control.
                     <br />
                     <br />A token will automatically be generated to be used with the CLI command.
                   </>

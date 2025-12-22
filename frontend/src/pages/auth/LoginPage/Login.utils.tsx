@@ -5,14 +5,27 @@ import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { queryClient } from "@app/hooks/api/reactQuery";
 import { userKeys } from "@app/hooks/api/users";
 
-export const navigateUserToOrg = async (navigate: NavigateFn, organizationId?: string) => {
+type NavigateUserToOrgParams = {
+  navigate: NavigateFn;
+  organizationId?: string;
+  navigateTo?: string;
+};
+
+export const navigateUserToOrg = async ({
+  navigate,
+  organizationId,
+  navigateTo
+}: NavigateUserToOrgParams) => {
   const userOrgs = await fetchOrganizations();
 
   const nonAuthEnforcedOrgs = userOrgs.filter((org) => !org.authEnforced);
 
   if (organizationId) {
     localStorage.setItem("orgData.id", organizationId);
-    navigate({ to: "/organization/projects" });
+    navigate({
+      to: navigateTo || "/organizations/$orgId/projects",
+      params: { orgId: organizationId }
+    });
     return;
   }
 
@@ -20,11 +33,14 @@ export const navigateUserToOrg = async (navigate: NavigateFn, organizationId?: s
     // user is part of at least 1 non-auth enforced org
     const userOrg = nonAuthEnforcedOrgs[0] && nonAuthEnforcedOrgs[0].id;
     localStorage.setItem("orgData.id", userOrg);
-    navigate({ to: "/organization/projects" });
+    navigate({
+      to: navigateTo || "/organizations/$orgId/projects",
+      params: { orgId: userOrg }
+    });
   } else {
     // user is not part of any non-auth enforced orgs
     localStorage.removeItem("orgData.id");
-    navigate({ to: "/organization/none" });
+    navigate({ to: "/organizations/none" });
   }
 };
 

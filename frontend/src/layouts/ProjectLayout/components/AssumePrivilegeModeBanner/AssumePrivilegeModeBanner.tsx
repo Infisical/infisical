@@ -8,7 +8,7 @@ import { useRemoveAssumeProjectPrivilege } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 
 export const AssumePrivilegeModeBanner = () => {
-  const { isSubOrganization, currentOrg } = useOrganization();
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const exitAssumePrivilegeMode = useRemoveAssumeProjectPrivilege();
   const { assumedPrivilegeDetails } = useProjectPermission();
@@ -37,8 +37,10 @@ export const AssumePrivilegeModeBanner = () => {
               },
               {
                 onSuccess: () => {
-                  const url = `${getProjectHomePage(currentProject.type, currentProject.environments)}${isSubOrganization ? `?subOrganization=${currentOrg.slug}` : ""}`;
-                  window.location.href = url.replace("$projectId", currentProject.id);
+                  const url = getProjectHomePage(currentProject.type, currentProject.environments);
+                  window.location.assign(
+                    url.replace("$orgId", currentOrg.id).replace("$projectId", currentProject.id)
+                  );
                 }
               }
             );

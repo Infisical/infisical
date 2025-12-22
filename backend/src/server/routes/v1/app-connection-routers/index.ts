@@ -17,6 +17,7 @@ import { registerChecklyConnectionRouter } from "./checkly-connection-router";
 import { registerCloudflareConnectionRouter } from "./cloudflare-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
 import { registerDigitalOceanConnectionRouter } from "./digital-ocean-connection-router";
+import { registerDNSMadeEasyConnectionRouter } from "./dns-made-easy-connection-router";
 import { registerFlyioConnectionRouter } from "./flyio-connection-router";
 import { registerGcpConnectionRouter } from "./gcp-connection-router";
 import { registerGitHubConnectionRouter } from "./github-connection-router";
@@ -27,10 +28,12 @@ import { registerHerokuConnectionRouter } from "./heroku-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
 import { registerLaravelForgeConnectionRouter } from "./laravel-forge-connection-router";
 import { registerLdapConnectionRouter } from "./ldap-connection-router";
+import { registerMongoDBConnectionRouter } from "./mongodb-connection-router";
 import { registerMsSqlConnectionRouter } from "./mssql-connection-router";
 import { registerMySqlConnectionRouter } from "./mysql-connection-router";
 import { registerNetlifyConnectionRouter } from "./netlify-connection-router";
 import { registerNorthflankConnectionRouter } from "./northflank-connection-router";
+import { registerOctopusDeployConnectionRouter } from "./octopus-deploy-connection-router";
 import { registerOktaConnectionRouter } from "./okta-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerRailwayConnectionRouter } from "./railway-connection-router";
@@ -78,6 +81,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Flyio]: registerFlyioConnectionRouter,
     [AppConnection.GitLab]: registerGitLabConnectionRouter,
     [AppConnection.Cloudflare]: registerCloudflareConnectionRouter,
+    [AppConnection.DNSMadeEasy]: registerDNSMadeEasyConnectionRouter,
     [AppConnection.Bitbucket]: registerBitbucketConnectionRouter,
     [AppConnection.Zabbix]: registerZabbixConnectionRouter,
     [AppConnection.Railway]: registerRailwayConnectionRouter,
@@ -88,5 +92,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Northflank]: registerNorthflankConnectionRouter,
     [AppConnection.Okta]: registerOktaConnectionRouter,
     [AppConnection.Redis]: registerRedisConnectionRouter,
-    [AppConnection.Chef]: registerChefConnectionRouter
+    [AppConnection.MongoDB]: registerMongoDBConnectionRouter,
+    [AppConnection.Chef]: registerChefConnectionRouter,
+    [AppConnection.OctopusDeploy]: registerOctopusDeployConnectionRouter
   };

@@ -1,0 +1,85 @@
+---
+title: "Activity Logs"
+sidebarTitle: "Activity Logs"
+description: "Monitor and audit AI tool usage with detailed activity logs."
+---
+
+## Concept
+
+Activity Logs provide complete visibility into how AI agents are using tools through your MCP endpoints. Every tool invocation is logged with detailed information including timestamps, the endpoint used, which tool was called, who initiated the request, and the full request/response payloads.
+
+<CardGroup cols={2}>
+  <Card title="Security Auditing" icon="shield">
+    Identify unusual patterns of tool usage, verify authorized access, and detect potential data exfiltration attempts.
+  </Card>
+  <Card title="Compliance Reporting" icon="file-certificate">
+    Meet SOC 2 requirements, support internal security reviews, and enable incident investigation with complete audit trails.
+  </Card>
+  <Card title="Debugging & Support" icon="bug">
+    Examine request payloads, review response errors, and trace the sequence of tool calls when issues arise.
+  </Card>
+  <Card title="Usage Analytics" icon="chart-line">
+    Identify frequently used tools, track usage trends over time, and measure active users per endpoint.
+  </Card>
+</CardGroup>
+
+## What Gets Logged
+
+Every tool invocation through an MCP endpoint creates a log entry containing:
+
+| Field | Description |
+|-------|-------------|
+| **Timestamp** | When the tool was invoked |
+| **Endpoint** | The MCP endpoint used |
+| **Tool** | The name of the tool that was called |
+| **User** | The user who initiated the request |
+| **Request** | The full request payload sent to the tool |
+| **Response** | The full response returned by the tool |
+
+## Viewing Activity Logs
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Navigate to Activity Logs">
+        Head to your Agentic Manager project and select **Activity Logs** from the sidebar.
+
+        ![activity logs](/images/platform/ai/mcp/mcp-activity-logs.png)
+      </Step>
+      <Step title="Filter by time range">
+        Use the time range selector to filter logs. You can also adjust the timezone using the timezone dropdown.
+      </Step>
+      <Step title="Apply filters">
+        Click **Filter** to apply additional filters:
+        
+        - **Endpoint**: Filter by specific MCP endpoint
+        - **Tool**: Filter by specific tool
+        - **User**: Filter by specific user
+        - **Server**: Filter by specific MCP server
+      </Step>
+      <Step title="View log details">
+        Click on any log entry to expand it and view the full details:
+        
+        - **Request**: The JSON payload sent to the tool
+        - **Response**: The JSON response returned by the tool
+
+        ![activity log details](/images/platform/ai/mcp/mcp-activity-logs-details.png)
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Can I export activity logs?">
+    Yes, activity logs can be exported for external analysis or long-term storage. Enterprise plans include log streaming to external SIEM systems.
+  </Accordion>
+  <Accordion title="Are sensitive data in requests/responses masked?">
+    Infisical supports PII filtering to automatically detect and mask sensitive data in request and response payloads, helping you maintain compliance while preserving audit trail integrity.
+  </Accordion>
+  <Accordion title="Do failed tool invocations get logged?">
+    Yes, all tool invocations are logged regardless of success or failure. Failed invocations include error details in the response payload.
+  </Accordion>
+</AccordionGroup>
+

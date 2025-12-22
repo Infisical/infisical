@@ -1,0 +1,35 @@
+---
+title: "Setup"
+sidebarTitle: "Setup"
+description: "This guide provides a step-by-step walkthrough for configuring Infisical's Privileged Access Management (PAM). Learn how to deploy a gateway, define resources, and grant your team secure, audited access to critical infrastructure."
+---
+
+Infisical's Privileged Access Management (PAM) solution enables you to provide developers with secure, just-in-time access to your critical infrastructure, such as databases, servers, and web applications. Instead of sharing static credentials, your team can request temporary access through Infisical, which is then brokered through a secure gateway with full auditing and session recording.
+
+Getting started involves a few key components:
+- **Gateways:** A lightweight service you deploy in your own infrastructure to act as a secure entry point to your private resources.
+- **Resources:** The specific systems you want to manage access to (e.g., a PostgreSQL database or an SSH server).
+- **Accounts:** The privileged credentials (e.g., a database user or an SSH user) that Infisical uses to connect to a resource on behalf of a user.
+
+The following steps will guide you through the entire setup process, from deploying your first gateway to establishing a secure connection.
+
+<Steps>
+  <Step title="Deploy a Gateway">
+    Before you can manage any resources, you must deploy an **Infisical Gateway** within your infrastructure. This component is responsible for brokering connections to your private resources.
+
+    [Read the Gateway Deployment Guide](/documentation/platform/gateways/gateway-deployment)
+  </Step>
+  <Step title="Create a Resource">
+    Once the Gateway is active, define a **Resource** in Infisical (e.g., "Production Database"). You will link this resource to your deployed Gateway so Infisical knows how to reach it.
+
+    [Learn about Resources](/documentation/platform/pam/getting-started/resources)
+  </Step>
+  <Step title="Add Accounts">
+    Add **Accounts** to your Resource (e.g., `postgres` or `read_only_user`). These represent the actual PAM users or privileged identities that are utilized when a user connects.
+
+    [Learn about Accounts](/documentation/platform/pam/getting-started/accounts)
+  </Step>
+  <Step title="Connect">
+    Users can now use the Infisical CLI to securely connect to the resource using the defined accounts, with full auditing and session recording enabled.
+  </Step>
+</Steps>

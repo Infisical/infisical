@@ -5,6 +5,8 @@ import { AccessScope, OrganizationActionScope, OrgMembershipRole, TRoles } from 
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -18,25 +20,48 @@ import { OrgPermissionGroupActions, OrgPermissionSubjects } from "../permission/
 import { constructPermissionErrorMessage, validatePrivilegeChangeOperation } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TGroupDALFactory } from "./group-dal";
-import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "./group-fns";
 import {
+  addIdentitiesToGroup,
+  addUsersToGroupByUserIds,
+  removeIdentitiesFromGroup,
+  removeUsersFromGroupByUserIds
+} from "./group-fns";
+import {
+  TAddMachineIdentityToGroupDTO,
   TAddUserToGroupDTO,
   TCreateGroupDTO,
   TDeleteGroupDTO,
   TGetGroupByIdDTO,
+  TListGroupMachineIdentitiesDTO,
+  TListGroupMembersDTO,
+  TListGroupProjectsDTO,
   TListGroupUsersDTO,
+  TRemoveMachineIdentityFromGroupDTO,
   TRemoveUserFromGroupDTO,
   TUpdateGroupDTO
 } from "./group-types";
+import { TIdentityGroupMembershipDALFactory } from "./identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "./user-group-membership-dal";
 
 type TGroupServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find" | "findUserEncKeyByUserIdsBatch" | "transaction" | "findUserByUsername">;
+  identityDAL: Pick<TIdentityDALFactory, "findOne" | "find" | "transaction">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "delete" | "insertMany">;
   groupDAL: Pick<
     TGroupDALFactory,
-    "create" | "findOne" | "update" | "delete" | "findAllGroupPossibleMembers" | "findById" | "transaction"
+    | "create"
+    | "findOne"
+    | "update"
+    | "delete"
+    | "findAllGroupPossibleUsers"
+    | "findAllGroupPossibleMachineIdentities"
+    | "findAllGroupPossibleMembers"
+    | "findById"
+    | "transaction"
+    | "findAllGroupProjects"
   >;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "findOne" | "create">;
+  membershipDAL: Pick<TMembershipDALFactory, "find" | "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "countAllOrgMembers" | "findById">;
   userGroupMembershipDAL: Pick<
@@ -57,6 +82,9 @@ type TGroupServiceFactoryDep = {
 export type TGroupServiceFactory = ReturnType<typeof groupServiceFactory>;
 
 export const groupServiceFactory = ({
+  identityDAL,
+  membershipDAL,
+  identityGroupMembershipDAL,
   userDAL,
   groupDAL,
   orgDAL,
@@ -354,7 +382,7 @@ export const groupServiceFactory = ({
         message: `Failed to find group with ID ${id}`
       });
 
-    const { members, totalCount } = await groupDAL.findAllGroupPossibleMembers({
+    const { members, totalCount } = await groupDAL.findAllGroupPossibleUsers({
       orgId: group.orgId,
       groupId: group.id,
       offset,
@@ -365,6 +393,149 @@ export const groupServiceFactory = ({
     });
 
     return { users: members, totalCount };
+  };
+
+  const listGroupMachineIdentities = async ({
+    id,
+    offset,
+    limit,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    search,
+    filter
+  }: TListGroupMachineIdentitiesDTO) => {
+    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+
+    const group = await groupDAL.findOne({
+      orgId: actorOrgId,
+      id
+    });
+
+    if (!group)
+      throw new NotFoundError({
+        message: `Failed to find group with ID ${id}`
+      });
+
+    const { machineIdentities, totalCount } = await groupDAL.findAllGroupPossibleMachineIdentities({
+      orgId: group.orgId,
+      groupId: group.id,
+      offset,
+      limit,
+      search,
+      filter
+    });
+
+    return { machineIdentities, totalCount };
+  };
+
+  const listGroupMembers = async ({
+    id,
+    offset,
+    limit,
+    search,
+    orderBy,
+    orderDirection,
+    memberTypeFilter,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TListGroupMembersDTO) => {
+    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+
+    const group = await groupDAL.findOne({
+      orgId: actorOrgId,
+      id
+    });
+
+    if (!group)
+      throw new NotFoundError({
+        message: `Failed to find group with ID ${id}`
+      });
+
+    const { members, totalCount } = await groupDAL.findAllGroupPossibleMembers({
+      orgId: group.orgId,
+      groupId: group.id,
+      offset,
+      limit,
+      search,
+      orderBy,
+      orderDirection,
+      memberTypeFilter
+    });
+
+    return { members, totalCount };
+  };
+
+  const listGroupProjects = async ({
+    id,
+    offset,
+    limit,
+    search,
+    filter,
+    orderBy,
+    orderDirection,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TListGroupProjectsDTO) => {
+    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+
+    const group = await groupDAL.findOne({
+      orgId: actorOrgId,
+      id
+    });
+
+    if (!group)
+      throw new NotFoundError({
+        message: `Failed to find group with ID ${id}`
+      });
+
+    const { projects, totalCount } = await groupDAL.findAllGroupProjects({
+      orgId: group.orgId,
+      groupId: group.id,
+      offset,
+      limit,
+      search,
+      filter,
+      orderBy,
+      orderDirection
+    });
+
+    return { projects, totalCount };
   };
 
   const addUserToGroup = async ({ id, username, actor, actorId, actorAuthMethod, actorOrgId }: TAddUserToGroupDTO) => {
@@ -445,6 +616,81 @@ export const groupServiceFactory = ({
     });
 
     return users[0];
+  };
+
+  const addMachineIdentityToGroup = async ({
+    id,
+    identityId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TAddMachineIdentityToGroupDTO) => {
+    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
+
+    // check if group with slug exists
+    const group = await groupDAL.findOne({
+      orgId: actorOrgId,
+      id
+    });
+
+    if (!group)
+      throw new NotFoundError({
+        message: `Failed to find group with ID ${id}`
+      });
+
+    const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([group.role], actorOrgId);
+    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
+
+    // check if user has broader or equal to privileges than group
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      shouldUseNewPrivilegeSystem,
+      OrgPermissionGroupActions.AddIdentities,
+      OrgPermissionSubjects.Groups,
+      permission,
+      rolePermissionDetails.permission
+    );
+
+    if (!permissionBoundary.isValid)
+      throw new PermissionBoundaryError({
+        message: constructPermissionErrorMessage(
+          "Failed to add identity to more privileged group",
+          shouldUseNewPrivilegeSystem,
+          OrgPermissionGroupActions.AddIdentities,
+          OrgPermissionSubjects.Groups
+        ),
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
+
+    const identityMembership = await membershipDAL.findOne({
+      scope: AccessScope.Organization,
+      scopeOrgId: group.orgId,
+      actorIdentityId: identityId
+    });
+
+    if (!identityMembership) {
+      throw new NotFoundError({ message: `Identity with id ${identityId} is not part of the organization` });
+    }
+
+    const identities = await addIdentitiesToGroup({
+      group,
+      identityIds: [identityId],
+      identityDAL,
+      membershipDAL,
+      identityGroupMembershipDAL
+    });
+
+    return identities[0];
   };
 
   const removeUserFromGroup = async ({
@@ -530,13 +776,91 @@ export const groupServiceFactory = ({
     return users[0];
   };
 
+  const removeMachineIdentityFromGroup = async ({
+    id,
+    identityId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TRemoveMachineIdentityFromGroupDTO) => {
+    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
+
+    const group = await groupDAL.findOne({
+      orgId: actorOrgId,
+      id
+    });
+
+    if (!group)
+      throw new NotFoundError({
+        message: `Failed to find group with ID ${id}`
+      });
+
+    const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([group.role], actorOrgId);
+    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
+
+    // check if user has broader or equal to privileges than group
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      shouldUseNewPrivilegeSystem,
+      OrgPermissionGroupActions.RemoveIdentities,
+      OrgPermissionSubjects.Groups,
+      permission,
+      rolePermissionDetails.permission
+    );
+    if (!permissionBoundary.isValid)
+      throw new PermissionBoundaryError({
+        message: constructPermissionErrorMessage(
+          "Failed to remove identity from more privileged group",
+          shouldUseNewPrivilegeSystem,
+          OrgPermissionGroupActions.RemoveIdentities,
+          OrgPermissionSubjects.Groups
+        ),
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
+
+    const identityMembership = await membershipDAL.findOne({
+      scope: AccessScope.Organization,
+      scopeOrgId: group.orgId,
+      actorIdentityId: identityId
+    });
+
+    if (!identityMembership) {
+      throw new NotFoundError({ message: `Identity with id ${identityId} is not part of the organization` });
+    }
+
+    const identities = await removeIdentitiesFromGroup({
+      group,
+      identityIds: [identityId],
+      identityDAL,
+      membershipDAL,
+      identityGroupMembershipDAL
+    });
+
+    return identities[0];
+  };
+
   return {
     createGroup,
     updateGroup,
     deleteGroup,
     listGroupUsers,
+    listGroupMachineIdentities,
+    listGroupMembers,
+    listGroupProjects,
     addUserToGroup,
+    addMachineIdentityToGroup,
     removeUserFromGroup,
+    removeMachineIdentityFromGroup,
     getGroupById
   };
 };

@@ -8,7 +8,7 @@ import { PkiManagerLayout } from "@app/layouts/PkiManagerLayout";
 import { ProjectSelect } from "@app/layouts/ProjectLayout/components/ProjectSelect";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout"
 )({
   component: PkiManagerLayout,
   beforeLoad: async ({ params, context }) => {

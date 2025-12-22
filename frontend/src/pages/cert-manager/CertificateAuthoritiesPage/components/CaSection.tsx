@@ -4,7 +4,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import { DocumentationLinkBadge } from "@app/components/v3";
+import {
+  ProjectPermissionCertificateAuthorityActions,
+  ProjectPermissionSub,
+  useProject
+} from "@app/context";
 import { CaStatus, CaType, useDeleteCa, useUpdateCa } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -26,10 +31,10 @@ export const CaSection = () => {
     "caStatus" // enable / disable
   ] as const);
 
-  const onRemoveCaSubmit = async (caName: string) => {
+  const onRemoveCaSubmit = async (id: string) => {
     if (!currentProject?.slug) return;
 
-    await deleteCa({ caName, projectId: currentProject.id, type: CaType.INTERNAL });
+    await deleteCa({ id, projectId: currentProject.id, type: CaType.INTERNAL });
 
     createNotification({
       text: "Successfully deleted CA",
@@ -39,10 +44,10 @@ export const CaSection = () => {
     handlePopUpClose("deleteCa");
   };
 
-  const onUpdateCaStatus = async ({ caName, status }: { caName: string; status: CaStatus }) => {
+  const onUpdateCaStatus = async ({ caId, status }: { caId: string; status: CaStatus }) => {
     if (!currentProject?.slug) return;
 
-    await updateCa({ caName, projectId: currentProject.id, type: CaType.INTERNAL, status });
+    await updateCa({ id: caId, type: CaType.INTERNAL, status });
 
     createNotification({
       text: `Successfully ${status === CaStatus.ACTIVE ? "enabled" : "disabled"} CA`,
@@ -55,9 +60,12 @@ export const CaSection = () => {
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">
-        <p className="text-xl font-medium text-mineshaft-100">Internal Certificate Authorities</p>
+        <div className="flex items-center gap-x-2">
+          <p className="text-xl font-medium text-mineshaft-100">Internal Certificate Authorities</p>
+          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/private-ca" />
+        </div>
         <ProjectPermissionCan
-          I={ProjectPermissionActions.Create}
+          I={ProjectPermissionCertificateAuthorityActions.Create}
           a={ProjectPermissionSub.CertificateAuthorities}
         >
           {(isAllowed) => (
@@ -85,9 +93,7 @@ export const CaSection = () => {
         subTitle="This action will delete other CAs and certificates below it in your CA hierarchy."
         onChange={(isOpen) => handlePopUpToggle("deleteCa", isOpen)}
         deleteKey="confirm"
-        onDeleteApproved={() =>
-          onRemoveCaSubmit((popUp?.deleteCa?.data as { caName: string })?.caName)
-        }
+        onDeleteApproved={() => onRemoveCaSubmit((popUp?.deleteCa?.data as { caId: string })?.caId)}
       />
       <DeleteActionModal
         isOpen={popUp.caStatus.isOpen}
@@ -102,9 +108,10 @@ export const CaSection = () => {
             : "This action will prevent the CA from issuing new certificates."
         }
         onChange={(isOpen) => handlePopUpToggle("caStatus", isOpen)}
+        buttonText="Confirm"
         deleteKey="confirm"
         onDeleteApproved={() =>
-          onUpdateCaStatus(popUp?.caStatus?.data as { caName: string; status: CaStatus })
+          onUpdateCaStatus(popUp?.caStatus?.data as { caId: string; status: CaStatus })
         }
       />
     </div>

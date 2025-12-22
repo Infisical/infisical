@@ -20,9 +20,9 @@ import {
 } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { useGetCert } from "@app/hooks/api";
-import { useCreateCertificateV3 } from "@app/hooks/api/ca";
-import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
+import { EnrollmentType, useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import { CertExtendedKeyUsage, CertKeyUsage } from "@app/hooks/api/certificates/enums";
+import { useUnifiedCertificateIssuance } from "@app/hooks/api/certificates/mutations";
 import { useGetCertificateTemplateV2ById } from "@app/hooks/api/certificateTemplates/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { CertSubjectAlternativeNameType } from "@app/pages/cert-manager/PoliciesPage/components/CertificateTemplatesV2Tab/shared/certificate-constants";
@@ -103,10 +103,11 @@ type Props = {
 };
 
 type TCertificateDetails = {
-  serialNumber: string;
-  certificate: string;
-  certificateChain: string;
-  privateKey: string;
+  serialNumber?: string;
+  certificate?: string;
+  certificateChain?: string;
+  privateKey?: string;
+  issuingCaCertificate?: string;
 };
 
 export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }: Props) => {
@@ -122,12 +123,11 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
 
   const { data: profilesData } = useListCertificateProfiles({
     projectId: currentProject?.id || "",
-    enrollmentType: "api"
+    enrollmentType: EnrollmentType.API,
+    includeConfigs: true
   });
 
-  const { mutateAsync: createCertificate } = useCreateCertificateV3({
-    projectId: currentProject?.id
-  });
+  const { mutateAsync: issueCertificate } = useUnifiedCertificateIssuance();
 
   const formResolver = useMemo(() => {
     return zodResolver(createSchema(shouldShowSubjectSection));
@@ -243,7 +243,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
       keyUsages,
       extendedKeyUsages
     }: FormData) => {
-      if (!currentProject?.slug) {
+      if (!currentProject?.slug || !currentProject?.id) {
         createNotification({
           text: "Project not found. Please refresh and try again.",
           type: "error"
@@ -275,44 +275,70 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
         }
       }
 
-      const certificateRequest: any = {
-        profileId: formProfileId,
-        projectSlug: currentProject.slug,
-        ttl,
-        signatureAlgorithm,
-        keyAlgorithm,
-        keyUsages: filterUsages(keyUsages) as CertKeyUsage[],
-        extendedKeyUsages: filterUsages(extendedKeyUsages) as CertExtendedKeyUsage[]
-      };
+      try {
+        // Prepare unified request
+        const request: any = {
+          profileId: formProfileId,
+          projectSlug: currentProject.slug,
+          projectId: currentProject.id,
+          attributes: {
+            ttl,
+            signatureAlgorithm: signatureAlgorithm || "",
+            keyAlgorithm: keyAlgorithm || "",
+            keyUsages: filterUsages(keyUsages) as CertKeyUsage[],
+            extendedKeyUsages: filterUsages(extendedKeyUsages) as CertExtendedKeyUsage[]
+          }
+        };
 
-      if (constraints.shouldShowSubjectSection && commonName) {
-        certificateRequest.commonName = commonName;
-      }
-      if (constraints.shouldShowSanSection && subjectAltNames && subjectAltNames.length > 0) {
-        const formattedSans = formatSubjectAltNames(subjectAltNames);
-        if (formattedSans && formattedSans.length > 0) {
-          certificateRequest.altNames = formattedSans;
+        if (constraints.shouldShowSubjectSection && commonName) {
+          request.attributes.commonName = commonName;
         }
+
+        if (constraints.shouldShowSanSection && subjectAltNames && subjectAltNames.length > 0) {
+          const formattedSans = formatSubjectAltNames(subjectAltNames);
+          if (formattedSans && formattedSans.length > 0) {
+            request.attributes.altNames = formattedSans;
+          }
+        }
+
+        const response = await issueCertificate(request);
+
+        // Handle certificate issuance response
+
+        if ("certificate" in response && response.certificate) {
+          const certData = response.certificate;
+          const certificateDetailsToSet = {
+            serialNumber: certData.serialNumber || "",
+            certificate: certData.certificate || "",
+            certificateChain: certData.certificateChain || "",
+            privateKey: certData.privateKey || "",
+            issuingCaCertificate: certData.issuingCaCertificate || ""
+          };
+
+          setCertificateDetails(certificateDetailsToSet);
+
+          createNotification({
+            text: "Successfully created certificate",
+            type: "success"
+          });
+        } else {
+          // Certificate request - async processing
+          createNotification({
+            text: `Certificate request submitted successfully. This may take a few minutes to process. Certificate Request ID: ${response.certificateRequestId}`,
+            type: "success"
+          });
+          handlePopUpToggle("issueCertificate", false);
+        }
+      } catch (error) {
+        createNotification({
+          text: `Failed to request certificate: ${(error as Error)?.message || "Unknown error"}`,
+          type: "error"
+        });
       }
-
-      const { serialNumber, certificate, certificateChain, privateKey } =
-        await createCertificate(certificateRequest);
-
-      setCertificateDetails({
-        serialNumber,
-        certificate,
-        certificateChain,
-        privateKey
-      });
-
-      createNotification({
-        text: "Successfully created certificate",
-        type: "success"
-      });
     },
     [
       currentProject?.slug,
-      createCertificate,
+      issueCertificate,
       constraints.shouldShowSubjectSection,
       constraints.shouldShowSanSection
     ]
@@ -321,13 +347,13 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
   const getModalTitle = () => {
     if (certificateDetails) return "Certificate Created Successfully";
     if (cert) return "Certificate Details";
-    return "Issue New Certificate";
+    return "Request New Certificate";
   };
 
   const getModalSubTitle = () => {
     if (certificateDetails) return "Certificate has been successfully created and is ready for use";
     if (cert) return "View certificate information";
-    return "Issue a new certificate using a certificate profile";
+    return "Request a new certificate using a certificate profile";
   };
 
   return (
@@ -343,10 +369,10 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
       <ModalContent title={getModalTitle()} subTitle={getModalSubTitle()}>
         {certificateDetails && (
           <CertificateContent
-            serialNumber={certificateDetails.serialNumber}
-            certificate={certificateDetails.certificate}
-            certificateChain={certificateDetails.certificateChain}
-            privateKey={certificateDetails.privateKey}
+            serialNumber={certificateDetails.serialNumber!}
+            certificate={certificateDetails.certificate!}
+            certificateChain={certificateDetails.certificateChain!}
+            privateKey={certificateDetails.privateKey!}
           />
         )}
         {cert && (
@@ -354,6 +380,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
             <div>
               <h4 className="text-sm font-medium text-mineshaft-300">Certificate Details</h4>
               <p className="text-sm text-mineshaft-400">Serial Number: {cert.serialNumber}</p>
+              <p className="text-sm text-mineshaft-400">Certificate Id: {cert.id}</p>
               <p className="text-sm text-mineshaft-400">Common Name: {cert.commonName}</p>
               <p className="text-sm text-mineshaft-400">Status: {cert.status}</p>
             </div>
@@ -497,7 +524,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                 isLoading={isSubmitting}
                 isDisabled={isSubmitting || (!actualSelectedProfile && !profileId)}
               >
-                {cert ? "Update" : "Issue Certificate"}
+                {cert ? "Update" : "Request Certificate"}
               </Button>
               <Button
                 colorSchema="secondary"

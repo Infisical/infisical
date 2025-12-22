@@ -10,7 +10,7 @@ import {
 import { logger } from "@app/lib/logger";
 import { DistinguishedNameRegex } from "@app/lib/regex";
 import { encryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
-import { getLdapConnectionClient, LdapProvider, TLdapConnection } from "@app/services/app-connection/ldap";
+import { executeWithPotentialGateway, LdapProvider, TLdapConnection } from "@app/services/app-connection/ldap";
 
 import { generatePassword } from "../shared/utils";
 import {
@@ -71,17 +71,18 @@ export const ldapPasswordRotationFactory: TRotationFactory<
   TLdapPasswordRotationWithConnection,
   TLdapPasswordRotationGeneratedCredentials,
   TLdapPasswordRotationInput["temporaryParameters"]
-> = (secretRotation, appConnectionDAL, kmsService) => {
+> = (secretRotation, appConnectionDAL, kmsService, gatewayService, gatewayV2Service) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
 
   const { dn, passwordRequirements } = parameters;
 
   const $verifyCredentials = async (credentials: Pick<TLdapConnection["credentials"], "dn" | "password">) => {
     try {
-      const client = await getLdapConnectionClient({ ...connection.credentials, ...credentials });
-
-      client.unbind();
-      client.destroy();
+      await executeWithPotentialGateway(
+        { ...connection, credentials: { ...connection.credentials, ...credentials } },
+        gatewayV2Service,
+        async () => {}
+      );
     } catch (error) {
       throw new Error(`Failed to verify credentials - ${(error as Error).message}`);
     }
@@ -92,17 +93,7 @@ export const ldapPasswordRotationFactory: TRotationFactory<
 
     if (!credentials.url.startsWith("ldaps")) throw new Error("Password Rotation requires an LDAPS connection");
 
-    const client = await getLdapConnectionClient(
-      currentPassword
-        ? {
-            ...credentials,
-            password: currentPassword,
-            dn
-          }
-        : credentials
-    );
     const isConnectionRotation = credentials.dn === dn;
-
     const password = generatePassword(passwordRequirements);
 
     let changes: ldap.Change[] | ldap.Change;
@@ -147,22 +138,32 @@ export const ldapPasswordRotationFactory: TRotationFactory<
         throw new Error(`Unhandled provider: ${credentials.provider as LdapProvider}`);
     }
 
-    try {
-      const userDn = await getDN(dn, client);
-      await new Promise((resolve, reject) => {
-        client.modify(userDn, changes, (err) => {
-          if (err) {
-            logger.error(err, "LDAP Password Rotation Failed");
-            reject(new Error(`Provider Modify Error: ${err.message}`));
-          } else {
-            resolve(true);
-          }
+    await executeWithPotentialGateway(
+      {
+        ...connection,
+        credentials: currentPassword
+          ? {
+              ...credentials,
+              password: currentPassword,
+              dn
+            }
+          : credentials
+      },
+      gatewayV2Service,
+      async (client) => {
+        const userDn = await getDN(dn, client);
+        await new Promise<void>((resolve, reject) => {
+          client.modify(userDn, changes, (err) => {
+            if (err) {
+              logger.error(err, "LDAP Password Rotation Failed");
+              reject(new Error(`Provider Modify Error: ${err.message}`));
+            } else {
+              resolve();
+            }
+          });
         });
-      });
-    } finally {
-      client.unbind();
-      client.destroy();
-    }
+      }
+    );
 
     await $verifyCredentials({ dn, password });
 

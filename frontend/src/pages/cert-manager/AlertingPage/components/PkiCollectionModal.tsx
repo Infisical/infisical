@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import {
   useCreatePkiCollection,
   useGetPkiCollectionById,
@@ -28,6 +28,7 @@ type Props = {
 
 export const PkiCollectionModal = ({ popUp, handlePopUpToggle }: Props) => {
   const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const projectId = currentProject?.id || "";
 
@@ -81,8 +82,9 @@ export const PkiCollectionModal = ({ popUp, handlePopUpToggle }: Props) => {
       });
 
       navigate({
-        to: "/projects/cert-management/$projectId/pki-collections/$collectionId",
+        to: "/organizations/$orgId/projects/cert-manager/$projectId/pki-collections/$collectionId",
         params: {
+          orgId: currentOrg.id,
           projectId,
           collectionId
         }

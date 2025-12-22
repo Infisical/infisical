@@ -5,13 +5,14 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 
 import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 export const TeamcityAuthorizePage = () => {
   const navigate = useNavigate();
   const { mutateAsync } = useSaveIntegrationAccessToken();
 
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const [apiKey, setApiKey] = useState("");
   const [apiKeyErrorText, setApiKeyErrorText] = useState("");
@@ -46,8 +47,9 @@ export const TeamcityAuthorizePage = () => {
       setIsLoading(false);
 
       navigate({
-        to: "/projects/secret-management/$projectId/integrations/teamcity/create",
+        to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/teamcity/create",
         params: {
+          orgId: currentOrg.id,
           projectId: currentProject.id
         },
         search: {

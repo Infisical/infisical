@@ -24,13 +24,13 @@ export type TCertificate = {
 };
 
 export type TDeleteCertDTO = {
-  projectSlug: string;
-  serialNumber: string;
+  id: string;
+  projectId: string;
 };
 
 export type TRevokeCertDTO = {
-  projectSlug: string;
-  serialNumber: string;
+  projectId: string;
+  id: string;
   revocationReason: string;
 };
 
@@ -64,6 +64,7 @@ export type TRenewCertificateResponse = {
   serialNumber: string;
   certificateId: string;
   projectId: string;
+  certificateRequestId?: string;
 };
 
 export type TUpdateRenewalConfigDTO = {
@@ -74,8 +75,101 @@ export type TUpdateRenewalConfigDTO = {
 };
 
 export type TDownloadPkcs12DTO = {
-  serialNumber: string;
+  certificateId: string;
   projectSlug: string;
   password: string;
   alias: string;
+};
+
+export type TUnifiedCertificateIssuanceDTO = {
+  projectSlug: string;
+  profileId: string;
+  projectId: string;
+  csr?: string;
+  attributes?: {
+    commonName?: string;
+    keyUsages?: string[];
+    extendedKeyUsages?: string[];
+    altNames?: Array<{
+      type: string;
+      value: string;
+    }>;
+    signatureAlgorithm: string;
+    keyAlgorithm: string;
+    subjectAlternativeNames?: Array<{
+      type: string;
+      value: string;
+    }>;
+    ttl: string;
+    notBefore?: string;
+    notAfter?: string;
+  };
+  removeRootsFromChain?: boolean;
+};
+
+export type TUnifiedCertificateResponse = {
+  certificate: {
+    certificate: string;
+    issuingCaCertificate: string;
+    certificateChain: string;
+    privateKey?: string;
+    serialNumber: string;
+    certificateId: string;
+  };
+  certificateRequestId: string;
+};
+
+export type TCertificateRequestResponse = {
+  certificateRequestId: string;
+  status: "pending" | "issued" | "failed";
+  projectId: string;
+};
+
+export type TUnifiedCertificateIssuanceResponse =
+  | TUnifiedCertificateResponse
+  | TCertificateRequestResponse;
+
+export type TCertificateRequestDetails = {
+  status: "pending" | "issued" | "failed";
+  certificate: TCertificate | null;
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TCertificateRequestListItem = {
+  id: string;
+  status: "pending" | "issued" | "failed";
+  commonName: string | null;
+  altNames: string | null;
+  profileId: string | null;
+  profileName: string | null;
+  caId: string | null;
+  certificateId: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+  certificate: {
+    id: string;
+    serialNumber: string;
+    status: string;
+  } | null;
+};
+
+export type TListCertificateRequestsResponse = {
+  certificateRequests: TCertificateRequestListItem[];
+  totalCount: number;
+};
+
+export type TListCertificateRequestsParams = {
+  projectSlug: string;
+  offset?: number;
+  limit?: number;
+  search?: string;
+  status?: "pending" | "issued" | "failed";
+  fromDate?: Date;
+  toDate?: Date;
+  profileIds?: string[];
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 };

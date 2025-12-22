@@ -2,17 +2,18 @@ import { createFileRoute, linkOptions, stripSearchParams } from "@tanstack/react
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
-import { AccountView } from "./components/AccountViewToggle";
+import { PamAccountView } from "@app/hooks/api/pam";
+
 import { PamAccountsPage } from "./PamAccountsPage";
 
 const PamAccountsPageQueryParamsSchema = z.object({
   search: z.string().optional(),
-  accountView: z.nativeEnum(AccountView).optional(),
+  accountView: z.nativeEnum(PamAccountView).optional(),
   accountPath: z.string().catch("/")
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/accounts"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/accounts"
 )({
   validateSearch: zodValidator(PamAccountsPageQueryParamsSchema),
   search: {
@@ -26,7 +27,7 @@ export const Route = createFileRoute(
         {
           label: "Accounts",
           link: linkOptions({
-            to: "/projects/pam/$projectId/accounts",
+            to: "/organizations/$orgId/projects/pam/$projectId/accounts",
             params: () => params as never,
             search: (prev) => ({ ...prev, accountPath: "/" })
           })
@@ -36,7 +37,7 @@ export const Route = createFileRoute(
           return {
             label: segment,
             link: linkOptions({
-              to: "/projects/pam/$projectId/accounts",
+              to: "/organizations/$orgId/projects/pam/$projectId/accounts",
               params: () => params as never,
               search: (prev) => ({ ...prev, accountPath: newPath })
             })

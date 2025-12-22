@@ -2,6 +2,9 @@ import { registerProjectTemplateRouter } from "@app/ee/routes/v1/project-templat
 
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
+import { registerAiMcpActivityLogRouter } from "./ai-mcp-activity-log-router";
+import { registerAiMcpEndpointRouter } from "./ai-mcp-endpoint-router";
+import { registerAiMcpServerRouter } from "./ai-mcp-server-router";
 import { registerAssumePrivilegeRouter } from "./assume-privilege-router";
 import { AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP, registerAuditLogStreamRouter } from "./audit-log-stream-routers";
 import { registerCaCrlRouter } from "./certificate-authority-crl-router";
@@ -12,6 +15,7 @@ import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router"
 import { registerKubernetesDynamicSecretLeaseRouter } from "./dynamic-secret-lease-routers/kubernetes-lease-router";
 import { registerDynamicSecretRouter } from "./dynamic-secret-router";
 import { registerExternalKmsRouter } from "./external-kms-router";
+import { EXTERNAL_KMS_REGISTER_ROUTER_MAP } from "./external-kms-routers";
 import { registerGatewayRouter } from "./gateway-router";
 import { registerGithubOrgSyncRouter } from "./github-org-sync-router";
 import { registerGroupRouter } from "./group-router";
@@ -110,7 +114,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       await pkiRouter.register(registerCaCrlRouter, { prefix: "/crl" });
       await pkiRouter.register(registerPkiAcmeRouter, { prefix: "/acme" });
     },
-    { prefix: "/pki" }
+    { prefix: "/cert-manager" }
   );
 
   await server.register(
@@ -162,9 +166,19 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     { prefix: "/additional-privilege" }
   );
 
-  await server.register(registerExternalKmsRouter, {
-    prefix: "/external-kms"
-  });
+  await server.register(
+    async (externalKmsRouter) => {
+      await externalKmsRouter.register(registerExternalKmsRouter);
+
+      // Provider-specific endpoints
+      await Promise.all(
+        Object.entries(EXTERNAL_KMS_REGISTER_ROUTER_MAP).map(([provider, router]) =>
+          externalKmsRouter.register(router, { prefix: `/${provider}` })
+        )
+      );
+    },
+    { prefix: "/external-kms" }
+  );
   await server.register(registerIdentityTemplateRouter, { prefix: "/identity-templates" });
 
   await server.register(registerProjectTemplateRouter, { prefix: "/project-templates" });
@@ -211,5 +225,14 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       );
     },
     { prefix: "/pam" }
+  );
+
+  await server.register(
+    async (aiRouter) => {
+      await aiRouter.register(registerAiMcpServerRouter, { prefix: "/mcp/servers" });
+      await aiRouter.register(registerAiMcpEndpointRouter, { prefix: "/mcp/endpoints" });
+      await aiRouter.register(registerAiMcpActivityLogRouter, { prefix: "/mcp/activity-logs" });
+    },
+    { prefix: "/ai" }
   );
 };

@@ -5,6 +5,9 @@ import { Cluster, Redis } from "ioredis";
 import { TUsers } from "@app/db/schemas";
 import { TAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { TAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-types";
+import { TAiMcpActivityLogServiceFactory } from "@app/ee/services/ai-mcp-activity-log/ai-mcp-activity-log-service";
+import { TAiMcpEndpointServiceFactory } from "@app/ee/services/ai-mcp-endpoint/ai-mcp-endpoint-service";
+import { TAiMcpServerServiceFactory } from "@app/ee/services/ai-mcp-server/ai-mcp-server-service";
 import { TAssumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-types";
 import { TAuditLogServiceFactory, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
@@ -55,6 +58,7 @@ import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
 import { TAdditionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
 import { TApiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
+import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { TAuthPasswordFactory } from "@app/services/auth/auth-password-service";
 import { TAuthSignupFactory } from "@app/services/auth/auth-signup-service";
@@ -65,6 +69,7 @@ import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-a
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificateEstV3ServiceFactory } from "@app/services/certificate-est-v3/certificate-est-v3-service";
 import { TCertificateProfileServiceFactory } from "@app/services/certificate-profile/certificate-profile-service";
+import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
 import { TCertificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { TCertificateTemplateV2ServiceFactory } from "@app/services/certificate-template-v2/certificate-template-v2-service";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
@@ -288,6 +293,7 @@ declare module "fastify" {
       auditLogStream: TAuditLogStreamServiceFactory;
       certificate: TCertificateServiceFactory;
       certificateV3: TCertificateV3ServiceFactory;
+      certificateRequest: TCertificateRequestServiceFactory;
       certificateTemplate: TCertificateTemplateServiceFactory;
       certificateTemplateV2: TCertificateTemplateV2ServiceFactory;
       certificateProfile: TCertificateProfileServiceFactory;
@@ -359,6 +365,10 @@ declare module "fastify" {
       convertor: TConvertorServiceFactory;
       subOrganization: TSubOrgServiceFactory;
       pkiAlertV2: TPkiAlertV2ServiceFactory;
+      aiMcpServer: TAiMcpServerServiceFactory;
+      aiMcpEndpoint: TAiMcpEndpointServiceFactory;
+      aiMcpActivityLog: TAiMcpActivityLogServiceFactory;
+      approvalPolicy: TApprovalPolicyServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

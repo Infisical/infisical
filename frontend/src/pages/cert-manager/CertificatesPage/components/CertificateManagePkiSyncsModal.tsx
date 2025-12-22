@@ -20,7 +20,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import {
   PkiSync,
   useAddCertificatesToPkiSync,
@@ -49,6 +49,7 @@ export const CertificateManagePkiSyncsModal = ({ popUp, handlePopUpToggle }: Pro
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
 
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const navigate = useNavigate();
   const { certificateId, commonName } = popUp.data || {};
@@ -92,6 +93,7 @@ export const CertificateManagePkiSyncsModal = ({ popUp, handlePopUpToggle }: Pro
     navigate({
       to: ROUTE_PATHS.CertManager.IntegrationsListPage.path,
       params: {
+        orgId: currentOrg.id,
         projectId: currentProject.id
       },
       search: {

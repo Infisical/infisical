@@ -8,7 +8,7 @@ import {
   faStar as faSolidStar
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, linkOptions } from "@tanstack/react-router";
+import { Link, linkOptions, useParams } from "@tanstack/react-router";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -43,10 +43,11 @@ const PROJECT_TYPE_NAME: Record<ProjectType, string> = {
   [ProjectType.SSH]: "SSH",
   [ProjectType.KMS]: "KMS",
   [ProjectType.PAM]: "PAM",
-  [ProjectType.SecretScanning]: "Secret Scanning"
+  [ProjectType.SecretScanning]: "Secret Scanning",
+  [ProjectType.AI]: "Agentic Manager"
 };
 
-export const ProjectSelect = () => {
+const ProjectSelectInner = () => {
   const [searchProject, setSearchProject] = useState("");
   const { currentProject: currentWorkspace } = useProject();
   const { currentOrg } = useOrganization();
@@ -92,20 +93,23 @@ export const ProjectSelect = () => {
   }, [projects, projectFavorites, currentWorkspace]);
 
   return (
-    <div className="mr-2 flex items-center gap-1 overflow-hidden">
+    <div className="relative mr-2 flex min-w-16 items-center gap-1 self-end rounded-t-md border-x border-t border-project/10 bg-gradient-to-b from-project/10 to-project/[0.075] pt-1.5 pr-1 pb-2.5 pl-3">
+      {/* scott: the below is used to hide the top border from the org nav bar */}
+      <div className="absolute -bottom-px left-0 h-px w-full bg-mineshaft-900">
+        <div className="h-full bg-project/[0.075]" />
+      </div>
       <DropdownMenu modal={false}>
         <Link
           to={getProjectHomePage(currentWorkspace.type, currentWorkspace.environments)}
           params={{
-            projectId: currentWorkspace.id
+            projectId: currentWorkspace.id,
+            orgId: currentWorkspace.orgId
           }}
-          className="group flex cursor-pointer items-center gap-x-1.5 overflow-hidden hover:text-white"
+          className="group flex cursor-pointer items-center gap-x-2 overflow-hidden pt-0.5 text-sm text-white"
         >
-          <p className="inline-block truncate text-mineshaft-200 group-hover:underline">
-            {currentWorkspace?.name}
-          </p>
-          <Badge variant="project">
-            <ProjectIcon />
+          <ProjectIcon className="size-[14px] shrink-0 text-project" />
+          <span className="truncate">{currentWorkspace?.name}</span>
+          <Badge variant="project" className="hidden lg:inline-flex">
             {currentWorkspace.type ? PROJECT_TYPE_NAME[currentWorkspace.type] : "Project"}
           </Badge>
         </Link>
@@ -115,7 +119,7 @@ export const ProjectSelect = () => {
               variant="plain"
               colorSchema="secondary"
               ariaLabel="switch-project"
-              className="px-2 py-1"
+              className="top-px px-2 py-1"
             >
               <FontAwesomeIcon icon={faCaretDown} className="text-xs text-bunker-300" />
             </IconButton>
@@ -152,21 +156,13 @@ export const ProjectSelect = () => {
                       const url = linkOptions({
                         to: getProjectHomePage(workspace.type, workspace.environments),
                         params: {
-                          projectId: workspace.id
-                        },
-                        search: {
-                          subOrganization: currentOrg?.subOrganization?.name
+                          projectId: workspace.id,
+                          orgId: workspace.orgId
                         }
                       });
                       const urlInstance = new URL(
-                        `${window.location.origin}/${url.to.replaceAll("$projectId", workspace.id)}`
+                        `${window.location.origin}${url.to.replaceAll("$orgId", url.params.orgId).replaceAll("$projectId", url.params.projectId)}`
                       );
-                      if (currentOrg?.subOrganization) {
-                        urlInstance.searchParams.set(
-                          "subOrganization",
-                          currentOrg.subOrganization.name
-                        );
-                      }
                       window.location.assign(urlInstance);
                     }}
                     icon={
@@ -233,4 +229,15 @@ export const ProjectSelect = () => {
       />
     </div>
   );
+};
+
+export const ProjectSelect = () => {
+  const params = useParams({ strict: false });
+
+  // Return null during navigation when projectId is not available
+  if (!params.projectId) {
+    return null;
+  }
+
+  return <ProjectSelectInner />;
 };

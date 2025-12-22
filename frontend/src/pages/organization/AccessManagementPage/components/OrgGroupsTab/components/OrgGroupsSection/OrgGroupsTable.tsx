@@ -71,7 +71,7 @@ enum GroupsOrderBy {
 
 export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
   const navigate = useNavigate();
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { isPending, data: groups = [] } = useGetOrganizationGroups(orgId);
   const { mutateAsync: updateMutateAsync } = useUpdateGroup();
@@ -159,7 +159,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search groups..."
+        placeholder={`Search ${isSubOrganization ? "sub-" : ""}organization groups...`}
       />
       <TableContainer className="mt-4">
         <Table>
@@ -205,7 +205,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
               </Th>
               <Th>
                 <div className="flex items-center">
-                  Role
+                  {isSubOrganization ? "Sub-" : ""}Organization Role
                   <IconButton
                     variant="plain"
                     className={`ml-2 ${orderBy === GroupsOrderBy.Role ? "" : "opacity-30"}`}
@@ -235,8 +235,9 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                     <Tr
                       onClick={() =>
                         navigate({
-                          to: "/organization/groups/$groupId",
+                          to: "/organizations/$orgId/groups/$groupId",
                           params: {
+                            orgId,
                             groupId: id
                           }
                         })
@@ -334,8 +335,9 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                                   icon={<FontAwesomeIcon icon={faUserGroup} />}
                                   onClick={() =>
                                     navigate({
-                                      to: "/organization/groups/$groupId",
+                                      to: "/organizations/$orgId/groups/$groupId",
                                       params: {
+                                        orgId,
                                         groupId: id
                                       }
                                     })
@@ -387,8 +389,8 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
           <EmptyState
             title={
               groups.length
-                ? "No organization groups match search..."
-                : "No organization groups found"
+                ? `No ${isSubOrganization ? "sub-" : ""}organization groups match search...`
+                : `No ${isSubOrganization ? "sub-" : ""}organization groups found`
             }
             icon={groups.length ? faSearch : faUsers}
           />

@@ -189,7 +189,7 @@ export const OrgRoleTable = () => {
 
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-x-2">
           <p className="text-xl font-medium text-mineshaft-100">
             {isSubOrganization ? "Sub-" : ""}Organization Roles
@@ -199,7 +199,7 @@ export const OrgRoleTable = () => {
         <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Role}>
           {(isAllowed) => (
             <Button
-              colorSchema="secondary"
+              variant="outline_bg"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => {
@@ -207,7 +207,7 @@ export const OrgRoleTable = () => {
               }}
               isDisabled={!isAllowed}
             >
-              Add Role
+              Add {isSubOrganization ? "Sub-" : ""}Organization Role
             </Button>
           )}
         </OrgPermissionCan>
@@ -216,7 +216,7 @@ export const OrgRoleTable = () => {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search roles..."
+        placeholder={`Search ${isSubOrganization ? "sub-" : ""}organization roles...`}
         className="flex-1"
         containerClassName="mb-4"
       />
@@ -280,9 +280,10 @@ export const OrgRoleTable = () => {
                   className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                   onClick={() =>
                     navigate({
-                      to: "/organization/roles/$roleId",
+                      to: "/organizations/$orgId/roles/$roleId",
                       params: {
-                        roleId: id
+                        roleId: id,
+                        orgId
                       }
                     })
                   }
@@ -339,9 +340,10 @@ export const OrgRoleTable = () => {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 navigate({
-                                  to: "/organization/roles/$roleId",
+                                  to: "/organizations/$orgId/roles/$roleId",
                                   params: {
-                                    roleId: id
+                                    roleId: id,
+                                    orgId
                                   }
                                 });
                               }}
@@ -439,7 +441,7 @@ export const OrgRoleTable = () => {
           <EmptyState
             title={
               roles?.length
-                ? "No roles match search..."
+                ? "No organization roles match search..."
                 : "This organization does not have any roles"
             }
             icon={roles?.length ? faSearch : undefined}

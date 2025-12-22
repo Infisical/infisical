@@ -3,6 +3,9 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType, TPamResources } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { createSshKeyPair } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
+import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
@@ -17,10 +20,13 @@ import { PAM_RESOURCE_FACTORY_MAP } from "./pam-resource-factory";
 import {
   decryptResource,
   decryptResourceConnectionDetails,
+  decryptResourceMetadata,
   encryptResourceConnectionDetails,
+  encryptResourceMetadata,
   listResourceOptions
 } from "./pam-resource-fns";
-import { TCreateResourceDTO, TUpdateResourceDTO } from "./pam-resource-types";
+import { TCreateResourceDTO, TListResourcesDTO, TUpdateResourceDTO } from "./pam-resource-types";
+import { TSSHResourceMetadata } from "./ssh/ssh-resource-types";
 
 type TPamResourceServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;
@@ -92,7 +98,8 @@ export const pamResourceServiceFactory = ({
       resourceType,
       connectionDetails,
       gatewayId,
-      gatewayV2Service
+      gatewayV2Service,
+      projectId
     );
 
     const validatedConnectionDetails = await factory.validateConnection();
@@ -162,7 +169,8 @@ export const pamResourceServiceFactory = ({
         resource.resourceType as PamResource,
         connectionDetails,
         resource.gatewayId,
-        gatewayV2Service
+        gatewayV2Service,
+        resource.projectId
       );
       const validatedConnectionDetails = await factory.validateConnection();
       const encryptedConnectionDetails = await encryptResourceConnectionDetails({
@@ -189,22 +197,22 @@ export const pamResourceServiceFactory = ({
           resource.resourceType as PamResource,
           decryptedConnectionDetails,
           resource.gatewayId,
-          gatewayV2Service
+          gatewayV2Service,
+          resource.projectId
         );
 
-        // Logic to prevent overwriting unedited censored values
-        const finalCredentials = { ...rotationAccountCredentials };
-        if (
-          resource.encryptedRotationAccountCredentials &&
-          rotationAccountCredentials.password === "__INFISICAL_UNCHANGED__"
-        ) {
+        let finalCredentials = { ...rotationAccountCredentials };
+        if (resource.encryptedRotationAccountCredentials) {
           const decryptedCredentials = await decryptAccountCredentials({
             encryptedCredentials: resource.encryptedRotationAccountCredentials,
             projectId: resource.projectId,
             kmsService
           });
 
-          finalCredentials.password = decryptedCredentials.password;
+          finalCredentials = await factory.handleOverwritePreventionForCensoredValues(
+            rotationAccountCredentials,
+            decryptedCredentials
+          );
         }
 
         try {
@@ -268,23 +276,92 @@ export const pamResourceServiceFactory = ({
     }
   };
 
-  const list = async (projectId: string, actor: OrgServiceActor) => {
+  const list = async ({ projectId, actor, actorId, actorAuthMethod, actorOrgId, ...params }: TListResourcesDTO) => {
     const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorAuthMethod: actor.authMethod,
-      actorId: actor.id,
-      actorOrgId: actor.orgId,
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
       projectId,
       actionProjectType: ActionProjectType.PAM
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PamResources);
 
-    const resources = await pamResourceDAL.find({ projectId });
+    const { resources, totalCount } = await pamResourceDAL.findByProjectId({ projectId, ...params });
 
     return {
-      resources: await Promise.all(resources.map((resource) => decryptResource(resource, projectId, kmsService)))
+      resources: await Promise.all(resources.map((resource) => decryptResource(resource, projectId, kmsService))),
+      totalCount
     };
+  };
+
+  const getOrCreateSshCa = async (resourceId: string, actor: OrgServiceActor) => {
+    const resource = await pamResourceDAL.findById(resourceId);
+    if (!resource) throw new NotFoundError({ message: `Resource with ID '${resourceId}' not found` });
+
+    if (resource.resourceType !== PamResource.SSH) {
+      throw new BadRequestError({ message: "This operation is only available for SSH resources" });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorAuthMethod: actor.authMethod,
+      actorId: actor.id,
+      actorOrgId: actor.orgId,
+      projectId: resource.projectId,
+      actionProjectType: ActionProjectType.PAM
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.PamResources);
+
+    // Check if metadata already exists with CA
+    if (resource.encryptedResourceMetadata) {
+      const metadata = await decryptResourceMetadata<TSSHResourceMetadata>({
+        encryptedMetadata: resource.encryptedResourceMetadata,
+        projectId: resource.projectId,
+        kmsService
+      });
+      return { caPublicKey: metadata.caPublicKey };
+    }
+
+    // Transaction with advisory lock to prevent race conditions
+    const caPublicKey = await pamResourceDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.PamResourceSshCaInit(resourceId)]);
+
+      // Re-check after acquiring lock in case another transaction created it
+      const currentResource = await pamResourceDAL.findById(resourceId, tx);
+      if (currentResource?.encryptedResourceMetadata) {
+        const metadata = await decryptResourceMetadata<TSSHResourceMetadata>({
+          encryptedMetadata: currentResource.encryptedResourceMetadata,
+          projectId: currentResource.projectId,
+          kmsService
+        });
+        return metadata.caPublicKey;
+      }
+
+      // Generate new CA key pair
+      const keyAlgorithm = SshCertKeyAlgorithm.ED25519;
+      const { publicKey, privateKey } = await createSshKeyPair(keyAlgorithm);
+
+      const metadata: TSSHResourceMetadata = {
+        caPrivateKey: privateKey,
+        caPublicKey: publicKey.trim(),
+        caKeyAlgorithm: keyAlgorithm
+      };
+
+      const encryptedResourceMetadata = await encryptResourceMetadata({
+        metadata,
+        projectId: resource.projectId,
+        kmsService
+      });
+
+      await pamResourceDAL.updateById(resourceId, { encryptedResourceMetadata }, tx);
+
+      return metadata.caPublicKey;
+    });
+
+    return { caPublicKey };
   };
 
   return {
@@ -293,6 +370,7 @@ export const pamResourceServiceFactory = ({
     updateById,
     deleteById,
     list,
-    listResourceOptions
+    listResourceOptions,
+    getOrCreateSshCa
   };
 };

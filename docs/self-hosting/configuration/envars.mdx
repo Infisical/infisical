@@ -160,12 +160,18 @@ DB_READ_REPLICAS=[{"DB_CONNECTION_URI":""}]
 
 ### Redis
 
-Redis is used for caching and background tasks. You can use either a standalone Redis instance or a Redis Sentinel setup.
+Redis is used for caching and background tasks. You can use either a standalone Redis instance, Redis Sentinel, or Redis Cluster setup.
 
 <Tabs>
   <Tab title="Redis Standalone">
     <ParamField query="REDIS_URL" type="string" default="none" required>
-      Redis connection string.
+      Redis connection string. For SSL/TLS connections, use the `rediss://` protocol (note the double 's').
+      
+      Examples:
+      - Without SSL: `redis://localhost:6379`
+      - With SSL: `rediss://localhost:6379`
+      - With authentication: `redis://:password@localhost:6379`
+      - With SSL and authentication: `rediss://:password@localhost:6379`
     </ParamField>
   </Tab>
   <Tab title="Redis Sentinel">
@@ -239,6 +245,19 @@ Redis is used for caching and background tasks. You can use either a standalone 
 
   </Tab>
 </Tabs>
+
+### Redis with SSL/TLS
+
+To connect to Redis with SSL/TLS, use the `rediss://` protocol (note the double 's') in your connection string.
+
+If your Redis server uses a certificate signed by a private CA or a self-signed certificate, set the `NODE_EXTRA_CA_CERTS` environment variable to the path of your CA certificate file:
+
+```bash
+REDIS_URL=rediss://your-redis-host:6379
+NODE_EXTRA_CA_CERTS=/path/to/ca.crt
+```
+
+For Redis Sentinel or Cluster mode, use the `REDIS_SENTINEL_ENABLE_TLS` or `REDIS_CLUSTER_ENABLE_TLS` environment variables respectively.
 
 ## Email Service
 
@@ -701,110 +720,6 @@ You can configure third-party app connections for re-use across Infisical Projec
     <ParamField query="INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET" type="string" default="none" optional>
         The Secret of your Heroku OAuth application.
     </ParamField>
-</Accordion>
-
-## Native Secret Integrations
-
-To help you sync secrets from Infisical to services such as Github and Gitlab, Infisical provides native integrations out of the box.
-
-<Accordion title="Heroku">
-  <ParamField query="CLIENT_ID_HEROKU" type="string" default="none" optional>
-    OAuth2 client ID for Heroku integration
-  </ParamField>
-  <ParamField
-    query="CLIENT_SECRET_HEROKU"
-    type="string"
-    default="none"
-    optional
-  >
-    OAuth2 client secret for Heroku integration
-  </ParamField>
-</Accordion>
-
-<Accordion title="Vercel">
-  <ParamField query="CLIENT_ID_VERCEL" type="string" default="none" optional>
-    OAuth2 client ID for Vercel integration
-  </ParamField>
-
-{" "}
-
-<ParamField query="CLIENT_SECRET_VERCEL" type="string" default="none" optional>
-  OAuth2 client secret for Vercel integration
-</ParamField>
-
-  <ParamField query="CLIENT_SLUG_VERCEL" type="string" default="none" optional>
-    OAuth2 slug for Vercel integration
-  </ParamField>
-</Accordion>
-
-<Accordion title="Netlify">
-  <ParamField query="CLIENT_ID_NETLIFY" type="string" default="none" optional>
-    OAuth2 client ID for Netlify integration
-  </ParamField>
-
-  <ParamField query="CLIENT_SECRET_NETLIFY" type="string" default="none" optional>
-    OAuth2 client secret for Netlify integration
-  </ParamField>
-</Accordion>
-
-<Accordion title="Github">
-  <ParamField query="CLIENT_ID_GITHUB" type="string" default="none" optional>
-    OAuth2 client ID for GitHub integration
-  </ParamField>
-
-  <ParamField query="CLIENT_SECRET_GITHUB" type="string" default="none" optional>
-    OAuth2 client secret for GitHub integration
-  </ParamField>
-</Accordion>
-
-<Accordion title="Bitbucket">
-  <ParamField query="CLIENT_ID_BITBUCKET" type="string" default="none" optional>
-    OAuth2 client ID for Bitbucket integration
-  </ParamField>
-
-  <ParamField query="CLIENT_SECRET_BITBUCKET" type="string" default="none" optional>
-    OAuth2 client secret for Bitbucket integration
-  </ParamField>
-</Accordion>
-
-<Accordion title="GCP Secrets Manager">
-  <ParamField query="CLIENT_ID_GCP_SECRET_MANAGER" type="string" default="none" optional>
-    OAuth2 client id for GCP secrets manager integration
-  </ParamField>
-
-  <ParamField query="CLIENT_SECRET_GCP_SECRET_MANAGER" type="string" default="none" optional>
-    OAuth2 client secret for GCP secrets manager integration
-  </ParamField>
-</Accordion>
-
-<Accordion title="AWS Integration">
-  <ParamField query="CLIENT_ID_AWS_INTEGRATION" type="string" default="none" optional>
-	  The AWS IAM User access key for assuming roles.
-  </ParamField>
-
-  <ParamField query="CLIENT_SECRET_AWS_INTEGRATION" type="string" default="none" optional>
-	  The AWS IAM User secret key for assuming roles.
-  </ParamField>
-</Accordion>
-
-<Accordion title="Azure">
-  <ParamField query="CLIENT_ID_AZURE" type="string" default="none" optional>
-    OAuth2 client id for Azure integration
-  </ParamField>
-
-  <ParamField query="CLIENT_SECRET_AZURE" type="string" default="none" optional>
-    OAuth2 client secret for Azure integration
-  </ParamField>
-</Accordion>
-
-<Accordion title="Gitlab">
-  <ParamField query="CLIENT_ID_GITLAB" type="string" default="none" optional>
-    OAuth2 client id for Gitlab integration
-  </ParamField>
-
-  <ParamField query="CLIENT_SECRET_GITLAB" type="string" default="none" optional>
-    OAuth2 client secret for Gitlab integration
-  </ParamField>
 </Accordion>
 
 ## Secret Scanning

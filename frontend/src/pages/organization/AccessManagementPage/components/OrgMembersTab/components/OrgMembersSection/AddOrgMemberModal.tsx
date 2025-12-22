@@ -159,14 +159,16 @@ export const AddOrgMemberModal = ({
       )
     );
 
-    setCompleteInviteLinks(data?.completeInviteLinks ?? null);
+    if (data?.completeInviteLinks && data?.completeInviteLinks.length > 0) {
+      setCompleteInviteLinks(data.completeInviteLinks);
+    }
 
     // only show this notification when email is configured.
     // A [completeInviteLink] will not be sent if smtp is configured
 
-    if (!data.completeInviteLinks) {
+    if (!data.completeInviteLinks?.length) {
       createNotification({
-        text: "Successfully invited user to the organization.",
+        text: `Successfully invited user${usernames.length > 1 ? "s" : ""} to the organization.`,
         type: "success"
       });
     }

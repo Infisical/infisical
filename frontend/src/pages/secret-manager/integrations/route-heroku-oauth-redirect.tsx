@@ -10,7 +10,8 @@ export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/integrations/heroku/oauth2/callback"
 )({
   validateSearch: zodValidator(HerokuOAuthCallbackPageQueryParamsSchema),
-  beforeLoad: ({ search }) => {
+  beforeLoad: ({ context, search }) => {
+    const orgId = context.organizationId;
     const projectId = localStorageService.getIintegrationProjectId();
     if (!projectId) {
       createNotification({
@@ -18,11 +19,14 @@ export const Route = createFileRoute(
         title: "Missing project id",
         text: "Please retry integration"
       });
-      throw redirect({ to: "/organization/projects" });
+      throw redirect({
+        to: "/organizations/$orgId/projects",
+        params: { orgId }
+      });
     }
     throw redirect({
-      to: "/projects/secret-management/$projectId/integrations/heroku/oauth2/callback",
-      params: { projectId },
+      to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/heroku/oauth2/callback",
+      params: { orgId, projectId },
       search
     });
   }

@@ -1,23 +1,46 @@
+export enum EnrollmentType {
+  API = "api",
+  EST = "est",
+  ACME = "acme"
+}
+
+export enum IssuerType {
+  CA = "ca",
+  SELF_SIGNED = "self-signed"
+}
+
 export type TCertificateProfile = {
   id: string;
   projectId: string;
-  caId: string;
+  caId: string | null;
   certificateTemplateId: string;
   slug: string;
   description?: string;
-  enrollmentType: "api" | "est" | "acme";
+  enrollmentType: EnrollmentType;
+  issuerType: IssuerType;
   estConfigId?: string;
   apiConfigId?: string;
   createdAt: string;
   updatedAt: string;
+  externalConfigs?: Record<string, unknown> | null;
+  certificateAuthority?: {
+    id: string;
+    projectId?: string;
+    status: string;
+    name: string;
+    isExternal?: boolean;
+    externalType?: string | null;
+  };
 };
 
 export type TCertificateProfileWithDetails = TCertificateProfile & {
   certificateAuthority?: {
     id: string;
-    projectId: string;
+    projectId?: string;
     status: string;
     name: string;
+    isExternal?: boolean;
+    externalType?: string | null;
   };
   certificateTemplate?: {
     id: string;
@@ -39,16 +62,18 @@ export type TCertificateProfileWithDetails = TCertificateProfile & {
   acmeConfig?: {
     id: string;
     directoryUrl: string;
+    skipDnsOwnershipVerification?: boolean;
   };
 };
 
 export type TCreateCertificateProfileDTO = {
   projectId: string;
-  caId: string;
+  caId?: string;
   certificateTemplateId: string;
   slug: string;
   description?: string;
-  enrollmentType: "api" | "est" | "acme";
+  enrollmentType: EnrollmentType;
+  issuerType: IssuerType;
   estConfig?: {
     disableBootstrapCaValidation?: boolean;
     passphrase: string;
@@ -59,12 +84,15 @@ export type TCreateCertificateProfileDTO = {
     renewBeforeDays?: number;
   };
   acmeConfig?: unknown;
+  externalConfigs?: Record<string, unknown> | null;
 };
 
 export type TUpdateCertificateProfileDTO = {
   profileId: string;
   slug?: string;
   description?: string;
+  enrollmentType?: EnrollmentType;
+  issuerType?: IssuerType;
   estConfig?: {
     disableBootstrapCaValidation?: boolean;
     passphrase?: string;
@@ -75,6 +103,7 @@ export type TUpdateCertificateProfileDTO = {
     renewBeforeDays?: number;
   };
   acmeConfig?: unknown;
+  externalConfigs?: Record<string, unknown> | null;
 };
 
 export type TDeleteCertificateProfileDTO = {
@@ -87,7 +116,9 @@ export type TListCertificateProfilesDTO = {
   offset?: number;
   search?: string;
   includeConfigs?: boolean;
-  enrollmentType?: "api" | "est" | "acme";
+  enrollmentType?: EnrollmentType;
+  issuerType?: IssuerType;
+  caId?: string;
 };
 
 export type TGetCertificateProfileByIdDTO = {

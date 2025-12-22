@@ -36,7 +36,7 @@ import {
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { usePopUp, useToggle } from "@app/hooks";
@@ -53,7 +53,7 @@ type Props = {
 };
 
 export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
-  const { destination, subscriberId, projectId, id } = pkiSync;
+  const { destination, projectId, id } = pkiSync;
 
   const navigate = useNavigate();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
@@ -69,6 +69,7 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
   const updatePkiSyncMutation = useUpdatePkiSync();
 
   const { syncOption } = usePkiSyncOption(destination);
+  const { currentOrg } = useOrganization();
 
   const destinationName = PKI_SYNC_MAP[destination].name;
 
@@ -111,7 +112,8 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
   }, [updatePkiSyncMutation, id, projectId, pkiSync.isAutoSyncEnabled]);
 
   const permissionSubject = subject(ProjectPermissionSub.PkiSyncs, {
-    subscriberId: subscriberId || ""
+    subscriberName: destinationName,
+    name: pkiSync.name
   });
 
   return (
@@ -287,7 +289,8 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
           navigate({
             to: ROUTE_PATHS.CertManager.IntegrationsListPage.path,
             params: {
-              projectId
+              projectId,
+              orgId: currentOrg.id
             },
             search: {
               selectedTab: IntegrationsListPageTabs.PkiSyncs

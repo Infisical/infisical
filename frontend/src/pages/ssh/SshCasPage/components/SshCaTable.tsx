@@ -21,7 +21,12 @@ import {
   Tr
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject
+} from "@app/context";
 import { SshCaStatus, useListWorkspaceSshCas } from "@app/hooks/api";
 import { caStatusToNameMap, getCaStatusBadgeVariant } from "@app/hooks/api/ca/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -35,6 +40,7 @@ type Props = {
 
 export const SshCaTable = ({ handlePopUpOpen }: Props) => {
   const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { data, isPending } = useListWorkspaceSshCas(currentProject?.id || "");
 
@@ -61,8 +67,9 @@ export const SshCaTable = ({ handlePopUpOpen }: Props) => {
                     key={`ca-${ca.id}`}
                     onClick={() =>
                       navigate({
-                        to: "/projects/ssh/$projectId/ca/$caId",
+                        to: "/organizations/$orgId/projects/ssh/$projectId/ca/$caId",
                         params: {
+                          orgId: currentOrg.id,
                           projectId: currentProject.id,
                           caId: ca.id
                         }

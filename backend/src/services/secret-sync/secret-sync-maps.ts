@@ -35,7 +35,8 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.Northflank]: "Northflank",
   [SecretSync.Bitbucket]: "Bitbucket",
   [SecretSync.LaravelForge]: "Laravel Forge",
-  [SecretSync.Chef]: "Chef"
+  [SecretSync.Chef]: "Chef",
+  [SecretSync.OctopusDeploy]: "Octopus Deploy"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
@@ -71,7 +72,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Northflank]: AppConnection.Northflank,
   [SecretSync.Bitbucket]: AppConnection.Bitbucket,
   [SecretSync.LaravelForge]: AppConnection.LaravelForge,
-  [SecretSync.Chef]: AppConnection.Chef
+  [SecretSync.Chef]: AppConnection.Chef,
+  [SecretSync.OctopusDeploy]: AppConnection.OctopusDeploy
 };
 
 export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
@@ -107,12 +109,13 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.Northflank]: SecretSyncPlanType.Regular,
   [SecretSync.Bitbucket]: SecretSyncPlanType.Regular,
   [SecretSync.LaravelForge]: SecretSyncPlanType.Regular,
-  [SecretSync.Chef]: SecretSyncPlanType.Enterprise
+  [SecretSync.Chef]: SecretSyncPlanType.Enterprise,
+  [SecretSync.OctopusDeploy]: SecretSyncPlanType.Regular
 };
 
 export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.AWSParameterStore]: [],
-  [SecretSync.AWSSecretsManager]: ["mappingBehavior", "secretName"],
+  [SecretSync.AWSSecretsManager]: ["mappingBehavior"],
   [SecretSync.GitHub]: [],
   [SecretSync.GCPSecretManager]: [],
   [SecretSync.AzureKeyVault]: [],
@@ -152,7 +155,8 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.Northflank]: [],
   [SecretSync.Bitbucket]: [],
   [SecretSync.LaravelForge]: [],
-  [SecretSync.Chef]: []
+  [SecretSync.Chef]: [],
+  [SecretSync.OctopusDeploy]: []
 };
 
 const defaultDuplicateCheck: DestinationDuplicateCheckFn = () => true;
@@ -214,5 +218,6 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.Northflank]: defaultDuplicateCheck,
   [SecretSync.Bitbucket]: defaultDuplicateCheck,
   [SecretSync.LaravelForge]: defaultDuplicateCheck,
-  [SecretSync.Chef]: defaultDuplicateCheck
+  [SecretSync.Chef]: defaultDuplicateCheck,
+  [SecretSync.OctopusDeploy]: defaultDuplicateCheck
 };

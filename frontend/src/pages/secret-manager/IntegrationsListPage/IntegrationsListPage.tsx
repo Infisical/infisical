@@ -5,7 +5,12 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject
+} from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
@@ -19,6 +24,7 @@ import {
 
 export const IntegrationsListPage = () => {
   const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { t } = useTranslation();
 
@@ -33,7 +39,8 @@ export const IntegrationsListPage = () => {
         selectedTab: tab as IntegrationsListPageTabs
       },
       params: {
-        projectId: currentProject.id
+        projectId: currentProject.id,
+        orgId: currentOrg.id
       }
     });
   };
@@ -50,7 +57,7 @@ export const IntegrationsListPage = () => {
         <div className="mb-8">
           <PageHeader
             scope={ProjectType.SecretManager}
-            title="Integrations"
+            title="Project Integrations"
             description="Manage integrations with third-party services."
           />
           <Tabs orientation="vertical" value={selectedTab} onValueChange={updateSelectedTab}>
@@ -58,14 +65,14 @@ export const IntegrationsListPage = () => {
               <Tab variant="project" value={IntegrationsListPageTabs.SecretSyncs}>
                 Secret Syncs
               </Tab>
-              <Tab variant="project" value={IntegrationsListPageTabs.NativeIntegrations}>
-                Native Integrations
-              </Tab>
               <Tab variant="project" value={IntegrationsListPageTabs.FrameworkIntegrations}>
                 Framework Integrations
               </Tab>
               <Tab variant="project" value={IntegrationsListPageTabs.InfrastructureIntegrations}>
                 Infrastructure Integrations
+              </Tab>
+              <Tab variant="project" value={IntegrationsListPageTabs.NativeIntegrations}>
+                Native Integrations
               </Tab>
             </TabList>
             <TabPanel value={IntegrationsListPageTabs.SecretSyncs}>
@@ -77,6 +84,12 @@ export const IntegrationsListPage = () => {
                 <SecretSyncsTab />
               </ProjectPermissionCan>
             </TabPanel>
+            <TabPanel value={IntegrationsListPageTabs.FrameworkIntegrations}>
+              <FrameworkIntegrationTab />
+            </TabPanel>
+            <TabPanel value={IntegrationsListPageTabs.InfrastructureIntegrations}>
+              <InfrastructureIntegrationTab />
+            </TabPanel>
             <TabPanel value={IntegrationsListPageTabs.NativeIntegrations}>
               <ProjectPermissionCan
                 renderGuardBanner
@@ -85,12 +98,6 @@ export const IntegrationsListPage = () => {
               >
                 <NativeIntegrationsTab />
               </ProjectPermissionCan>
-            </TabPanel>
-            <TabPanel value={IntegrationsListPageTabs.FrameworkIntegrations}>
-              <FrameworkIntegrationTab />
-            </TabPanel>
-            <TabPanel value={IntegrationsListPageTabs.InfrastructureIntegrations}>
-              <InfrastructureIntegrationTab />
             </TabPanel>
           </Tabs>
         </div>

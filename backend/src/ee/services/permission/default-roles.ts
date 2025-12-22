@@ -3,8 +3,11 @@ import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability"
 import {
   ProjectPermissionActions,
   ProjectPermissionAppConnectionActions,
+  ProjectPermissionApprovalRequestActions,
+  ProjectPermissionApprovalRequestGrantActions,
   ProjectPermissionAuditLogsActions,
   ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionCmekActions,
   ProjectPermissionCommitsActions,
@@ -25,6 +28,7 @@ import {
   ProjectPermissionSecretScanningDataSourceActions,
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSecretSyncActions,
+  ProjectPermissionMcpEndpointActions,
   ProjectPermissionSet,
   ProjectPermissionSshHostActions,
   ProjectPermissionSub
@@ -44,9 +48,7 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.Settings,
     ProjectPermissionSub.Environments,
     ProjectPermissionSub.Tags,
-    ProjectPermissionSub.AuditLogs,
     ProjectPermissionSub.IpAllowList,
-    ProjectPermissionSub.CertificateAuthorities,
     ProjectPermissionSub.PkiAlerts,
     ProjectPermissionSub.PkiCollections,
     ProjectPermissionSub.SshCertificateAuthorities,
@@ -54,7 +56,9 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.SshCertificateTemplates,
     ProjectPermissionSub.SshHostGroups,
     ProjectPermissionSub.PamFolders,
-    ProjectPermissionSub.PamResources
+    ProjectPermissionSub.PamResources,
+    ProjectPermissionSub.McpServers,
+    ProjectPermissionSub.McpActivityLogs
   ].forEach((el) => {
     can(
       [
@@ -66,6 +70,20 @@ const buildAdminPermissionRules = () => {
       el
     );
   });
+
+  can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
+
+  can(
+    [
+      ProjectPermissionCertificateAuthorityActions.Read,
+      ProjectPermissionCertificateAuthorityActions.Create,
+      ProjectPermissionCertificateAuthorityActions.Edit,
+      ProjectPermissionCertificateAuthorityActions.Delete,
+      ProjectPermissionCertificateAuthorityActions.Renew,
+      ProjectPermissionCertificateAuthorityActions.SignIntermediate
+    ],
+    ProjectPermissionSub.CertificateAuthorities
+  );
 
   can(
     [
@@ -95,7 +113,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionCertificateActions.Edit,
       ProjectPermissionCertificateActions.Create,
       ProjectPermissionCertificateActions.Delete,
-      ProjectPermissionCertificateActions.ReadPrivateKey
+      ProjectPermissionCertificateActions.ReadPrivateKey,
+      ProjectPermissionCertificateActions.Import
     ],
     ProjectPermissionSub.Certificates
   );
@@ -325,6 +344,27 @@ const buildAdminPermissionRules = () => {
 
   can([ProjectPermissionPamSessionActions.Read], ProjectPermissionSub.PamSessions);
 
+  can(
+    [
+      ProjectPermissionMcpEndpointActions.Read,
+      ProjectPermissionMcpEndpointActions.Connect,
+      ProjectPermissionMcpEndpointActions.Create,
+      ProjectPermissionMcpEndpointActions.Edit,
+      ProjectPermissionMcpEndpointActions.Delete
+    ],
+    ProjectPermissionSub.McpEndpoints
+  );
+
+  can(
+    [ProjectPermissionApprovalRequestActions.Read, ProjectPermissionApprovalRequestActions.Create],
+    ProjectPermissionSub.ApprovalRequests
+  );
+
+  can(
+    [ProjectPermissionApprovalRequestGrantActions.Read, ProjectPermissionApprovalRequestGrantActions.Revoke],
+    ProjectPermissionSub.ApprovalRequestGrants
+  );
+
   return rules;
 };
 
@@ -460,7 +500,7 @@ const buildMemberPermissionRules = () => {
   can([ProjectPermissionActions.Read], ProjectPermissionSub.IpAllowList);
 
   // double check if all CRUD are needed for CA and Certificates
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.CertificateAuthorities);
+  can([ProjectPermissionCertificateAuthorityActions.Read], ProjectPermissionSub.CertificateAuthorities);
   can([ProjectPermissionPkiTemplateActions.Read], ProjectPermissionSub.CertificateTemplates);
 
   can(
@@ -468,7 +508,8 @@ const buildMemberPermissionRules = () => {
       ProjectPermissionCertificateActions.Read,
       ProjectPermissionCertificateActions.Edit,
       ProjectPermissionCertificateActions.Create,
-      ProjectPermissionCertificateActions.Delete
+      ProjectPermissionCertificateActions.Delete,
+      ProjectPermissionCertificateActions.Import
     ],
     ProjectPermissionSub.Certificates
   );
@@ -571,6 +612,12 @@ const buildMemberPermissionRules = () => {
     ProjectPermissionSub.PamAccounts
   );
 
+  can([ProjectPermissionMcpEndpointActions.Read], ProjectPermissionSub.McpEndpoints);
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.McpServers);
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.McpActivityLogs);
+
+  can([ProjectPermissionApprovalRequestActions.Create], ProjectPermissionSub.ApprovalRequests);
+
   return rules;
 };
 
@@ -599,7 +646,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
   can(ProjectPermissionAuditLogsActions.Read, ProjectPermissionSub.AuditLogs);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.CertificateAuthorities);
+  can(ProjectPermissionCertificateAuthorityActions.Read, ProjectPermissionSub.CertificateAuthorities);
   can(ProjectPermissionCertificateActions.Read, ProjectPermissionSub.Certificates);
   can(ProjectPermissionPkiTemplateActions.Read, ProjectPermissionSub.CertificateTemplates);
   can(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
@@ -637,6 +684,10 @@ const buildViewerPermissionRules = () => {
   can([ProjectPermissionActions.Read], ProjectPermissionSub.PamResources);
 
   can([ProjectPermissionPamAccountActions.Read], ProjectPermissionSub.PamAccounts);
+
+  can([ProjectPermissionMcpEndpointActions.Read], ProjectPermissionSub.McpEndpoints);
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.McpServers);
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.McpActivityLogs);
 
   return rules;
 };

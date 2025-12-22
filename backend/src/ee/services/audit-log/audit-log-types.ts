@@ -49,6 +49,7 @@ import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
 import { KmipPermission } from "../kmip/kmip-enum";
+import { AcmeChallengeType, AcmeIdentifierType } from "../pki-acme/pki-acme-schemas";
 import { ApprovalStatus } from "../secret-approval-request/secret-approval-request-types";
 
 export type TListProjectAuditLogDTO = {
@@ -78,7 +79,9 @@ export type TCreateAuditLogDTO = {
     | ScimClientActor
     | PlatformActor
     | UnknownUserActor
-    | KmipClientActor;
+    | KmipClientActor
+    | AcmeProfileActor
+    | AcmeAccountActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -186,6 +189,7 @@ export enum EventType {
   CREATE_TOKEN_IDENTITY_TOKEN_AUTH = "create-token-identity-token-auth",
   UPDATE_TOKEN_IDENTITY_TOKEN_AUTH = "update-token-identity-token-auth",
   GET_TOKENS_IDENTITY_TOKEN_AUTH = "get-tokens-identity-token-auth",
+  GET_TOKEN_IDENTITY_TOKEN_AUTH = "get-token-identity-token-auth",
 
   ADD_IDENTITY_TOKEN_AUTH = "add-identity-token-auth",
   UPDATE_IDENTITY_TOKEN_AUTH = "update-identity-token-auth",
@@ -367,6 +371,7 @@ export enum EventType {
   ORG_ADMIN_BYPASS_SSO = "org-admin-bypassed-sso",
   USER_LOGIN = "user-login",
   SELECT_ORGANIZATION = "select-organization",
+  SELECT_SUB_ORGANIZATION = "select-sub-organization",
   CREATE_CERTIFICATE_TEMPLATE = "create-certificate-template",
   UPDATE_CERTIFICATE_TEMPLATE = "update-certificate-template",
   DELETE_CERTIFICATE_TEMPLATE = "delete-certificate-template",
@@ -387,6 +392,10 @@ export enum EventType {
   GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE = "get-certificate-profile-latest-active-bundle",
   UPDATE_CERTIFICATE_RENEWAL_CONFIG = "update-certificate-renewal-config",
   DISABLE_CERTIFICATE_RENEWAL_CONFIG = "disable-certificate-renewal-config",
+  CREATE_CERTIFICATE_REQUEST = "create-certificate-request",
+  GET_CERTIFICATE_REQUEST = "get-certificate-request",
+  GET_CERTIFICATE_FROM_REQUEST = "get-certificate-from-request",
+  LIST_CERTIFICATE_REQUESTS = "list-certificate-requests",
   ATTEMPT_CREATE_SLACK_INTEGRATION = "attempt-create-slack-integration",
   ATTEMPT_REINSTALL_SLACK_INTEGRATION = "attempt-reinstall-slack-integration",
   GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
@@ -535,6 +544,7 @@ export enum EventType {
   DASHBOARD_GET_SECRET_VALUE = "dashboard-get-secret-value",
   DASHBOARD_GET_SECRET_VERSION_VALUE = "dashboard-get-secret-version-value",
 
+  PAM_SESSION_CREDENTIALS_GET = "pam-session-credentials-get",
   PAM_SESSION_START = "pam-session-start",
   PAM_SESSION_LOGS_UPDATE = "pam-session-logs-update",
   PAM_SESSION_END = "pam-session-end",
@@ -554,7 +564,73 @@ export enum EventType {
   PAM_RESOURCE_GET = "pam-resource-get",
   PAM_RESOURCE_CREATE = "pam-resource-create",
   PAM_RESOURCE_UPDATE = "pam-resource-update",
-  PAM_RESOURCE_DELETE = "pam-resource-delete"
+  PAM_RESOURCE_DELETE = "pam-resource-delete",
+  APPROVAL_POLICY_CREATE = "approval-policy-create",
+  APPROVAL_POLICY_UPDATE = "approval-policy-update",
+  APPROVAL_POLICY_DELETE = "approval-policy-delete",
+  APPROVAL_POLICY_LIST = "approval-policy-list",
+  APPROVAL_POLICY_GET = "approval-policy-get",
+  APPROVAL_REQUEST_GET = "approval-request-get",
+  APPROVAL_REQUEST_LIST = "approval-request-list",
+  APPROVAL_REQUEST_CREATE = "approval-request-create",
+  APPROVAL_REQUEST_APPROVE = "approval-request-approve",
+  APPROVAL_REQUEST_REJECT = "approval-request-reject",
+  APPROVAL_REQUEST_CANCEL = "approval-request-cancel",
+  APPROVAL_REQUEST_GRANT_LIST = "approval-request-grant-list",
+  APPROVAL_REQUEST_GRANT_GET = "approval-request-grant-get",
+  APPROVAL_REQUEST_GRANT_REVOKE = "approval-request-grant-revoke",
+
+  // PKI ACME
+  CREATE_ACME_ACCOUNT = "create-acme-account",
+  RETRIEVE_ACME_ACCOUNT = "retrieve-acme-account",
+  CREATE_ACME_ORDER = "create-acme-order",
+  FINALIZE_ACME_ORDER = "finalize-acme-order",
+  DOWNLOAD_ACME_CERTIFICATE = "download-acme-certificate",
+  RESPOND_TO_ACME_CHALLENGE = "respond-to-acme-challenge",
+  PASS_ACME_CHALLENGE = "pass-acme-challenge",
+  ATTEMPT_ACME_CHALLENGE = "attempt-acme-challenge",
+  FAIL_ACME_CHALLENGE = "fail-acme-challenge",
+
+  // MCP Endpoints
+  MCP_ENDPOINT_CREATE = "mcp-endpoint-create",
+  MCP_ENDPOINT_UPDATE = "mcp-endpoint-update",
+  MCP_ENDPOINT_DELETE = "mcp-endpoint-delete",
+  MCP_ENDPOINT_GET = "mcp-endpoint-get",
+  MCP_ENDPOINT_LIST = "mcp-endpoint-list",
+  MCP_ENDPOINT_LIST_TOOLS = "mcp-endpoint-list-tools",
+  MCP_ENDPOINT_ENABLE_TOOL = "mcp-endpoint-enable-tool",
+  MCP_ENDPOINT_DISABLE_TOOL = "mcp-endpoint-disable-tool",
+  MCP_ENDPOINT_BULK_UPDATE_TOOLS = "mcp-endpoint-bulk-update-tools",
+  MCP_ENDPOINT_OAUTH_CLIENT_REGISTER = "mcp-endpoint-oauth-client-register",
+  MCP_ENDPOINT_OAUTH_AUTHORIZE = "mcp-endpoint-oauth-authorize",
+  MCP_ENDPOINT_CONNECT = "mcp-endpoint-connect",
+  MCP_ENDPOINT_SAVE_USER_CREDENTIAL = "mcp-endpoint-save-user-credential",
+
+  // MCP Servers
+  MCP_SERVER_CREATE = "mcp-server-create",
+  MCP_SERVER_UPDATE = "mcp-server-update",
+  MCP_SERVER_DELETE = "mcp-server-delete",
+  MCP_SERVER_GET = "mcp-server-get",
+  MCP_SERVER_LIST = "mcp-server-list",
+  MCP_SERVER_LIST_TOOLS = "mcp-server-list-tools",
+  MCP_SERVER_SYNC_TOOLS = "mcp-server-sync-tools",
+
+  // MCP Activity Logs
+  MCP_ACTIVITY_LOG_LIST = "mcp-activity-log-list",
+
+  // Dynamic Secrets
+  CREATE_DYNAMIC_SECRET = "create-dynamic-secret",
+  UPDATE_DYNAMIC_SECRET = "update-dynamic-secret",
+  DELETE_DYNAMIC_SECRET = "delete-dynamic-secret",
+  GET_DYNAMIC_SECRET = "get-dynamic-secret",
+  LIST_DYNAMIC_SECRETS = "list-dynamic-secrets",
+
+  // Dynamic Secret Leases
+  CREATE_DYNAMIC_SECRET_LEASE = "create-dynamic-secret-lease",
+  DELETE_DYNAMIC_SECRET_LEASE = "delete-dynamic-secret-lease",
+  RENEW_DYNAMIC_SECRET_LEASE = "renew-dynamic-secret-lease",
+  LIST_DYNAMIC_SECRET_LEASES = "list-dynamic-secret-leases",
+  GET_DYNAMIC_SECRET_LEASE = "get-dynamic-secret-lease"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -595,6 +671,15 @@ interface KmipClientActorMetadata {
   name: string;
 }
 
+interface AcmeProfileActorMetadata {
+  profileId: string;
+}
+
+interface AcmeAccountActorMetadata {
+  profileId: string;
+  accountId: string;
+}
+
 interface UnknownUserActorMetadata {}
 
 export interface UserActor {
@@ -632,7 +717,25 @@ export interface ScimClientActor {
   metadata: ScimClientActorMetadata;
 }
 
-export type Actor = UserActor | ServiceActor | IdentityActor | ScimClientActor | PlatformActor | KmipClientActor;
+export interface AcmeProfileActor {
+  type: ActorType.ACME_PROFILE;
+  metadata: AcmeProfileActorMetadata;
+}
+
+export interface AcmeAccountActor {
+  type: ActorType.ACME_ACCOUNT;
+  metadata: AcmeAccountActorMetadata;
+}
+
+export type Actor =
+  | UserActor
+  | ServiceActor
+  | IdentityActor
+  | ScimClientActor
+  | PlatformActor
+  | KmipClientActor
+  | AcmeProfileActor
+  | AcmeAccountActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -1026,6 +1129,15 @@ interface GetTokensIdentityTokenAuthEvent {
   type: EventType.GET_TOKENS_IDENTITY_TOKEN_AUTH;
   metadata: {
     identityId: string;
+  };
+}
+
+interface GetTokenIdentityTokenAuthEvent {
+  type: EventType.GET_TOKEN_IDENTITY_TOKEN_AUTH;
+  metadata: {
+    identityId: string;
+    identityName: string;
+    tokenId: string;
   };
 }
 
@@ -2676,6 +2788,15 @@ interface SelectOrganizationEvent {
   };
 }
 
+interface SelectSubOrganizationEvent {
+  type: EventType.SELECT_SUB_ORGANIZATION;
+  metadata: {
+    organizationId: string;
+    organizationName: string;
+    rootOrganizationId: string;
+  };
+}
+
 interface CreateCertificateTemplateEstConfig {
   type: EventType.CREATE_CERTIFICATE_TEMPLATE_EST_CONFIG;
   metadata: {
@@ -2776,6 +2897,7 @@ interface CreateCertificateProfile {
     name: string;
     projectId: string;
     enrollmentType: string;
+    issuerType: string;
   };
 }
 
@@ -2834,7 +2956,6 @@ interface OrderCertificateFromProfile {
   type: EventType.ORDER_CERTIFICATE_FROM_PROFILE;
   metadata: {
     certificateProfileId: string;
-    orderId: string;
     profileName: string;
   };
 }
@@ -3978,6 +4099,14 @@ interface OrgRoleDeleteEvent {
   };
 }
 
+interface PamSessionCredentialsGetEvent {
+  type: EventType.PAM_SESSION_CREDENTIALS_GET;
+  metadata: {
+    sessionId: string;
+    accountName: string;
+  };
+}
+
 interface PamSessionStartEvent {
   type: EventType.PAM_SESSION_START;
   metadata: {
@@ -4054,6 +4183,7 @@ interface PamAccountAccessEvent {
   type: EventType.PAM_ACCOUNT_ACCESS;
   metadata: {
     accountId: string;
+    accountPath: string;
     accountName: string;
     duration?: string;
   };
@@ -4136,7 +4266,7 @@ interface PamResourceCreateEvent {
   type: EventType.PAM_RESOURCE_CREATE;
   metadata: {
     resourceType: string;
-    gatewayId: string;
+    gatewayId?: string;
     name: string;
   };
 }
@@ -4173,6 +4303,579 @@ interface DisableCertificateRenewalConfigEvent {
   metadata: {
     certificateId: string;
     commonName: string;
+  };
+}
+
+interface CreateCertificateRequestEvent {
+  type: EventType.CREATE_CERTIFICATE_REQUEST;
+  metadata: {
+    certificateRequestId: string;
+    profileId?: string;
+    caId?: string;
+    commonName?: string;
+  };
+}
+
+interface GetCertificateRequestEvent {
+  type: EventType.GET_CERTIFICATE_REQUEST;
+  metadata: {
+    certificateRequestId: string;
+  };
+}
+
+interface GetCertificateFromRequestEvent {
+  type: EventType.GET_CERTIFICATE_FROM_REQUEST;
+  metadata: {
+    certificateRequestId: string;
+    certificateId?: string;
+  };
+}
+
+interface ListCertificateRequestsEvent {
+  type: EventType.LIST_CERTIFICATE_REQUESTS;
+  metadata: {
+    offset: number;
+    limit: number;
+    search?: string;
+    status?: string;
+    count: number;
+    certificateRequestIds: string[];
+  };
+}
+
+interface ApprovalPolicyCreateEvent {
+  type: EventType.APPROVAL_POLICY_CREATE;
+  metadata: {
+    policyType: string;
+    name: string;
+  };
+}
+
+interface ApprovalPolicyUpdateEvent {
+  type: EventType.APPROVAL_POLICY_UPDATE;
+  metadata: {
+    policyType: string;
+    policyId: string;
+    name: string;
+  };
+}
+
+interface ApprovalPolicyDeleteEvent {
+  type: EventType.APPROVAL_POLICY_DELETE;
+  metadata: {
+    policyType: string;
+    policyId: string;
+  };
+}
+
+interface ApprovalPolicyListEvent {
+  type: EventType.APPROVAL_POLICY_LIST;
+  metadata: {
+    policyType: string;
+    count: number;
+  };
+}
+
+interface ApprovalPolicyGetEvent {
+  type: EventType.APPROVAL_POLICY_GET;
+  metadata: {
+    policyType: string;
+    policyId: string;
+    name: string;
+  };
+}
+
+interface ApprovalRequestGetEvent {
+  type: EventType.APPROVAL_REQUEST_GET;
+  metadata: {
+    policyType: string;
+    requestId: string;
+    status: string;
+  };
+}
+
+interface ApprovalRequestListEvent {
+  type: EventType.APPROVAL_REQUEST_LIST;
+  metadata: {
+    policyType: string;
+    count: number;
+  };
+}
+
+interface ApprovalRequestCreateEvent {
+  type: EventType.APPROVAL_REQUEST_CREATE;
+  metadata: {
+    policyType: string;
+    justification?: string;
+    requestDuration: string;
+  };
+}
+
+interface ApprovalRequestApproveEvent {
+  type: EventType.APPROVAL_REQUEST_APPROVE;
+  metadata: {
+    policyType: string;
+    requestId: string;
+    comment?: string;
+  };
+}
+
+interface ApprovalRequestRejectEvent {
+  type: EventType.APPROVAL_REQUEST_REJECT;
+  metadata: {
+    policyType: string;
+    requestId: string;
+    comment?: string;
+  };
+}
+
+interface ApprovalRequestCancelEvent {
+  type: EventType.APPROVAL_REQUEST_CANCEL;
+  metadata: {
+    policyType: string;
+    requestId: string;
+  };
+}
+
+interface ApprovalRequestGrantListEvent {
+  type: EventType.APPROVAL_REQUEST_GRANT_LIST;
+  metadata: {
+    policyType: string;
+    count: number;
+  };
+}
+
+interface ApprovalRequestGrantGetEvent {
+  type: EventType.APPROVAL_REQUEST_GRANT_GET;
+  metadata: {
+    policyType: string;
+    grantId: string;
+    status: string;
+  };
+}
+
+interface ApprovalRequestGrantRevokeEvent {
+  type: EventType.APPROVAL_REQUEST_GRANT_REVOKE;
+  metadata: {
+    policyType: string;
+    grantId: string;
+    revocationReason?: string;
+  };
+}
+
+interface CreateAcmeAccountEvent {
+  type: EventType.CREATE_ACME_ACCOUNT;
+  metadata: {
+    accountId: string;
+    publicKeyThumbprint: string;
+    emails?: string[];
+  };
+}
+
+interface RetrieveAcmeAccountEvent {
+  type: EventType.RETRIEVE_ACME_ACCOUNT;
+  metadata: {
+    accountId: string;
+    publicKeyThumbprint: string;
+  };
+}
+
+interface CreateAcmeOrderEvent {
+  type: EventType.CREATE_ACME_ORDER;
+  metadata: {
+    orderId: string;
+    identifiers: Array<{
+      type: AcmeIdentifierType;
+      value: string;
+    }>;
+  };
+}
+
+interface FinalizeAcmeOrderEvent {
+  type: EventType.FINALIZE_ACME_ORDER;
+  metadata: {
+    orderId: string;
+    csr: string;
+  };
+}
+
+interface DownloadAcmeCertificateEvent {
+  type: EventType.DOWNLOAD_ACME_CERTIFICATE;
+  metadata: {
+    orderId: string;
+  };
+}
+
+interface RespondToAcmeChallengeEvent {
+  type: EventType.RESPOND_TO_ACME_CHALLENGE;
+  metadata: {
+    challengeId: string;
+    type: AcmeChallengeType;
+  };
+}
+interface PassedAcmeChallengeEvent {
+  type: EventType.PASS_ACME_CHALLENGE;
+  metadata: {
+    challengeId: string;
+    type: AcmeChallengeType;
+  };
+}
+
+interface AttemptAcmeChallengeEvent {
+  type: EventType.ATTEMPT_ACME_CHALLENGE;
+  metadata: {
+    challengeId: string;
+    type: AcmeChallengeType;
+    retryCount: number;
+    errorMessage: string;
+  };
+}
+
+interface FailAcmeChallengeEvent {
+  type: EventType.FAIL_ACME_CHALLENGE;
+  metadata: {
+    challengeId: string;
+    type: AcmeChallengeType;
+    retryCount: number;
+    errorMessage: string;
+  };
+}
+
+interface McpEndpointCreateEvent {
+  type: EventType.MCP_ENDPOINT_CREATE;
+  metadata: {
+    endpointId: string;
+    name: string;
+    description?: string;
+    serverIds: string[];
+  };
+}
+
+interface McpEndpointUpdateEvent {
+  type: EventType.MCP_ENDPOINT_UPDATE;
+  metadata: {
+    endpointId: string;
+    name?: string;
+    description?: string;
+    serverIds?: string[];
+    piiFiltering?: boolean;
+  };
+}
+
+interface McpEndpointDeleteEvent {
+  type: EventType.MCP_ENDPOINT_DELETE;
+  metadata: {
+    endpointId: string;
+    name: string;
+  };
+}
+
+interface McpEndpointGetEvent {
+  type: EventType.MCP_ENDPOINT_GET;
+  metadata: {
+    endpointId: string;
+    name: string;
+  };
+}
+
+interface McpEndpointListEvent {
+  type: EventType.MCP_ENDPOINT_LIST;
+  metadata: {
+    count: number;
+  };
+}
+
+interface McpEndpointListToolsEvent {
+  type: EventType.MCP_ENDPOINT_LIST_TOOLS;
+  metadata: {
+    endpointId: string;
+    endpointName: string;
+    toolCount: number;
+  };
+}
+
+interface McpEndpointEnableToolEvent {
+  type: EventType.MCP_ENDPOINT_ENABLE_TOOL;
+  metadata: {
+    endpointId: string;
+    endpointName: string;
+    serverToolId: string;
+    toolName: string;
+  };
+}
+
+interface McpEndpointDisableToolEvent {
+  type: EventType.MCP_ENDPOINT_DISABLE_TOOL;
+  metadata: {
+    endpointId: string;
+    endpointName: string;
+    serverToolId: string;
+    toolName: string;
+  };
+}
+
+interface McpEndpointBulkUpdateToolsEvent {
+  type: EventType.MCP_ENDPOINT_BULK_UPDATE_TOOLS;
+  metadata: {
+    endpointId: string;
+    endpointName: string;
+    toolsUpdated: number;
+  };
+}
+
+interface McpEndpointOAuthClientRegisterEvent {
+  type: EventType.MCP_ENDPOINT_OAUTH_CLIENT_REGISTER;
+  metadata: {
+    endpointId: string;
+    endpointName: string;
+    clientId: string;
+    clientName: string;
+  };
+}
+
+interface McpEndpointOAuthAuthorizeEvent {
+  type: EventType.MCP_ENDPOINT_OAUTH_AUTHORIZE;
+  metadata: {
+    endpointId: string;
+    endpointName: string;
+    clientId: string;
+  };
+}
+
+interface McpEndpointConnectEvent {
+  type: EventType.MCP_ENDPOINT_CONNECT;
+  metadata: {
+    endpointId: string;
+    endpointName: string;
+    userId: string;
+  };
+}
+
+interface McpEndpointSaveUserCredentialEvent {
+  type: EventType.MCP_ENDPOINT_SAVE_USER_CREDENTIAL;
+  metadata: {
+    endpointId: string;
+    endpointName: string;
+    serverId: string;
+    serverName: string;
+  };
+}
+
+interface McpServerCreateEvent {
+  type: EventType.MCP_SERVER_CREATE;
+  metadata: {
+    serverId: string;
+    name: string;
+    url: string;
+    credentialMode: string;
+    authMethod: string;
+  };
+}
+
+interface McpServerUpdateEvent {
+  type: EventType.MCP_SERVER_UPDATE;
+  metadata: {
+    serverId: string;
+    name: string;
+  };
+}
+
+interface McpServerDeleteEvent {
+  type: EventType.MCP_SERVER_DELETE;
+  metadata: {
+    serverId: string;
+    name: string;
+  };
+}
+
+interface McpServerGetEvent {
+  type: EventType.MCP_SERVER_GET;
+  metadata: {
+    serverId: string;
+    name: string;
+  };
+}
+
+interface McpServerListEvent {
+  type: EventType.MCP_SERVER_LIST;
+  metadata: {
+    count: number;
+  };
+}
+
+interface McpServerListToolsEvent {
+  type: EventType.MCP_SERVER_LIST_TOOLS;
+  metadata: {
+    serverId: string;
+    serverName: string;
+    toolCount: number;
+  };
+}
+
+interface McpServerSyncToolsEvent {
+  type: EventType.MCP_SERVER_SYNC_TOOLS;
+  metadata: {
+    serverId: string;
+    serverName: string;
+    toolCount: number;
+  };
+}
+
+interface McpActivityLogListEvent {
+  type: EventType.MCP_ACTIVITY_LOG_LIST;
+  metadata: {
+    count: number;
+  };
+}
+
+interface GetDynamicSecretLeaseEvent {
+  type: EventType.GET_DYNAMIC_SECRET_LEASE;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    leaseId: string;
+    leaseExternalEntityId: string;
+    leaseExpireAt: Date;
+
+    projectId: string;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface RenewDynamicSecretLeaseEvent {
+  type: EventType.RENEW_DYNAMIC_SECRET_LEASE;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    leaseId: string;
+    leaseExternalEntityId: string;
+    newLeaseExpireAt: Date;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface CreateDynamicSecretLeaseEvent {
+  type: EventType.CREATE_DYNAMIC_SECRET_LEASE;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    leaseId: string;
+    leaseExternalEntityId: string;
+    leaseExpireAt: Date;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface DeleteDynamicSecretLeaseEvent {
+  type: EventType.DELETE_DYNAMIC_SECRET_LEASE;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    leaseId: string;
+    leaseExternalEntityId: string;
+    leaseStatus?: string | null;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+
+    isForced: boolean;
+  };
+}
+
+interface CreateDynamicSecretEvent {
+  type: EventType.CREATE_DYNAMIC_SECRET;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretType: string;
+    dynamicSecretId: string;
+    defaultTTL: string;
+    maxTTL?: string | null;
+    gatewayV2Id?: string | null;
+    usernameTemplate?: string | null;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface UpdateDynamicSecretEvent {
+  type: EventType.UPDATE_DYNAMIC_SECRET;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+    updatedFields: string[];
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface DeleteDynamicSecretEvent {
+  type: EventType.DELETE_DYNAMIC_SECRET;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface GetDynamicSecretEvent {
+  type: EventType.GET_DYNAMIC_SECRET;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface ListDynamicSecretsEvent {
+  type: EventType.LIST_DYNAMIC_SECRETS;
+  metadata: {
+    environment: string;
+    secretPath: string;
+    projectId: string;
+  };
+}
+
+interface ListDynamicSecretLeasesEvent {
+  type: EventType.LIST_DYNAMIC_SECRET_LEASES;
+  metadata: {
+    dynamicSecretName: string;
+    dynamicSecretId: string;
+    dynamicSecretType: string;
+
+    environment: string;
+    secretPath: string;
+    projectId: string;
+
+    leaseCount: number;
   };
 }
 
@@ -4214,6 +4917,7 @@ export type Event =
   | CreateTokenIdentityTokenAuthEvent
   | UpdateTokenIdentityTokenAuthEvent
   | GetTokensIdentityTokenAuthEvent
+  | GetTokenIdentityTokenAuthEvent
   | AddIdentityTokenAuthEvent
   | UpdateIdentityTokenAuthEvent
   | GetIdentityTokenAuthEvent
@@ -4531,6 +5235,7 @@ export type Event =
   | OrgRoleCreateEvent
   | OrgRoleUpdateEvent
   | OrgRoleDeleteEvent
+  | PamSessionCredentialsGetEvent
   | PamSessionStartEvent
   | PamSessionLogsUpdateEvent
   | PamSessionEndEvent
@@ -4553,7 +5258,66 @@ export type Event =
   | PamResourceDeleteEvent
   | UpdateCertificateRenewalConfigEvent
   | DisableCertificateRenewalConfigEvent
+  | CreateCertificateRequestEvent
+  | GetCertificateRequestEvent
+  | GetCertificateFromRequestEvent
+  | ListCertificateRequestsEvent
   | AutomatedRenewCertificate
   | AutomatedRenewCertificateFailed
   | UserLoginEvent
-  | SelectOrganizationEvent;
+  | SelectOrganizationEvent
+  | SelectSubOrganizationEvent
+  | ApprovalPolicyCreateEvent
+  | ApprovalPolicyUpdateEvent
+  | ApprovalPolicyDeleteEvent
+  | ApprovalPolicyListEvent
+  | ApprovalPolicyGetEvent
+  | ApprovalRequestGetEvent
+  | ApprovalRequestListEvent
+  | ApprovalRequestCreateEvent
+  | ApprovalRequestApproveEvent
+  | ApprovalRequestRejectEvent
+  | ApprovalRequestCancelEvent
+  | ApprovalRequestGrantListEvent
+  | ApprovalRequestGrantGetEvent
+  | ApprovalRequestGrantRevokeEvent
+  | CreateAcmeAccountEvent
+  | RetrieveAcmeAccountEvent
+  | CreateAcmeOrderEvent
+  | FinalizeAcmeOrderEvent
+  | DownloadAcmeCertificateEvent
+  | RespondToAcmeChallengeEvent
+  | PassedAcmeChallengeEvent
+  | AttemptAcmeChallengeEvent
+  | FailAcmeChallengeEvent
+  | McpEndpointCreateEvent
+  | McpEndpointUpdateEvent
+  | McpEndpointDeleteEvent
+  | McpEndpointGetEvent
+  | McpEndpointListEvent
+  | McpEndpointListToolsEvent
+  | McpEndpointEnableToolEvent
+  | McpEndpointDisableToolEvent
+  | McpEndpointBulkUpdateToolsEvent
+  | McpEndpointOAuthClientRegisterEvent
+  | McpEndpointOAuthAuthorizeEvent
+  | McpEndpointConnectEvent
+  | McpEndpointSaveUserCredentialEvent
+  | McpServerCreateEvent
+  | McpServerUpdateEvent
+  | McpServerDeleteEvent
+  | McpServerGetEvent
+  | McpServerListEvent
+  | McpServerListToolsEvent
+  | McpServerSyncToolsEvent
+  | McpActivityLogListEvent
+  | CreateDynamicSecretEvent
+  | UpdateDynamicSecretEvent
+  | DeleteDynamicSecretEvent
+  | GetDynamicSecretEvent
+  | ListDynamicSecretsEvent
+  | ListDynamicSecretLeasesEvent
+  | CreateDynamicSecretLeaseEvent
+  | DeleteDynamicSecretLeaseEvent
+  | RenewDynamicSecretLeaseEvent
+  | GetDynamicSecretLeaseEvent;

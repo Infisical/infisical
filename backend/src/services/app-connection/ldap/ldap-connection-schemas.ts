@@ -75,7 +75,9 @@ export const ValidateLdapConnectionCredentialsSchema = z.discriminatedUnion("met
 ]);
 
 export const CreateLdapConnectionSchema = ValidateLdapConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.LDAP)
+  GenericCreateAppConnectionFieldsSchema(AppConnection.LDAP, {
+    supportsGateways: true
+  })
 );
 
 export const UpdateLdapConnectionSchema = z
@@ -84,7 +86,11 @@ export const UpdateLdapConnectionSchema = z
       AppConnections.UPDATE(AppConnection.LDAP).credentials
     )
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.LDAP));
+  .and(
+    GenericUpdateAppConnectionFieldsSchema(AppConnection.LDAP, {
+      supportsGateways: true
+    })
+  );
 
 export const LdapConnectionListItemSchema = z
   .object({

@@ -1,5 +1,6 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { motion } from "framer-motion";
+import { twMerge } from "tailwind-merge";
 
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
 import { Tab, TabList, Tabs } from "@app/components/v2";
@@ -11,7 +12,7 @@ type Props = {
 };
 
 export const OrgNavBar = ({ isHidden }: Props) => {
-  const { isRootOrganization } = useOrganization();
+  const { isRootOrganization, currentOrg } = useOrganization();
   const { popUp, handlePopUpToggle } = usePopUp(["createOrg"] as const);
 
   const { pathname } = useLocation();
@@ -19,9 +20,16 @@ export const OrgNavBar = ({ isHidden }: Props) => {
   const variant = isRootOrganization ? "org" : "namespace";
 
   return (
-    <>
+    <div className="bg-mineshaft-900">
       {!isHidden && (
-        <div className="dark hidden w-full flex-col overflow-x-hidden border-b border-mineshaft-600 bg-mineshaft-900 px-4 md:flex">
+        <div
+          className={twMerge(
+            "dark flex w-full flex-col overflow-x-hidden border-y bg-gradient-to-b px-4 pt-0.5",
+            isRootOrganization
+              ? "border-t-org/15 border-b-org/5 from-org/[0.075] to-org/[0.025]"
+              : "border-t-sub-org/15 border-b-sub-org/5 from-sub-org/[0.075] to-sub-org/[0.025]"
+          )}
+        >
           <motion.div
             key="menu-org-items"
             initial={{ x: -150 }}
@@ -32,43 +40,47 @@ export const OrgNavBar = ({ isHidden }: Props) => {
             <nav className="w-full">
               <Tabs value="selected">
                 <TabList className="border-b-0">
-                  <Link to="/organization/projects">
+                  <Link to="/organizations/$orgId/projects" params={{ orgId: currentOrg.id }}>
                     {({ isActive }) => (
                       <Tab variant={variant} value={isActive ? "selected" : ""}>
                         Overview
                       </Tab>
                     )}
                   </Link>
-                  <Link to="/organization/app-connections">
+                  <Link
+                    to="/organizations/$orgId/app-connections"
+                    params={{ orgId: currentOrg.id }}
+                  >
                     {({ isActive }) => (
                       <Tab variant={variant} value={isActive ? "selected" : ""}>
                         App Connections
                       </Tab>
                     )}
                   </Link>
-                  <Link to="/organization/networking">
+                  <Link to="/organizations/$orgId/networking" params={{ orgId: currentOrg.id }}>
                     {({ isActive }) => (
                       <Tab variant={variant} value={isActive ? "selected" : ""}>
                         Networking
                       </Tab>
                     )}
                   </Link>
-                  <Link to="/organization/secret-sharing">
+                  <Link to="/organizations/$orgId/secret-sharing" params={{ orgId: currentOrg.id }}>
                     {({ isActive }) => (
                       <Tab value={isActive ? "selected" : ""} variant={variant}>
                         Secret Sharing
                       </Tab>
                     )}
                   </Link>
-                  <Link to="/organization/access-management">
+                  <Link
+                    to="/organizations/$orgId/access-management"
+                    params={{ orgId: currentOrg.id }}
+                  >
                     {({ isActive }) => (
                       <Tab
                         variant={variant}
                         value={
                           isActive ||
-                          pathname.match(
-                            /organization\/members|organization\/identities|organization\/groups|organization\/roles/
-                          )
+                          pathname.match(/organizations\/[^/]+\/(members|identities|groups|roles)/)
                             ? "selected"
                             : ""
                         }
@@ -77,7 +89,7 @@ export const OrgNavBar = ({ isHidden }: Props) => {
                       </Tab>
                     )}
                   </Link>
-                  <Link to="/organization/audit-logs">
+                  <Link to="/organizations/$orgId/audit-logs" params={{ orgId: currentOrg.id }}>
                     {({ isActive }) => (
                       <Tab variant={variant} value={isActive ? "selected" : ""}>
                         Audit Logs
@@ -85,7 +97,7 @@ export const OrgNavBar = ({ isHidden }: Props) => {
                     )}
                   </Link>
                   {isRootOrganization && (
-                    <Link to="/organization/billing">
+                    <Link to="/organizations/$orgId/billing" params={{ orgId: currentOrg.id }}>
                       {({ isActive }) => (
                         <Tab variant={variant} value={isActive ? "selected" : ""}>
                           Usage & Billing
@@ -93,7 +105,7 @@ export const OrgNavBar = ({ isHidden }: Props) => {
                       )}
                     </Link>
                   )}
-                  <Link to="/organization/settings">
+                  <Link to="/organizations/$orgId/settings" params={{ orgId: currentOrg.id }}>
                     {({ isActive }) => (
                       <Tab variant={variant} value={isActive ? "selected" : ""}>
                         Settings
@@ -110,6 +122,6 @@ export const OrgNavBar = ({ isHidden }: Props) => {
         isOpen={popUp?.createOrg?.isOpen}
         onClose={() => handlePopUpToggle("createOrg", false)}
       />
-    </>
+    </div>
   );
 };

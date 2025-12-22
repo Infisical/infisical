@@ -61,6 +61,10 @@ import {
   DigitalOceanConnectionListItemSchema,
   SanitizedDigitalOceanConnectionSchema
 } from "@app/services/app-connection/digital-ocean";
+import {
+  DNSMadeEasyConnectionListItemSchema,
+  SanitizedDNSMadeEasyConnectionSchema
+} from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-schema";
 import { FlyioConnectionListItemSchema, SanitizedFlyioConnectionSchema } from "@app/services/app-connection/flyio";
 import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
@@ -83,6 +87,10 @@ import {
   SanitizedLaravelForgeConnectionSchema
 } from "@app/services/app-connection/laravel-forge";
 import { LdapConnectionListItemSchema, SanitizedLdapConnectionSchema } from "@app/services/app-connection/ldap";
+import {
+  MongoDBConnectionListItemSchema,
+  SanitizedMongoDBConnectionSchema
+} from "@app/services/app-connection/mongodb";
 import { MsSqlConnectionListItemSchema, SanitizedMsSqlConnectionSchema } from "@app/services/app-connection/mssql";
 import { MySqlConnectionListItemSchema, SanitizedMySqlConnectionSchema } from "@app/services/app-connection/mysql";
 import {
@@ -93,6 +101,10 @@ import {
   NorthflankConnectionListItemSchema,
   SanitizedNorthflankConnectionSchema
 } from "@app/services/app-connection/northflank";
+import {
+  OctopusDeployConnectionListItemSchema,
+  SanitizedOctopusDeployConnectionSchema
+} from "@app/services/app-connection/octopus-deploy";
 import { OktaConnectionListItemSchema, SanitizedOktaConnectionSchema } from "@app/services/app-connection/okta";
 import {
   PostgresConnectionListItemSchema,
@@ -169,8 +181,11 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedOktaConnectionSchema.options,
   ...SanitizedAzureADCSConnectionSchema.options,
   ...SanitizedRedisConnectionSchema.options,
+  ...SanitizedMongoDBConnectionSchema.options,
   ...SanitizedLaravelForgeConnectionSchema.options,
-  ...SanitizedChefConnectionSchema.options
+  ...SanitizedChefConnectionSchema.options,
+  ...SanitizedDNSMadeEasyConnectionSchema.options,
+  ...SanitizedOctopusDeployConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -214,8 +229,11 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OktaConnectionListItemSchema,
   AzureADCSConnectionListItemSchema,
   RedisConnectionListItemSchema,
+  MongoDBConnectionListItemSchema,
   LaravelForgeConnectionListItemSchema,
-  ChefConnectionListItemSchema
+  ChefConnectionListItemSchema,
+  DNSMadeEasyConnectionListItemSchema,
+  OctopusDeployConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

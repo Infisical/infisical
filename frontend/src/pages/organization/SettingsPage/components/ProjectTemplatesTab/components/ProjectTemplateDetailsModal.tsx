@@ -49,7 +49,7 @@ const PROJECT_TYPE_MENU_ITEMS = [
     value: ProjectType.SecretManager
   },
   {
-    label: "Certificates Management",
+    label: "Certificate Manager",
     value: ProjectType.CertificateManager
   },
   {
@@ -67,6 +67,10 @@ const PROJECT_TYPE_MENU_ITEMS = [
   {
     label: "PAM",
     value: ProjectType.PAM
+  },
+  {
+    label: "Agentic Manager",
+    value: ProjectType.AI
   }
 ];
 

@@ -10,6 +10,7 @@ import { PkiSyncStatusBadge } from "@app/components/pki-syncs";
 import { IconButton } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
+import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { PkiSyncStatus, TPkiSync } from "@app/hooks/api/pkiSyncs";
 
 const GenericFieldLabel = ({
@@ -33,8 +34,7 @@ type Props = {
 };
 
 export const PkiSyncDetailsSection = ({ pkiSync, onEditDetails }: Props) => {
-  const { syncStatus, lastSyncMessage, lastSyncedAt, name, description, subscriberId, subscriber } =
-    pkiSync;
+  const { syncStatus, lastSyncMessage, lastSyncedAt, name, description, subscriber } = pkiSync;
 
   const failureMessage = useMemo(() => {
     if (syncStatus === PkiSyncStatus.Failed) {
@@ -50,8 +50,11 @@ export const PkiSyncDetailsSection = ({ pkiSync, onEditDetails }: Props) => {
     return null;
   }, [syncStatus, lastSyncMessage]);
 
+  const destinationName = PKI_SYNC_MAP[pkiSync.destination].name;
+
   const permissionSubject = subject(ProjectPermissionSub.PkiSyncs, {
-    subscriberId: subscriber?.id || subscriberId || ""
+    subscriberName: destinationName,
+    name: pkiSync.name
   });
 
   return (

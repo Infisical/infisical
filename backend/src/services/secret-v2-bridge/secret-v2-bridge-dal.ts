@@ -416,6 +416,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
       tagSlugs?: string[];
       includeTagsInSearch?: boolean;
       includeMetadataInSearch?: boolean;
+      excludeRotatedSecrets?: boolean;
     }
   ) => {
     try {
@@ -479,6 +480,10 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           `${TableName.SecretV2}.id`,
           `${TableName.ResourceMetadata}.secretId`
         );
+      }
+
+      if (filters?.excludeRotatedSecrets) {
+        void query.whereNull(`${TableName.SecretRotationV2SecretMapping}.secretId`);
       }
 
       const secrets = await query;
@@ -592,6 +597,11 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           const slugs = filters?.tagSlugs?.filter(Boolean);
           if (slugs && slugs.length > 0) {
             void bd.whereIn(`${TableName.SecretTag}.slug`, slugs);
+          }
+        })
+        .where((bd) => {
+          if (filters?.excludeRotatedSecrets) {
+            void bd.whereNull(`${TableName.SecretRotationV2SecretMapping}.secretId`);
           }
         })
         .orderBy(

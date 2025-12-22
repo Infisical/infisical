@@ -65,7 +65,8 @@ export const DeleteProjectSection = () => {
       });
 
       navigate({
-        to: "/organization/projects"
+        to: "/organizations/$orgId/projects",
+        params: { orgId: currentOrg.id }
       });
       handlePopUpClose("deleteWorkspace");
     } finally {
@@ -110,7 +111,8 @@ export const DeleteProjectSection = () => {
       });
 
       navigate({
-        to: "/organization/projects"
+        to: "/organizations/$orgId/projects",
+        params: { orgId: currentOrg.id }
       });
     } finally {
       setIsLeaving.off();

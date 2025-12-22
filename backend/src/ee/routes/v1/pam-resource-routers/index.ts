@@ -1,4 +1,14 @@
 import {
+  CreateAwsIamResourceSchema,
+  SanitizedAwsIamResourceSchema,
+  UpdateAwsIamResourceSchema
+} from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
+import {
+  CreateKubernetesResourceSchema,
+  SanitizedKubernetesResourceSchema,
+  UpdateKubernetesResourceSchema
+} from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
+import {
   CreateMySQLResourceSchema,
   MySQLResourceSchema,
   UpdateMySQLResourceSchema
@@ -9,8 +19,17 @@ import {
   SanitizedPostgresResourceSchema,
   UpdatePostgresResourceSchema
 } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
+import {
+  CreateSSHResourceSchema,
+  SanitizedSSHResourceSchema,
+  UpdateSSHResourceSchema
+} from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
 
-import { registerPamResourceEndpoints } from "./pam-resource-endpoints";
+import {
+  registerPamResourceEndpoints,
+  registerSshCaPublicKeyEndpoint,
+  registerSshCaSetupEndpoint
+} from "./pam-resource-endpoints";
 
 export const PAM_RESOURCE_REGISTER_ROUTER_MAP: Record<PamResource, (server: FastifyZodProvider) => Promise<void>> = {
   [PamResource.Postgres]: async (server: FastifyZodProvider) => {
@@ -29,6 +48,35 @@ export const PAM_RESOURCE_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fast
       resourceResponseSchema: MySQLResourceSchema,
       createResourceSchema: CreateMySQLResourceSchema,
       updateResourceSchema: UpdateMySQLResourceSchema
+    });
+  },
+  [PamResource.SSH]: async (server: FastifyZodProvider) => {
+    registerPamResourceEndpoints({
+      server,
+      resourceType: PamResource.SSH,
+      resourceResponseSchema: SanitizedSSHResourceSchema,
+      createResourceSchema: CreateSSHResourceSchema,
+      updateResourceSchema: UpdateSSHResourceSchema
+    });
+    registerSshCaPublicKeyEndpoint(server);
+    registerSshCaSetupEndpoint(server);
+  },
+  [PamResource.Kubernetes]: async (server: FastifyZodProvider) => {
+    registerPamResourceEndpoints({
+      server,
+      resourceType: PamResource.Kubernetes,
+      resourceResponseSchema: SanitizedKubernetesResourceSchema,
+      createResourceSchema: CreateKubernetesResourceSchema,
+      updateResourceSchema: UpdateKubernetesResourceSchema
+    });
+  },
+  [PamResource.AwsIam]: async (server: FastifyZodProvider) => {
+    registerPamResourceEndpoints({
+      server,
+      resourceType: PamResource.AwsIam,
+      resourceResponseSchema: SanitizedAwsIamResourceSchema,
+      createResourceSchema: CreateAwsIamResourceSchema,
+      updateResourceSchema: UpdateAwsIamResourceSchema
     });
   }
 };

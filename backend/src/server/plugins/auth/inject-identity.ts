@@ -8,14 +8,13 @@ import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
-import { slugSchema } from "@app/server/lib/schemas";
 import { ActorType, AuthMethod, AuthMode, AuthModeJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 export type TAuthMode =
   | {
-      authMode: AuthMode.JWT;
+      authMode: AuthMode.JWT | AuthMode.MCP_JWT;
       actor: ActorType.USER;
       userId: string;
       tokenVersionId: string; // the session id of token used
@@ -91,12 +90,21 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
   const decodedToken = crypto.jwt().verify(authTokenValue, jwtSecret) as JwtPayload;
 
   switch (decodedToken.authTokenType) {
-    case AuthTokenType.ACCESS_TOKEN:
+    case AuthTokenType.ACCESS_TOKEN: {
+      if (decodedToken?.mcp) {
+        return {
+          authMode: AuthMode.MCP_JWT,
+          token: decodedToken as AuthModeJwtTokenPayload,
+          actor: ActorType.USER
+        } as const;
+      }
+
       return {
         authMode: AuthMode.JWT,
         token: decodedToken as AuthModeJwtTokenPayload,
         actor: ActorType.USER
       } as const;
+    }
     case AuthTokenType.API_KEY:
       // throw new Error("API Key auth is no longer supported.");
       return { authMode: AuthMode.API_KEY, token: decodedToken, actor: ActorType.USER } as const;
@@ -133,6 +141,10 @@ export const injectIdentity = fp(
         return;
       }
 
+      if (req.url === "/api/v1/ai/mcp/servers/oauth/callback") {
+        return;
+      }
+
       // Authentication is handled on a route-level
       if (req.url === "/api/v1/relays/register-instance-relay") {
         return;
@@ -152,15 +164,10 @@ export const injectIdentity = fp(
 
       if (!authMode) return;
 
-      const subOrganizationSelector = req.headers?.["x-infisical-org"] as string | undefined;
-      if (subOrganizationSelector) {
-        await slugSchema().parseAsync(subOrganizationSelector);
-      }
-
       switch (authMode) {
         case AuthMode.JWT: {
           const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } =
-            await server.services.authToken.fnValidateJwtIdentity(token, subOrganizationSelector);
+            await server.services.authToken.fnValidateJwtIdentity(token);
           requestContext.set("orgId", orgId);
           requestContext.set("orgName", orgName);
           requestContext.set("userAuthInfo", { userId: user.id, email: user.email || "" });
@@ -179,12 +186,29 @@ export const injectIdentity = fp(
           };
           break;
         }
+        case AuthMode.MCP_JWT: {
+          const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } =
+            await server.services.authToken.fnValidateJwtIdentity(token);
+          requestContext.set("orgId", orgId);
+          requestContext.set("orgName", orgName);
+          requestContext.set("userAuthInfo", { userId: user.id, email: user.email || "" });
+          req.auth = {
+            authMode: AuthMode.MCP_JWT,
+            user,
+            userId: user.id,
+            tokenVersionId,
+            actor,
+            orgId,
+            rootOrgId,
+            parentOrgId,
+            authMethod: token.authMethod,
+            isMfaVerified: token.isMfaVerified,
+            token
+          };
+          break;
+        }
         case AuthMode.IDENTITY_ACCESS_TOKEN: {
-          const identity = await server.services.identityAccessToken.fnValidateIdentityAccessToken(
-            token,
-            req.realIp,
-            subOrganizationSelector
-          );
+          const identity = await server.services.identityAccessToken.fnValidateIdentityAccessToken(token, req.realIp);
           const serverCfg = await getServerCfg();
           requestContext.set("orgId", identity.orgId);
           requestContext.set("orgName", identity.orgName);
@@ -195,7 +219,7 @@ export const injectIdentity = fp(
             rootOrgId: identity.rootOrgId,
             parentOrgId: identity.parentOrgId,
             identityId: identity.identityId,
-            identityName: identity.name,
+            identityName: identity.identityName,
             authMethod: null,
             isInstanceAdmin: serverCfg?.adminIdentityIds?.includes(identity.identityId),
             token
@@ -223,9 +247,6 @@ export const injectIdentity = fp(
           const serviceToken = await server.services.serviceToken.fnValidateServiceToken(token);
           requestContext.set("orgId", serviceToken.orgId);
 
-          if (subOrganizationSelector)
-            throw new BadRequestError({ message: `Service token doesn't support sub organization selector` });
-
           req.auth = {
             orgId: serviceToken.orgId,
             rootOrgId: serviceToken.rootOrgId,
@@ -247,9 +268,6 @@ export const injectIdentity = fp(
         case AuthMode.SCIM_TOKEN: {
           const { orgId, scimTokenId } = await server.services.scim.fnValidateScimToken(token);
           requestContext.set("orgId", orgId);
-
-          if (subOrganizationSelector)
-            throw new BadRequestError({ message: `SCIM token doesn't support sub organization selector` });
 
           req.auth = {
             authMode: AuthMode.SCIM_TOKEN,

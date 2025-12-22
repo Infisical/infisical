@@ -9,8 +9,11 @@ import {
 import { DiscriminativePick } from "@app/types";
 
 import { PamResourceHeader } from "../PamResourceHeader";
+import { AwsIamResourceForm } from "./AwsIamResourceForm";
+import { KubernetesResourceForm } from "./KubernetesResourceForm";
 import { MySQLResourceForm } from "./MySQLResourceForm";
 import { PostgresResourceForm } from "./PostgresResourceForm";
+import { SSHResourceForm } from "./SSHResourceForm";
 
 type FormProps = {
   onComplete: (resource: TPamResource) => void;
@@ -51,6 +54,12 @@ const CreateForm = ({ resourceType, onComplete, projectId }: CreateFormProps) =>
       return <PostgresResourceForm onSubmit={onSubmit} />;
     case PamResourceType.MySQL:
       return <MySQLResourceForm onSubmit={onSubmit} />;
+    case PamResourceType.SSH:
+      return <SSHResourceForm onSubmit={onSubmit} />;
+    case PamResourceType.Kubernetes:
+      return <KubernetesResourceForm onSubmit={onSubmit} />;
+    case PamResourceType.AwsIam:
+      return <AwsIamResourceForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled resource: ${resourceType}`);
   }
@@ -79,6 +88,12 @@ const UpdateForm = ({ resource, onComplete }: UpdateFormProps) => {
       return <PostgresResourceForm resource={resource} onSubmit={onSubmit} />;
     case PamResourceType.MySQL:
       return <MySQLResourceForm resource={resource} onSubmit={onSubmit} />;
+    case PamResourceType.SSH:
+      return <SSHResourceForm resource={resource} onSubmit={onSubmit} />;
+    case PamResourceType.Kubernetes:
+      return <KubernetesResourceForm resource={resource} onSubmit={onSubmit} />;
+    case PamResourceType.AwsIam:
+      return <AwsIamResourceForm resource={resource} onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled resource: ${(resource as any).resourceType}`);
   }

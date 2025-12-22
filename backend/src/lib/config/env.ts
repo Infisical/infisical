@@ -119,6 +119,17 @@ const envSchema = z
         })
         .default("{}")
     ),
+    ACME_DNS_RESOLVER_SERVERS: zpStr(
+      z
+        .string()
+        .optional()
+        .transform((val) => {
+          if (!val) return [];
+          return val.split(",");
+        })
+    ),
+    ACME_DNS_RESOLVE_RESOLVER_SERVERS_HOST_ENABLED: zodStrBool.default("false").optional(),
+    DNS_MADE_EASY_SANDBOX_ENABLED: zodStrBool.default("false").optional(),
     // smtp options
     SMTP_HOST: zpStr(z.string().optional()),
     SMTP_IGNORE_TLS: zodStrBool.default("false"),
@@ -228,6 +239,7 @@ const envSchema = z
     CAPTCHA_SECRET: zpStr(z.string().optional()),
     CAPTCHA_SITE_KEY: zpStr(z.string().optional()),
     INTERCOM_ID: zpStr(z.string().optional()),
+    CDN_HOST: zpStr(z.string().optional()),
 
     // TELEMETRY
     OTEL_TELEMETRY_COLLECTION_ENABLED: zodStrBool.default("false"),
@@ -285,6 +297,10 @@ const envSchema = z
     DYNAMIC_SECRET_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()).default(
       process.env.INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY
     ),
+
+    // PAM AWS credentials (for AWS IAM PAM resource type)
+    PAM_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()),
+    PAM_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()),
     /* ----------------------------------------------------------------------------- */
 
     /* App Connections ----------------------------------------------------------------------------- */
@@ -400,7 +416,7 @@ const envSchema = z
     isAcmeDevelopmentMode: data.NODE_ENV === "development" && data.ACME_DEVELOPMENT_MODE,
     isProductionMode: data.NODE_ENV === "production" || IS_PACKAGED,
     isRedisSentinelMode: Boolean(data.REDIS_SENTINEL_HOSTS),
-    isBddNockApiEnabled: data.NODE_ENV === "development" && data.BDD_NOCK_API_ENABLED,
+    isBddNockApiEnabled: data.NODE_ENV !== "production" && data.BDD_NOCK_API_ENABLED,
     REDIS_SENTINEL_HOSTS: data.REDIS_SENTINEL_HOSTS?.trim()
       ?.split(",")
       .map((el) => {

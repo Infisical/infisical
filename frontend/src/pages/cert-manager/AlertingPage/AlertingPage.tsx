@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { DocumentationLinkBadge } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useListWorkspacePkiAlerts } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -30,7 +31,14 @@ export const AlertingPage = () => {
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={ProjectType.CertificateManager}
-          title="Alerting"
+          title={
+            <span className="inline-flex items-center gap-x-2">
+              Alerting
+              <span className="mt-0.5">
+                <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/alerting" />
+              </span>
+            </span>
+          }
           description="Configure alerts for expiring certificates and CAs to maintain security and compliance."
         />
         <ProjectPermissionCan

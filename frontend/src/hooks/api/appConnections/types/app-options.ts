@@ -94,6 +94,10 @@ export type THCVaultConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.HCVault;
 };
 
+export type TOctopusDeployConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.OctopusDeploy;
+};
+
 export type TLdapConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.LDAP;
 };
@@ -184,6 +188,14 @@ export type TRedisConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Redis;
 };
 
+export type TMongoDBConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.MongoDB;
+};
+
+export type TDNSMadeEasyConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.DNSMadeEasy;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -225,7 +237,11 @@ export type TAppConnectionOption =
   | TOktaConnectionOption
   | TAzureAdCsConnectionOption
   | TLaravelForgeConnectionOption
-  | TChefConnectionOption;
+  | TRedisConnectionOption
+  | TMongoDBConnectionOption
+  | TChefConnectionOption
+  | TDNSMadeEasyConnectionOption
+  | TOctopusDeployConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -257,6 +273,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Flyio]: TFlyioConnectionOption;
   [AppConnection.GitLab]: TGitlabConnectionOption;
   [AppConnection.Cloudflare]: TCloudflareConnectionOption;
+  [AppConnection.DNSMadeEasy]: TDNSMadeEasyConnectionOption;
   [AppConnection.Bitbucket]: TBitbucketConnectionOption;
   [AppConnection.Zabbix]: TZabbixConnectionOption;
   [AppConnection.Railway]: TRailwayConnectionOption;
@@ -268,6 +285,8 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Okta]: TOktaConnectionOption;
   [AppConnection.AzureADCS]: TAzureAdCsConnectionOption;
   [AppConnection.Redis]: TRedisConnectionOption;
+  [AppConnection.MongoDB]: TMongoDBConnectionOption;
   [AppConnection.LaravelForge]: TLaravelForgeConnectionOption;
   [AppConnection.Chef]: TChefConnectionOption;
+  [AppConnection.OctopusDeploy]: TOctopusDeployConnectionOption;
 };

@@ -9,7 +9,7 @@ const SecretApprovalPageQueryParams = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/approval"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/approval"
 )({
   component: SecretApprovalsPage,
   validateSearch: zodValidator(SecretApprovalPageQueryParams),

@@ -8,12 +8,12 @@ It eliminates the need to modify application logic by enabling clients to decide
 
 ![agent diagram](/images/agent/infisical-agent-diagram.png)
 
-### Key features:
+## Key Features
 
-- Token renewal: Automatically authenticates with Infisical and deposits renewed access tokens at specified path for applications to consume
-- Templating: Renders secrets via user provided templates to desired formats for applications to consume
+- **Token lifecycle management**: Automatically authenticates with Infisical and deposits renewed access tokens at specified path for applications to consume
+- **Templating**: Renders secrets and dynamic secret leases via user provided templates to desired formats for applications to consume
 
-### Token renewal
+## Token Renewal
 
 The Infisical agent can help manage the life cycle of access tokens. The token renewal process is split into two main components: a `Method`, which is the authentication process suitable for your current setup, and `Sinks`, which are the places where the agent deposits the new access token whenever it receives updates.
 
@@ -28,7 +28,7 @@ Every time the agent successfully retrieves a new access token, it writes the ne
   to retrieve secrets from Infisical
 </Info>
 
-### Templating
+## Templating
 
 The Infisical agent can help deliver formatted secrets to your application in a variety of environments. To achieve this, the agent will retrieve secrets from Infisical, format them using a specified template, and then save these formatted secrets to a designated file path.
 
@@ -40,31 +40,203 @@ If this initial attempt is unsuccessful, the agent will momentarily pauses befor
 Once the agent successfully obtains a valid access token, the agent proceeds to fetch the secrets from Infisical using it.
 It then formats these secrets using the user provided templates and writes the formatted data to configured file paths.
 
+
+### Available secret template functions
+
+The secret template functions is what you will use to fetch resources such as static secrets and dynamic secret leases from Infisical. Below is a list of the available secret template functions that you can use in your templates.
+
+
+<AccordionGroup>
+  <Accordion title="secret">
+    ```bash
+      secret "<project-id>" "environment-slug" "<secret-path>" "<optional-modifier>"
+    ```
+      ```bash example-template-usage-1
+    {{- with secret "6553ccb2b7da580d7f6e7260" "dev" "/" `{"recursive": false, "expandSecretReferences": true}` }}
+    {{- range . }}
+    {{ .Key }}={{ .Value }}
+    {{- end }}
+    {{- end }}
+    ```
+    ```bash example-template-usage-2
+  {{- with secret "da8056c8-01e2-4d24-b39f-cb4e004b8d44" "staging" "/" `{"recursive": true, "expandSecretReferences": true}` }}
+  {{- range . }}
+  {{- if eq .SecretPath "/"}}
+  {{ .Key }}={{ .Value }}
+  {{- else}}
+  {{ .SecretPath }}/{{ .Key }}={{ .Value }}
+  {{- end}}
+  {{- end }}
+  {{- end }}
+    ```
+
+    
+
+  **Function name**: `secret`
+
+  **Description**: This function can be used to render the full list of secrets within a given project, environment and secret path. 
+
+  An optional JSON argument is also available. It includes the properties `recursive`, which defaults to false, and `expandSecretReferences`, which defaults to true and expands the returned secrets.
+
+
+  **Returns**: A single secret object with the following keys `Key, WorkspaceId, Value, SecretPath, Type, ID, and Comment`
+
+  </Accordion>
+
+  <Accordion title="getSecretByName">
+    ```bash
+    getSecretByName "<project-id>" "<environment-slug>" "<secret-path>" "<secret-name>"
+    ```
+
+  ```bash example-template-usage
+  {{ with getSecretByName "d821f21d-aa90-453b-8448-8c78c1160a0e" "dev" "/" "POSTHOG_HOST"}}
+  {{ if .Value }}
+  password = "{{ .Value }}"
+  {{ end }}
+  {{ end }}
+  ```
+
+  **Function name**: `getSecretByName`
+
+  **Description**: This function can be used to render a single secret by it's name.
+
+  **Returns**: A list of secret objects with the following keys `Key, WorkspaceId, Value, Type, ID, and Comment`
+
+  </Accordion>
+
+  <Accordion title="dynamic_secret">
+    ```bash
+    dynamic_secret "<project-slug>" "<environment-slug>" "<secret-path>" "<dynamic-secret-name>" "<lease-ttl>"
+    ```
+
+    ```bash example-redis-dynamic-secret
+      {{ with dynamic_secret "aaa-o7en-s5qm" "dev" "/" "redis" "1m" }}
+      {{ .DB_USERNAME }}={{ .DB_PASSWORD }}
+      {{- end }}
+
+    ```
+
+    **Function Name**: `dynamic_secret`
+
+    **Description**: This function can be used to render a dynamic secret lease credentials. The credentials are automatically renewed before they expire, ensuring that the rendered credentials are always up-to-date.
+
+    **Returns**: An object with keys corresponding to the dynamic secret lease credentials.
+
+    <Tip>
+      Note that if you have multiple dynamic secret templates with identical configurations, only one lease will be created in Infisical for those templates, and the same lease will be written to your specified destination paths.
+    </Tip>
+  </Accordion>
+</AccordionGroup>
+
+
+## Caching
+
+The Infisical Agent supports clientside caching of Dynamic Secret leases. If the cache is enabled, the agent will persist the dynamic secret leases to the cache across restarts of the agent.
+
+### Persistent Caching
+
+The Agent currently only supports persistent caching. To utilize persistent caching, you must be within a Kubernetes environment. We recommend using the [Infisical Agent Injector](/integrations/platforms/kubernetes-injector) to inject the agent into pods within your Kubernetes cluster on demand.
+
+### Cache eviction
+
+Cache eviction is the process of removing cached data from the cache. The Agent will automatically evict cached data when the cache is full during a garbage collection cycle which is triggered every 10 minutes.
+
+The cache will also automatically evict cached data that has gone stale or is about to go stale. For dynamic resources (such as dynamic secret leases), there's a TTL (Time-to-Live) associated with each lease which is used to determine if the lease is stale or about to go stale.
+If a stale dynamic secret lease is detected, it will be automatically evicted from the cache and replaced with a new up-to-date lease.
+
+
+### Cache Configuration
+
+Configuring the cache is done through the agent configuration file. The following fields are available to configure the cache:
+
+<AccordionGroup>
+  <Accordion title="Persistent Caching">
+    <ParamField query="cache.persistent.type" type="string">
+      The type of persistent caching to use. Currently only `kubernetes` is available, and will only work within Kubernetes environments.
+    </ParamField>
+    <ParamField query="cache.persistent.path" type="string">
+      The path to where your persistent cache will be stored.
+    </ParamField>
+
+    <Note>
+      Persistent caching is only supported within kubernetes environments at the moment. Please refer to the [Infisical Agent Injector](/integrations/platforms/kubernetes-injector) documentation for more information on how to use persistent caching within Kubernetes environments.
+    </Note>
+
+  ```yaml example-agent-config-file.yaml
+  cache:
+  persistent:
+    type: "kubernetes"
+    path: "/home/infisical/cache"
+    service-account-token-path: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+  ```
+  </Accordion>
+</AccordionGroup>
+
+
+## Retrying mechanism
+
+The agent will automatically attempt to retry failed API requests such as authentication, secrets retrieval, dynamic secret lease provisioning, etc.
+By default, the agent will retry up to 3 times with a base delay of 200ms and a maximum delay of 5s.
+
+You can configure the retrying mechanism through the agent configuration file. The following fields are available to configure the retrying mechanism:
+
+
+<ParamField query="infisical.retry-strategy.max-retries" type="number">
+  How many times to retry failed API requests such as authentication, secret retrieval, etc. Defaults to `3` retries.
+</ParamField>
+<ParamField query="infisical.retry-strategy.max-delay" type="duration">
+  The maximum delay between retries. Defaults to `5s` (5 seconds).
+</ParamField>
+<ParamField query="infisical.retry-strategy.base-delay" type="duration">
+  The base delay between retries. Defaults to `200ms` (200 milliseconds).
+</ParamField>
+
+```yaml example-agent-config-file.yaml
+infisical:
+  address: "https://app.infisical.com"
+  retry-strategy:
+    max-retries: 3
+    max-delay: "5s"
+    base-delay: "200ms"
+
+# ... rest of the agent configuration file
+```
+
+
+
 ## Agent configuration file
 
 To set up the authentication method for token renewal and to define secret templates, the Infisical agent requires a YAML configuration file containing properties defined below.
 While specifying an authentication method is mandatory to start the agent, configuring sinks and secret templates are optional.
 
-| Field                                      | Description                                                                                                                                                                                       |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `infisical.address`                        | The URL of the Infisical service. Default: `"https://app.infisical.com"`.                                                                                                                         |
-| `infisical.exit-after-auth`                | Whether to exit the agent after authentication and first secret render. Default: `"false"`.                                                                                                       |
-| `infisical.revoke-credentials-on-shutdown` | Whether to revoke all managed dynamic secret leases and identity access tokens on shutdown. Default: `"false"`.                                                                                   |
-| `auth.type`                                | The type of authentication method used. Available options: `universal-auth`, `kubernetes`, `azure`, `gcp-id-token`, `gcp-iam`, `aws-iam`                                                          |
-| `auth.config.identity-id`                  | The file path where the machine identity id is stored<br/><br/>This field is required when using any of the following auth types: `kubernetes`, `azure`, `gcp-id-token`, `gcp-iam`, or `aws-iam`. |
-| `auth.config.service-account-token`        | Path to the Kubernetes service account token to use (optional)<br/><br/>Default: `/var/run/secrets/kubernetes.io/serviceaccount/token`                                                            |
-| `auth.config.service-account-key`          | Path to your GCP service account key file. This field is required when using `gcp-iam` auth type.<br/><br/>Please note that the file should be in JSON format.                                    |
-| `auth.config.client-id`                    | The file path where the universal-auth client id is stored.                                                                                                                                       |
-| `auth.config.client-secret`                | The file path where the universal-auth client secret is stored.                                                                                                                                   |
-| `auth.config.remove_client_secret_on_read` | This will instruct the agent to remove the client secret from disk.                                                                                                                               |
-| `sinks[].type`                             | The type of sink in a list of sinks. Each item specifies a sink type. Currently, only `"file"` type is available.                                                                                 |
-| `sinks[].config.path`                      | The file path where the access token should be stored for each sink in the list.                                                                                                                  |
-| `templates[].source-path`                  | The path to the template file that should be used to render secrets.                                                                                                                              |
-| `templates[].template-content`             | The inline secret template to be used for rendering the secrets.                                                                                                                                  |
-| `templates[].destination-path`             | The path where the rendered secrets from the source template will be saved to.                                                                                                                    |
-| `templates[].config.polling-interval`      | How frequently to check for secret changes. Default: `5 minutes` (optional)                                                                                                                       |
-| `templates[].config.execute.command`       | The command to execute when secret change is detected (optional)                                                                                                                                  |
-| `templates[].config.execute.timeout`       | How long in seconds to wait for command to execute before timing out (optional)                                                                                                                   |
+
+
+| Field                                         | Description                                                                                                                                                                                                     |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------               |
+| `infisical.address`                           | The URL of the Infisical service. Default: `"https://app.infisical.com"`.                                                                                                                                       |
+| `infisical.exit-after-auth`                   | Whether to exit the agent after authentication and first secret render. Default: `"false"`.                                                                                                                     |
+| `infisical.revoke-credentials-on-shutdown`    | Whether to revoke all managed dynamic secret leases and identity access tokens on shutdown. Default: `"false"`.                                                                                                 |
+| `infisical.retry-strategy.max-retries`        | How many times to retry failed API requests such as authentication, secret retrieval, etc. Defaults to `3` retries.                                                                                             |
+| `infisical.retry-strategy.max-delay`          | The maximum delay between retries. Defaults to `5s` (5 seconds).                                                                                                                                                |
+| `infisical.retry-strategy.base-delay`         | The base delay between retries. Defaults to `200ms` (200 milliseconds).                                                                                                                                         |
+| `auth.type`                                   | The type of authentication method used. Available options: `universal-auth`, `kubernetes`, `azure`, `gcp-id-token`, `gcp-iam`, `aws-iam`                                                                        |
+| `auth.config.identity-id`                     | The file path where the machine identity id is stored<br/><br/>This field is required when using any of the following auth types: `kubernetes`, `azure`, `gcp-id-token`, `gcp-iam`, or `aws-iam`.               |
+| `auth.config.service-account-token`           | Path to the Kubernetes service account token to use (optional)<br/><br/>Default: `/var/run/secrets/kubernetes.io/serviceaccount/token`                                                                          |
+| `auth.config.service-account-key`             | Path to your GCP service account key file. This field is required when using `gcp-iam` auth type.<br/><br/>Please note that the file should be in JSON format.                                                  |
+| `auth.config.client-id`                       | The file path where the universal-auth client id is stored.                                                                                                                                                     |
+| `auth.config.client-secret`                   | The file path where the universal-auth client secret is stored.                                                                                                                                                 |
+| `auth.config.remove_client_secret_on_read`    | This will instruct the agent to remove the client secret from disk.                                                                                                                                             |
+| `sinks[].type`                                | The type of sink in a list of sinks. Each item specifies a sink type. Currently, only `"file"` type is available.                                                                                               |
+| `sinks[].config.path`                         | The file path where the access token should be stored for each sink in the list.                                                                                                                                |
+| `cache.persistent.type`                       | The type of persistent caching to use. Currently only `kubernetes` is available, and will only work within Kubernetes environments.                                                                             |
+| `cache.persistent.path`                       | The path to where your persistent cache will be stored.                                                                                                                                                         |
+| `cache.persistent.service-account-token-path` | The path to the Kubernetes service account token to use for encrypting the persistent cache. Required when using `kubernetes` cache type. Defaults to `/var/run/secrets/kubernetes.io/serviceaccount/token`     |
+| `templates[].source-path`                     | The path to the template file that should be used to render secrets.                                                                                                                                            |
+| `templates[].template-content`                | The inline secret template to be used for rendering the secrets.                                                                                                                                                |
+| `templates[].destination-path`                | The path where the rendered secrets from the source template will be saved to.                                                                                                                                  |
+| `templates[].config.polling-interval`         | How frequently to check for secret changes. Default: `5m` (5 minutes) (optional)                                                                                                                                |
+| `templates[].config.execute.command`          | The command to execute when secret change is detected (optional)                                                                                                                                                |
+| `templates[].config.execute.timeout`          | How long in seconds to wait for command to execute before timing out (optional)                                                                                                                                 |
 
 ## Authentication
 
@@ -309,80 +481,3 @@ After defining the agent configuration file, run the command below pointing to t
 ```bash
 infisical agent --config example-agent-config-file.yaml
 ```
-
-### Available secret template functions
-
-<Accordion title="listSecrets">
-  ```bash
-    listSecrets "<project-id>" "environment-slug" "<secret-path>" "<optional-modifier>"
-  ```
-    ```bash example-template-usage-1
-  {{- with listSecrets "6553ccb2b7da580d7f6e7260" "dev" "/" `{"recursive": false, "expandSecretReferences": true}` }}
-  {{- range . }}
-  {{ .Key }}={{ .Value }}
-  {{- end }}
-  {{- end }}
-  ```
-  ```bash example-template-usage-2
-{{- with secret "da8056c8-01e2-4d24-b39f-cb4e004b8d44" "staging" "/" `{"recursive": true, "expandSecretReferences": true}` }}
-{{- range . }}
-{{- if eq .SecretPath "/"}}
-{{ .Key }}={{ .Value }}
-{{- else}}
-{{ .SecretPath }}/{{ .Key }}={{ .Value }}
-{{- end}}
-{{- end }}
-{{- end }}
-  ```
-
-  
-
-**Function name**: listSecrets
-
-**Description**: This function can be used to render the full list of secrets within a given project, environment and secret path. 
-
-An optional JSON argument is also available. It includes the properties `recursive`, which defaults to false, and `expandSecretReferences`, which defaults to true and expands the returned secrets.
-
-
-**Returns**: A single secret object with the following keys `Key, WorkspaceId, Value, SecretPath, Type, ID, and Comment`
-
-</Accordion>
-
-<Accordion title="getSecretByName">
-  ```bash
-  getSecretByName "<project-id>" "<environment-slug>" "<secret-path>" "<secret-name>"
-  ```
-
-```bash example-template-usage
-{{ with getSecretByName "d821f21d-aa90-453b-8448-8c78c1160a0e" "dev" "/" "POSTHOG_HOST"}}
-{{ if .Value }}
-password = "{{ .Value }}"
-{{ end }}
-{{ end }}
-```
-
-**Function name**: getSecretByName
-
-**Description**: This function can be used to render a single secret by it's name.
-
-**Returns**: A list of secret objects with the following keys `Key, WorkspaceId, Value, Type, ID, and Comment`
-
-</Accordion>
-
-<Accordion title="dynamic_secret">
-  ```bash
-  dynamic_secret "<project-slug>" "<environment-slug>" "<secret-path>" "<dynamic-secret-name>" "<lease-ttl>"
-  ```
-
-  ```bash example-redis-dynamic-secret
-    {{ with dynamic_secret "aaa-o7en-s5qm" "dev" "/" "redis" "1m" }}
-    {{ .DB_USERNAME }}={{ .DB_PASSWORD }}
-    {{- end }}
-
-    **Function Name**: dynamic_secret
-
-    **Description**: This function can be used to render a dynamic secret lease credentials. The credentials are automatically renewed before they expire, ensuring that the rendered credentials are always up-to-date.
-
-    **Returns**: An object with keys corresponding to the dynamic secret lease credentials.
-  ```
-</Accordion>

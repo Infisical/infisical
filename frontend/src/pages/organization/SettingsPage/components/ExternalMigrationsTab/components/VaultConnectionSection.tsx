@@ -17,6 +17,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
+import { useOrganization } from "@app/context";
 import { useListAppConnections } from "@app/hooks/api/appConnections/queries";
 import {
   useDeleteVaultExternalMigrationConfig,
@@ -33,6 +34,8 @@ export const VaultConnectionSection = () => {
   const [configToDelete, setConfigToDelete] = useState<TVaultExternalMigrationConfig | null>(null);
 
   const { data: configs = [], isPending: isLoadingConfigs } = useGetVaultExternalMigrationConfigs();
+
+  const { currentOrg } = useOrganization();
   const { data: appConnections = [] } = useListAppConnections();
   const { mutateAsync: deleteConfig } = useDeleteVaultExternalMigrationConfig();
 
@@ -71,7 +74,7 @@ export const VaultConnectionSection = () => {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           <img
             src="/images/integrations/Vault.png"
@@ -157,7 +160,8 @@ export const VaultConnectionSection = () => {
         Configure namespace-specific connections to enable in-platform migration features. Manage
         connections in the{" "}
         <Link
-          to="/organization/app-connections"
+          to="/organizations/$orgId/app-connections"
+          params={{ orgId: currentOrg.id }}
           className="text-primary underline hover:text-primary-300"
         >
           App Connections

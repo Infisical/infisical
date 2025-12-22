@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { groupKeys } from "../groups/queries";
 import { userKeys } from "../users/query-keys";
 import { projectKeys } from "./query-keys";
 import {
@@ -30,10 +31,11 @@ export const useAddGroupToWorkspace = () => {
 
       return groupMembership;
     },
-    onSuccess: (_, { projectId }) => {
+    onSuccess: (_, { projectId, groupId }) => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.getProjectGroupMemberships(projectId)
       });
+      queryClient.invalidateQueries({ queryKey: groupKeys.forGroupProjects(groupId) });
     }
   });
 };
@@ -77,10 +79,12 @@ export const useDeleteGroupFromWorkspace = () => {
       } = await apiRequest.delete(`/api/v1/projects/${projectId}/groups/${groupId}`);
       return groupMembership;
     },
-    onSuccess: (_, { projectId, username }) => {
+    onSuccess: (_, { projectId, username, groupId }) => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.getProjectGroupMemberships(projectId)
       });
+
+      queryClient.invalidateQueries({ queryKey: groupKeys.forGroupProjects(groupId) });
 
       if (username) {
         queryClient.invalidateQueries({ queryKey: userKeys.listUserGroupMemberships(username) });

@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, OrganizationActionScope } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, OrgMembershipStatus } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -122,16 +122,33 @@ export const newOrgMembershipUserFactory = ({
     const signUpTokens: { email: string; link: string }[] = [];
     const orgDetails = await orgDAL.findById(dto.permission.orgId);
     if (orgDetails.rootOrgId) {
-      const emails = newUsers.map((el) => el.email).filter(Boolean);
-      await smtpService.sendMail({
-        template: SmtpTemplates.SubOrgInvite,
-        subjectLine: "Infisical sub-organization invitation",
-        recipients: emails as string[],
-        substitutions: {
-          subOrganizationName: orgDetails.slug,
-          callback_url: `${appCfg.SITE_URL}/organization/projects?subOrganization=${orgDetails.slug}`
+      // checking if the users have accepted the invitation in the root organization to send the email
+      const orgMembershipAccepted = await membershipUserDAL.find({
+        scope: AccessScope.Organization,
+        scopeOrgId: orgDetails.rootOrgId,
+        status: OrgMembershipStatus.Accepted,
+        $in: {
+          actorUserId: newUsers.map((el) => el.id)
         }
       });
+
+      const orgMembershipAcceptedUserIds = orgMembershipAccepted.map((el) => el.actorUserId as string);
+
+      const emails = newUsers
+        .filter((el) => Boolean(el?.email) && orgMembershipAcceptedUserIds.includes(el.id))
+        .map((el) => el?.email as string);
+
+      if (emails.length) {
+        await smtpService.sendMail({
+          template: SmtpTemplates.SubOrgInvite,
+          subjectLine: "Infisical sub-organization invitation",
+          recipients: emails,
+          substitutions: {
+            subOrganizationName: orgDetails.slug,
+            callback_url: `${appCfg.SITE_URL}/organizations/${dto.permission.orgId}/projects`
+          }
+        });
+      }
     } else {
       await Promise.allSettled(
         newUsers.map(async (el) => {

@@ -7,7 +7,7 @@ import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-export const registerPamResourceEndpoints = <C extends TPamAccount>({
+export const registerPamAccountEndpoints = <C extends TPamAccount>({
   server,
   resourceType,
   createAccountSchema,
@@ -22,7 +22,7 @@ export const registerPamResourceEndpoints = <C extends TPamAccount>({
     folderId?: C["folderId"];
     name: C["name"];
     description?: C["description"];
-    rotationEnabled: C["rotationEnabled"];
+    rotationEnabled?: C["rotationEnabled"];
     rotationIntervalSeconds?: C["rotationIntervalSeconds"];
   }>;
   updateAccountSchema: z.ZodType<{
@@ -65,7 +65,7 @@ export const registerPamResourceEndpoints = <C extends TPamAccount>({
             folderId: req.body.folderId,
             name: req.body.name,
             description: req.body.description,
-            rotationEnabled: req.body.rotationEnabled,
+            rotationEnabled: req.body.rotationEnabled ?? false,
             rotationIntervalSeconds: req.body.rotationIntervalSeconds
           }
         }

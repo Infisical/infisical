@@ -24,7 +24,8 @@ export const PgSqlLock = {
   OrgGatewayV2Init: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-v2-init:${orgId}`),
   OrgRelayConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-relay-config-init:${orgId}`),
   GatewayPamSessionKey: (gatewayId: string) => pgAdvisoryLockHashText(`gateway-pam-session-key:${gatewayId}`),
-  IdentityLogin: (identityId: string, nonce: string) => pgAdvisoryLockHashText(`identity-login:${identityId}:${nonce}`)
+  IdentityLogin: (identityId: string, nonce: string) => pgAdvisoryLockHashText(`identity-login:${identityId}:${nonce}`),
+  PamResourceSshCaInit: (resourceId: string) => pgAdvisoryLockHashText(`pam-resource-ssh-ca-init:${resourceId}`)
 } as const;
 
 // all the key prefixes used must be set here to avoid conflict
@@ -79,7 +80,13 @@ export const KeyStorePrefixes = {
   GroupMemberProjectPermissionPattern: (projectId: string, groupId: string) =>
     `group-member-project-permission:${projectId}:${groupId}:*` as const,
 
-  PkiAcmeNonce: (nonce: string) => `pki-acme-nonce:${nonce}` as const
+  PkiAcmeNonce: (nonce: string) => `pki-acme-nonce:${nonce}` as const,
+
+  AiMcpServerOAuth: (sessionId: string) => `ai-mcp-server-oauth:${sessionId}` as const,
+
+  // AI MCP Endpoint OAuth
+  AiMcpEndpointOAuthClient: (clientId: string) => `ai-mcp-endpoint-oauth-client:${clientId}` as const,
+  AiMcpEndpointOAuthCode: (clientId: string, code: string) => `ai-mcp-endpoint-oauth-code:${clientId}:${code}` as const
 };
 
 export const KeyStoreTtls = {

@@ -1,3 +1,4 @@
+// Resources
 export enum PamResourceType {
   Postgres = "postgres",
   MySQL = "mysql",
@@ -15,12 +16,28 @@ export enum PamResourceType {
   CockroachDB = "cockroachdb",
   Elasticsearch = "elasticsearch",
   Snowflake = "snowflake",
-  DynamoDB = "dynamodb"
+  DynamoDB = "dynamodb",
+  AwsIam = "aws-iam"
 }
 
+export enum PamResourceOrderBy {
+  Name = "name"
+}
+
+// Sessions
 export enum PamSessionStatus {
   Starting = "starting",
   Active = "active",
   Ended = "ended",
   Terminated = "terminated"
+}
+
+// Accounts
+export enum PamAccountOrderBy {
+  Name = "name"
+}
+
+export enum PamAccountView {
+  Flat = "flat",
+  Nested = "nested"
 }

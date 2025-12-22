@@ -142,6 +142,134 @@ Currently the operator supports the following CRD's. We are constantly expanding
 2. [InfisicalPushSecret](/integrations/platforms/kubernetes/infisical-push-secret-crd): Push secrets from a Kubernetes secret to Infisical.
 3. [InfisicalDynamicSecret](/integrations/platforms/kubernetes/infisical-dynamic-secret-crd): Sync dynamic secrets and create leases automatically in Kubernetes.
 
+## Metrics and Prometheus
+
+The operator exposes Prometheus metrics on `/metrics` for monitoring reconciliation performance, errors, and resource utilization.
+
+### Configuration
+
+Enable the ServiceMonitor during installation. This will create a prometheus `ServiceMonitor` resource in the same namespace as the operator.
+
+```yaml values.yaml
+telemetry:
+  serviceMonitor:
+    enabled: true
+    # ... other telemetry configuration (optional) ...
+```
+
+<AccordionGroup>
+  <Accordion title="telemetry.serviceMonitor.enabled" query="telemetry.serviceMonitor.enabled">
+    Enable ServiceMonitor for Prometheus Operator. Defaults to `false`.
+  </Accordion>
+
+  <Accordion title="telemetry.serviceMonitor.selectors" query="telemetry.serviceMonitor.selectors">
+    Additional labels for ServiceMonitor. Defaults to `{}`.
+  </Accordion>
+
+  <Accordion title="telemetry.serviceMonitor.scheme" query="telemetry.serviceMonitor.scheme">
+    Scheme to use for the ServiceMonitor. Defaults to `https`.
+  </Accordion>
+
+  <Accordion title="telemetry.serviceMonitor.port" query="telemetry.serviceMonitor.port">
+    Port to use for the ServiceMonitor. Defaults to `https`.
+  </Accordion>
+
+  <Accordion title="telemetry.serviceMonitor.path" query="telemetry.serviceMonitor.path">
+    Path to use for the ServiceMonitor. Defaults to `/metrics`.
+  </Accordion>
+
+  <Accordion title="telemetry.serviceMonitor.interval" query="telemetry.serviceMonitor.interval">
+    Scrape interval. Defaults to `30s`.
+  </Accordion>
+
+  <Accordion title="telemetry.serviceMonitor.scrapeTimeout" query="telemetry.serviceMonitor.scrapeTimeout">
+    Scrape timeout. Defaults to `10s`.
+  </Accordion>
+
+  <Accordion title="telemetry.serviceMonitor.bearerTokenFile" query="telemetry.serviceMonitor.bearerTokenFile">
+    Bearer token file. Defaults to `/var/run/secrets/kubernetes.io/serviceaccount/token`.
+  </Accordion>
+</AccordionGroup>
+
+
+```yaml full-example-values.yaml
+telemetry:
+  serviceMonitor:
+    enabled: true
+
+    selectors: {}
+    scheme: https
+    port: https
+    path: /metrics
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    interval: 30s
+    scrapeTimeout: 10s
+```
+
+### Available Metrics
+
+The operator exposes standard controller-runtime metrics. For a complete list of available metrics, see the [Kubebuilder metrics reference](https://book.kubebuilder.io/reference/metrics.html).
+
+**Key metrics to monitor:**
+- `controller_runtime_reconcile_total` - Reconciliation count
+- `controller_runtime_reconcile_errors_total` - Error count  
+- `controller_runtime_reconcile_time_seconds` - Reconciliation duration
+
+**Controllers:** `InfisicalSecret`, `InfisicalPushSecret`, `InfisicalDynamicSecret`
+
+### Example Prometheus Setup
+
+<Steps>
+  <Step title="Install Prometheus Operator">
+    ```bash
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+    helm repo update
+    
+    helm install prometheus prometheus-community/kube-prometheus-stack \
+      --namespace monitoring \
+      --create-namespace
+    ```
+  </Step>
+
+  <Step title="Install Operator with Metrics Enabled">
+    ```bash
+    helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/'
+    
+    helm install infisical-secrets-operator infisical-helm-charts/secrets-operator \
+      --set telemetry.serviceMonitor.enabled=true
+    ```
+  </Step>
+
+  <Step title="Verify ServiceMonitor">
+    ```bash
+    kubectl get servicemonitor
+    ```
+    
+    Check that the ServiceMonitor appears in your operator's namespace.
+  </Step>
+
+  <Step title="Access Prometheus">
+    ```bash
+    kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 9090:9090
+    ```
+    
+    Open [http://localhost:9090/targets](http://localhost:9090/targets) and verify the operator target shows **UP**.
+  </Step>
+</Steps>
+
+### Example Queries
+
+```promql
+# Total reconciliations
+controller_runtime_reconcile_total
+
+# P99 latency
+histogram_quantile(0.99, rate(controller_runtime_reconcile_time_seconds_bucket[5m]))
+
+# Memory usage (MB)
+process_resident_memory_bytes / 1024 / 1024
+```
+
 ## General Configuration
 ### Private/self-signed certificate
 To connect to Infisical instances behind a private/self-signed certificate, you can configure the TLS settings in the CRD

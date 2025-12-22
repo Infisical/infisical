@@ -1,9 +1,10 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { InfoIcon } from "lucide-react";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
@@ -18,6 +19,7 @@ import {
 
 const Page = () => {
   const navigate = useNavigate();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const { currentProject } = useProject();
   const selectedTab = useSearch({
     strict: false,
@@ -29,6 +31,7 @@ const Page = () => {
       to: `${getProjectBaseURL(currentProject.type)}/access-management` as const,
       search: (prev) => ({ ...prev, selectedTab: tab }),
       params: {
+        orgId: currentOrg.id,
         projectId: currentProject.id
       }
     });
@@ -41,9 +44,20 @@ const Page = () => {
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={currentProject.type}
-          title="Access Control"
-          description="Manage fine-grained access for users, groups, roles, and identities within your project resources."
-        />
+          title="Project Access Control"
+          description="Manage fine-grained access for users, groups, roles, and machine identities within your project resources."
+        >
+          <Link
+            to="/organizations/$orgId/access-management"
+            params={{
+              orgId: currentOrg.id
+            }}
+            className="flex items-center gap-x-1.5 text-xs whitespace-nowrap text-neutral hover:underline"
+          >
+            <InfoIcon size={12} /> Looking for {isSubOrganization ? "sub-" : ""}organization access
+            control?
+          </Link>
+        </PageHeader>
         <Tabs orientation="vertical" value={selectedTab} onValueChange={updateSelectedTab}>
           <TabList>
             <Tab variant="project" value={ProjectAccessControlTabs.Member}>
@@ -53,7 +67,7 @@ const Page = () => {
               Groups
             </Tab>
             <Tab variant="project" value={ProjectAccessControlTabs.Identities}>
-              Identities
+              Machine Identities
             </Tab>
             {isSecretManager && (
               <Tab variant="project" value={ProjectAccessControlTabs.ServiceTokens}>

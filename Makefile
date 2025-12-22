@@ -14,7 +14,7 @@ up-dev-metrics:
 	docker compose -f docker-compose.dev.yml --profile metrics up --build
 
 up-prod:
-	docker-compose -f docker-compose.prod.yml up --build
+	docker compose -f docker-compose.prod.yml up --build
 
 down:
 	docker compose -f docker-compose.dev.yml down

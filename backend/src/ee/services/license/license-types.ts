@@ -93,6 +93,7 @@ export type TFeatureSet = {
   fips: false;
   eventSubscriptions: false;
   pam: false;
+  ai: false;
 };
 
 export type TOrgPlansTableDTO = {
@@ -102,6 +103,7 @@ export type TOrgPlansTableDTO = {
 export type TOrgPlanDTO = {
   projectId?: string;
   refreshCache?: boolean;
+  rootOrgId: string;
 } & TOrgPermission;
 
 export type TStartOrgTrialDTO = {
@@ -136,3 +138,18 @@ export type TDelOrgTaxIdDTO = TOrgPermission & { taxId: string };
 export type TOrgInvoiceDTO = TOrgPermission;
 
 export type TOrgLicensesDTO = TOrgPermission;
+
+export enum LicenseType {
+  Offline = "offline",
+  Online = "online"
+}
+
+export type TLicenseKeyConfig =
+  | {
+      isValid: false;
+    }
+  | {
+      isValid: true;
+      licenseKey: string;
+      type: LicenseType;
+    };

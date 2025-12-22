@@ -21,7 +21,8 @@ Here's some guidance on each field:
 
 - Name: A slug-friendly name for the profile such as `web-servers`.
 - Description: An optional description for the profile.
-- Issuing CA: The [issuing CA](/documentation/platform/pki/ca/overview) that should be used to issue certificates for the profile.
+- Issuer Type: The type of issuer that should be used to issue certificates for the profile; this can be either `Certificate Authority` or `Self-Signed`. If `Self-Signed` is selected, then the profile will only support the API enrollment method and be used to issue self-signed certificates over REST API.
+- Issuing CA: The [issuing CA](/documentation/platform/pki/ca/overview) that should be used to issue certificates for the profile when the **Issuer Type** is set to `Certificate Authority`.
 - Certificate Template: The [certificate template](/documentation/platform/pki/certificates/templates) that should be used to validate certificate requests for the profile.
 - Enrollment Method: The enrollment method that should be used to enroll certificates for the profile such as ACME, EST, API, etc.
 

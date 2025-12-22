@@ -1,5 +1,6 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -31,7 +32,13 @@ type ContentProps = {
 const Content = ({ onComplete }: ContentProps) => {
   const { currentProject } = useProject();
   const { mutateAsync, isPending } = useCreateWsEnvironment();
-  const { control, handleSubmit } = useForm<FormData>({
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    getValues,
+    formState: { dirtyFields }
+  } = useForm<FormData>({
     resolver: zodResolver(schema)
   });
 
@@ -52,15 +59,28 @@ const Content = ({ onComplete }: ContentProps) => {
     onComplete(env);
   };
 
+  const handleEnvironmentNameChange = () => {
+    if (dirtyFields.environmentSlug) return;
+
+    const value = getValues("environmentName");
+    setValue("environmentSlug", slugify(value, { lowercase: true }));
+  };
+
   return (
     <form onSubmit={handleSubmit(onFormSubmit)}>
       <Controller
         control={control}
         defaultValue=""
         name="environmentName"
-        render={({ field, fieldState: { error } }) => (
+        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
           <FormControl label="Environment Name" isError={Boolean(error)} errorText={error?.message}>
-            <Input {...field} />
+            <Input
+              {...field}
+              onChange={(e) => {
+                onChange(e);
+                handleEnvironmentNameChange();
+              }}
+            />
           </FormControl>
         )}
       />

@@ -3,12 +3,19 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { decryptAccountCredentials } from "../pam-account/pam-account-fns";
+import { getAwsIamResourceListItem } from "./aws-iam/aws-iam-resource-fns";
+import { getKubernetesResourceListItem } from "./kubernetes/kubernetes-resource-fns";
 import { getMySQLResourceListItem } from "./mysql/mysql-resource-fns";
-import { TPamResource, TPamResourceConnectionDetails } from "./pam-resource-types";
+import { TPamResource, TPamResourceConnectionDetails, TPamResourceMetadata } from "./pam-resource-types";
 import { getPostgresResourceListItem } from "./postgres/postgres-resource-fns";
 
 export const listResourceOptions = () => {
-  return [getPostgresResourceListItem(), getMySQLResourceListItem()].sort((a, b) => a.name.localeCompare(b.name));
+  return [
+    getPostgresResourceListItem(),
+    getMySQLResourceListItem(),
+    getAwsIamResourceListItem(),
+    getKubernetesResourceListItem()
+  ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
 // Resource
@@ -52,6 +59,49 @@ export const decryptResourceConnectionDetails = async ({
   });
 
   return JSON.parse(decryptedPlainTextBlob.toString()) as TPamResourceConnectionDetails;
+};
+
+// Resource Metadata
+export const encryptResourceMetadata = async ({
+  projectId,
+  metadata,
+  kmsService
+}: {
+  projectId: string;
+  metadata: TPamResourceMetadata;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+}) => {
+  const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    type: KmsDataKey.SecretManager,
+    projectId
+  });
+
+  const { cipherTextBlob } = encryptor({
+    plainText: Buffer.from(JSON.stringify(metadata))
+  });
+
+  return cipherTextBlob;
+};
+
+export const decryptResourceMetadata = async <T extends TPamResourceMetadata>({
+  projectId,
+  encryptedMetadata,
+  kmsService
+}: {
+  projectId: string;
+  encryptedMetadata: Buffer;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+}) => {
+  const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    type: KmsDataKey.SecretManager,
+    projectId
+  });
+
+  const decryptedPlainTextBlob = decryptor({
+    cipherTextBlob: encryptedMetadata
+  });
+
+  return JSON.parse(decryptedPlainTextBlob.toString()) as T;
 };
 
 export const decryptResource = async (

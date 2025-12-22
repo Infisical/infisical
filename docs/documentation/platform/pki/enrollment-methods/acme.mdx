@@ -3,6 +3,75 @@ title: "Certificate Enrollment via ACME"
 sidebarTitle: "ACME"
 ---
 
-<Info>
-  ACME-based certificate enrollment is currently under development and will be included in a future release.
-</Info>
+## Concept
+
+The ACME enrollment method allows Infisical to act as an ACME server. It lets you request and manage certificates against a specific [certificate profile](/documentation/platform/pki/certificates/profiles) using the [ACME protocol](https://en.wikipedia.org/wiki/Automatic_Certificate_Management_Environment).
+
+This method is suitable for web servers, load balancers, and other general-purpose servers that can run an [ACME client](https://letsencrypt.org/docs/client-options/) for automated certificate management;
+it can also be used with [cert-manager](https://cert-manager.io/) to issue and renew certificates for Kubernetes workloads through the [ACME issuer type](https://cert-manager.io/docs/configuration/acme/).
+
+Infisical's ACME enrollment method is based on [RFC 8555](https://datatracker.ietf.org/doc/html/rfc8555/).
+
+## Prerequisites
+
+Install an [ACME client](https://letsencrypt.org/docs/client-options/) onto your server. This client will handle [ACME challenges](https://letsencrypt.org/docs/challenge-types/) and request/renew certificates from Infisical.
+
+## Guide to Certificate Enrollment via ACME
+
+In the following steps, we explore how to issue a X.509 certificate using the ACME enrollment method.
+
+<Steps>
+  <Step title="Create a certificate profile in Infisical">
+    Create a [certificate
+    profile](/documentation/platform/pki/certificates/profiles) with **ACME**
+    selected as the enrollment method.
+
+    ![pki acme config](/images/platform/pki/enrollment-methods/acme/acme-config.png)
+
+    <Note>
+
+    By default, when the ACME client requests a certificate against the certificate profile for a particular domain, Infisical will verify domain ownership using the [HTTP-01 challenge](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) method prior to issuing a certificate back to the client.
+
+    If you want Infisical to skip domain ownership validation entirely, you can enable the **Skip DNS Ownership Validation** checkbox.
+
+    Note that skipping domain ownership validation for the ACME enrollment method is **not the same** as skipping validation for an [External ACME CA integration](/documentation/platform/pki/ca/acme-ca).
+
+    When using the ACME enrollment, the domain ownership check occurring between the ACME client and Infisical can be skipped. In contrast, External ACME CA integrations always require domain ownership validation, as Infisical must complete a DNS-01 challenge with the upstream ACME-compatible CA.
+    </Note>
+
+  </Step>
+  <Step title="Obtain the ACME configuration">
+    Once you've created the certificate profile, you can obtain its ACME configuration details by clicking the **Reveal ACME EAB** option on the profile.
+    
+    ![pki acme eab config](/images/platform/pki/enrollment-methods/acme/acme-eab.png)
+
+    From the ACME configuration, gather the following values:
+
+    - ACME Directory URL: The URL that the ACME client will use to communicate with Infisical's ACME server.
+    - EAB Key Identifier (KID): A unique identifier that tells Infisical which ACME account is making the request.
+    - EAB Secret: A secret key that authenticates your ACME client with Infisical.
+
+  </Step>
+  <Step title="Configure your ACME client">
+    Provide the **ACME Directory URL**, **EAB KID**, and **EAB Secret** from Step 2 to your ACME client to authenticate with Infisical and request a certificate.
+    
+    For example, if using [Certbot](https://certbot.eff.org/) as an ACME client, you can configure and start requesting certificates with the following command:
+
+    ```bash
+    sudo certbot certonly \
+      --standalone \
+      --server "https://your-infisical-instance.com/api/v1/cert-manager/certificate-profiles/{profile-id}/acme/directory" \
+      --eab-kid "your-eab-kid" \
+      --eab-hmac-key "your-eab-secret" \
+      -d example.infisical.com \
+      --email admin@example.com \
+      --agree-tos \
+      --non-interactive
+    ```
+
+    Certbot stores the private key and resulting leaf certificate and full certificate chain in `/etc/letsencrypt/live/{domain-name}/`.
+
+    For client-specific setup and usage instructions, refer to the documentation for your ACME client.
+
+  </Step>
+</Steps>

@@ -16,18 +16,21 @@ import {
   faSignOut,
   faToolbox,
   faUser,
+  faUserCog,
+  faUserPlus,
   faUsers
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useLocation, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
+import { ChevronRight, UserPlusIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
-  BreadcrumbContainer,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -39,12 +42,17 @@ import {
   IconButton,
   Modal,
   ModalContent,
-  TBreadcrumbFormat,
   Tooltip
 } from "@app/components/v2";
 import { Badge, InstanceIcon, OrgIcon, SubOrgIcon } from "@app/components/v3";
 import { envConfig } from "@app/config/env";
-import { useOrganization, useSubscription, useUser } from "@app/context";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useSubscription,
+  useUser
+} from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useToggle } from "@app/hooks";
 import {
@@ -59,6 +67,7 @@ import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { Organization, SubscriptionPlan } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
+import { ProjectSelect } from "@app/layouts/ProjectLayout/components/ProjectSelect";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
@@ -71,7 +80,11 @@ const getPlan = (subscription: SubscriptionPlan) => {
   return "Free";
 };
 
-const getFormattedSupportEmailLink = (variables: { org_id: string; domain: string }) => {
+const getFormattedSupportEmailLink = (variables: {
+  org_id: string;
+  domain: string;
+  root_org_id?: string;
+}) => {
   const email = "support@infisical.com";
 
   const body = `Hello Infisical Support Team,
@@ -85,6 +98,7 @@ Issue Details:
 
 Account Info:
 - Organization ID: ${variables.org_id}
+${variables.root_org_id ? `- Root Organization ID: ${variables.root_org_id}` : ""}
 - Domain: ${variables.domain}
 
 Thank you,
@@ -156,9 +170,13 @@ export const Navbar = () => {
   const [isOrgSelectOpen, setIsOrgSelectOpen] = useState(false);
 
   const location = useLocation();
-  const isBillingPage = location.pathname === "/organization/billing";
+  const isBillingPage = location.pathname === `/organizations/${currentOrg.id}/billing`;
 
   const isModalIntrusive = Boolean(!isBillingPage && isCardDeclinedMoreThan30Days);
+
+  const rootOrg = isSubOrganization
+    ? orgs?.find((org) => org.id === currentOrg.rootOrgId) || currentOrg
+    : currentOrg;
 
   useEffect(() => {
     if (isModalIntrusive) {
@@ -173,16 +191,20 @@ export const Navbar = () => {
     }
   }, [subscription, isBillingPage, isModalIntrusive]);
 
-  const matches = useRouterState({ select: (s) => s.matches.at(-1)?.context });
-  const breadcrumbs = matches && "breadcrumbs" in matches ? matches.breadcrumbs : undefined;
+  const handleOrgSelection = async ({
+    organizationId,
+    navigateTo,
+    onSuccess
+  }: {
+    organizationId?: string;
+    navigateTo?: string;
+    onSuccess?: () => void | Promise<void>;
+  }) => {
+    if (!organizationId) return;
 
-  const handleOrgChange = async (orgId: string) => {
-    queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
-    queryClient.removeQueries({ queryKey: projectKeys.getAllUserProjects() });
+    if (organizationId === currentOrg.id) return;
 
-    const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
-      organizationId: orgId
-    });
+    const { token, isMfaEnabled, mfaMethod } = await selectOrganization({ organizationId });
 
     if (isMfaEnabled) {
       SecurityClient.setMfaToken(token);
@@ -190,12 +212,58 @@ export const Navbar = () => {
         setRequiredMfaMethod(mfaMethod);
       }
       toggleShowMfa.on();
-      setMfaSuccessCallback(() => () => handleOrgChange(orgId));
+      setMfaSuccessCallback(() => async () => {
+        await handleOrgSelection({ organizationId, onSuccess });
+      });
       return;
     }
-    await router.invalidate();
-    await navigateUserToOrg(navigate, orgId);
+
+    SecurityClient.setToken(token);
+    SecurityClient.setProviderAuthToken("");
+    queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
     queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
+
+    await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
+
+    await navigateUserToOrg({ navigate, organizationId, navigateTo });
+    queryClient.removeQueries({ queryKey: projectKeys.allProjectQueries() });
+
+    if (onSuccess) {
+      await onSuccess();
+    }
+  };
+
+  const handleNavigateToRootOrgBilling = async () => {
+    const navigateToBilling = () => {
+      navigate({
+        to: "/organizations/$orgId/billing",
+        params: { orgId: rootOrg.id }
+      });
+    };
+
+    const onSuccess = () => {
+      setShowCardDeclinedModal(false);
+    };
+
+    if (isSubOrganization) {
+      await handleOrgSelection({ organizationId: rootOrg.id, onSuccess });
+    } else {
+      await navigateToBilling();
+    }
+  };
+
+  const handleNavigateToAdminConsole = async () => {
+    const navigateToAdminConsole = () => {
+      navigate({
+        to: "/admin"
+      });
+    };
+
+    if (isSubOrganization) {
+      await handleOrgSelection({ organizationId: rootOrg.id, navigateTo: "/admin" });
+    } else {
+      navigateToAdminConsole();
+    }
   };
 
   const { mutateAsync } = useGetOrgTrialUrl();
@@ -239,7 +307,9 @@ export const Navbar = () => {
 
   const isServerAdminPanel = location.pathname.startsWith("/admin");
 
-  const isOrgScope = location.pathname.startsWith("/organization"); // TODO: scott/akhil is this adequate?
+  const isProjectScope =
+    location.pathname.startsWith(`/organizations/${currentOrg.id}/projects`) &&
+    location.pathname !== `/organizations/${currentOrg.id}/projects`;
 
   const handleOrgNav = async (org: Organization) => {
     if (currentOrg?.id === org.id) return;
@@ -265,68 +335,66 @@ export const Navbar = () => {
       return;
     }
 
-    handleOrgChange(org?.id);
+    handleOrgSelection({ organizationId: org?.id });
   };
 
   return (
-    <div className="z-10 flex min-h-12 items-center bg-mineshaft-900 px-4 pt-1">
-      <div className="mr-auto flex items-center overflow-hidden">
-        <div className="shrink-0">
-          <Link to="/organization/projects">
+    <div className="z-10 flex min-h-12 items-center bg-mineshaft-900 px-4">
+      <div className="mr-auto flex h-full min-w-34 items-center">
+        <div className="mt-0.5 shrink-0">
+          <Link to="/organizations/$orgId/projects" params={{ orgId: currentOrg.id }}>
             <img alt="infisical logo" src="/images/logotransparent.png" className="h-4" />
           </Link>
         </div>
-        <p className="pr-3 pl-1 text-lg text-mineshaft-400/70">/</p>
+        <ChevronRight size={18} className="mx-3 mt-[3px] text-mineshaft-400/70" />
         {isServerAdminPanel ? (
-          <>
-            <Link
-              to="/admin"
-              className="group flex cursor-pointer items-center gap-2 text-sm text-white transition-all duration-100 hover:text-primary"
-            >
-              <InstanceIcon className="size-3.5 text-xs text-bunker-300" />
-              <div className="whitespace-nowrap">Server Console</div>
-            </Link>
-            <p className="pr-3 pl-3 text-lg text-mineshaft-400/70">/</p>
-            {breadcrumbs ? (
-              // scott: remove /admin as we show server console above
-              <BreadcrumbContainer breadcrumbs={breadcrumbs.slice(1) as TBreadcrumbFormat[]} />
-            ) : null}
-          </>
+          <Link
+            to="/admin"
+            className="group flex cursor-pointer items-center gap-2 text-sm text-white transition-all duration-100 hover:text-primary"
+          >
+            <InstanceIcon className="size-3.5 text-xs text-bunker-300" />
+            <div className="whitespace-nowrap">Server Console</div>
+          </Link>
         ) : (
           <>
-            <div className="flex items-center overflow-hidden">
+            <div
+              className={twMerge(
+                "relative flex min-w-16 items-center self-end rounded-t-md border-x border-t pt-1.5 pr-2 pb-2.5 pl-3",
+                !isProjectScope && !isSubOrganization
+                  ? "border-org/15 bg-gradient-to-b from-org/10 to-org/[0.075]"
+                  : "border-transparent"
+              )}
+            >
+              {/* scott: the below is used to hide the top border from the org nav bar */}
+              {!isProjectScope && !isSubOrganization && (
+                <div className="absolute -bottom-px left-0 h-px w-full bg-mineshaft-900">
+                  <div className="h-full bg-org/[0.075]" />
+                </div>
+              )}
               <DropdownMenu modal={false} open={isOrgSelectOpen} onOpenChange={setIsOrgSelectOpen}>
-                <div className="group flex cursor-pointer items-center gap-2 overflow-hidden text-sm text-white transition-all duration-100 hover:text-primary">
-                  <Badge
-                    asChild
-                    variant="org"
-                    isTruncatable
-                    // TODO(scott): either add badge size/style variant or create designated component for namespace/org nav bar
-                    className={twMerge(
-                      "gap-x-1.5 text-sm",
-                      (!isOrgScope || isSubOrganization) &&
-                        "bg-transparent text-mineshaft-200 hover:!bg-transparent hover:underline [&>svg]:!text-org"
-                    )}
-                  >
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        navigate({
-                          to: "/organization/projects",
-                          search: (search) => ({ ...search, subOrganization: undefined })
+                <div className="group mr-1 flex min-w-0 cursor-pointer items-center gap-2 overflow-hidden text-sm text-white transition-all duration-100">
+                  <button
+                    className="flex cursor-pointer items-center gap-x-2 truncate whitespace-nowrap"
+                    type="button"
+                    onClick={async () => {
+                      if (isSubOrganization) {
+                        await handleOrgSelection({
+                          organizationId: currentOrg.rootOrgId as string
                         });
-                        if (isSubOrganization) {
-                          await router.invalidate({ sync: true }).catch(() => null);
-                        }
-                      }}
-                    >
-                      <OrgIcon className="size-[12px]" />
-                      <span>{currentOrg?.name}</span>
-                    </button>
-                  </Badge>
-                  <div className="mr-1 rounded-sm border border-mineshaft-500 px-1 text-xs text-bunker-300 no-underline!">
-                    {getPlan(subscription)}
-                  </div>
+                      } else {
+                        navigate({
+                          to: "/organizations/$orgId/projects",
+                          params: { orgId: currentOrg.id }
+                        });
+                      }
+                    }}
+                  >
+                    <OrgIcon className={twMerge("size-[14px] shrink-0 text-org")} />
+                    <span className="truncate">{rootOrg?.name}</span>
+                    <Badge variant="org" className="hidden lg:inline-flex">
+                      Organization
+                    </Badge>
+                  </button>
                   {subscription.cardDeclined && (
                     <Tooltip
                       content={`Your payment could not be processed${subscription.cardDeclinedReason ? `: ${subscription.cardDeclinedReason}` : ""}. Please update your payment method to continue enjoying premium features.`}
@@ -395,13 +463,7 @@ export const Navbar = () => {
                             </div>
                             {subOrganizations.map((subOrg) => (
                               <DropdownMenuItem
-                                onClick={async () => {
-                                  navigate({
-                                    to: "/organization/projects",
-                                    search: (prev) => ({ ...prev, subOrganization: subOrg.name })
-                                  });
-                                  await router.invalidate({ sync: true }).catch(() => null);
-                                }}
+                                onClick={() => handleOrgSelection({ organizationId: subOrg.id })}
                                 className="cursor-pointer font-normal"
                                 key={subOrg.id}
                               >
@@ -456,107 +518,117 @@ export const Navbar = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            {currentOrg.subOrganization && (
+            {isSubOrganization && (
               <>
-                <p className="pr-3 pl-1 text-lg text-mineshaft-400/70">/</p>
-                <DropdownMenu modal={false}>
-                  <Badge
-                    asChild
-                    isTruncatable
-                    variant="sub-org"
-                    // TODO(scott): either add badge size/style variant or create designated component for namespace/org nav bar
-                    className={twMerge(
-                      "gap-x-1.5 text-sm",
-                      !isOrgScope &&
-                        "bg-transparent text-mineshaft-200 hover:!bg-transparent hover:underline [&>svg]:!text-sub-org"
-                    )}
-                  >
-                    <Link to="/organization/projects">
-                      <SubOrgIcon className="size-[12px]" />
-                      <span>{currentOrg.subOrganization.name}</span>
-                    </Link>
-                  </Badge>
-                  <DropdownMenuTrigger asChild>
-                    <div>
-                      <IconButton
-                        variant="plain"
-                        colorSchema="secondary"
-                        ariaLabel="switch-org"
-                        className="px-2 py-1"
-                      >
-                        <FontAwesomeIcon icon={faCaretDown} className="text-xs text-bunker-300" />
-                      </IconButton>
+                <ChevronRight size={18} className="mt-[3px] mr-3 text-mineshaft-400/70" />
+                <div
+                  className={twMerge(
+                    "relative flex min-w-16 items-center self-end rounded-t-md border-x border-t pt-1.5 pr-2 pb-2.5 pl-3",
+                    !isProjectScope && isSubOrganization
+                      ? "border-sub-org/15 bg-gradient-to-b from-sub-org/10 to-sub-org/[0.075]"
+                      : "border-transparent"
+                  )}
+                >
+                  {/* scott: the below is used to hide the top border from the org nav bar */}
+                  {!isProjectScope && isSubOrganization && (
+                    <div className="absolute -bottom-px left-0 h-px w-full bg-mineshaft-900">
+                      <div className="h-full bg-sub-org/[0.075]" />
                     </div>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="center"
-                    side="bottom"
-                    className="mt-6 cursor-default p-1 shadow-mineshaft-600 drop-shadow-md"
-                    style={{ minWidth: "220px" }}
-                  >
-                    <div className="px-2 py-1 text-xs text-mineshaft-400 capitalize">
-                      Sub-Organizations
-                    </div>
-                    {subOrganizations.map((subOrg) => (
-                      <DropdownMenuItem
+                  )}
+                  <DropdownMenu modal={false}>
+                    <div className="group mr-1 flex min-w-0 cursor-pointer items-center gap-2 overflow-hidden text-sm text-white transition-all duration-100">
+                      <button
+                        className="flex cursor-pointer items-center gap-x-2 truncate whitespace-nowrap"
+                        type="button"
                         onClick={async () => {
                           navigate({
-                            to: "/organization/projects",
-                            search: (prev) => ({ ...prev, subOrganization: subOrg.name })
+                            to: "/organizations/$orgId/projects",
+                            params: { orgId: currentOrg.id }
                           });
-                          await router.invalidate({ sync: true }).catch(() => null);
+                          if (isSubOrganization) {
+                            await router.invalidate({ sync: true }).catch(() => null);
+                          }
                         }}
-                        className="cursor-pointer font-normal"
-                        key={subOrg.id}
                       >
-                        <div className="flex w-full max-w-48 cursor-pointer items-center gap-x-2">
-                          {currentOrg?.id === subOrg.id && (
-                            <FontAwesomeIcon icon={faCheck} className="shrink-0 text-primary" />
-                          )}
-                          <p className="truncate">{subOrg.name}</p>
-                        </div>
-                      </DropdownMenuItem>
-                    ))}
-                    {Boolean(subOrganizations.length) && (
-                      <div className="mt-1 h-1 border-t border-mineshaft-600" />
-                    )}
-                    <DropdownMenuItem
-                      className="cursor-pointer"
-                      icon={<FontAwesomeIcon icon={faPlus} />}
-                      onClick={() => setShowSubOrgForm(true)}
+                        <SubOrgIcon className={twMerge("size-[14px] shrink-0 text-sub-org")} />
+                        <span className="truncate">{currentOrg?.name}</span>
+                        <Badge variant="sub-org" className="hidden lg:inline-flex">
+                          Sub-Organization
+                        </Badge>
+                      </button>
+                    </div>
+                    <DropdownMenuTrigger asChild>
+                      <div>
+                        <IconButton
+                          variant="plain"
+                          colorSchema="secondary"
+                          ariaLabel="switch-org"
+                          className="px-2 py-1"
+                        >
+                          <FontAwesomeIcon icon={faCaretDown} className="text-xs text-bunker-300" />
+                        </IconButton>
+                      </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="center"
+                      side="bottom"
+                      className="mt-6 cursor-default p-1 shadow-mineshaft-600 drop-shadow-md"
+                      style={{ minWidth: "220px" }}
                     >
-                      New Sub-Organization
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                      <div className="px-2 py-1 text-xs text-mineshaft-400 capitalize">
+                        Sub-Organizations
+                      </div>
+                      {subOrganizations.map((subOrg) => (
+                        <DropdownMenuItem
+                          onClick={() => handleOrgSelection({ organizationId: subOrg.id })}
+                          className="cursor-pointer font-normal"
+                          key={subOrg.id}
+                        >
+                          <div className="flex w-full max-w-48 cursor-pointer items-center gap-x-2">
+                            {currentOrg?.id === subOrg.id && (
+                              <FontAwesomeIcon icon={faCheck} className="shrink-0 text-primary" />
+                            )}
+                            <p className="truncate">{subOrg.name}</p>
+                          </div>
+                        </DropdownMenuItem>
+                      ))}
+                      {Boolean(subOrganizations.length) && (
+                        <div className="mt-1 h-1 border-t border-mineshaft-600" />
+                      )}
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                        icon={<FontAwesomeIcon icon={faPlus} />}
+                        onClick={() => setShowSubOrgForm(true)}
+                      >
+                        New Sub-Organization
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </>
             )}
-            {!isOrgScope && (
+            {isProjectScope && (
               <>
-                <p className="pr-3 pl-1 text-lg text-mineshaft-400/70">/</p>
-                {breadcrumbs ? (
-                  <BreadcrumbContainer
-                    className="min-w-[15rem] flex-1"
-                    breadcrumbs={[breadcrumbs[0]] as TBreadcrumbFormat[]}
-                  />
-                ) : null}
+                <ChevronRight size={18} className="mx-3 mt-[3px] text-mineshaft-400/70" />
+                <ProjectSelect />
               </>
             )}
           </>
         )}
       </div>
-      {subscription && subscription.slug === "starter" && !subscription.has_used_trial && (
+
+      {subscription && subscription.slug === "starter" && !subscription.has_used_trial ? (
         <Tooltip content="Start Free Pro Trial">
           <Button
             variant="plain"
             className="mr-2 border-mineshaft-500 px-2.5 py-1.5 whitespace-nowrap text-mineshaft-200 hover:bg-mineshaft-600"
             leftIcon={<FontAwesomeIcon icon={faInfinity} />}
             onClick={async () => {
-              if (!subscription || !currentOrg) return;
+              if (!subscription || !rootOrg) return;
 
               // direct user to start pro trial
               const url = await mutateAsync({
-                orgId: currentOrg.id,
+                orgId: rootOrg.id,
                 success_url: window.location.href
               });
 
@@ -566,16 +638,43 @@ export const Navbar = () => {
             Free Pro Trial
           </Button>
         </Tooltip>
+      ) : (
+        <div className="mt-0.5 mr-3 hidden rounded-sm border border-mineshaft-400 px-1 text-xs text-mineshaft-100 no-underline! opacity-50 md:inline-block">
+          {getPlan(subscription)}
+        </div>
       )}
-      {user.superAdmin && !location.pathname.startsWith("/admin") && (
-        <Link
-          className="mr-2 flex items-center rounded-md border border-mineshaft-500 px-2.5 py-1.5 text-sm whitespace-nowrap text-mineshaft-200 hover:bg-mineshaft-600"
-          to="/admin"
-        >
-          <InstanceIcon className="mr-2 inline-block size-3.5" />
-          Server Console
-        </Link>
-      )}
+      {/* eslint-disable-next-line no-nested-ternary */}
+      {!location.pathname.startsWith("/admin") ? (
+        user.superAdmin ? (
+          <Link
+            className="mr-2 flex h-[34px] items-center rounded-md border border-mineshaft-500 px-2.5 py-1.5 text-sm whitespace-nowrap text-mineshaft-200 hover:bg-mineshaft-600"
+            to="/admin"
+            onClick={handleNavigateToAdminConsole}
+          >
+            <InstanceIcon className="inline-block size-3.5" />
+            <span className="ml-2 hidden md:inline-block">Server Console</span>
+          </Link>
+        ) : (
+          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
+            {(isAllowed) =>
+              isAllowed ? (
+                <Link
+                  className="mr-2 flex h-[34px] items-center rounded-md border border-mineshaft-500 px-2.5 py-1.5 text-sm whitespace-nowrap text-mineshaft-200 hover:bg-mineshaft-600"
+                  to="/organizations/$orgId/access-management"
+                  params={{ orgId: currentOrg.id }}
+                  search={{
+                    selectedTab: "members",
+                    action: "invite-members"
+                  }}
+                >
+                  <UserPlusIcon className="inline-block size-3.5" />
+                  <span className="ml-2 hidden md:inline-block">Invite Users</span>
+                </Link>
+              ) : null
+            }
+          </OrgPermissionCan>
+        )
+      ) : null}
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger>
           <div className="rounded-l-md border border-r-0 border-mineshaft-500 px-2.5 py-1 hover:bg-mineshaft-600">
@@ -588,7 +687,8 @@ export const Navbar = () => {
               text === "Email Support"
                 ? getUrl({
                     org_id: currentOrg.id,
-                    domain: window.location.origin
+                    domain: window.location.origin,
+                    ...(isSubOrganization && { root_org_id: rootOrg.id })
                   })
                 : getUrl();
 
@@ -657,8 +757,28 @@ export const Navbar = () => {
             </div>
           </div>
           <Link to="/personal-settings">
-            <DropdownMenuItem>Personal Settings</DropdownMenuItem>
+            <DropdownMenuItem icon={<FontAwesomeIcon icon={faUserCog} />}>
+              Personal Settings
+            </DropdownMenuItem>
           </Link>
+          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
+            {(isAllowed) =>
+              isAllowed ? (
+                <Link
+                  to="/organizations/$orgId/access-management"
+                  params={{ orgId: currentOrg.id }}
+                  search={{
+                    selectedTab: "members",
+                    action: "invite-members"
+                  }}
+                >
+                  <DropdownMenuItem icon={<FontAwesomeIcon icon={faUserPlus} />}>
+                    Invite Users
+                  </DropdownMenuItem>
+                </Link>
+              ) : null
+            }
+          </OrgPermissionCan>
           <a
             href="https://infisical.com/docs/documentation/getting-started/introduction"
             target="_blank"
@@ -728,15 +848,13 @@ export const Navbar = () => {
               </div>
               <div className="mt-4">
                 <div className="flex space-x-3">
-                  <Link to="/organization/billing" className="inline-flex">
-                    <Button
-                      colorSchema="primary"
-                      variant="solid"
-                      onClick={() => setShowCardDeclinedModal(false)}
-                    >
-                      Update Payment Method
-                    </Button>
-                  </Link>
+                  <Button
+                    colorSchema="primary"
+                    variant="solid"
+                    onClick={handleNavigateToRootOrgBilling}
+                  >
+                    Update Payment Method
+                  </Button>
                   {!isModalIntrusive && (
                     <Button
                       colorSchema="secondary"
@@ -762,6 +880,7 @@ export const Navbar = () => {
               onClose={() => {
                 setShowSubOrgForm(false);
               }}
+              handleOrgSelection={handleOrgSelection}
             />
           </div>
         </ModalContent>

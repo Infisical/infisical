@@ -47,6 +47,7 @@ export const SelectOrganizationSection = () => {
   const orgId = queryParams.get("org_id");
   const callbackPort = queryParams.get("callback_port");
   const isAdminLogin = queryParams.get("is_admin_login") === "true";
+  const mfaPending = queryParams.get("mfa_pending") === "true";
   const defaultSelectedOrg = organizations.data?.find((org) => org.id === orgId);
 
   const logout = useLogoutUser(true);
@@ -188,7 +189,7 @@ export const SelectOrganizationSection = () => {
         navigate({ to: "/cli-redirect" });
         // cli page
       } else {
-        navigateUserToOrg(navigate, organization.id);
+        navigateUserToOrg({ navigate, organizationId: organization.id });
       }
     },
     [selectOrg]
@@ -201,7 +202,7 @@ export const SelectOrganizationSection = () => {
       const decodedJwt = jwtDecode(authToken) as any;
 
       if (decodedJwt?.organizationId) {
-        navigateUserToOrg(navigate, decodedJwt.organizationId);
+        navigateUserToOrg({ navigate, organizationId: decodedJwt.organizationId });
       }
     }
 
@@ -222,7 +223,7 @@ export const SelectOrganizationSection = () => {
     // Case: User has no organizations.
     // This can happen if the user was previously a member, but the organization was deleted or the user was removed.
     if (organizations.data.length === 0) {
-      navigate({ to: "/organization/none" });
+      navigate({ to: "/organizations/none" });
     } else if (organizations.data.length === 1) {
       if (callbackPort) {
         handleCliRedirect();
@@ -236,10 +237,22 @@ export const SelectOrganizationSection = () => {
   }, [organizations.isPending, organizations.data]);
 
   useEffect(() => {
+    if (mfaPending && defaultSelectedOrg) {
+      const storedMfaToken = sessionStorage.getItem(SessionStorageKeys.MFA_TEMP_TOKEN);
+      if (storedMfaToken) {
+        sessionStorage.removeItem(SessionStorageKeys.MFA_TEMP_TOKEN);
+        SecurityClient.setMfaToken(storedMfaToken);
+        setIsInitialOrgCheckLoading(false);
+        toggleShowMfa.on();
+        setMfaSuccessCallback(() => () => handleSelectOrganization(defaultSelectedOrg));
+        return;
+      }
+    }
+
     if (defaultSelectedOrg) {
       handleSelectOrganization(defaultSelectedOrg);
     }
-  }, [defaultSelectedOrg]);
+  }, [defaultSelectedOrg, mfaPending]);
 
   if (
     userLoading ||

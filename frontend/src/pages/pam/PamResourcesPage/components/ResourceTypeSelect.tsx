@@ -38,7 +38,6 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
       { name: "Redis", resource: PamResourceType.Redis },
       { name: "RDP", resource: PamResourceType.RDP },
       { name: "SSH", resource: PamResourceType.SSH },
-      { name: "Kubernetes", resource: PamResourceType.Kubernetes },
       { name: "MCP", resource: PamResourceType.MCP },
       { name: "Web Application", resource: PamResourceType.WebApp }
     ];
@@ -78,8 +77,6 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
     // We temporarily show a special license modal for these because we will have to write some code to complete the integration
     if (
       resource === PamResourceType.RDP ||
-      resource === PamResourceType.SSH ||
-      resource === PamResourceType.Kubernetes ||
       resource === PamResourceType.MCP ||
       resource === PamResourceType.Redis ||
       resource === PamResourceType.MongoDB ||

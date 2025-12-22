@@ -21,6 +21,7 @@ CREATE USER [infisical_user] FOR LOGIN [infisical_user];
 
 -- Grant permissions to the user on the schema in this database
 GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::dbo TO [infisical_user];`,
+    rotationStatement: `ALTER LOGIN [{{username}}] WITH PASSWORD = '{{password}}'`,
     secretsMapping: {
       username: "MSSQL_DB_USERNAME",
       password: "MSSQL_DB_PASSWORD"

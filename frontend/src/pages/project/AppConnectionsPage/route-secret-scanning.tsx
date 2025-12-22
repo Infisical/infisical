@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AppConnectionsPage } from "./AppConnectionsPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/secret-scanning/$projectId/_secret-scanning-layout/app-connections"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId/_secret-scanning-layout/app-connections"
 )({
   component: AppConnectionsPage,
   beforeLoad: ({ context }) => {

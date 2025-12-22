@@ -61,7 +61,7 @@ type TIdentityOidcAuthServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
 };
 
 export type TIdentityOidcAuthServiceFactory = ReturnType<typeof identityOidcAuthServiceFactory>;
@@ -76,7 +76,7 @@ export const identityOidcAuthServiceFactory = ({
   kmsService,
   orgDAL
 }: TIdentityOidcAuthServiceFactoryDep) => {
-  const login = async ({ identityId, jwt: oidcJwt }: TLoginOidcAuthDTO) => {
+  const login = async ({ identityId, jwt: oidcJwt, subOrganizationName }: TLoginOidcAuthDTO) => {
     const appCfg = getConfig();
     const identityOidcAuth = await identityOidcAuthDAL.findOne({ identityId });
     if (!identityOidcAuth) {
@@ -87,6 +87,11 @@ export const identityOidcAuthServiceFactory = ({
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const org = await orgDAL.findById(identity.orgId);
+    const isSubOrgIdentity = Boolean(org.rootOrgId);
+
+    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a subOrganizationName is specified
+    let subOrganizationId = isSubOrgIdentity ? org.id : null;
+
     try {
       const { decryptor } = await kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
@@ -99,13 +104,28 @@ export const identityOidcAuthServiceFactory = ({
       }
 
       const requestAgent = new https.Agent({ ca: caCert, rejectUnauthorized: !!caCert });
-      const { data: discoveryDoc } = await axios.get<{ jwks_uri: string }>(
-        `${identityOidcAuth.oidcDiscoveryUrl}/.well-known/openid-configuration`,
-        {
-          httpsAgent: identityOidcAuth.oidcDiscoveryUrl.includes("https") ? requestAgent : undefined
-        }
-      );
+
+      let discoveryDoc: { jwks_uri: string };
+      try {
+        const response = await axios.get<{ jwks_uri: string }>(
+          `${identityOidcAuth.oidcDiscoveryUrl}/.well-known/openid-configuration`,
+          {
+            httpsAgent: identityOidcAuth.oidcDiscoveryUrl.includes("https") ? requestAgent : undefined
+          }
+        );
+        discoveryDoc = response.data;
+      } catch (error) {
+        throw new UnauthorizedError({
+          message: `Access denied: Failed to fetch OIDC discovery document from ${identityOidcAuth.oidcDiscoveryUrl}. ${error instanceof Error ? error.message : String(error)}`
+        });
+      }
+
       const jwksUri = discoveryDoc.jwks_uri;
+      if (!jwksUri) {
+        throw new UnauthorizedError({
+          message: `Access denied: OIDC discovery document does not contain a jwks_uri. The identity provider may be misconfigured.`
+        });
+      }
 
       const decodedToken = crypto.jwt().decode(oidcJwt, { complete: true });
       if (!decodedToken) {
@@ -271,6 +291,30 @@ export const identityOidcAuthServiceFactory = ({
         });
       }
 
+      if (subOrganizationName) {
+        if (!isSubOrgIdentity) {
+          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: subOrganizationName });
+
+          if (!subOrg) {
+            throw new NotFoundError({ message: `Sub organization with name ${subOrganizationName} not found` });
+          }
+
+          const subOrgMembership = await membershipIdentityDAL.findOne({
+            scope: AccessScope.Organization,
+            actorIdentityId: identity.id,
+            scopeOrgId: subOrg.id
+          });
+
+          if (!subOrgMembership) {
+            throw new UnauthorizedError({
+              message: `Identity not authorized to access sub organization ${subOrganizationName}`
+            });
+          }
+
+          subOrganizationId = subOrg.id;
+        }
+      }
+
       const identityAccessToken = await identityOidcAuthDAL.transaction(async (tx) => {
         await membershipIdentityDAL.update(
           identity.projectId
@@ -299,7 +343,8 @@ export const identityOidcAuthServiceFactory = ({
             accessTokenMaxTTL: identityOidcAuth.accessTokenMaxTTL,
             accessTokenNumUses: 0,
             accessTokenNumUsesLimit: identityOidcAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.OIDC_AUTH
+            authMethod: IdentityAuthMethod.OIDC_AUTH,
+            subOrganizationId
           },
           tx
         );

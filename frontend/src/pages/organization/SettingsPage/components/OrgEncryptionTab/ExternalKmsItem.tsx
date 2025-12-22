@@ -22,7 +22,9 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 type Props = {
   kms: KmsListEntry;
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["editExternalKms", "removeExternalKms", "upgradePlan"]>,
+    popUpName: keyof UsePopUpState<
+      ["editExternalKmsDetails", "editExternalKmsCredentials", "removeExternalKms", "upgradePlan"]
+    >,
     data?: {
       kmsId?: string;
       name?: string;
@@ -104,27 +106,52 @@ export const ExternalKmsItem = ({ kms, handlePopUpOpen, subscription }: Props) =
           <DropdownMenuContent align="start" className="p-1">
             <OrgPermissionCan I={OrgPermissionActions.Edit} an={OrgPermissionSubjects.Kms}>
               {(isAllowed) => (
-                <DropdownMenuItem
-                  disabled={!isAllowed}
-                  className={twMerge(
-                    !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                  )}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (subscription && !subscription?.externalKms) {
-                      handlePopUpOpen("upgradePlan", {
-                        isEnterpriseFeature: true
-                      });
-                      return;
-                    }
+                <>
+                  <DropdownMenuItem
+                    disabled={!isAllowed}
+                    className={twMerge(
+                      !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                    )}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (subscription && !subscription?.externalKms) {
+                        handlePopUpOpen("upgradePlan", {
+                          isEnterpriseFeature: true
+                        });
+                        return;
+                      }
 
-                    handlePopUpOpen("editExternalKms", {
-                      kmsId: kms.id
-                    });
-                  }}
-                >
-                  Edit
-                </DropdownMenuItem>
+                      handlePopUpOpen("editExternalKmsDetails", {
+                        kmsId: kms.id,
+                        provider: kms.externalKms.provider
+                      });
+                    }}
+                  >
+                    Edit Details
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!isAllowed}
+                    className={twMerge(
+                      !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                    )}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (subscription && !subscription?.externalKms) {
+                        handlePopUpOpen("upgradePlan", {
+                          isEnterpriseFeature: true
+                        });
+                        return;
+                      }
+
+                      handlePopUpOpen("editExternalKmsCredentials", {
+                        kmsId: kms.id,
+                        provider: kms.externalKms.provider
+                      });
+                    }}
+                  >
+                    Edit Credentials
+                  </DropdownMenuItem>
+                </>
               )}
             </OrgPermissionCan>
             <OrgPermissionCan I={OrgPermissionActions.Delete} an={OrgPermissionSubjects.Kms}>

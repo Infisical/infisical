@@ -158,6 +158,16 @@ export type TScimGroup = {
   };
 };
 
+export type TExpiringScimToken = {
+  id: string;
+  ttlDays: number;
+  description: string;
+  orgId: string;
+  createdAt: Date;
+  orgName: string;
+  adminEmails: string[];
+};
+
 export type TScimServiceFactory = {
   createScimToken: (arg: TCreateScimTokenDTO) => Promise<{
     scimToken: string;
@@ -200,4 +210,5 @@ export type TScimServiceFactory = {
     scimTokenId: string;
     orgId: string;
   }>;
+  notifyExpiringTokens: () => Promise<number>;
 };

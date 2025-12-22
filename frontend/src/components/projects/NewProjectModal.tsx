@@ -66,7 +66,7 @@ const PROJECT_TYPE_MENU_ITEMS = [
     value: ProjectType.SecretManager
   },
   {
-    label: "Certificates Management",
+    label: "Certificate Manager",
     value: ProjectType.CertificateManager
   },
   {
@@ -84,6 +84,10 @@ const PROJECT_TYPE_MENU_ITEMS = [
   {
     label: "PAM",
     value: ProjectType.PAM
+  },
+  {
+    label: "Agentic Manager",
+    value: ProjectType.AI
   }
 ];
 
@@ -157,7 +161,7 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
     onOpenChange(false);
     navigate({
       to: getProjectHomePage(project.type, project.environments),
-      params: { projectId: project.id }
+      params: { projectId: project.id, orgId: currentOrg.id }
     });
   };
   const onSubmit = handleSubmit((data) => {

@@ -18,7 +18,12 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject
+} from "@app/context";
 import { useDeletePkiCollection, useGetPkiCollectionById } from "@app/hooks/api";
 import { PkiItemType } from "@app/hooks/api/pkiCollections/constants";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -34,6 +39,7 @@ export const PkiCollectionPage = () => {
   });
   const collectionId = params.collectionId as string;
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
   const projectId = currentProject?.id || "";
 
   const { data } = useGetPkiCollectionById(collectionId);
@@ -58,8 +64,9 @@ export const PkiCollectionPage = () => {
     });
     handlePopUpClose("deletePkiCollection");
     navigate({
-      to: "/projects/cert-management/$projectId/policies",
+      to: "/organizations/$orgId/projects/cert-manager/$projectId/policies",
       params: {
+        orgId: currentOrg.id,
         projectId: params.projectId
       }
     });
@@ -70,8 +77,9 @@ export const PkiCollectionPage = () => {
       {data && (
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <Link
-            to="/projects/cert-management/$projectId/policies"
+            to="/organizations/$orgId/projects/cert-manager/$projectId/policies"
             params={{
+              orgId: currentOrg.id,
               projectId: params.projectId
             }}
             className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"

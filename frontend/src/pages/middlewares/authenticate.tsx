@@ -44,7 +44,7 @@ export const Route = createFileRoute("/_authenticate")({
     if (
       !data.organizationId &&
       location.pathname !== ROUTE_PATHS.Auth.PasswordSetupPage.path &&
-      location.pathname !== "/organization/none"
+      location.pathname !== "/organizations/none"
     ) {
       throw redirect({ to: "/login/select-organization" });
     }
@@ -73,6 +73,11 @@ export const Route = createFileRoute("/_authenticate")({
         });
       });
 
-    return { organizationId: data.organizationId as string, isAuthenticated: true, user };
+    const isSubOrganization = !!data.subOrganizationId;
+    return {
+      organizationId: isSubOrganization ? data.subOrganizationId : (data.organizationId as string),
+      isAuthenticated: true,
+      user
+    };
   }
 });
