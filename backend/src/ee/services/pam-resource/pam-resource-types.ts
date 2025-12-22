@@ -27,6 +27,12 @@ import {
   TPostgresResourceConnectionDetails
 } from "./postgres/postgres-resource-types";
 import {
+  TRedisAccount,
+  TRedisAccountCredentials,
+  TRedisResource,
+  TRedisResourceConnectionDetails
+} from "./redis/redis-resource-types";
+import {
   TSSHAccount,
   TSSHAccountCredentials,
   TSSHResource,
@@ -35,17 +41,30 @@ import {
 } from "./ssh/ssh-resource-types";
 
 // Resource types
-export type TPamResource = TPostgresResource | TMySQLResource | TSSHResource | TAwsIamResource | TKubernetesResource;
+export type TPamResource =
+  | TPostgresResource
+  | TMySQLResource
+  | TSSHResource
+  | TAwsIamResource
+  | TKubernetesResource
+  | TRedisResource;
 export type TPamResourceConnectionDetails =
   | TPostgresResourceConnectionDetails
   | TMySQLResourceConnectionDetails
   | TSSHResourceConnectionDetails
   | TKubernetesResourceConnectionDetails
-  | TAwsIamResourceConnectionDetails;
+  | TAwsIamResourceConnectionDetails
+  | TRedisResourceConnectionDetails;
 export type TPamResourceMetadata = TSSHResourceMetadata;
 
 // Account types
-export type TPamAccount = TPostgresAccount | TMySQLAccount | TSSHAccount | TAwsIamAccount | TKubernetesAccount;
+export type TPamAccount =
+  | TPostgresAccount
+  | TMySQLAccount
+  | TSSHAccount
+  | TAwsIamAccount
+  | TKubernetesAccount
+  | TRedisAccount;
 
 export type TPamAccountCredentials =
   | TPostgresAccountCredentials
@@ -53,7 +72,8 @@ export type TPamAccountCredentials =
   | TMySQLAccountCredentials
   | TSSHAccountCredentials
   | TKubernetesAccountCredentials
-  | TAwsIamAccountCredentials;
+  | TAwsIamAccountCredentials
+  | TRedisAccountCredentials;
 
 // Resource DTOs
 export type TCreateResourceDTO = Pick<TPamResource, "name" | "connectionDetails" | "resourceType" | "projectId"> & {

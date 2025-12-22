@@ -58,6 +58,7 @@ import { getFullPamFolderPath } from "../pam-folder/pam-folder-fns";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { PamResource } from "../pam-resource/pam-resource-enums";
 import { TPamAccountCredentials } from "../pam-resource/pam-resource-types";
+import { TRedisAccountCredentials, TRedisResourceConnectionDetails } from "../pam-resource/redis/redis-resource-types";
 import { TSqlAccountCredentials, TSqlResourceConnectionDetails } from "../pam-resource/shared/sql/sql-resource-types";
 import { TSSHAccountCredentials, TSSHResourceMetadata } from "../pam-resource/ssh/ssh-resource-types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
@@ -878,6 +879,29 @@ export const pamAccountServiceFactory = ({
           metadata = {
             username: credentials.username,
             database: connectionCredentials.database,
+            accountName: account.name,
+            accountPath: folderPath
+          };
+        }
+        break;
+      case PamResource.Redis:
+        {
+          const connectionCredentials = (await decryptResourceConnectionDetails({
+            encryptedConnectionDetails: resource.encryptedConnectionDetails,
+            kmsService,
+            projectId
+          })) as TRedisResourceConnectionDetails;
+
+          const credentials = (await decryptAccountCredentials({
+            encryptedCredentials: account.encryptedCredentials,
+            kmsService,
+            projectId
+          })) as TRedisAccountCredentials;
+
+          metadata = {
+            username: credentials.username,
+            host: connectionCredentials.host,
+            port: connectionCredentials.port,
             accountName: account.name,
             accountPath: folderPath
           };
