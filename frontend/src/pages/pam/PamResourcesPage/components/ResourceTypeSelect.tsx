@@ -35,7 +35,6 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
       { name: "DynamoDB", resource: PamResourceType.DynamoDB },
       { name: "Snowflake", resource: PamResourceType.Snowflake },
       { name: "Elasticsearch", resource: PamResourceType.Elasticsearch },
-      { name: "Redis", resource: PamResourceType.Redis },
       { name: "RDP", resource: PamResourceType.RDP },
       { name: "SSH", resource: PamResourceType.SSH },
       { name: "MCP", resource: PamResourceType.MCP },
