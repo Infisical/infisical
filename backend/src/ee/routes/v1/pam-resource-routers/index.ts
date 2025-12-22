@@ -20,6 +20,11 @@ import {
   UpdatePostgresResourceSchema
 } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
 import {
+  CreateRedisResourceSchema,
+  SanitizedRedisResourceSchema,
+  UpdateRedisResourceSchema
+} from "@app/ee/services/pam-resource/redis/redis-resource-schemas";
+import {
   CreateSSHResourceSchema,
   SanitizedSSHResourceSchema,
   UpdateSSHResourceSchema
@@ -77,6 +82,15 @@ export const PAM_RESOURCE_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fast
       resourceResponseSchema: SanitizedAwsIamResourceSchema,
       createResourceSchema: CreateAwsIamResourceSchema,
       updateResourceSchema: UpdateAwsIamResourceSchema
+    });
+  },
+  [PamResource.Redis]: async (server: FastifyZodProvider) => {
+    registerPamResourceEndpoints({
+      server,
+      resourceType: PamResource.Redis,
+      resourceResponseSchema: SanitizedRedisResourceSchema,
+      createResourceSchema: CreateRedisResourceSchema,
+      updateResourceSchema: UpdateRedisResourceSchema
     });
   }
 };
