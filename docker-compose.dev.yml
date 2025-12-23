@@ -7,7 +7,6 @@ services:
     restart: "always"
     ports:
       - 8080:80
-      - 8443:443
     volumes:
       - ./nginx/default.dev.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
