@@ -63,70 +63,88 @@ Infisical supports connecting to OracleDB using a database user.
                     This configuration can only be done on self-hosted or dedicated instances of Infisical.
                 </Info>
 
-                To connect to an Oracle Database using mTLS with a wallet, you'll need to modify your self-hosted Infisical instance's Docker image.
+                Infisical includes Oracle Instant Client by default, enabling mTLS wallet-based connections without modifying the Docker image. You only need to mount your Oracle Wallet and configure the environment.
 
-                1.  Place your Oracle Wallet folder, which must be named `wallet`, inside the `/backend` directory of your Infisical installation source code.
+                <Warning>
+                    When `TNS_ADMIN` is set and points to a valid wallet directory, **all Oracle Database connections** in your Infisical instance will use the wallet for authentication.
 
-                2.  Add the following instructions to your `Dockerfile`. These instructions install the Oracle Instant Client and configure the environment for the wallet. Choose the tab that matches your server's architecture.
+                    **Gateway Limitation**: Wallet-based connections do not support [Infisical Gateway](/documentation/platform/gateways/overview). The connection details (host, port, protocol) are read directly from the `tnsnames.ora` file in the wallet, bypassing the gateway routing.
+                </Warning>
 
-                <Tabs>
-                    <Tab title="AMD64 / x86_64">
-                        ```Dockerfile
-# Install dependencies for Oracle Instant Client
-RUN apt-get update && apt-get install -y \
-    libaio1 \
-    unzip \
-    && rm -rf /var/lib/apt/lists/*
+                ### Prerequisites
 
-# Download and install Oracle Instant Client for x86_64
-RUN wget https://download.oracle.com/otn_software/linux/instantclient/2326000/instantclient-basic-linux.x64-23.26.0.0.0.zip && \
-    unzip instantclient-basic-linux.x64-23.26.0.0.0.zip -d /opt/oracle && \
-    rm instantclient-basic-linux.x64-23.26.0.0.0.zip && \
-    echo /opt/oracle/instantclient_23_26 > /etc/ld.so.conf.d/oracle-instantclient.conf && \
-    ldconfig
+                Your Oracle Wallet folder should contain the following files:
+                - `cwallet.sso` - Auto-login wallet (SSO wallet)
+                - `tnsnames.ora` - Connection aliases for your Oracle Database
+                - `sqlnet.ora` - Network configuration
 
-# Configure environment variables for Oracle Instant Client and the wallet
-ENV LD_LIBRARY_PATH=/opt/oracle/instantclient_23_26:$LD_LIBRARY_PATH
-ENV TNS_ADMIN=/app/wallet
+                ### Configuration Steps
 
-# Update sqlnet.ora to point to the correct wallet directory
-RUN sed -i 's|DIRECTORY="?/network/admin"|DIRECTORY="/app/wallet"|g' /app/wallet/sqlnet.ora
+                <Steps>
+                    <Step title="Prepare your wallet">
+                        Ensure your `sqlnet.ora` file points to the correct wallet directory. Update the `DIRECTORY` path to match where you'll mount the wallet in the container:
+
+                        ```ini
+                        WALLET_LOCATION =
+                        (SOURCE =
+                          (METHOD = FILE)
+                          (METHOD_DATA =
+                            (DIRECTORY = /app/wallet)
+                          )
+                        )
+
+                        SQLNET.AUTHENTICATION_SERVICES = (TCPS)
+                        SSL_CLIENT_AUTHENTICATION = TRUE
                         ```
-                    </Tab>
-                    <Tab title="ARM64">
-                        ```Dockerfile
-# Install dependencies for Oracle Instant Client
-RUN apt-get update && apt-get install -y \
-    libaio1t64 \
-    unzip \
-    && ln -s /lib/aarch64-linux-gnu/libaio.so.1t64 /lib/aarch64-linux-gnu/libaio.so.1 \
-    && rm -rf /var/lib/apt/lists/*
+                    </Step>
+                    <Step title="Mount the wallet and set environment variables">
+                        Mount your wallet directory and set the `TNS_ADMIN` environment variable to point to it.
 
-# Download and install Oracle Instant Client for ARM64
-RUN wget https://download.oracle.com/otn_software/linux/instantclient/2326000/instantclient-basic-linux.arm64-23.26.0.0.0.zip && \
-    unzip instantclient-basic-linux.arm64-23.26.0.0.0.zip -d /opt/oracle && \
-    rm instantclient-basic-linux.arm64-23.26.0.0.0.zip && \
-    echo /opt/oracle/instantclient_23_26 > /etc/ld.so.conf.d/oracle-instantclient.conf && \
-    ldconfig
-
-# Configure environment variables for Oracle Instant Client and the wallet
-ENV LD_LIBRARY_PATH=/opt/oracle/instantclient_23_26:$LD_LIBRARY_PATH
-ENV TNS_ADMIN=/app/wallet
-
-# Update sqlnet.ora to point to the correct wallet directory
-RUN sed -i 's|DIRECTORY="?/network/admin"|DIRECTORY="/app/wallet"|g' /app/wallet/sqlnet.ora
+                        **Environment Variable (`.env` file):**
+                        ```ini
+                        TNS_ADMIN=/app/wallet
                         ```
-                    </Tab>
-                </Tabs>
 
-                3.  After rebuilding and deploying your custom Docker image, you'll need the following information to create the connection in Infisical:
-                    - `host` - The hostname or IP address of your Oracle Database server. This is required for the Infisical Gateway to function.
-                    - `port` - The port number your Oracle Database server is listening on. This is required for the Infisical Gateway to function.
-                    - `database` - The connection alias for your Oracle Database from your `tnsnames.ora` file. (e.g. `tyk9ovdixe1dvaj8_high`)
-                    - `username` - The user name of the login created in the steps above.
-                    - `password` - The user password of the login created in the steps above.
+                        **Volume Mount Examples:**
 
-                    Note that when a wallet is being used, any configured SSL settings are ignored.
+                        <Tabs>
+                            <Tab title="Docker">
+                                ```bash
+                                docker run -d \
+                                  -v /path/to/your/wallet:/app/wallet:ro \
+                                  --env-file .env \
+                                  # ... other Infisical configuration ...
+                                  infisical/infisical:latest
+                                ```
+                            </Tab>
+                            <Tab title="Docker Compose">
+                                ```yaml
+                                services:
+                                  infisical:
+                                    image: infisical/infisical:latest
+                                    env_file:
+                                      - .env
+                                    volumes:
+                                      - /path/to/your/wallet:/app/wallet:ro
+                                    # ... other Infisical configuration ...
+                                ```
+                            </Tab>
+                        </Tabs>
+                    </Step>
+                    <Step title="Create the connection">
+                        You'll need the following information to create the connection in Infisical:
+                        - `host` - The hostname or IP address of your Oracle Database server (required field, but not used for wallet connections).
+                        - `port` - The port number your Oracle Database server is listening on (required field, but not used for wallet connections).
+                        - `database` - The TNS alias for your Oracle Database from your `tnsnames.ora` file.
+                        - `username` - The user name of the login created in the steps above.
+                        - `password` - The user password of the login created in the steps above.
+
+                        <Note>
+                            When a wallet is detected (via the `TNS_ADMIN` environment variable), the connection uses the TNS alias from the `database` field to look up full connection details (host, port, protocol) from your `tnsnames.ora` file.
+                            The host and port fields in the connection form are required but ignored for wallet connections. Any SSL settings in the connection form are also ignored - the wallet's certificates are used instead.
+                        </Note>
+                    </Step>
+                </Steps>
 
                 <Note>
                     If you are self-hosting Infisical and intend to connect to an internal/private IP address, be sure to set the `ALLOW_INTERNAL_IP_CONNECTIONS` environment variable to `true`.
