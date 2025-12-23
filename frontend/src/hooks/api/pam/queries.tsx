@@ -10,7 +10,8 @@ import {
   TPamAccount,
   TPamFolder,
   TPamResource,
-  TPamSession
+  TPamSession,
+  TPamSessionHealth
 } from "./types";
 
 export const pamKeys = {
@@ -38,7 +39,8 @@ export const pamKeys = {
     params
   ],
   getSession: (sessionId: string) => [...pamKeys.session(), "get", sessionId],
-  listSessions: (projectId: string) => [...pamKeys.session(), "list", projectId]
+  listSessions: (projectId: string) => [...pamKeys.session(), "list", projectId],
+  sessionHealth: (sessionId: string) => [...pamKeys.session(), "health", sessionId] as const
 };
 
 // Resources
@@ -192,6 +194,35 @@ export const useListPamSessions = (
 
       return data.sessions;
     },
+    ...options
+  });
+};
+
+// Browser session health check
+export const useCheckSessionHealth = (
+  sessionId: string,
+  options?: Omit<
+    UseQueryOptions<
+      TPamSessionHealth,
+      unknown,
+      TPamSessionHealth,
+      ReturnType<typeof pamKeys.sessionHealth>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: pamKeys.sessionHealth(sessionId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TPamSessionHealth>(
+        `/api/v1/pam/accounts/session/${sessionId}/health`
+      );
+      return data;
+    },
+    enabled: !!sessionId,
+    refetchInterval: 30000, // Poll every 30 seconds
+    refetchIntervalInBackground: false,
+    retry: false, // Don't retry health checks
     ...options
   });
 };

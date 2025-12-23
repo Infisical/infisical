@@ -13,6 +13,7 @@ import {
   DatabaseError,
   ForbiddenRequestError,
   GatewayTimeoutError,
+  GoneError,
   InternalServerError,
   NotFoundError,
   OidcAuthError,
@@ -31,14 +32,15 @@ enum JWTErrors {
 
 enum HttpStatusCodes {
   BadRequest = 400,
-  NotFound = 404,
   Unauthorized = 401,
   Forbidden = 403,
+  NotFound = 404,
+  Gone = 410,
   UnprocessableContent = 422,
+  TooManyRequests = 429,
   // eslint-disable-next-line @typescript-eslint/no-shadow
   InternalServerError = 500,
-  GatewayTimeout = 504,
-  TooManyRequests = 429
+  GatewayTimeout = 504
 }
 
 export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider) => {
@@ -141,6 +143,10 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       void res
         .status(HttpStatusCodes.NotFound)
         .send({ reqId: req.id, statusCode: HttpStatusCodes.NotFound, message: error.message, error: error.name });
+    } else if (error instanceof GoneError) {
+      void res
+        .status(HttpStatusCodes.Gone)
+        .send({ reqId: req.id, statusCode: HttpStatusCodes.Gone, message: error.message, error: error.name });
     } else if (error instanceof UnauthorizedError) {
       void res.status(HttpStatusCodes.Unauthorized).send({
         reqId: req.id,

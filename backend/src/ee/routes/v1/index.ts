@@ -29,6 +29,7 @@ import { registerOidcRouter } from "./oidc-router";
 import { registerOrgRoleRouter } from "./org-role-router";
 import { PAM_ACCOUNT_REGISTER_ROUTER_MAP } from "./pam-account-routers";
 import { registerPamAccountRouter } from "./pam-account-routers/pam-account-router";
+import { registerPamAccountSessionRouter } from "./pam-account-routers/pam-account-session-router";
 import { registerPamFolderRouter } from "./pam-folder-router";
 import { PAM_RESOURCE_REGISTER_ROUTER_MAP } from "./pam-resource-routers";
 import { registerPamResourceRouter } from "./pam-resource-routers/pam-resource-router";
@@ -199,6 +200,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       await pamRouter.register(
         async (pamAccountRouter) => {
           await pamAccountRouter.register(registerPamAccountRouter);
+          await pamAccountRouter.register(registerPamAccountSessionRouter);
 
           // Provider-specific endpoints
           await Promise.all(

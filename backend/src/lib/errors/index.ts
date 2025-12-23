@@ -116,6 +116,18 @@ export class NotFoundError extends Error {
   }
 }
 
+export class GoneError extends Error {
+  name: string;
+
+  error: unknown;
+
+  constructor({ name, error, message }: { message?: string; name?: string; error?: unknown }) {
+    super(message ?? "The requested resource is no longer available");
+    this.name = name || "Gone";
+    this.error = error;
+  }
+}
+
 export class DisableRotationErrors extends Error {
   name: string;
 

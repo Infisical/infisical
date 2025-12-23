@@ -4,15 +4,20 @@ import { apiRequest } from "@app/config/request";
 
 import { pamKeys } from "./queries";
 import {
+  TCreateBrowserSessionDTO,
   TCreatePamAccountDTO,
   TCreatePamFolderDTO,
   TCreatePamResourceDTO,
   TDeletePamAccountDTO,
   TDeletePamFolderDTO,
   TDeletePamResourceDTO,
+  TExecuteQueryDTO,
   TPamAccount,
+  TPamBrowserSession,
   TPamFolder,
+  TPamQueryResult,
   TPamResource,
+  TTerminateSessionDTO,
   TUpdatePamAccountDTO,
   TUpdatePamFolderDTO,
   TUpdatePamResourceDTO
@@ -203,6 +208,51 @@ export const useDeletePamFolder = () => {
     },
     onSuccess: ({ projectId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.listAccounts({ projectId }) });
+    }
+  });
+};
+
+// Browser sessions
+export const useCreateBrowserSession = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (dto: TCreateBrowserSessionDTO) => {
+      const { data } = await apiRequest.post<TPamBrowserSession>(
+        "/api/v1/pam/accounts/session",
+        dto
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.session() });
+    }
+  });
+};
+
+export const useExecuteSessionQuery = () => {
+  return useMutation({
+    mutationFn: async ({ sessionId, query }: TExecuteQueryDTO) => {
+      const { data } = await apiRequest.post<TPamQueryResult>(
+        `/api/v1/pam/accounts/session/${sessionId}/query`,
+        { query }
+      );
+      return data;
+    }
+    // Note: No cache invalidation - queries are frequent and don't affect other data
+  });
+};
+
+export const useTerminateBrowserSession = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ sessionId }: TTerminateSessionDTO) => {
+      const { data } = await apiRequest.post<{ success: boolean }>(
+        `/api/v1/pam/accounts/session/${sessionId}/terminate`
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.session() });
     }
   });
 };

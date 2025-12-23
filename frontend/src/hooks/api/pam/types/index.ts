@@ -173,3 +173,48 @@ export type TUpdatePamFolderDTO = Partial<Pick<TPamFolder, "name" | "description
 export type TDeletePamFolderDTO = {
   folderId: string;
 };
+
+// Browser session types
+export type TPamBrowserSession = {
+  sessionId: string;
+  expiresAt: string;
+  metadata: {
+    username: string;
+    database: string;
+    host: string;
+    port: number;
+  };
+  account: {
+    id: string;
+    name: string;
+  };
+};
+
+export type TPamSessionHealth = {
+  isAlive: boolean;
+  expiresAt?: string;
+  error?: string;
+};
+
+export type TPamQueryResult = {
+  rows: Array<Array<any>>;
+  fields?: Array<string>;
+  rowCount: number;
+  executionTimeMs: number;
+};
+
+// Browser session DTOs
+export type TCreateBrowserSessionDTO = {
+  accountPath: string;
+  projectId: string;
+  duration?: string;
+};
+
+export type TExecuteQueryDTO = {
+  sessionId: string;
+  query: string;
+};
+
+export type TTerminateSessionDTO = {
+  sessionId: string;
+};

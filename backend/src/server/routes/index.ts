@@ -81,6 +81,7 @@ import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { pamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
+import { pamAccountSessionManagerFactory } from "@app/ee/services/pam-account/pam-account-session-manager";
 import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal";
 import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { pamResourceDALFactory } from "@app/ee/services/pam-resource/pam-resource-dal";
@@ -2476,6 +2477,10 @@ export const registerRoutes = async (
     pamSessionExpirationService
   });
 
+  const pamAccountSessionManager = pamAccountSessionManagerFactory({
+    pamAccountService
+  });
+
   const pamAccountRotation = pamAccountRotationServiceFactory({
     queueService,
     pamAccountService
@@ -2724,6 +2729,7 @@ export const registerRoutes = async (
     pamFolder: pamFolderService,
     pamResource: pamResourceService,
     pamAccount: pamAccountService,
+    pamAccountSessionManager,
     pamSession: pamSessionService,
     upgradePath: upgradePathService,
 
