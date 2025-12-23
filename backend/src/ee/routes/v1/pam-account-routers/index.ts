@@ -20,6 +20,11 @@ import {
   UpdatePostgresAccountSchema
 } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
 import {
+  CreateRedisAccountSchema,
+  SanitizedRedisAccountWithResourceSchema,
+  UpdateRedisAccountSchema
+} from "@app/ee/services/pam-resource/redis/redis-resource-schemas";
+import {
   CreateSSHAccountSchema,
   SanitizedSSHAccountWithResourceSchema,
   UpdateSSHAccountSchema
@@ -44,6 +49,15 @@ export const PAM_ACCOUNT_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fasti
       accountResponseSchema: SanitizedMySQLAccountWithResourceSchema,
       createAccountSchema: CreateMySQLAccountSchema,
       updateAccountSchema: UpdateMySQLAccountSchema
+    });
+  },
+  [PamResource.Redis]: async (server: FastifyZodProvider) => {
+    registerPamAccountEndpoints({
+      server,
+      resourceType: PamResource.Redis,
+      accountResponseSchema: SanitizedRedisAccountWithResourceSchema,
+      createAccountSchema: CreateRedisAccountSchema,
+      updateAccountSchema: UpdateRedisAccountSchema
     });
   },
   [PamResource.SSH]: async (server: FastifyZodProvider) => {
