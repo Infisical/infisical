@@ -51,7 +51,8 @@ RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-li
 # Install Oracle Instant Client for OracleDB mTLS wallet support
 RUN ARCH=$(dpkg --print-architecture) && \
     if [ "$ARCH" = "amd64" ]; then \
-        apt-get update && apt-get install -y libaio1 unzip wget && \
+        apt-get update && apt-get install -y libaio1t64 unzip wget && \
+        ln -sf /lib/x86_64-linux-gnu/libaio.so.1t64 /lib/x86_64-linux-gnu/libaio.so.1 && \
         wget -q https://download.oracle.com/otn_software/linux/instantclient/2326000/instantclient-basic-linux.x64-23.26.0.0.0.zip && \
         unzip instantclient-basic-linux.x64-23.26.0.0.0.zip -d /opt/oracle && \
         rm instantclient-basic-linux.x64-23.26.0.0.0.zip; \
