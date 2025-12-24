@@ -15,9 +15,6 @@ import { TRedisAccountCredentials, TRedisResourceConnectionDetails } from "./red
 
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
-const TEST_CONNECTION_USERNAME = "infisical-gateway-connection-test";
-const TEST_CONNECTION_PASSWORD = "infisical-gateway-connection-test-password";
-
 export interface RedisResourceConnection {
   /**
    * Check and see if the connection is good or not.
@@ -27,6 +24,14 @@ export interface RedisResourceConnection {
    * @returns Promise to be resolved when the connection is good, otherwise an error will be errbacked
    */
   validate: (connectOnly: boolean) => Promise<void>;
+
+  /**
+   * Authenticate with the provided credentials.
+   *
+   * @param credentials the username and password to authenticate with
+   * @returns Promise to be resolved when authentication succeeds, otherwise an error will be errbacked
+   */
+  authenticate: (credentials: TRedisAccountCredentials) => Promise<void>;
 
   /**
    * Close the connection.
@@ -40,11 +45,9 @@ const makeRedisConnection = (
   proxyPort: number,
   config: {
     connectionDetails: TRedisResourceConnectionDetails;
-    username?: string;
-    password?: string;
   }
 ): RedisResourceConnection => {
-  const { connectionDetails, username, password } = config;
+  const { connectionDetails } = config;
   const { sslEnabled, sslRejectUnauthorized, sslCertificate } = connectionDetails;
 
   let client: Redis | null = null;
@@ -69,8 +72,8 @@ const makeRedisConnection = (
 
   return {
     validate: async (connectOnly) => {
+      client = createClient();
       try {
-        client = createClient();
         await client.ping();
       } catch (error) {
         if (connectOnly) {
@@ -94,6 +97,29 @@ const makeRedisConnection = (
         }
       }
     },
+    authenticate: async (credentials) => {
+      client = createClient();
+      try {
+        const result = await client.auth(credentials.username, credentials.password, () => {});
+        if (result !== "OK") {
+          throw new BadRequestError({
+            message: `Authentication failed: Redis returned ${result as string} status`
+          });
+        }
+      } catch (error) {
+        if (error instanceof BadRequestError) {
+          throw error;
+        }
+        throw new BadRequestError({
+          message: `Unable to authenticate Redis connection: ${(error as Error).message || String(error)}`
+        });
+      } finally {
+        if (client) {
+          await client.quit();
+          client = null;
+        }
+      }
+    },
     close: async () => {
       if (client) {
         await client.quit();
@@ -107,8 +133,6 @@ export const executeWithGateway = async <T>(
   config: {
     connectionDetails: TRedisResourceConnectionDetails;
     gatewayId: string;
-    username?: string;
-    password?: string;
   },
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   operation: (connection: RedisResourceConnection) => Promise<T>
@@ -183,13 +207,11 @@ export const redisResourceFactory: TPamResourceFactory<TRedisResourceConnectionD
       await executeWithGateway(
         {
           connectionDetails,
-          gatewayId,
-          username: credentials.username,
-          password: credentials.password
+          gatewayId
         },
         gatewayV2Service,
         async (client) => {
-          await client.validate(false);
+          await client.authenticate(credentials);
         }
       );
       return credentials;
