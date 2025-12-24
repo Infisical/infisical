@@ -781,12 +781,6 @@ export const pamAccountServiceFactory = ({
         break;
       case PamResource.Redis:
         {
-          const connectionCredentials = (await decryptResourceConnectionDetails({
-            encryptedConnectionDetails: resource.encryptedConnectionDetails,
-            kmsService,
-            projectId
-          })) as TRedisResourceConnectionDetails;
-
           const credentials = (await decryptAccountCredentials({
             encryptedCredentials: account.encryptedCredentials,
             kmsService,
@@ -795,8 +789,6 @@ export const pamAccountServiceFactory = ({
 
           metadata = {
             username: credentials.username,
-            host: connectionCredentials.host,
-            port: connectionCredentials.port,
             accountName: account.name,
             accountPath: folderPath
           };

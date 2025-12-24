@@ -64,7 +64,10 @@ const makeRedisConnection = (
           rejectUnauthorized: sslRejectUnauthorized,
           ca: sslCertificate
         }
-      })
+      }),
+      retryStrategy: () => {
+        return null;
+      }
     });
   };
 
@@ -74,15 +77,9 @@ const makeRedisConnection = (
         client = createClient();
 
         // Test authentication
-        let result: string;
-        if (actualPassword) {
-          result = await client.auth(actualUsername, actualPassword, () => {});
-        } else {
-          result = await client.auth(actualUsername, () => {});
-        }
-
+        const result = await client.auth(actualUsername, actualPassword);
         if (result !== "OK") {
-          throw new BadRequestError({ message: `Redis authentication failed: ${result}` });
+          throw new BadRequestError({ message: `Redis authentication failed: ${result as string}` });
         }
 
         // Test connection with a simple command
