@@ -159,6 +159,40 @@ export const useAccessPamAccount = () => {
   });
 };
 
+export type TCreateSqlSessionDTO = {
+  accountPath: string;
+  projectId: string;
+  duration: string;
+};
+
+export type TCreateSqlSessionResponse = {
+  sessionId: string;
+  resourceType: string;
+  metadata?: {
+    username?: string;
+    database?: string;
+    accountName?: string;
+    accountPath?: string;
+  };
+};
+
+export const useCreateSqlSession = () => {
+  return useMutation({
+    mutationFn: async ({ accountPath, projectId, duration }: TCreateSqlSessionDTO) => {
+      const { data } = await apiRequest.post<TCreateSqlSessionResponse>(
+        "/api/v1/pam/sql-proxy/sessions",
+        {
+          accountPath,
+          projectId,
+          duration
+        }
+      );
+
+      return data;
+    }
+  });
+};
+
 // Folders
 export const useCreatePamFolder = () => {
   const queryClient = useQueryClient();

@@ -86,7 +86,11 @@ export const KeyStorePrefixes = {
 
   // AI MCP Endpoint OAuth
   AiMcpEndpointOAuthClient: (clientId: string) => `ai-mcp-endpoint-oauth-client:${clientId}` as const,
-  AiMcpEndpointOAuthCode: (clientId: string, code: string) => `ai-mcp-endpoint-oauth-code:${clientId}:${code}` as const
+  AiMcpEndpointOAuthCode: (clientId: string, code: string) => `ai-mcp-endpoint-oauth-code:${clientId}:${code}` as const,
+
+  // PAM SQL Proxy session certs
+  PamSqlProxySessionCerts: (projectId: string, sessionId: string) =>
+    `pam-sql-proxy-session-certs:${projectId}:${sessionId}` as const
 };
 
 export const KeyStoreTtls = {

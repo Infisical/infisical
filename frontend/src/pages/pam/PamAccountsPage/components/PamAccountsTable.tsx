@@ -82,9 +82,10 @@ type PamAccountFilter = {
 
 type Props = {
   projectId: string;
+  orgId: string;
 };
 
-export const PamAccountsTable = ({ projectId }: Props) => {
+export const PamAccountsTable = ({ projectId, orgId }: Props) => {
   const navigate = useNavigate({ from: ROUTE_PATHS.Pam.AccountsPage.path });
   const { accessAwsIam, loadingAccountId } = useAccessAwsIamAccount();
   const { mutateAsync: checkPolicyMatch } = useCheckPolicyMatch();
@@ -555,6 +556,7 @@ export const PamAccountsTable = ({ projectId }: Props) => {
             : undefined
         }
         projectId={projectId}
+        orgId={orgId}
       />
       <PamRequestAccountAccessModal
         isOpen={popUp.requestAccount.isOpen}

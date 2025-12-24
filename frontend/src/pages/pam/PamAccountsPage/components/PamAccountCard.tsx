@@ -15,8 +15,7 @@ export const PamAccountCard = ({ account, onAccess, accountPath }: Props) => {
   const { image, name: resourceTypeName } = PAM_RESOURCE_TYPE_MAP[account.resource.resourceType];
 
   return (
-    <button
-      type="button"
+    <div
       key={account.id}
       className="flex flex-col overflow-clip rounded-sm border border-mineshaft-600 bg-mineshaft-800 p-4 text-start transition-transform duration-100"
     >
@@ -47,6 +46,6 @@ export const PamAccountCard = ({ account, onAccess, accountPath }: Props) => {
         {resource.name}
       </Badge>
       <p className="mt-2 truncate text-sm text-mineshaft-400">{description || "No description"}</p>
-    </button>
+    </div>
   );
 };

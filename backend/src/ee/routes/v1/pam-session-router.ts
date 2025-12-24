@@ -92,7 +92,10 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         sessionId: z.string().uuid()
       }),
       body: z.object({
-        logs: z.array(z.union([PamSessionCommandLogSchema, TerminalEventSchema, HttpEventSchema]))
+        logs: z
+          .array(z.union([PamSessionCommandLogSchema, TerminalEventSchema, HttpEventSchema]))
+          .nullable()
+          .transform((val) => val ?? [])
       }),
       response: {
         200: z.object({

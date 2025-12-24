@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { faCopy } from "@fortawesome/free-regular-svg-icons";
-import { faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { faDatabase, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate } from "@tanstack/react-router";
 import ms from "ms";
 
 import { createNotification } from "@app/components/notifications";
-import { FormLabel, IconButton, Input, Modal, ModalContent } from "@app/components/v2";
-import { PamResourceType, TPamAccount } from "@app/hooks/api/pam";
+import { Button, FormLabel, IconButton, Input, Modal, ModalContent } from "@app/components/v2";
+import { PamResourceType, TPamAccount, useCreateSqlSession } from "@app/hooks/api/pam";
 
 type Props = {
   account?: TPamAccount;
@@ -14,6 +15,7 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   projectId: string;
+  orgId: string;
 };
 
 export const PamAccessAccountModal = ({
@@ -21,9 +23,13 @@ export const PamAccessAccountModal = ({
   onOpenChange,
   account,
   projectId,
-  accountPath
+  accountPath,
+  orgId
 }: Props) => {
   const [duration, setDuration] = useState("4h");
+  const [isOpeningSqlConsole, setIsOpeningSqlConsole] = useState(false);
+  const navigate = useNavigate();
+  const createSqlSession = useCreateSqlSession();
 
   const { protocol, hostname, port } = window.location;
   const portSuffix = port && port !== "80" && port !== "443" ? `:${port}` : "";
@@ -92,6 +98,45 @@ export const PamAccessAccountModal = ({
     }
   }, [account, fullAccountPath, projectId, cliDuration, siteURL]);
 
+  const handleOpenSqlConsole = async () => {
+    if (!account || !isDurationValid) return;
+
+    setIsOpeningSqlConsole(true);
+    try {
+      const response = await createSqlSession.mutateAsync({
+        accountPath: fullAccountPath,
+        projectId,
+        duration
+      });
+
+      // stored for refreshes to work
+      sessionStorage.setItem(
+        `sql-console-${response.sessionId}`,
+        JSON.stringify({ accountPath: fullAccountPath, projectId, duration })
+      );
+
+      navigate({
+        to: "/organizations/$orgId/projects/pam/$projectId/sql-console/$sessionId",
+        params: {
+          orgId,
+          projectId,
+          sessionId: response.sessionId
+        }
+      });
+
+      onOpenChange(false);
+    } catch (error) {
+      createNotification({
+        text: "Failed to start SQL session",
+        type: "error"
+      });
+    } finally {
+      setIsOpeningSqlConsole(false);
+    }
+  };
+
+  const isPostgres = account?.resource.resourceType === PamResourceType.Postgres;
+
   if (!account) return null;
 
   return (
@@ -99,7 +144,7 @@ export const PamAccessAccountModal = ({
       <ModalContent
         className="max-w-2xl pb-2"
         title="Access Account"
-        subTitle={`Access ${account.name} using a CLI command.`}
+        subTitle={`Access ${account.name} using a CLI command${isPostgres ? " or the browser SQL console" : ""}.`}
       >
         <FormLabel
           label="Duration"
@@ -111,7 +156,32 @@ export const PamAccessAccountModal = ({
           placeholder="permanent"
           isError={!isDurationValid}
         />
-        <FormLabel label="CLI Command" className="mt-4" />
+
+        {isPostgres && (
+          <div className="mt-6">
+            <Button
+              onClick={handleOpenSqlConsole}
+              isLoading={isOpeningSqlConsole}
+              isDisabled={!isDurationValid || isOpeningSqlConsole}
+              leftIcon={<FontAwesomeIcon icon={faDatabase} />}
+              colorSchema="primary"
+              className="w-full"
+            >
+              Open SQL Console in Browser
+            </Button>
+            <p className="mt-2 text-center text-sm text-mineshaft-400">
+              Connect directly in your browser to run SQL queries
+            </p>
+          </div>
+        )}
+
+        <div className="my-4 flex items-center gap-4">
+          <div className="h-px flex-1 bg-mineshaft-600" />
+          <span className="text-xs text-mineshaft-400">OR</span>
+          <div className="h-px flex-1 bg-mineshaft-600" />
+        </div>
+
+        <FormLabel label="CLI Command" />
         <div className="flex gap-2">
           <Input value={command} isDisabled />
           <IconButton

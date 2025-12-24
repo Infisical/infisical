@@ -160,6 +160,7 @@ import { Route as sshSshCaByIDPageRouteImport } from './pages/ssh/SshCaByIDPage/
 import { Route as secretManagerSecretDashboardPageRouteImport } from './pages/secret-manager/SecretDashboardPage/route'
 import { Route as secretManagerIntegrationsSelectIntegrationAuthPageRouteImport } from './pages/secret-manager/integrations/SelectIntegrationAuthPage/route'
 import { Route as secretManagerIntegrationsDetailsByIDPageRouteImport } from './pages/secret-manager/IntegrationsDetailsByIDPage/route'
+import { Route as pamSqlConsolePageRouteImport } from './pages/pam/SqlConsolePage/route'
 import { Route as pamPamSessionsByIDPageRouteImport } from './pages/pam/PamSessionsByIDPage/route'
 import { Route as pamApprovalRequestDetailPageRouteImport } from './pages/pam/ApprovalRequestDetailPage/route'
 import { Route as certManagerPkiSubscriberDetailsByIDPageRouteImport } from './pages/cert-manager/PkiSubscriberDetailsByIDPage/route'
@@ -1588,6 +1589,12 @@ const secretManagerIntegrationsDetailsByIDPageRouteRoute =
     getParentRoute: () =>
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementProjectIdSecretManagerLayoutIntegrationsRoute,
   } as any)
+
+const pamSqlConsolePageRouteRoute = pamSqlConsolePageRouteImport.update({
+  id: '/sql-console/$sessionId',
+  path: '/sql-console/$sessionId',
+  getParentRoute: () => pamLayoutRoute,
+} as any)
 
 const pamPamSessionsByIDPageRouteRoute =
   pamPamSessionsByIDPageRouteImport.update({
@@ -3409,6 +3416,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof pamPamSessionsByIDPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutSessionsImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sql-console/$sessionId': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sql-console/$sessionId'
+      path: '/sql-console/$sessionId'
+      fullPath: '/organizations/$orgId/projects/pam/$projectId/sql-console/$sessionId'
+      preLoaderRoute: typeof pamSqlConsolePageRouteImport
+      parentRoute: typeof pamLayoutImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/$integrationId': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/$integrationId'
       path: '/$integrationId'
@@ -4496,6 +4510,7 @@ interface pamLayoutRouteChildren {
   projectAuditLogsPageRoutePamRoute: typeof projectAuditLogsPageRoutePamRoute
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutSessionsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutSessionsRouteWithChildren
   pamApprovalRequestDetailPageRouteRoute: typeof pamApprovalRequestDetailPageRouteRoute
+  pamSqlConsolePageRouteRoute: typeof pamSqlConsolePageRouteRoute
   projectGroupDetailsByIDPageRoutePamRoute: typeof projectGroupDetailsByIDPageRoutePamRoute
   projectIdentityDetailsByIDPageRoutePamRoute: typeof projectIdentityDetailsByIDPageRoutePamRoute
   projectMemberDetailsByIDPageRoutePamRoute: typeof projectMemberDetailsByIDPageRoutePamRoute
@@ -4513,6 +4528,7 @@ const pamLayoutRouteChildren: pamLayoutRouteChildren = {
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutSessionsRouteWithChildren,
   pamApprovalRequestDetailPageRouteRoute:
     pamApprovalRequestDetailPageRouteRoute,
+  pamSqlConsolePageRouteRoute: pamSqlConsolePageRouteRoute,
   projectGroupDetailsByIDPageRoutePamRoute:
     projectGroupDetailsByIDPageRoutePamRoute,
   projectIdentityDetailsByIDPageRoutePamRoute:
@@ -5499,6 +5515,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/approval-requests/$approvalRequestId': typeof pamApprovalRequestDetailPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/sessions/$sessionId': typeof pamPamSessionsByIDPageRouteRoute
+  '/organizations/$orgId/projects/pam/$projectId/sql-console/$sessionId': typeof pamSqlConsolePageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth': typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug': typeof secretManagerSecretDashboardPageRouteRoute
@@ -5743,6 +5760,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/approval-requests/$approvalRequestId': typeof pamApprovalRequestDetailPageRouteRoute
   '/organizations/$orgId/projects/pam/$projectId/sessions/$sessionId': typeof pamPamSessionsByIDPageRouteRoute
+  '/organizations/$orgId/projects/pam/$projectId/sql-console/$sessionId': typeof pamSqlConsolePageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth': typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug': typeof secretManagerSecretDashboardPageRouteRoute
@@ -6011,6 +6029,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approval-requests/$approvalRequestId': typeof pamApprovalRequestDetailPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/$sessionId': typeof pamPamSessionsByIDPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sql-console/$sessionId': typeof pamSqlConsolePageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/select-integration-auth': typeof secretManagerIntegrationsSelectIntegrationAuthPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/secrets/$envSlug': typeof secretManagerSecretDashboardPageRouteRoute
@@ -6270,6 +6289,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName'
     | '/organizations/$orgId/projects/pam/$projectId/approval-requests/$approvalRequestId'
     | '/organizations/$orgId/projects/pam/$projectId/sessions/$sessionId'
+    | '/organizations/$orgId/projects/pam/$projectId/sql-console/$sessionId'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth'
     | '/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug'
@@ -6513,6 +6533,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName'
     | '/organizations/$orgId/projects/pam/$projectId/approval-requests/$approvalRequestId'
     | '/organizations/$orgId/projects/pam/$projectId/sessions/$sessionId'
+    | '/organizations/$orgId/projects/pam/$projectId/sql-console/$sessionId'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId'
     | '/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth'
     | '/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug'
@@ -6779,6 +6800,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approval-requests/$approvalRequestId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/$sessionId'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sql-console/$sessionId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/$integrationId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/select-integration-auth'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/secrets/$envSlug'
@@ -7466,6 +7488,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/audit-logs",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approval-requests/$approvalRequestId",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sql-console/$sessionId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/groups/$groupId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/identities/$identityId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/members/$membershipId",
@@ -7865,6 +7888,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/$sessionId": {
       "filePath": "pam/PamSessionsByIDPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sql-console/$sessionId": {
+      "filePath": "pam/SqlConsolePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/$integrationId": {
       "filePath": "secret-manager/IntegrationsDetailsByIDPage/route.tsx",
