@@ -41,6 +41,7 @@ type TActiveConnection = {
   port: number;
   resourceName: string;
   accountName: string;
+  expiresAt: Date;
   relayHost?: string;
   relayCerts?: {
     clientCertificate: string;
@@ -576,6 +577,7 @@ export const pamSqlProxyServiceFactory = ({
         port: connectionDetails.port,
         resourceName: resource.name,
         accountName: account.name,
+        expiresAt: session.expiresAt,
         relayHost,
         relayCerts,
         gatewayCerts
@@ -732,7 +734,8 @@ export const pamSqlProxyServiceFactory = ({
       host: connection.host,
       port: connection.port,
       resourceName: connection.resourceName,
-      accountName: connection.accountName
+      accountName: connection.accountName,
+      expiresAt: connection.expiresAt
     };
   };
 

@@ -341,7 +341,7 @@ export const registerPamSqlProxyRouter = async (server: FastifyZodProvider) => {
           resourceName: status.resourceName || "Unknown",
           accountName: status.accountName || "Unknown",
           resourceType: "postgres",
-          expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString()
+          expiresAt: status.expiresAt.toISOString()
         };
       }
 

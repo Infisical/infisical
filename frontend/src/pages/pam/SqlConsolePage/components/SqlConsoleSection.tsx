@@ -260,8 +260,8 @@ export const SqlConsoleSection = ({ sessionId: initialSessionId }: Props) => {
           setIsAutoReconnecting(true);
           setConnectionError(null);
           
-          // exponential backoff: 1s, 2s, 4s, 8s, 16s
-          const delay = Math.min(1000 * 2 ** reconnectAttemptRef.current, 32000);
+          // exponential backoff: 1s, 2s, 4s, 8s, 16s (max)
+          const delay = Math.min(1000 * 2 ** reconnectAttemptRef.current, 16000);
           reconnectAttemptRef.current += 1;
           
           reconnectTimeoutRef.current = setTimeout(() => {
