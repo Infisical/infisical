@@ -44,6 +44,9 @@ type TCreateSessionDTO = {
   duration?: string;
 };
 
+// PostgreSQL field value types (returned as strings in text mode, or typed in binary mode)
+type TPostgresValue = string | number | boolean | null | Buffer | Date;
+
 type TFieldMetadata = {
   name: string;
   dataTypeID: number;
@@ -54,9 +57,7 @@ type TFieldMetadata = {
 };
 
 type TQueryResult = {
-  // TODO: Replace any with proper PostgreSQL field type union (string | number | boolean | null | Buffer)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  rows: Array<Array<any>>;
+  rows: Array<Array<TPostgresValue>>;
   fields: Array<TFieldMetadata>;
   rowCount: number;
   executionTimeMs: number;
@@ -264,12 +265,8 @@ export const pamAccountSessionManagerFactory = ({ pamAccountService }: TPamAccou
   const executePostgresQuery = async (
     gatewayConn: TLSSocket,
     query: string
-    // TODO: Replace any with proper PostgreSQL field type union (string | number | boolean | null | Buffer)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ): Promise<{ rows: Array<Array<any>>; fields: Array<TFieldMetadata>; rowCount: number }> => {
-    // TODO: Replace any with proper PostgreSQL field type union
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const results: Array<Array<any>> = [];
+  ): Promise<{ rows: Array<Array<TPostgresValue>>; fields: Array<TFieldMetadata>; rowCount: number }> => {
+    const results: Array<Array<TPostgresValue>> = [];
     const fields: Array<TFieldMetadata> = [];
 
     await executeWithTimeout<void>(
