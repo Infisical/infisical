@@ -141,7 +141,16 @@ export const registerPamAccountSessionRouter = async (server: FastifyZodProvider
           // TODO: Replace z.any() with proper PostgreSQL field type union (z.union([z.string(), z.number(), z.boolean(), z.null(), z.instanceof(Buffer)]))
           // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
           rows: z.array(z.array(z.any())),
-          fields: z.array(z.string()).optional(),
+          fields: z.array(
+            z.object({
+              name: z.string(),
+              dataTypeID: z.number(),
+              dataTypeSize: z.number(),
+              dataTypeModifier: z.number(),
+              tableID: z.number().optional(),
+              columnID: z.number().optional()
+            })
+          ),
           rowCount: z.number(),
           executionTimeMs: z.number()
         })
@@ -152,12 +161,11 @@ export const registerPamAccountSessionRouter = async (server: FastifyZodProvider
       const { sessionId } = req.params;
       const { query } = req.body;
 
-      const sessionInfo = server.services.pamAccountSessionManager.getSessionInfo(sessionId);
-      if (!sessionInfo) {
-        throw new BadRequestError({ message: "Session not found" });
-      }
-
+      // Execute query first - will throw NotFoundError/GoneError if session doesn't exist
       const result = await server.services.pamAccountSessionManager.executeQuery(sessionId, query);
+
+      // Get session info for audit logging (we know it exists now)
+      const sessionInfo = server.services.pamAccountSessionManager.getSessionInfo(sessionId);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -166,7 +174,7 @@ export const registerPamAccountSessionRouter = async (server: FastifyZodProvider
           type: EventType.PAM_SESSION_LOGS_UPDATE,
           metadata: {
             sessionId,
-            accountName: sessionInfo.accountName
+            accountName: sessionInfo!.accountName
           }
         }
       });

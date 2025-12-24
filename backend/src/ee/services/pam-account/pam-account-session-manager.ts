@@ -1,3 +1,5 @@
+import { serialize } from "pg-protocol";
+import { Parser } from "pg-protocol/dist/parser";
 import tls, { TLSSocket } from "tls";
 
 import { TPamAccounts, TPamSessions } from "@app/db/schemas";
@@ -42,11 +44,20 @@ type TCreateSessionDTO = {
   duration?: string;
 };
 
+type TFieldMetadata = {
+  name: string;
+  dataTypeID: number;
+  dataTypeSize: number;
+  dataTypeModifier: number;
+  tableID?: number;
+  columnID?: number;
+};
+
 type TQueryResult = {
   // TODO: Replace any with proper PostgreSQL field type union (string | number | boolean | null | Buffer)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   rows: Array<Array<any>>;
-  fields?: Array<string>;
+  fields: Array<TFieldMetadata>;
   rowCount: number;
   executionTimeMs: number;
 };
@@ -67,71 +78,79 @@ export const pamAccountSessionManagerFactory = ({ pamAccountService }: TPamAccou
   // In-memory storage for active sessions
   const activeSessions = new Map<string, TActiveSession>();
 
-  // PostgreSQL wire protocol helpers
-  const buildStartupMessage = (user: string, database: string): Buffer => {
-    const params = ["user", user, "database", database, "client_encoding", "UTF8"];
-    let paramsLength = 0;
-    for (const param of params) {
-      paramsLength += Buffer.from(param, "utf8").length + 1;
-    }
-    paramsLength += 1; // Null terminator
+  // Helper: Format error message
+  const formatError = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
-    const messageLength = 4 + 4 + paramsLength;
-    const message = Buffer.alloc(messageLength);
-    let offset = 0;
-
-    message.writeInt32BE(messageLength, offset);
-    offset += 4;
-    message.writeInt32BE(196608, offset); // Protocol version 3.0
-    offset += 4;
-
-    for (const param of params) {
-      const paramBuf = Buffer.from(`${param}\0`, "utf8");
-      paramBuf.copy(message, offset);
-      offset += paramBuf.length;
-    }
-    message.writeInt8(0, offset);
-
-    return message;
+  // Helper: Cleanup event listeners and timeout
+  const cleanupListeners = (
+    connection: TLSSocket,
+    timeout: NodeJS.Timeout,
+    dataHandler: (chunk: Buffer) => void,
+    errorHandler: (err: Error) => void
+  ) => {
+    clearTimeout(timeout);
+    connection.removeListener("data", dataHandler);
+    connection.removeListener("error", errorHandler);
   };
 
-  const buildQueryMessage = (query: string): Buffer => {
-    const queryStr = `${query}\0`;
-    const queryBytes = Buffer.from(queryStr, "utf8");
-    const length = Buffer.alloc(4);
-    length.writeInt32BE(4 + queryBytes.length);
-
-    return Buffer.concat([Buffer.from("Q"), length, queryBytes]);
-  };
-
-  // Connect to relay server with TLS
-  const connectToRelay = async (
-    relayHost: string,
-    certs: {
-      clientCertificate: string;
-      clientPrivateKey: string;
-      serverCertificateChain: string;
-    }
-  ): Promise<TLSSocket> => {
-    const [host, portStr] = relayHost.includes(":") ? relayHost.split(":") : [relayHost, "8443"];
-    const port = parseInt(portStr, 10);
-
+  // Helper: Execute PostgreSQL protocol operation with timeout
+  const executeWithTimeout = <T>(
+    gatewayConn: TLSSocket,
+    operation: (parser: Parser) => void,
+    messageHandler: (
+      msg: any,
+      resolve: (value: T) => void,
+      reject: (reason?: any) => void,
+      cleanup: () => void
+    ) => void,
+    timeoutMs: number,
+    timeoutMessage: string
+  ): Promise<T> => {
     return new Promise((resolve, reject) => {
-      const options = {
-        host,
-        port,
-        cert: Buffer.from(certs.clientCertificate),
-        key: Buffer.from(certs.clientPrivateKey),
-        ca: Buffer.from(certs.serverCertificateChain),
-        minVersion: "TLSv1.2" as const,
-        rejectUnauthorized: true
+      const parser = new Parser();
+      let timeout: NodeJS.Timeout;
+      let dataHandler: ((chunk: Buffer) => void) | undefined;
+      let errorHandler: ((err: Error) => void) | undefined;
+
+      const cleanup = () => {
+        clearTimeout(timeout);
+        if (dataHandler) gatewayConn.removeListener("data", dataHandler);
+        if (errorHandler) gatewayConn.removeListener("error", errorHandler);
       };
 
+      errorHandler = (err: Error) => {
+        cleanup();
+        reject(err);
+      };
+
+      dataHandler = (chunk: Buffer) => {
+        parser.parse(chunk, (msg: any) => messageHandler(msg, resolve, reject, cleanup));
+      };
+
+      timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error(timeoutMessage));
+      }, timeoutMs);
+
+      gatewayConn.on("data", dataHandler);
+      gatewayConn.on("error", errorHandler);
+
+      operation(parser);
+    });
+  };
+
+  // Helper: Create TLS connection with timeout
+  const createTLSConnection = (
+    options: tls.ConnectionOptions,
+    timeoutMessage: string,
+    timeoutMs = 30000
+  ): Promise<TLSSocket> => {
+    return new Promise((resolve, reject) => {
       const conn = tls.connect(options);
       const timeout = setTimeout(() => {
         conn.destroy();
-        reject(new Error("Relay connection timeout"));
-      }, 30000);
+        reject(new Error(timeoutMessage));
+      }, timeoutMs);
 
       conn.on("secureConnect", () => {
         clearTimeout(timeout);
@@ -145,6 +164,48 @@ export const pamAccountSessionManagerFactory = ({ pamAccountService }: TPamAccou
     });
   };
 
+  // Helper: Convert certificate strings to buffers
+  const certsToBuffers = (certs: {
+    clientCertificate: string;
+    clientPrivateKey: string;
+    serverCertificateChain: string;
+  }) => ({
+    cert: Buffer.from(certs.clientCertificate),
+    key: Buffer.from(certs.clientPrivateKey),
+    ca: Buffer.from(certs.serverCertificateChain)
+  });
+
+  // Helper: Safely destroy connections
+  const destroyConnection = (conn: TLSSocket) => {
+    try {
+      conn.destroy();
+    } catch {
+      // Ignore errors
+    }
+  };
+
+  // Connect to relay server with TLS
+  const connectToRelay = async (
+    relayHost: string,
+    certs: {
+      clientCertificate: string;
+      clientPrivateKey: string;
+      serverCertificateChain: string;
+    }
+  ): Promise<TLSSocket> => {
+    const [host, portStr] = relayHost.includes(":") ? relayHost.split(":") : [relayHost, "8443"];
+    return createTLSConnection(
+      {
+        host,
+        port: parseInt(portStr, 10),
+        ...certsToBuffers(certs),
+        minVersion: "TLSv1.2" as const,
+        rejectUnauthorized: true
+      },
+      "Relay connection timeout"
+    );
+  };
+
   // Connect to gateway through relay
   const connectToGateway = async (
     relayConn: TLSSocket,
@@ -155,182 +216,97 @@ export const pamAccountSessionManagerFactory = ({ pamAccountService }: TPamAccou
     },
     alpn = "infisical-pam-proxy"
   ): Promise<TLSSocket> => {
-    return new Promise((resolve, reject) => {
-      const options = {
+    return createTLSConnection(
+      {
         socket: relayConn,
-        cert: Buffer.from(certs.clientCertificate),
-        key: Buffer.from(certs.clientPrivateKey),
-        ca: Buffer.from(certs.serverCertificateChain),
+        ...certsToBuffers(certs),
         ALPNProtocols: [alpn],
         servername: "localhost",
         minVersion: "TLSv1.2" as const,
         maxVersion: "TLSv1.3" as const,
         rejectUnauthorized: true
-      };
-
-      const gatewayConn = tls.connect(options);
-      const timeout = setTimeout(() => {
-        gatewayConn.destroy();
-        reject(new Error("Gateway connection timeout"));
-      }, 30000);
-
-      gatewayConn.on("secureConnect", () => {
-        clearTimeout(timeout);
-        resolve(gatewayConn);
-      });
-
-      gatewayConn.on("error", (err) => {
-        clearTimeout(timeout);
-        reject(err);
-      });
-    });
+      },
+      "Gateway connection timeout"
+    );
   };
 
-  // Send PostgreSQL startup message and wait for ready
+  // Initialize PostgreSQL connection using pg-protocol
   const initializePostgresConnection = async (
     gatewayConn: TLSSocket,
     username: string,
     database: string
   ): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      let responseData = Buffer.alloc(0);
-      let timeout: NodeJS.Timeout;
-
-      const dataHandler = (chunk: Buffer) => {
-        responseData = Buffer.concat([responseData, chunk]);
-
-        let offset = 0;
-        while (offset < responseData.length) {
-          if (offset + 5 > responseData.length) break;
-
-          const messageType = String.fromCharCode(responseData[offset]);
-          const messageLength = responseData.readInt32BE(offset + 1);
-
-          if (offset + 1 + messageLength > responseData.length) break;
-
-          if (messageType === "Z") {
-            // ReadyForQuery
-            clearTimeout(timeout);
-            gatewayConn.removeListener("data", dataHandler);
-            resolve();
-            return;
-          }
-          if (messageType === "E") {
-            // Error
-            clearTimeout(timeout);
-            gatewayConn.removeListener("data", dataHandler);
-            reject(new Error("PostgreSQL startup error"));
-            return;
-          }
-
-          offset += 1 + messageLength;
+    return executeWithTimeout<void>(
+      gatewayConn,
+      () => {
+        const startupMessage = serialize.startup({
+          user: username,
+          database,
+          client_encoding: "UTF8"
+        });
+        gatewayConn.write(startupMessage);
+      },
+      (msg, resolve, reject, cleanup) => {
+        if (msg.name === "readyForQuery") {
+          cleanup();
+          resolve();
+        } else if (msg.name === "error") {
+          cleanup();
+          reject(new Error("PostgreSQL startup error"));
         }
-
-        responseData = responseData.slice(offset);
-      };
-
-      timeout = setTimeout(() => {
-        gatewayConn.removeListener("data", dataHandler);
-        reject(new Error("PostgreSQL startup timeout"));
-      }, 15000);
-
-      gatewayConn.on("data", dataHandler);
-      gatewayConn.on("error", (err) => {
-        clearTimeout(timeout);
-        gatewayConn.removeListener("data", dataHandler);
-        reject(err);
-      });
-
-      // Send startup message
-      const startupMessage = buildStartupMessage(username, database);
-      gatewayConn.write(startupMessage);
-    });
+      },
+      15000,
+      "PostgreSQL startup timeout"
+    );
   };
 
-  // Execute PostgreSQL query
+  // Execute PostgreSQL query using pg-protocol
   const executePostgresQuery = async (
     gatewayConn: TLSSocket,
     query: string
     // TODO: Replace any with proper PostgreSQL field type union (string | number | boolean | null | Buffer)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ): Promise<{ rows: Array<Array<any>>; rowCount: number }> => {
-    return new Promise((resolve, reject) => {
-      let responseData = Buffer.alloc(0);
-      // TODO: Replace any with proper PostgreSQL field type union
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const results: Array<Array<any>> = [];
-      let timeout: NodeJS.Timeout;
+  ): Promise<{ rows: Array<Array<any>>; fields: Array<TFieldMetadata>; rowCount: number }> => {
+    // TODO: Replace any with proper PostgreSQL field type union
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const results: Array<Array<any>> = [];
+    const fields: Array<TFieldMetadata> = [];
 
-      const dataHandler = (chunk: Buffer) => {
-        responseData = Buffer.concat([responseData, chunk]);
-
-        let offset = 0;
-        while (offset < responseData.length) {
-          if (offset + 5 > responseData.length) break;
-
-          const messageType = String.fromCharCode(responseData[offset]);
-          const messageLength = responseData.readInt32BE(offset + 1);
-
-          if (offset + 1 + messageLength > responseData.length) break;
-
-          const messageData = responseData.slice(offset + 5, offset + 1 + messageLength);
-
-          if (messageType === "D") {
-            // DataRow
-            const fieldCount = messageData.readInt16BE(0);
-            // TODO: Replace any with proper PostgreSQL field type union
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const fields: Array<any> = [];
-            let fieldOffset = 2;
-
-            for (let i = 0; i < fieldCount; i += 1) {
-              const fieldLength = messageData.readInt32BE(fieldOffset);
-              fieldOffset += 4;
-              if (fieldLength > 0) {
-                const fieldValue = messageData.slice(fieldOffset, fieldOffset + fieldLength).toString("utf8");
-                fields.push(fieldValue);
-                fieldOffset += fieldLength;
-              } else {
-                fields.push(null);
-              }
-            }
-            results.push(fields);
-          } else if (messageType === "Z") {
-            // ReadyForQuery
-            clearTimeout(timeout);
-            gatewayConn.removeListener("data", dataHandler);
-            resolve({ rows: results, rowCount: results.length });
-            return;
-          } else if (messageType === "E") {
-            // Error
-            clearTimeout(timeout);
-            gatewayConn.removeListener("data", dataHandler);
-            reject(new Error("PostgreSQL query error"));
-            return;
-          }
-
-          offset += 1 + messageLength;
+    await executeWithTimeout<void>(
+      gatewayConn,
+      () => {
+        const queryMessage = serialize.query(query);
+        gatewayConn.write(queryMessage);
+      },
+      (msg: any, resolve, reject, cleanup) => {
+        if (msg.name === "rowDescription") {
+          // Extract full field metadata including data types
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          fields.push(
+            ...msg.fields.map((f: any) => ({
+              name: f.name,
+              dataTypeID: f.dataTypeID,
+              dataTypeSize: f.dataTypeSize,
+              dataTypeModifier: f.dataTypeModifier,
+              tableID: f.tableID,
+              columnID: f.columnID
+            }))
+          );
+        } else if (msg.name === "dataRow") {
+          results.push(msg.fields);
+        } else if (msg.name === "readyForQuery") {
+          cleanup();
+          resolve();
+        } else if (msg.name === "error") {
+          cleanup();
+          reject(new Error("PostgreSQL query error"));
         }
+      },
+      60000,
+      "Query timeout"
+    );
 
-        responseData = responseData.slice(offset);
-      };
-
-      timeout = setTimeout(() => {
-        gatewayConn.removeListener("data", dataHandler);
-        reject(new Error("Query timeout"));
-      }, 60000); // 60 second query timeout
-
-      gatewayConn.on("data", dataHandler);
-      gatewayConn.on("error", (err) => {
-        clearTimeout(timeout);
-        gatewayConn.removeListener("data", dataHandler);
-        reject(err);
-      });
-
-      // Send query
-      const queryMessage = buildQueryMessage(query);
-      gatewayConn.write(queryMessage);
-    });
+    return { rows: results, fields, rowCount: results.length };
   };
 
   // Terminate session
@@ -343,7 +319,7 @@ export const pamAccountSessionManagerFactory = ({ pamAccountService }: TPamAccou
 
     try {
       // Connect with session cancellation ALPN
-      const cancelRelay = await connectToRelay(session.relayHost, session.relayCerts).catch(() => null); // Ignore errors on cancellation connect
+      const cancelRelay = await connectToRelay(session.relayHost, session.relayCerts).catch(() => null);
 
       if (cancelRelay) {
         const cancelConn = await connectToGateway(
@@ -352,27 +328,16 @@ export const pamAccountSessionManagerFactory = ({ pamAccountService }: TPamAccou
           "infisical-pam-session-cancellation"
         ).catch(() => null);
 
-        if (cancelConn) {
-          cancelConn.end();
-        }
+        if (cancelConn) cancelConn.end();
         cancelRelay.end();
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.error(`Error during session cancellation for ${sessionId}`, errorMessage);
+      logger.error(`Error during session cancellation for ${sessionId}`, formatError(error));
     }
 
     // Close connections
-    try {
-      session.gatewayConnection.destroy();
-    } catch (e) {
-      // Ignore
-    }
-    try {
-      session.relayConnection.destroy();
-    } catch (e) {
-      // Ignore
-    }
+    destroyConnection(session.gatewayConnection);
+    destroyConnection(session.relayConnection);
 
     // Remove from map
     activeSessions.delete(sessionId);
@@ -442,26 +407,22 @@ export const pamAccountSessionManagerFactory = ({ pamAccountService }: TPamAccou
         accessResponse.metadata.database
       );
 
-      const relayCerts = {
-        clientCertificate: accessResponse.relayClientCertificate,
-        clientPrivateKey: accessResponse.relayClientPrivateKey,
-        serverCertificateChain: accessResponse.relayServerCertificateChain
-      };
-
-      const gatewayCerts = {
-        clientCertificate: accessResponse.gatewayClientCertificate,
-        clientPrivateKey: accessResponse.gatewayClientPrivateKey,
-        serverCertificateChain: accessResponse.gatewayServerCertificateChain
-      };
-
       const session: TActiveSession = {
         sessionId: accessResponse.sessionId,
         pamSessionId: accessResponse.sessionId,
         relayConnection,
         gatewayConnection,
         relayHost: accessResponse.relayHost,
-        relayCerts,
-        gatewayCerts,
+        relayCerts: {
+          clientCertificate: accessResponse.relayClientCertificate,
+          clientPrivateKey: accessResponse.relayClientPrivateKey,
+          serverCertificateChain: accessResponse.relayServerCertificateChain
+        },
+        gatewayCerts: {
+          clientCertificate: accessResponse.gatewayClientCertificate,
+          clientPrivateKey: accessResponse.gatewayClientPrivateKey,
+          serverCertificateChain: accessResponse.gatewayServerCertificateChain
+        },
         metadata: {
           username: accessResponse.metadata.username,
           database: accessResponse.metadata.database,
@@ -489,10 +450,9 @@ export const pamAccountSessionManagerFactory = ({ pamAccountService }: TPamAccou
         }
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      logger.error("Failed to create PAM session", errorMessage);
+      logger.error("Failed to create PAM session", formatError(error));
       throw new BadRequestError({
-        message: `Failed to establish connection: ${errorMessage}`
+        message: `Failed to establish connection: ${formatError(error)}`
       });
     }
   };
@@ -556,19 +516,19 @@ export const pamAccountSessionManagerFactory = ({ pamAccountService }: TPamAccou
 
     try {
       const startTime = Date.now();
-      const { rows, rowCount } = await executePostgresQuery(session.gatewayConnection, query);
+      const { rows, fields, rowCount } = await executePostgresQuery(session.gatewayConnection, query);
       const executionTimeMs = Date.now() - startTime;
 
       return {
         rows,
+        fields,
         rowCount,
         executionTimeMs
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      logger.error(`Query execution failed for session ${sessionId}`, errorMessage);
+      logger.error(`Query execution failed for session ${sessionId}`, formatError(error));
       throw new BadRequestError({
-        message: `Query execution failed: ${errorMessage}`
+        message: `Query execution failed: ${formatError(error)}`
       });
     }
   };
@@ -580,8 +540,7 @@ export const pamAccountSessionManagerFactory = ({ pamAccountService }: TPamAccou
       for (const [sessionId, session] of activeSessions.entries()) {
         if (now > session.expiresAt) {
           terminateSession(sessionId).catch((err) => {
-            const errorMessage = err instanceof Error ? err.message : String(err);
-            logger.error(`Failed to cleanup expired session ${sessionId}`, errorMessage);
+            logger.error(`Failed to cleanup expired session ${sessionId}`, formatError(err));
           });
         }
       }

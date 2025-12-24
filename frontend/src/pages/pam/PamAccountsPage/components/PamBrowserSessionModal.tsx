@@ -109,7 +109,11 @@ export const PamBrowserSessionModal = ({ isOpen, onOpenChange, session }: Props)
                 <span>Executed in {result.executionTimeMs}ms</span>
               </div>
               <div className="max-h-[400px] overflow-auto">
-                <PamQueryResultsTable rows={result.rows} rowCount={result.rowCount} />
+                <PamQueryResultsTable
+                  rows={result.rows}
+                  fields={result.fields}
+                  rowCount={result.rowCount}
+                />
               </div>
             </div>
           )}

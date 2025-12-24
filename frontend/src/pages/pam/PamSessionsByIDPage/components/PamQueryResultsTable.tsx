@@ -1,11 +1,21 @@
 import { Table, TBody, Td, Th, THead, Tr } from "@app/components/v2";
 
+type TFieldMetadata = {
+  name: string;
+  dataTypeID: number;
+  dataTypeSize: number;
+  dataTypeModifier: number;
+  tableID?: number;
+  columnID?: number;
+};
+
 type Props = {
   rows: Array<Array<any>>;
+  fields?: Array<TFieldMetadata>;
   rowCount: number;
 };
 
-export const PamQueryResultsTable = ({ rows, rowCount }: Props) => {
+export const PamQueryResultsTable = ({ rows, fields, rowCount }: Props) => {
   if (rowCount === 0) {
     return (
       <div className="flex items-center justify-center rounded-md border border-mineshaft-700 bg-mineshaft-800 p-8 text-bunker-300">
@@ -22,11 +32,17 @@ export const PamQueryResultsTable = ({ rows, rowCount }: Props) => {
       <Table>
         <THead className="sticky top-0 z-10 bg-mineshaft-900">
           <Tr>
-            {Array.from({ length: columnCount }).map((_, i) => (
-              <Th key={`col-${i}`} className="text-xs">
-                Column {i + 1}
-              </Th>
-            ))}
+            {fields && fields.length > 0
+              ? fields.map((field, i) => (
+                  <Th key={`col-${i}`} className="text-xs" title={`Type ID: ${field.dataTypeID}`}>
+                    {field.name}
+                  </Th>
+                ))
+              : Array.from({ length: columnCount }).map((_, i) => (
+                  <Th key={`col-${i}`} className="text-xs">
+                    Column {i + 1}
+                  </Th>
+                ))}
           </Tr>
         </THead>
         <TBody>

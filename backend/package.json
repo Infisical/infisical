@@ -244,6 +244,7 @@
     "passport-oauth2": "^1.8.0",
     "pg": "^8.11.3",
     "pg-boss": "^10.1.5",
+    "pg-protocol": "^1.10.3",
     "pg-query-stream": "^4.5.3",
     "picomatch": "^3.0.1",
     "pino": "^8.16.2",
