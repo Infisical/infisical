@@ -454,3 +454,10 @@
   top: 0.5rem;
   @apply text-sm text-gray-500 opacity-50;
 }
+
+/* Hide the default number input spin buttons */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
