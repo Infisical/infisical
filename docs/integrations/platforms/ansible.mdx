@@ -5,9 +5,7 @@ description: "Learn how to use Infisical for secret management in Ansible."
 
 You can find the Infisical Ansible collection on [Ansible Galaxy](https://galaxy.ansible.com/ui/repo/published/infisical/vault/).
 
-
 This Ansible Infisical collection includes a variety of Ansible content to help automate the management of Infisical services. This collection is maintained by the Infisical team.
-
 
 ## Ansible version compatibility
 Tested with the Ansible Core >= 2.12.0 versions, and the current development version of Ansible. Ansible Core versions prior to 2.12.0 have not been tested.
@@ -20,33 +18,65 @@ Requires Python 3.7 or greater.
 ## Installing this collection
 You can install the Infisical collection with the Ansible Galaxy CLI:
 
-```bash 
-$ ansible-galaxy collection install infisical.vault
+```bash
+ansible-galaxy collection install infisical.vault
 ```
 
 The python module dependencies are not installed by ansible-galaxy. They can be manually installed using pip:
-  
+
 ```bash
-$ pip install infisicalsdk
+pip install infisicalsdk
 ```
 
 ## Using this collection
 
-You can either call modules by their Fully Qualified Collection Name (FQCN), such as `infisical.vault.read_secrets`, or you can call modules by their short name if you list the `infisical.vault` collection in the playbook's collections keyword:
+You can either call modules by their Fully Qualified Collection Name (FQCN), such as `infisical.vault.read_secrets`, or you can call modules by their short name if you list the `infisical.vault` collection in the playbook's collections keyword.
 
-### Authentication
+## Authentication
 
 The Infisical Ansible Collection supports [Universal Auth](/documentation/platform/identities/universal-auth), [OIDC Auth](/documentation/platform/identities/oidc-auth/general), and [Token Auth](/documentation/platform/identities/token-auth) for authenticating against Infisical.
 
+### Login Module (Recommended)
+
+The recommended approach is to use the `login` module to authenticate once and reuse the credentials across multiple tasks. This reduces authentication overhead and makes playbooks cleaner. Alternatively, you can still pass credentials directly to each plugin/module if preferred.
+
+```yaml
+- name: Login to Infisical
+  infisical.vault.login:
+    url: "https://app.infisical.com"
+    auth_method: universal_auth
+    universal_auth_client_id: "{{ client_id }}"
+    universal_auth_client_secret: "{{ client_secret }}"
+  register: infisical_login
+
+- name: Read secrets using cached login
+  infisical.vault.read_secrets:
+    login_data: "{{ infisical_login.login_data }}"
+    project_id: "{{ project_id }}"
+    env_slug: "dev"
+    path: "/"
+    as_dict: true
+  register: secrets
+
+- name: Use the secrets
+  debug:
+    msg: "Database URL is {{ secrets.secrets.DATABASE_URL }}"
+```
 
 <AccordionGroup>
   <Accordion title="Universal Auth">
-    Using Universal Auth for authentication is the most straight-forward way to get started with using the Ansible collection. 
+    Using Universal Auth for authentication is the most straight-forward way to get started with using the Ansible collection.
 
     To use Universal Auth, you need to provide the Client ID and Client Secret of your Infisical Machine Identity.
 
     ```yaml
-    lookup('infisical.vault.read_secrets', auth_method="universal-auth", universal_auth_client_id='<client-id>', universal_auth_client_secret='<client-secret>' ...rest)
+    - name: Login with Universal Auth
+      infisical.vault.login:
+        url: "https://app.infisical.com"
+        auth_method: universal_auth
+        universal_auth_client_id: "<client-id>"
+        universal_auth_client_secret: "<client-secret>"
+      register: infisical_login
     ```
 
     You can also provide the `auth_method`, `universal_auth_client_id`, and `universal_auth_client_secret` parameters through environment variables:
@@ -66,8 +96,15 @@ The Infisical Ansible Collection supports [Universal Auth](/documentation/platfo
     </Note>
 
     ```yaml
-    lookup('infisical.vault.read_secrets', auth_method="oidc-auth", identity_id='<identity-id>', jwt='<oidc-jwt>' ...rest)
+    - name: Login with OIDC Auth
+      infisical.vault.login:
+        url: "https://app.infisical.com"
+        auth_method: oidc_auth
+        identity_id: "<identity-id>"
+        jwt: "<oidc-jwt>"
+      register: infisical_login
     ```
+
     You can also provide the `auth_method`, `identity_id`, and `jwt` parameters through environment variables:
 
     | Parameter Name  | Environment Variable Name |
@@ -86,7 +123,12 @@ The Infisical Ansible Collection supports [Universal Auth](/documentation/platfo
     </Note>
 
     ```yaml
-    lookup('infisical.vault.read_secrets', auth_method="token_auth", token='<your-token>' ...rest)
+    - name: Login with Token Auth
+      infisical.vault.login:
+        url: "https://app.infisical.com"
+        auth_method: token_auth
+        token: "<your-token>"
+      register: infisical_login
     ```
 
     You can also provide the `auth_method` and `token` parameters through environment variables:
@@ -99,35 +141,288 @@ The Infisical Ansible Collection supports [Universal Auth](/documentation/platfo
   </Accordion>
 </AccordionGroup>
 
-### Examples
+## Available Plugins and Modules
+
+### Lookup Plugins
+- `infisical.vault.login` - Authenticate and return reusable login data
+- `infisical.vault.read_secrets` - Read secrets from Infisical
+
+### Modules
+
+**Authentication:**
+- `infisical.vault.login` - Authenticate and return reusable login data
+
+**Static Secrets:**
+- `infisical.vault.read_secrets` - Read secrets from Infisical
+- `infisical.vault.create_secret` - Create a new secret
+- `infisical.vault.update_secret` - Update an existing secret
+- `infisical.vault.delete_secret` - Delete a secret
+
+**Dynamic Secrets:**
+- `infisical.vault.create_dynamic_secret` - Create a dynamic secret configuration
+- `infisical.vault.get_dynamic_secret` - Get a dynamic secret by name
+- `infisical.vault.update_dynamic_secret` - Update a dynamic secret
+- `infisical.vault.delete_dynamic_secret` - Delete a dynamic secret
+
+**Dynamic Secret Leases:**
+- `infisical.vault.create_dynamic_secret_lease` - Create a lease (generates credentials)
+- `infisical.vault.get_dynamic_secret_lease` - Get lease details
+- `infisical.vault.renew_dynamic_secret_lease` - Renew an existing lease
+- `infisical.vault.delete_dynamic_secret_lease` - Delete/revoke a lease
+
+## Examples
+
+### Reading Secrets
 
 ```yaml
 ---
+- name: Read secrets from Infisical
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Login to Infisical
+      infisical.vault.login:
+        url: "https://app.infisical.com"
+        auth_method: universal_auth
+        universal_auth_client_id: "{{ lookup('env', 'INFISICAL_CLIENT_ID') }}"
+        universal_auth_client_secret: "{{ lookup('env', 'INFISICAL_CLIENT_SECRET') }}"
+      register: infisical_login
+
+    - name: Read all secrets as dictionary
+      infisical.vault.read_secrets:
+        login_data: "{{ infisical_login.login_data }}"
+        project_id: "your-project-id"
+        env_slug: "dev"
+        path: "/"
+        as_dict: true
+      register: secrets
+
+    - name: Use the secrets
+      debug:
+        msg: "Database: {{ secrets.secrets.DATABASE_URL }}"
+```
+
+#### Reading secrets with full metadata
+
+Use the `raw` option to retrieve complete secret metadata including version, creation time, tags, and more:
+
+```yaml
+- name: Read all secrets with full metadata
+  infisical.vault.read_secrets:
+    login_data: "{{ infisical_login.login_data }}"
+    project_id: "your-project-id"
+    env_slug: "dev"
+    path: "/"
+    raw: true
+  register: raw_secrets
+  # Returns: [{"id": "...", "secretKey": "HOST", "secretValue": "google.com", "version": 1, "type": "shared", ...}, ...]
+
+- name: Read all secrets with full metadata as dict
+  infisical.vault.read_secrets:
+    login_data: "{{ infisical_login.login_data }}"
+    project_id: "your-project-id"
+    env_slug: "dev"
+    path: "/"
+    raw: true
+    as_dict: true
+  register: raw_secrets_dict
+  # Returns: {"HOST": {"id": "...", "secretKey": "HOST", "secretValue": "google.com", "version": 1, ...}, ...}
+```
+
+#### Using the Lookup Plugin
+
+The `read_secrets` lookup plugin allows for inline secret retrieval. Unlike modules that run on target hosts, lookup plugins run on the Ansible controller during playbook parsing. This is useful for retrieving secrets to use in variable definitions:
+
+```yaml
 vars:
-  read_all_secrets_within_scope: "{{ lookup('infisical.vault.read_secrets', universal_auth_client_id='<>', universal_auth_client_secret='<>', project_id='<>', path='/', env_slug='dev', url='https://spotify.infisical.com') }}"
+  read_all_secrets_within_scope: "{{ lookup('infisical.vault.read_secrets', universal_auth_client_id='<>', universal_auth_client_secret='<>', project_id='<>', path='/', env_slug='dev', url='https://app.infisical.com') }}"
   # [{ "key": "HOST", "value": "google.com" }, { "key": "SMTP", "value": "gmail.smtp.edu" }]
 
-
-  read_all_secrets_as_dict: "{{ lookup('infisical.vault.read_secrets', as_dict=True, universal_auth_client_id='<>', universal_auth_client_secret='<>', project_id='<>', path='/', env_slug='dev', url='https://spotify.infisical.com') }}"
+  read_all_secrets_as_dict: "{{ lookup('infisical.vault.read_secrets', as_dict=True, universal_auth_client_id='<>', universal_auth_client_secret='<>', project_id='<>', path='/', env_slug='dev', url='https://app.infisical.com') }}"
   # { "SECRET_KEY_1": "secret-value-1", "SECRET_KEY_2": "secret-value-2" } -> Can be accessed as secrets.SECRET_KEY_1
 
-
-  read_secret_by_name_within_scope: "{{ lookup('infisical.vault.read_secrets', universal_auth_client_id='<>', universal_auth_client_secret='<>', project_id='<>', path='/', env_slug='dev', secret_name='HOST', url='https://spotify.infisical.com') }}"
+  read_secret_by_name_within_scope: "{{ lookup('infisical.vault.read_secrets', universal_auth_client_id='<>', universal_auth_client_secret='<>', project_id='<>', path='/', env_slug='dev', secret_name='HOST', url='https://app.infisical.com') }}"
   # { "key": "HOST", "value": "google.com" }
 ```
 
+### Managing Secrets (CRUD)
 
-## Troubleshoot 
+Create, update, and delete secrets programmatically:
+
+```yaml
+- name: Create a secret
+  infisical.vault.create_secret:
+    login_data: "{{ infisical_login.login_data }}"
+    project_id: "{{ project_id }}"
+    env_slug: "dev"
+    path: "/"
+    secret_name: "API_KEY"
+    secret_value: "my-api-key"
+    secret_comment: "API key for external service"
+  register: created_secret
+
+- name: Update a secret
+  infisical.vault.update_secret:
+    login_data: "{{ infisical_login.login_data }}"
+    project_id: "{{ project_id }}"
+    env_slug: "dev"
+    path: "/"
+    secret_name: "API_KEY"
+    secret_value: "new-api-key"
+  register: updated_secret
+
+- name: Rename a secret
+  infisical.vault.update_secret:
+    login_data: "{{ infisical_login.login_data }}"
+    project_id: "{{ project_id }}"
+    env_slug: "dev"
+    path: "/"
+    secret_name: "OLD_SECRET_NAME"
+    new_secret_name: "NEW_SECRET_NAME"
+  register: renamed_secret
+
+- name: Delete a secret
+  infisical.vault.delete_secret:
+    login_data: "{{ infisical_login.login_data }}"
+    project_id: "{{ project_id }}"
+    env_slug: "dev"
+    path: "/"
+    secret_name: "API_KEY"
+  register: deleted_secret
+```
+
+### Dynamic Secrets
+
+Dynamic secrets generate credentials on-demand with automatic expiration. They support various providers like SQL databases, AWS, GCP, Azure, and more. For the full list of supported providers and their configuration options, see the [Dynamic Secrets documentation](/documentation/platform/dynamic-secrets/overview).
+
+#### Creating a Dynamic Secret
+
+```yaml
+# Create a dynamic secret for PostgreSQL
+- name: Create a PostgreSQL dynamic secret
+  infisical.vault.create_dynamic_secret:
+    login_data: "{{ infisical_login.login_data }}"
+    project_slug: "my-project"
+    env_slug: "dev"
+    path: "/"
+    name: "postgres-dev"
+    provider_type: "sql-database"
+    inputs:
+      client: "postgres"
+      host: "localhost"
+      port: 5432
+      database: "mydb"
+      username: "admin"
+      password: "admin-password"
+      creationStatement: "CREATE USER \"{{username}}\" WITH PASSWORD '{{password}}';"
+      revocationStatement: "DROP USER \"{{username}}\";"
+    default_ttl: "1h"
+    max_ttl: "24h"
+  register: dynamic_secret
+```
+
+<Note>
+  For the full list of supported provider types and their input configurations, see the [Dynamic Secrets API Documentation](https://infisical.com/docs/api-reference/endpoints/dynamic-secrets/create#body-provider).
+</Note>
+
+#### Getting and Using Dynamic Secret Credentials
+
+To use a dynamic secret, you need to create a **lease** which generates the actual credentials:
+
+```yaml
+# Create a lease to get database credentials
+- name: Get database credentials
+  infisical.vault.create_dynamic_secret_lease:
+    login_data: "{{ infisical_login.login_data }}"
+    project_slug: "my-project"
+    env_slug: "dev"
+    path: "/"
+    dynamic_secret_name: "postgres-dev"
+    ttl: "30m"
+  register: lease
+
+# Use the generated credentials
+- name: Connect to database
+  community.postgresql.postgresql_query:
+    login_host: localhost
+    login_user: "{{ lease.data.DB_USERNAME }}"
+    login_password: "{{ lease.data.DB_PASSWORD }}"
+    db: mydb
+    query: "SELECT version();"
+```
+
+#### Managing Leases
+
+```yaml
+# Get lease details
+- name: Get lease information
+  infisical.vault.get_dynamic_secret_lease:
+    login_data: "{{ infisical_login.login_data }}"
+    project_slug: "my-project"
+    env_slug: "dev"
+    path: "/"
+    lease_id: "{{ lease.lease.id }}"
+  register: lease_details
+
+# Renew a lease before it expires
+- name: Renew a lease for 2 more hours
+  infisical.vault.renew_dynamic_secret_lease:
+    login_data: "{{ infisical_login.login_data }}"
+    project_slug: "my-project"
+    env_slug: "dev"
+    path: "/"
+    lease_id: "{{ lease.lease.id }}"
+    ttl: "2h"
+  register: renewed_lease
+
+# Revoke the credentials when done
+- name: Delete the lease
+  infisical.vault.delete_dynamic_secret_lease:
+    login_data: "{{ infisical_login.login_data }}"
+    project_slug: "my-project"
+    env_slug: "dev"
+    path: "/"
+    lease_id: "{{ lease.lease.id }}"
+```
+
+#### Updating and Deleting Dynamic Secrets
+
+```yaml
+# Update a dynamic secret's TTL
+- name: Update dynamic secret TTL
+  infisical.vault.update_dynamic_secret:
+    login_data: "{{ infisical_login.login_data }}"
+    project_slug: "my-project"
+    env_slug: "dev"
+    path: "/"
+    name: "postgres-dev"
+    default_ttl: "2h"
+    max_ttl: "48h"
+  register: updated_secret
+
+# Delete a dynamic secret (also revokes all active leases)
+- name: Delete a dynamic secret
+  infisical.vault.delete_dynamic_secret:
+    login_data: "{{ infisical_login.login_data }}"
+    project_slug: "my-project"
+    env_slug: "dev"
+    path: "/"
+    name: "postgres-dev"
+  register: deleted_secret
+```
+
+## Troubleshoot
 
 <Accordion title="I'm getting a error related to objc[72832]: +[__NSCFConstantString initialize]">
-  If you get this Python error when you running the lookup plugin:-
+  If you get this Python error when you running the lookup plugin:
 
   ```
   objc[72832]: +[__NSCFConstantString initialize] may have been in progress in another thread when fork() was called. We cannot safely call it or ignore it in the fork() child process. Crashing instead. Set a breakpoint on objc_initializeAfterForkError to debug.
   Fatal Python error: Aborted
   ```
 
-  You will need to add this to your shell environment or ansible wrapper script:-
+  You will need to add this to your shell environment or ansible wrapper script:
 
   ```
   export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
