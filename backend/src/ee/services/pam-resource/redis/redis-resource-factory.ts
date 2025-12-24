@@ -46,8 +46,6 @@ const makeRedisConnection = (
 ): RedisResourceConnection => {
   const { connectionDetails, username, password } = config;
   const { sslEnabled, sslRejectUnauthorized, sslCertificate } = connectionDetails;
-  const actualUsername = username ?? connectionDetails.username ?? TEST_CONNECTION_USERNAME;
-  const actualPassword = password ?? connectionDetails.password ?? TEST_CONNECTION_PASSWORD;
 
   let client: Redis | null = null;
 
@@ -55,8 +53,6 @@ const makeRedisConnection = (
     return new Redis({
       host: "localhost",
       port: proxyPort,
-      username: actualUsername,
-      password: actualPassword,
       connectTimeout: EXTERNAL_REQUEST_TIMEOUT,
       commandTimeout: EXTERNAL_REQUEST_TIMEOUT,
       ...(sslEnabled && {
@@ -75,14 +71,6 @@ const makeRedisConnection = (
     validate: async (connectOnly) => {
       try {
         client = createClient();
-
-        // Test authentication
-        const result = await client.auth(actualUsername, actualPassword);
-        if (result !== "OK") {
-          throw new BadRequestError({ message: `Redis authentication failed: ${result as string}` });
-        }
-
-        // Test connection with a simple command
         await client.ping();
       } catch (error) {
         if (connectOnly) {
