@@ -415,14 +415,14 @@ To use a dynamic secret, you need to create a **lease** which generates the actu
 ## Troubleshoot
 
 <Accordion title="I'm getting a error related to objc[72832]: +[__NSCFConstantString initialize]">
-  If you get this Python error when you running the lookup plugin:-
+  If you get this Python error when you running the lookup plugin:
 
   ```
   objc[72832]: +[__NSCFConstantString initialize] may have been in progress in another thread when fork() was called. We cannot safely call it or ignore it in the fork() child process. Crashing instead. Set a breakpoint on objc_initializeAfterForkError to debug.
   Fatal Python error: Aborted
   ```
 
-  You will need to add this to your shell environment or ansible wrapper script:-
+  You will need to add this to your shell environment or ansible wrapper script:
 
   ```
   export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES

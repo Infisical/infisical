@@ -511,12 +511,12 @@ renewed_lease = client.dynamic_secrets.leases.renew(
 **Returns:**
 - `DynamicSecretLease`: The renewed lease.
 
-#### Delete Lease
+#### Revoke Lease
 
 Revoke a lease and its associated credentials:
 
 ```python
-deleted_lease = client.dynamic_secrets.leases.delete(
+revoked_lease = client.dynamic_secrets.leases.revoke(
     lease_id="<lease-id>",
     project_slug="my-project",
     environment_slug="dev",
@@ -526,14 +526,14 @@ deleted_lease = client.dynamic_secrets.leases.delete(
 ```
 
 **Parameters:**
-- `lease_id` (str): The ID of the lease to delete.
+- `lease_id` (str): The ID of the lease to revoke.
 - `project_slug` (str): The slug of your project.
-- `environment_slug` (str): The environment in which to delete the lease.
+- `environment_slug` (str): The environment in which to revoke the lease.
 - `path` (str, optional): The path to the dynamic secret. Defaults to "/".
-- `is_forced` (bool, optional): A boolean flag to delete the lease from Infisical without trying to remove it from the external provider. Defaults to `False`.
+- `is_forced` (bool, optional): A boolean flag to revoke the lease from Infisical without trying to remove it from the external provider. Defaults to `False`.
 
 **Returns:**
-- `DynamicSecretLease`: The deleted lease.
+- `DynamicSecretLease`: The revoked lease.
 
 ### `kms`
 
