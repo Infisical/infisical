@@ -53,7 +53,9 @@ const makeRedisConnection = (
   let client: Redis | null = null;
 
   const createClient = () => {
-    return new Redis({
+    // TODO: this ioredis client is too complex for our use case here.
+    //       ideally we should use a simpler client. but that's what we are using already so..
+    const redis = new Redis({
       host: "localhost",
       port: proxyPort,
       connectTimeout: EXTERNAL_REQUEST_TIMEOUT,
@@ -64,16 +66,27 @@ const makeRedisConnection = (
           ca: sslCertificate
         }
       }),
+      maxRetriesPerRequest: 0,
+      reconnectOnError: () => false,
+      enableOfflineQueue: false,
       retryStrategy: () => {
         return null;
       }
+    });
+    return new Promise<Redis>((resolve, reject) => {
+      redis.on("connect", () => {
+        resolve(redis);
+      });
+      redis.on("error", (error) => {
+        reject(error);
+      });
     });
   };
 
   return {
     validate: async (connectOnly) => {
-      client = createClient();
       try {
+        client = await createClient();
         await client.ping();
       } catch (error) {
         if (connectOnly) {
@@ -98,8 +111,8 @@ const makeRedisConnection = (
       }
     },
     authenticate: async (credentials) => {
-      client = createClient();
       try {
+        client = await createClient();
         const result = await client.auth(credentials.username, credentials.password, () => {});
         if (result !== "OK") {
           throw new BadRequestError({
