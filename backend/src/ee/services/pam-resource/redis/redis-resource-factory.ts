@@ -1,4 +1,5 @@
 import { Redis } from "ioredis";
+import tls, { PeerCertificate } from "tls";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -63,21 +64,25 @@ const makeRedisConnection = (
       ...(sslEnabled && {
         tls: {
           rejectUnauthorized: sslRejectUnauthorized,
-          ca: sslCertificate
+          ca: sslCertificate,
+          // When using proxy, we need to bypass hostname validation since we connect to localhost
+          // but validate the certificate against the actual hostname
+          checkServerIdentity: (hostname: string, cert: PeerCertificate) => {
+            return tls.checkServerIdentity(connectionDetails.host, cert);
+          }
         }
       }),
       maxRetriesPerRequest: 0,
       reconnectOnError: () => false,
-      enableOfflineQueue: false,
       retryStrategy: () => {
         return null;
       }
     });
     return new Promise<Redis>((resolve, reject) => {
-      redis.on("connect", () => {
+      redis.once("connect", () => {
         resolve(redis);
       });
-      redis.on("error", (error) => {
+      redis.once("error", (error) => {
         reject(error);
       });
     });
