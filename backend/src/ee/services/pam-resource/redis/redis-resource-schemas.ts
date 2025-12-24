@@ -15,8 +15,6 @@ import {
 export const RedisResourceConnectionDetailsSchema = z.object({
   host: z.string().trim().min(1).max(255),
   port: z.coerce.number(),
-  username: z.string().trim().min(1).max(63).optional(),
-  password: z.string().trim().max(256).optional(),
   sslEnabled: z.boolean(),
   sslRejectUnauthorized: z.boolean(),
   sslCertificate: z

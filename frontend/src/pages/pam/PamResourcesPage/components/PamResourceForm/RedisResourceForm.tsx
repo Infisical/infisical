@@ -6,8 +6,8 @@ import { z } from "zod";
 import { Button, ModalClose } from "@app/components/v2";
 import { PamResourceType, TRedisResource } from "@app/hooks/api/pam";
 
-import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
 import { RedisResourceFields } from "./shared/RedisResourceFields";
+import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
 
 type Props = {
   resource?: TRedisResource;
@@ -19,8 +19,6 @@ const formSchema = genericResourceFieldsSchema.extend({
   connectionDetails: z.object({
     host: z.string().trim().min(1, "Host required"),
     port: z.coerce.number().default(6379),
-    username: z.string().trim().optional(),
-    password: z.string().trim().optional(),
     sslEnabled: z.boolean().default(true),
     sslRejectUnauthorized: z.boolean().default(true),
     sslCertificate: z
@@ -44,8 +42,6 @@ export const RedisResourceForm = ({ resource, onSubmit }: Props) => {
       connectionDetails: {
         host: "",
         port: 6379,
-        username: undefined,
-        password: undefined,
         sslEnabled: true,
         sslRejectUnauthorized: true,
         sslCertificate: undefined

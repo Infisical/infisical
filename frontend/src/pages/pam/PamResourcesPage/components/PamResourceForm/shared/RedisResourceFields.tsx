@@ -69,38 +69,6 @@ export const RedisResourceFields = ({ setSelectedTabIndex, selectedTabIndex }: P
               )}
             />
           </div>
-          <div className="mt-4 flex items-start gap-2">
-            <Controller
-              name="connectionDetails.username"
-              control={control}
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  className="flex-1"
-                  errorText={error?.message}
-                  isError={Boolean(error?.message)}
-                  label="Username"
-                  isOptional
-                >
-                  <Input {...field} />
-                </FormControl>
-              )}
-            />
-            <Controller
-              name="connectionDetails.password"
-              control={control}
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  className="flex-1"
-                  errorText={error?.message}
-                  isError={Boolean(error?.message)}
-                  label="Password"
-                  isOptional
-                >
-                  <Input type="password" {...field} />
-                </FormControl>
-              )}
-            />
-          </div>
         </Tab.Panel>
         <Tab.Panel>
           <Controller
