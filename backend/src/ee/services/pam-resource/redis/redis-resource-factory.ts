@@ -73,6 +73,7 @@ const makeRedisConnection = (
         }
       }),
       maxRetriesPerRequest: 0,
+      enableReadyCheck: false,
       reconnectOnError: () => false,
       retryStrategy: () => {
         return null;
@@ -120,7 +121,7 @@ const makeRedisConnection = (
     authenticate: async (credentials) => {
       try {
         client = await createClient();
-        const result = await client.auth(credentials.username, credentials.password, () => {});
+        const result = await client.auth(credentials.username, credentials.password);
         if (result !== "OK") {
           throw new BadRequestError({
             message: `Authentication failed: Redis returned ${result as string} status`
