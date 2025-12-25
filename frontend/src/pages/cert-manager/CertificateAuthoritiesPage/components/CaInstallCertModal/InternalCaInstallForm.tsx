@@ -9,11 +9,9 @@ import { Button, FormControl, Input, Select, SelectItem } from "@app/components/
 import { useProject } from "@app/context";
 import {
   CaStatus,
-  useGetCaCsr,
+  useGenerateCaCertificate,
   useGetInternalCaById,
-  useImportCaCertificate,
-  useListWorkspaceCas,
-  useSignIntermediate
+  useListWorkspaceCas
 } from "@app/hooks/api";
 import { caTypeToNameMap } from "@app/hooks/api/ca/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -52,10 +50,8 @@ export const InternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
     status: CaStatus.ACTIVE
   });
   const { data: ca } = useGetInternalCaById(caId);
-  const { data: csr } = useGetCaCsr(caId);
 
-  const { mutateAsync: signIntermediate } = useSignIntermediate();
-  const { mutateAsync: importCaCertificate } = useImportCaCertificate(currentProject.id);
+  const { mutateAsync: generateCaCertificate } = useGenerateCaCertificate();
 
   const {
     control,
@@ -103,28 +99,25 @@ export const InternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
     }
   }, [parentCa]);
 
-  const onFormSubmit = async ({ notAfter, maxPathLength }: FormData) => {
-    if (!csr || !caId || !currentProject?.slug) return;
+  const onFormSubmit = async ({
+    parentCaId: formParentCaId,
+    notAfter,
+    maxPathLength
+  }: FormData) => {
+    if (!caId) return;
 
-    const { certificate, certificateChain } = await signIntermediate({
-      caId: parentCaId,
-      csr,
+    await generateCaCertificate({
+      caId,
+      parentCaId: formParentCaId,
       maxPathLength: Number(maxPathLength),
       notAfter,
       notBefore: new Date().toISOString()
     });
 
-    await importCaCertificate({
-      caId,
-      projectSlug: currentProject?.slug,
-      certificate,
-      certificateChain
-    });
-
     reset();
 
     createNotification({
-      text: "Successfully installed certificate for CA",
+      text: "Successfully installed certificate for intermediate CA",
       type: "success"
     });
     handlePopUpToggle("installCaCert", false);
