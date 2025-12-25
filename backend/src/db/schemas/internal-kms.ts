@@ -14,7 +14,17 @@ export const InternalKmsSchema = z.object({
   encryptedKey: zodBuffer,
   encryptionAlgorithm: z.string(),
   version: z.number().default(1),
-  kmsKeyId: z.string().uuid()
+  kmsKeyId: z.string().uuid(),
+  rotatedAt: z.date().nullable().optional(),
+  rotationInterval: z.number().nullable().optional(),
+  nextRotationAt: z.date().nullable().optional(),
+  isAutoRotationEnabled: z.boolean().default(false),
+  // Rotation status tracking
+  lastRotationStatus: z.string().nullable().optional(),
+  lastRotationAttemptedAt: z.date().nullable().optional(),
+  lastRotationJobId: z.string().nullable().optional(),
+  encryptedLastRotationMessage: zodBuffer.nullable().optional(),
+  isLastRotationManual: z.boolean().nullable().optional()
 });
 
 export type TInternalKms = z.infer<typeof InternalKmsSchema>;

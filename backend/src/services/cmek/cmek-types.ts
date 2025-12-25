@@ -15,7 +15,7 @@ export type TCreateCmekDTO = {
   keyUsage: KmsKeyUsage;
 };
 
-export type TUpdabteCmekByIdDTO = {
+export type TUpdateCmekByIdDTO = {
   keyId: string;
   name?: string;
   isDisabled?: boolean;
@@ -66,4 +66,27 @@ export type TCmekVerifyDTO = {
   signature: string;
   signingAlgorithm: SigningAlgorithm;
   isDigest: boolean;
+};
+
+export type TRotateCmekDTO = {
+  keyId: string;
+};
+
+export type TListCmekVersionsDTO = {
+  keyId: string;
+};
+
+export type TRollbackCmekDTO = {
+  keyId: string;
+  targetVersion: number;
+};
+
+export type TUpdateCmekScheduledRotationDTO = {
+  keyId: string;
+  enableAutoRotation: boolean;
+  rotationIntervalDays?: number;
+};
+
+export type TGetCmekScheduledRotationDTO = {
+  keyId: string;
 };

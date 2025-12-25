@@ -12,7 +12,7 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CmekOrderBy, TCmekKeyEncryptionAlgorithm } from "@app/services/cmek/cmek-types";
-import { KmsKeyUsage } from "@app/services/kms/kms-types";
+import { KmsKeyUsage, KMS_ROTATION_CONSTANTS } from "@app/services/kms/kms-types";
 
 const keyNameSchema = slugSchema({ min: 1, max: 32, field: "Name" });
 const keyDescriptionSchema = z.string().trim().max(500).optional();
@@ -663,6 +663,306 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       });
 
       return { plaintext };
+    }
+  });
+
+  // Rotate KMS key
+  server.route({
+    method: "POST",
+    url: "/keys/:keyId/rotate",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.KmsKeys],
+      description:
+        "Rotate a KMS key. This generates new key material while preserving the old version for decrypting existing data. Only supported for symmetric encryption keys.",
+      params: z.object({
+        keyId: z.string().uuid().describe(KMS.ROTATE_KEY.keyId)
+      }),
+      response: {
+        200: z.object({
+          key: z.object({
+            id: z.string().uuid(),
+            version: z.number(),
+            rotatedAt: z.string().nullable()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        params: { keyId },
+        permission
+      } = req;
+
+      const result = await server.services.cmek.rotateCmek({ keyId }, permission);
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: result.projectId,
+        event: {
+          type: EventType.ROTATE_CMEK,
+          metadata: {
+            keyId,
+            newVersion: result.version,
+            deletedVersions: result.deletedVersions,
+            deletedVersionCount: result.deletedVersionCount
+          }
+        }
+      });
+
+      return {
+        key: {
+          id: result.kmsKeyId,
+          version: result.version,
+          rotatedAt: result.rotatedAt ?? null
+        }
+      };
+    }
+  });
+
+  // List KMS key versions
+  server.route({
+    method: "GET",
+    url: "/keys/:keyId/versions",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.KmsKeys],
+      description: "List all versions of a KMS key. Returns the version history including creation timestamps.",
+      params: z.object({
+        keyId: z.string().uuid().describe(KMS.LIST_KEY_VERSIONS.keyId)
+      }),
+      response: {
+        200: z.object({
+          keyId: z.string().uuid(),
+          currentVersion: z.number(),
+          versions: z.array(
+            z.object({
+              id: z.string().uuid(),
+              version: z.number(),
+              createdAt: z.string()
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        params: { keyId },
+        permission
+      } = req;
+
+      const result = await server.services.cmek.listCmekVersions({ keyId }, permission);
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: result.projectId,
+        event: {
+          type: EventType.LIST_CMEK_VERSIONS,
+          metadata: {
+            keyId,
+            versionCount: result.versions.length
+          }
+        }
+      });
+
+      return {
+        keyId: result.kmsKeyId,
+        currentVersion: result.currentVersion,
+        versions: result.versions
+      };
+    }
+  });
+
+  // Rollback KMS key to a previous version
+  server.route({
+    method: "POST",
+    url: "/keys/:keyId/rollback",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.KmsKeys],
+      description:
+        "Rollback a KMS key to a previous version. This sets the target version as the current key for encryption while preserving all version history.",
+      params: z.object({
+        keyId: z.string().uuid().describe(KMS.ROLLBACK_KEY.keyId)
+      }),
+      body: z.object({
+        targetVersion: z.number().int().min(1).describe(KMS.ROLLBACK_KEY.targetVersion)
+      }),
+      response: {
+        200: z.object({
+          key: z.object({
+            id: z.string().uuid(),
+            version: z.number(),
+            previousVersion: z.number()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        params: { keyId },
+        body: { targetVersion },
+        permission
+      } = req;
+
+      const result = await server.services.cmek.rollbackCmek({ keyId, targetVersion }, permission);
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: result.projectId,
+        event: {
+          type: EventType.ROLLBACK_CMEK,
+          metadata: {
+            keyId,
+            targetVersion: result.version,
+            previousVersion: result.previousVersion
+          }
+        }
+      });
+
+      return {
+        key: {
+          id: result.kmsKeyId,
+          version: result.version,
+          previousVersion: result.previousVersion
+        }
+      };
+    }
+  });
+
+  // Get scheduled rotation settings
+  server.route({
+    method: "GET",
+    url: "/keys/:keyId/scheduled-rotation",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.KmsKeys],
+      description:
+        "Get scheduled rotation settings for a KMS key. Returns whether auto rotation is enabled, the rotation interval, and when the next rotation is scheduled.",
+      params: z.object({
+        keyId: z.string().uuid().describe(KMS.GET_SCHEDULED_ROTATION.keyId)
+      }),
+      response: {
+        200: z.object({
+          keyId: z.string().uuid(),
+          isAutoRotationEnabled: z.boolean(),
+          rotationIntervalDays: z.number().nullable(),
+          nextRotationAt: z.string().nullable(),
+          lastRotatedAt: z.string().nullable()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        params: { keyId },
+        permission
+      } = req;
+
+      const result = await server.services.cmek.getCmekScheduledRotation({ keyId }, permission);
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: result.projectId,
+        event: {
+          type: EventType.GET_CMEK_SCHEDULED_ROTATION,
+          metadata: {
+            keyId
+          }
+        }
+      });
+
+      return {
+        keyId: result.kmsKeyId,
+        isAutoRotationEnabled: result.isAutoRotationEnabled,
+        rotationIntervalDays: result.rotationIntervalDays ?? null,
+        nextRotationAt: result.nextRotationAt ?? null,
+        lastRotatedAt: result.lastRotatedAt ?? null
+      };
+    }
+  });
+
+  // Update scheduled rotation settings
+  server.route({
+    method: "PUT",
+    url: "/keys/:keyId/scheduled-rotation",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.KmsKeys],
+      description:
+        "Configure scheduled automatic rotation for a KMS key. When enabled, the key will automatically rotate at the specified interval.",
+      params: z.object({
+        keyId: z.string().uuid().describe(KMS.UPDATE_SCHEDULED_ROTATION.keyId)
+      }),
+      body: z.object({
+        enableAutoRotation: z.boolean().describe(KMS.UPDATE_SCHEDULED_ROTATION.enableAutoRotation),
+        rotationIntervalDays: z
+          .number()
+          .int()
+          .min(KMS_ROTATION_CONSTANTS.MIN_INTERVAL_DAYS)
+          .max(KMS_ROTATION_CONSTANTS.MAX_INTERVAL_DAYS)
+          .optional()
+          .describe(KMS.UPDATE_SCHEDULED_ROTATION.rotationIntervalDays)
+      }),
+      response: {
+        200: z.object({
+          keyId: z.string().uuid(),
+          isAutoRotationEnabled: z.boolean(),
+          rotationIntervalDays: z.number().nullable(),
+          nextRotationAt: z.string().nullable()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        params: { keyId },
+        body: { enableAutoRotation, rotationIntervalDays },
+        permission
+      } = req;
+
+      const result = await server.services.cmek.updateCmekScheduledRotation(
+        { keyId, enableAutoRotation, rotationIntervalDays },
+        permission
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: result.projectId,
+        event: {
+          type: EventType.UPDATE_CMEK_SCHEDULED_ROTATION,
+          metadata: {
+            keyId,
+            enableAutoRotation,
+            rotationIntervalDays: rotationIntervalDays ?? null
+          }
+        }
+      });
+
+      return {
+        keyId: result.kmsKeyId,
+        isAutoRotationEnabled: result.isAutoRotationEnabled,
+        rotationIntervalDays: result.rotationIntervalDays ?? null,
+        nextRotationAt: result.nextRotationAt ?? null
+      };
     }
   });
 };
