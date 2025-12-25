@@ -5,7 +5,7 @@ function UnstableEmpty({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="empty"
       className={cn(
-        "flex min-w-0 flex-1 flex-col items-center justify-center gap-6 border-dashed border-border bg-container p-6 text-center text-balance md:p-12",
+        "flex min-w-0 flex-1 flex-col items-center justify-center gap-6 rounded-md border-dashed border-border bg-container p-6 text-center text-balance md:p-12",
         className
       )}
       {...props}

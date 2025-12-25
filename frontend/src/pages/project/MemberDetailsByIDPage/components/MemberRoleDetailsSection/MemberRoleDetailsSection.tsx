@@ -235,7 +235,7 @@ export const MemberRoleDetailsSection = ({
             ) : (
               <UnstableEmpty className="border">
                 <UnstableEmptyHeader>
-                  <UnstableEmptyTitle>This user doesn&nbsp;t have any roles</UnstableEmptyTitle>
+                  <UnstableEmptyTitle>This user doesn&apos;t have any roles</UnstableEmptyTitle>
                   <UnstableEmptyDescription>
                     Give this user one or more roles
                   </UnstableEmptyDescription>

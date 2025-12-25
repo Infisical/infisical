@@ -169,10 +169,7 @@ export const IdentityRoleDetailsSection = ({
                     }
 
                     return (
-                      <UnstableTableRow
-                        className="group h-10"
-                        key={`user-project-identity-${roleDetails?.id}`}
-                      >
+                      <UnstableTableRow key={`user-project-identity-${roleDetails?.id}`}>
                         <UnstableTableCell className="max-w-0 truncate">
                           {roleDetails.role === "custom"
                             ? roleDetails.customRoleName
@@ -235,7 +232,7 @@ export const IdentityRoleDetailsSection = ({
               <UnstableEmpty className="border">
                 <UnstableEmptyHeader>
                   <UnstableEmptyTitle>
-                    This machine identity doesn&nbsp;t have any roles
+                    This machine identity doesn&apos;t have any roles
                   </UnstableEmptyTitle>
                   <UnstableEmptyDescription>
                     Give this machine identity one or more roles

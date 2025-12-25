@@ -8,7 +8,7 @@ function UnstableTable({ className, ...props }: React.ComponentProps<"table">) {
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto border border-border bg-container"
+      className="relative w-full overflow-x-auto rounded-md border border-border bg-container"
     >
       <table
         data-slot="table"
@@ -64,6 +64,7 @@ function UnstableTableHead({ className, ...props }: React.ComponentProps<"th">) 
       data-slot="table-head"
       className={cn(
         "h-[30px] border-x-0 border-t-0 border-b border-border px-3 text-left align-middle text-xs whitespace-nowrap text-accent [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        "has-[>svg]:cursor-pointer [&>svg]:ml-1 [&>svg]:inline-block [&>svg]:size-4",
         className
       )}
       {...props}
@@ -71,12 +72,17 @@ function UnstableTableHead({ className, ...props }: React.ComponentProps<"th">) 
   );
 }
 
-function UnstableTableCell({ className, ...props }: React.ComponentProps<"td">) {
+function UnstableTableCell({
+  className,
+  isTruncatable,
+  ...props
+}: React.ComponentProps<"td"> & { isTruncatable?: boolean }) {
   return (
     <td
       data-slot="table-cell"
       className={cn(
         "h-[40px] px-3 align-middle whitespace-nowrap text-mineshaft-200 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        isTruncatable && "max-w-0 truncate",
         className
       )}
       {...props}

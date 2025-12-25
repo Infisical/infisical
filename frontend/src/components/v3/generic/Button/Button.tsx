@@ -8,7 +8,7 @@ import { cn } from "@app/components/v3/utils";
 
 const buttonVariants = cva(
   cn(
-    "inline-flex items-center active:scale-[0.95] justify-center border cursor-pointer whitespace-nowrap",
+    "inline-flex items-center rounded-md active:scale-[0.95] justify-center border cursor-pointer whitespace-nowrap",
     " text-sm transition-all disabled:pointer-events-none disabled:opacity-75 shrink-0",
     "[&>svg]:pointer-events-none  [&>svg]:shrink-0",
     "focus-visible:ring-ring outline-0 focus-visible:ring-2 select-none"
@@ -36,10 +36,10 @@ const buttonVariants = cva(
           "border-danger/25 bg-danger/15 text-foreground hover:bg-danger/30 hover:border-danger/30"
       },
       size: {
-        xs: "h-7 px-2 rounded-[3px] text-xs [&>svg]:size-3 gap-1.5",
-        sm: "h-8 px-2.5 rounded-[4px] text-sm [&>svg]:size-3 gap-1.5",
-        md: "h-9 px-3 rounded-[5px] text-sm [&>svg]:size-3.5 gap-1.5",
-        lg: "h-10 px-3 rounded-[6px] text-sm [&>svg]:size-3.5 gap-1.5"
+        xs: "h-7 px-2 text-xs rounded-sm [&>svg]:size-3 gap-1.5",
+        sm: "h-8 px-2.5 text-sm [&>svg]:size-3 gap-1.5",
+        md: "h-9 px-3 text-sm [&>svg]:size-3.5 gap-1.5",
+        lg: "h-10 px-3 text-sm [&>svg]:size-3.5 gap-1.5"
       },
       isPending: {
         true: "text-transparent"
