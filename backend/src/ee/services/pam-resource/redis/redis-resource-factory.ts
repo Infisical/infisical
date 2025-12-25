@@ -80,9 +80,11 @@ const makeRedisConnection = (
     });
     return new Promise<Redis>((resolve, reject) => {
       redis.once("connect", () => {
+        redis.removeAllListeners("error");
         resolve(redis);
       });
       redis.once("error", (error) => {
+        redis.removeAllListeners("connect");
         reject(error);
       });
     });
