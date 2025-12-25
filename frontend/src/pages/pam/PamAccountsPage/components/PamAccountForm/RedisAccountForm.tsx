@@ -6,8 +6,8 @@ import { Button, ModalClose } from "@app/components/v2";
 import { PamResourceType, TRedisAccount } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
-import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
 import { SqlAccountFields } from "./shared/SqlAccountFields";
+import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
 
 type Props = {
   account?: TRedisAccount;
