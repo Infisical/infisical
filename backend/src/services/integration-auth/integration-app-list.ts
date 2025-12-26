@@ -775,20 +775,43 @@ const getAppsCheckly = async ({ accessToken }: { accessToken: string }) => {
  * Return list of projects for the Cloudflare Pages integration
  */
 const getAppsCloudflarePages = async ({ accessToken, accountId }: { accessToken: string; accountId?: string }) => {
-  const { data } = await request.get<{ result: { name: string; id: string }[] }>(
-    `${IntegrationUrls.CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accountId}/pages/projects`,
-    {
+  const apps: Array<{ name: string; appId: string }> = [];
+  let page = 1;
+  const perPage = 50;
+  let hasMorePages = true;
+
+  // paginate through all projects
+  while (hasMorePages) {
+    const params = new URLSearchParams({
+      page: String(page),
+      per_page: String(perPage)
+    });
+
+    const { data } = await request.get<{
+      result: { name: string; id: string }[];
+      result_info?: { total_pages: number };
+    }>(`${IntegrationUrls.CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accountId}/pages/projects`, {
+      params,
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json"
       }
-    }
-  );
+    });
 
-  const apps = data.result.map((a) => ({
-    name: a.name,
-    appId: a.id
-  }));
+    data.result.forEach((a) => {
+      apps.push({
+        name: a.name,
+        appId: a.id
+      });
+    });
+
+    if (data.result.length < perPage || (data.result_info && page >= data.result_info.total_pages)) {
+      hasMorePages = false;
+    }
+
+    page += 1;
+  }
+
   return apps;
 };
 
