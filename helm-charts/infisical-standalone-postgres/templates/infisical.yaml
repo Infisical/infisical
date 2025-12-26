@@ -73,6 +73,10 @@ spec:
         - name: REDIS_URL
           value: {{ include "infisical.redisConnectionString" . }}
         {{- end }}
+        {{- if .Values.ingress.enabled }}
+        - name: SITE_URL
+          value: {{ .Values.ingress.hostName }}
+        {{- end }}        
         envFrom:
         - secretRef:
             name: {{ $infisicalValues.kubeSecretRef }}
