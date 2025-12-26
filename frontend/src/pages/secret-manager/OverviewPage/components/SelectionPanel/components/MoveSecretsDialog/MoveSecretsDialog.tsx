@@ -22,6 +22,8 @@ import {
   Modal,
   ModalClose,
   ModalContent,
+  Select,
+  SelectItem,
   Spinner,
   Switch
 } from "@app/components/v2";
@@ -69,6 +71,9 @@ const Content = ({
   projectSlug,
   sourceSecretPath
 }: ContentProps) => {
+  const [destinationEnvironmentSlug, setDestinationEnvironmentSlug] = useState<string>(
+    environments?.[0]?.slug || ""
+  );
   const [search, setSearch] = useState(sourceSecretPath);
   const [debouncedSearch] = useDebounce(search);
   const [value, setValue] = useState<OptionValue | null>({ secretPath: sourceSecretPath });
@@ -80,7 +85,7 @@ const Content = ({
 
   const { data, isPending, isLoading, isFetching } = useGetProjectSecretsQuickSearch({
     secretPath: "/",
-    environments: environments.map((env) => env.slug),
+    environments: [destinationEnvironmentSlug],
     projectId,
     search: debouncedSearch,
     tags: {}
@@ -110,7 +115,10 @@ const Content = ({
     );
   }, [permission, folderEnvironments]);
 
-  const destinationSelected = Boolean(value?.secretPath) && sourceSecretPath !== value?.secretPath;
+  const destinationSelected =
+    Boolean(value?.secretPath) &&
+    (sourceSecretPath !== value?.secretPath ||
+      environments.some((env) => env.slug !== destinationEnvironmentSlug));
 
   const environmentsToBeSkipped = useMemo(() => {
     if (!destinationSelected) return [];
@@ -192,7 +200,7 @@ const Content = ({
           shouldOverwrite,
           sourceEnvironment: environment.slug,
           sourceSecretPath,
-          destinationEnvironment: environment.slug,
+          destinationEnvironment: destinationEnvironmentSlug,
           destinationSecretPath: value.secretPath,
           projectId,
           projectSlug,
@@ -298,6 +306,19 @@ const Content = ({
 
   return (
     <>
+      <FormControl label="Destination Environment">
+        <Select
+          value={destinationEnvironmentSlug}
+          onValueChange={(val) => setDestinationEnvironmentSlug(val)}
+          className="w-full"
+        >
+          {environments.map((env) => (
+            <SelectItem value={env.slug} key={env.id}>
+              {env.name}
+            </SelectItem>
+          ))}
+        </Select>
+      </FormControl>
       <FormControl
         label="Select New Location"
         helperText="Nested folders will be displayed as secret path is typed"
