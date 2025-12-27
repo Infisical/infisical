@@ -26,7 +26,7 @@ export async function up(knex: Knex): Promise<void> {
   ) {
     await knex.raw(`
         CREATE INDEX IF NOT EXISTS idx_identity_access_tokens_revoked CONCURRENTLY
-        ON ${TableName.IdentityAccessToken} ("id")
+        ON ${TableName.IdentityAccessToken} ("isAccessTokenRevoked")
         WHERE "isAccessTokenRevoked" = true
     `);
   }
