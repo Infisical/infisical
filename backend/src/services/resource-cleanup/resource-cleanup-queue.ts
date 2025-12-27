@@ -44,9 +44,9 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
   snapshotDAL,
   secretVersionDAL,
   secretFolderVersionDAL,
-  identityAccessTokenDAL,
   secretSharingDAL,
   secretVersionV2DAL,
+  identityAccessTokenDAL,
   identityUniversalAuthClientSecretDAL,
   serviceTokenService,
   scimService,
@@ -85,7 +85,6 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       async () => {
         try {
           logger.info(`${QueueName.DailyResourceCleanUp}: queue task started`);
-          await identityAccessTokenDAL.removeExpiredTokens();
           await identityUniversalAuthClientSecretDAL.removeExpiredClientSecrets();
           await secretSharingDAL.pruneExpiredSharedSecrets();
           await secretSharingDAL.pruneExpiredSecretRequests();
@@ -116,6 +115,39 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
     await queueService.schedulePg(
       QueueJobs.DailyResourceCleanUp,
       appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *",
+      undefined,
+      { tz: "UTC" }
+    );
+
+    // Hourly cleanup routine
+    await queueService.stopRepeatableJob(
+      QueueName.FrequentResourceCleanUp,
+      QueueJobs.FrequentResourceCleanUp,
+      { pattern: "0 * * * *", utc: true },
+      QueueName.FrequentResourceCleanUp // just a job id
+    );
+
+    await queueService.startPg<QueueName.FrequentResourceCleanUp>(
+      QueueJobs.FrequentResourceCleanUp,
+      async () => {
+        try {
+          logger.info(`${QueueName.FrequentResourceCleanUp}: queue task started`);
+          await identityAccessTokenDAL.removeExpiredTokens();
+          logger.info(`${QueueName.FrequentResourceCleanUp}: queue task completed`);
+        } catch (error) {
+          logger.error(error, `${QueueName.FrequentResourceCleanUp}: resource cleanup failed`);
+          throw error;
+        }
+      },
+      {
+        batchSize: 1,
+        workerCount: 1,
+        pollingIntervalSeconds: 1
+      }
+    );
+    await queueService.schedulePg(
+      QueueJobs.FrequentResourceCleanUp,
+      "0 * * * *", // Schedule to run every hour
       undefined,
       { tz: "UTC" }
     );
