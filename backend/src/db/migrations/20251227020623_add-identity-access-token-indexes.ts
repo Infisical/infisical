@@ -9,7 +9,7 @@ export async function up(knex: Knex): Promise<void> {
     (await knex.schema.hasColumn(TableName.IdentityAccessToken, "accessTokenLastRenewedAt"))
   ) {
     await knex.raw(`
-        CREATE INDEX IF NOT EXISTS idx_identity_access_tokens_expiration CONCURRENTLY
+        CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_identity_access_tokens_expiration
         ON ${TableName.IdentityAccessToken} (
             (COALESCE("accessTokenLastRenewedAt", "createdAt") AT TIME ZONE 'UTC' + make_interval(secs => LEAST(
             "identity_access_tokens"."accessTokenTTL",
@@ -25,7 +25,7 @@ export async function up(knex: Knex): Promise<void> {
     (await knex.schema.hasColumn(TableName.IdentityAccessToken, "isAccessTokenRevoked"))
   ) {
     await knex.raw(`
-        CREATE INDEX IF NOT EXISTS idx_identity_access_tokens_revoked CONCURRENTLY
+        CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_identity_access_tokens_revoked
         ON ${TableName.IdentityAccessToken} ("isAccessTokenRevoked")
         WHERE "isAccessTokenRevoked" = true
     `);
@@ -37,7 +37,7 @@ export async function up(knex: Knex): Promise<void> {
     (await knex.schema.hasColumn(TableName.IdentityAccessToken, "accessTokenNumUsesLimit"))
   ) {
     await knex.raw(`
-        CREATE INDEX IF NOT EXISTS idx_identity_access_tokens_num_uses_with_limit CONCURRENTLY
+        CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_identity_access_tokens_num_uses_with_limit
         ON ${TableName.IdentityAccessToken} ("accessTokenNumUses")
         WHERE "accessTokenNumUsesLimit" > 0
           AND "accessTokenNumUses" >= "identity_access_tokens"."accessTokenNumUsesLimit"
