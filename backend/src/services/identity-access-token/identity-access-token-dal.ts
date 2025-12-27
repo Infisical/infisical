@@ -60,17 +60,17 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
             `
               -- Check if the token's effective expiration time has passed.
               -- The expiration time is calculated by adding its TTL to its last renewal/creation time.
-              COALESCE(
+              (COALESCE(
                 "${TableName.IdentityAccessToken}"."accessTokenLastRenewedAt", -- Use last renewal time if available
                 "${TableName.IdentityAccessToken}"."createdAt"                 -- Otherwise, use creation time
-              )
+              ) AT TIME ZONE 'UTC') +                                          -- Convert to UTC so that it can be an immutable function for our expression index
               + make_interval(
                   secs => LEAST(
                     "${TableName.IdentityAccessToken}"."accessTokenTTL",      -- Token's specified TTL
                     ?                                                         -- Capped by MAX_TTL (parameterized value)
                   )
                 )
-              < NOW()                                                         -- Check if the calculated time is before now
+              < NOW() AT TIME ZONE 'UTC'                                      -- Check if the calculated time is before now (converted to UTC)
               `,
             [MAX_TTL]
           );
