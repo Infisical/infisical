@@ -12,6 +12,9 @@ gateway:
   # Defaults to /var/lib/infisical/session_recordings.
   pamSessionRecordingsDirectory: /var/lib/infisical/session_recordings
 
+  # http endpoint used for Kubernetes liveness/readiness probes
+  healthEndpoint: /health 
+
 resources:
   limits:
     cpu: 500m
