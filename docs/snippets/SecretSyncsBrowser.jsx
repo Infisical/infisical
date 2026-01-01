@@ -23,6 +23,7 @@ export const SecretSyncsBrowser = () => {
     {"name": "Heroku", "slug": "heroku", "path": "/integrations/secret-syncs/heroku", "description": "Learn how to sync secrets from Infisical to Heroku.", "category": "Hosting"},
     {"name": "DigitalOcean App Platform", "slug": "digital-ocean-app-platform", "path": "/integrations/secret-syncs/digital-ocean-app-platform", "description": "Learn how to sync secrets from Infisical to DigitalOcean App Platform.", "category": "Hosting"},
     {"name": "Supabase", "slug": "supabase", "path": "/integrations/secret-syncs/supabase", "description": "Learn how to sync secrets from Infisical to Supabase.", "category": "Databases"},
+    {"name": "Convex", "slug": "convex", "path": "/integrations/secret-syncs/convex", "description": "Learn how to sync secrets from Infisical to Convex.", "category": "Databases"},
     {"name": "Checkly", "slug": "checkly", "path": "/integrations/secret-syncs/checkly", "description": "Learn how to sync secrets from Infisical to Checkly.", "category": "Monitoring"},
     {"name": "GitHub", "slug": "github", "path": "/integrations/secret-syncs/github", "description": "Learn how to sync secrets from Infisical to GitHub.", "category": "CI/CD"},
     {"name": "GitLab", "slug": "gitlab", "path": "/integrations/secret-syncs/gitlab", "description": "Learn how to sync secrets from Infisical to GitLab.", "category": "CI/CD"},

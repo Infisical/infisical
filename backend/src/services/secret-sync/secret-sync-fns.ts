@@ -38,6 +38,7 @@ import { ChecklySyncFns } from "./checkly/checkly-sync-fns";
 import { CLOUDFLARE_PAGES_SYNC_LIST_OPTION } from "./cloudflare-pages/cloudflare-pages-constants";
 import { CloudflarePagesSyncFns } from "./cloudflare-pages/cloudflare-pages-fns";
 import { CLOUDFLARE_WORKERS_SYNC_LIST_OPTION, CloudflareWorkersSyncFns } from "./cloudflare-workers";
+import { CONVEX_SYNC_LIST_OPTION, ConvexSyncFns } from "./convex";
 import {
   DIGITAL_OCEAN_APP_PLATFORM_SYNC_LIST_OPTION,
   DigitalOceanAppPlatformSyncFns
@@ -90,6 +91,7 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.CloudflarePages]: CLOUDFLARE_PAGES_SYNC_LIST_OPTION,
   [SecretSync.CloudflareWorkers]: CLOUDFLARE_WORKERS_SYNC_LIST_OPTION,
   [SecretSync.Supabase]: SUPABASE_SYNC_LIST_OPTION,
+  [SecretSync.Convex]: CONVEX_SYNC_LIST_OPTION,
   [SecretSync.Zabbix]: ZABBIX_SYNC_LIST_OPTION,
   [SecretSync.Railway]: RAILWAY_SYNC_LIST_OPTION,
   [SecretSync.Checkly]: CHECKLY_SYNC_LIST_OPTION,
@@ -279,6 +281,8 @@ export const SecretSyncFns = {
         return ChecklySyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Supabase:
         return SupabaseSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Convex:
+        return ConvexSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.DigitalOceanAppPlatform:
         return DigitalOceanAppPlatformSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Netlify:
@@ -400,6 +404,9 @@ export const SecretSyncFns = {
       case SecretSync.Supabase:
         secretMap = await SupabaseSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Convex:
+        secretMap = await ConvexSyncFns.getSecrets(secretSync);
+        break;
       case SecretSync.DigitalOceanAppPlatform:
         secretMap = await DigitalOceanAppPlatformSyncFns.getSecrets(secretSync);
         break;
@@ -508,6 +515,8 @@ export const SecretSyncFns = {
         return ChecklySyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Supabase:
         return SupabaseSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Convex:
+        return ConvexSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.DigitalOceanAppPlatform:
         return DigitalOceanAppPlatformSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Netlify:

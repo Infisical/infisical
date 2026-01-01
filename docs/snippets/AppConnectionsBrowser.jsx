@@ -157,6 +157,14 @@ export const AppConnectionsBrowser = () => {
       category: "Databases",
     },
     {
+      name: "Convex",
+      slug: "convex",
+      path: "/integrations/app-connections/convex",
+      description:
+        "Learn how to connect your Convex deployment to pull secrets from Infisical.",
+      category: "Databases",
+    },
+    {
       name: "Checkly",
       slug: "checkly",
       path: "/integrations/app-connections/checkly",

@@ -168,6 +168,10 @@ export type TNetlifyConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Netlify;
 };
 
+export type TConvexConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Convex;
+};
+
 export type TOktaConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Okta;
 };
@@ -233,6 +237,7 @@ export type TAppConnectionOption =
   | TSupabaseConnectionOption
   | TDigitalOceanConnectionOption
   | TNetlifyConnectionOption
+  | TConvexConnectionOption
   | TNorthflankConnectionOption
   | TOktaConnectionOption
   | TAzureAdCsConnectionOption

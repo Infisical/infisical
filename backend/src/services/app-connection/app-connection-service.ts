@@ -69,6 +69,7 @@ import { ValidateCamundaConnectionCredentialsSchema } from "./camunda";
 import { camundaConnectionService } from "./camunda/camunda-connection-service";
 import { ValidateChecklyConnectionCredentialsSchema } from "./checkly";
 import { checklyConnectionService } from "./checkly/checkly-connection-service";
+import { ValidateConvexConnectionCredentialsSchema } from "./convex";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
 import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-service";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
@@ -180,6 +181,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Supabase]: ValidateSupabaseConnectionCredentialsSchema,
   [AppConnection.DigitalOcean]: ValidateDigitalOceanConnectionCredentialsSchema,
   [AppConnection.Netlify]: ValidateNetlifyConnectionCredentialsSchema,
+  [AppConnection.Convex]: ValidateConvexConnectionCredentialsSchema,
   [AppConnection.Northflank]: ValidateNorthflankConnectionCredentialsSchema,
   [AppConnection.Okta]: ValidateOktaConnectionCredentialsSchema,
   [AppConnection.Redis]: ValidateRedisConnectionCredentialsSchema,

@@ -1,0 +1,89 @@
+---
+title: "Convex Connection"
+description: "Learn how to configure a Convex Connection for Infisical."
+---
+
+Infisical supports the use of Convex Admin Keys to connect with Convex.
+
+<Note>
+  Convex Admin Keys grant full access to your deployment. Store them securely and rotate when needed.
+</Note>
+
+## Create a Convex Admin Key
+
+<Steps>
+  <Step title="Generate an admin key in Convex">
+    In your Convex dashboard, open your project settings and create a new Admin Key.
+  </Step>
+  <Step title="Copy the admin key">
+    Copy the key immediately and keep it somewhere secure. You'll use it to create the connection in Infisical.
+  </Step>
+</Steps>
+
+## Create a Convex Connection in Infisical
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Navigate to App Connections">
+        In your Infisical dashboard, navigate to the **App Connections** page in the desired project.
+
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+      </Step>
+      <Step title="Select Convex Connection">
+        Click **+ Add Connection** and choose **Convex Connection** from the list of integrations.
+      </Step>
+      <Step title="Fill out the Convex Connection form">
+        Complete the form by providing:
+        - A descriptive name for the connection
+        - An optional description
+        - The **Admin Key** from Convex
+      </Step>
+      <Step title="Connection created">
+        After submitting the form, your **Convex Connection** will be successfully created and ready to use with your Infisical project.
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="API">
+    To create a Convex Connection via API, send a request to the [Create Convex Connection](/api-reference/endpoints/app-connections/convex/create) endpoint.
+
+    ### Sample request
+
+    ```bash Request
+    curl    --request POST \
+            --url https://app.infisical.com/api/v1/app-connections/convex \
+            --header 'Content-Type: application/json' \
+            --data '{
+                "name": "my-convex-connection",
+                "method": "admin-key",
+                "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+                "credentials": {
+                    "adminKey": "[ADMIN KEY]"
+                }
+            }'
+    ```
+
+    ### Sample response
+
+    ```bash Response
+    {
+      "appConnection": {
+          "id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+          "name": "my-convex-connection",
+          "description": null,
+          "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+          "version": 1,
+          "orgId": "abcdef12-3456-7890-abcd-ef1234567890",
+          "createdAt": "2025-07-19T10:15:00.000Z",
+          "updatedAt": "2025-07-19T10:15:00.000Z",
+          "isPlatformManagedCredentials": false,
+          "credentialsHash": "d41d8cd98f00b204e9800998ecf8427e",
+          "app": "convex",
+          "method": "admin-key",
+          "credentials": {}
+      }
+    }
+    ```
+  </Tab>
+</Tabs>

@@ -12,6 +12,7 @@ import { ChecklySyncDestinationSchema } from "./checkly-sync-destination-schema"
 import { ChefSyncDestinationSchema } from "./chef-sync-destination-schema";
 import { CloudflarePagesSyncDestinationSchema } from "./cloudflare-pages-sync-destination-schema";
 import { CloudflareWorkersSyncDestinationSchema } from "./cloudflare-workers-sync-destination-schema";
+import { ConvexSyncDestinationSchema } from "./convex-sync-destination-schema";
 import { DatabricksSyncDestinationSchema } from "./databricks-sync-destination-schema";
 import { DigitalOceanAppPlatformSyncDestinationSchema } from "./digital-ocean-app-platform-sync-destination-schema";
 import { FlyioSyncDestinationSchema } from "./flyio-sync-destination-schema";
@@ -59,6 +60,7 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   GitlabSyncDestinationSchema,
   CloudflarePagesSyncDestinationSchema,
   CloudflareWorkersSyncDestinationSchema,
+  ConvexSyncDestinationSchema,
   SupabaseSyncDestinationSchema,
   ZabbixSyncDestinationSchema,
   RailwaySyncDestinationSchema,

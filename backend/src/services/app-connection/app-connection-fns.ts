@@ -73,6 +73,11 @@ import {
 } from "./bitbucket";
 import { CamundaConnectionMethod, getCamundaConnectionListItem, validateCamundaConnectionCredentials } from "./camunda";
 import { ChecklyConnectionMethod, getChecklyConnectionListItem, validateChecklyConnectionCredentials } from "./checkly";
+import {
+  ConvexConnectionMethod,
+  getConvexConnectionListItem,
+  validateConvexConnectionCredentials
+} from "./convex";
 import { CloudflareConnectionMethod } from "./cloudflare/cloudflare-connection-enum";
 import {
   getCloudflareConnectionListItem,
@@ -228,6 +233,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getSupabaseConnectionListItem(),
     getDigitalOceanConnectionListItem(),
     getNetlifyConnectionListItem(),
+    getConvexConnectionListItem(),
     getNorthflankConnectionListItem(),
     getOktaConnectionListItem(),
     getRedisConnectionListItem(),
@@ -362,6 +368,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Supabase]: validateSupabaseConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.DigitalOcean]: validateDigitalOceanConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Netlify]: validateNetlifyConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Convex]: validateConvexConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Northflank]: validateNorthflankConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Okta]: validateOktaConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Chef]: validateChefConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -443,6 +450,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "User Key";
     case SupabaseConnectionMethod.AccessToken:
       return "Access Token";
+    case ConvexConnectionMethod.AdminKey:
+      return "Admin Key";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);
@@ -513,6 +522,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Supabase]: platformManagedCredentialsNotSupported,
   [AppConnection.DigitalOcean]: platformManagedCredentialsNotSupported,
   [AppConnection.Netlify]: platformManagedCredentialsNotSupported,
+  [AppConnection.Convex]: platformManagedCredentialsNotSupported,
   [AppConnection.Northflank]: platformManagedCredentialsNotSupported,
   [AppConnection.Okta]: platformManagedCredentialsNotSupported,
   [AppConnection.Redis]: platformManagedCredentialsNotSupported,

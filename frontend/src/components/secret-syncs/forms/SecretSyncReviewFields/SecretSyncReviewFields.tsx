@@ -27,6 +27,7 @@ import { ChecklySyncReviewFields } from "./ChecklySyncReviewFields";
 import { ChefSyncReviewFields } from "./ChefSyncReviewFields";
 import { CloudflarePagesSyncReviewFields } from "./CloudflarePagesReviewFields";
 import { CloudflareWorkersSyncReviewFields } from "./CloudflareWorkersReviewFields";
+import { ConvexSyncReviewFields } from "./ConvexSyncReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
 import { DigitalOceanAppPlatformSyncReviewFields } from "./DigitalOceanAppPlatformSyncReviewFields";
 import { FlyioSyncReviewFields } from "./FlyioSyncReviewFields";
@@ -163,6 +164,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Supabase:
       DestinationFieldsComponent = <SupabaseSyncReviewFields />;
+      break;
+    case SecretSync.Convex:
+      DestinationFieldsComponent = <ConvexSyncReviewFields />;
       break;
     case SecretSync.DigitalOceanAppPlatform:
       DestinationFieldsComponent = <DigitalOceanAppPlatformSyncReviewFields />;
