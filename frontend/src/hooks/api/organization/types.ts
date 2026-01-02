@@ -173,7 +173,7 @@ export enum OrgMembershipStatus {
 }
 
 export type TBillingMetrics = {
-  identityMetrics: Record<string, { userCount: number; identityCount: number }>;
+  identityMetrics: Record<string, { userCount: number; machineIdentityCount: number }>;
   certificateMetrics: { sanCount: number; wildcardCount: number };
   quantity: number;
   quantityIdentities: number;

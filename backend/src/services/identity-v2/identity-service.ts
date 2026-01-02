@@ -2,7 +2,7 @@ import { AccessScope, OrgMembershipRole } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity-v2/identity-fns";
 
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
@@ -22,7 +22,7 @@ import { newProjectIdentityFactory } from "./project/project-identity-factory";
 type TScopedIdentityV2ServiceFactoryDep = {
   identityDAL: TIdentityV2DALFactory;
   permissionService: TPermissionServiceFactory;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateOrgSubscription">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateOrgSubscription" | "hasReachedIdentityLimit">;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityMetadataDAL: TIdentityMetadataDALFactory;
@@ -41,10 +41,12 @@ export const identityV2ServiceFactory = ({
   keyStore
 }: TScopedIdentityV2ServiceFactoryDep) => {
   const orgFactory = newOrgIdentityFactory({
-    permissionService
+    permissionService,
+    licenseService
   });
   const projectFactory = newProjectIdentityFactory({
-    permissionService
+    permissionService,
+    licenseService
   });
 
   const scopeFactory = {
@@ -59,15 +61,6 @@ export const identityV2ServiceFactory = ({
     const factory = scopeFactory[scopeData.scope];
 
     await factory.onCreateIdentityGuard(dto);
-
-    const plan = await licenseService.getPlan(dto.permission.orgId);
-
-    if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
-      // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
-      throw new BadRequestError({
-        message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
-      });
-    }
 
     const identity = await identityDAL.transaction(async (tx) => {
       const newIdentity = await identityDAL.create(

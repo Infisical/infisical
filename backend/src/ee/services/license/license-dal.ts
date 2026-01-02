@@ -111,11 +111,15 @@ export const licenseDALFactory = (db: TDbClient) => {
             `COUNT(DISTINCT COALESCE("${TableName.Membership}"."actorUserId", "${TableName.UserGroupMembership}"."userId")) as "userCount"`
           )
         )
-        .select(db.raw(`COUNT(DISTINCT "${TableName.Membership}"."actorIdentityId") as "identityCount"`));
+        .select(db.raw(`COUNT(DISTINCT "${TableName.Membership}"."actorIdentityId") as "machineIdentityCount"`));
 
-      const result = (docs as unknown as Array<{ type: ProjectType; userCount: string; identityCount: string }>).map(
-        (el) => ({ ...el, identityCount: Number(el.identityCount || 0), userCount: Number(el.userCount || 0) })
-      );
+      const result = (
+        docs as unknown as Array<{ type: ProjectType; userCount: string; machineIdentityCount: string }>
+      ).map((el) => ({
+        ...el,
+        machineIdentityCount: Number(el.machineIdentityCount || 0),
+        userCount: Number(el.userCount || 0)
+      }));
       return result;
     } catch (error) {
       throw new DatabaseError({ error, name: "CountIdentityByProjectType" });

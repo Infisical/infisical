@@ -39,7 +39,7 @@ type TIdentityServiceFactoryDep = {
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateOrgSubscription">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateOrgSubscription" | "hasReachedIdentityLimit">;
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
@@ -105,9 +105,8 @@ export const identityServiceFactory = ({
         });
     }
 
-    const plan = await licenseService.getPlan(orgId);
-
-    if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
+    const hasReachedIdentityLimit = await licenseService.hasReachedIdentityLimit(orgId);
+    if (hasReachedIdentityLimit) {
       // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
       throw new BadRequestError({
         message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."

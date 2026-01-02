@@ -1,4 +1,5 @@
 import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -33,6 +34,7 @@ type TMembershipIdentityServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
+  licenseService: Pick<TLicenseServiceFactory, "hasReachedIdentityLimit">;
 };
 
 export type TMembershipIdentityServiceFactory = ReturnType<typeof membershipIdentityServiceFactory>;
@@ -44,7 +46,8 @@ export const membershipIdentityServiceFactory = ({
   permissionService,
   orgDAL,
   additionalPrivilegeDAL,
-  identityDAL
+  identityDAL,
+  licenseService
 }: TMembershipIdentityServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipIdentityFactory({
@@ -56,7 +59,8 @@ export const membershipIdentityServiceFactory = ({
       membershipIdentityDAL,
       orgDAL,
       permissionService,
-      identityDAL
+      identityDAL,
+      licenseService
     }),
     [AccessScope.Namespace]: newNamespaceMembershipIdentityFactory({})
   };

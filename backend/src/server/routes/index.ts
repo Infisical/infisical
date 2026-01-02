@@ -662,7 +662,8 @@ export const registerRoutes = async (
     orgDAL,
     permissionService,
     roleDAL,
-    additionalPrivilegeDAL
+    additionalPrivilegeDAL,
+    licenseService
   });
 
   const membershipGroupService = membershipGroupServiceFactory({

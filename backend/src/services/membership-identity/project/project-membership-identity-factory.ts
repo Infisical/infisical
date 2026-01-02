@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
@@ -24,13 +25,15 @@ type TProjectMembershipIdentityScopeFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne">;
+  licenseService: Pick<TLicenseServiceFactory, "hasReachedIdentityLimit">;
 };
 
 export const newProjectMembershipIdentityFactory = ({
   permissionService,
   orgDAL,
   membershipIdentityDAL,
-  identityDAL
+  identityDAL,
+  licenseService
 }: TProjectMembershipIdentityScopeFactoryDep): TMembershipIdentityScopeFactory => {
   const getScopeField: TMembershipIdentityScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Project) {
@@ -75,6 +78,15 @@ export const newProjectMembershipIdentityFactory = ({
     const identityDetails = await identityDAL.findById(dto.data.identityId);
     if (identityDetails.projectId) {
       throw new BadRequestError({ message: "Failed to create project membership for a project scoped identity" });
+    }
+
+    // TODO(multi): do something about project type here
+    const hasReachedIdentityLimit = await licenseService.hasReachedIdentityLimit(dto.permission.orgId);
+    if (hasReachedIdentityLimit) {
+      // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
+      throw new BadRequestError({
+        message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
+      });
     }
 
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);

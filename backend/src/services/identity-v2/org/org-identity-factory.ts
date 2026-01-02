@@ -1,17 +1,22 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { InternalServerError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 
 import { TIdentityV2Factory } from "../identity-types";
 
 type TOrgIdentityFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  licenseService: Pick<TLicenseServiceFactory, "hasReachedIdentityLimit">;
 };
 
-export const newOrgIdentityFactory = ({ permissionService }: TOrgIdentityFactoryDep): TIdentityV2Factory => {
+export const newOrgIdentityFactory = ({
+  permissionService,
+  licenseService
+}: TOrgIdentityFactoryDep): TIdentityV2Factory => {
   const getScopeField: TIdentityV2Factory["getScopeField"] = (scopeData) => {
     if (scopeData.scope === AccessScope.Organization) {
       return { key: "orgId" as const, value: scopeData.orgId };
@@ -29,6 +34,14 @@ export const newOrgIdentityFactory = ({ permissionService }: TOrgIdentityFactory
       scope: OrganizationActionScope.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
+
+    const hasReachedIdentityLimit = await licenseService.hasReachedIdentityLimit(dto.permission.orgId);
+    if (hasReachedIdentityLimit) {
+      // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
+      throw new BadRequestError({
+        message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
+      });
+    }
   };
 
   const onUpdateIdentityGuard: TIdentityV2Factory["onUpdateIdentityGuard"] = async (dto) => {

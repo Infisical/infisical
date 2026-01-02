@@ -44,6 +44,12 @@ export const PlanUsageStats = ({ selectedProduct, orgPlan }: Props) => {
     currentOrg.id
   );
   const createCustomerPortalSession = useCreateCustomerPortalSession();
+  const totalIdentities =
+    Number(billingMetrics?.identityMetrics?.[selectedProduct]?.machineIdentityCount) +
+      Number(billingMetrics?.identityMetrics?.[selectedProduct]?.userCount) || 0;
+  const availableIdentities =
+    Number(subscription?.get(selectedProduct as SubscriptionProducts.PAM, "identitiesUsed") || 0) -
+    totalIdentities;
 
   return (
     <div className="flex w-full flex-col gap-2">
@@ -93,30 +99,31 @@ export const PlanUsageStats = ({ selectedProduct, orgPlan }: Props) => {
         )}
       </div>
       <div>
-        {selectedProduct !== SubscriptionProducts.CertificateManager && (
-          <Card>
-            <CardTitle className="mb-0 flex items-center px-5">
-              Total Identity Seats
-              <Tooltip content="Assigned Explanation">
-                <HelpCircleIcon className="ml-2 text-gray-400" size={16} />
-              </Tooltip>
-            </CardTitle>
-            <CardBody className="p-0">
-              <Table>
-                <TBody>
-                  <Tr>
-                    <Td>Assigned</Td>
-                    <Td>1</Td>
-                  </Tr>
-                  <Tr>
-                    <Td>Available</Td>
-                    <Td>0</Td>
-                  </Tr>
-                </TBody>
-              </Table>
-            </CardBody>
-          </Card>
-        )}
+        {selectedProduct !== SubscriptionProducts.CertificateManager &&
+          selectedProduct !== SubscriptionProducts.Platform && (
+            <Card>
+              <CardTitle className="mb-0 flex items-center px-5">
+                Total Identity Seats
+                <Tooltip content="Assigned Explanation">
+                  <HelpCircleIcon className="ml-2 text-gray-400" size={16} />
+                </Tooltip>
+              </CardTitle>
+              <CardBody className="p-0">
+                <Table>
+                  <TBody>
+                    <Tr>
+                      <Td>Assigned</Td>
+                      <Td>{totalIdentities}</Td>
+                    </Tr>
+                    <Tr>
+                      <Td>Available</Td>
+                      <Td>{availableIdentities}</Td>
+                    </Tr>
+                  </TBody>
+                </Table>
+              </CardBody>
+            </Card>
+          )}
         {selectedProduct === SubscriptionProducts.CertificateManager && (
           <TableContainer>
             <Table>

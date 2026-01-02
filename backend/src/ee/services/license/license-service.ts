@@ -296,6 +296,14 @@ export const licenseServiceFactory = ({
     return $getPlanReturnFn(onPremFeatures);
   };
 
+  const $getSubscriptionTypeFromProjectType = (projectType: ProjectType) => {
+    let type: SubscriptionProductCategory | null = null;
+    if (projectType === ProjectType.SecretManager) type = SubscriptionProductCategory.SecretManager;
+    if (projectType === ProjectType.CertificateManager) type = SubscriptionProductCategory.CertificateManager;
+    if (projectType === ProjectType.PAM) type = SubscriptionProductCategory.Pam;
+    return type;
+  };
+
   const validatePlanProjectLimit = async (orgId: string, projectType: ProjectType) => {
     const plan = await getPlan(orgId);
     const featureSet = plan.getAll();
@@ -304,10 +312,7 @@ export const licenseServiceFactory = ({
     let projectsUsed = 0;
 
     if (featureSet.version === 2) {
-      let type: SubscriptionProductCategory | null = null;
-      if (projectType === ProjectType.SecretManager) type = SubscriptionProductCategory.SecretManager;
-      if (projectType === ProjectType.CertificateManager) type = SubscriptionProductCategory.CertificateManager;
-      if (projectType === ProjectType.PAM) type = SubscriptionProductCategory.Pam;
+      const type = $getSubscriptionTypeFromProjectType(projectType);
       if (!type) return;
 
       projectLimit = featureSet[type].projectLimit || 0;
@@ -328,6 +333,37 @@ export const licenseServiceFactory = ({
     }
 
     return { projectLimit };
+  };
+
+  const hasReachedIdentityLimit = async (orgId: string, projectType?: ProjectType) => {
+    const plan = await getPlan(orgId);
+    const featureSet = plan.getAll();
+
+    let identityLimit = 0;
+    let identitiesUsed = 0;
+
+    if (featureSet.version === 2 && projectType) {
+      if (Object.values(plan.productPlans).includes("enterprise")) return false;
+
+      const type = $getSubscriptionTypeFromProjectType(projectType);
+      if (!type) return;
+
+      identityLimit = featureSet[type as SubscriptionProductCategory.SecretManager].identityLimit || 0;
+      if (identityLimit) {
+        const identitiesUsedGroupByProject = await licenseDAL.countIdentitiesByProjectType(orgId);
+        const identityInProject = identitiesUsedGroupByProject.find((el) => el.type === projectType);
+        identitiesUsed = Number(identityInProject?.machineIdentityCount) + Number(identityInProject?.userCount) || 0;
+      }
+    } else {
+      if (featureSet.slug === "enterprise") return false;
+
+      identityLimit = featureSet.identityLimit || 0;
+      if (identityLimit) {
+        identitiesUsed = await licenseDAL.countOrgUsersAndIdentities(orgId);
+      }
+    }
+
+    return Boolean(identityLimit && identitiesUsed >= identityLimit);
   };
 
   const refreshPlan = async (orgId: string) => {
@@ -1043,7 +1079,7 @@ export const licenseServiceFactory = ({
         prev[curr.type] = curr;
         return prev;
       },
-      {} as Record<ProjectType, { userCount: number; identityCount: number }>
+      {} as Record<ProjectType, { userCount: number; machineIdentityCount: number }>
     );
     return {
       identityMetrics: identityMetricsGroupByProjectType,
@@ -1098,7 +1134,7 @@ export const licenseServiceFactory = ({
       for (const projectType of projectTypes) {
         const identitySeats = identityMetrics?.[projectType];
         const userSeats = identitySeats?.userCount || 0;
-        const machineIdentitySeats = identitySeats?.identityCount || 0;
+        const machineIdentitySeats = identitySeats?.machineIdentityCount || 0;
         const totalSeats = userSeats + machineIdentitySeats;
         if (projectType === ProjectType.SecretManager) {
           licensePayload.usedSecretsManagementSeats = totalSeats;
@@ -1204,6 +1240,7 @@ export const licenseServiceFactory = ({
     initializeBackgroundSync,
     updateOrgProductToPro,
     getMySubscriptionMetrics,
-    validatePlanProjectLimit
+    validatePlanProjectLimit,
+    hasReachedIdentityLimit
   };
 };

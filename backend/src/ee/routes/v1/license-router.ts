@@ -523,7 +523,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
             z.string(),
             z.object({
               userCount: z.number(),
-              identityCount: z.number()
+              machineIdentityCount: z.number()
             })
           ),
           certificateMetrics: z.object({
