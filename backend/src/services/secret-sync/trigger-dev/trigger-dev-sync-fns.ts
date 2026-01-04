@@ -48,16 +48,12 @@ const importTriggerDevEnvVars = async (
 ) => {
   const normalized = await getNormalizedApiUrl(apiUrl);
 
-  await request.post<void>(
-    `${normalized}/api/v1/projects/${projectRef}/envvars/${environment}/import`,
-    payload,
-    {
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        "Content-Type": "application/json"
-      }
+  await request.post<void>(`${normalized}/api/v1/projects/${projectRef}/envvars/${environment}/import`, payload, {
+    headers: {
+      Authorization: `Bearer ${apiToken}`,
+      "Content-Type": "application/json"
     }
-  );
+  });
 };
 
 const deleteTriggerDevEnvVar = async (
@@ -111,8 +107,12 @@ export const TriggerDevSyncFns = {
     }
 
     if (!disableSecretDeletion) {
-      for (const key of Object.keys(existing)) {
-        if (matchesSchema(key, environment?.slug || "", keySchema) && !secretMap[key]) {
+      const keysToDelete = Object.keys(existing).filter(
+        (key) => matchesSchema(key, environment?.slug || "", keySchema) && !secretMap[key]
+      );
+
+      await Promise.all(
+        keysToDelete.map(async (key) => {
           try {
             await deleteTriggerDevEnvVar(apiUrl, apiToken, projectRef, triggerEnvironment, key);
           } catch (error) {
@@ -121,8 +121,8 @@ export const TriggerDevSyncFns = {
               secretKey: key
             });
           }
-        }
-      }
+        })
+      );
     }
   },
 
@@ -136,18 +136,20 @@ export const TriggerDevSyncFns = {
 
     const existing = await listTriggerDevEnvVars(apiUrl, apiToken, projectRef, triggerEnvironment);
 
-    for (const key of Object.keys(secretMap)) {
-      if (!(key in existing)) continue;
+    const keysToDelete = Object.keys(secretMap).filter((key) => key in existing);
 
-      try {
-        await deleteTriggerDevEnvVar(apiUrl, apiToken, projectRef, triggerEnvironment, key);
-      } catch (error) {
-        throw new SecretSyncError({
-          error,
-          secretKey: key
-        });
-      }
-    }
+    await Promise.all(
+      keysToDelete.map(async (key) => {
+        try {
+          await deleteTriggerDevEnvVar(apiUrl, apiToken, projectRef, triggerEnvironment, key);
+        } catch (error) {
+          throw new SecretSyncError({
+            error,
+            secretKey: key
+          });
+        }
+      })
+    );
   },
 
   getSecrets: async (secretSync: TTriggerDevSyncWithCredentials): Promise<TSecretMap> => {

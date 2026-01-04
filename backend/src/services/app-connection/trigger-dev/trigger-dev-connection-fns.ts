@@ -1,8 +1,8 @@
 import { AxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
-import { removeTrailingSlash } from "@app/lib/fn";
 import { BadRequestError } from "@app/lib/errors";
+import { removeTrailingSlash } from "@app/lib/fn";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -38,7 +38,7 @@ export const validateTriggerDevConnectionCredentials = async ({ credentials }: T
     });
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
-      const responseData = error.response?.data;
+      const responseData: unknown = error.response?.data;
       const details = responseData ? JSON.stringify(responseData) : error.message || "Unknown error";
       throw new BadRequestError({
         message: `Failed to validate credentials: ${details}`
