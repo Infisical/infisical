@@ -53,6 +53,7 @@ import {
   CloudflareConnectionListItemSchema,
   SanitizedCloudflareConnectionSchema
 } from "@app/services/app-connection/cloudflare/cloudflare-connection-schema";
+import { ConvexConnectionListItemSchema, SanitizedConvexConnectionSchema } from "@app/services/app-connection/convex";
 import {
   DatabricksConnectionListItemSchema,
   SanitizedDatabricksConnectionSchema
@@ -175,6 +176,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedRailwayConnectionSchema.options,
   ...SanitizedChecklyConnectionSchema.options,
   ...SanitizedSupabaseConnectionSchema.options,
+  ...SanitizedConvexConnectionSchema.options,
   ...SanitizedDigitalOceanConnectionSchema.options,
   ...SanitizedNetlifyConnectionSchema.options,
   ...SanitizedNorthflankConnectionSchema.options,
@@ -223,6 +225,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   RailwayConnectionListItemSchema,
   ChecklyConnectionListItemSchema,
   SupabaseConnectionListItemSchema,
+  ConvexConnectionListItemSchema,
   DigitalOceanConnectionListItemSchema,
   NetlifyConnectionListItemSchema,
   NorthflankConnectionListItemSchema,
