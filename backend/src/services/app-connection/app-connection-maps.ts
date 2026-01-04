@@ -45,7 +45,8 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.MongoDB]: "MongoDB",
   [AppConnection.Chef]: "Chef",
   [AppConnection.Northflank]: "Northflank",
-  [AppConnection.OctopusDeploy]: "Octopus Deploy"
+  [AppConnection.OctopusDeploy]: "Octopus Deploy",
+  [AppConnection.TriggerDev]: "Trigger.dev"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -93,5 +94,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.MongoDB]: AppConnectionPlanType.Regular,
   [AppConnection.Chef]: AppConnectionPlanType.Enterprise,
   [AppConnection.Northflank]: AppConnectionPlanType.Regular,
-  [AppConnection.OctopusDeploy]: AppConnectionPlanType.Regular
+  [AppConnection.OctopusDeploy]: AppConnectionPlanType.Regular,
+  [AppConnection.TriggerDev]: AppConnectionPlanType.Regular
 };

@@ -1,0 +1,144 @@
+---
+title: "Trigger.dev Sync"
+description: "Learn how to configure a Trigger.dev Sync for Infisical."
+---
+
+**Prerequisites:**
+
+- Create a [Trigger.dev Connection](/integrations/app-connections/trigger-dev)
+- Have your Trigger.dev **Project Ref** (e.g. `proj_abc123`)
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Add Sync">
+        Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Click on the **Add Sync** button.
+
+        ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
+      </Step>
+      <Step title="Select 'Trigger.dev'">
+        Choose **Trigger.dev** from the list of secret sync destinations.
+      </Step>
+      <Step title="Configure source">
+        Configure the **Source** from where secrets should be retrieved, then click **Next**.
+
+        - **Environment**: The project environment to retrieve secrets from.
+        - **Secret Path**: The folder path to retrieve secrets from.
+
+        <Tip>
+          If you need to sync secrets from multiple folder locations, check out [secret imports](/documentation/platform/secret-reference#secret-imports).
+        </Tip>
+      </Step>
+      <Step title="Configure destination">
+        Configure the **Destination** to where secrets should be deployed, then click **Next**.
+
+        - **Trigger.dev Connection**: The Trigger.dev Connection to authenticate with.
+        - **Project Ref**: The Trigger.dev project reference.
+        - **Environment**: The Trigger.dev environment to sync to (dev, staging, or prod).
+      </Step>
+      <Step title="Configure Sync Options">
+        Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
+
+        - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync.
+            - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
+            - **Import Secrets (Prioritize Infisical)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Infisical over Trigger.dev when keys conflict.
+            - **Import Secrets (Prioritize Trigger.dev)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Trigger.dev over Infisical when keys conflict.
+        - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment.
+        <Note>
+          We highly recommend using a Key Schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
+        </Note>
+        - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
+        - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
+      </Step>
+      <Step title="Configure details">
+        Configure the **Details** of your Trigger.dev Sync, then click **Next**.
+
+        - **Name**: The name of your sync. Must be slug-friendly.
+        - **Description**: An optional description for your sync.
+      </Step>
+      <Step title="Review configuration">
+        Review your Trigger.dev Sync configuration, then click **Create Sync**.
+      </Step>
+      <Step title="Sync created">
+        If enabled, your Trigger.dev Sync will begin syncing your secrets to the destination endpoint.
+      </Step>
+    </Steps>
+
+  </Tab>
+
+  <Tab title="API">
+    To create a **Trigger.dev Sync**, make an API request to the [Create Trigger.dev Sync](/api-reference/endpoints/secret-syncs/trigger-dev/create) API endpoint.
+
+    ### Sample request
+
+    ```bash Request
+    curl    --request POST \
+            --url https://app.infisical.com/api/v1/secret-syncs/trigger-dev \
+            --header 'Content-Type: application/json' \
+            --data '{
+                "name": "my-trigger-dev-sync",
+                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "description": "sync to trigger.dev",
+                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "environment": "production",
+                "secretPath": "/",
+                "isAutoSyncEnabled": true,
+                "syncOptions": {
+                    "initialSyncBehavior": "overwrite-destination",
+                    "disableSecretDeletion": false
+                },
+                "destinationConfig": {
+                    "projectRef": "proj_abc123",
+                    "environment": "prod"
+                }
+            }'
+    ```
+
+    ### Sample response
+
+    ```bash Response
+    {
+        "secretSync": {
+            "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "name": "my-trigger-dev-sync",
+            "description": "sync to trigger.dev",
+            "isAutoSyncEnabled": true,
+            "version": 1,
+            "folderId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "createdAt": "2025-07-19T12:00:00Z",
+            "updatedAt": "2025-07-19T12:00:00Z",
+            "syncStatus": "succeeded",
+            "lastSyncJobId": "job-1234",
+            "lastSyncMessage": null,
+            "lastSyncedAt": "2025-07-19T12:00:00Z",
+            "syncOptions": {
+                "initialSyncBehavior": "overwrite-destination",
+                "disableSecretDeletion": false
+            },
+            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "connection": {
+                "app": "trigger-dev",
+                "name": "my-trigger-dev-connection",
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+            },
+            "environment": {
+                "slug": "production",
+                "name": "Production",
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+            },
+            "folder": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "path": "/"
+            },
+            "destination": "trigger-dev",
+            "destinationConfig": {
+                "projectRef": "proj_abc123",
+                "environment": "prod"
+            }
+        }
+    }
+    ```
+
+  </Tab>
+</Tabs>

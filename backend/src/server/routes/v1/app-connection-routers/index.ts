@@ -42,6 +42,7 @@ import { registerRenderConnectionRouter } from "./render-connection-router";
 import { registerSupabaseConnectionRouter } from "./supabase-connection-router";
 import { registerTeamCityConnectionRouter } from "./teamcity-connection-router";
 import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router";
+import { registerTriggerDevConnectionRouter } from "./trigger-dev-connection-router";
 import { registerVercelConnectionRouter } from "./vercel-connection-router";
 import { registerWindmillConnectionRouter } from "./windmill-connection-router";
 import { registerZabbixConnectionRouter } from "./zabbix-connection-router";
@@ -94,5 +95,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Redis]: registerRedisConnectionRouter,
     [AppConnection.MongoDB]: registerMongoDBConnectionRouter,
     [AppConnection.Chef]: registerChefConnectionRouter,
-    [AppConnection.OctopusDeploy]: registerOctopusDeployConnectionRouter
+    [AppConnection.OctopusDeploy]: registerOctopusDeployConnectionRouter,
+    [AppConnection.TriggerDev]: registerTriggerDevConnectionRouter
   };

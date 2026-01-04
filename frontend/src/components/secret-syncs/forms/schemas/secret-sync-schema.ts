@@ -31,6 +31,7 @@ import { RenderSyncDestinationSchema } from "./render-sync-destination-schema";
 import { SupabaseSyncDestinationSchema } from "./supabase-sync-destination-schema";
 import { TeamCitySyncDestinationSchema } from "./teamcity-sync-destination-schema";
 import { TerraformCloudSyncDestinationSchema } from "./terraform-cloud-destination-schema";
+import { TriggerDevSyncDestinationSchema } from "./trigger-dev-sync-destination-schema";
 import { VercelSyncDestinationSchema } from "./vercel-sync-destination-schema";
 import { WindmillSyncDestinationSchema } from "./windmill-sync-destination-schema";
 import { ZabbixSyncDestinationSchema } from "./zabbix-sync-destination-schema";
@@ -59,6 +60,7 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   GitlabSyncDestinationSchema,
   CloudflarePagesSyncDestinationSchema,
   CloudflareWorkersSyncDestinationSchema,
+  TriggerDevSyncDestinationSchema,
   SupabaseSyncDestinationSchema,
   ZabbixSyncDestinationSchema,
   RailwaySyncDestinationSchema,

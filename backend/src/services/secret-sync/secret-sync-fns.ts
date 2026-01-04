@@ -61,6 +61,7 @@ import { SECRET_SYNC_PLAN_MAP } from "./secret-sync-maps";
 import { SUPABASE_SYNC_LIST_OPTION, SupabaseSyncFns } from "./supabase";
 import { TEAMCITY_SYNC_LIST_OPTION, TeamCitySyncFns } from "./teamcity";
 import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terraform-cloud";
+import { TRIGGER_DEV_SYNC_LIST_OPTION, TriggerDevSyncFns } from "./trigger-dev";
 import { VERCEL_SYNC_LIST_OPTION, VercelSyncFns } from "./vercel";
 import { WINDMILL_SYNC_LIST_OPTION, WindmillSyncFns } from "./windmill";
 import { ZABBIX_SYNC_LIST_OPTION, ZabbixSyncFns } from "./zabbix";
@@ -99,7 +100,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Bitbucket]: BITBUCKET_SYNC_LIST_OPTION,
   [SecretSync.LaravelForge]: LARAVEL_FORGE_SYNC_LIST_OPTION,
   [SecretSync.Chef]: CHEF_SYNC_LIST_OPTION,
-  [SecretSync.OctopusDeploy]: OCTOPUS_DEPLOY_SYNC_LIST_OPTION
+  [SecretSync.OctopusDeploy]: OCTOPUS_DEPLOY_SYNC_LIST_OPTION,
+  [SecretSync.TriggerDev]: TRIGGER_DEV_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -279,6 +281,8 @@ export const SecretSyncFns = {
         return ChecklySyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Supabase:
         return SupabaseSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.TriggerDev:
+        return TriggerDevSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.DigitalOceanAppPlatform:
         return DigitalOceanAppPlatformSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Netlify:
@@ -400,6 +404,9 @@ export const SecretSyncFns = {
       case SecretSync.Supabase:
         secretMap = await SupabaseSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.TriggerDev:
+        secretMap = await TriggerDevSyncFns.getSecrets(secretSync);
+        break;
       case SecretSync.DigitalOceanAppPlatform:
         secretMap = await DigitalOceanAppPlatformSyncFns.getSecrets(secretSync);
         break;
@@ -508,6 +515,8 @@ export const SecretSyncFns = {
         return ChecklySyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Supabase:
         return SupabaseSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.TriggerDev:
+        return TriggerDevSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.DigitalOceanAppPlatform:
         return DigitalOceanAppPlatformSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Netlify:

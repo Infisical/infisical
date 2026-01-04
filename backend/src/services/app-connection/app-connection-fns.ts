@@ -155,6 +155,11 @@ import {
   TerraformCloudConnectionMethod,
   validateTerraformCloudConnectionCredentials
 } from "./terraform-cloud";
+import {
+  getTriggerDevConnectionListItem,
+  TriggerDevConnectionMethod,
+  validateTriggerDevConnectionCredentials
+} from "./trigger-dev";
 import { VercelConnectionMethod } from "./vercel";
 import { getVercelConnectionListItem, validateVercelConnectionCredentials } from "./vercel/vercel-connection-fns";
 import {
@@ -232,7 +237,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getOktaConnectionListItem(),
     getRedisConnectionListItem(),
     getMongoDBConnectionListItem(),
-    getChefConnectionListItem()
+    getChefConnectionListItem(),
+    getTriggerDevConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -367,7 +373,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Chef]: validateChefConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Redis]: validateRedisConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.MongoDB]: validateMongoDBConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.OctopusDeploy]: validateOctopusDeployConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.OctopusDeploy]: validateOctopusDeployConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.TriggerDev]: validateTriggerDevConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -412,6 +419,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case NorthflankConnectionMethod.ApiToken:
     case OktaConnectionMethod.ApiToken:
     case LaravelForgeConnectionMethod.ApiToken:
+    case TriggerDevConnectionMethod.ApiToken:
       return "API Token";
     case DNSMadeEasyConnectionMethod.APIKeySecret:
       return "API Key & Secret";
@@ -519,7 +527,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.MongoDB]: platformManagedCredentialsNotSupported,
   [AppConnection.LaravelForge]: platformManagedCredentialsNotSupported,
   [AppConnection.Chef]: platformManagedCredentialsNotSupported,
-  [AppConnection.OctopusDeploy]: platformManagedCredentialsNotSupported
+  [AppConnection.OctopusDeploy]: platformManagedCredentialsNotSupported,
+  [AppConnection.TriggerDev]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

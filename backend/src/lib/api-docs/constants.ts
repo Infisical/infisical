@@ -2523,6 +2523,10 @@ export const AppConnections = {
       accessKey: "The Key used to access Supabase.",
       instanceUrl: "The URL used to access Supabase."
     },
+    TRIGGER_DEV: {
+      apiToken: "The API token used to authenticate with Trigger.dev.",
+      apiUrl: "The Trigger.dev API base URL for self-hosted instances."
+    },
     DIGITAL_OCEAN_APP_PLATFORM: {
       apiToken: "The API token used to authenticate with Digital Ocean App Platform."
     },
@@ -2794,6 +2798,10 @@ export const SecretSyncs = {
     SUPABASE: {
       projectId: "The ID of the Supabase project to sync secrets to.",
       projectName: "The name of the Supabase project to sync secrets to."
+    },
+    TRIGGER_DEV: {
+      projectRef: "The Trigger.dev project reference to sync secrets to.",
+      environment: "The Trigger.dev environment to sync secrets to."
     },
     BITBUCKET: {
       workspaceSlug: "The Bitbucket Workspace slug to sync secrets to.",
