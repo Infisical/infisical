@@ -452,8 +452,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case SupabaseConnectionMethod.AccessToken:
       return "Access Token";
     default:
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw new Error(`Unhandled App Connection Method: ${method}`);
+      throw new Error(`Unhandled App Connection Method: ${String(method)}`);
   }
 };
 
