@@ -285,7 +285,6 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Supabase]: TSupabaseConnectionOption;
   [AppConnection.DigitalOcean]: TDigitalOceanConnectionOption;
   [AppConnection.Netlify]: TNetlifyConnectionOption;
-  [AppConnection.Convex]: TConvexConnectionOption;
   [AppConnection.TriggerDev]: TTriggerDevConnectionOption;
   [AppConnection.Northflank]: TNorthflankConnectionOption;
   [AppConnection.Okta]: TOktaConnectionOption;
