@@ -439,6 +439,8 @@ export const PamAccountsTable = ({ projectId }: Props) => {
                 account={account}
                 accountPath={account.folderId ? folderPaths[account.folderId] : undefined}
                 onAccess={(e: TPamAccount) => accessAccount(e)}
+                onUpdate={(e) => handlePopUpOpen("updateAccount", e)}
+                onDelete={(e) => handlePopUpOpen("deleteAccount", e)}
               />
             ))}
           </div>
