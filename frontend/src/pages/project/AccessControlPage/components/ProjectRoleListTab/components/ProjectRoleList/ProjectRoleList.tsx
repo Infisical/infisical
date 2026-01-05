@@ -193,7 +193,7 @@ export const ProjectRoleList = () => {
         <Table>
           <THead>
             <Tr>
-              <Th>
+              <Th className="w-1/3">
                 <div className="flex items-center">
                   Name
                   <IconButton
@@ -206,7 +206,7 @@ export const ProjectRoleList = () => {
                   </IconButton>
                 </div>
               </Th>
-              <Th>
+              <Th className="w-1/3">
                 <div className="flex items-center">
                   Slug
                   <IconButton
@@ -257,8 +257,8 @@ export const ProjectRoleList = () => {
                     })
                   }
                 >
-                  <Td>{name}</Td>
-                  <Td>{slug}</Td>
+                  <Td className="max-w-0 truncate">{name}</Td>
+                  <Td className="max-w-0 truncate">{slug}</Td>
                   <Td>
                     <Badge variant="ghost">
                       {isCustomProjectRole(slug) ? (
