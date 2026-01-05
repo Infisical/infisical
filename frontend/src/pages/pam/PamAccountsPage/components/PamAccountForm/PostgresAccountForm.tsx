@@ -71,10 +71,14 @@ export const PostgresAccountForm = ({ account, resourceId, resourceType, onSubmi
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form
+        onSubmit={(e) => {
+          handleSubmit(onSubmit)(e);
+        }}
+      >
         <GenericAccountFields />
         <SqlAccountFields isUpdate={isUpdate} />
-        {rotationCredentialsConfigured && <RotateAccountFields />}
+        <RotateAccountFields rotationCredentialsConfigured={rotationCredentialsConfigured} />
         <RequireMfaField />
         <div className="mt-6 flex items-center">
           <Button

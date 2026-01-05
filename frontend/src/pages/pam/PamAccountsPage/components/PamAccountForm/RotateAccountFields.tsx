@@ -1,24 +1,34 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { FormControl, Select, SelectItem, Switch, Tooltip } from "@app/components/v2";
 
 export const rotateAccountFieldsSchema = z.object({
   rotationEnabled: z.boolean(),
-  rotationIntervalSeconds: z.number().nullable().optional()
+  rotationIntervalSeconds: z.number()
 });
 
-export const RotateAccountFields = () => {
+export const RotateAccountFields = ({
+  rotationCredentialsConfigured
+}: {
+  rotationCredentialsConfigured: boolean;
+}) => {
   const { control, watch } = useFormContext<{
     rotationEnabled: boolean;
-    rotationIntervalSeconds?: number | null;
+    rotationIntervalSeconds: number;
   }>();
 
   const rotationEnabled = watch("rotationEnabled");
 
   return (
     <Tooltip content="The resource which owns this account does not have rotation credentials configured.">
-      <div className="flex h-9 w-fit items-center gap-3">
+      <div
+        className={twMerge(
+          "flex h-9 w-fit items-center gap-3",
+          !rotationCredentialsConfigured && "opacity-50"
+        )}
+      >
         <Controller
           control={control}
           name="rotationEnabled"
@@ -31,6 +41,7 @@ export const RotateAccountFields = () => {
                 thumbClassName="bg-mineshaft-800"
                 onCheckedChange={onChange}
                 isChecked={value}
+                isDisabled={!rotationCredentialsConfigured}
               />
             </FormControl>
           )}
@@ -48,13 +59,13 @@ export const RotateAccountFields = () => {
               className="mb-0"
             >
               <Select
-                value={(value || 2592000).toString()}
+                value={value.toString()}
                 onValueChange={(val) => onChange(parseInt(val, 10))}
                 className="w-full border border-mineshaft-500 capitalize"
                 position="popper"
                 placeholder="Select an interval..."
                 dropdownContainerClassName="max-w-none"
-                isDisabled={!rotationEnabled}
+                isDisabled={!rotationEnabled || !rotationCredentialsConfigured}
                 dropdownContainerStyle={{
                   width: "130px"
                 }}
