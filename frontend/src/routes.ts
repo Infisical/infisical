@@ -299,6 +299,21 @@ const certManagerRoutes = route("/organizations/$orgId/projects/cert-manager/$pr
   ])
 ]);
 
+const aiRoutes = route("/organizations/$orgId/projects/ai/$projectId", [
+  layout("ai-layout", "ai/layout.tsx", [
+    route("/mcp-servers/$serverId", "ai/MCPServerDetailPage/route.tsx"),
+    route("/mcp-endpoints/$endpointId", "ai/MCPEndpointDetailPage/route.tsx"),
+    route("/overview", "ai/MCPPage/route.tsx"),
+    route("/settings", "ai/SettingsPage/route.tsx"),
+    route("/audit-logs", "project/AuditLogsPage/route-ai.tsx"),
+    route("/access-management", "project/AccessControlPage/route-ai.tsx"),
+    route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-ai.tsx"),
+    route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-ai.tsx"),
+    route("/members/$membershipId", "project/MemberDetailsByIDPage/route-ai.tsx"),
+    route("/groups/$groupId", "project/GroupDetailsByIDPage/route-ai.tsx")
+  ])
+]);
+
 const kmsRoutes = route("/organizations/$orgId/projects/kms/$projectId", [
   layout("kms-layout", "kms/layout.tsx", [
     route("/overview", "kms/OverviewPage/route.tsx"),
@@ -433,6 +448,7 @@ export const routes = rootRoute("root.tsx", [
       layout("user/layout.tsx", [index("user/PersonalSettingsPage/route.tsx")])
     ]),
     route("/organizations/none", "organization/NoOrgPage/route.tsx"),
+    route("/organization/mcp-endpoint-finalize", "organization/McpEndpointFinalizePage/route.tsx"),
     middleware("inject-org-details.tsx", [
       route("/organization/$", "redirects/organization-redirect.tsx"),
       route("/projects/$", "redirects/project-redirect.tsx"),
@@ -448,7 +464,8 @@ export const routes = rootRoute("root.tsx", [
         kmsRoutes,
         sshRoutes,
         secretScanningRoutes,
-        pamRoutes
+        pamRoutes,
+        aiRoutes
       ])
     ])
   ])

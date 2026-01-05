@@ -1,0 +1,129 @@
+---
+title: "MCP Endpoints"
+sidebarTitle: "MCP Endpoints"
+description: "Learn how to create and manage MCP endpoints for AI clients."
+---
+
+## Concept
+
+MCP Endpoints are the entry points that AI clients (like Claude, ChatGPT, or custom agents) use to access your configured MCP Servers. Instead of connecting AI clients directly to individual MCP servers, you connect them to an Infisical MCP Endpoint which acts as a secure gateway.
+
+This architecture provides several benefits:
+
+<CardGroup cols={2}>
+  <Card title="Federation" icon="object-group">
+    Combine tools from multiple MCP servers behind a single endpoint.
+  </Card>
+  <Card title="Tool Selection" icon="list-check">
+    Control exactly which tools are available through each endpoint.
+  </Card>
+  <Card title="Access Control" icon="lock">
+    Manage who can use each endpoint.
+  </Card>
+  <Card title="Centralized Logging" icon="scroll">
+    All tool invocations are logged regardless of which MCP server they target.
+  </Card>
+</CardGroup>
+
+## How It Works
+
+```mermaid
+graph LR
+    A[AI Client<br/>Claude, ChatGPT, etc.] --> B[MCP Endpoint<br/>Infisical]
+    B --> C[MCP Server 1<br/>Notion]
+    B --> D[MCP Server 2<br/>GitHub]
+```
+
+When you create an MCP endpoint, Infisical generates a unique URL that you can add to your AI client's MCP configuration. The AI client connects to this URL and can access all enabled tools from the connected MCP servers.
+
+## Guide to Creating an MCP Endpoint
+
+In the following steps, we explore how to create an MCP endpoint and connect it to an AI client.
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Navigate to MCP Endpoints">
+        Head to your Agentic Manager project and select **MCP Endpoints** from the sidebar, then click **Create Endpoint**.
+
+        ![mcp endpoints list](/images/platform/ai/mcp/mcp-endpoints-list.png)
+      </Step>
+      <Step title="Configure endpoint details">
+        Enter the following details for your endpoint:
+
+        - **Name**: A friendly name to identify this endpoint (e.g., "Engineering Team Endpoint")
+        - **Description (Optional)**: A description of the endpoint's purpose
+        - **Connected Servers**: A selection of the MCP servers to make available through this endpoint
+
+        ![mcp endpoint create](/images/platform/ai/mcp/mcp-endpoints-create.png)
+      </Step>
+      <Step title="Configure tool selection">
+        After creating the endpoint, you'll be taken to the endpoint details page. Here you can configure which tools from each connected server are available through this endpoint.
+
+        For each connected MCP server, you'll see a list of available tools. Toggle tools on or off to control what AI clients can access.
+
+        ![mcp endpoint tools](/images/platform/ai/mcp/mcp-endpoints-tools.png)
+
+        <Note>
+          By default, no tools are enabled. You must explicitly enable the tools you want to make available.
+        </Note>
+      </Step>
+      <Step title="Copy the endpoint URL">
+        The endpoint details page displays the **Endpoint URL**. Copy this URL—you'll need it to configure your AI client.
+
+        ![mcp endpoint url](/images/platform/ai/mcp/mcp-endpoints-url.png)
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+## Connecting AI Clients
+
+Once you have your endpoint URL, you can connect AI clients to it.
+
+<Tabs>
+  <Tab title="Claude">
+    Add the endpoint to your Claude MCP configuration:
+
+    1. Open Claude settings
+    2. Navigate to the MCP section
+    3. Add a new server with your Infisical endpoint URL
+    4. Click **Connect**
+
+    When connecting for the first time, Claude will open an authorization page where you grant access to the endpoint. You can configure:
+
+    - **Access Duration**: How long the AI client can use the endpoint (e.g., 30 days)
+
+    After authorization, Claude can use all enabled tools from your endpoint.
+  </Tab>
+  <Tab title="Other AI Clients">
+    Any MCP-compatible AI client can connect to your endpoint using the endpoint URL. 
+    
+    The general process is:
+    1. Locate the MCP server configuration in your AI client
+    2. Add your Infisical endpoint URL as a new server
+    3. Complete the authorization flow when prompted
+    
+    Refer to your AI client's documentation for specific configuration steps.
+  </Tab>
+</Tabs>
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Can I connect the same MCP server to multiple endpoints?">
+    Yes, you can connect an MCP server to as many endpoints as needed. Each endpoint can have different tools enabled, allowing you to create different access profiles.
+  </Accordion>
+  <Accordion title="What happens when I disable a tool?">
+    When you disable a tool, AI clients connected to the endpoint will no longer be able to use it. The tool won't appear in the client's available tools list.
+  </Accordion>
+  <Accordion title="How long does endpoint authorization last?">
+    When an AI client connects to an endpoint, the user chooses an access duration (e.g., 30 days). After this period, the client will need to re-authorize.
+  </Accordion>
+  <Accordion title="Can I revoke an AI client's access?">
+    Yes, you can revoke access by managing authorized sessions in the endpoint settings. This immediately disconnects the AI client.
+  </Accordion>
+  <Accordion title="What if an MCP server requires personal credentials?">
+    If a connected MCP server uses personal credentials, users will be prompted to authenticate with that server when they first connect to the endpoint. This is a one-time process per server.
+  </Accordion>
+</AccordionGroup>

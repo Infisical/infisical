@@ -71,7 +71,7 @@ export const useListProjectIdentityMemberships = (
         limit: String(limit),
         orderBy: String(orderBy),
         orderDirection: String(orderDirection),
-        search: String(search)
+        identityName: String(search)
       });
 
       const { data } = await apiRequest.get<TProjectIdentityMembershipsListV2>(

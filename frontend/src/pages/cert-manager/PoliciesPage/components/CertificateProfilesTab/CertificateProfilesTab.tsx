@@ -30,7 +30,7 @@ export const CertificateProfilesTab = () => {
   const [selectedProfile, setSelectedProfile] = useState<TCertificateProfileWithDetails | null>(
     null
   );
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
+  const { popUp, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
 
   const deleteProfile = useDeleteCertificateProfile();
 
@@ -105,11 +105,7 @@ export const CertificateProfilesTab = () => {
         onDeleteProfile={handleDeleteProfile}
       />
 
-      <CreateProfileModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        handlePopUpOpen={handlePopUpOpen}
-      />
+      <CreateProfileModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
@@ -125,7 +121,6 @@ export const CertificateProfilesTab = () => {
               setIsEditModalOpen(false);
               setSelectedProfile(null);
             }}
-            handlePopUpOpen={handlePopUpOpen}
             profile={selectedProfile}
             mode="edit"
           />

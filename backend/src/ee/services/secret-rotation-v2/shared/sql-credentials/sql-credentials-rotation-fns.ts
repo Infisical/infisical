@@ -1,3 +1,4 @@
+import handlebars from "handlebars";
 import { Knex } from "knex";
 
 import {
@@ -44,13 +45,19 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
 > = (secretRotation, _appConnectionDAL, _kmsService, gatewayService, gatewayV2Service) => {
   const {
     connection,
-    parameters: { username1, username2 },
+    parameters: {
+      username1,
+      username2,
+      rotationStatement: userProvidedRotationStatement,
+      passwordRequirements: userProvidedPasswordRequirements
+    },
     activeIndex,
     secretsMapping
   } = secretRotation;
 
-  const passwordRequirement =
+  const defaultPasswordRequirement =
     connection.app === AppConnection.OracleDB ? ORACLE_PASSWORD_REQUIREMENTS : DEFAULT_PASSWORD_REQUIREMENTS;
+  const passwordRequirement = userProvidedPasswordRequirements || defaultPasswordRequirement;
 
   const executeOperation = <T>(
     operation: (client: Knex) => Promise<T>,
@@ -82,21 +89,38 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
     }
   };
 
+  const $executeQuery = async (tx: Knex, username: string, password: string) => {
+    if (userProvidedRotationStatement) {
+      const revokeStatement = handlebars.compile(userProvidedRotationStatement)({
+        username,
+        password,
+        database: connection.credentials.database
+      });
+      const queries = revokeStatement.toString().split(";").filter(Boolean);
+      for await (const query of queries) {
+        await tx.raw(query);
+      }
+    } else {
+      await tx.raw(...SQL_CONNECTION_ALTER_LOGIN_STATEMENT[connection.app]({ username, password }));
+    }
+  };
+
   const issueCredentials: TRotationFactoryIssueCredentials<TSqlCredentialsRotationGeneratedCredentials> = async (
     callback
   ) => {
     // For SQL, since we get existing users, we change both their passwords
     // on issue to invalidate their existing passwords
-    const credentialsSet = [
-      { username: username1, password: generatePassword(passwordRequirement) },
-      { username: username2, password: generatePassword(passwordRequirement) }
-    ];
+    const credentialsSet = [{ username: username1, password: generatePassword(passwordRequirement) }];
+    // if both are same username like for mysql dual password rotation - we don't want to reissue twice loosing first cred access
+    if (username1 !== username2) {
+      credentialsSet.push({ username: username2, password: generatePassword(passwordRequirement) });
+    }
 
     try {
       await executeOperation(async (client) => {
         await client.transaction(async (tx) => {
           for await (const credentials of credentialsSet) {
-            await tx.raw(...SQL_CONNECTION_ALTER_LOGIN_STATEMENT[connection.app](credentials));
+            await $executeQuery(tx, credentials.username, credentials.password);
           }
         });
       });
@@ -125,7 +149,7 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
         await client.transaction(async (tx) => {
           for await (const credentials of revokedCredentials) {
             // invalidate previous passwords
-            await tx.raw(...SQL_CONNECTION_ALTER_LOGIN_STATEMENT[connection.app](credentials));
+            await $executeQuery(tx, credentials.username, credentials.password);
           }
         });
       });
@@ -148,7 +172,7 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
 
     try {
       await executeOperation(async (client) => {
-        await client.raw(...SQL_CONNECTION_ALTER_LOGIN_STATEMENT[connection.app](credentials));
+        await $executeQuery(client, credentials.username, credentials.password);
       });
     } catch (error) {
       throw new Error(redactPasswords(error, [credentials]));

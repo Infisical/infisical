@@ -37,7 +37,8 @@ export const ProjectsPage = () => {
       match.pathname.includes("/kms/") ||
       match.pathname.includes("/pam/") ||
       match.pathname.includes("/ssh/") ||
-      match.pathname.includes("/secret-scanning/")
+      match.pathname.includes("/secret-scanning/") ||
+      match.pathname.includes("/ai/")
   );
 
   const [projectListView, setProjectListView] = useState<ProjectListView>(() => {

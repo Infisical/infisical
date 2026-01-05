@@ -63,4 +63,5 @@ export type SubscriptionPlan = {
   cardDeclinedDays?: number;
   machineIdentityAuthTemplates: boolean;
   pam: boolean;
+  ai: boolean;
 };

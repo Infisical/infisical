@@ -178,6 +178,27 @@ export const authSignupServiceFactory = ({
 
     const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
     const updateduser = await authDAL.transaction(async (tx) => {
+      const duplicateUsers = await userDAL.find(
+        {
+          email: user.email || sanitizedEmail,
+          isAccepted: false
+        },
+        { tx }
+      );
+      const nonAcceptedDuplicateUserIds = duplicateUsers
+        .filter((duplicateUser) => duplicateUser.id !== user.id)
+        .map((duplicateUser) => duplicateUser.id);
+      if (nonAcceptedDuplicateUserIds.length > 0) {
+        await userDAL.delete(
+          {
+            $in: {
+              id: nonAcceptedDuplicateUserIds
+            }
+          },
+          tx
+        );
+      }
+
       const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
       if (!us) throw new Error("User not found");
 
@@ -342,6 +363,27 @@ export const authSignupServiceFactory = ({
     const appCfg = getConfig();
     const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
     const updateduser = await authDAL.transaction(async (tx) => {
+      const duplicateUsers = await userDAL.find(
+        {
+          email: user.email || sanitizedEmail,
+          isAccepted: false
+        },
+        { tx }
+      );
+      const nonAcceptedDuplicateUserIds = duplicateUsers
+        .filter((duplicateUser) => duplicateUser.id !== user.id)
+        .map((duplicateUser) => duplicateUser.id);
+      if (nonAcceptedDuplicateUserIds.length > 0) {
+        await userDAL.delete(
+          {
+            $in: {
+              id: nonAcceptedDuplicateUserIds
+            }
+          },
+          tx
+        );
+      }
+
       const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
       if (!us) throw new Error("User not found");
       const userEncKey = await userDAL.upsertUserEncryptionKey(

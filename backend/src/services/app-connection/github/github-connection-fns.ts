@@ -48,11 +48,24 @@ export const getGitHubInstanceApiUrl = async (config: {
   return apiBase;
 };
 
+export const getGitHubGatewayConnectionDetails = async (
+  gatewayId: string,
+  targetHost: string,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+): Promise<Awaited<ReturnType<TGatewayV2ServiceFactory["getPlatformConnectionDetailsByGatewayId"]>>> => {
+  return gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+    gatewayId,
+    targetHost,
+    targetPort: 443
+  });
+};
+
 export const requestWithGitHubGateway = async <T>(
   appConnection: { gatewayId?: string | null },
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  requestConfig: AxiosRequestConfig
+  requestConfig: AxiosRequestConfig,
+  gatewayConnectionDetails?: Awaited<ReturnType<TGatewayV2ServiceFactory["getPlatformConnectionDetailsByGatewayId"]>>
 ): Promise<AxiosResponse<T>> => {
   const { gatewayId } = appConnection;
 
@@ -66,13 +79,10 @@ export const requestWithGitHubGateway = async <T>(
   await blockLocalAndPrivateIpAddresses(url.toString());
 
   const [targetHost] = await verifyHostInputValidity(url.host, true);
-  const gatewayConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
-    gatewayId,
-    targetHost,
-    targetPort: 443
-  });
 
-  if (gatewayConnectionDetails) {
+  const connectionDetails = gatewayConnectionDetails;
+
+  if (connectionDetails) {
     return withGatewayV2Proxy(
       async (proxyPort) => {
         const httpsAgent = new https.Agent({
@@ -105,9 +115,9 @@ export const requestWithGitHubGateway = async <T>(
       },
       {
         protocol: GatewayProxyProtocol.Tcp,
-        relayHost: gatewayConnectionDetails.relayHost,
-        gateway: gatewayConnectionDetails.gateway,
-        relay: gatewayConnectionDetails.relay
+        relayHost: connectionDetails.relayHost,
+        gateway: connectionDetails.gateway,
+        relay: connectionDetails.relay
       }
     );
   }
@@ -198,6 +208,10 @@ export const getGitHubAppAuthToken = async (
   const apiBaseUrl = await getGitHubInstanceApiUrl(appConnection);
   const { installationId } = appConnection.credentials;
 
+  const gatewayConnectionDetails = appConnection.gatewayId
+    ? await getGitHubGatewayConnectionDetails(appConnection.gatewayId, apiBaseUrl, gatewayV2Service)
+    : undefined;
+
   const response = await requestWithGitHubGateway<{ token: string; expires_at: string }>(
     appConnection,
     gatewayService,
@@ -210,7 +224,8 @@ export const getGitHubAppAuthToken = async (
         Authorization: `Bearer ${appJwt}`,
         "X-GitHub-Api-Version": "2022-11-28"
       }
-    }
+    },
+    gatewayConnectionDetails
   );
 
   return response.data.token;
@@ -265,6 +280,11 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
   const initialUrlObj = new URL(baseUrl);
   initialUrlObj.searchParams.set("per_page", "100");
 
+  const apiBaseUrl = await getGitHubInstanceApiUrl(appConnection);
+  const gatewayConnectionDetails = appConnection.gatewayId
+    ? await getGitHubGatewayConnectionDetails(appConnection.gatewayId, apiBaseUrl, gatewayV2Service)
+    : undefined;
+
   let results: T[] = [];
   const maxIterations = 1000;
 
@@ -281,7 +301,8 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
         Authorization: `Bearer ${token}`,
         "X-GitHub-Api-Version": "2022-11-28"
       }
-    }
+    },
+    gatewayConnectionDetails
   );
 
   const firstPageItems = dataMapper ? dataMapper(firstResponse.data) : (firstResponse.data as unknown as T[]);
@@ -302,15 +323,21 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
       pageUrlObj.searchParams.set("page", pageNum.toString());
 
       pageRequests.push(
-        requestWithGitHubGateway<R>(appConnection, gatewayService, gatewayV2Service, {
-          url: pageUrlObj.toString(),
-          method: "GET",
-          headers: {
-            Accept: "application/vnd.github+json",
-            Authorization: `Bearer ${token}`,
-            "X-GitHub-Api-Version": "2022-11-28"
-          }
-        })
+        requestWithGitHubGateway<R>(
+          appConnection,
+          gatewayService,
+          gatewayV2Service,
+          {
+            url: pageUrlObj.toString(),
+            method: "GET",
+            headers: {
+              Accept: "application/vnd.github+json",
+              Authorization: `Bearer ${token}`,
+              "X-GitHub-Api-Version": "2022-11-28"
+            }
+          },
+          gatewayConnectionDetails
+        )
       );
     }
     const responses = await Promise.all(pageRequests);
@@ -338,7 +365,8 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
             Authorization: `Bearer ${token}`,
             "X-GitHub-Api-Version": "2022-11-28"
           }
-        }
+        },
+        gatewayConnectionDetails
       );
 
       const items = dataMapper ? dataMapper(response.data) : (response.data as unknown as T[]);
@@ -469,19 +497,30 @@ export const validateGitHubConnectionCredentials = async (
 ) => {
   const { credentials, method } = config;
 
+  const apiBaseUrl = await getGitHubInstanceApiUrl(config);
+  const gatewayConnectionDetails = config.gatewayId
+    ? await getGitHubGatewayConnectionDetails(config.gatewayId, apiBaseUrl, gatewayV2Service)
+    : undefined;
+
   // PAT validation
   if (method === GitHubConnectionMethod.Pat) {
     try {
       const apiUrl = await getGitHubInstanceApiUrl(config);
-      await requestWithGitHubGateway(config, gatewayService, gatewayV2Service, {
-        url: `https://${apiUrl}/user`,
-        method: "GET",
-        headers: {
-          Accept: "application/vnd.github+json",
-          Authorization: `Bearer ${credentials.personalAccessToken}`,
-          "X-GitHub-Api-Version": "2022-11-28"
-        }
-      });
+      await requestWithGitHubGateway(
+        config,
+        gatewayService,
+        gatewayV2Service,
+        {
+          url: `https://${apiUrl}/user`,
+          method: "GET",
+          headers: {
+            Accept: "application/vnd.github+json",
+            Authorization: `Bearer ${credentials.personalAccessToken}`,
+            "X-GitHub-Api-Version": "2022-11-28"
+          }
+        },
+        gatewayConnectionDetails
+      );
 
       return {
         personalAccessToken: credentials.personalAccessToken,
@@ -529,21 +568,31 @@ export const validateGitHubConnectionCredentials = async (
   let tokenResp: AxiosResponse<GithubTokenRespData>;
   const host = credentials.host || "github.com";
 
+  const oauthGatewayConnectionDetails = config.gatewayId
+    ? await getGitHubGatewayConnectionDetails(config.gatewayId, host, gatewayV2Service)
+    : undefined;
+
   try {
-    tokenResp = await requestWithGitHubGateway<GithubTokenRespData>(config, gatewayService, gatewayV2Service, {
-      url: `https://${host}/login/oauth/access_token`,
-      method: "POST",
-      data: {
-        client_id: clientId,
-        client_secret: clientSecret,
-        code: credentials.code,
-        redirect_uri: `${SITE_URL}/organization/app-connections/github/oauth/callback`
+    tokenResp = await requestWithGitHubGateway<GithubTokenRespData>(
+      config,
+      gatewayService,
+      gatewayV2Service,
+      {
+        url: `https://${host}/login/oauth/access_token`,
+        method: "POST",
+        data: {
+          client_id: clientId,
+          client_secret: clientSecret,
+          code: credentials.code,
+          redirect_uri: `${SITE_URL}/organization/app-connections/github/oauth/callback`
+        },
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json"
+        }
       },
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json"
-      }
-    });
+      oauthGatewayConnectionDetails
+    );
 
     if (isGithubErrorResponse(tokenResp?.data)) {
       throw new BadRequestError({
@@ -582,14 +631,20 @@ export const validateGitHubConnectionCredentials = async (
           id: number;
         };
       }[];
-    }>(config, gatewayService, gatewayV2Service, {
-      url: `https://${await getGitHubInstanceApiUrl(config)}/user/installations`,
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${tokenResp.data.access_token}`,
-        "Accept-Encoding": "application/json"
-      }
-    });
+    }>(
+      config,
+      gatewayService,
+      gatewayV2Service,
+      {
+        url: `https://${await getGitHubInstanceApiUrl(config)}/user/installations`,
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${tokenResp.data.access_token}`,
+          "Accept-Encoding": "application/json"
+        }
+      },
+      gatewayConnectionDetails
+    );
 
     const matchingInstallation = installationsResp.data.installations.find(
       (installation) => installation.id === +credentials.installationId

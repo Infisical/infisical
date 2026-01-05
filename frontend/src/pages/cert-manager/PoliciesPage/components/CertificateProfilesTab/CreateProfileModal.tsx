@@ -19,7 +19,7 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
-import { useProject, useSubscription } from "@app/context";
+import { useProject } from "@app/context";
 import { CaType } from "@app/hooks/api/ca/enums";
 import { useGetAzureAdcsTemplates, useListCasByProjectId } from "@app/hooks/api/ca/queries";
 import {
@@ -32,7 +32,6 @@ import {
   useUpdateCertificateProfile
 } from "@app/hooks/api/certificateProfiles";
 import { useListCertificateTemplatesV2 } from "@app/hooks/api/certificateTemplates/queries";
-import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const createSchema = z
   .object({
@@ -339,25 +338,12 @@ export type FormData = z.infer<typeof createSchema>;
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["upgradePlan"]>,
-    data?: {
-      isEnterpriseFeature?: boolean;
-    }
-  ) => void;
   profile?: TCertificateProfileWithDetails;
   mode?: "create" | "edit";
 }
 
-export const CreateProfileModal = ({
-  isOpen,
-  onClose,
-  handlePopUpOpen,
-  profile,
-  mode = "create"
-}: Props) => {
+export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }: Props) => {
   const { currentProject } = useProject();
-  const { subscription } = useSubscription();
 
   const { data: allCaData } = useListCasByProjectId(currentProject?.id || "");
   const { data: templateData } = useListCertificateTemplatesV2({
@@ -532,15 +518,6 @@ export const CreateProfileModal = ({
   }, [isEdit, profile, isAzureAdcsCa, azureAdcsTemplatesData, setValue]);
 
   const onFormSubmit = async (data: FormData) => {
-    if (!isEdit && !subscription?.pkiAcme && data.enrollmentType === EnrollmentType.ACME) {
-      reset();
-      onClose();
-      handlePopUpOpen("upgradePlan", {
-        isEnterpriseFeature: true
-      });
-      return;
-    }
-
     if (!currentProject?.id && !isEdit) return;
 
     // Validate Azure ADCS template requirement

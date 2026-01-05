@@ -198,9 +198,11 @@ export const userDALFactory = (db: TDbClient) => {
     try {
       const doc = await db(TableName.Users)
         .where({ email })
-        .leftJoin(TableName.Membership, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
-        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .leftJoin(TableName.Membership, (qb) => {
+          void qb
+            .on(`${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
+            .andOn(`${TableName.Membership}.scope`, db.raw("?", [AccessScope.Organization]));
+        })
         .leftJoin(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Membership}.scopeOrgId`)
         .select(selectAllTableCols(TableName.Users))
         .select(

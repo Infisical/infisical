@@ -165,6 +165,7 @@
     "@gitbeaker/rest": "^42.5.0",
     "@google-cloud/kms": "^4.5.0",
     "@infisical/quic": "^1.0.8",
+    "@modelcontextprotocol/sdk": "^1.24.3",
     "@node-saml/passport-saml": "^5.1.0",
     "@octokit/auth-app": "^7.1.1",
     "@octokit/core": "^5.2.1",

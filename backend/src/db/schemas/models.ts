@@ -227,6 +227,15 @@ export enum TableName {
   PkiAcmeAuth = "pki_acme_auths",
   PkiAcmeChallenge = "pki_acme_challenges",
 
+  // AI
+  AiMcpServer = "ai_mcp_servers",
+  AiMcpServerTool = "ai_mcp_server_tools",
+  AiMcpServerUserCredential = "ai_mcp_server_user_credentials",
+  AiMcpEndpoint = "ai_mcp_endpoints",
+  AiMcpEndpointServer = "ai_mcp_endpoint_servers",
+  AiMcpEndpointServerTool = "ai_mcp_endpoint_server_tools",
+  AiMcpActivityLog = "ai_mcp_activity_logs",
+
   // Approval Policies
   ApprovalPolicies = "approval_policies",
   ApprovalPolicySteps = "approval_policy_steps",
@@ -328,7 +337,8 @@ export enum ProjectType {
   KMS = "kms",
   SSH = "ssh",
   SecretScanning = "secret-scanning",
-  PAM = "pam"
+  PAM = "pam",
+  AI = "ai"
 }
 
 export enum ActionProjectType {
@@ -338,6 +348,7 @@ export enum ActionProjectType {
   SSH = ProjectType.SSH,
   SecretScanning = ProjectType.SecretScanning,
   PAM = ProjectType.PAM,
+  AI = ProjectType.AI,
   // project operations that happen on all types
   Any = "any"
 }

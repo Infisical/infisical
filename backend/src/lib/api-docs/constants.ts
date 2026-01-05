@@ -2876,7 +2876,8 @@ export const SecretRotations = {
       username1:
         "The username of the first login to rotate passwords for. This user must already exists in your database.",
       username2:
-        "The username of the second login to rotate passwords for. This user must already exists in your database."
+        "The username of the second login to rotate passwords for. This user must already exists in your database.",
+      rotationStatement: "The SQL template query used for rotation."
     },
     AUTH0_CLIENT_SECRET: {
       clientId: "The client ID of the Auth0 Application to rotate the client secret for."

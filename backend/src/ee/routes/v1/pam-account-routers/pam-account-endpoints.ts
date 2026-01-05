@@ -7,7 +7,7 @@ import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-export const registerPamResourceEndpoints = <C extends TPamAccount>({
+export const registerPamAccountEndpoints = <C extends TPamAccount>({
   server,
   resourceType,
   createAccountSchema,
