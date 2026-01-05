@@ -11,7 +11,9 @@ function DetailLabel({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 function DetailValue({ className, ...props }: React.ComponentProps<"div">) {
-  return <div data-slot="detail-value" className={cn("text-sm", className)} {...props} />;
+  return (
+    <div data-slot="detail-value" className={cn("text-sm break-words", className)} {...props} />
+  );
 }
 
 function DetailGroup({ className, ...props }: React.ComponentProps<"div">) {
