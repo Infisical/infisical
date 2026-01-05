@@ -263,16 +263,18 @@ const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) =>
     setSearchRoles("");
   };
 
+  const filteredRoles =
+    projectRoles?.filter(
+      ({ name, slug }) =>
+        name.toLowerCase().includes(searchRoles.toLowerCase()) ||
+        slug.toLowerCase().includes(searchRoles.toLowerCase())
+    ) ?? [];
+
   return (
     <form onSubmit={handleSubmit(handleRoleUpdate)} id="role-update-form">
       <div className="max-h-80 thin-scrollbar space-y-4 overflow-y-auto">
-        {projectRoles
-          ?.filter(
-            ({ name, slug }) =>
-              name.toLowerCase().includes(searchRoles.toLowerCase()) ||
-              slug.toLowerCase().includes(searchRoles.toLowerCase())
-          )
-          ?.map(({ id, name, slug }) => {
+        {filteredRoles.length > 0 ? (
+          filteredRoles.map(({ id, name, slug }) => {
             const userProjectRoleDetails = userRolesGroupBySlug?.[slug]?.[0];
 
             return (
@@ -332,7 +334,10 @@ const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) =>
                 </div>
               </div>
             );
-          })}
+          })
+        ) : (
+          <span className="text-sm text-mineshaft-400">No roles match search...</span>
+        )}
       </div>
       <div className="mt-3 flex items-center space-x-2 border-t border-t-gray-700 pt-3">
         <div>
