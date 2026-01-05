@@ -1,5 +1,6 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { InfoIcon } from "lucide-react";
 import ms from "ms";
 import { z } from "zod";
 
@@ -17,9 +18,11 @@ import {
 import { useProject } from "@app/context";
 import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import { useCreateApprovalRequest } from "@app/hooks/api/approvalRequests/mutations";
+import { UnstableAlert, UnstableAlertDescription, UnstableAlertTitle } from "@app/components/v3";
 
 type Props = {
   accountPath?: string;
+  accountAccessed?: boolean;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 };
@@ -45,7 +48,7 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-const Content = ({ onOpenChange, accountPath }: Props) => {
+const Content = ({ onOpenChange, accountPath, accountAccessed }: Props) => {
   const { projectId } = useProject();
   const { mutateAsync: createApprovalRequest, isPending: isSubmitting } =
     useCreateApprovalRequest();
@@ -94,6 +97,15 @@ const Content = ({ onOpenChange, accountPath }: Props) => {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
+      {accountAccessed && (
+        <UnstableAlert variant="info" className="mb-3">
+          <InfoIcon />
+          <UnstableAlertTitle>This account is protected by an approval policy</UnstableAlertTitle>
+          <UnstableAlertDescription>
+            You must request access by filling out the fields below.
+          </UnstableAlertDescription>
+        </UnstableAlert>
+      )}
       <Controller
         name="accountPath"
         control={control}
