@@ -44,12 +44,9 @@ export const PamAccountCard = ({ account, onAccess, accountPath, onUpdate, onDel
         type: "info"
       });
 
-      const timer = setTimeout(() => setIsIdCopied.off(), 2000);
-
-      // eslint-disable-next-line consistent-return
-      return () => clearTimeout(timer);
+      setTimeout(() => setIsIdCopied.off(), 2000);
     },
-    [isIdCopied]
+    [setIsIdCopied]
   );
 
   return (
