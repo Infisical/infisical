@@ -263,21 +263,23 @@ const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) =>
     setSearchRoles("");
   };
 
+  const filteredRoles =
+    projectRoles?.filter(
+      ({ name, slug }) =>
+        name.toLowerCase().includes(searchRoles.toLowerCase()) ||
+        slug.toLowerCase().includes(searchRoles.toLowerCase())
+    ) ?? [];
+
   return (
     <form onSubmit={handleSubmit(handleRoleUpdate)} id="role-update-form">
       <div className="max-h-80 thin-scrollbar space-y-4 overflow-y-auto">
-        {projectRoles
-          ?.filter(
-            ({ name, slug }) =>
-              name.toLowerCase().includes(searchRoles.toLowerCase()) ||
-              slug.toLowerCase().includes(searchRoles.toLowerCase())
-          )
-          ?.map(({ id, name, slug }) => {
+        {filteredRoles.length > 0 ? (
+          filteredRoles.map(({ id, name, slug }) => {
             const userProjectRoleDetails = userRolesGroupBySlug?.[slug]?.[0];
 
             return (
               <div key={id} className="flex items-center space-x-4">
-                <div className="grow">
+                <div className="flex-1 truncate">
                   <Controller
                     control={control}
                     defaultValue={Boolean(userProjectRoleDetails?.id)}
@@ -332,7 +334,10 @@ const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) =>
                 </div>
               </div>
             );
-          })}
+          })
+        ) : (
+          <span className="text-sm text-mineshaft-400">No roles match search...</span>
+        )}
       </div>
       <div className="mt-3 flex items-center space-x-2 border-t border-t-gray-700 pt-3">
         <div>
@@ -385,7 +390,9 @@ export const GroupRoles = ({
           return (
             <Tag key={id} className="capitalize">
               <div className="flex items-center space-x-2">
-                <div>{formatProjectRoleName(role, customRoleName)}</div>
+                <div className="max-w-32 truncate">
+                  {formatProjectRoleName(role, customRoleName)}
+                </div>
                 {isTemporary && (
                   <div>
                     <Tooltip content={isExpired ? "Expired Temporary Access" : "Temporary Access"}>

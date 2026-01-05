@@ -48,7 +48,7 @@ export const ProjectMemberDetailsSection = ({ membership }: Props) => {
         <DetailGroup>
           <Detail>
             <DetailLabel>Name</DetailLabel>
-            <DetailValue>{name || <span className="text-muted">Not set</span>}</DetailValue>
+            <DetailValue>{name || <span className="text-muted">—</span>}</DetailValue>
           </Detail>
           <Detail>
             <DetailLabel>ID</DetailLabel>
@@ -91,7 +91,7 @@ export const ProjectMemberDetailsSection = ({ membership }: Props) => {
           {username !== email && (
             <Detail>
               <DetailLabel>Username</DetailLabel>
-              <DetailValue>{username || <span className="text-muted">Not set</span>}</DetailValue>
+              <DetailValue>{username || <span className="text-muted">—</span>}</DetailValue>
             </Detail>
           )}
           <Detail>
