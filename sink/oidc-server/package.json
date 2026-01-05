@@ -13,7 +13,7 @@
   "dependencies": {
     "axios": "^1.12.0",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2",
+    "express": "^4.22.0",
     "form-data": "^4.0.2",
     "jose": "^6.0.10",
     "oidc-provider": "^9.5.1"
