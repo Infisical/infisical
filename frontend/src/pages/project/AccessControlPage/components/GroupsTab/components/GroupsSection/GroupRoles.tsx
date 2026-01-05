@@ -390,7 +390,9 @@ export const GroupRoles = ({
           return (
             <Tag key={id} className="capitalize">
               <div className="flex items-center space-x-2">
-                <div>{formatProjectRoleName(role, customRoleName)}</div>
+                <div className="max-w-32 truncate">
+                  {formatProjectRoleName(role, customRoleName)}
+                </div>
                 {isTemporary && (
                   <div>
                     <Tooltip content={isExpired ? "Expired Temporary Access" : "Temporary Access"}>
