@@ -279,7 +279,7 @@ const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) =>
 
             return (
               <div key={id} className="flex items-center space-x-4">
-                <div className="grow">
+                <div className="flex-1 truncate">
                   <Controller
                     control={control}
                     defaultValue={Boolean(userProjectRoleDetails?.id)}
