@@ -143,14 +143,14 @@ export const RedisAccountForm = ({ account, onSubmit }: Props) => {
                 isChecked={value}
                 onCheckedChange={(checked) => {
                   onChange(checked);
-                  // Clear credential values when toggling
-                  setValue("credentials.username", undefined, { shouldDirty: true });
-                  setValue("credentials.password", undefined, { shouldDirty: true });
-                  // Clear validation errors for credentials when disabled
-                  if (!checked) {
+                  if (checked) {
+                    setValue("credentials.username", "", { shouldDirty: true });
+                    setValue("credentials.password", "", { shouldDirty: true });
+                  } else {
+                    setValue("credentials.username", undefined, { shouldDirty: true });
+                    setValue("credentials.password", undefined, { shouldDirty: true });
                     clearErrors("credentials");
                   }
-                  // Trigger validation to update form state
                   form.trigger("credentials");
                 }}
               >
