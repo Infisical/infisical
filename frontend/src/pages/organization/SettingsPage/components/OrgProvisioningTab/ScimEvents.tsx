@@ -73,10 +73,10 @@ export const ScimEvents = () => {
           <TBody>
             {!isPending &&
               scimEvents?.pages?.map((group, i) => (
-                <Fragment key={`audit-log-fragment-${i + 1}`}>
+                <Fragment key={`scim-events-fragment-${i + 1}`}>
                   {group.map((scimEvent) => (
                     <Tr
-                      key={`audit-log-${scimEvent.id}`}
+                      key={`scim-events-${scimEvent.id}`}
                       className="group h-10 cursor-pointer border-x-0 border-t-0 border-b hover:bg-mineshaft-700"
                       role="button"
                       tabIndex={0}
