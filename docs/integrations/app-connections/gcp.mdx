@@ -34,6 +34,13 @@ Infisical supports [service account impersonation](https://cloud.google.com/iam/
         </Step>
     </Steps>
 
+    <Tip>
+        Before using service account impersonation, ensure that the IAM Service Account Credentials API is enabled for the project containing the service account that will be impersonated. Run the following command, replacing `projectId` with your GCP project ID:
+        ```bash
+        gcloud services enable iamcredentials.googleapis.com --project=projectId
+        ```
+    </Tip>
+
 </Accordion>
 
 ## Configure Service Account for Infisical
