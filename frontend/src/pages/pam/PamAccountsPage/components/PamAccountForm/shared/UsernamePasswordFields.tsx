@@ -26,6 +26,7 @@ export const UsernamePasswordFields = ({ isUpdate }: { isUpdate: boolean }) => {
             errorText={error?.message}
             isError={Boolean(error?.message)}
             label="Username"
+            isOptional
           >
             <Input {...field} autoComplete="off" />
           </FormControl>
@@ -40,6 +41,7 @@ export const UsernamePasswordFields = ({ isUpdate }: { isUpdate: boolean }) => {
             errorText={error?.message}
             isError={Boolean(error?.message)}
             label="Password"
+            isOptional
           >
             <Input
               {...field}

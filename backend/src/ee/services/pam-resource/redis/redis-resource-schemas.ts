@@ -25,8 +25,17 @@ export const RedisResourceConnectionDetailsSchema = z.object({
 });
 
 export const RedisAccountCredentialsSchema = z.object({
-  username: z.string().trim().min(1).max(63),
-  password: z.string().trim().min(1).max(256)
+  username: z
+    .string()
+    .trim()
+    .max(256, "Username must be 255 characters or less")
+    .transform((value) => (value === "" ? undefined : value))
+    .optional(),
+  password: z
+    .string()
+    .max(256, "Password must be 256 characters or less")
+    .transform((value) => (value === "" ? undefined : value))
+    .optional()
 });
 
 const BaseRedisResourceSchema = BasePamResourceSchema.extend({ resourceType: z.literal(PamResource.Redis) });

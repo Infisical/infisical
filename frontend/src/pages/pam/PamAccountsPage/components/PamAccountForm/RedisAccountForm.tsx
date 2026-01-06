@@ -18,8 +18,17 @@ type Props = {
 
 const formSchema = genericAccountFieldsSchema.extend({
   credentials: z.object({
-    username: z.string().trim().max(256, "Username must be 255 characters or less"),
-    password: z.string().max(256, "Password must be 256 characters or less")
+    username: z
+      .string()
+      .trim()
+      .max(256, "Username must be 255 characters or less")
+      .transform((value) => (value === "" ? undefined : value))
+      .optional(),
+    password: z
+      .string()
+      .max(256, "Password must be 256 characters or less")
+      .transform((value) => (value === "" ? undefined : value))
+      .optional()
   }),
   // We don't support rotation for now, just feed a false value to
   // make the schema happy
