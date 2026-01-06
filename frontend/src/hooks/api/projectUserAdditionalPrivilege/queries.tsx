@@ -36,7 +36,12 @@ export const useListProjectUserPrivileges = (projectMembershipId: string) => {
       const {
         data: { privileges }
       } = await apiRequest.get<{
-        privileges: Array<Omit<TProjectUserPrivilege, "permissions"> & { permissions: unknown }>;
+        privileges: Array<
+          Omit<TProjectUserPrivilege, "permissions"> & {
+            permissions: unknown;
+            isLinkedToAccessApproval: boolean;
+          }
+        >;
       }>("/api/v1/user-project-additional-privilege", { params: { projectMembershipId } });
       return privileges.map((el) => ({
         ...el,
