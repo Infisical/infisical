@@ -2,6 +2,13 @@ import { useCallback } from "react";
 
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
+import {
+  UnstableCard,
+  UnstableCardContent,
+  UnstableCardDescription,
+  UnstableCardHeader,
+  UnstableCardTitle
+} from "@app/components/v3";
 import { useRemoveUserFromGroup } from "@app/hooks/api";
 import { OrgUser } from "@app/hooks/api/users/types";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -36,13 +43,15 @@ export const UserGroupsSection = ({ orgMembership }: Props) => {
 
   return (
     <>
-      <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="mb-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
-          <h3 className="text-lg font-medium text-mineshaft-100">Groups</h3>
-        </div>
-
-        <UserGroupsTable orgMembership={orgMembership} handlePopUpOpen={handlePopUpOpen} />
-      </div>
+      <UnstableCard>
+        <UnstableCardHeader>
+          <UnstableCardTitle>Groups</UnstableCardTitle>
+          <UnstableCardDescription>Manage user group memberships</UnstableCardDescription>
+        </UnstableCardHeader>
+        <UnstableCardContent>
+          <UserGroupsTable orgMembership={orgMembership} handlePopUpOpen={handlePopUpOpen} />
+        </UnstableCardContent>
+      </UnstableCard>
 
       <DeleteActionModal
         isOpen={popUp.removeUserFromGroup.isOpen}
