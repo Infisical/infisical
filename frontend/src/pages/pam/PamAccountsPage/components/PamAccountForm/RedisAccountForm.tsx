@@ -6,7 +6,7 @@ import { Button, ModalClose } from "@app/components/v2";
 import { PamResourceType, TRedisAccount } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
-import { SqlAccountFields } from "./shared/SqlAccountFields";
+import { UsernamePasswordFields } from "./shared/UsernamePasswordFields";
 import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
 
 type Props = {
@@ -65,7 +65,7 @@ export const RedisAccountForm = ({ account, onSubmit }: Props) => {
         }}
       >
         <GenericAccountFields />
-        <SqlAccountFields isUpdate={isUpdate} />
+        <UsernamePasswordFields isUpdate={isUpdate} />
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"
