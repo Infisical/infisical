@@ -7,6 +7,7 @@ import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { DEFAULT_CRL_VALIDITY_DAYS } from "@app/services/certificate-common/certificate-constants";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { CertKeyAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -243,10 +244,14 @@ export const certificateAuthorityQueueFactory = ({
       status: CertStatus.REVOKED
     });
 
+    const thisUpdate = new Date();
+    const nextUpdate = new Date(thisUpdate);
+    nextUpdate.setDate(nextUpdate.getDate() + DEFAULT_CRL_VALIDITY_DAYS);
+
     const crl = await x509.X509CrlGenerator.create({
       issuer: ca.internalCa.dn,
-      thisUpdate: new Date(),
-      nextUpdate: new Date("2025/12/12"), // TODO: depends on configured rebuild interval
+      thisUpdate,
+      nextUpdate,
       entries: revokedCerts.map((revokedCert) => {
         return {
           serialNumber: revokedCert.serialNumber,
