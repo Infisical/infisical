@@ -52,11 +52,9 @@ RUN npm ci --only-production && npm cache clean --force
 
 COPY --from=build /app .
 
-
-RUN apt-get install -y curl bash
-
 # Install Infisical CLI
-RUN curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash && \
+RUN apt-get update && apt-get install -y curl bash && \
+    curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash && \
     apt-get update && apt-get install -y infisical=0.43.14 git
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s \

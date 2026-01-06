@@ -15,6 +15,8 @@ import { SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchema
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
+// test to trigger breaking change CI
+
 const validateUsernameTemplateCharacters = characterValidator([
   CharacterType.AlphaNumeric,
   CharacterType.Underscore,
