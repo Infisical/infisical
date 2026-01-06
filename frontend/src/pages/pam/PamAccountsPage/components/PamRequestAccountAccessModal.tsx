@@ -15,10 +15,10 @@ import {
   ModalContent,
   TextArea
 } from "@app/components/v2";
+import { UnstableAlert, UnstableAlertDescription, UnstableAlertTitle } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import { useCreateApprovalRequest } from "@app/hooks/api/approvalRequests/mutations";
-import { UnstableAlert, UnstableAlertDescription, UnstableAlertTitle } from "@app/components/v3";
 
 type Props = {
   accountPath?: string;
