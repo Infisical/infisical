@@ -1,5 +1,5 @@
 import { format, formatDistance } from "date-fns";
-import { ClockAlertIcon, ClockIcon, EllipsisIcon, PlusIcon } from "lucide-react";
+import { ClockAlertIcon, ClockIcon, EllipsisIcon, PlusIcon, ShieldIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -158,7 +158,8 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                           {isLinkedToAccessApproval && (
                             <Tooltip content="This privilege was granted via an access request, therefore it cannot be edited or deleted">
                               <Badge className="capitalize" variant="info">
-                                Granted
+                                <ShieldIcon />
+                                Managed
                               </Badge>
                             </Tooltip>
                           )}
