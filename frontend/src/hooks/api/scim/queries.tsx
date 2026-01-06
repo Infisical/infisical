@@ -1,11 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { ScimTokenData } from "./types";
+import { GetScimEventsDTO, ScimEventData, ScimTokenData } from "./types";
 
 export const scimKeys = {
-  getScimTokens: (orgId: string) => [{ orgId }, "organization-scim-token"] as const
+  getScimTokens: (orgId: string) => [{ orgId }, "organization-scim-token"] as const,
+  getScimEvents: (params: GetScimEventsDTO) => [{ ...params }, "organization-scim-events"] as const
 };
 
 export const useGetScimTokens = (organizationId: string) => {
@@ -25,5 +26,29 @@ export const useGetScimTokens = (organizationId: string) => {
       return scimTokens;
     },
     enabled: true
+  });
+};
+
+export const useGetScimEvents = ({ fromDate, limit = 10, offset, disabled }: GetScimEventsDTO) => {
+  return useInfiniteQuery({
+    initialPageParam: 0,
+    queryKey: scimKeys.getScimEvents({ fromDate, limit, offset }),
+    queryFn: async ({ pageParam }) => {
+      const {
+        data: { scimEvents }
+      } = await apiRequest.get<{ scimEvents: ScimEventData[] }>("/api/v1/scim/scim-events", {
+        params: {
+          fromDate,
+          limit,
+          offset: pageParam
+        }
+      });
+
+      return scimEvents;
+    },
+    enabled: !disabled,
+    getNextPageParam: (lastPage, pages) =>
+      lastPage.length !== 0 ? pages.length * limit : undefined,
+    placeholderData: (prev) => prev
   });
 };
