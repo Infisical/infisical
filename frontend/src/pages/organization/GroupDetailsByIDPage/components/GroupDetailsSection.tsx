@@ -1,10 +1,23 @@
-import { faPencil } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { format } from "date-fns";
+import { CheckIcon, ClipboardListIcon, PencilIcon } from "lucide-react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { IconButton, Spinner, Tooltip } from "@app/components/v2";
-import { CopyButton } from "@app/components/v2/CopyButton";
+import { Tooltip } from "@app/components/v2";
+import {
+  Detail,
+  DetailGroup,
+  DetailLabel,
+  DetailValue,
+  UnstableCard,
+  UnstableCardAction,
+  UnstableCardContent,
+  UnstableCardDescription,
+  UnstableCardHeader,
+  UnstableCardTitle,
+  UnstableIconButton
+} from "@app/components/v3";
 import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/context";
+import { useTimedReset } from "@app/hooks";
 import { useGetGroupById } from "@app/hooks/api/";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -14,75 +27,97 @@ type Props = {
 };
 
 export const GroupDetailsSection = ({ groupId, handlePopUpOpen }: Props) => {
-  const { data, isPending } = useGetGroupById(groupId);
+  const { data } = useGetGroupById(groupId);
 
-  if (isPending) return <Spinner size="sm" className="mt-2 ml-2" />;
+  const [, isCopyingId, setCopyTextId] = useTimedReset<string>({
+    initialState: "Copy ID to clipboard"
+  });
+
+  const [, isCopyingSlug, setCopyTextSlug] = useTimedReset<string>({
+    initialState: "Copy slug to clipboard"
+  });
 
   return data ? (
-    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-medium text-mineshaft-100">Group Details</h3>
-        <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
-          {(isAllowed) => {
-            return (
-              <Tooltip content="Edit Group">
-                <IconButton
-                  isDisabled={!isAllowed}
-                  ariaLabel="edit group button"
-                  variant="plain"
-                  className="group relative"
+    <UnstableCard className="w-full lg:max-w-[24rem]">
+      <UnstableCardHeader className="border-b">
+        <UnstableCardTitle>Details</UnstableCardTitle>
+        <UnstableCardDescription>Group details</UnstableCardDescription>
+        <UnstableCardAction>
+          <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
+            {(isAllowed) => (
+              <UnstableIconButton
+                isDisabled={!isAllowed}
+                onClick={() => {
+                  handlePopUpOpen("groupCreateUpdate", {
+                    groupId,
+                    name: data.group.name,
+                    slug: data.group.slug,
+                    role: data.group.role
+                  });
+                }}
+                size="xs"
+                variant="outline"
+              >
+                <PencilIcon />
+              </UnstableIconButton>
+            )}
+          </OrgPermissionCan>
+        </UnstableCardAction>
+      </UnstableCardHeader>
+      <UnstableCardContent>
+        <DetailGroup>
+          <Detail>
+            <DetailLabel>Name</DetailLabel>
+            <DetailValue>{data.group.name}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>ID</DetailLabel>
+            <DetailValue className="flex items-center gap-x-1">
+              {data.group.id}
+              <Tooltip content="Copy group ID to clipboard">
+                <UnstableIconButton
                   onClick={() => {
-                    handlePopUpOpen("groupCreateUpdate", {
-                      groupId,
-                      name: data.group.name,
-                      slug: data.group.slug,
-                      role: data.group.role
-                    });
+                    navigator.clipboard.writeText(data.group.id);
+                    setCopyTextId("Copied");
                   }}
+                  variant="ghost"
+                  size="xs"
                 >
-                  <FontAwesomeIcon icon={faPencil} />
-                </IconButton>
+                  {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
+                </UnstableIconButton>
               </Tooltip>
-            );
-          }}
-        </OrgPermissionCan>
-      </div>
-      <div className="pt-4">
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Group ID</p>
-          <div className="group flex items-center gap-2">
-            <p className="text-sm text-mineshaft-300">{data.group.id}</p>
-            <CopyButton value={data.group.id} name="Group ID" size="xs" variant="plain" />
-          </div>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Name</p>
-          <p className="text-sm text-mineshaft-300">{data.group.name}</p>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Slug</p>
-          <div className="group flex items-center gap-2">
-            <p className="text-sm text-mineshaft-300">{data.group.slug}</p>
-            <CopyButton value={data.group.slug} name="Slug" size="xs" variant="plain" />
-          </div>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Organization Role</p>
-          <p className="text-sm text-mineshaft-300">{data.group.role}</p>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Created At</p>
-          <p className="text-sm text-mineshaft-300">
-            {new Date(data.group.createdAt).toLocaleString()}
-          </p>
-        </div>
-      </div>
-    </div>
+            </DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Slug</DetailLabel>
+            <DetailValue className="flex items-center gap-x-1">
+              {data.group.slug}
+              <Tooltip content="Copy slug to clipboard">
+                <UnstableIconButton
+                  onClick={() => {
+                    navigator.clipboard.writeText(data.group.slug);
+                    setCopyTextSlug("Copied");
+                  }}
+                  variant="ghost"
+                  size="xs"
+                >
+                  {isCopyingSlug ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
+                </UnstableIconButton>
+              </Tooltip>
+            </DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Organization Role</DetailLabel>
+            <DetailValue>{data.group.role}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Created</DetailLabel>
+            <DetailValue>{format(data.group.createdAt, "PPpp")}</DetailValue>
+          </Detail>
+        </DetailGroup>
+      </UnstableCardContent>
+    </UnstableCard>
   ) : (
-    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <p className="text-mineshaft-300">Group data not found</p>
-      </div>
-    </div>
+    <div />
   );
 };

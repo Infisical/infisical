@@ -201,7 +201,6 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
                   setPage(1);
                 }}
               >
-                {option.icon}
                 {option.label}
               </UnstableDropdownMenuCheckboxItem>
             ))}

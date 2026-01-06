@@ -1,38 +1,30 @@
 import { useState } from "react";
-import {
-  faArrowDown,
-  faArrowUp,
-  faCheckCircle,
-  faFilter,
-  faFolder,
-  faMagnifyingGlass,
-  faSearch
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { HardDriveIcon, UserIcon } from "lucide-react";
+import { ChevronDownIcon, FilterIcon, HardDriveIcon, PlusIcon, UserIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { OrgPermissionCan } from "@app/components/permissions";
+import { Lottie } from "@app/components/v2";
 import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-  EmptyState,
-  IconButton,
-  Input,
-  Pagination,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Th,
-  THead,
-  Tooltip,
-  Tr
-} from "@app/components/v2";
+  UnstableButton,
+  UnstableDropdownMenu,
+  UnstableDropdownMenuCheckboxItem,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuLabel,
+  UnstableDropdownMenuTrigger,
+  UnstableEmpty,
+  UnstableEmptyContent,
+  UnstableEmptyDescription,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle,
+  UnstableIconButton,
+  UnstableInput,
+  UnstablePagination,
+  UnstableTable,
+  UnstableTableBody,
+  UnstableTableHead,
+  UnstableTableHeader,
+  UnstableTableRow
+} from "@app/components/v3";
 import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import {
   getUserTablePreference,
@@ -40,7 +32,6 @@ import {
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
-import { useOidcManageGroupMembershipsEnabled } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useListGroupMembers } from "@app/hooks/api/groups/queries";
 import {
@@ -85,10 +76,7 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
     setUserTablePreference("groupMembersTable", PreferenceKey.PerPage, newPerPage);
   };
 
-  const { currentOrg } = useOrganization();
-
-  const { data: isOidcManageGroupMembershipsEnabled = false } =
-    useOidcManageGroupMembershipsEnabled(currentOrg.id);
+  const { isSubOrganization } = useOrganization();
 
   const { data: groupMemberships, isPending } = useListGroupMembers({
     id: groupId,
@@ -122,40 +110,42 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
     }
   ];
 
+  if (isPending) {
+    return (
+      <div className="flex h-40 w-full items-center justify-center">
+        <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
+      </div>
+    );
+  }
+
+  const isFiltered = search || memberTypeFilter.length;
+
   return (
-    <div>
-      <div className="flex gap-2">
-        <Input
+    <>
+      <div className="mb-4 flex gap-2">
+        <UnstableInput
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
           placeholder="Search members..."
+          className="flex-1"
         />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <IconButton
-              ariaLabel="Filter Members"
-              variant="plain"
-              size="sm"
-              className={twMerge(
-                "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
-                memberTypeFilter.length > 0 && "border-primary/50 text-primary"
-              )}
+        <UnstableDropdownMenu>
+          <UnstableDropdownMenuTrigger asChild>
+            <UnstableIconButton
+              variant={
+                // eslint-disable-next-line no-nested-ternary
+                memberTypeFilter.length ? (isSubOrganization ? "sub-org" : "org") : "outline"
+              }
             >
-              <FontAwesomeIcon icon={faFilter} />
-            </IconButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            sideOffset={2}
-            className="max-h-[70vh] thin-scrollbar overflow-y-auto"
-            align="end"
-          >
-            <DropdownMenuLabel>Filter by Member Type</DropdownMenuLabel>
+              <FilterIcon />
+            </UnstableIconButton>
+          </UnstableDropdownMenuTrigger>
+          <UnstableDropdownMenuContent align="end">
+            <UnstableDropdownMenuLabel>Filter by Member Type</UnstableDropdownMenuLabel>
             {filterOptions.map((option) => (
-              <DropdownMenuItem
+              <UnstableDropdownMenuCheckboxItem
                 key={option.value}
-                className="flex items-center gap-2"
-                iconPos="right"
+                checked={memberTypeFilter.includes(option.value)}
                 onClick={(e) => {
                   e.preventDefault();
                   setMemberTypeFilter((prev) => {
@@ -166,115 +156,97 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
                   });
                   setPage(1);
                 }}
-                icon={
-                  memberTypeFilter.includes(option.value) && (
-                    <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
-                  )
-                }
               >
-                <div className="flex items-center gap-2">
-                  {option.icon}
-                  {option.label}
-                </div>
-              </DropdownMenuItem>
+                {option.label}
+              </UnstableDropdownMenuCheckboxItem>
             ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </UnstableDropdownMenuContent>
+        </UnstableDropdownMenu>
       </div>
-      <TableContainer className="mt-4">
-        <Table>
-          <THead>
-            <Tr>
-              <Th className="w-5" />
-              <Th className="w-1/2 pl-2">
-                <div className="flex items-center">
-                  Name
-                  <IconButton
-                    variant="plain"
-                    className="ml-2"
-                    ariaLabel="sort"
-                    onClick={toggleOrderDirection}
-                  >
-                    <FontAwesomeIcon
-                      icon={orderDirection === OrderByDirection.DESC ? faArrowUp : faArrowDown}
-                    />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th>Added On</Th>
-              <Th className="w-5" />
-            </Tr>
-          </THead>
-          <TBody>
-            {isPending && <TableSkeleton columns={4} innerKey="group-user-memberships" />}
-            {!isPending &&
-              groupMemberships?.members?.map((userGroupMembership) => {
-                return userGroupMembership.type === GroupMemberType.USER ? (
-                  <GroupMembershipUserRow
-                    key={`user-group-membership-${userGroupMembership.id}`}
-                    user={userGroupMembership}
-                    handlePopUpOpen={handlePopUpOpen}
-                  />
-                ) : (
-                  <GroupMembershipIdentityRow
-                    key={`identity-group-membership-${userGroupMembership.id}`}
-                    identity={userGroupMembership}
-                    handlePopUpOpen={handlePopUpOpen}
-                  />
-                );
-              })}
-          </TBody>
-        </Table>
-        {Boolean(totalCount) && (
-          <Pagination
-            count={totalCount}
-            page={page}
-            perPage={perPage}
-            onChangePage={setPage}
-            onChangePerPage={handlePerPageChange}
-          />
-        )}
-        {!isPending && !members.length && (
-          <EmptyState
-            title={
-              groupMemberships?.members.length
-                ? "No members match this search..."
-                : "This group does not have any members yet"
-            }
-            icon={groupMemberships?.members.length ? faSearch : faFolder}
-          />
-        )}
-        {!groupMemberships?.members.length && (
-          <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
-            {(isAllowed) => (
-              <Tooltip
-                className="text-center"
-                content={
-                  isOidcManageGroupMembershipsEnabled
-                    ? "OIDC Group Membership Mapping Enabled. Assign users to this group in your OIDC provider."
-                    : undefined
-                }
-              >
-                <div className="mb-4 flex items-center justify-center">
-                  <Button
-                    variant="solid"
-                    colorSchema="secondary"
-                    isDisabled={isOidcManageGroupMembershipsEnabled || !isAllowed}
-                    onClick={() => {
-                      handlePopUpOpen("addGroupMembers", {
-                        groupId,
-                        slug: groupSlug
-                      });
-                    }}
-                  >
-                    Add members
-                  </Button>
-                </div>
-              </Tooltip>
+      {members.length ? (
+        <UnstableTable>
+          <UnstableTableHeader>
+            <UnstableTableRow>
+              <UnstableTableHead className="w-5" />
+              <UnstableTableHead onClick={toggleOrderDirection} className="w-2/3">
+                Name
+                <ChevronDownIcon
+                  className={twMerge(
+                    orderDirection === OrderByDirection.DESC && "rotate-180",
+                    "transition-transform"
+                  )}
+                />
+              </UnstableTableHead>
+              <UnstableTableHead>Added On</UnstableTableHead>
+              <UnstableTableHead className="w-5" />
+            </UnstableTableRow>
+          </UnstableTableHeader>
+          <UnstableTableBody>
+            {members.map((userGroupMembership) =>
+              userGroupMembership.type === GroupMemberType.USER ? (
+                <GroupMembershipUserRow
+                  key={`user-group-membership-${userGroupMembership.id}`}
+                  user={userGroupMembership}
+                  handlePopUpOpen={handlePopUpOpen}
+                />
+              ) : (
+                <GroupMembershipIdentityRow
+                  key={`identity-group-membership-${userGroupMembership.id}`}
+                  identity={userGroupMembership}
+                  handlePopUpOpen={handlePopUpOpen}
+                />
+              )
             )}
-          </OrgPermissionCan>
-        )}
-      </TableContainer>
-    </div>
+          </UnstableTableBody>
+        </UnstableTable>
+      ) : (
+        <UnstableEmpty className="border">
+          <UnstableEmptyHeader>
+            <UnstableEmptyTitle>
+              {isFiltered ? "No members match this search" : "This group does not have any members"}
+            </UnstableEmptyTitle>
+            <UnstableEmptyDescription>
+              {isFiltered
+                ? "Adjust search filters to view members."
+                : "Add users or machine identities to this group."}
+            </UnstableEmptyDescription>
+            {!isFiltered && (
+              <UnstableEmptyContent>
+                <OrgPermissionCan
+                  I={OrgPermissionGroupActions.Edit}
+                  a={OrgPermissionSubjects.Groups}
+                >
+                  {(isAllowed) => (
+                    <UnstableButton
+                      variant={isSubOrganization ? "sub-org" : "org"}
+                      size="xs"
+                      isDisabled={!isAllowed}
+                      onClick={() =>
+                        handlePopUpOpen("addGroupMembers", {
+                          groupId,
+                          slug: groupSlug
+                        })
+                      }
+                    >
+                      <PlusIcon />
+                      Add Member
+                    </UnstableButton>
+                  )}
+                </OrgPermissionCan>
+              </UnstableEmptyContent>
+            )}
+          </UnstableEmptyHeader>
+        </UnstableEmpty>
+      )}
+      {Boolean(members.length) && (
+        <UnstablePagination
+          count={totalCount}
+          page={page}
+          perPage={perPage}
+          onChangePage={setPage}
+          onChangePerPage={handlePerPageChange}
+        />
+      )}
+    </>
   );
 };
