@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { ScimTokensSchema } from "@app/db/schemas";
+import { ScimEventsSchema, ScimTokensSchema } from "@app/db/schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -137,6 +137,41 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
       });
 
       return { scimToken };
+    }
+  });
+
+  server.route({
+    url: "/scim-events",
+    method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      querystring: z.object({
+        fromDate: z.string().trim().optional(),
+        limit: z.coerce.number().min(1).max(100).default(30).optional(),
+        offset: z.coerce.number().min(0).default(0).optional()
+      }),
+      response: {
+        200: z.object({
+          scimEvents: z.array(ScimEventsSchema)
+        })
+      }
+    },
+    handler: async (req) => {
+      const scimEvents = await server.services.scim.listScimEvents({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        orgId: req.permission.orgId,
+        fromDate: req.query.fromDate,
+        limit: req.query.limit,
+        offset: req.query.offset
+      });
+
+      return { scimEvents };
     }
   });
 

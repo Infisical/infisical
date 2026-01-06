@@ -1,7 +1,23 @@
 import { ScimPatchOperation } from "scim-patch";
 
-import { TScimTokens } from "@app/db/schemas";
+import { TScimEvents, TScimTokens } from "@app/db/schemas";
 import { TOrgPermission } from "@app/lib/types";
+
+export enum ScimEvent {
+  LIST_USERS = "list-users",
+  GET_USER = "get-user",
+  CREATE_USER = "create-user",
+  UPDATE_USER = "update-user",
+  REPLACE_USER = "replace-user",
+  DELETE_USER = "delete-user",
+
+  LIST_GROUPS = "list-groups",
+  GET_GROUP = "get-group",
+  CREATE_GROUP = "create-group",
+  UPDATE_GROUP = "update-group",
+  REPLACE_GROUP = "replace-group",
+  DELETE_GROUP = "delete-group"
+}
 
 export type TCreateScimTokenDTO = {
   description: string;
@@ -11,6 +27,12 @@ export type TCreateScimTokenDTO = {
 export type TDeleteScimTokenDTO = {
   scimTokenId: string;
 } & Omit<TOrgPermission, "orgId">;
+
+export type TListScimEventsDTO = {
+  fromDate?: string;
+  limit?: number;
+  offset?: number;
+} & TOrgPermission;
 
 // SCIM server endpoint types
 
@@ -181,6 +203,7 @@ export type TScimServiceFactory = {
     description: string;
     ttlDays: number;
   }>;
+  listScimEvents: (arg: TListScimEventsDTO) => Promise<TScimEvents[]>;
   listScimUsers: (arg: TListScimUsersDTO) => Promise<TListScimUsers>;
   getScimUser: (arg: TGetScimUserDTO) => Promise<TScimUser>;
   createScimUser: (arg: TCreateScimUserDTO) => Promise<TScimUser>;

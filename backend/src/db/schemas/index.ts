@@ -146,6 +146,7 @@ export * from "./relays";
 export * from "./resource-metadata";
 export * from "./roles";
 export * from "./saml-configs";
+export * from "./scim-events";
 export * from "./scim-tokens";
 export * from "./secret-approval-policies";
 export * from "./secret-approval-policies-approvers";
