@@ -21,7 +21,7 @@ export const RequestNewInvitePage = () => {
       <div className="mt-8 flex h-screen w-screen flex-col items-center justify-center text-bunker-200">
         {isAlreadyMember ? (
           <>
-            <p className="text-4xl text-primary-100">You&apos;re already a member.</p>
+            <p className="text-4xl text-primary-100">You&apos;re already a member</p>
             <p className="my-4 text-lg">You&apos;ve already joined this organization.</p>
             <Link to="/login">
               <Button size="lg">Go to Login</Button>
@@ -29,7 +29,7 @@ export const RequestNewInvitePage = () => {
           </>
         ) : (
           <>
-            <p className="text-4xl text-primary-100">Oops, your invite has expired.</p>
+            <p className="text-4xl text-primary-100">Oops, your invite has expired</p>
             <p className="my-4 text-lg">Ask your admin for a new one.</p>
             <p className="max-w-xs px-7 text-center text-sm leading-tight text-bunker-400">
               <span className="rounded-md bg-primary-500/40 px-1 text-black">Note:</span> If it
