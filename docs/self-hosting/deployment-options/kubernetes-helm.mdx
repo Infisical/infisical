@@ -3,185 +3,214 @@ title: "Kubernetes via Helm Chart"
 description: "Learn how to use Helm chart to install Infisical on your Kubernetes cluster."
 ---
 
-**Prerequisites**
+## Prerequisites
 
 - You have extensive understanding of [Kubernetes](https://kubernetes.io/)
-- Installed [Helm package manager](https://helm.sh/) version v3.11.3 or greater
-- You have [kubectl](https://kubernetes.io/docs/reference/kubectl/kubectl/) installed and connected to your kubernetes cluster
-
-<Steps>
-  <Step title="Install Infisical Helm repository ">
-    ```bash
-    helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/' 
-    ```
-    ```bash
-    helm repo update
-    ```
-  </Step>
-  <Step title="Add Helm values">
-    Create a `values.yaml` file. This will be used to configure settings for the Infisical Helm chart.
-    To explore all configurable properties for your values file, [visit this page](https://raw.githubusercontent.com/Infisical/infisical/main/helm-charts/infisical-standalone-postgres/values.yaml).
-  </Step>
-  <Step title="Select Infisical version">
-    By default, the Infisical version set in your helm chart will likely be outdated. 
-    Choose the latest Infisical docker image tag from [here](https://hub.docker.com/r/infisical/infisical/tags).
-    
-
-    ```yaml values.yaml
-    infisical:
-      image:
-        repository: infisical/infisical
-        tag: "<>" #<-- select tag from Dockerhub from the above link
-        pullPolicy: IfNotPresent
-    ```
-    <Warning>
-      Do not use the latest docker image tag in production deployments as they can introduce unexpected changes
-    </Warning>
-  </Step>
-
-  <Step title="Configure environment variables">
-
-    To deploy this Helm chart, a Kubernetes secret named `infisical-secrets` must be present in the same namespace where the chart is being deployed.
-
-    For a minimal installation of Infisical, you need to configure `ENCRYPTION_KEY`, `AUTH_SECRET`, `DB_CONNECTION_URI`, `SITE_URL`, and `REDIS_URL`. [Learn more about configuration settings](/self-hosting/configuration/envars).
+- Installed [Helm package manager](https://helm.sh) version v3.11.3 or greater
+- You have [kubectl](https://kubernetes.io) installed and connected to your Kubernetes cluster
 
 
-    <Tabs>
-      <Tab title="Proof of concept deployment">
-        For test or proof-of-concept purposes, you may omit `DB_CONNECTION_URI` and `REDIS_URL` from `infisical-secrets`. This is because the Helm chart will automatically provision and connect to the in-cluster instances of Postgres and Redis by default.
-        ```yaml simple-values-example.yaml 
-        apiVersion: v1
-        kind: Secret
-        metadata:
-          name: infisical-secrets
-        type: Opaque
-        stringData:
-          AUTH_SECRET: <>
-          ENCRYPTION_KEY: <>
-          SITE_URL: <>
-        ```
-      </Tab>
-      <Tab title="Production deployment">
-        For production environments, we recommend using Cloud-based Platform as a Service (PaaS) solutions for PostgreSQL and Redis to ensure high availability. In on-premise setups, it's recommended to configure Redis and Postgres for high availability, either by using Bitnami charts or a custom configuration.
+1. **Install Infisical Helm repository**
 
-        ```yaml simple-values-example.yaml 
-        apiVersion: v1
-        kind: Secret
-        metadata:
-          name: infisical-secrets
-        type: Opaque
-        stringData:
-          AUTH_SECRET: <>
-          ENCRYPTION_KEY: <>
-          REDIS_URL: <>
-          DB_CONNECTION_URI: <>
-          SITE_URL: <>
-        ```
+   ```bash
+   helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/'
+   ``` 
 
-        <Tip>
-          If you need to configure the SSL certificate for your production Postgres instance, you can use the `DB_ROOT_CERT` environment variable. [Learn more about configuring the SSL certificate](/self-hosting/configuration/envars#aws-rds).
-        </Tip>
-      </Tab>
-    </Tabs>
-  </Step>
+   ```bash
+   helm repo update
+   ```
 
-  <Step title="Routing traffic to Infisical">
-    By default, this chart uses Nginx as its Ingress controller to direct traffic to Infisical services.
+2. **Add Helm values**
 
-    ```yaml values.yaml 
-    ingress:
-      nginx:
-        enabled: true 
-    ```
-  </Step>
+   Create a `values.yaml` file. This will be used to configure settings for the Infisical Helm chart. To explore all configurable properties for your values file, [visit this page](https://raw.githubusercontent.com/Infisical/infisical/main/helm-charts/infisical-standalone-postgres/values.yaml).
 
-  <Step title="Install the Helm chart ">
-    Once you are done configuring your `values.yaml` file, run the command below.
+3. **Select Infisical version**
 
-    ```bash
-    helm upgrade --install infisical infisical-helm-charts/infisical-standalone --values /path/to/values.yaml
-    ```
+   By default, the Infisical version set in your Helm chart values may be outdated. Choose the latest Infisical Docker image tag from [Docker Hub](https://hub.docker.com/r/infisical/infisical).
 
-    <Accordion title="Full helm values example">
-      ```yaml values.yaml
+   ```yaml title="values.yaml"
+   infisical:
+     image:
+       repository: infisical/infisical
+       tag: "<>"  # <-- select the tag from Docker Hub
+       pullPolicy: IfNotPresent
+   ```
 
-      nameOverride: "infisical"
-      fullnameOverride: "infisical"
+   *Do not use the `latest` Docker image tag in production deployments, as it can introduce unexpected changes.*
 
-      infisical:
-        enabled: true
-        name: infisical
-        autoDatabaseSchemaMigration: true
-        fullnameOverride: ""
-        podAnnotations: {}
-        deploymentAnnotations: {}
-        replicaCount: 6
+4. **Configure environment variables**
 
-        image:
-          repository: infisical/infisical
-          tag: "v0.46.2-postgres"
-          pullPolicy: IfNotPresent
+   To deploy this Helm chart, a Kubernetes secret named `infisical-secrets` must exist in the same namespace where the chart will be deployed. For a minimal installation of Infisical, you need to configure `ENCRYPTION_KEY`, `AUTH_SECRET`, `DB_CONNECTION_URI`, `SITE_URL`, and `REDIS_URL` in this secret. [Learn more about configuration settings](/self-hosting/configuration/envars).
 
-        affinity: {}
-        kubeSecretRef: "infisical-secrets"
-        service:
-          annotations: {}
-          type: ClusterIP
-          nodePort: ""
+   <Tabs>
+     <Tab title="Proof of concept deployment">
+       For test or proof-of-concept purposes, you may omit `DB_CONNECTION_URI` and `REDIS_URL` from the `infisical-secrets` secret. The Helm chart will automatically provision and use in-cluster instances of Postgres and Redis by default.
 
-        resources:
-          limits:
-            memory: 210Mi
-          requests:
-            cpu: 200m
+       ```yaml title="infisical-secrets.yaml"
+       apiVersion: v1
+       kind: Secret
+       metadata:
+         name: infisical-secrets
+       type: Opaque
+       stringData:
+         AUTH_SECRET: <>
+         ENCRYPTION_KEY: <>
+         SITE_URL: <>
+       ```
+     </Tab>
+     <Tab title="Production deployment">
+       For production environments, we **recommend** using cloud-managed (PaaS) PostgreSQL and Redis services to ensure high availability. In on-premise setups, configure Redis and Postgres for HA (for example, using Bitnami Helm charts or a custom high-availability configuration).
 
+       ```yaml title="infisical-secrets.yaml"
+       apiVersion: v1
+       kind: Secret
+       metadata:
+         name: infisical-secrets
+       type: Opaque
+       stringData:
+         AUTH_SECRET: <>
+         ENCRYPTION_KEY: <>
+         REDIS_URL: <>
+         DB_CONNECTION_URI: <>
+         SITE_URL: <>
+       ```
+       If you need to configure an SSL root certificate for your production Postgres instance, you can set the `DB_ROOT_CERT` environment variable in the secret (with the base64-encoded CA certificate).
+     </Tab>
+   </Tabs>
+
+5. **Routing traffic to Infisical**
+
+   By default, this chart uses an Nginx Ingress to route external traffic to Infisical.
+
+   ```yaml title="values.yaml"
+   ingress:
+     nginx:
+       enabled: true
+   ```
+
+6. **Install the Helm chart**
+
+   Once you are done configuring your `values.yaml` file, run the command below to install Infisical:
+
+   ```bash
+   helm upgrade --install infisical infisical-helm-charts/infisical-standalone --values /path/to/values.yaml
+   ```
+
+   <Accordion title="Full helm values example">
+   ```yaml title="values.yaml"
+   nameOverride: "infisical"
+   fullnameOverride: "infisical"
+
+   infisical:
+     enabled: true
+     name: infisical
+     autoDatabaseSchemaMigration: true
+     fullnameOverride: ""
+     podAnnotations: {}
+     deploymentAnnotations: {}
+     replicaCount: 6
+
+     image:
+       repository: infisical/infisical
+       tag: "v0.46.2-postgres"
+       pullPolicy: IfNotPresent
+
+     affinity: {}
+     kubeSecretRef: "infisical-secrets"
+     service:
+       annotations: {}
+       type: ClusterIP
+       nodePort: ""
+
+     resources:
+       limits:
+         memory: 210Mi
+       requests:
+         cpu: 200m
+
+   ingress:
+     enabled: true
+     hostName: ""
+     ingressClassName: nginx
+     nginx:
+       enabled: true
+     annotations: {}
+     tls: []
+
+   postgresql:
+     enabled: true
+     name: "postgresql"
+     fullnameOverride: "postgresql"
+     auth:
+       username: infisical
+       password: root
+       database: infisicalDB
+
+   redis:
+     enabled: true
+     name: "redis"
+     fullnameOverride: "redis"
+     cluster:
+       enabled: false
+     usePassword: true
+     auth:
+       password: "mysecretpassword"
+     architecture: standalone
+   ```
+   </Accordion>
+
+7. **Access Infisical**
+
+   After deployment, please wait a few minutes for all pods to reach the Running state. Once the pods are up, you can access Infisical via the external address provided by the Kubernetes Ingress. For example, if using a cloud load balancer, find the external IP/hostname by running `kubectl get ingress` in the Infisical namespace, and then navigate to `http://<external-ip-or-host>` (or `https://` if TLS is enabled).
+
+## Additional Configuration & Best Practices
+
+<AccordionGroup>
+
+  <Accordion title="Backup Strategy">
+    It is critical to regularly back up Infisical's primary datastore (PostgreSQL) and also have a strategy for Redis:
+    - **PostgreSQL**: If you use the in-cluster Postgres deployed by the Helm chart, schedule routine backups (for example, using `pg_dump` or volume snapshots) to prevent data loss. If you use a managed cloud database (such as AWS RDS or GCP Cloud SQL), leverage its automated backups and point-in-time recovery features. Always verify your backups and have a restore procedure in place.
+    - **Redis**: Infisical uses Redis as a transient cache to improve performance. Loss of Redis data will not lose any secrets (only cause cache misses), so strict backups are not as critical. For managed Redis services, you may enable snapshots or backups as an extra precaution. If using the in-cluster Redis, note that it runs as a single instance without persistence by default; you can enable Redis persistence (e.g., RDB snapshots or AOF) if preserving cache state is important. In general, focus on backups for Redis only if your use-case requires fast cache recovery.
+  </Accordion>
+
+  <Accordion title="Upgrade Instructions">
+    To upgrade your Infisical instance to a newer version using Helm, follow these steps:
+    1. **Back up your database** (PostgreSQL) before upgrading, especially in production.
+    2. Update your Helm values to use the desired Infisical image version – edit `infisical.image.tag` in your `values.yaml` to the new version (avoid using the `latest` tag in production; pick a specific version).
+    3. Run the Helm upgrade command with your updated values file:
+       ```bash
+       helm upgrade --install infisical infisical-helm-charts/infisical-standalone --values /path/to/values.yaml
+       ```
+    4. Monitor the upgrade rollout until all Infisical pods are updated and running. You can watch the status with `kubectl get pods` to ensure the new pods come up healthy.
+    5. (Optional) Test upgrades in a staging environment first, and review Infisical’s release notes for any breaking changes when jumping between major versions. This helps minimize surprises during production upgrades.
+  </Accordion>
+
+  <Accordion title="Monitoring & Telemetry">
+    Infisical can export telemetry data for monitoring:
+    - **Prometheus metrics (pull-based)**: Infisical can expose metrics in Prometheus format. To enable this, set the environment variables `OTEL_TELEMETRY_COLLECTION_ENABLED=true` and `OTEL_EXPORT_TYPE=prometheus` in the `infisical-secrets` config. This will make Infisical serve metrics at the `/metrics` endpoint on port `9464` of the Infisical pods. Ensure this port is accessible: for example, you can add a Service to expose port 9464 of the pods, or if you're using Prometheus Operator, create a ServiceMonitor selecting the Infisical pods. Once set up, Prometheus can scrape these metrics (e.g., request rates, latency, etc.), which you can visualize in Grafana.
+    - **OpenTelemetry (push-based)**: Infisical also supports pushing metrics to an OpenTelemetry collector or APM platform. To use this mode, set `OTEL_TELEMETRY_COLLECTION_ENABLED=true` and `OTEL_EXPORT_TYPE=otlp`, and configure `OTEL_EXPORT_OTLP_ENDPOINT` with the URL of your OTEL collector or monitoring backend. Infisical will then send metrics (in OTLP format) to that endpoint. This approach allows integration with cloud monitoring services (Datadog, New Relic, etc.) or your own OTEL collector for advanced observability. (Ensure network connectivity from Infisical pods to the collector endpoint.)
+  </Accordion>
+
+  <Accordion title="Enable HTTPS Access (TLS)">
+    By default, the Infisical Helm chart sets up an HTTP ingress. For production, you should enable HTTPS:
+    - **Cert-Manager automated certificates**: If you have [cert-manager](https://cert-manager.io) installed, you can automate TLS certificate provisioning. First, configure a ClusterIssuer/Issuer (for example, one using Let's Encrypt). Then update the Infisical Helm values to include an annotation and TLS settings for the ingress. For example:
+      ```yaml
       ingress:
-        enabled: true
-        hostName: ""
-        ingressClassName: nginx
-        nginx:
-          enabled: true
-        annotations: {}
-        tls: []
-
-      postgresql:
-        enabled: true
-        name: "postgresql"
-        fullnameOverride: "postgresql"
-        auth:
-          username: infisical
-          password: root
-          database: infisicalDB
-
-      redis:
-        enabled: true
-        name: "redis"
-        fullnameOverride: "redis"
-        cluster:
-          enabled: false
-        usePassword: true
-        auth:
-          password: "mysecretpassword"
-        architecture: standalone
+        annotations:
+          cert-manager.io/cluster-issuer: "letsencrypt-prod"
+        tls:
+          - secretName: infisical-tls
+            hosts:
+              - infisical.example.com
       ```
-      </Accordion>
-  </Step>
+      In this example, cert-manager will request a certificate for **infisical.example.com** and store it in the `infisical-tls` secret, which the ingress will use for TLS termination.
+    - **Manual TLS setup**: Alternatively, you can provide your own TLS certificate. Obtain an SSL certificate (from a CA or self-signed for testing) and create a Kubernetes TLS Secret (e.g., named `infisical-tls`) containing the cert and private key. Then in your Helm `values.yaml`, set the `ingress.tls` section to reference that secret and your host. Ensure your DNS points the host (e.g., `infisical.example.com`) to the ingress controller's IP. The Infisical ingress will then serve HTTPS using the secret you provided.
+  </Accordion>
 
-  <Step title="Access Infisical">
-    After deployment, please wait for 2-5 minutes for all pods to reach a running state. Once a significant number of pods are operational, access the IP address revealed through Ingress by your load balancer. 
-    You can find the IP address/hostname by executing the command `kubectl get ingress`.
-    ![infisical-selfhost](/images/self-hosting/applicable-to-all/selfhost-signup.png)
-  </Step>
-  <Step title="Upgrade your instance">
-    To upgrade your instance of Infisical simply update the docker image tag in your Helm values and rerun the command below.
+  <Accordion title="Scalability, HA, and Disaster Recovery">
+    - **Application scaling**: Infisical's application layer is stateless, meaning you can run multiple replicas behind a load balancer to handle higher loads. To scale out, increase the `infisical.replicaCount` in your values (the example above uses 6 replicas) and apply the changes via Helm. You can also configure a Horizontal Pod Autoscaler to automatically adjust the number of Infisical pods based on CPU/memory usage. Running at least 2 replicas in production is recommended for high availability at the application level.
+    - **Database high availability**: For production, use a highly available PostgreSQL deployment. Instead of a single in-cluster database, consider an external managed database with multi-zone redundancy, or deploy Postgres with a replication operator (e.g., the Zalando Postgres Operator) to get a primary-replica setup. The goal is to avoid a single point of failure in the database. Similarly, if Redis is critical for your usage, consider using a Redis mode that supports failover (such as enabling Redis Sentinel or cluster mode in the Helm values, or using a managed Redis service with replication). Note that Infisical can tolerate Redis being temporarily unavailable (it will just be slower), but a highly available Redis will prevent any performance degradation in a failure scenario.
+    - **Disaster recovery**: Plan for how to recover if your cluster or region goes down. Regularly back up the Infisical PostgreSQL data and store backups in an off-site or cloud storage location (as mentioned in Backup Strategy above). In a serious outage, you should be prepared to redeploy Infisical in a new environment and restore the database from backups. For enhanced DR, some organizations set up a standby environment in a different region: for example, a read-replica of the database in another region (or frequent backup shipping), and Infisical application instances that can be quickly started in that region. Because the Infisical application is stateless, recovering from a disaster primarily involves restoring the database and pointing a new Infisical deployment to it. Ensure that secrets like `ENCRYPTION_KEY` and `AUTH_SECRET` are securely stored so the new deployment can use the same keys to decrypt data.
+  </Accordion>
 
-    ```bash
-    helm upgrade --install infisical infisical-helm-charts/infisical-standalone --values /path/to/values.yaml
-    ```
-
-    <Tip>
-      Always back up your database before each upgrade, especially in a production environment.
-    </Tip>
-
-  </Step>
-</Steps>
+</AccordionGroup>

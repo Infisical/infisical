@@ -4,9 +4,16 @@ sidebarTitle: "Introduction"
 description: "Learn how to self-host Infisical on your own infrastructure."
 ---
 
-Self-hosting Infisical lets you retain data on your own infrastructure and network.
+Self-hosting Infisical lets you retain data on your own infrastructure and network. Many organizations choose self-hosting for benefits in compliance and flexibility.
+
+- Compliance: Deploying Infisical in your own environment helps meet strict regulatory requirements (e.g. SOC 2, HIPAA, FIPS 140-3) by aligning with your existing security controls. All data remains under your governance, and Infisical’s architecture supports compliance needs through strong encryption and access controls.
+- Flexibility: You have complete control over deployment topology and integrations. Infisical can run in diverse environments. From air-gapped bare-metal servers to Kubernetes clusters or cloud VMs, this flexibility lets you tailor networking, security, and performance configurations to fit your organization’s needs.
+
+
+
 Choose from a number of deployment options listed below to get started.
 
+<CardGroup cols={2}>
 <Card
   title="Docker"
   color="#000000"
@@ -15,6 +22,15 @@ Choose from a number of deployment options listed below to get started.
 >
   Use the fully packaged docker image to deploy Infisical anywhere.
 </Card>
+<Card
+  title="Kubernetes"
+  color="#000000"
+  icon="kubernetes"
+  href="./deployment-options/kubernetes-helm"
+>
+  Use the fully packaged docker image to deploy Infisical anywhere.
+</Card>
+</CardGroup>
 <CardGroup cols={2}>
   <Card
     title="Docker Compose"
@@ -25,17 +41,38 @@ Choose from a number of deployment options listed below to get started.
     Install Infisical using our Docker Compose template.
   </Card>
   <Card
-    title="Kubernetes"
+    title="Docker Swarm"
     color="#000000"
-    icon="gear-complex-code"
-    href="./deployment-options/kubernetes-helm"
+    icon="docker"
+    href="./deployment-options/docker-swarm"
   >
-  Use our Helm chart to Install Infisical on your Kubernetes cluster.
+    Install Infisical using our Docker Swarm template
   </Card>
 </CardGroup>
+
+<CardGroup cols={2}>
+  <Card
+    title="AWS"
+    color="#000000"
+    icon="aws"
+    href="./deployment-options/aws-native"
+  >
+    Deploy Infisical on AWS
+  </Card>
+  <Card
+    title="GCP"
+    color="#000000"
+    icon="google"
+    href="./deployment-options/docker-swarm"
+  >
+    Deploy Infisical on GCP
+  </Card>
+</CardGroup>
+
 <Card
     title="Linux package"
     color="#000000"
+    icon="linux"
     href="./deployment-options/native/linux-package/installation"
   >
     Install Infisical on your system without containers using our Linux package.

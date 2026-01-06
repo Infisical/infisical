@@ -1,0 +1,229 @@
+---
+title: "AWS (ECS with Fargate)"
+description: "Deploy Infisical securely on AWS using ECS Fargate, RDS, ElastiCache, and ALB."
+---
+Learn how to deploy **Infisical** on Amazon Web Services using **Elastic Container Service (ECS)** with Fargate. This guide covers setting up Infisical in a production-ready AWS environment using **Amazon RDS** (PostgreSQL) for the database, **Amazon ElastiCache** (Redis) for caching, and an **Application Load Balancer (ALB)** for routing traffic. We will also configure secure secret storage, IAM roles, logging, and auto-scaling to ensure the deployment is robust, secure, and highly available.
+
+## Prerequisites
+
+- An AWS account with permissions to create VPCs, ECS clusters, RDS, ElastiCache, and ALB resources.
+- Basic knowledge of AWS networking (VPC, subnets, security groups) and ECS concepts.
+- AWS CLI set up (optional, for using CLI examples instead of the AWS Management Console).
+- An Infisical Docker image tag (find a specific version on Docker Hub to use for your deployment — avoid using `latest` in production).
+
+
+<Steps>
+<Step title="Set up network infrastructure (VPC, subnets, security groups)">
+To host Infisical, first prepare an AWS Virtual Private Cloud (VPC) network:
+
+- **VPC & Subnets:** Create a VPC spanning at least two Availability Zones. In each AZ, create one **public subnet** (for the load balancer) and one **private subnet** (for ECS tasks, RDS, and Redis). Ensure the subnets have appropriate route tables (public subnets with a route to an Internet Gateway, private subnets with a route to a NAT Gateway).
+- **NAT Gateway:** Deploy a NAT Gateway in a public subnet to allow outbound internet access from the private subnets (for pulling container images, sending emails, etc.). Alternatively, use VPC Endpoints (e.g. for ECR, S3, SES) to minimize internet egress.
+- **Security Groups:** Create security groups to control traffic:
+  - An **ALB security group** allowing inbound HTTP (port 80) and HTTPS (port 443) from the internet (0.0.0.0/0) as needed.
+  - An **ECS tasks security group** allowing inbound traffic on Infisical’s port (8080) *only* from the ALB’s security group. Also allow necessary egress for the tasks (for example, to the internet via NAT or to other AWS services in the VPC).
+  - Lock down your RDS and Redis instances with their own security groups that allow access **only** from the ECS tasks’ security group on the appropriate ports (5432 for Postgres, 6379 for Redis).
+  
+Attach the security group for the ALB to your load balancer, and the ECS tasks security group to the Infisical service tasks (the ECS service will apply it to tasks). With this setup, the ALB can reach the Infisical containers, and the containers can reach the database and cache, while external access to the containers is blocked except through the ALB.
+</Step>
+
+<Step title="Provision the database (PostgreSQL) and cache (Redis)">
+Set up the persistence layers for Infisical:
+
+- **Amazon RDS (PostgreSQL):** Create a PostgreSQL database instance (e.g. db.t3.small or larger depending on load) in the private subnets. Enable **Multi-AZ** deployment for high availability (this creates a standby in a second AZ). Note the database endpoint, port, database name, username, and password. For security, **disable public accessibility** on the instance and ensure it uses the RDS security group that only allows the ECS tasks to connect. Enable automated backups with a retention period (to support point-in-time recovery).
+- **Amazon ElastiCache (Redis):** Launch a Redis cache cluster (select Redis engine) in the private subnets. For production, use a **Redis replication group** with Multi-AZ enabled (primary and replica in different AZs) for high availability. If available, enable encryption in-transit and at-rest for Redis. Use the cache security group to restrict access to the ECS tasks. Note the Redis primary endpoint (and port).
+
+For instance sizing recommendations, see our [hardware requirements](/self-hosting/configuration/requirements.mdx). Once these services are up, you should have connection details for the database and cache:
+  - **Database URI** (connection string) – e.g. `postgresql://<username>:<password>@<db-endpoint>:5432/<dbname>`
+  - **Redis URI** – e.g. `redis://:<password>@<cache-endpoint>:6379`
+
+Make sure these are accessible from the ECS subnets and security group (test connectivity if possible).
+</Step>
+
+<Step title="Securely store Infisical secrets and configuration">
+Infisical requires certain secrets and configuration values to run. You should generate and store these securely using AWS managed secret storage services rather than hard-coding them:
+
+- **Encryption Key (`ENCRYPTION_KEY`):** This key is used to encrypt secrets in the database. Generate a random 16-byte hex string (32 hex characters). For example, you can run `openssl rand -hex 16` to get a value.
+- **Authentication Secret (`AUTH_SECRET`):** This secret is used for JWT signing. Generate a random 32-byte base64 string (e.g. `openssl rand -base64 32`).
+- **Database Connection URI (`DB_CONNECTION_URI`):** Construct the Postgres URI for the RDS instance (as noted in the previous step).
+- **Redis URL (`REDIS_URL`):** Construct the Redis connection URL (including the password if your Redis instance uses one).
+- **Site URL (`SITE_URL`):** The URL where your Infisical instance will be accessed by users. For now, this can be an HTTP URL of your ALB (or a placeholder domain); later, you will switch it to your HTTPS domain.
+
+Use AWS **Parameter Store (SSM)** or **Secrets Manager** to store these values as secure parameters/secrets. The ECS task definition will fetch them at runtime. For example, to store the `ENCRYPTION_KEY` you can use:
+
+<Tabs>
+<Tab title="Parameter Store (SSM)">
+```bash
+aws ssm put-parameter --name "/infisical/ENCRYPTION_KEY" --value "<YOUR_RANDOM_HEX_KEY>" --type "SecureString"
+```
+</Tab>
+<Tab title="Secrets Manager">
+```bash
+aws secretsmanager create-secret --name "InfisicalEncryptionKey" --secret-string "<YOUR_RANDOM_HEX_KEY>"
+```
+</Tab>
+</Tabs>
+
+Repeat the above for `AUTH_SECRET`, `DB_CONNECTION_URI`, `REDIS_URL`, etc. (adjusting commands and names accordingly). Using a consistent naming convention (e.g. prefix parameters with `/infisical/`) can help with organization and IAM policies.
+
+<Warning>
+Do **not** use Infisical’s example credentials (from the sample `.env.example` file) in production. Always generate a unique **ENCRYPTION_KEY** and **AUTH_SECRET** to secure your instance.
+</Warning>
+</Step>
+
+<Step title="Set up an ECS cluster and IAM roles">
+Next, prepare ECS and IAM resources for the deployment:
+
+- **ECS Cluster:** Create an ECS cluster (Fargate) if you don’t already have one. No EC2 instances are needed for Fargate — the cluster is a logical grouping for your tasks.
+- **Task Execution Role:** Ensure you have an IAM role for ECS tasks to use at launch. AWS provides a managed role called **`ecsTaskExecutionRole`**. If not already present in your account, create one and attach the AWS-managed policy **AmazonECSTaskExecutionRolePolicy**. This role allows ECS to pull container images from ECR/Docker Hub and send logs to CloudWatch.
+- **Task Role:** Create a separate IAM role (e.g. `InfisicalTaskRole`) that the Infisical container will assume at runtime. This role should have permissions to access the secrets you stored in SSM or Secrets Manager. For example, you might attach a policy allowing `ssm:GetParameter` (and `GetParameters`) for the parameter paths you created, and/or `secretsmanager:GetSecretValue` for the specific secrets ARNs. Limit the permissions to only the necessary resources (principle of least privilege).
+- **Associate Roles:** When defining your ECS Task Definition (in the next step), you will specify the **Task Execution Role** and the **Task Role**. The execution role is for ECS agent operations, and the task role is for the application (Infisical) to access AWS resources at runtime.
+
+Make sure the IAM roles are in place before creating the task definition. This ensures that your task will be able to retrieve secrets and send logs without permission issues.
+</Step>
+
+<Step title="Create the Infisical ECS task definition">
+Define an ECS **Task Definition** for the Infisical service:
+
+- **Launch type:** Fargate (serverless).
+- **Resource allocation:** Choose CPU/memory for the task. Infisical can run on a smaller Fargate task for low usage (e.g. 0.25 vCPU & 0.5 GB memory), but adjust based on your expected load.
+- **Container definition:** Add a container for Infisical:
+  - **Image:** Use the Infisical Docker image and tag (for example, `infisical/infisical:<VERSION>`). It's recommended to pin a specific version.
+  - **Port Mapping:** Container port 8080 (this is the default port Infisical listens on). We will later connect this to the ALB.
+  - **Environment Variables:** Set at least `SITE_URL` (e.g. `http://<ALB-DNS-name>` for now or your custom domain), and **`HOST=0.0.0.0`** so that the container listens on all interfaces (not just localhost). You can also set any other optional env vars as needed (see Infisical docs for additional configurations).
+  - **Secrets:** Instead of putting sensitive values directly, reference the secrets from AWS Parameter Store / Secrets Manager. In the task definition, under the container’s **environment** or **secrets** section, map each required variable to the ARN or name of the secure value. For example, map `ENCRYPTION_KEY` to the SSM Parameter `/infisical/ENCRYPTION_KEY` (or the Secrets Manager ARN if you used Secrets Manager). Do the same for `AUTH_SECRET`, `DB_CONNECTION_URI`, `REDIS_URL`, etc.
+  - **Logging:** Configure the container to send logs to CloudWatch Logs. Use the **awslogs** log driver with a log group name (e.g. `/infisical/production` or `/ecs/infisical`) and a region and log stream prefix. Ensure a CloudWatch Log Group is created (and consider setting a retention policy for it).
+
+Your container definition will look roughly like this:
+
+```json
+{
+  "name": "infisical",
+  "image": "infisical/infisical:<VERSION>",
+  "essential": true,
+  "portMappings": [
+    {
+      "containerPort": 8080,
+      "protocol": "tcp"
+    }
+  ],
+  "environment": [
+    { "name": "SITE_URL", "value": "http://<ALB-DNS-name>" },
+    { "name": "HOST", "value": "0.0.0.0" }
+  ],
+  "secrets": [
+    { "name": "ENCRYPTION_KEY",   "valueFrom": "<SSM or Secrets Manager ARN for ENCRYPTION_KEY>" },
+    { "name": "AUTH_SECRET",      "valueFrom": "<ARN for AUTH_SECRET>" },
+    { "name": "DB_CONNECTION_URI","valueFrom": "<ARN for DB_CONNECTION_URI>" },
+    { "name": "REDIS_URL",        "valueFrom": "<ARN for REDIS_URL>" }
+  ],
+  "logConfiguration": {
+    "logDriver": "awslogs",
+    "options": {
+      "awslogs-group": "/infisical/production",
+      "awslogs-region": "<AWS_REGION>",
+      "awslogs-stream-prefix": "infisical"
+    }
+  }
+}
+```
+
+In the task definition JSON, you will also specify:
+- **executionRoleArn:** the ARN of your `ecsTaskExecutionRole`.
+- **taskRoleArn:** the ARN of your `InfisicalTaskRole` (the role with SSM/Secrets access).
+- **requiresCompatibilities:** include `"FARGATE"`, and set the Fargate platform version if needed.
+- **networkMode:** use `"awsvpc"` (required for Fargate).
+
+Once the task definition is ready and saved, you can proceed to deploy it as a service.
+
+<Note>
+If your environment is air-gapped or has no internet access, push the Infisical image to a private **AWS ECR** repository and use that image in the task definition. Also configure **VPC Endpoints** (PrivateLink) for ECR (and other needed services) so that the tasks can pull the image and access AWS services without a NAT Gateway.
+</Note>
+</Step>
+
+<Step title="Deploy the ECS service with Fargate and an ALB">
+Now deploy Infisical as an ECS Service and expose it via an Application Load Balancer:
+
+- **Application Load Balancer:** Create an ALB (if not already created) in your public subnets. Assign the ALB the security group that allows HTTP/HTTPS from the internet. Configure a target group for the ALB (target type = IP, since Fargate uses awsvpc networking). Use **HTTP** (and later HTTPS) on port 80 (and 443) for the listener, and set the target group’s port to 8080. For the health check, you can use the default path ("/") or a specific health endpoint if Infisical provides one (e.g. `/api/health`). Ensure the health check protocol is HTTP for now (we will switch to HTTPS when we add a certificate).
+- **ECS Service:** Create a new ECS service on your cluster:
+  - Select the task definition revision for Infisical and Fargate launch type.
+  - Choose the cluster VPC and **private subnets** for the tasks (the tasks should not run in public subnets).
+  - Assign the ECS tasks security group to the service (so tasks use that SG allowing port 8080 from ALB and access to DB/Redis).
+  - **Load Balancer Integration:** Enable the service to use the ALB. Choose the ALB and the target group you created. During this setup, you'll specify the container name and container port (8080) to hook into the target group. This allows the ALB to route traffic to the Infisical container. Enable the option to **assign a public IP** to the tasks *only if needed* (usually not necessary since ALB will route traffic).
+  - **Desired count:** Start with at least 1 task (for testing). For production, consider starting with 2 tasks (in different AZs) for high availability.
+  - **Auto Scaling (optional at this point):** You can set up auto-scaling policies for the service to add or remove tasks based on CPU, memory, or request load. This can also be configured later in the service’s **Auto Scaling** settings.
+
+After creating the service, ECS will launch the tasks. Verify that the task(s) reach a **RUNNING** state and pass the ALB health checks. Once healthy, try accessing Infisical via the ALB’s DNS name (you can find this in the ALB description in AWS). For example, `http://<your-alb-dns-name>` should show the Infisical web interface (sign-up page).
+
+<Tip>
+For production, run at least **2 Infisical tasks** spread across different Availability Zones. This ensures zero-downtime deployments (rolling updates) and resilience against an AZ outage.
+</Tip>
+</Step>
+</Steps>
+
+After completing the above steps, your Infisical instance should be up and running on AWS. You can now proceed with any necessary post-deployment steps like creating an admin account, configuring SMTP (for emails via AWS SES or other provider), etc. The sections below provide additional guidance for operating your Infisical deployment in a production environment.
+
+
+
+## Additional Configuration & Best Practices
+<AccordionGroup>
+<Accordion title="Backup Strategy">
+Keeping regular backups is critical for a production deployment:
+- **Database Backups:** Use Amazon RDS automated backups or snapshots to regularly back up the PostgreSQL database. Ensure you have point-in-time recovery enabled by setting an appropriate retention period for automated backups. It’s also a good practice to periodically take manual snapshots (for example, before major upgrades) and to test restoring those snapshots to validate your backup process.
+- **Encryption Key Backup:** The `ENCRYPTION_KEY` is required to decrypt your secrets in the database. Store a secure copy of this key in a protected vault or key management system (separately from the running container). If you lose this key, any encrypted data in the database becomes unrecoverable, even if the database is restored from backup. Treat this key as a crown jewel — back it up offline and restrict access.
+- **Redis (Cache) Backups:** Infisical’s Redis is primarily used as a caching and ephemeral store. It is not required to back up Redis data for normal operations. In case of a Redis node failure, a new node will start empty and Infisical will rebuild cache entries as needed. However, if you use Redis for any persistent state (e.g., session data), consider enabling Redis persistence (AOF or snapshot) and back up those snapshots to S3. For most deployments, focusing on DB backups is sufficient.
+- **Config & Other Data:** Keep copies of configuration files or environment values (except sensitive ones, which should be in Parameter Store/Secrets Manager anyway). If you have customized Infisical configuration (like custom certificates or plugins), ensure those are backed up as well.
+- **Disaster Recovery Drills:** Periodically simulate a recovery: for instance, restore the RDS database snapshot to a new instance and spin up Infisical in a test environment using that data and the saved `ENCRYPTION_KEY`. This will verify that your backups and keys are valid and that you know the restore procedure.
+</Accordion>
+
+<Accordion title="Upgrade Instructions">
+Upgrading Infisical (to apply updates or security patches) should be done carefully to minimize downtime:
+1. **Plan & Review:** Check Infisical’s release notes for the version you plan to upgrade to. Note any new environment variables or migration steps required. Ensure your current version is supported to upgrade directly (if not, you may need intermediate upgrades).
+2. **Backup:** Prior to upgrading, take a fresh backup of your PostgreSQL database (snapshot) and ensure you have the current `ENCRYPTION_KEY` secured. This guarantees that you can roll back if something goes wrong.
+3. **Update Task Definition:** Create a new revision of your ECS task definition with the **image** tag updated to the new Infisical version. Also update any new or changed environment variables required by the new version.
+4. **Deploy Update:** In the ECS service, set the task definition to the new revision (or if you use the “Deploy” option, choose the new revision). If your service has more than 1 task (as recommended for HA), ECS will perform a rolling update: it will launch a new task with the new version before stopping the old one, ensuring continuity. Monitor the deployment in the ECS console.
+5. **Monitor Health:** Watch the ALB target group health and the ECS service events. The new tasks should register as healthy (passing health checks). Also monitor the application logs via CloudWatch for any errors during startup (like database migrations).
+6. **Post-Upgrade Tests:** Once the new version is running, quickly test core functionality (e.g., log into the Infisical dashboard, ensure secrets can be accessed). Verify that background jobs (if any, like secret syncing or integrations) are working. 
+7. **Roll-back Plan:** If the new version is not functioning correctly and you need to roll back, you can revert the ECS service to the previous task definition revision (with the earlier image tag) and redeploy. Having the DB snapshot from before the upgrade is useful in case the new version made breaking changes to the database schema — in such a case, you might need to restore the database to the old snapshot **and** use the old container version.
+8. **Zero-Downtime Tip:** To achieve zero downtime upgrades, ensure you have at least 2 tasks running during deployment. ECS can bring up new tasks before terminating all old ones. Also configure health check grace periods and deployment preferences (in the ECS service settings) appropriately to avoid premature shutdown of old tasks.
+</Accordion>
+
+<Accordion title="Monitoring & Telemetry">
+Maintaining visibility into your Infisical deployment is important for reliability and performance:
+- **AWS CloudWatch Logs:** All Infisical container logs are shipped to CloudWatch (as configured in the task definition). Set up CloudWatch Logs retention as needed (the default is indefinite, but you may choose a retention period). You can search the logs for errors or setup CloudWatch Log Insights queries for common issues. Consider creating CloudWatch Alarms on certain log patterns if critical (e.g., out-of-memory errors).
+- **Metrics and Auto Scaling:** Enable **CloudWatch Container Insights** for ECS to get CPU, memory, and network metrics for your tasks and cluster. This can help you visualize resource usage. You can create CloudWatch Alarms on high CPU or memory, and tie them to ECS Service Auto Scaling to automatically scale out/in tasks based on demand. For example, you might target keeping CPU utilization at 50% and allow scaling between 2 and 10 tasks.
+- **Application Health:** The ALB health check provides basic availability monitoring. You can augment this with Route 53 health checks or AWS CloudWatch Synthetics canaries to regularly test the Infisical HTTP(S) endpoint and alert if it's down or responding slowly.
+- **Infisical Telemetry:** Infisical natively exposes metrics in OpenTelemetry (OTEL) format. You can enable detailed application metrics by setting environment variables (such as `OTEL_TELEMETRY_COLLECTION_ENABLED=true` and choosing an export type). Infisical can expose a `/metrics` endpoint (on a separate port, 9464) for Prometheus scrapes or push metrics to an OTEL collector. By integrating these metrics, you can monitor internal stats like request rates, latency, errors, etc., using tools like **Prometheus/Grafana** or cloud monitoring services.
+- **Tracing and APM:** If deeper tracing is required, you could run the Infisical container with an OpenTelemetry agent or AWS X-Ray daemon (if Infisical supports it). Check Infisical’s documentation for any distributed tracing support. At minimum, logs and metrics should cover most needs.
+- **Alerting:** Set up alerts for key events. For example, configure CloudWatch Alarms to email/notify you on high error rates, low available database storage, high CPU on the tasks, etc. Ensure your team is notified proactively of any issue with the Infisical service so you can respond quickly.
+</Accordion>
+
+<Accordion title="HTTPS Access via ALB">
+By default, we started with HTTP access. For production use, you should secure the application with HTTPS:
+- **Acquire Certificate:** Obtain an SSL/TLS certificate for your domain. The easiest way on AWS is to use **AWS Certificate Manager (ACM)** to request a public certificate for your custom domain (you’ll need to prove domain ownership via DNS validation). For example, get a cert for `infisical.yourdomain.com` (or wildcard `*.yourdomain.com` if needed).
+- **ALB HTTPS Listener:** In the ALB settings, add (or modify) a **HTTPS (443)** listener. Attach the ACM certificate to this listener, and configure the listener’s default rule to forward to the Infisical target group. You can also set the HTTP (80) listener to automatically redirect to HTTPS, ensuring all traffic is encrypted.
+- **Security Group Update:** Ensure the ALB’s security group allows inbound 443 traffic from the internet. You may choose to restrict port 80 if you force everything to HTTPS (except for the redirection).
+- **Update SITE_URL:** Change Infisical’s `SITE_URL` environment variable to use **`https://`** and your domain (for example, `https://infisical.yourdomain.com`). This is important because Infisical uses `SITE_URL` when forming links (for emails, redirects, etc.) and for security (CORS and cookie settings).
+- **DNS Setup:** Create a DNS record for your Infisical domain pointing to the ALB. If you use Route 53 and the domain is managed there, you can create an **ALIAS A record** to the ALB’s DNS name. Otherwise, use a CNAME record. Verify that your domain correctly resolves to the ALB.
+- **Test HTTPS:** Visit `https://infisical.yourdomain.com` and ensure you can see the Infisical interface over HTTPS without certificate warnings. All traffic between users and the ALB is now encrypted. The ALB will still forward the requests to ECS tasks over HTTP internally, but you can optionally enable encryption there as well (using TLS on the container side) if needed for an extra layer of security.
+- **Advanced (WAF & Security):** For additional protection, consider enabling **AWS WAF** on the ALB to filter out common web attacks. Also ensure that TLS security policies on the ALB are up-to-date (ACM default is fine for most cases). You may also want to enforce HSTS headers via Infisical’s configuration to ensure browsers always use HTTPS.
+</Accordion>
+
+<Accordion title="Scalability, High Availability, and Disaster Recovery">
+**Scalability:** Infisical’s architecture is stateless at the application layer, which means you can scale out by running multiple Infisical containers in parallel behind the load balancer. To handle increased load, increase the task count (manually or via auto-scaling). The application logic doesn’t store session or state on the filesystem, so any container can serve any request. Just ensure your database and Redis can handle the throughput:
+- **Scaling the Database:** Monitor your RDS instance metrics (CPU, memory, connections, read/write IOPS). If nearing limits, you can scale up the instance class vertically. For read-heavy workloads, consider adding a Read Replica (though Infisical primarily performs primary DB operations for secret storage, so read replicas might be less effective unless you direct certain read-only queries to them).
+- **Scaling Redis:** If caching load increases, you might scale up the Redis node or enable cluster mode (sharding). However, avoid making Redis a single point of failure: in most cases, a primary-replica with auto-failover setup suffices for high availability rather than scaling for performance.
+
+**High Availability:** We have already incorporated HA principles:
+- **Multi-AZ Deployments:** By running resources in multiple AZs (ECS tasks, RDS multi-AZ, Redis multi-AZ, ALB across AZs), the system can tolerate an AZ outage. Ensure that your ECS service is configured to spread tasks across AZs (the default for Fargate is to balance across subnets if you specify multiple).
+- **Multiple Tasks:** Run multiple ECS tasks so that if one container or underlying host fails, others continue serving traffic. The ALB will stop sending traffic to unhealthy tasks. ECS can automatically replace failed tasks.
+- **Auto Scaling:** As mentioned, set up ECS Service Auto Scaling to automatically add tasks on high load and remove them when load decreases. This helps maintain performance and also adds resilience (more tasks can handle if one goes down unexpectedly).
+- **Stateless Application:** Since Infisical servers are stateless, you can also perform rolling deployments and routine maintenance without downtime (as long as at least one task is always running to serve traffic).
+
+**Disaster Recovery (DR):** Prepare for scenarios where an entire region or deployment becomes unavailable:
+- **Off-site Backups:** Regularly export RDS snapshots to a different region (AWS Backup or manual copy of snapshots to another region). Also consider periodically exporting critical data (like an encrypted dump of the Postgres database) and storing it in a secure location.
+- **Cross-Region Redundancy:** For higher resilience, you could maintain a warm standby in a separate AWS region. This would involve setting up a duplicate environment (perhaps using a read replica promoted to master in another region for the database, and a secondary Redis or relying on just re-deploying Redis). In an active/passive DR scenario, you would periodically synchronize data (e.g., replicate the database or at least ship backups) and be prepared to deploy the ECS service in the DR region. If Region A fails, you could switch DNS to point to Region B’s ALB after promoting the database there.
+- **Recovery Procedure:** Document and automate the recovery steps as much as possible. For example, use Infrastructure as Code (CloudFormation/Terraform) to be able to spin up the Infisical stack in a new region quickly. The main piece of unique data you must have for recovery is the latest database backup and the `ENCRYPTION_KEY` (plus any other secret values). With those, a new deployment can be made to read the existing secrets.
+- **Testing DR:** Just like backups, test your disaster recovery process. This could be as simple as spinning up a staging environment in another region using a snapshot of production data to verify that your team knows how to do it and that Infisical works with a restored database.
+- **Downtime Considerations:** In the event of a full region outage, there will be some downtime while you execute the DR plan (unless you’ve set up an active-active multi-region which is complex). Assess your business requirements for acceptable downtime and data loss (RPO/RTO) and tailor the DR approach accordingly (e.g., shorter RPO might mean more frequent backups or real-time replication).
+</Accordion>
+</AccordionGroup>
