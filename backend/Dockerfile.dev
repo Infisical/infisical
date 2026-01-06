@@ -30,7 +30,8 @@ RUN ARCH=$(dpkg --print-architecture) && \
       apt-get install -y libaio1t64 && \
       ln -sf /lib/aarch64-linux-gnu/libaio.so.1t64 /lib/aarch64-linux-gnu/libaio.so.1; \
     else \
-      apt-get install -y libaio1; \
+      apt-get install -y libaio1t64 && \
+      ln -sf /lib/x86_64-linux-gnu/libaio.so.1t64 /lib/x86_64-linux-gnu/libaio.so.1; \
     fi
 
 # Install dependencies for TDS driver (required for SAP ASE dynamic secrets)
