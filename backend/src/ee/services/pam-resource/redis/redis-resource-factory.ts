@@ -18,21 +18,13 @@ const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
 export interface RedisResourceConnection {
   /**
-   * Check and see if the connection is good or not.
+   * Validate the connection and optionally authenticate with credentials.
+   * If credentials are provided, authenticates with them. Otherwise, just validates the connection.
    *
-   * @param connectOnly when true, if we only want to know that making the connection is possible or not,
-   *                    we don't care about authentication failures
-   * @returns Promise to be resolved when the connection is good, otherwise an error will be errbacked
+   * @param credentials optional username and password to authenticate with
+   * @returns Promise to be resolved when the connection is good (and authenticated if credentials provided), otherwise an error will be errbacked
    */
-  validate: (connectOnly: boolean) => Promise<void>;
-
-  /**
-   * Authenticate with the provided credentials.
-   *
-   * @param credentials the username and password to authenticate with
-   * @returns Promise to be resolved when authentication succeeds, otherwise an error will be errbacked
-   */
-  authenticate: (credentials: TRedisAccountCredentials) => Promise<void>;
+  validate: (credentials?: TRedisAccountCredentials) => Promise<void>;
 
   /**
    * Close the connection.
@@ -92,12 +84,26 @@ const makeRedisConnection = (
   };
 
   return {
-    validate: async (connectOnly) => {
+    validate: async (credentials?) => {
+      const isConnectOnly = !credentials || !credentials.username || !credentials.password;
+
       try {
         client = await createClient();
-        await client.ping();
+
+        if (credentials && credentials.username && credentials.password) {
+          // Authenticate with provided credentials
+          const result = await client.auth(credentials.username, credentials.password);
+          if (result !== "OK") {
+            throw new BadRequestError({
+              message: `Authentication failed: Redis returned ${result as string} status`
+            });
+          }
+        } else {
+          // Just validate connection with ping
+          await client.ping();
+        }
       } catch (error) {
-        if (connectOnly) {
+        if (isConnectOnly) {
           // If we're only checking connection, authentication failures are acceptable
           if (
             error instanceof Error &&
@@ -108,31 +114,17 @@ const makeRedisConnection = (
             return;
           }
         }
-        throw new BadRequestError({
-          message: `Unable to validate Redis connection: ${(error as Error).message || String(error)}`
-        });
-      } finally {
-        if (client) {
-          await client.quit();
-          client = null;
-        }
-      }
-    },
-    authenticate: async (credentials) => {
-      try {
-        client = await createClient();
-        const result = await client.auth(credentials.username, credentials.password);
-        if (result !== "OK") {
-          throw new BadRequestError({
-            message: `Authentication failed: Redis returned ${result as string} status`
-          });
-        }
-      } catch (error) {
+
         if (error instanceof BadRequestError) {
           throw error;
         }
+
+        const errorMessage = isConnectOnly
+          ? `Unable to validate Redis connection: ${(error as Error).message || String(error)}`
+          : `Unable to authenticate Redis connection: ${(error as Error).message || String(error)}`;
+
         throw new BadRequestError({
-          message: `Unable to authenticate Redis connection: ${(error as Error).message || String(error)}`
+          message: errorMessage
         });
       } finally {
         if (client) {
@@ -201,7 +193,7 @@ export const redisResourceFactory: TPamResourceFactory<TRedisResourceConnectionD
 
     try {
       await executeWithGateway({ connectionDetails, gatewayId }, gatewayV2Service, async (client) => {
-        await client.validate(true);
+        await client.validate();
       });
       return connectionDetails;
     } catch (error) {
@@ -220,6 +212,24 @@ export const redisResourceFactory: TPamResourceFactory<TRedisResourceConnectionD
   const validateAccountCredentials: TPamResourceFactoryValidateAccountCredentials<TRedisAccountCredentials> = async (
     credentials
   ) => {
+    // Skip validation if credentials are not provided
+    if (!credentials.username && !credentials.password) {
+      return credentials;
+    }
+
+    // If either username or password is provided, both are required for validation
+    if (!credentials.username || !credentials.password) {
+      throw new BadRequestError({
+        message: "Both username and password are required for credential validation"
+      });
+    }
+
+    // TypeScript narrowing: at this point both username and password are defined
+    const validatedCredentials = {
+      username: credentials.username,
+      password: credentials.password
+    };
+
     try {
       if (!gatewayId) {
         throw new BadRequestError({ message: "Gateway ID is required" });
@@ -232,7 +242,7 @@ export const redisResourceFactory: TPamResourceFactory<TRedisResourceConnectionD
         },
         gatewayV2Service,
         async (client) => {
-          await client.authenticate(credentials);
+          await client.validate(validatedCredentials);
         }
       );
       return credentials;
