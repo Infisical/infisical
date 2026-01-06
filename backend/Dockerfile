@@ -80,7 +80,7 @@ RUN npm ci --only-production && npm cache clean --force
 COPY --from=build /app .
 
 # Install Infisical CLI
-RUN apt-get install -y curl bash && \
+RUN apt-get update && apt-get install -y curl bash && \
     curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash && \
     apt-get update && apt-get install -y infisical=0.43.14 git
 
