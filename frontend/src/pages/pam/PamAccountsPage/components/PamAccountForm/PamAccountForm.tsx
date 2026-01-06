@@ -71,7 +71,11 @@ const CreateForm = ({
       );
     case PamResourceType.Redis:
       return (
-        <RedisAccountForm onSubmit={onSubmit} resourceId={resourceId} resourceType={resourceType} />
+        <RedisAccountForm
+          onSubmit={onSubmit as Parameters<typeof RedisAccountForm>[0]["onSubmit"]}
+          resourceId={resourceId}
+          resourceType={resourceType}
+        />
       );
     case PamResourceType.SSH:
       return (
@@ -122,7 +126,12 @@ const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
     case PamResourceType.MySQL:
       return <MySQLAccountForm account={account as any} onSubmit={onSubmit} />;
     case PamResourceType.Redis:
-      return <RedisAccountForm account={account as any} onSubmit={onSubmit} />;
+      return (
+        <RedisAccountForm
+          account={account as any}
+          onSubmit={onSubmit as Parameters<typeof RedisAccountForm>[0]["onSubmit"]}
+        />
+      );
     case PamResourceType.SSH:
       return <SshAccountForm account={account as any} onSubmit={onSubmit} />;
     case PamResourceType.Kubernetes:
