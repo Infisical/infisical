@@ -9,6 +9,7 @@ import { SanitizedMySQLAccountWithResourceSchema } from "@app/ee/services/pam-re
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { GatewayAccessResponseSchema } from "@app/ee/services/pam-resource/pam-resource-schemas";
 import { SanitizedPostgresAccountWithResourceSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
+import { SanitizedRedisAccountWithResourceSchema } from "@app/ee/services/pam-resource/redis/redis-resource-schemas";
 import { SanitizedSSHAccountWithResourceSchema } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
@@ -22,6 +23,7 @@ const SanitizedAccountSchema = z.union([
   SanitizedSSHAccountWithResourceSchema, // ORDER MATTERS
   SanitizedPostgresAccountWithResourceSchema,
   SanitizedMySQLAccountWithResourceSchema,
+  SanitizedRedisAccountWithResourceSchema,
   SanitizedKubernetesAccountWithResourceSchema,
   SanitizedAwsIamAccountWithResourceSchema
 ]);
@@ -134,9 +136,10 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.discriminatedUnion("resourceType", [
-          // Gateway-based resources (Postgres, MySQL, SSH)
+          // Gateway-based resources (Postgres, MySQL, Redis, SSH)
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Postgres) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.MySQL) }),
+          GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Redis) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.SSH) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Kubernetes) }),
           // AWS IAM (no gateway, returns console URL)

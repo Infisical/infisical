@@ -22,7 +22,8 @@ export const PamSessionLogsSection = ({ session }: Props) => {
   const isSSHSession = session.resourceType === PamResourceType.SSH;
   const isDatabaseSession =
     session.resourceType === PamResourceType.Postgres ||
-    session.resourceType === PamResourceType.MySQL;
+    session.resourceType === PamResourceType.MySQL ||
+    session.resourceType === PamResourceType.Redis;
   const isHttpSession = session.resourceType === PamResourceType.Kubernetes;
   const isAwsIamSession = session.resourceType === PamResourceType.AwsIam;
   const hasLogs = session.logs.length > 0;
