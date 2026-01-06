@@ -8,6 +8,8 @@ export * from "./Detail";
 export * from "./Dropdown";
 export * from "./Empty";
 export * from "./IconButton";
+export * from "./Input";
 export * from "./PageLoader";
+export * from "./Pagination";
 export * from "./Separator";
 export * from "./Table";

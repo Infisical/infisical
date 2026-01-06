@@ -10,7 +10,7 @@ function UnstableAccordion({ ...props }: React.ComponentProps<typeof AccordionPr
   return (
     <AccordionPrimitive.Root
       data-slot="accordion"
-      className="border border-border bg-container"
+      className="overflow-clip rounded-md border border-border bg-container"
       {...props}
     />
   );

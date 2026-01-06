@@ -1,12 +1,18 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, useParams } from "@tanstack/react-router";
-import { formatRelative } from "date-fns";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { EmptyState, PageHeader, Spinner } from "@app/components/v2";
+import { DeleteActionModal, EmptyState, PageHeader, Spinner } from "@app/components/v2";
+import {
+  UnstableButton,
+  UnstableDropdownMenu,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuTrigger
+} from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -14,6 +20,8 @@ import {
   useProject
 } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
+import { usePopUp } from "@app/hooks";
+import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
 import { useGetWorkspaceGroupMembershipDetails } from "@app/hooks/api/projects/queries";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
@@ -34,6 +42,37 @@ const Page = () => {
     groupId
   );
 
+  const { mutateAsync: deleteMutateAsync } = useDeleteGroupFromWorkspace();
+  const navigate = useNavigate();
+
+  const { handlePopUpToggle, popUp, handlePopUpClose, handlePopUpOpen } = usePopUp([
+    "deleteGroup"
+  ] as const);
+
+  const onRemoveGroupSubmit = async () => {
+    await deleteMutateAsync({
+      groupId: groupMembership!.group.id,
+      projectId: currentProject.id
+    });
+
+    createNotification({
+      text: "Successfully removed group from project",
+      type: "success"
+    });
+
+    navigate({
+      to: `${getProjectBaseURL(currentProject.type)}/access-management`,
+      params: {
+        projectId: currentProject.id
+      },
+      search: {
+        selectedTab: "groups"
+      }
+    });
+
+    handlePopUpClose("deleteGroup");
+  };
+
   if (isPending)
     return (
       <div className="flex w-full items-center justify-center p-24">
@@ -42,9 +81,9 @@ const Page = () => {
     );
 
   return (
-    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex max-w-8xl flex-col">
       {groupMembership ? (
-        <div className="mx-auto mb-6 w-full max-w-8xl">
+        <>
           <Link
             to={`${getProjectBaseURL(currentProject.type)}/access-management`}
             params={{
@@ -54,26 +93,71 @@ const Page = () => {
             search={{
               selectedTab: ProjectAccessControlTabs.Groups
             }}
-            className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
+            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
           >
-            <FontAwesomeIcon icon={faChevronLeft} />
+            <ChevronLeftIcon size={16} />
             Project Groups
           </Link>
           <PageHeader
             scope={currentProject.type}
             title={groupMembership.group.name}
-            description={`Group joined on ${formatRelative(new Date(groupMembership.createdAt || ""), new Date())}`}
-          />
-          <div className="flex">
-            <div className="mr-4 w-96">
-              <GroupDetailsSection groupMembership={groupMembership} />
-            </div>
+            description="Configure and manage project access control"
+          >
+            <UnstableDropdownMenu>
+              <UnstableDropdownMenuTrigger asChild>
+                <UnstableButton variant="outline">
+                  Options
+                  <EllipsisIcon />
+                </UnstableButton>
+              </UnstableDropdownMenuTrigger>
+              <UnstableDropdownMenuContent align="end">
+                <UnstableDropdownMenuItem
+                  onClick={() => {
+                    navigator.clipboard.writeText(groupMembership.group.id);
+                    createNotification({
+                      text: "Group ID copied to clipboard",
+                      type: "info"
+                    });
+                  }}
+                >
+                  Copy Group ID
+                </UnstableDropdownMenuItem>
+
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Delete}
+                  a={ProjectPermissionSub.Groups}
+                >
+                  {(isAllowed) => (
+                    <UnstableDropdownMenuItem
+                      variant="danger"
+                      isDisabled={!isAllowed}
+                      onClick={() => handlePopUpOpen("deleteGroup")}
+                    >
+                      Remove From Project
+                    </UnstableDropdownMenuItem>
+                  )}
+                </ProjectPermissionCan>
+              </UnstableDropdownMenuContent>
+            </UnstableDropdownMenu>
+          </PageHeader>
+          <div className="flex flex-col gap-5 lg:flex-row">
+            <GroupDetailsSection groupMembership={groupMembership} />
             <GroupMembersSection groupMembership={groupMembership} />
           </div>
-        </div>
+        </>
       ) : (
         <EmptyState title="Error: Unable to find the group." className="py-12" />
       )}
+      <DeleteActionModal
+        isOpen={popUp.deleteGroup.isOpen}
+        title={`Are you sure you want to remove the group ${
+          groupMembership?.group.name
+        } from the project?`}
+        onChange={(isOpen) => handlePopUpToggle("deleteGroup", isOpen)}
+        deleteKey="confirm"
+        buttonText="Remove"
+        onDeleteApproved={onRemoveGroupSubmit}
+      />
     </div>
   );
 };

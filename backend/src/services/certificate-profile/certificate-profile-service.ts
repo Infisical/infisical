@@ -2,7 +2,6 @@ import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -233,7 +232,6 @@ type TCertificateProfileServiceFactoryDep = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "findById" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
 };
@@ -271,7 +269,6 @@ export const certificateProfileServiceFactory = ({
   certificateAuthorityDAL,
   externalCertificateAuthorityDAL,
   permissionService,
-  licenseService,
   kmsService,
   projectDAL
 }: TCertificateProfileServiceFactoryDep) => {
@@ -308,12 +305,6 @@ export const certificateProfileServiceFactory = ({
     const project = await projectDAL.findById(projectId);
     if (!project) {
       throw new NotFoundError({ message: "Project not found" });
-    }
-    const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.pkiAcme && data.enrollmentType === EnrollmentType.ACME) {
-      throw new BadRequestError({
-        message: "Failed to create certificate profile: Plan restriction. Upgrade plan to continue"
-      });
     }
 
     // Validate that certificate template exists and belongs to the same project

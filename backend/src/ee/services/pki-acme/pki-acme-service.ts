@@ -47,7 +47,6 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
 import { TPkiAcmeAuthDALFactory } from "./pki-acme-auth-dal";
 import { TPkiAcmeChallengeDALFactory } from "./pki-acme-challenge-dal";
@@ -61,7 +60,6 @@ import {
   AcmeMalformedError,
   AcmeOrderNotReadyError,
   AcmeServerInternalError,
-  AcmeUnauthorizedError,
   AcmeUnsupportedIdentifierError
 } from "./pki-acme-errors";
 import { buildUrl, extractAccountIdFromKid, validateDnsIdentifier } from "./pki-acme-fns";
@@ -129,7 +127,6 @@ type TPkiAcmeServiceFactoryDep = {
     TKmsServiceFactory,
     "decryptWithKmsKey" | "generateKmsKey" | "encryptWithKmsKey" | "createCipherPairWithDataKey"
   >;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
   certificateTemplateV2Service: Pick<TCertificateTemplateV2ServiceFactory, "validateCertificateRequest">;
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;
@@ -152,7 +149,6 @@ export const pkiAcmeServiceFactory = ({
   acmeChallengeDAL,
   keyStore,
   kmsService,
-  licenseService,
   certificateV3Service,
   certificateTemplateV2Service,
   certificateRequestService,
@@ -168,12 +164,6 @@ export const pkiAcmeServiceFactory = ({
     }
     if (profile.enrollmentType !== EnrollmentType.ACME) {
       throw new NotFoundError({ message: "Certificate profile is not configured for ACME enrollment" });
-    }
-    const orgLicensePlan = await licenseService.getPlan(profile.project!.orgId);
-    if (!orgLicensePlan.pkiAcme) {
-      throw new AcmeUnauthorizedError({
-        message: "Failed to validate ACME profile: Plan restriction. Upgrade plan to continue"
-      });
     }
     return profile;
   };

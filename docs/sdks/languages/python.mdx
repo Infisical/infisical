@@ -71,8 +71,9 @@ The SDK methods are organized into the following high-level categories:
 
 1. `auth`: Handles authentication methods.
 2. `secrets`: Manages CRUD operations for secrets.
-3. `kms`: Perform cryptographic operations with Infisical KMS.
-4. `folders`: Manages folder-related operations.
+3. `dynamic_secrets`: Manages dynamic secrets and leases.
+4. `kms`: Perform cryptographic operations with Infisical KMS.
+5. `folders`: Manages folder-related operations.
 
 ### `auth`
 
@@ -282,6 +283,257 @@ deleted_secret = client.secrets.delete_secret_by_name(
 
 **Returns:**
 - `BaseSecret`: The response after deleting the secret.
+
+### `dynamic_secrets`
+
+This sub-class handles operations related to dynamic secrets. Dynamic secrets generate credentials on-demand with automatic expiration. For more information, see the [Dynamic Secrets documentation](/documentation/platform/dynamic-secrets/overview).
+
+#### Create Dynamic Secret
+
+```python
+from infisical_sdk import DynamicSecretProviders
+
+dynamic_secret = client.dynamic_secrets.create(
+    name="postgres-dev",
+    provider_type=DynamicSecretProviders.SQL_DATABASE,
+    inputs={
+        "client": "postgres",
+        "host": "localhost",
+        "port": 5432,
+        "database": "mydb",
+        "username": "admin",
+        "password": "admin-password",
+        "creationStatement": "CREATE USER \"{{username}}\" WITH PASSWORD '{{password}}';",
+        "revocationStatement": "DROP USER \"{{username}}\";"
+    },
+    default_ttl="1h",
+    max_ttl="24h",
+    project_slug="my-project",
+    environment_slug="dev",
+    path="/",
+    metadata=[{"key": "team", "value": "backend"}]  # Optional
+)
+```
+
+**Parameters:**
+- `name` (str): The name of the dynamic secret.
+- `provider_type` (Union[DynamicSecretProviders, str]): The provider type (e.g., `DynamicSecretProviders.SQL_DATABASE`).
+- `inputs` (Dict[str, Any]): The provider-specific configuration inputs. See the [Dynamic Secrets API documentation](/api-reference/endpoints/dynamic-secrets/create) for provider-specific inputs.
+- `default_ttl` (str): The default time to live for leases (e.g., "1h", "30m").
+- `max_ttl` (str): The maximum time to live for leases (e.g., "24h").
+- `project_slug` (str): The slug of your project.
+- `environment_slug` (str): The environment in which to create the dynamic secret.
+- `path` (str, optional): The path where the dynamic secret will be created. Defaults to "/".
+- `metadata` (List[Dict[str, str]], optional): Optional list of metadata items with 'key' and 'value'.
+
+**Returns:**
+- `DynamicSecret`: The created dynamic secret.
+
+#### Supported Provider Types
+
+The `DynamicSecretProviders` enum includes the following providers:
+
+| Provider | Enum Value |
+| -------- | ---------- |
+| AWS ElastiCache | `DynamicSecretProviders.AWS_ELASTICACHE` |
+| AWS IAM | `DynamicSecretProviders.AWS_IAM` |
+| Azure Entra ID | `DynamicSecretProviders.AZURE_ENTRA_ID` |
+| Azure SQL Database | `DynamicSecretProviders.AZURE_SQL_DATABASE` |
+| Cassandra | `DynamicSecretProviders.CASSANDRA` |
+| Couchbase | `DynamicSecretProviders.COUCHBASE` |
+| Elasticsearch | `DynamicSecretProviders.ELASTICSEARCH` |
+| GCP IAM | `DynamicSecretProviders.GCP_IAM` |
+| GitHub | `DynamicSecretProviders.GITHUB` |
+| Kubernetes | `DynamicSecretProviders.KUBERNETES` |
+| LDAP | `DynamicSecretProviders.LDAP` |
+| MongoDB Atlas | `DynamicSecretProviders.MONGO_ATLAS` |
+| MongoDB | `DynamicSecretProviders.MONGODB` |
+| RabbitMQ | `DynamicSecretProviders.RABBITMQ` |
+| Redis | `DynamicSecretProviders.REDIS` |
+| SAP ASE | `DynamicSecretProviders.SAP_ASE` |
+| SAP HANA | `DynamicSecretProviders.SAP_HANA` |
+| Snowflake | `DynamicSecretProviders.SNOWFLAKE` |
+| SQL Database | `DynamicSecretProviders.SQL_DATABASE` |
+| TOTP | `DynamicSecretProviders.TOTP` |
+| Vertica | `DynamicSecretProviders.VERTICA` |
+
+#### Get Dynamic Secret by Name
+
+```python
+dynamic_secret = client.dynamic_secrets.get_by_name(
+    name="postgres-dev",
+    project_slug="my-project",
+    environment_slug="dev",
+    path="/"
+)
+```
+
+**Parameters:**
+- `name` (str): The name of the dynamic secret.
+- `project_slug` (str): The slug of your project.
+- `environment_slug` (str): The environment in which to retrieve the dynamic secret.
+- `path` (str, optional): The path to the dynamic secret. Defaults to "/".
+
+**Returns:**
+- `DynamicSecret`: The dynamic secret.
+
+#### Update Dynamic Secret
+
+```python
+updated_secret = client.dynamic_secrets.update(
+    name="postgres-dev",
+    project_slug="my-project",
+    environment_slug="dev",
+    path="/",
+    default_ttl="2h",  # Optional
+    max_ttl="48h",  # Optional
+    new_name="postgres-dev-updated",  # Optional
+    inputs={"port": 5433},  # Optional - updated provider inputs
+    metadata=[{"key": "team", "value": "platform"}],  # Optional
+    username_template="dev-{{identity.name}}"  # Optional
+)
+```
+
+**Parameters:**
+- `name` (str): The current name of the dynamic secret.
+- `project_slug` (str): The slug of your project.
+- `environment_slug` (str): The environment in which to update the dynamic secret.
+- `path` (str, optional): The path to the dynamic secret. Defaults to "/".
+- `default_ttl` (str, optional): The new default time to live for leases.
+- `max_ttl` (str, optional): The new maximum time to live for leases.
+- `new_name` (str, optional): The new name for the dynamic secret.
+- `inputs` (Dict[str, Any], optional): Updated provider-specific configuration inputs.
+- `metadata` (List[Dict[str, str]], optional): Updated metadata list with 'key' and 'value' items.
+- `username_template` (str, optional): The new username template for the dynamic secret.
+
+**Returns:**
+- `DynamicSecret`: The updated dynamic secret.
+
+#### Delete Dynamic Secret
+
+```python
+deleted_secret = client.dynamic_secrets.delete(
+    name="postgres-dev",
+    project_slug="my-project",
+    environment_slug="dev",
+    path="/",
+    is_forced=False  # Optional
+)
+```
+
+**Parameters:**
+- `name` (str): The name of the dynamic secret to delete.
+- `project_slug` (str): The slug of your project.
+- `environment_slug` (str): The environment in which to delete the dynamic secret.
+- `path` (str, optional): The path to the dynamic secret. Defaults to "/".
+- `is_forced` (bool, optional): A boolean flag to delete the dynamic secret from Infisical without trying to remove it from the external provider. Defaults to `False`.
+
+**Returns:**
+- `DynamicSecret`: The deleted dynamic secret.
+
+### `dynamic_secrets.leases`
+
+This sub-class handles operations related to dynamic secret leases. A lease represents a set of generated credentials with a specific TTL.
+
+#### Create Lease
+
+Create a lease to generate credentials from a dynamic secret:
+
+```python
+lease_response = client.dynamic_secrets.leases.create(
+    dynamic_secret_name="postgres-dev",
+    project_slug="my-project",
+    environment_slug="dev",
+    path="/",
+    ttl="30m"  # Optional
+)
+
+# Access the generated credentials
+username = lease_response.data["DB_USERNAME"]
+password = lease_response.data["DB_PASSWORD"]
+lease_id = lease_response.lease.id
+```
+
+**Parameters:**
+- `dynamic_secret_name` (str): The name of the dynamic secret to create a lease for.
+- `project_slug` (str): The slug of your project.
+- `environment_slug` (str): The environment in which to create the lease.
+- `path` (str, optional): The path to the dynamic secret. Defaults to "/".
+- `ttl` (str, optional): The time to live for the lease (e.g., "1h", "30m").
+
+**Returns:**
+- `CreateLeaseResponse`: Response containing:
+  - `lease`: The lease object with ID, expiration, and metadata.
+  - `dynamicSecret`: The associated dynamic secret.
+  - `data`: The generated credentials. The structure depends on the dynamic secret provider.
+
+#### Get Lease
+
+```python
+lease = client.dynamic_secrets.leases.get(
+    lease_id="<lease-id>",
+    project_slug="my-project",
+    environment_slug="dev",
+    path="/"
+)
+```
+
+**Parameters:**
+- `lease_id` (str): The ID of the lease to retrieve.
+- `project_slug` (str): The slug of your project.
+- `environment_slug` (str): The environment in which to retrieve the lease.
+- `path` (str, optional): The path to the dynamic secret. Defaults to "/".
+
+**Returns:**
+- `DynamicSecretLease`: The lease with dynamicSecret included.
+
+#### Renew Lease
+
+Extend the TTL of an existing lease:
+
+```python
+renewed_lease = client.dynamic_secrets.leases.renew(
+    lease_id="<lease-id>",
+    project_slug="my-project",
+    environment_slug="dev",
+    path="/",
+    ttl="2h"  # Optional - new TTL
+)
+```
+
+**Parameters:**
+- `lease_id` (str): The ID of the lease to renew.
+- `project_slug` (str): The slug of your project.
+- `environment_slug` (str): The environment in which to renew the lease.
+- `path` (str, optional): The path to the dynamic secret. Defaults to "/".
+- `ttl` (str, optional): The new time to live for the lease.
+
+**Returns:**
+- `DynamicSecretLease`: The renewed lease.
+
+#### Revoke Lease
+
+Revoke a lease and its associated credentials:
+
+```python
+revoked_lease = client.dynamic_secrets.leases.revoke(
+    lease_id="<lease-id>",
+    project_slug="my-project",
+    environment_slug="dev",
+    path="/",
+    is_forced=False  # Optional
+)
+```
+
+**Parameters:**
+- `lease_id` (str): The ID of the lease to revoke.
+- `project_slug` (str): The slug of your project.
+- `environment_slug` (str): The environment in which to revoke the lease.
+- `path` (str, optional): The path to the dynamic secret. Defaults to "/".
+- `is_forced` (bool, optional): A boolean flag to revoke the lease from Infisical without trying to remove it from the external provider. Defaults to `False`.
+
+**Returns:**
+- `DynamicSecretLease`: The revoked lease.
 
 ### `kms`
 

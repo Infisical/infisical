@@ -1,23 +1,22 @@
-import { faEllipsisV, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
+import { CheckIcon, ClipboardListIcon } from "lucide-react";
 
-import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
+import { Tooltip } from "@app/components/v2";
 import {
-  DeleteActionModal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  IconButton
-} from "@app/components/v2";
-import { CopyButton } from "@app/components/v2/CopyButton";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
-import { usePopUp } from "@app/hooks";
-import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
+  Detail,
+  DetailGroup,
+  DetailLabel,
+  DetailValue,
+  UnstableCard,
+  UnstableCardContent,
+  UnstableCardDescription,
+  UnstableCardHeader,
+  UnstableCardTitle,
+  UnstableIconButton
+} from "@app/components/v3";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { useTimedReset } from "@app/hooks";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { GroupRoles } from "@app/pages/project/AccessControlPage/components/GroupsTab/components/GroupsSection/GroupRoles";
 
@@ -26,123 +25,68 @@ type Props = {
 };
 
 export const GroupDetailsSection = ({ groupMembership }: Props) => {
-  const { handlePopUpToggle, popUp, handlePopUpClose, handlePopUpOpen } = usePopUp([
-    "deleteGroup"
-  ] as const);
+  const { group } = groupMembership;
 
-  const { mutateAsync: deleteMutateAsync } = useDeleteGroupFromWorkspace();
-  const { currentProject } = useProject();
-  const navigate = useNavigate();
-
-  const onRemoveGroupSubmit = async () => {
-    await deleteMutateAsync({
-      groupId: groupMembership.group.id,
-      projectId: currentProject.id
-    });
-
-    createNotification({
-      text: "Successfully removed group from project",
-      type: "success"
-    });
-
-    navigate({
-      to: `${getProjectBaseURL(currentProject.type)}/access-management`,
-      params: {
-        projectId: currentProject.id
-      },
-      search: {
-        selectedTab: "groups"
-      }
-    });
-
-    handlePopUpClose("deleteGroup");
-  };
+  // eslint-disable-next-line @typescript-eslint/naming-convention,@typescript-eslint/no-unused-vars
+  const [_, isCopyingId, setCopyTextId] = useTimedReset<string>({
+    initialState: "Copy ID to clipboard"
+  });
 
   return (
-    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-medium text-mineshaft-100">Group Details</h3>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <IconButton ariaLabel="Options" colorSchema="secondary" className="w-6" variant="plain">
-              <FontAwesomeIcon icon={faEllipsisV} />
-            </IconButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent sideOffset={2} align="end">
-            <ProjectPermissionCan
-              I={ProjectPermissionActions.Delete}
-              a={ProjectPermissionSub.Groups}
-            >
-              {(isAllowed) => {
-                return (
-                  <DropdownMenuItem
-                    icon={<FontAwesomeIcon icon={faTrash} />}
-                    onClick={() => handlePopUpOpen("deleteGroup")}
-                    isDisabled={!isAllowed}
-                  >
-                    Remove Group From Project
-                  </DropdownMenuItem>
-                );
-              }}
-            </ProjectPermissionCan>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      <div className="pt-4">
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Group ID</p>
-          <div className="group flex items-center gap-2">
-            <p className="text-sm text-mineshaft-300">{groupMembership.group.id}</p>
-            <CopyButton
-              value={groupMembership.group.id}
-              name="Group ID"
-              size="xs"
-              variant="plain"
-            />
-          </div>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Name</p>
-          <p className="text-sm text-mineshaft-300">{groupMembership.group.name}</p>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Slug</p>
-          <div className="group flex items-center gap-2">
-            <p className="text-sm text-mineshaft-300">{groupMembership.group.slug}</p>
-            <CopyButton value={groupMembership.group.slug} name="Slug" size="xs" variant="plain" />
-          </div>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Project Role</p>
-          <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Groups}>
-            {(isAllowed) => (
-              <GroupRoles
-                className="mt-1"
-                popperContentProps={{ side: "right" }}
-                roles={groupMembership.roles}
-                groupId={groupMembership.group.id}
-                disableEdit={!isAllowed}
-              />
-            )}
-          </ProjectPermissionCan>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Assigned to Project</p>
-          <p className="text-sm text-mineshaft-300">
-            {format(groupMembership.createdAt, "M/d/yyyy")}
-          </p>
-        </div>
-      </div>
-      <DeleteActionModal
-        isOpen={popUp.deleteGroup.isOpen}
-        title={`Are you sure you want to remove the group ${
-          groupMembership.group.name
-        } from the project?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteGroup", isOpen)}
-        deleteKey="confirm"
-        buttonText="Remove"
-        onDeleteApproved={onRemoveGroupSubmit}
-      />
-    </div>
+    <UnstableCard className="w-full lg:max-w-[24rem]">
+      <UnstableCardHeader>
+        <UnstableCardTitle>Details</UnstableCardTitle>
+        <UnstableCardDescription>Group details</UnstableCardDescription>
+      </UnstableCardHeader>
+      <UnstableCardContent>
+        <DetailGroup>
+          <Detail>
+            <DetailLabel>Name</DetailLabel>
+            <DetailValue>{group.name}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>ID</DetailLabel>
+            <DetailValue className="flex items-center gap-x-1">
+              {group.id}
+              <Tooltip content="Copy group ID to clipboard">
+                <UnstableIconButton
+                  onClick={() => {
+                    navigator.clipboard.writeText(group.id);
+                    setCopyTextId("Copied");
+                  }}
+                  variant="ghost"
+                  size="xs"
+                >
+                  {/* TODO(scott): color this should be a button variant and create re-usable copy button */}
+                  {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
+                </UnstableIconButton>
+              </Tooltip>
+            </DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Project Role</DetailLabel>
+            <DetailValue>
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Edit}
+                a={ProjectPermissionSub.Groups}
+              >
+                {(isAllowed) => (
+                  <GroupRoles
+                    popperContentProps={{ side: "right" }}
+                    roles={groupMembership.roles}
+                    groupId={groupMembership.group.id}
+                    disableEdit={!isAllowed}
+                  />
+                )}
+              </ProjectPermissionCan>
+            </DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Joined project</DetailLabel>
+            <DetailValue>{format(groupMembership.createdAt, "PPpp")}</DetailValue>
+          </Detail>
+        </DetailGroup>
+      </UnstableCardContent>
+    </UnstableCard>
   );
 };
