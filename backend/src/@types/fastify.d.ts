@@ -102,6 +102,7 @@ import { TIntegrationAuthServiceFactory } from "@app/services/integration-auth/i
 import { TMembershipGroupServiceFactory } from "@app/services/membership-group/membership-group-service";
 import { TMembershipIdentityServiceFactory } from "@app/services/membership-identity/membership-identity-service";
 import { TMembershipUserServiceFactory } from "@app/services/membership-user/membership-user-service";
+import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { TOfflineUsageReportServiceFactory } from "@app/services/offline-usage-report/offline-usage-report-service";
@@ -137,6 +138,7 @@ import { TUpgradePathService } from "@app/services/upgrade-path/upgrade-path-ser
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserServiceFactory } from "@app/services/user/user-service";
 import { TUserEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
+import { TWebAuthnServiceFactory } from "@app/services/webauthn/webauthn-service";
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
 
@@ -329,6 +331,7 @@ declare module "fastify" {
       externalGroupOrgRoleMapping: TExternalGroupOrgRoleMappingServiceFactory;
       projectTemplate: TProjectTemplateServiceFactory;
       totp: TTotpServiceFactory;
+      webAuthn: TWebAuthnServiceFactory;
       appConnection: TAppConnectionServiceFactory;
       secretSync: TSecretSyncServiceFactory;
       kmip: TKmipServiceFactory;
@@ -355,6 +358,7 @@ declare module "fastify" {
       pamResource: TPamResourceServiceFactory;
       pamAccount: TPamAccountServiceFactory;
       pamSession: TPamSessionServiceFactory;
+      mfaSession: TMfaSessionServiceFactory;
       upgradePath: TUpgradePathService;
 
       membershipUser: TMembershipUserServiceFactory;

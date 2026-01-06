@@ -188,6 +188,7 @@
     "@peculiar/x509": "^1.12.1",
     "@react-email/components": "^1.0.1",
     "@serdnam/pino-cloudwatch-transport": "^1.0.4",
+    "@simplewebauthn/server": "^13.2.2",
     "@sindresorhus/slugify": "1.1.0",
     "@slack/oauth": "^3.0.2",
     "@slack/web-api": "^7.8.0",

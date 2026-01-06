@@ -143,13 +143,13 @@ export type TListPamAccountsDTO = {
 
 export type TCreatePamAccountDTO = Pick<
   TPamAccount,
-  "name" | "description" | "credentials" | "projectId" | "resourceId" | "folderId"
+  "name" | "description" | "credentials" | "projectId" | "resourceId" | "folderId" | "requireMfa"
 > & {
   resourceType: PamResourceType;
 };
 
 export type TUpdatePamAccountDTO = Partial<
-  Pick<TPamAccount, "name" | "description" | "credentials">
+  Pick<TPamAccount, "name" | "description" | "credentials" | "requireMfa">
 > & {
   accountId: string;
   resourceType: PamResourceType;

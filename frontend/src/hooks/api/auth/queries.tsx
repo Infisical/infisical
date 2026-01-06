@@ -7,6 +7,7 @@ import { SessionStorageKeys } from "@app/const";
 import { organizationKeys } from "../organization/queries";
 import { projectKeys } from "../projects";
 import { setAuthToken } from "../reactQuery";
+import { TGenerateAuthenticationOptionsResponse, TVerifyAuthenticationDTO } from "../webauthn";
 import {
   CompleteAccountDTO,
   CompleteAccountSignupDTO,
@@ -332,6 +333,36 @@ export const checkUserTotpMfa = async () => {
 
   return data.isVerified;
 };
+
+export const checkUserWebAuthnMfa = async () => {
+  const { data } = await apiRequest.get<{ hasPasskeys: boolean }>(
+    "/api/v2/auth/mfa/check/webauthn"
+  );
+
+  return data.hasPasskeys;
+};
+
+export const useMfaGenerateAuthenticationOptions = () =>
+  useMutation({
+    mutationFn: async () => {
+      const { data } = await apiRequest.post<TGenerateAuthenticationOptionsResponse>(
+        "/api/v2/auth/mfa/webauthn/authenticate"
+      );
+      return data;
+    }
+  });
+
+export const useMfaVerifyAuthentication = () =>
+  useMutation({
+    mutationFn: async (dto: TVerifyAuthenticationDTO) => {
+      const { data } = await apiRequest.post<{
+        verified: boolean;
+        credentialId: string;
+        sessionToken: string;
+      }>("/api/v2/auth/mfa/webauthn/verify", dto);
+      return data;
+    }
+  });
 
 export const useSendPasswordSetupEmail = () => {
   return useMutation({

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { startRegistration } from "@simplewebauthn/browser";
 import { useQueryClient } from "@tanstack/react-query";
 import QRCode from "qrcode";
 
@@ -11,6 +12,8 @@ import {
   EmailServiceSetupModal,
   FormControl,
   Input,
+  Modal,
+  ModalContent,
   Select,
   SelectItem
 } from "@app/components/v2";
@@ -28,6 +31,13 @@ import {
   useGetUserTotpRegistration
 } from "@app/hooks/api/users/queries";
 import { AuthMethod } from "@app/hooks/api/users/types";
+import {
+  useDeleteWebAuthnCredential,
+  useGenerateRegistrationOptions,
+  useGetWebAuthnCredentials,
+  useUpdateWebAuthnCredential,
+  useVerifyRegistration
+} from "@app/hooks/api/webauthn";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 export const MFASection = () => {
@@ -46,7 +56,10 @@ export const MFASection = () => {
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "setUpEmail",
     "deleteTotpConfig",
-    "downloadRecoveryCodes"
+    "downloadRecoveryCodes",
+    "deleteWebAuthnCredential",
+    "renameWebAuthnCredential",
+    "registerPasskey"
   ] as const);
   const [shouldShowRecoveryCodes, setShouldShowRecoveryCodes] = useToggle();
   const { data: totpConfiguration } = useGetUserTotpConfiguration();
@@ -59,6 +72,20 @@ export const MFASection = () => {
   const { mutateAsync: verifyUserTotp } = useVerifyUserTotpRegistration();
   const queryClient = useQueryClient();
   const { data: serverDetails } = useFetchServerStatus();
+
+  // WebAuthn/Passkey hooks
+  const { data: webAuthnCredentials, isPending: isWebAuthnCredentialsLoading } =
+    useGetWebAuthnCredentials();
+  const { mutateAsync: generateRegistrationOptions, isPending: isGeneratingOptions } =
+    useGenerateRegistrationOptions();
+  const { mutateAsync: verifyRegistration, isPending: isVerifyingRegistration } =
+    useVerifyRegistration();
+  const { mutateAsync: deleteWebAuthnCredential } = useDeleteWebAuthnCredential();
+  const { mutateAsync: updateWebAuthnCredential } = useUpdateWebAuthnCredential();
+
+  const [selectedCredentialId, setSelectedCredentialId] = useState<string>("");
+  const [credentialName, setCredentialName] = useState<string>("");
+  const [isRegisteringPasskey, setIsRegisteringPasskey] = useState(false);
 
   // Update form data when user data changes
   useEffect(() => {
@@ -107,6 +134,114 @@ export const MFASection = () => {
     });
   };
 
+  const handleRegisterPasskey = async () => {
+    try {
+      setIsRegisteringPasskey(true);
+
+      // Check if WebAuthn is supported
+      if (
+        !window.PublicKeyCredential ||
+        !window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable
+      ) {
+        createNotification({
+          text: "WebAuthn is not supported on this browser",
+          type: "error"
+        });
+        return;
+      }
+
+      // Check if platform authenticator is available
+      const available =
+        await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+      if (!available) {
+        createNotification({
+          text: "No passkey-compatible authenticator found on this device",
+          type: "error"
+        });
+        return;
+      }
+
+      // Generate registration options from server
+      const options = await generateRegistrationOptions();
+      const registrationResponse = await startRegistration({ optionsJSON: options });
+
+      // Verify registration with server
+      await verifyRegistration({
+        registrationResponse,
+        name: credentialName || "Passkey"
+      });
+
+      createNotification({
+        text: "Successfully registered passkey",
+        type: "success"
+      });
+
+      handlePopUpClose("registerPasskey");
+      setCredentialName("");
+    } catch (error: any) {
+      console.error("Failed to register passkey:", error);
+
+      // Better error messages
+      let errorMessage = "Failed to register passkey";
+      if (error.name === "NotAllowedError") {
+        errorMessage = "Passkey registration was cancelled or timed out";
+      } else if (error.name === "InvalidStateError") {
+        errorMessage = "This passkey has already been registered";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      createNotification({
+        text: errorMessage,
+        type: "error"
+      });
+    } finally {
+      setIsRegisteringPasskey(false);
+    }
+  };
+
+  const handleDeleteWebAuthnCredential = async () => {
+    try {
+      await deleteWebAuthnCredential({ id: selectedCredentialId });
+
+      createNotification({
+        text: "Successfully deleted passkey",
+        type: "success"
+      });
+
+      handlePopUpClose("deleteWebAuthnCredential");
+      setSelectedCredentialId("");
+    } catch (error: any) {
+      createNotification({
+        text: error.message || "Failed to delete passkey",
+        type: "error"
+      });
+    }
+  };
+
+  const handleRenameWebAuthnCredential = async () => {
+    try {
+      await updateWebAuthnCredential({
+        id: selectedCredentialId,
+        name: credentialName
+      });
+
+      createNotification({
+        text: "Successfully renamed passkey",
+        type: "success"
+      });
+
+      handlePopUpClose("renameWebAuthnCredential");
+      setSelectedCredentialId("");
+      setCredentialName("");
+    } catch (error: any) {
+      createNotification({
+        text: error.message || "Failed to rename passkey",
+        type: "error"
+      });
+    }
+  };
+
   const handleFormDataChange = async (field: string, value: any) => {
     setFormData((prev) => ({
       ...prev,
@@ -146,6 +281,19 @@ export const MFASection = () => {
 
       if (!serverDetails?.emailConfigured && formData.isMfaEnabled) {
         handlePopUpOpen("setUpEmail");
+        return;
+      }
+
+      // If selecting passkey as 2FA method but no passkeys registered
+      if (
+        formData.isMfaEnabled &&
+        formData.selectedMfaMethod === MfaMethod.WEBAUTHN &&
+        (!webAuthnCredentials || webAuthnCredentials.length === 0)
+      ) {
+        createNotification({
+          text: "Please register at least one passkey before selecting it as your two-factor authentication method",
+          type: "error"
+        });
         return;
       }
 
@@ -240,8 +388,96 @@ export const MFASection = () => {
       if (totpConfiguration?.isVerified) return true;
       return totpCode.trim().length > 0;
     }
+    if (formData.selectedMfaMethod === MfaMethod.WEBAUTHN) return true;
+
     return false;
   };
+
+  const registerPasskeyModal = (
+    <Modal
+      isOpen={popUp.registerPasskey?.isOpen || false}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          handlePopUpClose("registerPasskey");
+          setCredentialName("");
+        }
+      }}
+    >
+      <ModalContent title="Register New Passkey">
+        <div className="space-y-4">
+          <p className="text-sm text-mineshaft-300">
+            Give your passkey a name to help you identify it later. After clicking
+            &quot;Register&quot;, you&apos;ll be prompted to use your device&apos;s biometric
+            authentication (Touch ID, Face ID, Windows Hello, etc.).
+          </p>
+          <FormControl label="Passkey Name">
+            <Input
+              value={credentialName}
+              onChange={(e) => setCredentialName(e.target.value)}
+              placeholder="e.g., My MacBook Pro"
+            />
+          </FormControl>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleRegisterPasskey}
+              isLoading={isRegisteringPasskey || isVerifyingRegistration}
+              disabled={!credentialName.trim()}
+              colorSchema="primary"
+            >
+              Register
+            </Button>
+            <Button
+              variant="outline_bg"
+              onClick={() => handlePopUpClose("registerPasskey")}
+              disabled={isRegisteringPasskey || isVerifyingRegistration}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </ModalContent>
+    </Modal>
+  );
+
+  const renamePasskeyModal = (
+    <Modal
+      isOpen={popUp.renameWebAuthnCredential?.isOpen || false}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          handlePopUpClose("renameWebAuthnCredential");
+          setCredentialName("");
+          setSelectedCredentialId("");
+        }
+      }}
+    >
+      <ModalContent title="Rename Passkey">
+        <div className="space-y-4">
+          <FormControl label="Passkey Name">
+            <Input
+              value={credentialName}
+              onChange={(e) => setCredentialName(e.target.value)}
+              placeholder="e.g., My MacBook Pro"
+            />
+          </FormControl>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleRenameWebAuthnCredential}
+              disabled={!credentialName.trim()}
+              colorSchema="primary"
+            >
+              Save
+            </Button>
+            <Button
+              variant="outline_bg"
+              onClick={() => handlePopUpClose("renameWebAuthnCredential")}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </ModalContent>
+    </Modal>
+  );
 
   return (
     <>
@@ -293,6 +529,7 @@ export const MFASection = () => {
                   >
                     <SelectItem value={MfaMethod.EMAIL}>Email</SelectItem>
                     <SelectItem value={MfaMethod.TOTP}>Mobile Authenticator</SelectItem>
+                    <SelectItem value={MfaMethod.WEBAUTHN}>Passkey (WebAuthn)</SelectItem>
                   </Select>
                 </FormControl>
               </div>
@@ -411,56 +648,161 @@ export const MFASection = () => {
                 </Button>
               </div>
             )}
-
-            {user?.isMfaEnabled && totpConfiguration?.isVerified && (
-              <div className="mt-8 border-t border-mineshaft-600 pt-6">
-                <h3 className="mb-4 text-lg font-medium text-mineshaft-100">
-                  Mobile Authenticator Management
-                </h3>
-
-                <div className="space-y-4">
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      colorSchema="secondary"
-                      variant="outline_bg"
-                      onClick={setShouldShowRecoveryCodes.toggle}
-                    >
-                      {shouldShowRecoveryCodes ? "Hide recovery codes" : "Show recovery codes"}
-                    </Button>
-                    <Button
-                      colorSchema="secondary"
-                      variant="outline_bg"
-                      onClick={handleGenerateMoreRecoveryCodes}
-                    >
-                      Generate more codes
-                    </Button>
-                    <Button
-                      colorSchema="danger"
-                      variant="outline_bg"
-                      onClick={() => handlePopUpOpen("deleteTotpConfig")}
-                    >
-                      Remove Authenticator
-                    </Button>
-                  </div>
-
-                  {shouldShowRecoveryCodes && (
-                    <div className="w-fit rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4 pr-8">
-                      <div className="grid grid-cols-2 gap-x-6 gap-y-2 font-mono text-sm">
-                        {totpConfiguration.recoveryCodes.map((code, index) => (
-                          <div key={code} className="flex items-center text-mineshaft-200">
-                            <span className="w-8 text-right text-mineshaft-400">{index + 1}.</span>
-                            <span className="pl-2">{code}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         )}
       </form>
+
+      {/* Management Sections - Separate from configuration form */}
+      {user && (
+        <div className="mt-6 mb-6 space-y-6">
+          {/* Mobile Authenticator Management - Show if configured, regardless of active method */}
+          {totpConfiguration?.isVerified && (
+            <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+              <h3 className="mb-4 text-lg font-medium text-mineshaft-100">
+                Mobile Authenticator Management
+              </h3>
+              <p className="mb-4 text-sm text-mineshaft-400">
+                Manage your mobile authenticator configuration and recovery codes.
+              </p>
+
+              <div className="space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    colorSchema="secondary"
+                    variant="outline_bg"
+                    onClick={setShouldShowRecoveryCodes.toggle}
+                  >
+                    {shouldShowRecoveryCodes ? "Hide recovery codes" : "Show recovery codes"}
+                  </Button>
+                  <Button
+                    colorSchema="secondary"
+                    variant="outline_bg"
+                    onClick={handleGenerateMoreRecoveryCodes}
+                  >
+                    Generate more codes
+                  </Button>
+                  <Button
+                    colorSchema="danger"
+                    variant="outline_bg"
+                    onClick={() => handlePopUpOpen("deleteTotpConfig")}
+                  >
+                    Remove Authenticator
+                  </Button>
+                </div>
+
+                {shouldShowRecoveryCodes && (
+                  <div className="w-fit rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4 pr-8">
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 font-mono text-sm">
+                      {totpConfiguration.recoveryCodes.map((code, index) => (
+                        <div key={code} className="flex items-center text-mineshaft-200">
+                          <span className="w-8 text-right text-mineshaft-400">{index + 1}.</span>
+                          <span className="pl-2">{code}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Passkey Management - Always show */}
+          <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium text-mineshaft-100">Passkey Management</h3>
+                <p className="mt-1 text-sm text-mineshaft-400">
+                  Manage your passkeys. Passkeys can be used for two-factor authentication.
+                </p>
+              </div>
+              <Button
+                colorSchema="primary"
+                variant="outline_bg"
+                onClick={() => {
+                  setCredentialName("");
+                  handlePopUpOpen("registerPasskey");
+                }}
+                isLoading={isGeneratingOptions}
+              >
+                Add Passkey
+              </Button>
+            </div>
+
+            {(() => {
+              if (isWebAuthnCredentialsLoading) {
+                return <ContentLoader />;
+              }
+              if (webAuthnCredentials && webAuthnCredentials.length > 0) {
+                return (
+                  <div className="space-y-3">
+                    {webAuthnCredentials.map((credential) => (
+                      <div
+                        key={credential.id}
+                        className="flex items-center justify-between rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-mineshaft-100">
+                              {credential.name || "Unnamed Passkey"}
+                            </span>
+                            {credential.transports && credential.transports.length > 0 && (
+                              <span className="text-xs text-mineshaft-400">
+                                ({credential.transports.join(", ")})
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-1 text-xs text-mineshaft-400">
+                            Added {new Date(credential.createdAt).toLocaleDateString()}
+                            {credential.lastUsedAt && (
+                              <>
+                                {" "}
+                                · Last used {new Date(credential.lastUsedAt).toLocaleDateString()}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="xs"
+                            colorSchema="secondary"
+                            variant="outline_bg"
+                            onClick={() => {
+                              setSelectedCredentialId(credential.id);
+                              setCredentialName(credential.name || "");
+                              handlePopUpOpen("renameWebAuthnCredential");
+                            }}
+                          >
+                            Rename
+                          </Button>
+                          <Button
+                            size="xs"
+                            colorSchema="danger"
+                            variant="outline_bg"
+                            onClick={() => {
+                              setSelectedCredentialId(credential.id);
+                              handlePopUpOpen("deleteWebAuthnCredential");
+                            }}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+              return (
+                <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-6 text-center">
+                  <p className="text-sm text-mineshaft-300">
+                    No passkeys registered yet. Add a passkey to use it for two-factor
+                    authentication.
+                  </p>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
 
       <EmailServiceSetupModal
         isOpen={popUp.setUpEmail?.isOpen}
@@ -480,6 +822,19 @@ export const MFASection = () => {
         onClose={() => handlePopUpClose("downloadRecoveryCodes")}
         recoveryCodes={totpRegistration?.recoveryCodes || []}
         onDownloadComplete={() => handlePopUpClose("downloadRecoveryCodes")}
+      />
+
+      {registerPasskeyModal}
+      {renamePasskeyModal}
+
+      {/* Delete Passkey Modal */}
+      <DeleteActionModal
+        isOpen={popUp.deleteWebAuthnCredential?.isOpen || false}
+        title="Remove passkey?"
+        subTitle="This action is irreversible. You'll need to register this passkey again if you want to use it in the future."
+        onChange={(isOpen) => handlePopUpToggle("deleteWebAuthnCredential", isOpen)}
+        deleteKey="confirm"
+        onDeleteApproved={handleDeleteWebAuthnCredential}
       />
     </>
   );
