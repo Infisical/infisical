@@ -21,7 +21,7 @@ export const RequestNewInvitePage = () => {
       <div className="mt-8 flex h-screen w-screen flex-col items-center justify-center text-bunker-200">
         {isAlreadyMember ? (
           <>
-            <p className="text-4xl text-primary-100">You&apos;re already a member!</p>
+            <p className="text-4xl text-primary-100">You&apos;re already a member.</p>
             <p className="my-4 text-lg">You&apos;ve already joined this organization.</p>
             <Link to="/login">
               <Button size="lg">Go to Login</Button>
