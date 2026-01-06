@@ -235,6 +235,7 @@ type TCertificateProfileServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TCertificateProfileServiceFactory = ReturnType<typeof certificateProfileServiceFactory>;
@@ -271,7 +272,8 @@ export const certificateProfileServiceFactory = ({
   externalCertificateAuthorityDAL,
   permissionService,
   kmsService,
-  projectDAL
+  projectDAL,
+  licenseService
 }: TCertificateProfileServiceFactoryDep) => {
   const createProfile = async ({
     actor,
@@ -308,7 +310,10 @@ export const certificateProfileServiceFactory = ({
       throw new NotFoundError({ message: "Project not found" });
     }
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.get(SubscriptionProductCategory.CertificateManager, "pkiAcme") && data.enrollmentType === EnrollmentType.ACME) {
+    if (
+      !plan.get(SubscriptionProductCategory.CertificateManager, "pkiAcme") &&
+      data.enrollmentType === EnrollmentType.ACME
+    ) {
       throw new BadRequestError({
         message: "Failed to create certificate profile: Plan restriction. Upgrade plan to continue"
       });
