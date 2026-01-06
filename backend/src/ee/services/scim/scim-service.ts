@@ -231,7 +231,7 @@ export const scimServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     orgId,
-    fromDate = "1d",
+    since = "1d",
     limit = 30,
     offset = 0
   }) => {
@@ -252,7 +252,7 @@ export const scimServiceFactory = ({
       });
 
     // Calculate date to fetch from (default: last 30 days)
-    const fromDateTime = ms(fromDate);
+    const fromDateTime = Number(new Date()) - ms(since);
 
     const scimEvents = await scimEventsDAL.findEventsByOrgId(orgId, new Date(fromDateTime), limit, offset);
 

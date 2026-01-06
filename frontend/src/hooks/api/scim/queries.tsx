@@ -29,16 +29,16 @@ export const useGetScimTokens = (organizationId: string) => {
   });
 };
 
-export const useGetScimEvents = ({ fromDate, limit = 10, offset, disabled }: GetScimEventsDTO) => {
+export const useGetScimEvents = ({ since, limit = 10, offset, disabled }: GetScimEventsDTO) => {
   return useInfiniteQuery({
     initialPageParam: 0,
-    queryKey: scimKeys.getScimEvents({ fromDate, limit, offset }),
+    queryKey: scimKeys.getScimEvents({ since, limit, offset }),
     queryFn: async ({ pageParam }) => {
       const {
         data: { scimEvents }
       } = await apiRequest.get<{ scimEvents: ScimEventData[] }>("/api/v1/scim/scim-events", {
         params: {
-          fromDate,
+          since,
           limit,
           offset: pageParam
         }

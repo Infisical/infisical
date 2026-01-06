@@ -149,7 +149,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       querystring: z.object({
-        fromDate: z.string().trim().optional(),
+        since: z.string().trim().optional(),
         limit: z.coerce.number().min(1).max(100).default(30).optional(),
         offset: z.coerce.number().min(0).default(0).optional()
       }),
@@ -166,7 +166,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         orgId: req.permission.orgId,
-        fromDate: req.query.fromDate,
+        since: req.query.since,
         limit: req.query.limit,
         offset: req.query.offset
       });

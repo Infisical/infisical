@@ -29,7 +29,7 @@ export type TDeleteScimTokenDTO = {
 } & Omit<TOrgPermission, "orgId">;
 
 export type TListScimEventsDTO = {
-  fromDate?: string;
+  since?: string;
   limit?: number;
   offset?: number;
 } & TOrgPermission;

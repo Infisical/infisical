@@ -29,7 +29,7 @@ export const ScimEvents = () => {
     hasNextPage,
     fetchNextPage
   } = useGetScimEvents({
-    fromDate: "30d",
+    since: "30d",
     disabled: !currentOrg?.scimEnabled
   });
 

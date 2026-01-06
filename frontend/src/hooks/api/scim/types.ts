@@ -49,7 +49,7 @@ export type ScimEventData = {
 };
 
 export type GetScimEventsDTO = {
-  fromDate?: string;
+  since?: string;
   limit?: number;
   offset?: number;
   disabled?: boolean;
