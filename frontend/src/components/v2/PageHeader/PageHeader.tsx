@@ -28,12 +28,12 @@ const SCOPE_BADGE: Record<NonNullable<Props["scope"]>, { icon: LucideIcon; class
 };
 
 export const PageHeader = ({ title, description, children, className, scope }: Props) => (
-  <div className={twMerge("mb-10 w-full", className)}>
+  <div className={twMerge("mb-10 w-full border-b border-border pb-8", className)}>
     <div className="flex w-full justify-between">
       <div className="mr-4 flex min-w-0 flex-1 items-center">
         <h1
           className={twMerge(
-            "truncate text-2xl font-medium text-white underline decoration-2 underline-offset-4",
+            "truncate text-2xl font-medium text-white underline underline-offset-4",
             scope === "org" && "decoration-org/90",
             scope === "instance" && "decoration-neutral/90",
             scope === "namespace" && "decoration-sub-org/90",

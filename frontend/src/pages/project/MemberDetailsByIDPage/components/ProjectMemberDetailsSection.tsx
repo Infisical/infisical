@@ -40,7 +40,7 @@ export const ProjectMemberDetailsSection = ({ membership }: Props) => {
 
   return (
     <UnstableCard className="w-full lg:max-w-[24rem]">
-      <UnstableCardHeader>
+      <UnstableCardHeader className="border-b">
         <UnstableCardTitle>Details</UnstableCardTitle>
         <UnstableCardDescription>User membership details</UnstableCardDescription>
       </UnstableCardHeader>

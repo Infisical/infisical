@@ -1,9 +1,20 @@
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { PlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal, IconButton } from "@app/components/v2";
-import { useDeleteProjectIdentityMembership } from "@app/hooks/api";
+import { DeleteActionModal } from "@app/components/v2";
+import {
+  UnstableButton,
+  UnstableCard,
+  UnstableCardAction,
+  UnstableCardContent,
+  UnstableCardDescription,
+  UnstableCardHeader,
+  UnstableCardTitle
+} from "@app/components/v3";
+import {
+  useDeleteProjectIdentityMembership,
+  useGetIdentityProjectMemberships
+} from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { IdentityAddToProjectModal } from "./IdentityAddToProjectModal";
@@ -35,24 +46,35 @@ export const IdentityProjectsSection = ({ identityId }: Props) => {
     handlePopUpClose("removeIdentityFromProject");
   };
 
+  const { data: projectMemberships } = useGetIdentityProjectMemberships(identityId);
+
   return (
-    <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-medium text-mineshaft-100">Projects</h3>
-        <IconButton
-          ariaLabel="copy icon"
-          variant="plain"
-          className="group relative"
-          onClick={() => {
-            handlePopUpOpen("addIdentityToProject");
-          }}
-        >
-          <FontAwesomeIcon icon={faPlus} />
-        </IconButton>
-      </div>
-      <div className="py-4">
-        <IdentityProjectsTable identityId={identityId} handlePopUpOpen={handlePopUpOpen} />
-      </div>
+    <>
+      <UnstableCard>
+        <UnstableCardHeader>
+          <UnstableCardTitle>Projects</UnstableCardTitle>
+          <UnstableCardDescription>
+            Manage machine identity project memberships
+          </UnstableCardDescription>
+          {Boolean(projectMemberships?.length) && (
+            <UnstableCardAction>
+              <UnstableButton
+                onClick={() => {
+                  handlePopUpOpen("addIdentityToProject");
+                }}
+                size="xs"
+                variant="outline"
+              >
+                <PlusIcon />
+                Add to Project
+              </UnstableButton>
+            </UnstableCardAction>
+          )}
+        </UnstableCardHeader>
+        <UnstableCardContent>
+          <IdentityProjectsTable identityId={identityId} handlePopUpOpen={handlePopUpOpen} />
+        </UnstableCardContent>
+      </UnstableCard>
       <DeleteActionModal
         isOpen={popUp.removeIdentityFromProject.isOpen}
         title={`Are you sure you want to remove ${
@@ -76,6 +98,6 @@ export const IdentityProjectsSection = ({ identityId }: Props) => {
         popUp={popUp}
         handlePopUpToggle={handlePopUpToggle}
       />
-    </div>
+    </>
   );
 };
