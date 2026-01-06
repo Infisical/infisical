@@ -1,6 +1,6 @@
 import { TDbClient } from "@app/db";
 import { TableName, TAdditionalPrivileges } from "@app/db/schemas";
-import { ormify, selectAllTableCols, TFindFilter } from "@app/lib/knex";
+import { buildFindFilter, ormify, selectAllTableCols, TFindFilter } from "@app/lib/knex";
 
 export type TAdditionalPrivilegeDALFactory = ReturnType<typeof additionalPrivilegeDALFactory>;
 
@@ -10,7 +10,7 @@ export const additionalPrivilegeDALFactory = (db: TDbClient) => {
   const findWithAccessApprovalStatus = async (filter: TFindFilter<TAdditionalPrivileges>) => {
     const docs = await db
       .replicaNode()(TableName.AdditionalPrivilege)
-      .where(filter)
+      .where(buildFindFilter(filter, TableName.AdditionalPrivilege))
       .leftJoin(
         TableName.AccessApprovalRequest,
         `${TableName.AdditionalPrivilege}.id`,
