@@ -2,12 +2,10 @@ import { useState } from "react";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useSubscription } from "@app/context";
-import { usePopUp } from "@app/hooks";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { TAiMcpServer, useDeleteAiMcpServer } from "@app/hooks/api";
 
 import { AddMCPServerModal } from "./AddMCPServerModal";
@@ -20,18 +18,9 @@ export const MCPServersTab = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedServer, setSelectedServer] = useState<TAiMcpServer | null>(null);
 
-  const { subscription } = useSubscription();
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"]);
   const deleteServer = useDeleteAiMcpServer();
 
   const handleAddServer = () => {
-    if (subscription && !subscription.ai) {
-      handlePopUpOpen("upgradePlan", {
-        text: "Your current plan does not include access to Infisical AI. To unlock this feature, please upgrade to Infisical Enterprise plan.",
-        isEnterpriseFeature: true
-      });
-      return;
-    }
     setIsAddModalOpen(true);
   };
 
@@ -123,13 +112,6 @@ export const MCPServersTab = () => {
           onDeleteApproved={handleDeleteConfirm}
         />
       )}
-
-      <UpgradePlanModal
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={popUp.upgradePlan.data?.text}
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-      />
     </div>
   );
 };

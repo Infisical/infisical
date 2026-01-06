@@ -9,7 +9,6 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { ProjectPermissionPamSessionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TPamSessionDALFactory } from "./pam-session-dal";
@@ -21,7 +20,6 @@ type TPamSessionServiceFactoryDep = {
   pamSessionDAL: TPamSessionDALFactory;
   projectDAL: TProjectDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
@@ -31,7 +29,6 @@ export const pamSessionServiceFactory = ({
   pamSessionDAL,
   projectDAL,
   permissionService,
-  licenseService,
   kmsService
 }: TPamSessionServiceFactoryDep) => {
   // Helper to check and update expired sessions when viewing session details (redundancy for scheduled job)
@@ -111,13 +108,6 @@ export const pamSessionServiceFactory = ({
   };
 
   const updateLogsById = async ({ sessionId, logs }: TUpdateSessionLogsDTO, actor: OrgServiceActor) => {
-    const orgLicensePlan = await licenseService.getPlan(actor.orgId);
-    if (!orgLicensePlan.pam) {
-      throw new BadRequestError({
-        message: "PAM operation failed due to organization plan restrictions."
-      });
-    }
-
     // To be hit by gateways only
     if (actor.type !== ActorType.IDENTITY) {
       throw new ForbiddenRequestError({ message: "Only gateways can perform this action" });

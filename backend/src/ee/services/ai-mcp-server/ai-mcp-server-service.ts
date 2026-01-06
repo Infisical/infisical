@@ -20,7 +20,6 @@ import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
-import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TAiMcpServerDALFactory } from "./ai-mcp-server-dal";
@@ -53,7 +52,6 @@ type TAiMcpServerServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TAiMcpServerServiceFactory = ReturnType<typeof aiMcpServerServiceFactory>;
@@ -152,8 +150,7 @@ export const aiMcpServerServiceFactory = ({
   aiMcpServerUserCredentialDAL,
   kmsService,
   keyStore,
-  permissionService,
-  licenseService
+  permissionService
 }: TAiMcpServerServiceFactoryDep) => {
   /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-redundant-type-constituents */
   const fetchMcpTools = async (serverUrl: string, accessToken: string): Promise<TMcpTool[]> => {
@@ -549,13 +546,6 @@ export const aiMcpServerServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TCreateAiMcpServerDTO) => {
-    const orgLicensePlan = await licenseService.getPlan(actorOrgId);
-    if (!orgLicensePlan.ai) {
-      throw new BadRequestError({
-        message: "AI operation failed due to organization plan restrictions."
-      });
-    }
-
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,

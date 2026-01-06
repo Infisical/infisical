@@ -7,31 +7,18 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 
-import { TLicenseServiceFactory } from "../license/license-service";
 import { TPamFolderDALFactory } from "./pam-folder-dal";
 import { TCreateFolderDTO, TUpdateFolderDTO } from "./pam-folder-types";
 
 type TPamFolderServiceFactoryDep = {
   pamFolderDAL: TPamFolderDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TPamFolderServiceFactory = ReturnType<typeof pamFolderServiceFactory>;
 
-export const pamFolderServiceFactory = ({
-  pamFolderDAL,
-  permissionService,
-  licenseService
-}: TPamFolderServiceFactoryDep) => {
+export const pamFolderServiceFactory = ({ pamFolderDAL, permissionService }: TPamFolderServiceFactoryDep) => {
   const createFolder = async ({ name, description, parentId, projectId }: TCreateFolderDTO, actor: OrgServiceActor) => {
-    const orgLicensePlan = await licenseService.getPlan(actor.orgId);
-    if (!orgLicensePlan.pam) {
-      throw new BadRequestError({
-        message: "PAM operation failed due to organization plan restrictions."
-      });
-    }
-
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorAuthMethod: actor.authMethod,
@@ -72,13 +59,6 @@ export const pamFolderServiceFactory = ({
   };
 
   const updateFolder = async ({ id, name, description }: TUpdateFolderDTO, actor: OrgServiceActor) => {
-    const orgLicensePlan = await licenseService.getPlan(actor.orgId);
-    if (!orgLicensePlan.pam) {
-      throw new BadRequestError({
-        message: "PAM operation failed due to organization plan restrictions."
-      });
-    }
-
     const folder = await pamFolderDAL.findById(id);
     if (!folder) throw new NotFoundError({ message: `Folder with ID '${id}' not found` });
 

@@ -52,7 +52,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { getFullPamFolderPath } from "../pam-folder/pam-folder-fns";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
@@ -77,7 +76,6 @@ type TPamAccountServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
   orgDAL: TOrgDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2Service: Pick<
     TGatewayV2ServiceFactory,
@@ -106,7 +104,6 @@ export const pamAccountServiceFactory = ({
   orgDAL,
   userDAL,
   permissionService,
-  licenseService,
   kmsService,
   gatewayV2Service,
   auditLogService,
@@ -127,13 +124,6 @@ export const pamAccountServiceFactory = ({
     }: TCreateAccountDTO,
     actor: OrgServiceActor
   ) => {
-    const orgLicensePlan = await licenseService.getPlan(actor.orgId);
-    if (!orgLicensePlan.pam) {
-      throw new BadRequestError({
-        message: "PAM operation failed due to organization plan restrictions."
-      });
-    }
-
     if (rotationEnabled && (rotationIntervalSeconds === undefined || rotationIntervalSeconds === null)) {
       throw new BadRequestError({
         message: "Rotation interval must be defined when rotation is enabled."
@@ -247,13 +237,6 @@ export const pamAccountServiceFactory = ({
     }: TUpdateAccountDTO,
     actor: OrgServiceActor
   ) => {
-    const orgLicensePlan = await licenseService.getPlan(actor.orgId);
-    if (!orgLicensePlan.pam) {
-      throw new BadRequestError({
-        message: "PAM operation failed due to organization plan restrictions."
-      });
-    }
-
     const account = await pamAccountDAL.findById(accountId);
     if (!account) throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
 
@@ -590,13 +573,6 @@ export const pamAccountServiceFactory = ({
     }: TAccessAccountDTO,
     actor: OrgServiceActor
   ) => {
-    const orgLicensePlan = await licenseService.getPlan(actor.orgId);
-    if (!orgLicensePlan.pam) {
-      throw new BadRequestError({
-        message: "PAM operation failed due to organization plan restrictions."
-      });
-    }
-
     const pathSegments: string[] = accountPath.split("/").filter(Boolean);
     if (pathSegments.length === 0) {
       throw new BadRequestError({ message: "Invalid accountPath. Path must contain at least the account name." });
@@ -924,13 +900,6 @@ export const pamAccountServiceFactory = ({
   };
 
   const getSessionCredentials = async (sessionId: string, actor: OrgServiceActor) => {
-    const orgLicensePlan = await licenseService.getPlan(actor.orgId);
-    if (!orgLicensePlan.pam) {
-      throw new BadRequestError({
-        message: "PAM operation failed due to organization plan restrictions."
-      });
-    }
-
     // To be hit by gateways only
     if (actor.type !== ActorType.IDENTITY) {
       throw new ForbiddenRequestError({ message: "Only gateways can perform this action" });

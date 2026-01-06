@@ -15,6 +15,7 @@ import {
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionKmipActions,
+  ProjectPermissionMcpEndpointActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPamAccountActions,
   ProjectPermissionPamSessionActions,
@@ -28,7 +29,6 @@ import {
   ProjectPermissionSecretScanningDataSourceActions,
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSecretSyncActions,
-  ProjectPermissionMcpEndpointActions,
   ProjectPermissionSet,
   ProjectPermissionSshHostActions,
   ProjectPermissionSub
