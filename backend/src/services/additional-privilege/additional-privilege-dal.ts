@@ -10,6 +10,7 @@ export const additionalPrivilegeDALFactory = (db: TDbClient) => {
   const findWithAccessApprovalStatus = async (filter: TFindFilter<TAdditionalPrivileges>) => {
     const docs = await db
       .replicaNode()(TableName.AdditionalPrivilege)
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises
       .where(buildFindFilter(filter, TableName.AdditionalPrivilege))
       .leftJoin(
         TableName.AccessApprovalRequest,
