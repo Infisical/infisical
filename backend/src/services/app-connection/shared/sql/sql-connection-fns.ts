@@ -9,6 +9,7 @@ import {
   TSqlCredentialsRotationGeneratedCredentials,
   TSqlCredentialsRotationWithConnection
 } from "@app/ee/services/secret-rotation-v2/shared/sql-credentials/sql-credentials-rotation-types";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
@@ -83,7 +84,9 @@ const getConnectionConfig = ({
 
 // if TNS_ADMIN is set and the directory exists, we assume it's a wallet connection for OracleDB
 const isOracleWalletConnection = (app: AppConnection): boolean => {
-  return app === AppConnection.OracleDB && !!process.env.TNS_ADMIN && fs.existsSync(process.env.TNS_ADMIN);
+  const { TNS_ADMIN } = getConfig();
+
+  return app === AppConnection.OracleDB && !!TNS_ADMIN && fs.existsSync(TNS_ADMIN);
 };
 
 const getOracleWalletKnexClient = (
@@ -100,7 +103,7 @@ const getOracleWalletKnexClient = (
     }
   }
   return knex({
-    client: "oracledb",
+    client: SQL_CONNECTION_CLIENT_MAP[AppConnection.OracleDB],
     connection: {
       user: credentials.username,
       password: credentials.password,

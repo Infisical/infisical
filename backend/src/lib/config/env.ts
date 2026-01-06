@@ -391,6 +391,9 @@ const envSchema = z
         })
     ),
 
+    /* OracleDB ----------------------------------------------------------------------------- */
+    TNS_ADMIN: zpStr(z.string().optional()),
+
     /* INTERNAL ----------------------------------------------------------------------------- */
     INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional())
   })
