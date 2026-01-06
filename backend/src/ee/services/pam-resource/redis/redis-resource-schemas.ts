@@ -28,7 +28,7 @@ export const RedisAccountCredentialsSchema = z.object({
   username: z
     .string()
     .trim()
-    .max(256, "Username must be 255 characters or less")
+    .max(256, "Username must be 256 characters or less")
     .transform((value) => (value === "" ? undefined : value))
     .optional(),
   password: z
