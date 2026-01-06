@@ -160,7 +160,7 @@ export const RedisAccountForm = ({ account, onSubmit }: Props) => {
           )}
         />
         {credentialsEnabled && (
-          <div className="flex gap-2 mt-4">
+          <div className="mt-4 flex gap-2">
             <Controller
               name="credentials.username"
               control={control}
