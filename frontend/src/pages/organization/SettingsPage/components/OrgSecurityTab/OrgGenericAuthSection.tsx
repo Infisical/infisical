@@ -87,6 +87,9 @@ export const OrgGenericAuthSection = () => {
               <SelectItem value={MfaMethod.TOTP} key="mfa-method-totp">
                 Mobile Authenticator
               </SelectItem>
+              <SelectItem value={MfaMethod.WEBAUTHN} key="mfa-method-webauthn">
+                Passkey (WebAuthn)
+              </SelectItem>
             </Select>
           </FormControl>
         )}

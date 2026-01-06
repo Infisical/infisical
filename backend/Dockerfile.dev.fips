@@ -22,7 +22,17 @@ RUN apt-get update && apt-get install -y \
     curl \
     pkg-config \
     perl \
-    wget
+    wget \
+    unzip
+
+# Install libaio (required for Oracle Instant Client) - architecture-specific for Debian Trixie
+RUN ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "arm64" ]; then \
+      apt-get install -y libaio1t64 && \
+      ln -sf /lib/aarch64-linux-gnu/libaio.so.1t64 /lib/aarch64-linux-gnu/libaio.so.1; \
+    else \
+      apt-get install -y libaio1t64; \
+    fi
 
 # Install dependencies for TDS driver (required for SAP ASE dynamic secrets)
 RUN apt-get install -y \
@@ -49,6 +59,22 @@ RUN rm -fr ${SOFTHSM2_SOURCES}
 
 # Install pkcs11-tool
 RUN apt-get install -y opensc
+
+# Install Oracle Instant Client for OracleDB mTLS (Wallet) support
+RUN mkdir -p /opt/oracle && \
+    ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "arm64" ]; then \
+      EXPECTED_SHA="9c9a32051e97f087016fb334b7ad5c0aea8511ca8363afd8e0dc6ec4fc515c32" && \
+      curl -o /tmp/instantclient.zip https://download.oracle.com/otn_software/linux/instantclient/2326000/instantclient-basic-linux.arm64-23.26.0.0.0.zip; \
+    else \
+      EXPECTED_SHA="d6c79cbcf0ff209363e779855c690d4fc730aed847e9198a2c439bcf34760af5" && \
+      curl -o /tmp/instantclient.zip https://download.oracle.com/otn_software/linux/instantclient/2326000/instantclient-basic-linux.x64-23.26.0.0.0.zip; \
+    fi && \
+    echo "$EXPECTED_SHA  /tmp/instantclient.zip" | sha256sum -c - && \
+    unzip -oq /tmp/instantclient.zip -d /opt/oracle && \
+    rm /tmp/instantclient.zip && \
+    echo /opt/oracle/instantclient_23_26 > /etc/ld.so.conf.d/oracle-instantclient.conf && \
+    ldconfig
 
 WORKDIR /openssl-build
 RUN wget https://www.openssl.org/source/openssl-3.1.2.tar.gz \

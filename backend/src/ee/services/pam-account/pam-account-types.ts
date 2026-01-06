@@ -6,7 +6,7 @@ import { PamAccountOrderBy, PamAccountView } from "./pam-account-enums";
 // DTOs
 export type TCreateAccountDTO = Pick<
   TPamAccount,
-  "name" | "description" | "credentials" | "folderId" | "resourceId" | "rotationIntervalSeconds"
+  "name" | "description" | "credentials" | "folderId" | "resourceId" | "rotationIntervalSeconds" | "requireMfa"
 > & {
   rotationEnabled?: boolean;
 };
@@ -23,6 +23,7 @@ export type TAccessAccountDTO = {
   actorName: string;
   actorUserAgent: string;
   duration: number;
+  mfaSessionId?: string;
 };
 
 export type TListAccountsDTO = {

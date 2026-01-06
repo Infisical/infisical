@@ -6,7 +6,7 @@ import { FormControl, Select, SelectItem, Switch, Tooltip } from "@app/component
 
 export const rotateAccountFieldsSchema = z.object({
   rotationEnabled: z.boolean(),
-  rotationIntervalSeconds: z.number().nullable().optional()
+  rotationIntervalSeconds: z.number()
 });
 
 export const RotateAccountFields = ({
@@ -16,15 +16,15 @@ export const RotateAccountFields = ({
 }) => {
   const { control, watch } = useFormContext<{
     rotationEnabled: boolean;
-    rotationIntervalSeconds?: number | null;
+    rotationIntervalSeconds: number;
   }>();
 
   const rotationEnabled = watch("rotationEnabled");
 
   return (
     <Tooltip
-      isDisabled={rotationCredentialsConfigured}
       content="The resource which owns this account does not have rotation credentials configured."
+      isDisabled={rotationCredentialsConfigured}
     >
       <div
         className={twMerge(
@@ -62,7 +62,7 @@ export const RotateAccountFields = ({
               className="mb-0"
             >
               <Select
-                value={(value || 2592000).toString()}
+                value={value.toString()}
                 onValueChange={(val) => onChange(parseInt(val, 10))}
                 className="w-full border border-mineshaft-500 capitalize"
                 position="popper"

@@ -16,7 +16,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
-import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -251,13 +250,8 @@ export const PamAccountsTable = ({ projectId }: Props) => {
     });
 
     if (requiresApproval) {
-      createNotification({
-        text: "This account is protected by an approval policy, you must request access",
-        type: "info"
-      });
-
       // Open request access modal with pre-populated path
-      handlePopUpOpen("requestAccount", { accountPath: fullAccountPath });
+      handlePopUpOpen("requestAccount", { accountPath: fullAccountPath, accountAccessed: true });
       return;
     }
 
@@ -439,6 +433,8 @@ export const PamAccountsTable = ({ projectId }: Props) => {
                 account={account}
                 accountPath={account.folderId ? folderPaths[account.folderId] : undefined}
                 onAccess={(e: TPamAccount) => accessAccount(e)}
+                onUpdate={(e) => handlePopUpOpen("updateAccount", e)}
+                onDelete={(e) => handlePopUpOpen("deleteAccount", e)}
               />
             ))}
           </div>
@@ -560,6 +556,7 @@ export const PamAccountsTable = ({ projectId }: Props) => {
         isOpen={popUp.requestAccount.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("requestAccount", isOpen)}
         accountPath={popUp.requestAccount.data?.accountPath}
+        accountAccessed={popUp.requestAccount.data?.accountAccessed}
       />
       <PamDeleteAccountModal
         isOpen={popUp.deleteAccount.isOpen}

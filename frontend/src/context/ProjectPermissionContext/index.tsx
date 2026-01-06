@@ -11,11 +11,11 @@ export {
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionKmipActions,
+  ProjectPermissionMcpEndpointActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSshHostActions,
-  ProjectPermissionMcpEndpointActions,
   ProjectPermissionSub
 } from "./types";

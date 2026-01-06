@@ -1,4 +1,6 @@
+import fs from "fs";
 import knex, { Knex } from "knex";
+import oracledb from "oracledb";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
@@ -7,6 +9,7 @@ import {
   TSqlCredentialsRotationGeneratedCredentials,
   TSqlCredentialsRotationWithConnection
 } from "@app/ee/services/secret-rotation-v2/shared/sql-credentials/sql-credentials-rotation-types";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
@@ -79,11 +82,45 @@ const getConnectionConfig = ({
   }
 };
 
+// if TNS_ADMIN is set and the directory exists, we assume it's a wallet connection for OracleDB
+const isOracleWalletConnection = (app: AppConnection): boolean => {
+  const { TNS_ADMIN } = getConfig();
+
+  return app === AppConnection.OracleDB && !!TNS_ADMIN && fs.existsSync(TNS_ADMIN);
+};
+
+const getOracleWalletKnexClient = (
+  credentials: Pick<TSqlConnection["credentials"], "username" | "password" | "database">
+): Knex => {
+  if (oracledb.thin) {
+    try {
+      oracledb.initOracleClient();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      throw new BadRequestError({
+        message: `Failed to initialize Oracle client: ${errorMessage}. See documentation for instructions: https://infisical.com/docs/integrations/app-connections/oracledb#mutual-tls-wallet`
+      });
+    }
+  }
+  return knex({
+    client: SQL_CONNECTION_CLIENT_MAP[AppConnection.OracleDB],
+    connection: {
+      user: credentials.username,
+      password: credentials.password,
+      connectString: credentials.database
+    }
+  });
+};
+
 export const getSqlConnectionClient = async (appConnection: Pick<TSqlConnection, "credentials" | "app">) => {
   const {
     app,
     credentials: { host: baseHost, database, port, password, username }
   } = appConnection;
+
+  if (isOracleWalletConnection(app)) {
+    return getOracleWalletKnexClient({ username, password, database });
+  }
 
   const [host] = await verifyHostInputValidity(baseHost);
 
@@ -119,21 +156,30 @@ export const executeWithPotentialGateway = async <T>(
       targetPort: credentials.port
     });
 
+    const createClient = (proxyPort: number): Knex => {
+      const { database, username, password } = credentials;
+      if (isOracleWalletConnection(app)) {
+        return getOracleWalletKnexClient({ username, password, database });
+      }
+
+      return knex({
+        client: SQL_CONNECTION_CLIENT_MAP[app],
+        connection: {
+          database: credentials.database,
+          port: proxyPort,
+          host: "localhost",
+          user: credentials.username,
+          password: credentials.password,
+          connectionTimeoutMillis: EXTERNAL_REQUEST_TIMEOUT,
+          ...getConnectionConfig({ app, credentials })
+        }
+      });
+    };
+
     if (platformConnectionDetails) {
       return withGatewayV2Proxy(
         async (proxyPort) => {
-          const client = knex({
-            client: SQL_CONNECTION_CLIENT_MAP[app],
-            connection: {
-              database: credentials.database,
-              port: proxyPort,
-              host: "localhost",
-              user: credentials.username,
-              password: credentials.password,
-              connectionTimeoutMillis: EXTERNAL_REQUEST_TIMEOUT,
-              ...getConnectionConfig({ app, credentials })
-            }
-          });
+          const client = createClient(proxyPort);
           try {
             return await operation(client);
           } finally {
@@ -154,18 +200,7 @@ export const executeWithPotentialGateway = async <T>(
 
     return withGatewayProxy(
       async (proxyPort) => {
-        const client = knex({
-          client: SQL_CONNECTION_CLIENT_MAP[app],
-          connection: {
-            database: credentials.database,
-            port: proxyPort,
-            host: "localhost",
-            user: credentials.username,
-            password: credentials.password,
-            connectionTimeoutMillis: EXTERNAL_REQUEST_TIMEOUT,
-            ...getConnectionConfig({ app, credentials })
-          }
-        });
+        const client = createClient(proxyPort);
         try {
           return await operation(client);
         } finally {

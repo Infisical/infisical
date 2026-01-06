@@ -22,12 +22,12 @@ export {
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionKmipActions,
+  ProjectPermissionMcpEndpointActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSshHostActions,
-  ProjectPermissionMcpEndpointActions,
   ProjectPermissionSub,
   useProjectPermission
 } from "./ProjectPermissionContext";

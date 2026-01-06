@@ -293,6 +293,7 @@ import { membershipIdentityDALFactory } from "@app/services/membership-identity/
 import { membershipIdentityServiceFactory } from "@app/services/membership-identity/membership-identity-service";
 import { membershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
 import { membershipUserServiceFactory } from "@app/services/membership-user/membership-user-service";
+import { mfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { microsoftTeamsIntegrationDALFactory } from "@app/services/microsoft-teams/microsoft-teams-integration-dal";
 import { microsoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { projectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
@@ -391,6 +392,8 @@ import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
 import { userAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { userEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
+import { webAuthnCredentialDALFactory } from "@app/services/webauthn/webauthn-credential-dal";
+import { webAuthnServiceFactory } from "@app/services/webauthn/webauthn-service";
 import { webhookDALFactory } from "@app/services/webhook/webhook-dal";
 import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { workflowIntegrationDALFactory } from "@app/services/workflow-integration/workflow-integration-dal";
@@ -570,6 +573,7 @@ export const registerRoutes = async (
   const projectSlackConfigDAL = projectSlackConfigDALFactory(db);
   const workflowIntegrationDAL = workflowIntegrationDALFactory(db);
   const totpConfigDAL = totpConfigDALFactory(db);
+  const webAuthnCredentialDAL = webAuthnCredentialDALFactory(db);
 
   const externalGroupOrgRoleMappingDAL = externalGroupOrgRoleMappingDALFactory(db);
 
@@ -912,6 +916,13 @@ export const registerRoutes = async (
     totpConfigDAL,
     userDAL,
     kmsService
+  });
+
+  const webAuthnService = webAuthnServiceFactory({
+    webAuthnCredentialDAL,
+    userDAL,
+    tokenService,
+    keyStore
   });
 
   const loginService = authLoginServiceFactory({
@@ -2451,6 +2462,13 @@ export const registerRoutes = async (
     gatewayV2Service
   });
 
+  const mfaSessionService = mfaSessionServiceFactory({
+    keyStore,
+    tokenService,
+    smtpService,
+    totpService
+  });
+
   const approvalPolicyDAL = approvalPolicyDALFactory(db);
   const pamSessionExpirationService = pamSessionExpirationServiceFactory({
     queueService,
@@ -2467,8 +2485,12 @@ export const registerRoutes = async (
     pamSessionDAL,
     permissionService,
     projectDAL,
+    orgDAL,
     userDAL,
     auditLogService,
+    mfaSessionService,
+    tokenService,
+    smtpService,
     approvalRequestGrantsDAL,
     approvalPolicyDAL,
     pamSessionExpirationService
@@ -2702,6 +2724,7 @@ export const registerRoutes = async (
     externalGroupOrgRoleMapping: externalGroupOrgRoleMappingService,
     projectTemplate: projectTemplateService,
     totp: totpService,
+    webAuthn: webAuthnService,
     appConnection: appConnectionService,
     secretSync: secretSyncService,
     kmip: kmipService,
@@ -2723,6 +2746,7 @@ export const registerRoutes = async (
     pamResource: pamResourceService,
     pamAccount: pamAccountService,
     pamSession: pamSessionService,
+    mfaSession: mfaSessionService,
     upgradePath: upgradePathService,
 
     membershipUser: membershipUserService,

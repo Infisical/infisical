@@ -51,6 +51,7 @@ function UnstableTableRow({ className, ...props }: React.ComponentProps<"tr">) {
       data-slot="table-row"
       className={cn(
         "border-b border-border transition-colors hover:bg-foreground/5 data-[state=selected]:bg-foreground/5",
+        props.onClick && "cursor-pointer",
         className
       )}
       {...props}

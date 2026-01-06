@@ -51,7 +51,7 @@ export const ProjectIdentityDetailsSection = ({
   return (
     <>
       <UnstableCard className="w-full lg:max-w-[24rem]">
-        <UnstableCardHeader>
+        <UnstableCardHeader className="border-b">
           <UnstableCardTitle>Details</UnstableCardTitle>
           <UnstableCardDescription>Machine identity details</UnstableCardDescription>
           {!isOrgIdentity && (

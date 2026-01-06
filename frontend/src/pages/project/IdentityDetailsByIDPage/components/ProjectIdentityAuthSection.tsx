@@ -85,7 +85,7 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
               activeLockoutAuthMethods={identity.activeLockoutAuthMethods}
             />
           ) : (
-            <UnstableEmpty className="rounded-sm border bg-mineshaft-800/50">
+            <UnstableEmpty className="border">
               <UnstableEmptyHeader>
                 <UnstableEmptyTitle>
                   This machine identity has no auth methods configured

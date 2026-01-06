@@ -209,5 +209,6 @@ export * from "./user-encryption-keys";
 export * from "./user-group-membership";
 export * from "./users";
 export * from "./vault-external-migration-configs";
+export * from "./webauthn-credentials";
 export * from "./webhooks";
 export * from "./workflow-integrations";
