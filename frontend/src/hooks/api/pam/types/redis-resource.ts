@@ -5,8 +5,6 @@ import { TBasePamResource } from "./base-resource";
 export type TRedisConnectionDetails = {
   host: string;
   port: number;
-  username?: string;
-  password?: string;
   sslEnabled: boolean;
   sslRejectUnauthorized: boolean;
   sslCertificate?: string;
