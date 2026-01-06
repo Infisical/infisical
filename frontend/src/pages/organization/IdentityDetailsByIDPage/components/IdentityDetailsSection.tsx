@@ -127,8 +127,8 @@ export const IdentityDetailsSection = ({
           <Detail>
             <DetailLabel>Metadata</DetailLabel>
             <DetailValue className="flex flex-wrap gap-2">
-              {data.identity?.metadata?.length ? (
-                data.identity.metadata?.map((el) => (
+              {data?.metadata?.length ? (
+                data.metadata?.map((el) => (
                   <UnstableButtonGroup className="min-w-0" key={el.id}>
                     <Badge isTruncatable>
                       <span>{el.key}</span>
