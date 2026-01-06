@@ -1,12 +1,12 @@
-import { FormProvider, useForm } from "react-hook-form";
+import { useEffect, useState } from "react";
+import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Button, ModalClose } from "@app/components/v2";
+import { Button, FormControl, Input, ModalClose } from "@app/components/v2";
 import { PamResourceType, TRedisAccount } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
-import { UsernamePasswordFields } from "./shared/UsernamePasswordFields";
 import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
 
 type Props = {
@@ -55,8 +55,18 @@ export const RedisAccountForm = ({ account, onSubmit }: Props) => {
 
   const {
     handleSubmit,
+    control,
     formState: { isSubmitting, isDirty }
   } = form;
+
+  const [showPassword, setShowPassword] = useState(false);
+  const password = useWatch({ control, name: "credentials.password" });
+
+  useEffect(() => {
+    if (password === UNCHANGED_PASSWORD_SENTINEL) {
+      setShowPassword(false);
+    }
+  }, [password]);
 
   return (
     <FormProvider {...form}>
@@ -66,7 +76,54 @@ export const RedisAccountForm = ({ account, onSubmit }: Props) => {
         }}
       >
         <GenericAccountFields />
-        <UsernamePasswordFields isUpdate={isUpdate} />
+        <div className="flex gap-2">
+          <Controller
+            name="credentials.username"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                className="flex-1"
+                errorText={error?.message}
+                isError={Boolean(error?.message)}
+                label="Username"
+                isOptional
+              >
+                <Input {...field} autoComplete="off" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            name="credentials.password"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                className="flex-1"
+                errorText={error?.message}
+                isError={Boolean(error?.message)}
+                label="Password"
+                isOptional
+              >
+                <Input
+                  {...field}
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  onFocus={() => {
+                    if (isUpdate && field.value === UNCHANGED_PASSWORD_SENTINEL) {
+                      field.onChange("");
+                    }
+                    setShowPassword(true);
+                  }}
+                  onBlur={() => {
+                    if (isUpdate && field.value === "") {
+                      field.onChange(UNCHANGED_PASSWORD_SENTINEL);
+                    }
+                    setShowPassword(false);
+                  }}
+                />
+              </FormControl>
+            )}
+          />
+        </div>
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"
