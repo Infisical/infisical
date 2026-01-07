@@ -156,7 +156,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
           </Detail>
           <Detail>
             <DetailLabel>Email</DetailLabel>
-            <DetailValue className="flex items-center gap-x-1">
+            <DetailValue className="flex flex-wrap items-center gap-1">
               {membership.user.email ? (
                 <>
                   {membership.user.email}
@@ -168,9 +168,9 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
                     }
                   >
                     {membership.user.isEmailVerified ? (
-                      <CheckIcon size={14} className="text-success" />
+                      <CheckIcon size={14} className="ml-0.5 shrink-0 text-success" />
                     ) : (
-                      <XIcon size={14} className="text-danger" />
+                      <XIcon size={14} className="ml-0.5 shrink-0 text-danger" />
                     )}
                   </Tooltip>
                   <Tooltip content="Copy user email to clipboard">
