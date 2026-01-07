@@ -30,6 +30,49 @@ const migrationStatusCheckErrorHandler = (err: Error) => {
   throw err;
 };
 
+const getLockTableName = (tableName: string): string => {
+  return `${tableName}_lock`;
+};
+
+const isMigrationInitialized = async (db: Knex, logger: Logger): Promise<boolean> => {
+  const { tableName } = migrationConfig;
+  const lockTableName = getLockTableName(tableName);
+  const tableExists = await db.schema.hasTable(lockTableName);
+  if (!tableExists) {
+    logger.info("Migration tables not initialized");
+    return false;
+  }
+
+  const rowCount = await db(lockTableName).count().first();
+  logger.info(`Migration tables initialized, ${rowCount?.count}`);
+  return (rowCount?.count as number) > 0;
+};
+
+const ensureMigrationTables = async (db: Knex, logger: Logger): Promise<void> => {
+  const isInitialized = await isMigrationInitialized(db, logger);
+  if (isInitialized) {
+    return;
+  }
+  await db.transaction(async (tx) => {
+    // This is to prevent multiple instances from initializing the migration table at the same time.
+    // While the Knex migration system comes with its own lock mechanism, but it doesn't handle the
+    // case where multiple instances are trying to initialize the migration table at the same time.
+    // Therefore, we need to use a separate lock to prevent multiple instances from initializing the migration table at the same time.
+    await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.BootUpMigration]);
+    if (await isMigrationInitialized(tx, logger)) {
+      // After we acquire the lock, check again and see if the migration table is still not initialized.
+      // It's possible multiple instances sees the missing migration table and try to initialize it at the same time.
+      // But only the one instance which acquired the lock will be able to initialize the migration table.
+      logger.info("Migration tables already initialized by another instance, skipping initialization.");
+      return;
+    }
+    // The currentVersion will call ensureTable, end up creating the migration table, lock table,
+    // and insert the first row into the lock table.
+    await tx.migrate.currentVersion(migrationConfig);
+    logger.info("Migration tables initialized");
+  });
+};
+
 export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs) => {
   try {
     // akhilmhdh(Feb 10 2025): 2 years  from now remove this
@@ -66,23 +109,22 @@ export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs
     }
 
     if (auditLogDb) {
-      await auditLogDb.transaction(async (tx) => {
-        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.BootUpMigration]);
-        logger.info("Running audit log migrations.");
+      await ensureMigrationTables(auditLogDb, logger);
+      logger.info("Running audit log migrations.");
 
-        const didPreviousInstanceRunMigration = !(await auditLogDb.migrate
-          .status(migrationConfig)
-          .catch(migrationStatusCheckErrorHandler));
-        if (didPreviousInstanceRunMigration) {
-          logger.info("No audit log migrations pending: Applied by previous instance. Skipping migration process.");
-          return;
-        }
+      const didPreviousInstanceRunMigration = !(await auditLogDb.migrate
+        .status(migrationConfig)
+        .catch(migrationStatusCheckErrorHandler));
+      if (didPreviousInstanceRunMigration) {
+        logger.info("No audit log migrations pending: Applied by previous instance. Skipping migration process.");
+        return;
+      }
 
-        await auditLogDb.migrate.latest(migrationConfig);
-        logger.info("Finished audit log migrations.");
-      });
+      await auditLogDb.migrate.latest(migrationConfig);
+      logger.info("Finished audit log migrations.");
     }
 
+    await ensureMigrationTables(applicationDb, logger);
     await applicationDb.transaction(async () => {
       logger.info("Running application migrations.");
 
