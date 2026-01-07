@@ -416,6 +416,10 @@ export type TQueueJobTypes = {
     name: QueueJobs.PkiAcmeChallengeValidation;
     payload: { challengeId: string };
   };
+  [QueueName.FrequentResourceCleanUp]: {
+    name: QueueJobs.FrequentResourceCleanUp;
+    payload: undefined;
+  };
 };
 
 const SECRET_SCANNING_JOBS = [
