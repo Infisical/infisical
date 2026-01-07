@@ -260,7 +260,7 @@
     "scim-patch": "^0.8.3",
     "scim2-parse-filter": "^0.2.10",
     "sjcl": "^1.0.8",
-    "smee-client": "^2.0.0",
+    "smee-client": "^4.4.1",
     "snowflake-sdk": "^1.14.0",
     "ssh2": "^1.17.0",
     "tedious": "^18.2.1",
