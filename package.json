@@ -26,5 +26,9 @@
   "dependencies": {
     "@radix-ui/react-radio-group": "^1.1.3",
     "secrets.js-grempe": "^2.0.0"
+  },
+  "engines": {
+    "node": "^20.19.5",
+    "npm": "^10.8.2"
   }
 }

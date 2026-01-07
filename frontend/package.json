@@ -155,5 +155,9 @@
     "vite-plugin-top-level-await": "^1.4.4",
     "vite-plugin-wasm": "^3.4.0",
     "vite-tsconfig-paths": "^5.1.4"
+  },
+  "engines": {
+    "node": "^20.19.5",
+    "npm": "^10.8.2"
   }
 }
