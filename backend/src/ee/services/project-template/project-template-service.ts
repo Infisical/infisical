@@ -78,7 +78,10 @@ export const projectTemplateServiceFactory = ({
     return [
       ...(type
         ? [getDefaultProjectTemplate(actor.orgId, type)]
-        : Object.values(ProjectType).map((projectType) => getDefaultProjectTemplate(actor.orgId, projectType))),
+        : Object.values(ProjectType)
+            // Filter out SSH since we're deprecating
+            .filter((projectType) => projectType !== ProjectType.SSH)
+            .map((projectType) => getDefaultProjectTemplate(actor.orgId, projectType))),
       ...projectTemplates.map((template) => $unpackProjectTemplate(template))
     ];
   };
