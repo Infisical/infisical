@@ -111,7 +111,6 @@ export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs
     if (auditLogDb) {
       await ensureMigrationTables(auditLogDb, logger);
       logger.info("Running audit log migrations.");
-
       const didPreviousInstanceRunMigration = !(await auditLogDb.migrate
         .status(migrationConfig)
         .catch(migrationStatusCheckErrorHandler));
@@ -119,26 +118,21 @@ export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs
         logger.info("No audit log migrations pending: Applied by previous instance. Skipping migration process.");
         return;
       }
-
       await auditLogDb.migrate.latest(migrationConfig);
       logger.info("Finished audit log migrations.");
     }
 
     await ensureMigrationTables(applicationDb, logger);
-    await applicationDb.transaction(async () => {
-      logger.info("Running application migrations.");
-
-      const didPreviousInstanceRunMigration = !(await applicationDb.migrate
-        .status(migrationConfig)
-        .catch(migrationStatusCheckErrorHandler));
-      if (didPreviousInstanceRunMigration) {
-        logger.info("No application migrations pending: Applied by previous instance. Skipping migration process.");
-        return;
-      }
-
-      await applicationDb.migrate.latest(migrationConfig);
-      logger.info("Finished application migrations.");
-    });
+    logger.info("Running application migrations.");
+    const didPreviousInstanceRunMigration = !(await applicationDb.migrate
+      .status(migrationConfig)
+      .catch(migrationStatusCheckErrorHandler));
+    if (didPreviousInstanceRunMigration) {
+      logger.info("No application migrations pending: Applied by previous instance. Skipping migration process.");
+      return;
+    }
+    await applicationDb.migrate.latest(migrationConfig);
+    logger.info("Finished application migrations.");
   } catch (err) {
     logger.error(err, "Boot up migration failed");
     process.exit(1);
