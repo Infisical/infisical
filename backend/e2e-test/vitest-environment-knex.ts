@@ -144,14 +144,8 @@ export default {
         // @ts-expect-error type
         delete globalThis.testQueue;
         // called after all tests with this env have been run
-        await db.migrate.rollback(
-          {
-            directory: path.join(__dirname, "../src/db/migrations"),
-            extension: "ts",
-            tableName: "infisical_migrations"
-          },
-          true
-        );
+        await db.raw("DROP SCHEMA IF EXISTS public CASCADE");
+        await db.schema.createSchemaIfNotExists("public");
 
         await redis.flushdb("ASYNC");
         redis.disconnect();
