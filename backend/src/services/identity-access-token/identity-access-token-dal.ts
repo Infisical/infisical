@@ -37,11 +37,18 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
     const QUERY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
     const MAX_TTL = 315_360_000; // Maximum TTL value in seconds (10 years)
 
+    // Get the current timestamp from the database at the start of the operation
+    // This ensures all queries use the same "now" value for consistency
+    // Otherwise we may trap in the loop forever as there will always be new expired tokens to delete.
+    const dbConnection = tx || db;
+    const nowResult = await dbConnection.raw<{ rows: Array<{ now: Date }> }>(`SELECT NOW() AT TIME ZONE 'UTC' as now`);
+    const { now } = nowResult.rows[0];
+
     let deletedTokenIds: { id: string }[] = [];
     let numberOfRetryOnFailure = 0;
     let isRetrying = false;
 
-    const getExpiredTokensQuery = (dbClient: Knex | Knex.Transaction) => {
+    const getExpiredTokensQuery = (dbClient: Knex | Knex.Transaction, nowTimestamp: Date) => {
       const revokedTokensQuery = dbClient(TableName.IdentityAccessToken)
         .where({
           isAccessTokenRevoked: true
@@ -73,9 +80,9 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
                   ?                                                         -- Capped by MAX_TTL (parameterized value)
                 )
               )
-            < NOW() AT TIME ZONE 'UTC'                                      -- Check if the calculated time is before now (converted to UTC)
+            < ?::timestamptz AT TIME ZONE 'UTC'                             -- Check if the calculated time is before now (cast to UTC timestamp for comparison)
             `,
-          [MAX_TTL]
+          [MAX_TTL, nowTimestamp]
         )
         .select("id");
 
@@ -88,7 +95,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
     do {
       try {
         const deleteBatch = async (dbClient: Knex | Knex.Transaction) => {
-          const idsToDeleteQuery = getExpiredTokensQuery(dbClient).limit(BATCH_SIZE);
+          const idsToDeleteQuery = getExpiredTokensQuery(dbClient, now).limit(BATCH_SIZE);
           return dbClient(TableName.IdentityAccessToken).whereIn("id", idsToDeleteQuery).del().returning("id");
         };
 
