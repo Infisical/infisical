@@ -53,9 +53,13 @@ export const getGitHubGatewayConnectionDetails = async (
   targetHost: string,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ): Promise<Awaited<ReturnType<TGatewayV2ServiceFactory["getPlatformConnectionDetailsByGatewayId"]>>> => {
+  const urlString = targetHost.includes("://") ? targetHost : `https://${targetHost}`;
+  const url = new URL(urlString);
+  const { hostname } = url;
+
   return gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
     gatewayId,
-    targetHost,
+    targetHost: hostname,
     targetPort: 443
   });
 };
