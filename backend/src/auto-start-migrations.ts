@@ -83,8 +83,7 @@ export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs
       });
     }
 
-    await applicationDb.transaction(async (tx) => {
-      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.BootUpMigration]);
+    await applicationDb.transaction(async () => {
       logger.info("Running application migrations.");
 
       const didPreviousInstanceRunMigration = !(await applicationDb.migrate
