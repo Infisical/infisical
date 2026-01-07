@@ -9,8 +9,8 @@ export async function up(knex: Knex): Promise<void> {
   ) {
     await knex.raw(`
         CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_identity_access_tokens_revoked
-        ON ${TableName.IdentityAccessToken} ("isAccessTokenRevoked")
-        WHERE "isAccessTokenRevoked" = true
+        ON ${TableName.IdentityAccessToken} ("id")
+        WHERE "isAccessTokenRevoked" = 't'
     `);
   }
 
@@ -21,7 +21,7 @@ export async function up(knex: Knex): Promise<void> {
   ) {
     await knex.raw(`
         CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_identity_access_tokens_num_uses_with_limit
-        ON ${TableName.IdentityAccessToken} ("accessTokenNumUses")
+        ON ${TableName.IdentityAccessToken} ("id")
         WHERE "accessTokenNumUsesLimit" > 0
           AND "accessTokenNumUses" >= "identity_access_tokens"."accessTokenNumUsesLimit"
     `);
