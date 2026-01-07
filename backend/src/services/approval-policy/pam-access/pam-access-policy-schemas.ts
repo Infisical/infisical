@@ -17,22 +17,34 @@ export const PamAccessPolicyInputsSchema = z.object({
   accountPath: z.string()
 });
 
+const accountPathGlob = z.string().refine(
+  (el) => {
+    try {
+      picomatch.parse([el]);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  { message: "Invalid glob pattern" }
+);
+
 // Conditions
 export const PamAccessPolicyConditionsSchema = z
   .object({
-    accountPaths: z
-      .string()
-      .refine(
-        (el) => {
-          try {
-            picomatch.parse([el]);
-            return true;
-          } catch {
-            return false;
-          }
-        },
-        { message: "Invalid glob pattern" }
-      )
+    accountPaths: accountPathGlob.array()
+  })
+  .array();
+
+const MutatePamAccessPolicyConditionsSchema = z
+  .object({
+    accountPaths: accountPathGlob
+      .refine((el) => el.startsWith("/"), {
+        message: "Path must start with /"
+      })
+      .refine((el) => !el.endsWith("/"), {
+        message: "Path cannot end with /"
+      })
       .array()
   })
   .array();
@@ -57,7 +69,18 @@ export const PamAccessPolicyConstraintsSchema = z.object({
 
 // Request Data
 export const PamAccessPolicyRequestDataSchema = z.object({
-  accountPath: z.string(),
+  accountPath: accountPathGlob,
+  accessDuration: DurationSchema
+});
+
+const CreatePamAccessPolicyRequestDataSchema = z.object({
+  accountPath: accountPathGlob
+    .refine((el) => el.startsWith("/"), {
+      message: "Path must start with /"
+    })
+    .refine((el) => !el.endsWith("/"), {
+      message: "Path cannot end with /"
+    }),
   accessDuration: DurationSchema
 });
 
@@ -74,12 +97,12 @@ export const PamAccessPolicySchema = BaseApprovalPolicySchema.extend({
 });
 
 export const CreatePamAccessPolicySchema = BaseCreateApprovalPolicySchema.extend({
-  conditions: PamAccessPolicyConditionsSchema,
+  conditions: MutatePamAccessPolicyConditionsSchema,
   constraints: PamAccessPolicyConstraintsSchema
 });
 
 export const UpdatePamAccessPolicySchema = BaseUpdateApprovalPolicySchema.extend({
-  conditions: PamAccessPolicyConditionsSchema.optional(),
+  conditions: MutatePamAccessPolicyConditionsSchema.optional(),
   constraints: PamAccessPolicyConstraintsSchema.optional()
 });
 
@@ -92,7 +115,7 @@ export const PamAccessRequestSchema = BaseApprovalRequestSchema.extend({
 });
 
 export const CreatePamAccessRequestSchema = BaseCreateApprovalRequestSchema.extend({
-  requestData: PamAccessPolicyRequestDataSchema
+  requestData: CreatePamAccessPolicyRequestDataSchema
 });
 
 // Grants
