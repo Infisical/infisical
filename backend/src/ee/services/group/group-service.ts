@@ -60,7 +60,7 @@ type TGroupServiceFactoryDep = {
     | "transaction"
     | "findAllGroupProjects"
   >;
-  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "findOne" | "create">;
+  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "findOne" | "create" | "getGroupById">;
   membershipDAL: Pick<TMembershipDALFactory, "find" | "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "countAllOrgMembers" | "findById">;
@@ -153,9 +153,7 @@ export const groupServiceFactory = ({
         {
           name,
           slug: slug || slugify(`${name}-${alphaNumericNanoId(4)}`),
-          orgId: actorOrgId,
-          role: isCustomRole ? OrgMembershipRole.Custom : role,
-          roleId: null
+          orgId: actorOrgId
         },
         tx
       );
@@ -552,18 +550,21 @@ export const groupServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
 
     // check if group with slug exists
-    const group = await groupDAL.findOne({
-      orgId: actorOrgId,
-      id
+    const groupMembership = await membershipGroupDAL.getGroupById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      groupId: id
     });
 
-    if (!group)
+    if (!groupMembership)
       throw new NotFoundError({
         message: `Failed to find group with ID ${id}`
       });
 
     const oidcConfig = await oidcConfigDAL.findOne({
-      orgId: group.orgId,
+      orgId: actorOrgId,
       isActive: true
     });
 
@@ -574,7 +575,8 @@ export const groupServiceFactory = ({
       });
     }
 
-    const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([group.role], actorOrgId);
+    const groupRoles = groupMembership.roles.map((el) => el.customRoleSlug || el.role);
+    const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId);
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
 
     // check if user has broader or equal to privileges than group
@@ -604,7 +606,7 @@ export const groupServiceFactory = ({
     if (!user) throw new NotFoundError({ message: `Failed to find user with username ${username}` });
 
     const users = await addUsersToGroupByUserIds({
-      group,
+      group: groupMembership.group,
       userIds: [user.id],
       userDAL,
       userGroupMembershipDAL,
@@ -639,17 +641,21 @@ export const groupServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
 
     // check if group with slug exists
-    const group = await groupDAL.findOne({
-      orgId: actorOrgId,
-      id
+    const groupMembership = await membershipGroupDAL.getGroupById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      groupId: id
     });
 
-    if (!group)
+    if (!groupMembership)
       throw new NotFoundError({
         message: `Failed to find group with ID ${id}`
       });
 
-    const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([group.role], actorOrgId);
+    const groupRoles = groupMembership.roles.map((el) => el.customRoleSlug || el.role);
+    const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId);
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
 
     // check if user has broader or equal to privileges than group
@@ -674,7 +680,7 @@ export const groupServiceFactory = ({
 
     const identityMembership = await membershipDAL.findOne({
       scope: AccessScope.Organization,
-      scopeOrgId: group.orgId,
+      scopeOrgId: groupMembership.group.orgId,
       actorIdentityId: identityId
     });
 
@@ -683,7 +689,7 @@ export const groupServiceFactory = ({
     }
 
     const identities = await addIdentitiesToGroup({
-      group,
+      group: groupMembership.group,
       identityIds: [identityId],
       identityDAL,
       membershipDAL,
@@ -714,18 +720,21 @@ export const groupServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
 
     // check if group with slug exists
-    const group = await groupDAL.findOne({
-      orgId: actorOrgId,
-      id
+    const groupMembership = await membershipGroupDAL.getGroupById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      groupId: id
     });
 
-    if (!group)
+    if (!groupMembership)
       throw new NotFoundError({
         message: `Failed to find group with ID ${id}`
       });
 
     const oidcConfig = await oidcConfigDAL.findOne({
-      orgId: group.orgId,
+      orgId: groupMembership.group.orgId,
       isActive: true
     });
 
@@ -736,7 +745,8 @@ export const groupServiceFactory = ({
       });
     }
 
-    const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([group.role], actorOrgId);
+    const groupRoles = groupMembership.roles.map((el) => el.customRoleSlug || el.role);
+    const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId);
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
 
     // check if user has broader or equal to privileges than group
@@ -765,7 +775,7 @@ export const groupServiceFactory = ({
     if (!user) throw new NotFoundError({ message: `Failed to find user with username ${username}` });
 
     const users = await removeUsersFromGroupByUserIds({
-      group,
+      group: groupMembership.group,
       userIds: [user.id],
       userDAL,
       userGroupMembershipDAL,
@@ -796,17 +806,21 @@ export const groupServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
 
-    const group = await groupDAL.findOne({
-      orgId: actorOrgId,
-      id
+    const groupMembership = await membershipGroupDAL.getGroupById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      groupId: id
     });
 
-    if (!group)
+    if (!groupMembership)
       throw new NotFoundError({
         message: `Failed to find group with ID ${id}`
       });
 
-    const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([group.role], actorOrgId);
+    const groupRoles = groupMembership.roles.map((el) => el.customRoleSlug || el.role);
+    const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId);
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
 
     // check if user has broader or equal to privileges than group
@@ -830,7 +844,7 @@ export const groupServiceFactory = ({
 
     const identityMembership = await membershipDAL.findOne({
       scope: AccessScope.Organization,
-      scopeOrgId: group.orgId,
+      scopeOrgId: groupMembership.group.orgId,
       actorIdentityId: identityId
     });
 
@@ -839,7 +853,7 @@ export const groupServiceFactory = ({
     }
 
     const identities = await removeIdentitiesFromGroup({
-      group,
+      group: groupMembership.group,
       identityIds: [identityId],
       identityDAL,
       membershipDAL,

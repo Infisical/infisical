@@ -12,8 +12,6 @@ export const GroupsSchema = z.object({
   orgId: z.string().uuid(),
   name: z.string(),
   slug: z.string(),
-  role: z.string(),
-  roleId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

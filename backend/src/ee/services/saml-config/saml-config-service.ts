@@ -176,9 +176,7 @@ export const samlConfigServiceFactory = ({
             {
               name: groupName,
               slug: `${groupName.toLowerCase().replace(new RE2("[^a-z0-9]", "g"), "-")}-${Date.now()}`,
-              orgId,
-              role: OrgMembershipRole.NoAccess,
-              roleId: null
+              orgId
             },
             transaction
           );
