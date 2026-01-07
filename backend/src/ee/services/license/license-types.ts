@@ -92,8 +92,6 @@ export type TFeatureSet = {
   pkiLegacyTemplates: false;
   fips: false;
   eventSubscriptions: false;
-  pam: false;
-  ai: false;
 };
 
 export type TOrgPlansTableDTO = {

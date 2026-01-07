@@ -4,7 +4,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { EmptyState, Input, Pagination, Spinner, Tooltip } from "@app/components/v2";
-import { useSubscription } from "@app/context";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import {
   PAM_RESOURCE_TYPE_MAP,
@@ -18,7 +17,6 @@ type Props = {
 
 export const ResourceTypeSelect = ({ onSelect }: Props) => {
   const { isPending, data: resourceOptions } = useListPamResourceOptions();
-  const { subscription } = useSubscription();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
 
   const appendedResourceOptions = useMemo(() => {
@@ -65,14 +63,6 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
   });
 
   const handleResourceSelect = (resource: PamResourceType) => {
-    if (!subscription.pam) {
-      handlePopUpOpen("upgradePlan", {
-        text: "Your current plan does not include access to Infisical PAM. To unlock this feature, please upgrade to Infisical Enterprise plan.",
-        isEnterpriseFeature: true
-      });
-      return;
-    }
-
     // We temporarily show a special license modal for these because we will have to write some code to complete the integration
     if (
       resource === PamResourceType.RDP ||

@@ -27,7 +27,6 @@ import { AiMcpServerCredentialMode } from "../ai-mcp-server/ai-mcp-server-enum";
 import { TAiMcpServerServiceFactory } from "../ai-mcp-server/ai-mcp-server-service";
 import { TAiMcpServerToolDALFactory } from "../ai-mcp-server/ai-mcp-server-tool-dal";
 import { TAiMcpServerUserCredentialDALFactory } from "../ai-mcp-server/ai-mcp-server-user-credential-dal";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionMcpEndpointActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TAiMcpEndpointDALFactory } from "./ai-mcp-endpoint-dal";
@@ -73,7 +72,6 @@ type TAiMcpEndpointServiceFactoryDep = {
   authTokenService: Pick<TAuthTokenServiceFactory, "getUserTokenSessionById">;
   userDAL: TUserDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 // OAuth schemas for parsing cached data
@@ -130,8 +128,7 @@ export const aiMcpEndpointServiceFactory = ({
   keyStore,
   authTokenService,
   userDAL,
-  permissionService,
-  licenseService
+  permissionService
 }: TAiMcpEndpointServiceFactoryDep) => {
   const interactWithMcp = async ({
     endpointId,
@@ -375,13 +372,6 @@ export const aiMcpEndpointServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TCreateAiMcpEndpointDTO) => {
-    const orgLicensePlan = await licenseService.getPlan(actorOrgId);
-    if (!orgLicensePlan.ai) {
-      throw new BadRequestError({
-        message: "AI operation failed due to organization plan restrictions."
-      });
-    }
-
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,

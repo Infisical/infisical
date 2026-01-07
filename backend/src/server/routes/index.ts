@@ -2450,14 +2450,12 @@ export const registerRoutes = async (
 
   const pamFolderService = pamFolderServiceFactory({
     pamFolderDAL,
-    permissionService,
-    licenseService
+    permissionService
   });
 
   const pamResourceService = pamResourceServiceFactory({
     pamResourceDAL,
     permissionService,
-    licenseService,
     kmsService,
     gatewayV2Service
   });
@@ -2479,7 +2477,6 @@ export const registerRoutes = async (
     pamAccountDAL,
     gatewayV2Service,
     kmsService,
-    licenseService,
     pamFolderDAL,
     pamResourceDAL,
     pamSessionDAL,
@@ -2505,7 +2502,6 @@ export const registerRoutes = async (
     pamSessionDAL,
     projectDAL,
     permissionService,
-    licenseService,
     kmsService
   });
 
@@ -2515,8 +2511,7 @@ export const registerRoutes = async (
     aiMcpServerUserCredentialDAL,
     kmsService,
     keyStore,
-    permissionService,
-    licenseService
+    permissionService
   });
 
   const aiMcpActivityLogService = aiMcpActivityLogServiceFactory({
@@ -2537,8 +2532,7 @@ export const registerRoutes = async (
     authTokenService: tokenService,
     aiMcpActivityLogService,
     userDAL,
-    permissionService,
-    licenseService
+    permissionService
   });
 
   const migrationService = externalMigrationServiceFactory({

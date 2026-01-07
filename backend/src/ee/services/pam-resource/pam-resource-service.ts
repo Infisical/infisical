@@ -12,7 +12,6 @@ import { OrgServiceActor } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { decryptAccountCredentials, encryptAccountCredentials } from "../pam-account/pam-account-fns";
 import { TPamResourceDALFactory } from "./pam-resource-dal";
 import { PamResource } from "./pam-resource-enums";
@@ -31,7 +30,6 @@ import { TSSHResourceMetadata } from "./ssh/ssh-resource-types";
 type TPamResourceServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2Service: Pick<
     TGatewayV2ServiceFactory,
@@ -44,7 +42,6 @@ export type TPamResourceServiceFactory = ReturnType<typeof pamResourceServiceFac
 export const pamResourceServiceFactory = ({
   pamResourceDAL,
   permissionService,
-  licenseService,
   kmsService,
   gatewayV2Service
 }: TPamResourceServiceFactoryDep) => {
@@ -76,13 +73,6 @@ export const pamResourceServiceFactory = ({
     { resourceType, connectionDetails, gatewayId, name, projectId, rotationAccountCredentials }: TCreateResourceDTO,
     actor: OrgServiceActor
   ) => {
-    const orgLicensePlan = await licenseService.getPlan(actor.orgId);
-    if (!orgLicensePlan.pam) {
-      throw new BadRequestError({
-        message: "PAM operation failed due to organization plan restrictions."
-      });
-    }
-
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorAuthMethod: actor.authMethod,
@@ -137,13 +127,6 @@ export const pamResourceServiceFactory = ({
     { connectionDetails, resourceId, name, rotationAccountCredentials }: TUpdateResourceDTO,
     actor: OrgServiceActor
   ) => {
-    const orgLicensePlan = await licenseService.getPlan(actor.orgId);
-    if (!orgLicensePlan.pam) {
-      throw new BadRequestError({
-        message: "PAM operation failed due to organization plan restrictions."
-      });
-    }
-
     const resource = await pamResourceDAL.findById(resourceId);
     if (!resource) throw new NotFoundError({ message: `Resource with ID '${resourceId}' not found` });
 
