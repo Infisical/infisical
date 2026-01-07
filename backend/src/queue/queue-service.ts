@@ -50,6 +50,7 @@ export enum QueueName {
   // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune",
   DailyResourceCleanUp = "daily-resource-cleanup",
+  FrequentResourceCleanUp = "frequent-resource-cleanup",
   DailyExpiringPkiItemAlert = "daily-expiring-pki-item-alert",
   DailyPkiAlertV2Processing = "daily-pki-alert-v2-processing",
   PkiSyncCleanup = "pki-sync-cleanup",
@@ -94,6 +95,7 @@ export enum QueueJobs {
   // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune-job",
   DailyResourceCleanUp = "daily-resource-cleanup-job",
+  FrequentResourceCleanUp = "frequent-resource-cleanup-job",
   DailyExpiringPkiItemAlert = "daily-expiring-pki-item-alert",
   DailyPkiAlertV2Processing = "daily-pki-alert-v2-processing",
   PkiSyncCleanup = "pki-sync-cleanup-job",
