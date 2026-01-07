@@ -748,30 +748,6 @@
             ]
           },
           {
-            "item": "Infisical SSH",
-            "groups": [
-              {
-                "group": "Infisical SSH",
-                "pages": [
-                  "documentation/platform/ssh/overview",
-                  {
-                    "group": "Concepts",
-                    "pages": [
-                      "documentation/platform/ssh/concepts/ssh-certificates"
-                    ]
-                  }
-                ]
-              },
-              {
-                "group": "Platform Reference",
-                "pages": [
-                  "documentation/platform/ssh/usage",
-                  "documentation/platform/ssh/host-groups"
-                ]
-              }
-            ]
-          },
-          {
             "item": "Infisical KMS",
             "groups": [
               {
