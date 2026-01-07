@@ -22,3 +22,6 @@ export async function down(knex: Knex): Promise<void> {
       DROP INDEX IF EXISTS idx_identity_access_tokens_num_uses_with_limit
     `);
 }
+
+const config = { transaction: false };
+export { config };
