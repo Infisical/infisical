@@ -76,7 +76,7 @@ export const projectTemplateServiceFactory = ({
     });
 
     return [
-      ...(type
+      ...(type && type !== ProjectType.SSH
         ? [getDefaultProjectTemplate(actor.orgId, type)]
         : Object.values(ProjectType)
             // Filter out SSH since we're deprecating
