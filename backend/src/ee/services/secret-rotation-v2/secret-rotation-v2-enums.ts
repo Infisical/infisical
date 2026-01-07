@@ -9,7 +9,8 @@ export enum SecretRotation {
   LdapPassword = "ldap-password",
   OktaClientSecret = "okta-client-secret",
   RedisCredentials = "redis-credentials",
-  MongoDBCredentials = "mongodb-credentials"
+  MongoDBCredentials = "mongodb-credentials",
+  DatabricksServiceAccountSecret = "databricks-service-account-secret"
 }
 
 export enum SecretRotationStatus {

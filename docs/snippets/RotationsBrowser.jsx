@@ -9,6 +9,7 @@ export const RotationsBrowser = () => {
   const rotations = [
     {"name": "AWS IAM User", "slug": "aws-iam-user", "path": "/documentation/platform/secret-rotation/aws-iam-user-secret", "description": "Learn how to automatically rotate AWS IAM user access keys.", "category": "Cloud Providers"},
     {"name": "Azure Client Secret", "slug": "azure-client-secret", "path": "/documentation/platform/secret-rotation/azure-client-secret", "description": "Learn how to automatically rotate Azure client secrets.", "category": "Cloud Providers"},
+    {"name": "Databricks Service Account Secret", "slug": "databricks-service-account-secret", "path": "/documentation/platform/secret-rotation/databricks-service-account-secret", "description": "Learn how to automatically rotate Databricks service principal OAuth secrets.", "category": "Cloud Providers"},
     {"name": "Auth0 Client Secret", "slug": "auth0-client-secret", "path": "/documentation/platform/secret-rotation/auth0-client-secret", "description": "Learn how to automatically rotate Auth0 client secrets.", "category": "Identity & Auth"},
     {"name": "Okta Client Secret", "slug": "okta-client-secret", "path": "/documentation/platform/secret-rotation/okta-client-secret", "description": "Learn how to automatically rotate Okta client secrets.", "category": "Identity & Auth"},
     {"name": "LDAP Password", "slug": "ldap-password", "path": "/documentation/platform/secret-rotation/ldap-password", "description": "Learn how to automatically rotate LDAP user passwords.", "category": "Identity & Auth"},

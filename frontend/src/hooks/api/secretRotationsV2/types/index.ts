@@ -15,6 +15,11 @@ import {
   TAzureClientSecretRotationOption
 } from "@app/hooks/api/secretRotationsV2/types/azure-client-secret-rotation";
 import {
+  TDatabricksServiceAccountSecretRotation,
+  TDatabricksServiceAccountSecretRotationGeneratedCredentialsResponse,
+  TDatabricksServiceAccountSecretRotationOption
+} from "@app/hooks/api/secretRotationsV2/types/databricks-service-account-secret-rotation";
+import {
   TLdapPasswordRotation,
   TLdapPasswordRotationGeneratedCredentialsResponse,
   TLdapPasswordRotationOption
@@ -67,6 +72,7 @@ export type TSecretRotationV2 = (
   | TOktaClientSecretRotation
   | TRedisCredentialsRotation
   | TMongoDBCredentialsRotation
+  | TDatabricksServiceAccountSecretRotation
 ) & {
   secrets: (SecretV3RawSanitized | null)[];
 };
@@ -79,7 +85,8 @@ export type TSecretRotationV2Option =
   | TAwsIamUserSecretRotationOption
   | TOktaClientSecretRotationOption
   | TRedisCredentialsRotationOption
-  | TMongoDBCredentialsRotationOption;
+  | TMongoDBCredentialsRotationOption
+  | TDatabricksServiceAccountSecretRotationOption;
 
 export type TListSecretRotationV2Options = { secretRotationOptions: TSecretRotationV2Option[] };
 
@@ -96,7 +103,8 @@ export type TViewSecretRotationGeneratedCredentialsResponse =
   | TAwsIamUserSecretRotationGeneratedCredentialsResponse
   | TOktaClientSecretRotationGeneratedCredentialsResponse
   | TRedisCredentialsRotationGeneratedCredentialsResponse
-  | TMongoDBCredentialsRotationGeneratedCredentialsResponse;
+  | TMongoDBCredentialsRotationGeneratedCredentialsResponse
+  | TDatabricksServiceAccountSecretRotationGeneratedCredentialsResponse;
 
 export type TCreateSecretRotationV2DTO = DiscriminativePick<
   TSecretRotationV2,
@@ -151,6 +159,7 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.OktaClientSecret]: TOktaClientSecretRotationOption;
   [SecretRotation.RedisCredentials]: TRedisCredentialsRotationOption;
   [SecretRotation.MongoDBCredentials]: TMongoDBCredentialsRotationOption;
+  [SecretRotation.DatabricksServiceAccountSecret]: TDatabricksServiceAccountSecretRotationOption;
 };
 
 export type TSecretRotationGeneratedCredentialsResponseMap = {
@@ -165,4 +174,5 @@ export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.OktaClientSecret]: TOktaClientSecretRotationGeneratedCredentialsResponse;
   [SecretRotation.RedisCredentials]: TRedisCredentialsRotationGeneratedCredentialsResponse;
   [SecretRotation.MongoDBCredentials]: TMongoDBCredentialsRotationGeneratedCredentialsResponse;
+  [SecretRotation.DatabricksServiceAccountSecret]: TDatabricksServiceAccountSecretRotationGeneratedCredentialsResponse;
 };

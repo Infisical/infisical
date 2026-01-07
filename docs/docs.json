@@ -448,6 +448,7 @@
                       "documentation/platform/secret-rotation/auth0-client-secret",
                       "documentation/platform/secret-rotation/aws-iam-user-secret",
                       "documentation/platform/secret-rotation/azure-client-secret",
+                      "documentation/platform/secret-rotation/databricks-service-account-secret",
                       "documentation/platform/secret-rotation/ldap-password",
                       "documentation/platform/secret-rotation/mongodb-credentials",
                       "documentation/platform/secret-rotation/mssql-credentials",
@@ -1993,6 +1994,19 @@
                       "api-reference/endpoints/secret-rotations/azure-client-secret/list",
                       "api-reference/endpoints/secret-rotations/azure-client-secret/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/azure-client-secret/update"
+                    ]
+                  },
+                  {
+                    "group": "Databricks Service Account Secret",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/databricks-service-account-secret/create",
+                      "api-reference/endpoints/secret-rotations/databricks-service-account-secret/delete",
+                      "api-reference/endpoints/secret-rotations/databricks-service-account-secret/get-by-id",
+                      "api-reference/endpoints/secret-rotations/databricks-service-account-secret/get-by-name",
+                      "api-reference/endpoints/secret-rotations/databricks-service-account-secret/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/databricks-service-account-secret/list",
+                      "api-reference/endpoints/secret-rotations/databricks-service-account-secret/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/databricks-service-account-secret/update"
                     ]
                   },
                   {
