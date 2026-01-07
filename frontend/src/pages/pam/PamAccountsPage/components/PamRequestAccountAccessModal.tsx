@@ -15,10 +15,10 @@ import {
   ModalContent,
   TextArea
 } from "@app/components/v2";
+import { UnstableAlert, UnstableAlertDescription, UnstableAlertTitle } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import { useCreateApprovalRequest } from "@app/hooks/api/approvalRequests/mutations";
-import { UnstableAlert, UnstableAlertDescription, UnstableAlertTitle } from "@app/components/v3";
 
 type Props = {
   accountPath?: string;
@@ -28,7 +28,15 @@ type Props = {
 };
 
 const formSchema = z.object({
-  accountPath: z.string().min(1, "Account path is required"),
+  accountPath: z
+    .string()
+    .min(1, "Account path is required")
+    .refine((el) => el.startsWith("/"), {
+      message: "Path must start with /"
+    })
+    .refine((el) => !el.endsWith("/"), {
+      message: "Path cannot end with /"
+    }),
   accessDuration: z
     .string()
     .min(1, "Access duration is required")
@@ -55,6 +63,7 @@ const Content = ({ onOpenChange, accountPath, accountAccessed }: Props) => {
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
+    mode: "onChange",
     defaultValues: {
       accountPath,
       accessDuration: "4h",

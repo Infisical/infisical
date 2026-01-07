@@ -22,6 +22,12 @@ export const PamAccessPolicyConditionsSchema = z
   .object({
     accountPaths: z
       .string()
+      .refine((el) => el.startsWith("/"), {
+        message: "Path must start with /"
+      })
+      .refine((el) => !el.endsWith("/"), {
+        message: "Path cannot end with /"
+      })
       .refine(
         (el) => {
           try {
@@ -57,7 +63,14 @@ export const PamAccessPolicyConstraintsSchema = z.object({
 
 // Request Data
 export const PamAccessPolicyRequestDataSchema = z.object({
-  accountPath: z.string(),
+  accountPath: z
+    .string()
+    .refine((el) => el.startsWith("/"), {
+      message: "Path must start with /"
+    })
+    .refine((el) => !el.endsWith("/"), {
+      message: "Path cannot end with /"
+    }),
   accessDuration: DurationSchema
 });
 
