@@ -6,7 +6,8 @@ import { seedData1 } from "../seed-data";
 export async function seed(knex: Knex): Promise<void> {
   // Deletes ALL existing entries
   await knex(TableName.Organization).del();
-  await knex(TableName.OrgMembership).del();
+  await knex(TableName.Membership).del();
+  await knex(TableName.MembershipRole).del();
 
   const user = await knex(TableName.Users).where({ email: seedData1.email }).first();
   if (!user) throw new Error("User not found");
