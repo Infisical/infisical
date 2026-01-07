@@ -42,9 +42,11 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
     let isRetrying = false;
 
     const getExpiredTokensQuery = (dbClient: Knex | Knex.Transaction) => {
-      const revokedTokensQuery = dbClient(TableName.IdentityAccessToken).where({
-        isAccessTokenRevoked: true
-      });
+      const revokedTokensQuery = dbClient(TableName.IdentityAccessToken)
+        .where({
+          isAccessTokenRevoked: true
+        })
+        .select("id");
 
       const exceededUsageLimitQuery = dbClient(TableName.IdentityAccessToken)
         .where("accessTokenNumUsesLimit", ">", 0)
@@ -52,7 +54,8 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
           "accessTokenNumUses",
           ">=",
           db.ref("accessTokenNumUsesLimit").withSchema(TableName.IdentityAccessToken)
-        );
+        )
+        .select("id");
 
       const expiredTTLQuery = dbClient(TableName.IdentityAccessToken)
         .where("accessTokenTTL", ">", 0)
@@ -63,7 +66,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
             (COALESCE(
               "${TableName.IdentityAccessToken}"."accessTokenLastRenewedAt", -- Use last renewal time if available
               "${TableName.IdentityAccessToken}"."createdAt"                 -- Otherwise, use creation time
-            ) AT TIME ZONE 'UTC') +                                          -- Convert to UTC so that it can be an immutable function for our expression index
+            ) AT TIME ZONE 'UTC')                                            -- Convert to UTC so that it can be an immutable function for our expression index
             + make_interval(
                 secs => LEAST(
                   "${TableName.IdentityAccessToken}"."accessTokenTTL",      -- Token's specified TTL
@@ -73,7 +76,8 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
             < NOW() AT TIME ZONE 'UTC'                                      -- Check if the calculated time is before now (converted to UTC)
             `,
           [MAX_TTL]
-        );
+        )
+        .select("id");
 
       // Notice: we broken down the queyr into multiple queries and union them to avoid index usage issues.
       //         each query got their own index for better performance, therefore, if you want to change
@@ -84,7 +88,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
     do {
       try {
         const deleteBatch = async (dbClient: Knex | Knex.Transaction) => {
-          const idsToDeleteQuery = getExpiredTokensQuery(dbClient).select("id").limit(BATCH_SIZE);
+          const idsToDeleteQuery = getExpiredTokensQuery(dbClient).limit(BATCH_SIZE);
           return dbClient(TableName.IdentityAccessToken).whereIn("id", idsToDeleteQuery).del().returning("id");
         };
 
