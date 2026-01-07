@@ -77,7 +77,7 @@ export const AddGroupUsersTab = ({ groupId, groupSlug, search }: Props) => {
       <Table>
         <THead>
           <Tr>
-            <Th>User</Th>
+            <Th className="w-full">User</Th>
             <Th />
           </Tr>
         </THead>
@@ -87,9 +87,9 @@ export const AddGroupUsersTab = ({ groupId, groupSlug, search }: Props) => {
             data?.users?.map(({ id, firstName, lastName, username }) => {
               return (
                 <Tr className="items-center" key={`group-user-${id}`}>
-                  <Td>
-                    <p>{`${firstName ?? "-"} ${lastName ?? ""}`}</p>
-                    <p>{username}</p>
+                  <Td className="max-w-0">
+                    <p className="truncate">{`${firstName ?? "-"} ${lastName ?? ""}`}</p>
+                    <p className="truncate">{username}</p>
                   </Td>
                   <Td className="flex justify-end">
                     <OrgPermissionCan

@@ -80,7 +80,7 @@ export const AddGroupIdentitiesTab = ({ groupId, groupSlug, search }: Props) => 
       <Table>
         <THead>
           <Tr>
-            <Th>Machine Identity</Th>
+            <Th className="w-full">Machine Identity</Th>
             <Th />
           </Tr>
         </THead>
@@ -90,9 +90,7 @@ export const AddGroupIdentitiesTab = ({ groupId, groupSlug, search }: Props) => 
             data?.machineIdentities?.map((identity: TGroupMachineIdentity) => {
               return (
                 <Tr className="items-center" key={`group-identity-${identity.id}`}>
-                  <Td>
-                    <p>{identity.name}</p>
-                  </Td>
+                  <Td className="max-w-0 truncate">{identity.name}</Td>
                   <Td className="flex justify-end">
                     <OrgPermissionCan
                       I={OrgPermissionGroupActions.Edit}
