@@ -41,40 +41,49 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
     let numberOfRetryOnFailure = 0;
     let isRetrying = false;
 
-    const getExpiredTokensQuery = (dbClient: Knex | Knex.Transaction) =>
-      dbClient(TableName.IdentityAccessToken)
+    const getExpiredTokensQuery = (dbClient: Knex | Knex.Transaction) => {
+      const revokedTokensQuery = dbClient(TableName.IdentityAccessToken)
         .where({
           isAccessTokenRevoked: true
         })
-        .orWhere((qb) => {
-          void qb
-            .where("accessTokenNumUsesLimit", ">", 0)
-            .andWhere(
-              "accessTokenNumUses",
-              ">=",
-              db.ref("accessTokenNumUsesLimit").withSchema(TableName.IdentityAccessToken)
-            );
-        })
-        .orWhere((qb) => {
-          void qb.where("accessTokenTTL", ">", 0).andWhereRaw(
-            `
-              -- Check if the token's effective expiration time has passed.
-              -- The expiration time is calculated by adding its TTL to its last renewal/creation time.
-              (COALESCE(
-                "${TableName.IdentityAccessToken}"."accessTokenLastRenewedAt", -- Use last renewal time if available
-                "${TableName.IdentityAccessToken}"."createdAt"                 -- Otherwise, use creation time
-              ) AT TIME ZONE 'UTC') +                                          -- Convert to UTC so that it can be an immutable function for our expression index
-              + make_interval(
-                  secs => LEAST(
-                    "${TableName.IdentityAccessToken}"."accessTokenTTL",      -- Token's specified TTL
-                    ?                                                         -- Capped by MAX_TTL (parameterized value)
-                  )
+        .select("id");
+
+      const exceededUsageLimitQuery = dbClient(TableName.IdentityAccessToken)
+        .where("accessTokenNumUsesLimit", ">", 0)
+        .andWhere(
+          "accessTokenNumUses",
+          ">=",
+          db.ref("accessTokenNumUsesLimit").withSchema(TableName.IdentityAccessToken)
+        )
+        .select("id");
+
+      const expiredTTLQuery = dbClient(TableName.IdentityAccessToken)
+        .where("accessTokenTTL", ">", 0)
+        .andWhereRaw(
+          `
+            -- Check if the token's effective expiration time has passed.
+            -- The expiration time is calculated by adding its TTL to its last renewal/creation time.
+            (COALESCE(
+              "${TableName.IdentityAccessToken}"."accessTokenLastRenewedAt", -- Use last renewal time if available
+              "${TableName.IdentityAccessToken}"."createdAt"                 -- Otherwise, use creation time
+            ) AT TIME ZONE 'UTC') +                                          -- Convert to UTC so that it can be an immutable function for our expression index
+            + make_interval(
+                secs => LEAST(
+                  "${TableName.IdentityAccessToken}"."accessTokenTTL",      -- Token's specified TTL
+                  ?                                                         -- Capped by MAX_TTL (parameterized value)
                 )
-              < NOW() AT TIME ZONE 'UTC'                                      -- Check if the calculated time is before now (converted to UTC)
-              `,
-            [MAX_TTL]
-          );
-        });
+              )
+            < NOW() AT TIME ZONE 'UTC'                                      -- Check if the calculated time is before now (converted to UTC)
+            `,
+          [MAX_TTL]
+        )
+        .select("id");
+
+      // Notice: we broken down the queyr into multiple queries and union them to avoid index usage issues.
+      //         each query got their own index for better performance, therefore, if you want to change
+      //         the query, you need to update the indexes accordingly to avoid performance regressions.
+      return revokedTokensQuery.unionAll(exceededUsageLimitQuery).unionAll(expiredTTLQuery);
+    };
 
     do {
       try {
