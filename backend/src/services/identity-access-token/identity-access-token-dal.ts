@@ -42,11 +42,9 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
     let isRetrying = false;
 
     const getExpiredTokensQuery = (dbClient: Knex | Knex.Transaction) => {
-      const revokedTokensQuery = dbClient(TableName.IdentityAccessToken)
-        .where({
-          isAccessTokenRevoked: true
-        })
-        .select("id");
+      const revokedTokensQuery = dbClient(TableName.IdentityAccessToken).where({
+        isAccessTokenRevoked: true
+      });
 
       const exceededUsageLimitQuery = dbClient(TableName.IdentityAccessToken)
         .where("accessTokenNumUsesLimit", ">", 0)
@@ -54,8 +52,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
           "accessTokenNumUses",
           ">=",
           db.ref("accessTokenNumUsesLimit").withSchema(TableName.IdentityAccessToken)
-        )
-        .select("id");
+        );
 
       const expiredTTLQuery = dbClient(TableName.IdentityAccessToken)
         .where("accessTokenTTL", ">", 0)
@@ -76,8 +73,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
             < NOW() AT TIME ZONE 'UTC'                                      -- Check if the calculated time is before now (converted to UTC)
             `,
           [MAX_TTL]
-        )
-        .select("id");
+        );
 
       // Notice: we broken down the queyr into multiple queries and union them to avoid index usage issues.
       //         each query got their own index for better performance, therefore, if you want to change
