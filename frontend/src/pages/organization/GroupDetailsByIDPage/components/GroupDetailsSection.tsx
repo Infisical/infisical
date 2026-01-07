@@ -52,7 +52,7 @@ export const GroupDetailsSection = ({ groupId, handlePopUpOpen }: Props) => {
                     groupId,
                     name: data.group.name,
                     slug: data.group.slug,
-                    role: data.group.role
+                    role: data.group.roleId || data.group.role
                   });
                 }}
                 size="xs"
