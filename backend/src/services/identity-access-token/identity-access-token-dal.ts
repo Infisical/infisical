@@ -47,6 +47,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
     let deletedTokenIds: { id: string }[] = [];
     let numberOfRetryOnFailure = 0;
     let isRetrying = false;
+    let totalDeletedCount = 0;
 
     const getExpiredTokensQuery = (dbClient: Knex | Knex.Transaction, nowTimestamp: Date) => {
       const revokedTokensQuery = dbClient(TableName.IdentityAccessToken)
@@ -111,6 +112,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
         }
 
         numberOfRetryOnFailure = 0; // reset
+        totalDeletedCount += deletedTokenIds.length;
       } catch (error) {
         numberOfRetryOnFailure += 1;
         logger.error(error, "Failed to delete a batch of expired identity access tokens on pruning");
@@ -129,7 +131,9 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
       );
     }
 
-    logger.info(`${QueueName.DailyResourceCleanUp}: remove expired access token completed`);
+    logger.info(
+      `${QueueName.DailyResourceCleanUp}: remove expired access token completed. Deleted ${totalDeletedCount} tokens.`
+    );
   };
 
   return { ...identityAccessTokenOrm, findOne, removeExpiredTokens };
