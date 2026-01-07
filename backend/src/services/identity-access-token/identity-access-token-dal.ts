@@ -87,7 +87,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
         )
         .select("id");
 
-      // Notice: we broken down the queyr into multiple queries and union them to avoid index usage issues.
+      // Notice: we broken down the query into multiple queries and union them to avoid index usage issues.
       //         each query got their own index for better performance, therefore, if you want to change
       //         the query, you need to update the indexes accordingly to avoid performance regressions.
       return revokedTokensQuery.unionAll(exceededUsageLimitQuery).unionAll(expiredTTLQuery);
