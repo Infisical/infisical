@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { KmipOperationType, recordKmipOperationMetric } from "@app/lib/telemetry/metrics";
 import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsKeyUsage } from "@app/services/kms/kms-types";
@@ -76,6 +77,15 @@ export const kmipOperationServiceFactory = ({
       isReserved: false
     });
 
+    recordKmipOperationMetric({
+      operationType: KmipOperationType.CREATE,
+      orgId: actorOrgId,
+      projectId,
+      clientId,
+      objectId: kmsKey.id,
+      objectName: kmsKey.name
+    });
+
     return kmsKey;
   };
 
@@ -130,6 +140,15 @@ export const kmipOperationServiceFactory = ({
 
     const kms = kmsDAL.deleteById(id);
 
+    recordKmipOperationMetric({
+      operationType: KmipOperationType.DESTROY,
+      orgId: actorOrgId,
+      projectId,
+      clientId,
+      objectId: id,
+      objectName: key.name
+    });
+
     return kms;
   };
 
@@ -181,6 +200,15 @@ export const kmipOperationServiceFactory = ({
       kmsId: key.id
     });
 
+    recordKmipOperationMetric({
+      operationType: KmipOperationType.GET,
+      orgId: actorOrgId,
+      projectId,
+      clientId,
+      objectId: id,
+      objectName: key.name
+    });
+
     return {
       id: key.id,
       value: kmsKey.toString("base64"),
@@ -223,6 +251,15 @@ export const kmipOperationServiceFactory = ({
     if (!key) {
       throw new NotFoundError({ message: `Key with ID ${id} not found` });
     }
+
+    recordKmipOperationMetric({
+      operationType: KmipOperationType.ACTIVATE,
+      orgId: actorOrgId,
+      projectId,
+      clientId,
+      objectId: id,
+      objectName: key.name
+    });
 
     return {
       id: key.id,
@@ -276,6 +313,15 @@ export const kmipOperationServiceFactory = ({
 
     const revokedKey = await kmsDAL.updateById(key.id, {
       isDisabled: true
+    });
+
+    recordKmipOperationMetric({
+      operationType: KmipOperationType.REVOKE,
+      orgId: actorOrgId,
+      projectId,
+      clientId,
+      objectId: id,
+      objectName: key.name
     });
 
     return {
@@ -336,6 +382,15 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
+    recordKmipOperationMetric({
+      operationType: KmipOperationType.GET_ATTRIBUTES,
+      orgId: actorOrgId,
+      projectId,
+      clientId,
+      objectId: id,
+      objectName: key.name
+    });
+
     return {
       id: key.id,
       algorithm: completeKeyDetails.internalKms.encryptionAlgorithm,
@@ -370,6 +425,13 @@ export const kmipOperationServiceFactory = ({
     }
 
     const keys = await kmsDAL.findProjectCmeks(projectId);
+
+    recordKmipOperationMetric({
+      operationType: KmipOperationType.LOCATE,
+      orgId: actorOrgId,
+      projectId,
+      clientId
+    });
 
     return keys;
   };
@@ -419,6 +481,15 @@ export const kmipOperationServiceFactory = ({
       keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT,
       orgId: project.orgId,
       kmipMetadata
+    });
+
+    recordKmipOperationMetric({
+      operationType: KmipOperationType.REGISTER,
+      orgId: actorOrgId,
+      projectId,
+      clientId,
+      objectId: kmsKey.id,
+      objectName: kmsKey.name
     });
 
     return kmsKey;
