@@ -9,7 +9,7 @@ export async function up(knex: Knex): Promise<void> {
     (await knex.schema.hasColumn(TableName.IdentityAccessToken, "accessTokenNumUsesLimit"))
   ) {
     await knex.raw(`
-        CREATE INDEX IF NOT EXISTS idx_identity_access_tokens_num_uses_with_limit
+        CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_identity_access_tokens_num_uses_with_limit
         ON ${TableName.IdentityAccessToken} ("id")
         WHERE "accessTokenNumUsesLimit" > 0
           AND "accessTokenNumUses" >= "identity_access_tokens"."accessTokenNumUsesLimit"

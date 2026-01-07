@@ -8,7 +8,7 @@ export async function up(knex: Knex): Promise<void> {
     (await knex.schema.hasColumn(TableName.IdentityAccessToken, "isAccessTokenRevoked"))
   ) {
     await knex.raw(`
-        CREATE INDEX IF NOT EXISTS idx_identity_access_tokens_revoked
+        CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_identity_access_tokens_revoked
         ON ${TableName.IdentityAccessToken} ("id")
         WHERE "isAccessTokenRevoked" = 't'
     `);

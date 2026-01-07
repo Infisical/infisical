@@ -9,7 +9,7 @@ export async function up(knex: Knex): Promise<void> {
     (await knex.schema.hasColumn(TableName.IdentityAccessToken, "accessTokenLastRenewedAt"))
   ) {
     await knex.raw(`
-        CREATE INDEX IF NOT EXISTS idx_identity_access_tokens_expiration
+        CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_identity_access_tokens_expiration
         ON ${TableName.IdentityAccessToken} (
             (COALESCE("accessTokenLastRenewedAt", "createdAt") AT TIME ZONE 'UTC' + make_interval(secs => LEAST(
             "identity_access_tokens"."accessTokenTTL",
