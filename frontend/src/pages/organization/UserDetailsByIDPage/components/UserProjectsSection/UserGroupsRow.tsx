@@ -1,8 +1,14 @@
-/* eslint-disable react/jsx-no-useless-fragment */
-import { faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { MoreHorizontalIcon } from "lucide-react";
 
-import { IconButton, Td, Tooltip, Tr } from "@app/components/v2";
+import {
+  UnstableDropdownMenu,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuTrigger,
+  UnstableIconButton,
+  UnstableTableCell,
+  UnstableTableRow
+} from "@app/components/v3";
 import { TGroupWithProjectMemberships } from "@app/hooks/api/groups/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -13,34 +19,31 @@ type Props = {
 
 export const UserGroupsRow = ({ group, handlePopUpOpen }: Props) => {
   return (
-    <>
-      <Tr
-        className="group h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
-        key={`user-project-membership-${group.id}`}
-      >
-        <Td>{group.name}</Td>
-        <Td>
-          <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-            <Tooltip content="Unassign user from group">
-              <IconButton
-                colorSchema="danger"
-                ariaLabel="copy icon"
-                variant="plain"
-                className="group relative"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handlePopUpOpen("removeUserFromGroup", {
-                    groupId: group.id,
-                    groupSlug: group.slug
-                  });
-                }}
-              >
-                <FontAwesomeIcon icon={faTrash} />
-              </IconButton>
-            </Tooltip>
-          </div>
-        </Td>
-      </Tr>
-    </>
+    <UnstableTableRow key={`user-group-membership-${group.id}`}>
+      <UnstableTableCell>{group.name}</UnstableTableCell>
+      <UnstableTableCell>
+        <UnstableDropdownMenu>
+          <UnstableDropdownMenuTrigger>
+            <UnstableIconButton variant="ghost" size="xs">
+              <MoreHorizontalIcon />
+            </UnstableIconButton>
+          </UnstableDropdownMenuTrigger>
+          <UnstableDropdownMenuContent align="end">
+            <UnstableDropdownMenuItem
+              variant="danger"
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePopUpOpen("removeUserFromGroup", {
+                  groupId: group.id,
+                  groupSlug: group.slug
+                });
+              }}
+            >
+              Unassign from Group
+            </UnstableDropdownMenuItem>
+          </UnstableDropdownMenuContent>
+        </UnstableDropdownMenu>
+      </UnstableTableCell>
+    </UnstableTableRow>
   );
 };

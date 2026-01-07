@@ -1,17 +1,33 @@
-import {
-  faCheck,
-  faCheckCircle,
-  faCircleXmark,
-  faCopy,
-  faKey,
-  faPencil
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
+import {
+  BanIcon,
+  CheckIcon,
+  ClipboardListIcon,
+  MailIcon,
+  PencilIcon,
+  UserCheckIcon,
+  XIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, IconButton, Tag, Tooltip } from "@app/components/v2";
+import { Tooltip } from "@app/components/v2";
+import {
+  Badge,
+  Detail,
+  DetailGroup,
+  DetailLabel,
+  DetailValue,
+  UnstableButton,
+  UnstableButtonGroup,
+  UnstableCard,
+  UnstableCardAction,
+  UnstableCardContent,
+  UnstableCardDescription,
+  UnstableCardHeader,
+  UnstableCardTitle,
+  UnstableIconButton
+} from "@app/components/v3";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -30,8 +46,12 @@ type Props = {
 };
 
 export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => {
-  const [copyTextUsername, isCopyingUsername, setCopyTextUsername] = useTimedReset<string>({
-    initialState: "Copy username to clipboard"
+  const [, isCopyingId, setCopyTextId] = useTimedReset<string>({
+    initialState: "Copy ID to clipboard"
+  });
+
+  const [, isCopyingEmail, setCopyEmail] = useTimedReset<string>({
+    initialState: "Copy email to clipboard"
   });
 
   const { user } = useUser();
@@ -62,174 +82,199 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
 
   const getStatus = (m: OrgUser) => {
     if (!m.isActive) {
-      return "Deactivated";
+      return { label: "Deactivated", variant: "neutral" as const, Icon: <BanIcon /> };
     }
 
-    return m.status === "invited" ? "Invited" : "Active";
+    return m.status === "invited"
+      ? { label: "Invited", variant: "info" as const, Icon: <MailIcon /> }
+      : { label: "Active", variant: "success" as const, Icon: <UserCheckIcon /> };
   };
 
   const roleName = roles?.find(
     (r) => r.slug === membership?.role || r.slug === membership?.customRoleSlug
   )?.name;
 
+  const name =
+    membership?.user.firstName || membership?.user.lastName
+      ? `${membership.user.firstName} ${membership.user.lastName ?? ""}`.trim()
+      : null;
+
+  const status = membership ? getStatus(membership) : null;
+
   return membership ? (
-    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-medium text-mineshaft-100">User Details</h3>
+    <UnstableCard className="w-full lg:max-w-[24rem]">
+      <UnstableCardHeader className="border-b">
+        <UnstableCardTitle>Details</UnstableCardTitle>
+        <UnstableCardDescription>User membership details</UnstableCardDescription>
         {userId !== membership.user.id && (
-          <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Member}>
-            {(isAllowed) => {
-              return (
-                <Tooltip content="Edit Membership">
-                  <IconButton
-                    isDisabled={!isAllowed}
-                    ariaLabel="copy icon"
-                    variant="plain"
-                    className="group relative"
-                    onClick={() => {
-                      handlePopUpOpen("orgMembership", {
-                        membershipId: membership.id,
-                        role: membership.role,
-                        roleId: membership.roleId,
-                        metadata: membership.metadata
-                      });
-                    }}
-                  >
-                    <FontAwesomeIcon icon={faPencil} />
-                  </IconButton>
-                </Tooltip>
-              );
-            }}
-          </OrgPermissionCan>
-        )}
-      </div>
-      <div className="pt-4">
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Name</p>
-          <p className="text-sm text-mineshaft-300">
-            {membership.user.firstName || membership.user.lastName
-              ? `${membership.user.firstName} ${membership.user.lastName ?? ""}`.trim()
-              : "-"}
-          </p>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Username</p>
-          <div className="group flex align-top">
-            <p className="text-sm break-all text-mineshaft-300">{membership.user.username}</p>
-            <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-              <Tooltip content={copyTextUsername}>
-                <IconButton
-                  ariaLabel="copy icon"
-                  variant="plain"
-                  className="group relative ml-2"
+          <UnstableCardAction>
+            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Member}>
+              {(isAllowed) => (
+                <UnstableIconButton
+                  isDisabled={!isAllowed}
                   onClick={() => {
-                    navigator.clipboard.writeText(membership.user.username);
-                    setCopyTextUsername("Copied");
+                    handlePopUpOpen("orgMembership", {
+                      membershipId: membership.id,
+                      role: membership.role,
+                      roleId: membership.roleId,
+                      metadata: membership.metadata
+                    });
                   }}
+                  size="xs"
+                  variant="outline"
                 >
-                  <FontAwesomeIcon icon={isCopyingUsername ? faCheck : faCopy} />
-                </IconButton>
+                  <PencilIcon />
+                </UnstableIconButton>
+              )}
+            </OrgPermissionCan>
+          </UnstableCardAction>
+        )}
+      </UnstableCardHeader>
+      <UnstableCardContent>
+        <DetailGroup>
+          <Detail>
+            <DetailLabel>Name</DetailLabel>
+            <DetailValue>{name || <span className="text-muted">—</span>}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>ID</DetailLabel>
+            <DetailValue className="flex items-center gap-x-1">
+              {membership.user.id}
+              <Tooltip content="Copy user ID to clipboard">
+                <UnstableIconButton
+                  onClick={() => {
+                    navigator.clipboard.writeText(membership.user.id);
+                    setCopyTextId("Copied");
+                  }}
+                  variant="ghost"
+                  size="xs"
+                >
+                  {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
+                </UnstableIconButton>
               </Tooltip>
-            </div>
-          </div>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Email</p>
-          <div className="flex items-center">
-            <p className="mr-2 text-sm break-all text-mineshaft-300">
-              {membership.user.email ?? "-"}{" "}
-              <Tooltip
-                content={
-                  membership.user.isEmailVerified
-                    ? "Email has been verified"
-                    : "Email has not been verified"
-                }
-              >
-                <FontAwesomeIcon
-                  size="sm"
-                  icon={membership.user.isEmailVerified ? faCheckCircle : faCircleXmark}
-                  className={membership.user.isEmailVerified ? "text-green" : "text-red"}
-                />
-              </Tooltip>
-            </p>
-          </div>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Last Login Auth Method</p>
-          <div className="group flex align-top">
-            <p className="text-sm break-all text-mineshaft-300">
-              {membership.lastLoginAuthMethod || "-"}
-            </p>
-          </div>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Last Login Time</p>
-          <div className="group flex align-top">
-            <p className="text-sm break-all text-mineshaft-300">
-              {membership.lastLoginTime ? format(membership.lastLoginTime, "PPpp") : "-"}
-            </p>
-          </div>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Organization Role</p>
-          <p className="text-sm text-mineshaft-300">{roleName ?? "-"}</p>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Status</p>
-          <p className="text-sm text-mineshaft-300">{getStatus(membership)}</p>
-        </div>
-        <div>
-          <p className="text-sm font-medium text-mineshaft-300">Metadata</p>
-          {membership?.metadata?.length ? (
-            <div className="mt-1 flex flex-wrap gap-2 text-sm text-mineshaft-300">
-              {membership.metadata?.map((el) => (
-                <div key={el.id} className="flex items-center">
-                  <Tag
-                    size="xs"
-                    className="mr-0 flex items-center rounded-r-none border border-mineshaft-500"
+            </DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Email</DetailLabel>
+            <DetailValue className="flex flex-wrap items-center gap-1">
+              {membership.user.email ? (
+                <>
+                  {membership.user.email}
+                  <Tooltip
+                    content={
+                      membership.user.isEmailVerified
+                        ? "Email has been verified"
+                        : "Email has not been verified"
+                    }
                   >
-                    <FontAwesomeIcon icon={faKey} size="xs" className="mr-1" />
-                    <div>{el.key}</div>
-                  </Tag>
-                  <Tag
-                    size="xs"
-                    className="flex items-center rounded-l-none border border-mineshaft-500 bg-mineshaft-900 pl-1"
-                  >
-                    <div className="max-w-[150px] overflow-hidden text-ellipsis whitespace-nowrap">
-                      {el.value}
-                    </div>
-                  </Tag>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-mineshaft-300">-</p>
+                    {membership.user.isEmailVerified ? (
+                      <CheckIcon size={14} className="ml-0.5 shrink-0 text-success" />
+                    ) : (
+                      <XIcon size={14} className="ml-0.5 shrink-0 text-danger" />
+                    )}
+                  </Tooltip>
+                  <Tooltip content="Copy user email to clipboard">
+                    <UnstableIconButton
+                      onClick={() => {
+                        navigator.clipboard.writeText(membership.user.email!);
+                        setCopyEmail("Copied");
+                      }}
+                      variant="ghost"
+                      size="xs"
+                    >
+                      {isCopyingEmail ? (
+                        <CheckIcon />
+                      ) : (
+                        <ClipboardListIcon className="text-label" />
+                      )}
+                    </UnstableIconButton>
+                  </Tooltip>
+                </>
+              ) : (
+                <span className="text-muted">—</span>
+              )}
+            </DetailValue>
+          </Detail>
+          {membership.user.username !== membership.user.email && (
+            <Detail>
+              <DetailLabel>Username</DetailLabel>
+              <DetailValue>
+                {membership.user.username || <span className="text-muted">—</span>}
+              </DetailValue>
+            </Detail>
           )}
-        </div>
+          <Detail>
+            <DetailLabel>Organization Role</DetailLabel>
+            <DetailValue>{roleName ?? <span className="text-muted">—</span>}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Status</DetailLabel>
+            <DetailValue>
+              {status && (
+                <Badge variant={status.variant}>
+                  {status.Icon}
+                  {status.label}
+                </Badge>
+              )}
+            </DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Last Login Method</DetailLabel>
+            <DetailValue>
+              {membership.lastLoginAuthMethod || <span className="text-muted">—</span>}
+            </DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Last Logged In</DetailLabel>
+            <DetailValue>
+              {membership.lastLoginTime ? (
+                format(membership.lastLoginTime, "PPpp")
+              ) : (
+                <span className="text-muted">—</span>
+              )}
+            </DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Metadata</DetailLabel>
+            <DetailValue className="flex flex-wrap gap-2">
+              {membership?.metadata?.length ? (
+                membership.metadata?.map((el) => (
+                  <UnstableButtonGroup className="min-w-0" key={el.id}>
+                    <Badge isTruncatable>
+                      <span>{el.key}</span>
+                    </Badge>
+                    <Badge variant="outline" isTruncatable>
+                      <span>{el.value}</span>
+                    </Badge>
+                  </UnstableButtonGroup>
+                ))
+              ) : (
+                <span className="text-muted">—</span>
+              )}
+            </DetailValue>
+          </Detail>
+        </DetailGroup>
         {!isSubOrganization &&
           membership.isActive &&
           (membership.status === "invited" || membership.status === "verified") &&
           membership.user.email &&
           serverDetails?.emailConfigured && (
             <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Member}>
-              {(isAllowed) => {
-                return (
-                  <Button
-                    isDisabled={!isAllowed}
-                    className="mt-4 w-full"
-                    colorSchema="primary"
-                    type="submit"
-                    isLoading={isPending}
-                    onClick={onResendInvite}
-                  >
-                    Resend Invite
-                  </Button>
-                );
-              }}
+              {(isAllowed) => (
+                <UnstableButton
+                  isDisabled={!isAllowed}
+                  className="mt-4 w-full"
+                  variant="org"
+                  isPending={isPending}
+                  onClick={onResendInvite}
+                >
+                  Resend Invite
+                </UnstableButton>
+              )}
             </OrgPermissionCan>
           )}
-      </div>
-    </div>
+      </UnstableCardContent>
+    </UnstableCard>
   ) : (
     <div />
   );

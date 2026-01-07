@@ -1,26 +1,23 @@
 import { useMemo } from "react";
-import {
-  faArrowDown,
-  faArrowUp,
-  faFolder,
-  faMagnifyingGlass,
-  faSearch
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { ChevronDownIcon, PlusIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
+import { Lottie } from "@app/components/v2";
 import {
-  EmptyState,
-  IconButton,
-  Input,
-  Pagination,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
+  UnstableButton,
+  UnstableEmpty,
+  UnstableEmptyContent,
+  UnstableEmptyDescription,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle,
+  UnstableInput,
+  UnstablePagination,
+  UnstableTable,
+  UnstableTableBody,
+  UnstableTableHead,
+  UnstableTableHeader,
+  UnstableTableRow
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
   getUserTablePreference,
@@ -36,18 +33,25 @@ import { UserProjectRow } from "./UserProjectRow";
 
 type Props = {
   membershipId: string;
+  username: string;
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["removeUserFromProject"]>,
+    popUpName: keyof UsePopUpState<["removeUserFromProject", "addUserToProject"]>,
     data?: object
   ) => void;
+  canAddToProject: boolean;
 };
 
 enum UserProjectsOrderBy {
   Name = "Name"
 }
 
-export const UserProjectsTable = ({ membershipId, handlePopUpOpen }: Props) => {
-  const { currentOrg } = useOrganization();
+export const UserProjectsTable = ({
+  membershipId,
+  username,
+  handlePopUpOpen,
+  canAddToProject
+}: Props) => {
+  const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
   const {
     search,
@@ -96,71 +100,92 @@ export const UserProjectsTable = ({ membershipId, handlePopUpOpen }: Props) => {
     setPage
   });
 
+  if (isPending) {
+    return (
+      <div className="flex h-40 w-full items-center justify-center">
+        <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
+      </div>
+    );
+  }
+
   return (
-    <div>
-      <Input
+    <>
+      <UnstableInput
+        className="mb-4"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
         placeholder="Search projects..."
       />
-      <TableContainer className="mt-4">
-        <Table>
-          <THead>
-            <Tr>
-              <Th className="w-2/3">
-                <div className="flex items-center">
-                  Name
-                  <IconButton
-                    variant="plain"
-                    className="ml-2"
-                    ariaLabel="sort"
-                    onClick={toggleOrderDirection}
-                  >
-                    <FontAwesomeIcon
-                      icon={orderDirection === OrderByDirection.DESC ? faArrowUp : faArrowDown}
-                    />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th>Role</Th>
-              <Th className="w-5" />
-            </Tr>
-          </THead>
-          <TBody>
-            {isPending && <TableSkeleton columns={3} innerKey="user-project-memberships" />}
-            {!isPending &&
-              filteredProjectMemberships.slice(offset, perPage * page).map((membership) => {
-                return (
-                  <UserProjectRow
-                    key={`user-project-membership-${membership.id}`}
-                    membership={membership}
-                    handlePopUpOpen={handlePopUpOpen}
-                  />
-                );
-              })}
-          </TBody>
-        </Table>
-        {Boolean(filteredProjectMemberships.length) && (
-          <Pagination
-            count={filteredProjectMemberships.length}
-            page={page}
-            perPage={perPage}
-            onChangePage={setPage}
-            onChangePerPage={handlePerPageChange}
-          />
-        )}
-        {!isPending && !filteredProjectMemberships?.length && (
-          <EmptyState
-            title={
-              projectMemberships.length
-                ? "No projects match search..."
-                : "This user has not been assigned to any projects"
-            }
-            icon={projectMemberships.length ? faSearch : faFolder}
-          />
-        )}
-      </TableContainer>
-    </div>
+      {filteredProjectMemberships.length ? (
+        <UnstableTable>
+          <UnstableTableHeader>
+            <UnstableTableRow>
+              <UnstableTableHead onClick={toggleOrderDirection} className="w-2/3">
+                Name
+                <ChevronDownIcon
+                  className={twMerge(
+                    orderDirection === OrderByDirection.DESC && "rotate-180",
+                    "transition-transform"
+                  )}
+                />
+              </UnstableTableHead>
+              <UnstableTableHead>Role</UnstableTableHead>
+              <UnstableTableHead className="w-5" />
+            </UnstableTableRow>
+          </UnstableTableHeader>
+          <UnstableTableBody>
+            {filteredProjectMemberships.slice(offset, perPage * page).map((membership) => {
+              return (
+                <UserProjectRow
+                  key={`user-project-membership-${membership.id}`}
+                  membership={membership}
+                  handlePopUpOpen={handlePopUpOpen}
+                />
+              );
+            })}
+          </UnstableTableBody>
+        </UnstableTable>
+      ) : (
+        <UnstableEmpty className="border">
+          <UnstableEmptyHeader>
+            <UnstableEmptyTitle>
+              {projectMemberships.length
+                ? "No projects match this search"
+                : "This user is not a member of any projects"}
+            </UnstableEmptyTitle>
+            <UnstableEmptyDescription>
+              {projectMemberships.length
+                ? "Adjust search filters to view project memberships."
+                : "Assign this user to a project."}
+            </UnstableEmptyDescription>
+            {!projectMemberships.length && canAddToProject && (
+              <UnstableEmptyContent>
+                <UnstableButton
+                  variant={isSubOrganization ? "sub-org" : "org"}
+                  size="xs"
+                  onClick={() =>
+                    handlePopUpOpen("addUserToProject", {
+                      username
+                    })
+                  }
+                >
+                  <PlusIcon />
+                  Add to Project
+                </UnstableButton>
+              </UnstableEmptyContent>
+            )}
+          </UnstableEmptyHeader>
+        </UnstableEmpty>
+      )}
+      {Boolean(filteredProjectMemberships.length) && (
+        <UnstablePagination
+          count={filteredProjectMemberships.length}
+          page={page}
+          perPage={perPage}
+          onChangePage={setPage}
+          onChangePerPage={handlePerPageChange}
+        />
+      )}
+    </>
   );
 };

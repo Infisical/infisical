@@ -392,7 +392,7 @@ export const OrgMembersTable = ({
                   }}
                 />
               </Th>
-              <Th className="min-w-40 md:w-1/3 md:min-w-0">
+              <Th className="min-w-40 lg:w-1/3 lg:min-w-0">
                 <div className="flex items-center">
                   Name
                   <IconButton
@@ -514,7 +514,7 @@ export const OrgMembersTable = ({
                             <Tooltip content="Server Admin">
                               <Badge variant="info">
                                 <UserCogIcon />
-                                <span className="hidden xl:inline">Server Admin</span>
+                                <span className="hidden 2xl:inline">Server Admin</span>
                               </Badge>
                             </Tooltip>
                           )}
