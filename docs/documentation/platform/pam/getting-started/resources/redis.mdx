@@ -124,17 +124,18 @@ A PAM Account represents a specific set of credentials that users can request ac
       A friendly name for this account (e.g., `readonly-user`, `admin-access`)
     </ParamField>
 
+    <ParamField path="Use Credentials" type="boolean">
+      Toggle this on if your Redis instance requires authentication. When enabled, you'll need to provide a username and password.
+      Leave it as disabled if your Redis instance doesn't require authentication.
+    </ParamField>
+
     <ParamField path="Username" type="string">
-      The Redis username (required if Redis ACL is enabled). Leave empty if your Redis instance doesn't require authentication.
+      The Redis username (required if Use Credentials is enabled).
     </ParamField>
 
     <ParamField path="Password" type="string">
-      The Redis password (required if Redis ACL is enabled). Leave empty if your Redis instance doesn't require authentication.
+      The Redis password (required if Use Credentials is enabled).
     </ParamField>
-
-    <Note>
-      **No Authentication**: If your Redis instance doesn't use authentication, you can leave both username and password empty. The connection will be established without credentials.
-    </Note>
 
     <Warning>
       **Security Best Practice**: For production environments, always use Redis ACL (Access Control List) with strong passwords. Unauthenticated Redis instances should only be used in isolated, trusted networks.
