@@ -21,6 +21,7 @@ import {
   getHCVaultDatabaseRoles,
   getHCVaultKubernetesAuthRoles,
   getHCVaultKubernetesRoles,
+  getHCVaultLdapRoles,
   getHCVaultSecretsForPath,
   HCVaultAuthType,
   listHCVaultMounts,
@@ -600,6 +601,19 @@ export const externalMigrationServiceFactory = ({
     return getHCVaultDatabaseRoles(namespace, mountPath, connection, gatewayService);
   };
 
+  const getVaultLdapRoles = async ({
+    actor,
+    namespace,
+    mountPath
+  }: {
+    actor: OrgServiceActor;
+    namespace: string;
+    mountPath: string;
+  }) => {
+    const connection = await getVaultConnectionForNamespace(actor, namespace, "get LDAP roles");
+    return getHCVaultLdapRoles(namespace, mountPath, connection, gatewayService);
+  };
+
   return {
     importEnvKeyData,
     importVaultData,
@@ -616,6 +630,7 @@ export const externalMigrationServiceFactory = ({
     importVaultSecrets,
     getVaultKubernetesAuthRoles,
     getVaultKubernetesRoles,
-    getVaultDatabaseRoles
+    getVaultDatabaseRoles,
+    getVaultLdapRoles
   };
 };

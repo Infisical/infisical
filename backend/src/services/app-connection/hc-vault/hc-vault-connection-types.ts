@@ -139,3 +139,21 @@ export type THCVaultDatabaseRole = {
   config: THCVaultDatabaseConfig;
   mountPath: string;
 };
+
+export type THCVaultLdapConfig = {
+  binddn: string;
+  url: string;
+  certificate?: string;
+};
+
+export type THCVaultLdapRole = {
+  name: string;
+  default_ttl?: number;
+  max_ttl?: number;
+  creation_ldif?: string;
+  deletion_ldif?: string;
+  rollback_ldif?: string;
+  username_template?: string;
+  config: THCVaultLdapConfig;
+  mountPath: string;
+};

@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ms from "ms";
 import { z } from "zod";
+
+import { createNotification } from "@app/components/notifications";
 
 import { TtlFormLabel } from "@app/components/features";
 import {
@@ -15,8 +18,12 @@ import {
 } from "@app/components/v2";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
+import { VaultLdapRole } from "@app/hooks/api/migration/types";
 import { ProjectEnv } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
+
+import { LoadFromVaultBanner } from "./components/LoadFromVaultBanner";
+import { VaultLdapImportModal } from "./VaultLdapImportModal";
 
 enum CredentialType {
   Dynamic = "dynamic",
@@ -98,6 +105,8 @@ export const LdapInputForm = ({
   environments,
   isSingleEnvironmentMode
 }: Props) => {
+  const [isVaultImportModalOpen, setIsVaultImportModalOpen] = useState(false);
+
   const {
     control,
     formState: { isSubmitting },
@@ -125,6 +134,64 @@ export const LdapInputForm = ({
   const selectedCredentialType = watch("provider.credentialType");
 
   const createDynamicSecret = useCreateDynamicSecret();
+
+  const handleVaultImport = (role: VaultLdapRole) => {
+    try {
+      setValue("name", role.name);
+
+      if (role.config.url) {
+        setValue("provider.url", role.config.url);
+      }
+
+      if (role.config.binddn) {
+        setValue("provider.binddn", role.config.binddn);
+      }
+
+      if (role.config.certificate) {
+        setValue("provider.ca", role.config.certificate);
+      }
+
+      // Set credential type to Dynamic if creation_ldif is present
+      if (role.creation_ldif) {
+        setValue("provider.credentialType", CredentialType.Dynamic);
+        setValue("provider.creationLdif", role.creation_ldif);
+
+        if (role.deletion_ldif) {
+          setValue("provider.revocationLdif", role.deletion_ldif);
+        }
+
+        if (role.rollback_ldif) {
+          setValue("provider.rollbackLdif", role.rollback_ldif);
+        }
+      }
+
+      // Set TTLs
+      if (role.default_ttl) {
+        const defaultTTL = `${role.default_ttl}s`;
+        setValue("defaultTTL", defaultTTL);
+      }
+
+      if (role.max_ttl) {
+        const maxTTL = `${role.max_ttl}s`;
+        setValue("maxTTL", maxTTL);
+      }
+
+      // Set username template
+      if (role.username_template) {
+        setValue("usernameTemplate", role.username_template);
+      }
+
+      createNotification({
+        type: "info",
+        text: "Configuration loaded successfully from HashiCorp Vault"
+      });
+    } catch {
+      createNotification({
+        type: "error",
+        text: "Failed to load configuration from HashiCorp Vault"
+      });
+    }
+  };
 
   const handleCreateDynamicSecret = async ({
     name,
@@ -155,6 +222,7 @@ export const LdapInputForm = ({
   return (
     <form onSubmit={handleSubmit(handleCreateDynamicSecret)} autoComplete="off">
       <div>
+        <LoadFromVaultBanner onClick={() => setIsVaultImportModalOpen(true)} />
         <div className="flex items-center space-x-2">
           <div className="grow">
             <Controller
@@ -425,6 +493,11 @@ export const LdapInputForm = ({
           Cancel
         </Button>
       </div>
+      <VaultLdapImportModal
+        isOpen={isVaultImportModalOpen}
+        onOpenChange={setIsVaultImportModalOpen}
+        onImport={handleVaultImport}
+      />
     </form>
   );
 };
