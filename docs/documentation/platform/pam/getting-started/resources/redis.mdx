@@ -4,7 +4,10 @@ sidebarTitle: "Redis"
 description: "Learn how to configure Redis access through Infisical PAM for secure, audited, and just-in-time access to your Redis instances."
 ---
 
-Infisical PAM supports secure, just-in-time access to Redis instances. This allows your team to access Redis databases without sharing long-lived credentials, while maintaining a complete audit trail of who accessed what and when.
+Infisical PAM supports secure, just-in-time access to Redis instances.
+This allows your team to access Redis databases without sharing long-lived credentials, while maintaining a complete audit trail of who accessed what and when.
+We support all major Redis server versions since Redis 1.0 that use the [RESP protocol](https://redis.io/docs/latest/develop/reference/protocol-spec/).
+There are different variants of Redis servers or forks which are also based on RESP protocol, such as [Valkey](https://valkey.io), and they all work with Infisical PAM.
 
 ## How It Works
 
@@ -29,7 +32,7 @@ sequenceDiagram
     end
     User->>CLI: Redis commands
     CLI->>Gateway: Proxy Redis requests
-    Gateway->>Redis: Forward cmds
+    Gateway->>Redis: Forward commands
     Redis-->>Gateway: Response
     Gateway-->>CLI: Return response
     CLI-->>User: Redis output
@@ -169,20 +172,11 @@ Once your resource and accounts are configured, users can request access through
   </Step>
 
   <Step title="Connect to Redis">
-    Once the proxy is running, you can connect to Redis using your preferred Redis client. The proxy will be available on `localhost` with the url shown in the CLI output.
+    Once the proxy is running, you can connect to Redis using your preferred Redis client. The proxy will be available on `localhost` with the URL shown in the CLI output.
 
     **Using redis-cli:**
     ```bash
-    redis-cli -u <redis_url>
-    ```
-
-    **Using a Redis client library:**
-    ```javascript
-    const redis = require('redis');
-    const client = redis.createClient({
-      host: 'localhost',
-      port: <proxy-port>
-    });
+    redis-cli -u <redis-url>
     ```
 
     All commands are routed securely through the Infisical Gateway to your Redis instance.
