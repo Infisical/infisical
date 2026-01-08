@@ -929,7 +929,7 @@ export const getHCVaultKubernetesRoles = async (
       })
     );
 
-    return Promise.all(roleDetailsPromises);
+    return await Promise.all(roleDetailsPromises);
   } catch (error: unknown) {
     logger.error(error, "Unable to list HC Vault Kubernetes secrets engine roles");
     throw new BadRequestError({
@@ -1063,7 +1063,7 @@ export const getHCVaultDatabaseRoles = async (
       })
     );
 
-    return Promise.all(roleDetailsPromises);
+    return await Promise.all(roleDetailsPromises);
   } catch (error: unknown) {
     logger.error(error, "Unable to list HC Vault database secrets engine roles");
     throw new BadRequestError({
