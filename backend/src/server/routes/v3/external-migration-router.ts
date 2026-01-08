@@ -468,7 +468,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
               renew_statements: z.array(z.string()).nullish(),
               config: z.object({
                 connection_details: z.object({
-                  connection_url: z.string(),
+                  connection_url: z.string().nullish(),
+                  hosts: z.string().nullish(),
                   tls_ca: z.string().nullish(),
                   username: z.string().nullish()
                 }),
