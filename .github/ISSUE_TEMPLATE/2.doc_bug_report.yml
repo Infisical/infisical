@@ -1,8 +1,7 @@
 name: Report a documentation bug
-about: Report an issue with the Infisical documentation.
+description: Report an issue with the Infisical documentation.
 title: 'Docs: '
 labels: documentation
-assignees: ''
 body:
   - type: textarea
     attributes:
