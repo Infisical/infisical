@@ -148,7 +148,7 @@ flowchart LR
 The root encryption key is a 256-bit AES key provided by the operator as a hex-encoded environment variable (`ENCRYPTION_KEY`). This key is the foundation of Infisical's encryption architecture and never leaves the server's memory during operation.
 
 **Key characteristics:**
-- **Size**: 256-bit (provided as a 32-character hex-encoded string)
+- **Size**: 256-bit AES key, provided as a hex-encoded string
 - **Source**: Operator-provided environment variable
 - **Purpose**: Encrypts the Internal KMS Root Key
 - **Storage**: Exists as an environment variable accessible by the Infisical runtime.
