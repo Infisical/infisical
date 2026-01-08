@@ -748,30 +748,6 @@
             ]
           },
           {
-            "item": "Infisical SSH",
-            "groups": [
-              {
-                "group": "Infisical SSH",
-                "pages": [
-                  "documentation/platform/ssh/overview",
-                  {
-                    "group": "Concepts",
-                    "pages": [
-                      "documentation/platform/ssh/concepts/ssh-certificates"
-                    ]
-                  }
-                ]
-              },
-              {
-                "group": "Platform Reference",
-                "pages": [
-                  "documentation/platform/ssh/usage",
-                  "documentation/platform/ssh/host-groups"
-                ]
-              }
-            ]
-          },
-          {
             "item": "Infisical KMS",
             "groups": [
               {
@@ -2782,68 +2758,6 @@
                 "pages": [
                   "api-reference/endpoints/secret-scanning/config/get-by-project-id",
                   "api-reference/endpoints/secret-scanning/config/update"
-                ]
-              }
-            ]
-          },
-          {
-            "group": "Infisical SSH",
-            "pages": [
-              {
-                "group": "Hosts",
-                "pages": [
-                  "api-reference/endpoints/ssh/hosts/list-my",
-                  "api-reference/endpoints/ssh/hosts/list",
-                  "api-reference/endpoints/ssh/hosts/create",
-                  "api-reference/endpoints/ssh/hosts/read",
-                  "api-reference/endpoints/ssh/hosts/update",
-                  "api-reference/endpoints/ssh/hosts/delete",
-                  "api-reference/endpoints/ssh/hosts/issue-host-cert",
-                  "api-reference/endpoints/ssh/hosts/issue-user-cert",
-                  "api-reference/endpoints/ssh/hosts/read-user-ca-pk",
-                  "api-reference/endpoints/ssh/hosts/read-host-ca-pk"
-                ]
-              },
-              {
-                "group": "Host Groups",
-                "pages": [
-                  "api-reference/endpoints/ssh/groups/list",
-                  "api-reference/endpoints/ssh/groups/create",
-                  "api-reference/endpoints/ssh/groups/read",
-                  "api-reference/endpoints/ssh/groups/update",
-                  "api-reference/endpoints/ssh/groups/delete",
-                  "api-reference/endpoints/ssh/groups/add-host",
-                  "api-reference/endpoints/ssh/groups/list-hosts",
-                  "api-reference/endpoints/ssh/groups/remove-host"
-                ]
-              },
-              {
-                "group": "Certificates",
-                "pages": [
-                  "api-reference/endpoints/ssh/certificates/issue-credentials",
-                  "api-reference/endpoints/ssh/certificates/sign-key"
-                ]
-              },
-              {
-                "group": "Certificate Authorities",
-                "pages": [
-                  "api-reference/endpoints/ssh/ca/list",
-                  "api-reference/endpoints/ssh/ca/create",
-                  "api-reference/endpoints/ssh/ca/read",
-                  "api-reference/endpoints/ssh/ca/update",
-                  "api-reference/endpoints/ssh/ca/delete",
-                  "api-reference/endpoints/ssh/ca/public-key",
-                  "api-reference/endpoints/ssh/ca/list-certificate-templates"
-                ]
-              },
-              {
-                "group": "Certificate Templates",
-                "pages": [
-                  "api-reference/endpoints/ssh/certificate-templates/list",
-                  "api-reference/endpoints/ssh/certificate-templates/create",
-                  "api-reference/endpoints/ssh/certificate-templates/read",
-                  "api-reference/endpoints/ssh/certificate-templates/update",
-                  "api-reference/endpoints/ssh/certificate-templates/delete"
                 ]
               }
             ]

@@ -74,10 +74,6 @@ const PROJECT_TYPE_MENU_ITEMS = [
     value: ProjectType.KMS
   },
   {
-    label: "SSH",
-    value: ProjectType.SSH
-  },
-  {
     label: "Secret Scanning",
     value: ProjectType.SecretScanning
   },
