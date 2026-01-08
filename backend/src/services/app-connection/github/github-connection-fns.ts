@@ -52,16 +52,21 @@ export const getGitHubGatewayConnectionDetails = async (
   gatewayId: string,
   targetHost: string,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
-): Promise<Awaited<ReturnType<TGatewayV2ServiceFactory["getPlatformConnectionDetailsByGatewayId"]>>> => {
-  const urlString = targetHost.includes("://") ? targetHost : `https://${targetHost}`;
-  const url = new URL(urlString);
-  const { hostname } = url;
+): Promise<Awaited<ReturnType<TGatewayV2ServiceFactory["getPlatformConnectionDetailsByGatewayId"]>> | undefined> => {
+  try {
+    const urlString = targetHost.includes("://") ? targetHost : `https://${targetHost}`;
+    const url = new URL(urlString);
+    const { hostname } = url;
 
-  return gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
-    gatewayId,
-    targetHost: hostname,
-    targetPort: 443
-  });
+    return await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+      gatewayId,
+      targetHost: hostname,
+      targetPort: 443
+    });
+  } catch {
+    // Return undefined to allow fallback to V1 gateway
+    return undefined;
+  }
 };
 
 export const requestWithGitHubGateway = async <T>(

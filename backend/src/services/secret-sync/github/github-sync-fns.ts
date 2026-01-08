@@ -4,6 +4,7 @@ import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import {
   getGitHubAppAuthToken,
+  getGitHubGatewayConnectionDetails,
   getGitHubInstanceApiUrl,
   GitHubConnectionMethod,
   makePaginatedGitHubRequest,
@@ -77,15 +78,26 @@ const getPublicKey = async (
     }
   }
 
-  const response = await requestWithGitHubGateway<TGitHubPublicKey>(connection, gatewayService, gatewayV2Service, {
-    url: `https://${await getGitHubInstanceApiUrl(connection)}${path}`,
-    method: "GET",
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${token}`,
-      "X-GitHub-Api-Version": "2022-11-28"
-    }
-  });
+  const apiBaseUrl = await getGitHubInstanceApiUrl(connection);
+  const gatewayConnectionDetails = connection.gatewayId
+    ? await getGitHubGatewayConnectionDetails(connection.gatewayId, apiBaseUrl, gatewayV2Service)
+    : undefined;
+
+  const response = await requestWithGitHubGateway<TGitHubPublicKey>(
+    connection,
+    gatewayService,
+    gatewayV2Service,
+    {
+      url: `https://${apiBaseUrl}${path}`,
+      method: "GET",
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${token}`,
+        "X-GitHub-Api-Version": "2022-11-28"
+      }
+    },
+    gatewayConnectionDetails
+  );
 
   return response.data;
 };
@@ -116,15 +128,26 @@ const deleteSecret = async (
     }
   }
 
-  await requestWithGitHubGateway(connection, gatewayService, gatewayV2Service, {
-    url: `https://${await getGitHubInstanceApiUrl(connection)}${path}`,
-    method: "DELETE",
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${token}`,
-      "X-GitHub-Api-Version": "2022-11-28"
-    }
-  });
+  const apiBaseUrl = await getGitHubInstanceApiUrl(connection);
+  const gatewayConnectionDetails = connection.gatewayId
+    ? await getGitHubGatewayConnectionDetails(connection.gatewayId, apiBaseUrl, gatewayV2Service)
+    : undefined;
+
+  await requestWithGitHubGateway(
+    connection,
+    gatewayService,
+    gatewayV2Service,
+    {
+      url: `https://${apiBaseUrl}${path}`,
+      method: "DELETE",
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${token}`,
+        "X-GitHub-Api-Version": "2022-11-28"
+      }
+    },
+    gatewayConnectionDetails
+  );
 };
 
 const putSecret = async (
@@ -163,16 +186,27 @@ const putSecret = async (
     }
   }
 
-  await requestWithGitHubGateway(connection, gatewayService, gatewayV2Service, {
-    url: `https://${await getGitHubInstanceApiUrl(connection)}${path}`,
-    method: "PUT",
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${token}`,
-      "X-GitHub-Api-Version": "2022-11-28"
+  const apiBaseUrl = await getGitHubInstanceApiUrl(connection);
+  const gatewayConnectionDetails = connection.gatewayId
+    ? await getGitHubGatewayConnectionDetails(connection.gatewayId, apiBaseUrl, gatewayV2Service)
+    : undefined;
+
+  await requestWithGitHubGateway(
+    connection,
+    gatewayService,
+    gatewayV2Service,
+    {
+      url: `https://${apiBaseUrl}${path}`,
+      method: "PUT",
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${token}`,
+        "X-GitHub-Api-Version": "2022-11-28"
+      },
+      data: body
     },
-    data: body
-  });
+    gatewayConnectionDetails
+  );
 };
 
 export const GithubSyncFns = {
