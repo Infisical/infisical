@@ -425,6 +425,9 @@ import {
   TSamlConfigs,
   TSamlConfigsInsert,
   TSamlConfigsUpdate,
+  TScimEvents,
+  TScimEventsInsert,
+  TScimEventsUpdate,
   TScimTokens,
   TScimTokensInsert,
   TScimTokensUpdate,
@@ -1153,6 +1156,7 @@ declare module "knex/types/tables" {
     >;
 
     [TableName.ScimToken]: KnexOriginal.CompositeTableType<TScimTokens, TScimTokensInsert, TScimTokensUpdate>;
+    [TableName.ScimEvents]: KnexOriginal.CompositeTableType<TScimEvents, TScimEventsInsert, TScimEventsUpdate>;
     [TableName.SecretApprovalPolicy]: KnexOriginal.CompositeTableType<
       TSecretApprovalPolicies,
       TSecretApprovalPoliciesInsert,
