@@ -49,6 +49,23 @@ export const convertVaultValueToString = (value: JsonValue): string => {
 // Concurrency limit for HC Vault API requests to avoid rate limiting
 const HC_VAULT_CONCURRENCY_LIMIT = 20;
 
+// Helper to check if error is a 404
+const isVault404Error = (error: unknown): boolean => {
+  if (error && typeof error === "object" && "response" in error) {
+    const axiosError = error as { response?: { status?: number } };
+    return axiosError.response?.status === 404;
+  }
+  return false;
+};
+
+// Helper to extract error message from Vault API errors
+const getVaultErrorMessage = (error: unknown, fallback: string): string => {
+  if (error instanceof AxiosError) {
+    return (error.response?.data as { errors?: string[] })?.errors?.[0] || error.message || fallback;
+  }
+  return fallback;
+};
+
 /**
  * Creates a concurrency limiter that restricts the number of concurrent async operations
  * @param limit - Maximum number of concurrent operations
@@ -866,14 +883,7 @@ export const getHCVaultKubernetesRoles = async (
       );
       roleNames = roleListResponse.data.keys || [];
     } catch (error) {
-      // Vault returns 404 when no roles are configured yet
-      if (error && typeof error === "object" && "response" in error) {
-        const axiosError = error as { response?: { status?: number } };
-        if (axiosError.response?.status === 404) {
-          return [];
-        }
-      }
-
+      if (isVault404Error(error)) return [];
       throw error;
     }
 
@@ -910,7 +920,6 @@ export const getHCVaultKubernetesRoles = async (
           }
         });
 
-        // 4. Merge the role with the config
         return {
           ...roleResponse.data,
           name: roleName,
@@ -920,22 +929,11 @@ export const getHCVaultKubernetesRoles = async (
       })
     );
 
-    const roles = await Promise.all(roleDetailsPromises);
-
-    return roles;
+    return Promise.all(roleDetailsPromises);
   } catch (error: unknown) {
     logger.error(error, "Unable to list HC Vault Kubernetes secrets engine roles");
-
-    if (error instanceof AxiosError) {
-      const errorMessage =
-        (error.response?.data as { errors?: string[] })?.errors?.[0] || error.message || "Unknown error";
-      throw new BadRequestError({
-        message: `Failed to list Kubernetes secrets engine roles: ${errorMessage}`
-      });
-    }
-
     throw new BadRequestError({
-      message: "Unable to list Kubernetes secrets engine roles from HashiCorp Vault"
+      message: `Failed to list Kubernetes secrets engine roles: ${getVaultErrorMessage(error, "Unknown error")}`
     });
   }
 };
@@ -970,13 +968,7 @@ export const getHCVaultDatabaseRoles = async (
       );
       connectionNames = connectionListResponse.data.keys || [];
     } catch (error) {
-      // Vault returns 404 when no connections are configured yet
-      if (error && typeof error === "object" && "response" in error) {
-        const axiosError = error as { response?: { status?: number } };
-        if (axiosError.response?.status === 404) {
-          return [];
-        }
-      }
+      if (isVault404Error(error)) return [];
       throw error;
     }
 
@@ -1023,13 +1015,7 @@ export const getHCVaultDatabaseRoles = async (
       );
       roleNames = roleListResponse.data.keys || [];
     } catch (error) {
-      // Vault returns 404 when no roles are configured yet
-      if (error && typeof error === "object" && "response" in error) {
-        const axiosError = error as { response?: { status?: number } };
-        if (axiosError.response?.status === 404) {
-          return [];
-        }
-      }
+      if (isVault404Error(error)) return [];
       throw error;
     }
 
@@ -1047,13 +1033,7 @@ export const getHCVaultDatabaseRoles = async (
             max_ttl?: number;
             creation_statements?: string[];
             revocation_statements?: string[];
-            rollback_statements?: string[];
             renew_statements?: string[];
-            rotation_statements?: string[];
-            credential_type?: string;
-            credential_config?: {
-              password_policy?: string;
-            };
           };
         }>(connection, gatewayService, {
           url: `${instanceUrl}/v1/${cleanMountPath}/roles/${roleName}`,
@@ -1064,12 +1044,9 @@ export const getHCVaultDatabaseRoles = async (
           }
         });
 
-        // Get the connection config for this role's db_name
         const dbConfig = connectionConfigs.get(roleResponse.data.db_name) || {
           plugin_name: "",
-          connection_details: {
-            connection_url: ""
-          }
+          connection_details: { connection_url: "" }
         };
 
         return {
@@ -1086,22 +1063,11 @@ export const getHCVaultDatabaseRoles = async (
       })
     );
 
-    const roles = await Promise.all(roleDetailsPromises);
-
-    return roles;
+    return Promise.all(roleDetailsPromises);
   } catch (error: unknown) {
     logger.error(error, "Unable to list HC Vault database secrets engine roles");
-
-    if (error instanceof AxiosError) {
-      const errorMessage =
-        (error.response?.data as { errors?: string[] })?.errors?.[0] || error.message || "Unknown error";
-      throw new BadRequestError({
-        message: `Failed to list database secrets engine roles: ${errorMessage}`
-      });
-    }
-
     throw new BadRequestError({
-      message: "Unable to list database secrets engine roles from HashiCorp Vault"
+      message: `Failed to list database secrets engine roles: ${getVaultErrorMessage(error, "Unknown error")}`
     });
   }
 };
