@@ -18,6 +18,7 @@ import { TAppConnectionServiceFactory } from "../app-connection/app-connection-s
 import {
   convertVaultValueToString,
   getHCVaultAuthMounts,
+  getHCVaultDatabaseRoles,
   getHCVaultKubernetesAuthRoles,
   getHCVaultKubernetesRoles,
   getHCVaultSecretsForPath,
@@ -813,6 +814,56 @@ export const externalMigrationServiceFactory = ({
     return getHCVaultKubernetesRoles(namespace, mountPath, connection, gatewayService);
   };
 
+  const getVaultDatabaseRoles = async ({
+    actor,
+    namespace,
+    mountPath
+  }: {
+    actor: OrgServiceActor;
+    namespace: string;
+    mountPath: string;
+  }) => {
+    const { hasRole } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+
+    if (!hasRole(OrgMembershipRole.Admin)) {
+      throw new ForbiddenRequestError({ message: "Only admins can get database roles" });
+    }
+
+    const vaultConfig = await vaultExternalMigrationConfigDAL.findOne({
+      orgId: actor.orgId,
+      namespace
+    });
+
+    if (!vaultConfig) {
+      throw new NotFoundError({ message: "Vault migration config not found for this namespace" });
+    }
+
+    if (!vaultConfig.connection) {
+      throw new BadRequestError({ message: "Vault migration connection is not configured for this namespace" });
+    }
+
+    const credentials = await decryptAppConnectionCredentials({
+      orgId: vaultConfig.orgId,
+      encryptedCredentials: vaultConfig.connection.encryptedCredentials,
+      kmsService,
+      projectId: null
+    });
+
+    const connection = {
+      ...vaultConfig.connection,
+      credentials
+    } as THCVaultConnection;
+
+    return getHCVaultDatabaseRoles(namespace, mountPath, connection, gatewayService);
+  };
+
   return {
     importEnvKeyData,
     importVaultData,
@@ -828,6 +879,7 @@ export const externalMigrationServiceFactory = ({
     getVaultSecretPaths,
     importVaultSecrets,
     getVaultKubernetesAuthRoles,
-    getVaultKubernetesRoles
+    getVaultKubernetesRoles,
+    getVaultDatabaseRoles
   };
 };

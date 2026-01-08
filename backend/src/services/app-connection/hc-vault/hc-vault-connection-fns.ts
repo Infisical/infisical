@@ -18,6 +18,8 @@ import {
   THCVaultAuthMountResponse,
   THCVaultConnection,
   THCVaultConnectionConfig,
+  THCVaultDatabaseConfig,
+  THCVaultDatabaseRole,
   THCVaultKubernetesAuthConfig,
   THCVaultKubernetesAuthRole,
   THCVaultKubernetesAuthRoleWithConfig,
@@ -934,6 +936,172 @@ export const getHCVaultKubernetesRoles = async (
 
     throw new BadRequestError({
       message: "Unable to list Kubernetes secrets engine roles from HashiCorp Vault"
+    });
+  }
+};
+
+export const getHCVaultDatabaseRoles = async (
+  namespace: string,
+  mountPath: string,
+  connection: THCVaultConnection,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+): Promise<THCVaultDatabaseRole[]> => {
+  // Remove trailing slash from mount path
+  const cleanMountPath = mountPath.endsWith("/") ? mountPath.slice(0, -1) : mountPath;
+
+  try {
+    const instanceUrl = await getHCVaultInstanceUrl(connection);
+    const accessToken = await getHCVaultAccessToken(connection, gatewayService);
+
+    // 1. List all database connections in this mount to get their configs
+    let connectionNames: string[] = [];
+    try {
+      const { data: connectionListResponse } = await requestWithHCVaultGateway<{ data: { keys: string[] } }>(
+        connection,
+        gatewayService,
+        {
+          url: `${instanceUrl}/v1/${cleanMountPath}/config?list=true`,
+          method: "GET",
+          headers: {
+            "X-Vault-Token": accessToken,
+            "X-Vault-Namespace": namespace
+          }
+        }
+      );
+      connectionNames = connectionListResponse.data.keys || [];
+    } catch (error) {
+      // Vault returns 404 when no connections are configured yet
+      if (error && typeof error === "object" && "response" in error) {
+        const axiosError = error as { response?: { status?: number } };
+        if (axiosError.response?.status === 404) {
+          return [];
+        }
+      }
+      throw error;
+    }
+
+    // 2. Fetch config for each database connection
+    const limiter = createConcurrencyLimiter(HC_VAULT_CONCURRENCY_LIMIT);
+    const connectionConfigs: Map<string, THCVaultDatabaseConfig> = new Map();
+
+    await Promise.all(
+      connectionNames.map((connName) =>
+        limiter(async () => {
+          try {
+            const { data: configResponse } = await requestWithHCVaultGateway<{
+              data: THCVaultDatabaseConfig;
+            }>(connection, gatewayService, {
+              url: `${instanceUrl}/v1/${cleanMountPath}/config/${connName}`,
+              method: "GET",
+              headers: {
+                "X-Vault-Token": accessToken,
+                "X-Vault-Namespace": namespace
+              }
+            });
+            connectionConfigs.set(connName, configResponse.data);
+          } catch {
+            // Skip connections we can't read
+          }
+        })
+      )
+    );
+
+    // 3. List all roles in this mount
+    let roleNames: string[] = [];
+    try {
+      const { data: roleListResponse } = await requestWithHCVaultGateway<{ data: { keys: string[] } }>(
+        connection,
+        gatewayService,
+        {
+          url: `${instanceUrl}/v1/${cleanMountPath}/roles?list=true`,
+          method: "GET",
+          headers: {
+            "X-Vault-Token": accessToken,
+            "X-Vault-Namespace": namespace
+          }
+        }
+      );
+      roleNames = roleListResponse.data.keys || [];
+    } catch (error) {
+      // Vault returns 404 when no roles are configured yet
+      if (error && typeof error === "object" && "response" in error) {
+        const axiosError = error as { response?: { status?: number } };
+        if (axiosError.response?.status === 404) {
+          return [];
+        }
+      }
+      throw error;
+    }
+
+    if (!roleNames || roleNames.length === 0) {
+      return [];
+    }
+
+    // 4. Fetch details for each role with concurrency control
+    const roleDetailsPromises = roleNames.map((roleName) =>
+      limiter(async () => {
+        const { data: roleResponse } = await requestWithHCVaultGateway<{
+          data: {
+            db_name: string;
+            default_ttl?: number;
+            max_ttl?: number;
+            creation_statements?: string[];
+            revocation_statements?: string[];
+            rollback_statements?: string[];
+            renew_statements?: string[];
+            rotation_statements?: string[];
+            credential_type?: string;
+            credential_config?: {
+              password_policy?: string;
+            };
+          };
+        }>(connection, gatewayService, {
+          url: `${instanceUrl}/v1/${cleanMountPath}/roles/${roleName}`,
+          method: "GET",
+          headers: {
+            "X-Vault-Token": accessToken,
+            "X-Vault-Namespace": namespace
+          }
+        });
+
+        // Get the connection config for this role's db_name
+        const dbConfig = connectionConfigs.get(roleResponse.data.db_name) || {
+          plugin_name: "",
+          connection_details: {
+            connection_url: ""
+          }
+        };
+
+        return {
+          name: roleName,
+          db_name: roleResponse.data.db_name,
+          default_ttl: roleResponse.data.default_ttl,
+          max_ttl: roleResponse.data.max_ttl,
+          creation_statements: roleResponse.data.creation_statements,
+          revocation_statements: roleResponse.data.revocation_statements,
+          renew_statements: roleResponse.data.renew_statements,
+          config: dbConfig,
+          mountPath: cleanMountPath
+        } as THCVaultDatabaseRole;
+      })
+    );
+
+    const roles = await Promise.all(roleDetailsPromises);
+
+    return roles;
+  } catch (error: unknown) {
+    logger.error(error, "Unable to list HC Vault database secrets engine roles");
+
+    if (error instanceof AxiosError) {
+      const errorMessage =
+        (error.response?.data as { errors?: string[] })?.errors?.[0] || error.message || "Unknown error";
+      throw new BadRequestError({
+        message: `Failed to list database secrets engine roles: ${errorMessage}`
+      });
+    }
+
+    throw new BadRequestError({
+      message: "Unable to list database secrets engine roles from HashiCorp Vault"
     });
   }
 };
