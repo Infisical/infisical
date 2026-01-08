@@ -109,6 +109,7 @@ import { relayServiceFactory } from "@app/ee/services/relay/relay-service";
 import { samlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { samlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
 import { scimDALFactory } from "@app/ee/services/scim/scim-dal";
+import { scimEventsDALFactory } from "@app/ee/services/scim/scim-events-dal";
 import { scimServiceFactory } from "@app/ee/services/scim/scim-service";
 import {
   secretApprovalPolicyApproverDALFactory,
@@ -518,6 +519,7 @@ export const registerRoutes = async (
   const permissionDAL = permissionDALFactory(db);
   const samlConfigDAL = samlConfigDALFactory(db);
   const scimDAL = scimDALFactory(db);
+  const scimEventsDAL = scimEventsDALFactory(db);
   const ldapConfigDAL = ldapConfigDALFactory(db);
   const ldapGroupMapDAL = ldapGroupMapDALFactory(db);
 
@@ -834,6 +836,7 @@ export const registerRoutes = async (
   const scimService = scimServiceFactory({
     licenseService,
     scimDAL,
+    scimEventsDAL,
     userDAL,
     userAliasDAL,
     orgDAL,
