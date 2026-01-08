@@ -243,13 +243,21 @@ export const oidcConfigServiceFactory = ({
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
         // we prioritize getting the most complete user to create the new alias under
-        newUser = await userDAL.findOne(
+        const usersWithSameEmail = await userDAL.find(
           {
-            email,
-            isEmailVerified: true
+            email: email.toLowerCase()
           },
-          tx
+          {
+            tx
+          }
         );
+
+        const verifiedEmail = usersWithSameEmail.find((el) => el.isEmailVerified);
+        if (verifiedEmail) {
+          newUser = verifiedEmail;
+        } else if (usersWithSameEmail?.length === 1 && usersWithSameEmail?.[0]?.username === email.toLowerCase()) {
+          newUser = usersWithSameEmail?.[0];
+        }
 
         if (!newUser) {
           // this fetches user entries created via invites

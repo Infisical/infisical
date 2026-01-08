@@ -449,13 +449,24 @@ export const scimServiceFactory = ({
           );
         }
       } else {
-        user = await userDAL.findOne(
+        // we fetch all users with this email
+        const usersWithSameEmail = await userDAL.find(
           {
-            email: email.toLowerCase(),
-            isEmailVerified: true
+            email: email.toLowerCase()
           },
-          tx
+          {
+            tx
+          }
         );
+
+        // if there is a verified email user pick that
+        const verifiedEmail = usersWithSameEmail.find((el) => el.isEmailVerified);
+        if (verifiedEmail) {
+          user = verifiedEmail;
+          // a user who is invited via email not logged in yet
+        } else if (usersWithSameEmail?.length === 1 && usersWithSameEmail?.[0]?.username === email.toLowerCase()) {
+          user = usersWithSameEmail?.[0];
+        }
 
         if (!user) {
           const uniqueUsername = await normalizeUsername(

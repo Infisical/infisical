@@ -456,13 +456,22 @@ export const ldapConfigServiceFactory = ({
     } else {
       userAlias = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
-        newUser = await userDAL.findOne(
+
+        const usersWithSameEmail = await userDAL.find(
           {
-            email: email.toLowerCase(),
-            isEmailVerified: true
+            email: email.toLowerCase()
           },
-          tx
+          {
+            tx
+          }
         );
+
+        const verifiedEmail = usersWithSameEmail.find((el) => el.isEmailVerified);
+        if (verifiedEmail) {
+          newUser = verifiedEmail;
+        } else if (usersWithSameEmail?.length === 1 && usersWithSameEmail?.[0]?.username === email.toLowerCase()) {
+          newUser = usersWithSameEmail?.[0];
+        }
 
         if (!newUser) {
           const uniqueUsername = await normalizeUsername(username, userDAL);
