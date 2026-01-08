@@ -1,0 +1,93 @@
+---
+title: "infisical ssh"
+description: "Generate SSH credentials with the CLI"
+---
+
+## Description
+
+[Infisical SSH](/documentation/platform/ssh) lets you issue SSH credentials to clients to provide short-lived, secure SSH access to infrastructure.
+
+This command enables you to obtain SSH credentials used to access a remote host. We recommend using the `connect` sub-command which handles the full workflow of issuing credentials and establishing an SSH connection in one step.
+
+### Sub-commands
+
+<Accordion title="infisical ssh connect">
+    This command is used to connect to an SSH host using issued credentials. It will automatically issue credentials and either add them to your SSH agent or write them to disk before establishing an SSH connection.
+    
+    ```bash
+    $ infisical ssh connect
+    ```
+
+    ### Flags
+    <Accordion title="--hostname">
+        The hostname of the SSH host to connect to. If not provided, you will be prompted to select from available hosts.
+    </Accordion>
+    <Accordion title="--login-user">
+        The login user for the SSH connection. If not provided, you will be prompted to select from available login users.
+    </Accordion>
+    <Accordion title="--write-host-ca-to-file">
+        Whether to write the Host CA public key to `~/.ssh/known_hosts` if it doesn't already exist.
+
+        Default value: `true`
+    </Accordion>
+    <Accordion title="--out-file-path">
+        The path to write the SSH credentials to such as `~/.ssh`, `./some_folder`, `./some_folder/id_rsa-cert.pub`. If not provided, the credentials will be added to the SSH agent and used to establish an interactive SSH connection.
+    </Accordion>
+    <Accordion title="--token">
+        Use a machine identity access token
+    </Accordion>
+
+</Accordion>
+
+<Accordion title="infisical ssh add-host">
+    This command is used to register a new SSH host with Infisical.
+    
+    This command can be used with the `--write-user-ca-to-file`, `--write-host-cert-to-file`, and `--configure-sshd` flags
+    to also configure the host's SSH daemon with the necessary certificate authority and host certificate settings.
+
+    ```bash
+    $ infisical ssh add-host --projectId=<project-id> --hostname=<hostname>
+    ```
+
+    ### Flags
+    <Accordion title="--projectId">
+        Project ID the host belongs to (required)
+    </Accordion>
+    <Accordion title="--hostname">
+        Hostname of the SSH host (required)
+    </Accordion>
+    <Accordion title="--alias">
+        Alias for the SSH host (optional)
+    </Accordion>
+    <Accordion title="--write-user-ca-to-file">
+        Write User CA public key to `/etc/ssh/infisical_user_ca.pub`
+
+        Default value: `false`
+    </Accordion>
+    <Accordion title="--user-ca-out-file-path">
+        Custom file path to write the User CA public key
+
+        Default value: `/etc/ssh/infisical_user_ca.pub`
+    </Accordion>
+    <Accordion title="--write-host-cert-to-file">
+        Write SSH host certificate to `/etc/ssh/ssh_host_<type>_key-cert.pub`
+
+        Default value: `false`
+    </Accordion>
+    <Accordion title="--configure-sshd">
+        Update `TrustedUserCAKeys`, `HostKey`, and `HostCertificate` in the `/etc/ssh/sshd_config` file
+
+        Default value: `false`
+
+        Note: This flag requires both --write-user-ca-to-file and --write-host-cert-to-file to be set
+    </Accordion>
+    <Accordion title="--force">
+        Force overwrite of existing certificate files as part of `--write-user-ca-to-file` and `--write-host-cert-to-file`
+
+        Default value: `false`
+    </Accordion>
+    <Accordion title="--token">
+        Use a machine identity access token
+    </Accordion>
+
+</Accordion>
