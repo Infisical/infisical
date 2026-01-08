@@ -169,11 +169,11 @@ Once your resource and accounts are configured, users can request access through
   </Step>
 
   <Step title="Connect to Redis">
-    Once the proxy is running, you can connect to Redis using your preferred Redis client. The proxy will be available on `localhost` with the port shown in the CLI output.
+    Once the proxy is running, you can connect to Redis using your preferred Redis client. The proxy will be available on `localhost` with the url shown in the CLI output.
 
     **Using redis-cli:**
     ```bash
-    redis-cli -h localhost -p <proxy-port>
+    redis-cli -u <redis_url>
     ```
 
     **Using a Redis client library:**
