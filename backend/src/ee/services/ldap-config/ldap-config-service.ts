@@ -467,10 +467,11 @@ export const ldapConfigServiceFactory = ({
         );
 
         const verifiedEmail = usersWithSameEmail.find((el) => el.isEmailVerified);
+        const userWithSameUsername = usersWithSameEmail.find((el) => el.username === email.toLowerCase());
         if (verifiedEmail) {
           newUser = verifiedEmail;
-        } else if (usersWithSameEmail?.length === 1 && usersWithSameEmail?.[0]?.username === email.toLowerCase()) {
-          newUser = usersWithSameEmail?.[0];
+        } else if (userWithSameUsername) {
+          newUser = userWithSameUsername;
         }
 
         if (!newUser) {

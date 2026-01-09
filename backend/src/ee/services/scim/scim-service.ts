@@ -461,11 +461,12 @@ export const scimServiceFactory = ({
 
         // if there is a verified email user pick that
         const verifiedEmail = usersWithSameEmail.find((el) => el.isEmailVerified);
+        const userWithSameUsername = usersWithSameEmail.find((el) => el.username === email.toLowerCase());
         if (verifiedEmail) {
           user = verifiedEmail;
           // a user who is invited via email not logged in yet
-        } else if (usersWithSameEmail?.length === 1 && usersWithSameEmail?.[0]?.username === email.toLowerCase()) {
-          user = usersWithSameEmail?.[0];
+        } else if (userWithSameUsername) {
+          user = userWithSameUsername;
         }
 
         if (!user) {
