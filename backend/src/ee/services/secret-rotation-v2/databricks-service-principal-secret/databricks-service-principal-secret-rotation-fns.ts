@@ -47,15 +47,14 @@ export const databricksServicePrincipalSecretRotationFactory: TRotationFactory<
 
     const endpoint = `${workspaceUrl}/api/2.0/accounts/servicePrincipals/${servicePrincipalId}/credentials/secrets`;
 
-    const now = new Date();
-    const endDateTime = new Date(now);
-    endDateTime.setTime(now.getTime() + (rotationInterval * 2 + EXPIRY_PADDING_IN_DAYS) * 24 * 60 * 60 * 1000);
+    const lifetimeSeconds = (rotationInterval * 2 + EXPIRY_PADDING_IN_DAYS) * 24 * 60 * 60;
+    const lifetime = `${lifetimeSeconds}s`;
 
     try {
       const { data } = await request.post<unknown>(
         endpoint,
         {
-          expire_time: endDateTime.toISOString()
+          lifetime
         },
         {
           headers: {
