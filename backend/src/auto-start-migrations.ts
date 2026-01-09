@@ -133,11 +133,7 @@ const ensureMigrationTables = async (db: Knex, logger: Logger): Promise<void> =>
   });
 };
 
-const runMigrationsWithStartupLock = async (
-  db: Knex,
-  logger: Logger,
-  doMigrations: () => Promise<void>
-): Promise<void> => {
+const withStartupLock = async (db: Knex, logger: Logger, doMigrations: () => Promise<void>): Promise<void> => {
   const { tableName } = migrationConfig;
   const startupLockTableName = getStartupLockTableName(tableName);
 
@@ -308,7 +304,7 @@ export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs
       }
 
       // Use startup lock to ensure only one instance runs migrations at a time
-      await runMigrationsWithStartupLock(auditLogDb, logger, async () => {
+      await withStartupLock(auditLogDb, logger, async () => {
         await auditLogDb.migrate.latest(migrationConfig);
       });
       logger.info("Finished audit log migrations.");
@@ -325,7 +321,7 @@ export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs
     }
 
     // Use startup lock to ensure only one instance runs migrations at a time
-    await runMigrationsWithStartupLock(applicationDb, logger, async () => {
+    await withStartupLock(applicationDb, logger, async () => {
       await applicationDb.migrate.latest(migrationConfig);
     });
     logger.info("Finished application migrations.");
