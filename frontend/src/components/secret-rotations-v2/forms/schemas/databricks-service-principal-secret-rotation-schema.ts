@@ -3,9 +3,9 @@ import { z } from "zod";
 import { BaseSecretRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/base-secret-rotation-v2-schema";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
-export const DatabricksServiceAccountSecretRotationSchema = z
+export const DatabricksServicePrincipalSecretRotationSchema = z
   .object({
-    type: z.literal(SecretRotation.DatabricksServiceAccountSecret),
+    type: z.literal(SecretRotation.DatabricksServicePrincipalSecret),
     parameters: z.object({
       servicePrincipalId: z.string().trim().min(1, "Service Principal ID required"),
       servicePrincipalName: z.string().trim().optional(),

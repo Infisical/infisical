@@ -5,8 +5,8 @@ import {
   TSecretRotationV2GeneratedCredentialsResponseBase
 } from "@app/hooks/api/secretRotationsV2/types/shared";
 
-export type TDatabricksServiceAccountSecretRotation = TSecretRotationV2Base & {
-  type: SecretRotation.DatabricksServiceAccountSecret;
+export type TDatabricksServicePrincipalSecretRotation = TSecretRotationV2Base & {
+  type: SecretRotation.DatabricksServicePrincipalSecret;
   parameters: {
     servicePrincipalId: string;
     servicePrincipalName?: string;
@@ -18,22 +18,22 @@ export type TDatabricksServiceAccountSecretRotation = TSecretRotationV2Base & {
   };
 };
 
-export type TDatabricksServiceAccountSecretRotationGeneratedCredentials = {
+export type TDatabricksServicePrincipalSecretRotationGeneratedCredentials = {
   clientId: string;
   clientSecret: string;
 };
 
-export type TDatabricksServiceAccountSecretRotationGeneratedCredentialsResponse =
+export type TDatabricksServicePrincipalSecretRotationGeneratedCredentialsResponse =
   TSecretRotationV2GeneratedCredentialsResponseBase<
-    SecretRotation.DatabricksServiceAccountSecret,
-    TDatabricksServiceAccountSecretRotationGeneratedCredentials
+    SecretRotation.DatabricksServicePrincipalSecret,
+    TDatabricksServicePrincipalSecretRotationGeneratedCredentials
   >;
 
-export type TDatabricksServiceAccountSecretRotationOption = {
+export type TDatabricksServicePrincipalSecretRotationOption = {
   name: string;
-  type: SecretRotation.DatabricksServiceAccountSecret;
+  type: SecretRotation.DatabricksServicePrincipalSecret;
   connection: AppConnection.Databricks;
   template: {
-    secretsMapping: TDatabricksServiceAccountSecretRotation["secretsMapping"];
+    secretsMapping: TDatabricksServicePrincipalSecretRotation["secretsMapping"];
   };
 };

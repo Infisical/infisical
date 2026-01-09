@@ -53,21 +53,48 @@ const listDatabricksServicePrincipals = async (
 
   const accessToken = await getDatabricksConnectionAccessToken(appConnection, appConnectionDAL, kmsService);
 
-  const { data } = await request.get<TDatabricksListServicePrincipalsResponse>(
-    `${removeTrailingSlash(workspaceUrl)}/api/2.0/preview/scim/v2/ServicePrincipals`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json"
-      }
-    }
-  );
+  const allServicePrincipals: Array<{ id: string; name: string; clientId: string }> = [];
+  let startIndex = 1;
+  const itemsPerPage = 100;
+  const maxPages = 20;
+  let currentPage = 0;
 
-  return (data.Resources ?? []).map((sp) => ({
-    id: sp.id,
-    name: sp.displayName,
-    clientId: sp.applicationId || ""
-  }));
+  while (currentPage < maxPages) {
+    // eslint-disable-next-line no-await-in-loop
+    const { data } = await request.get<TDatabricksListServicePrincipalsResponse>(
+      `${removeTrailingSlash(workspaceUrl)}/api/2.0/preview/scim/v2/ServicePrincipals`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        params: {
+          startIndex,
+          count: itemsPerPage
+        }
+      }
+    );
+
+    const resources = data.Resources ?? [];
+    allServicePrincipals.push(
+      ...resources.map((sp) => ({
+        id: sp.id,
+        name: sp.displayName,
+        clientId: sp.applicationId || ""
+      }))
+    );
+
+    currentPage += 1;
+
+    const totalResults = data.totalResults ?? resources.length;
+    if (allServicePrincipals.length >= totalResults || resources.length < itemsPerPage) {
+      break;
+    }
+
+    startIndex += itemsPerPage;
+  }
+
+  return allServicePrincipals;
 };
 
 export const databricksConnectionService = (

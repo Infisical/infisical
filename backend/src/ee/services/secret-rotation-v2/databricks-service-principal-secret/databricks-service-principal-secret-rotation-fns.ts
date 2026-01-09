@@ -2,9 +2,9 @@
 import { AxiosError } from "axios";
 
 import {
-  TDatabricksServiceAccountSecretRotationGeneratedCredentials,
-  TDatabricksServiceAccountSecretRotationWithConnection
-} from "@app/ee/services/secret-rotation-v2/databricks-service-account-secret/databricks-service-account-secret-rotation-types";
+  TDatabricksServicePrincipalSecretRotationGeneratedCredentials,
+  TDatabricksServicePrincipalSecretRotationWithConnection
+} from "@app/ee/services/secret-rotation-v2/databricks-service-principal-secret/databricks-service-principal-secret-rotation-types";
 import {
   TRotationFactory,
   TRotationFactoryGetSecretsPayload,
@@ -20,15 +20,17 @@ import { getDatabricksConnectionAccessToken } from "@app/services/app-connection
 
 const DELAY_MS = 1000;
 const EXPIRY_PADDING_IN_DAYS = 3;
+const MAX_DATABRICKS_SECRETS = 4;
+const MAX_ROTATION_INTERVAL_DAYS = 730;
 
 const sleep = async () =>
   new Promise((resolve) => {
     setTimeout(resolve, DELAY_MS);
   });
 
-export const databricksServiceAccountSecretRotationFactory: TRotationFactory<
-  TDatabricksServiceAccountSecretRotationWithConnection,
-  TDatabricksServiceAccountSecretRotationGeneratedCredentials
+export const databricksServicePrincipalSecretRotationFactory: TRotationFactory<
+  TDatabricksServicePrincipalSecretRotationWithConnection,
+  TDatabricksServicePrincipalSecretRotationGeneratedCredentials
 > = (secretRotation, appConnectionDAL, kmsService) => {
   const {
     connection,
@@ -46,8 +48,8 @@ export const databricksServiceAccountSecretRotationFactory: TRotationFactory<
     const endpoint = `${workspaceUrl}/api/2.0/accounts/servicePrincipals/${servicePrincipalId}/credentials/secrets`;
 
     const now = new Date();
-    const endDateTime = new Date();
-    endDateTime.setDate(now.getDate() + rotationInterval * 2 + EXPIRY_PADDING_IN_DAYS);
+    const endDateTime = new Date(now);
+    endDateTime.setTime(now.getTime() + (rotationInterval * 2 + EXPIRY_PADDING_IN_DAYS) * 24 * 60 * 60 * 1000);
 
     try {
       const { data } = await request.post<unknown>(
@@ -116,7 +118,7 @@ export const databricksServiceAccountSecretRotationFactory: TRotationFactory<
 
     await blockLocalAndPrivateIpAddresses(workspaceUrl);
 
-    let endpoint = `${workspaceUrl}/api/2.0/accounts/servicePrincipals/${servicePrincipalId}/credentials/secrets`;
+    const endpoint = `${workspaceUrl}/api/2.0/accounts/servicePrincipals/${servicePrincipalId}/credentials/secrets`;
 
     try {
       const { data } = await request.get<{ secrets: Array<{ id: string; client_secret?: string }> }>(endpoint, {
@@ -128,26 +130,27 @@ export const databricksServiceAccountSecretRotationFactory: TRotationFactory<
 
       return data.secrets ?? [];
     } catch (error: unknown) {
-      if (error instanceof AxiosError && (error.response?.status === 403 || error.response?.status === 404)) {
-        endpoint = `${workspaceUrl}/api/2.0/preview/scim/v2/ServicePrincipals/${servicePrincipalId}/credentials/secrets`;
+      let errorMessage = "Unknown error";
 
-        try {
-          const { data: workspaceData } = await request.get<{ secrets: Array<{ id: string; client_secret?: string }> }>(
-            endpoint,
-            {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                "Content-Type": "application/json"
-              }
-            }
-          );
+      if (error instanceof AxiosError && error.response?.data) {
+        const responseData: unknown = error.response.data;
 
-          return workspaceData.secrets ?? [];
-        } catch {
-          return [];
+        if (typeof responseData === "string") {
+          errorMessage = responseData;
+        } else if (typeof responseData === "object" && responseData !== null) {
+          const data = responseData as Record<string, unknown>;
+          errorMessage =
+            (data.error as string | undefined) || (data.message as string | undefined) || JSON.stringify(responseData);
         }
+      } else if (error instanceof AxiosError && error.message) {
+        errorMessage = error.message;
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
       }
-      return [];
+
+      throw new BadRequestError({
+        message: `Failed to list secrets for service principal ${servicePrincipalId}: ${errorMessage}`
+      });
     }
   };
 
@@ -157,7 +160,7 @@ export const databricksServiceAccountSecretRotationFactory: TRotationFactory<
 
     await blockLocalAndPrivateIpAddresses(workspaceUrl);
 
-    let endpoint = `${workspaceUrl}/api/2.0/accounts/servicePrincipals/${servicePrincipalId}/credentials/secrets/${secretId}`;
+    const endpoint = `${workspaceUrl}/api/2.0/accounts/servicePrincipals/${servicePrincipalId}/credentials/secrets/${secretId}`;
 
     try {
       await request.delete(endpoint, {
@@ -167,39 +170,6 @@ export const databricksServiceAccountSecretRotationFactory: TRotationFactory<
         }
       });
     } catch (error: unknown) {
-      if (error instanceof AxiosError && (error.response?.status === 403 || error.response?.status === 404)) {
-        endpoint = `${workspaceUrl}/api/2.0/preview/scim/v2/ServicePrincipals/${servicePrincipalId}/credentials/secrets/${secretId}`;
-
-        try {
-          await request.delete(endpoint, {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/json"
-            }
-          });
-          return;
-        } catch (workspaceError: unknown) {
-          let errorMessage = "Unknown error";
-
-          if (workspaceError instanceof AxiosError && workspaceError.response?.data) {
-            const responseData: unknown = workspaceError.response.data;
-
-            if (typeof responseData === "string") {
-              errorMessage = responseData;
-            } else if (typeof responseData === "object" && responseData !== null) {
-              const data = responseData as Record<string, unknown>;
-              errorMessage = (data.error as string | undefined) || workspaceError.message || "Unknown error";
-            }
-          } else if (workspaceError instanceof Error) {
-            errorMessage = workspaceError.message;
-          }
-
-          throw new BadRequestError({
-            message: `Failed to revoke secret with id ${secretId} for service principal ${servicePrincipalId}: ${errorMessage}`
-          });
-        }
-      }
-
       if (error instanceof AxiosError && error.response?.status === 404) {
         return;
       }
@@ -209,10 +179,14 @@ export const databricksServiceAccountSecretRotationFactory: TRotationFactory<
       if (error instanceof AxiosError && error.response?.data) {
         const responseData: unknown = error.response.data;
 
-        if (typeof responseData === "object" && responseData !== null) {
+        if (typeof responseData === "string") {
+          errorMessage = responseData;
+        } else if (typeof responseData === "object" && responseData !== null) {
           const data = responseData as Record<string, unknown>;
           errorMessage = (data.error as string | undefined) || error.message || "Unknown error";
         }
+      } else if (error instanceof AxiosError && error.message) {
+        errorMessage = error.message;
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
@@ -224,11 +198,11 @@ export const databricksServiceAccountSecretRotationFactory: TRotationFactory<
   };
 
   const issueCredentials: TRotationFactoryIssueCredentials<
-    TDatabricksServiceAccountSecretRotationGeneratedCredentials
+    TDatabricksServicePrincipalSecretRotationGeneratedCredentials
   > = async (callback) => {
-    if (rotationInterval > Math.floor(365 * 2.5) - EXPIRY_PADDING_IN_DAYS) {
+    if (rotationInterval > MAX_ROTATION_INTERVAL_DAYS) {
       throw new BadRequestError({
-        message: "Databricks does not support OAuth secret duration over 2.5 years"
+        message: `Databricks does not support OAuth secret duration over ${MAX_ROTATION_INTERVAL_DAYS} days`
       });
     }
 
@@ -237,7 +211,7 @@ export const databricksServiceAccountSecretRotationFactory: TRotationFactory<
   };
 
   const revokeCredentials: TRotationFactoryRevokeCredentials<
-    TDatabricksServiceAccountSecretRotationGeneratedCredentials
+    TDatabricksServicePrincipalSecretRotationGeneratedCredentials
   > = async (credentials, callback) => {
     if (!credentials?.length) return callback();
 
@@ -249,20 +223,23 @@ export const databricksServiceAccountSecretRotationFactory: TRotationFactory<
   };
 
   const rotateCredentials: TRotationFactoryRotateCredentials<
-    TDatabricksServiceAccountSecretRotationGeneratedCredentials
-  > = async (oldCredentials, callback, activeCredentials) => {
-    const existingSecrets = await $listClientSecrets();
+    TDatabricksServicePrincipalSecretRotationGeneratedCredentials
+  > = async (oldCredentials, callback) => {
+    if (rotationInterval > MAX_ROTATION_INTERVAL_DAYS) {
+      throw new BadRequestError({
+        message: `Databricks does not support OAuth secret duration over ${MAX_ROTATION_INTERVAL_DAYS} days`
+      });
+    }
 
     if (oldCredentials?.secretId) {
       await revokeCredential(oldCredentials.secretId);
-    } else if (activeCredentials) {
-      const otherSecrets = existingSecrets.filter((secret) => secret.id !== activeCredentials.secretId);
-      if (otherSecrets.length > 0) {
-        const oldestSecret = otherSecrets[0];
-        if (oldestSecret) {
-          await revokeCredential(oldestSecret.id);
-        }
-      }
+    }
+
+    const existingSecrets = await $listClientSecrets();
+    if (existingSecrets.length >= MAX_DATABRICKS_SECRETS) {
+      throw new BadRequestError({
+        message: `Cannot create new secret: service principal ${servicePrincipalId} already has ${existingSecrets.length} secrets. Databricks allows a maximum of ${MAX_DATABRICKS_SECRETS} secrets per service principal. Please revoke at least one secret before rotating.`
+      });
     }
 
     const newCredentials = await $rotateClientSecret();
@@ -270,7 +247,7 @@ export const databricksServiceAccountSecretRotationFactory: TRotationFactory<
   };
 
   const getSecretsPayload: TRotationFactoryGetSecretsPayload<
-    TDatabricksServiceAccountSecretRotationGeneratedCredentials
+    TDatabricksServicePrincipalSecretRotationGeneratedCredentials
   > = ({ clientSecret, clientId }) => [
     { key: secretsMapping.clientId, value: clientId },
     { key: secretsMapping.clientSecret, value: clientSecret }

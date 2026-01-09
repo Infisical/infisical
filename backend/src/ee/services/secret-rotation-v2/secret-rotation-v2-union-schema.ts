@@ -3,7 +3,7 @@ import { z } from "zod";
 import { Auth0ClientSecretRotationSchema } from "@app/ee/services/secret-rotation-v2/auth0-client-secret";
 import { AwsIamUserSecretRotationSchema } from "@app/ee/services/secret-rotation-v2/aws-iam-user-secret";
 import { AzureClientSecretRotationSchema } from "@app/ee/services/secret-rotation-v2/azure-client-secret";
-import { DatabricksServiceAccountSecretRotationSchema } from "@app/ee/services/secret-rotation-v2/databricks-service-account-secret";
+import { DatabricksServicePrincipalSecretRotationSchema } from "@app/ee/services/secret-rotation-v2/databricks-service-principal-secret";
 import { LdapPasswordRotationSchema } from "@app/ee/services/secret-rotation-v2/ldap-password";
 import { MongoDBCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/mongodb-credentials";
 import { MsSqlCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/mssql-credentials";
@@ -25,5 +25,5 @@ export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   OktaClientSecretRotationSchema,
   RedisCredentialsRotationSchema,
   MongoDBCredentialsRotationSchema,
-  DatabricksServiceAccountSecretRotationSchema
+  DatabricksServicePrincipalSecretRotationSchema
 ]);
