@@ -121,7 +121,8 @@ export type THCVaultKubernetesRole = {
 
 export type THCVaultDatabaseConfig = {
   connection_details: {
-    connection_url: string;
+    connection_url?: string;
+    hosts?: string;
     tls_ca?: string;
     username?: string;
   };

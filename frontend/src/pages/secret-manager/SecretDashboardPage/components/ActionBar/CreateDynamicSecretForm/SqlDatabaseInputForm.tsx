@@ -280,6 +280,9 @@ export const SqlDatabaseInputForm = ({
         };
 
         const parseStandardUrl = (url: URL, dbFromParams?: string) => {
+          if (url.username) {
+            setValue("provider.username", url.username);
+          }
           const port = url.port ? parseInt(url.port, 10) : undefined;
           const database = dbFromParams || url.pathname.replace(/^\//, "");
           setConnectionDetails(url.hostname, port, database);
