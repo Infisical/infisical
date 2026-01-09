@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop */
 import { Knex } from "knex";
 
 import { AccessScope, ProjectVersion, SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
@@ -369,11 +368,14 @@ export const removeUsersFromGroupByUserIds = async ({
   membershipGroupDAL
 }: TRemoveUsersFromGroupByUserIds) => {
   const processRemoval = async (tx: Knex) => {
-    const foundMembers = await userDAL.find({
-      $in: {
-        id: userIds
-      }
-    });
+    const foundMembers = await userDAL.find(
+      {
+        $in: {
+          id: userIds
+        }
+      },
+      { tx }
+    );
 
     const foundMembersIdsSet = new Set(foundMembers.map((member) => member.id));
 
@@ -436,7 +438,7 @@ export const removeUsersFromGroupByUserIds = async ({
         )
       );
 
-      for (const userId of membersToRemoveFromGroupNonPending.map((m) => m.id)) {
+      for await (const userId of membersToRemoveFromGroupNonPending.map((m) => m.id)) {
         const t = await userGroupMembershipDAL.filterProjectsByUserMembership(userId, group.id, projectIds, tx);
         const projectsToDeleteKeyFor = projectIds.filter((p) => !t.has(p));
 
