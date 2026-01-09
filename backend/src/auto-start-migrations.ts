@@ -197,7 +197,7 @@ const withStartupLock = async (db: Knex, logger: Logger, doMigrations: () => Pro
         node: null,
         heartbeat_updated_at: null
       });
-      logger.info("Startup lock released");
+      logger.info(`Startup lock released [sessionId=${sessionId}] [node=${node}]`);
     } catch (err) {
       logger.error(err, "Failed to release startup lock");
     }
