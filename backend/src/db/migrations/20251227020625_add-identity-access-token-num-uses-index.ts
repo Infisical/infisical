@@ -12,7 +12,7 @@ export async function up(knex: Knex): Promise<void> {
         CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_identity_access_tokens_num_uses_with_limit
         ON ${TableName.IdentityAccessToken} ("id")
         WHERE "accessTokenNumUsesLimit" > 0
-          AND "accessTokenNumUses" >= "identity_access_tokens"."accessTokenNumUsesLimit"
+          AND "accessTokenNumUses" >= "${TableName.IdentityAccessToken}"."accessTokenNumUsesLimit"
     `);
   }
 }
