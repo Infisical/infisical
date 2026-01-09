@@ -141,7 +141,10 @@ export const CassandraInputForm = ({
           }
         }
       } catch {
-        // Connection string parsing failed, user will need to fill in manually
+        createNotification({
+          type: "info",
+          text: "Could not parse connection URL. Host and port fields may need to be filled manually."
+        });
       }
 
       if (role.config.connection_details.username) {

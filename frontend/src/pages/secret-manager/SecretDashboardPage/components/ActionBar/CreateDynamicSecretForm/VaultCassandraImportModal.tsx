@@ -184,13 +184,11 @@ const Content = ({ onClose, onImport }: ContentProps) => {
             getOptionValue={(option) => option.name}
             getOptionLabel={(option) => option.name}
             isDisabled={isLoadingRoles || !cassandraRoles?.length || !selectedMountPath}
-            placeholder={
-              !selectedMountPath
-                ? "Select a mount path first..."
-                : cassandraRoles?.length === 0
-                  ? "No Cassandra roles found..."
-                  : "Select a role to load..."
-            }
+            placeholder={(() => {
+              if (!selectedMountPath) return "Select a mount path first...";
+              if (cassandraRoles?.length === 0) return "No Cassandra roles found...";
+              return "Select a role to load...";
+            })()}
             isClearable
             className="w-full"
           />
