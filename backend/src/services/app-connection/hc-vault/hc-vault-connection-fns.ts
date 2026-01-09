@@ -647,7 +647,7 @@ export const getHCVaultSecretsForPath = async (
           };
         };
       }>(connection, gatewayService, {
-        url: `${instanceUrl}/v1/${mountPath}/data/${actualPath}`,
+        url: `${instanceUrl}/v1/${encodeURIComponent(mountPath)}/data/${encodeURIComponent(actualPath)}`,
         method: "GET",
         headers: {
           "X-Vault-Token": accessToken,
@@ -665,7 +665,7 @@ export const getHCVaultSecretsForPath = async (
       lease_id: string;
       renewable: boolean;
     }>(connection, gatewayService, {
-      url: `${instanceUrl}/v1/${mountPath}/${actualPath}`,
+      url: `${instanceUrl}/v1/${encodeURIComponent(mountPath)}/${encodeURIComponent(actualPath)}`,
       method: "GET",
       headers: {
         "X-Vault-Token": accessToken,
@@ -761,7 +761,7 @@ export const getHCVaultKubernetesAuthRoles = async (
       connection,
       gatewayService,
       {
-        url: `${instanceUrl}/v1/auth/${cleanMountPath}/config`,
+        url: `${instanceUrl}/v1/auth/${encodeURIComponent(cleanMountPath)}/config`,
         method: "GET",
         headers: {
           "X-Vault-Token": accessToken,
@@ -801,7 +801,7 @@ export const getHCVaultKubernetesAuthRoles = async (
           connection,
           gatewayService,
           {
-            url: `${instanceUrl}/v1/auth/${cleanMountPath}/role/${roleName}`,
+            url: `${instanceUrl}/v1/auth/${encodeURIComponent(cleanMountPath)}/role/${encodeURIComponent(roleName)}`,
             method: "GET",
             headers: {
               "X-Vault-Token": accessToken,
@@ -857,7 +857,7 @@ export const getHCVaultKubernetesRoles = async (
       connection,
       gatewayService,
       {
-        url: `${instanceUrl}/v1/${cleanMountPath}/config`,
+        url: `${instanceUrl}/v1/${encodeURIComponent(cleanMountPath)}/config`,
         method: "GET",
         headers: {
           "X-Vault-Token": accessToken,
@@ -875,7 +875,7 @@ export const getHCVaultKubernetesRoles = async (
         connection,
         gatewayService,
         {
-          url: `${instanceUrl}/v1/${cleanMountPath}/roles?list=true`,
+          url: `${instanceUrl}/v1/${encodeURIComponent(cleanMountPath)}/roles?list=true`,
           method: "GET",
           headers: {
             "X-Vault-Token": accessToken,
@@ -914,7 +914,7 @@ export const getHCVaultKubernetesRoles = async (
             extra_labels?: Record<string, string>;
           };
         }>(connection, gatewayService, {
-          url: `${instanceUrl}/v1/${cleanMountPath}/roles/${roleName}`,
+          url: `${instanceUrl}/v1/${encodeURIComponent(cleanMountPath)}/roles/${encodeURIComponent(roleName)}`,
           method: "GET",
           headers: {
             "X-Vault-Token": accessToken,
@@ -960,7 +960,7 @@ export const getHCVaultDatabaseRoles = async (
         connection,
         gatewayService,
         {
-          url: `${instanceUrl}/v1/${cleanMountPath}/config?list=true`,
+          url: `${instanceUrl}/v1/${encodeURIComponent(cleanMountPath)}/config?list=true`,
           method: "GET",
           headers: {
             "X-Vault-Token": accessToken,
@@ -985,7 +985,7 @@ export const getHCVaultDatabaseRoles = async (
             const { data: configResponse } = await requestWithHCVaultGateway<{
               data: THCVaultDatabaseConfig;
             }>(connection, gatewayService, {
-              url: `${instanceUrl}/v1/${cleanMountPath}/config/${connName}`,
+              url: `${instanceUrl}/v1/${encodeURIComponent(cleanMountPath)}/config/${encodeURIComponent(connName)}`,
               method: "GET",
               headers: {
                 "X-Vault-Token": accessToken,
@@ -1007,7 +1007,7 @@ export const getHCVaultDatabaseRoles = async (
         connection,
         gatewayService,
         {
-          url: `${instanceUrl}/v1/${cleanMountPath}/roles?list=true`,
+          url: `${instanceUrl}/v1/${encodeURIComponent(cleanMountPath)}/roles?list=true`,
           method: "GET",
           headers: {
             "X-Vault-Token": accessToken,
@@ -1038,7 +1038,7 @@ export const getHCVaultDatabaseRoles = async (
             renew_statements?: string[];
           };
         }>(connection, gatewayService, {
-          url: `${instanceUrl}/v1/${cleanMountPath}/roles/${roleName}`,
+          url: `${instanceUrl}/v1/${encodeURIComponent(cleanMountPath)}/roles/${encodeURIComponent(roleName)}`,
           method: "GET",
           headers: {
             "X-Vault-Token": accessToken,
@@ -1092,7 +1092,7 @@ export const getHCVaultLdapRoles = async (
       connection,
       gatewayService,
       {
-        url: `${instanceUrl}/v1/${cleanMountPath}/config`,
+        url: `${instanceUrl}/v1/${encodeURIComponent(cleanMountPath)}/config`,
         method: "GET",
         headers: {
           "X-Vault-Token": accessToken,
@@ -1110,7 +1110,7 @@ export const getHCVaultLdapRoles = async (
         connection,
         gatewayService,
         {
-          url: `${instanceUrl}/v1/${cleanMountPath}/role?list=true`,
+          url: `${instanceUrl}/v1/${encodeURIComponent(cleanMountPath)}/role?list=true`,
           method: "GET",
           headers: {
             "X-Vault-Token": accessToken,
@@ -1143,7 +1143,7 @@ export const getHCVaultLdapRoles = async (
             username_template?: string;
           };
         }>(connection, gatewayService, {
-          url: `${instanceUrl}/v1/${cleanMountPath}/role/${roleName}`,
+          url: `${instanceUrl}/v1/${encodeURIComponent(cleanMountPath)}/role/${encodeURIComponent(roleName)}`,
           method: "GET",
           headers: {
             "X-Vault-Token": accessToken,
