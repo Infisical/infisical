@@ -188,9 +188,11 @@ export const ViewSharedSecretByIDPage = () => {
   }, [brandingTheme]);
 
   useEffect(() => {
-    if (!faviconUrl) return;
+    if (!faviconUrl) return undefined;
 
     const existingLink = document.querySelector("link[rel='icon']") as HTMLLinkElement | null;
+    const originalHref = existingLink?.href;
+
     if (existingLink) {
       existingLink.href = faviconUrl;
     } else {
@@ -199,6 +201,12 @@ export const ViewSharedSecretByIDPage = () => {
       link.href = faviconUrl;
       document.head.appendChild(link);
     }
+
+    return () => {
+      if (existingLink && originalHref) {
+        existingLink.href = originalHref;
+      }
+    };
   }, [faviconUrl]);
 
   if (isPending) {
