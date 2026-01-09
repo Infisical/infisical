@@ -131,6 +131,29 @@ const ensureMigrationTables = async (db: Knex, logger: Logger): Promise<void> =>
   });
 };
 
+/**
+ * The reason we need to use a startup lock is to ensure that only one instance runs migrations at a time.
+ * In our production environment or customer's self-hosted environment, there could be multiple instances of the application running.
+ * When a new deployment is rolling out, only one could acquire the Knex migration lock to run the migrations.
+ * With the other instances, they will see db already locked error. This is not great because it creates a lot of noise for the On-call team.
+ *
+ * Why not just use `pg_advisory_xact_lock` as we did previously?
+ * Because `pg_advisory_xact_lock` will block the transaction until the lock is acquired.
+ * We have new migration files that uses CREATE INDEX CONCURRENTLY, it cannot be run in a transaction.
+ * Also, it will wait untill all the current transactions are committed.
+ * If there are instances holding `pg_advisory_xact_lock` for migration (it will be in a transaction that's different from the migration transaction)
+ * and CREATE INDEX CONCURRENTLY (cannot be run in a transaction) runs in side the migration, we will end up with a deadlock.
+ *
+ * Here's how it works:
+ * 1. We acquire the lock by updating the startup lock table (similar to how knex's migration lock works).
+ * 2. We start a heartbeat interval to update the `heartbeat_updated_at` column.
+ * 3. We run the migrations.
+ * 4. We release the lock by updating the startup lock table.
+ * 5. We stop the heartbeat interval.
+ *
+ * If the instance crashes, the heartbeat will stop and the lock will be released after the timeout.
+ * If the instance is still running, the heartbeat will keep updating and the lock will not be released.
+ */
 const withStartupLock = async (db: Knex, logger: Logger, doMigrations: () => Promise<void>): Promise<void> => {
   const { tableName } = migrationConfig;
   const startupLockTableName = getStartupLockTableName(tableName);
@@ -148,14 +171,19 @@ const withStartupLock = async (db: Knex, logger: Logger, doMigrations: () => Pro
   let heartbeatInterval: NodeJS.Timeout | null = null;
 
   const acquireLock = async (): Promise<boolean> => {
-    const staleThreshold = new Date(Date.now() - STALE_HEARTBEAT_THRESHOLD_MS);
     const result = await db(startupLockTableName)
       // 1. is_locked = 0 (lock is free), OR
       .where({ is_locked: 0 })
       // 2. is_locked = 1 AND heartbeat is stale (previous instance crashed)
       .orWhere((qb) => {
         void qb.where({ is_locked: 1 }).andWhere((subQb) => {
-          void subQb.whereNull("heartbeat_updated_at").orWhere("heartbeat_updated_at", "<", staleThreshold);
+          void subQb
+            .whereNull("heartbeat_updated_at")
+            .orWhere(
+              "heartbeat_updated_at",
+              "<",
+              db.raw("NOW() - (? || ' milliseconds')::INTERVAL", [STALE_HEARTBEAT_THRESHOLD_MS])
+            );
         });
       })
       .update({
