@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop */
 import { Knex } from "knex";
 
 import { AccessScope, ProjectVersion, SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
@@ -435,45 +436,42 @@ export const removeUsersFromGroupByUserIds = async ({
         )
       );
 
-      const promises: Array<Promise<void>> = [];
-      for (const userId of userIds) {
-        promises.push(
-          (async () => {
-            const t = await userGroupMembershipDAL.filterProjectsByUserMembership(userId, group.id, projectIds, tx);
-            const projectsToDeleteKeyFor = projectIds.filter((p) => !t.has(p));
+      for (const userId of membersToRemoveFromGroupNonPending.map((m) => m.id)) {
+        const t = await userGroupMembershipDAL.filterProjectsByUserMembership(userId, group.id, projectIds, tx);
+        const projectsToDeleteKeyFor = projectIds.filter((p) => !t.has(p));
 
-            if (projectsToDeleteKeyFor.length) {
-              await projectKeyDAL.delete(
-                {
-                  receiverId: userId,
-                  $in: {
-                    projectId: projectsToDeleteKeyFor
-                  }
-                },
-                tx
-              );
-            }
+        if (projectsToDeleteKeyFor.length) {
+          await projectKeyDAL.delete(
+            {
+              receiverId: userId,
+              $in: {
+                projectId: projectsToDeleteKeyFor
+              }
+            },
+            tx
+          );
+        }
 
-            await userGroupMembershipDAL.delete(
-              {
-                groupId: group.id,
-                userId
-              },
-              tx
-            );
-          })()
+        await userGroupMembershipDAL.delete(
+          {
+            groupId: group.id,
+            userId
+          },
+          tx
         );
       }
-      await Promise.all(promises);
     }
 
     if (membersToRemoveFromGroupPending.length) {
-      await userGroupMembershipDAL.delete({
-        groupId: group.id,
-        $in: {
-          userId: membersToRemoveFromGroupPending.map((member) => member.id)
-        }
-      });
+      await userGroupMembershipDAL.delete(
+        {
+          groupId: group.id,
+          $in: {
+            userId: membersToRemoveFromGroupPending.map((member) => member.id)
+          }
+        },
+        tx
+      );
     }
 
     return membersToRemoveFromGroupNonPending.concat(membersToRemoveFromGroupPending);

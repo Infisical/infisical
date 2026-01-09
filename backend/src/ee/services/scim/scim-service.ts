@@ -1006,7 +1006,8 @@ export const scimServiceFactory = ({
           },
           {
             groupName: displayName
-          }
+          },
+          tx
         );
 
         const [modifiedGroup] = await groupDAL.update(
@@ -1016,26 +1017,35 @@ export const scimServiceFactory = ({
           },
           {
             name: displayName
-          }
+          },
+          tx
         );
 
         group = modifiedGroup;
       }
 
       const orgMemberships = members.length
-        ? await membershipUserDAL.find({
-            [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
-            [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization,
-            $in: {
-              id: members.map((member) => member.value)
+        ? await membershipUserDAL.find(
+            {
+              [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
+              [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization,
+              $in: {
+                id: members.map((member) => member.value)
+              }
+            },
+            {
+              tx
             }
-          })
+          )
         : [];
 
       const membersIdsSet = new Set(orgMemberships.map((orgMembership) => orgMembership.actorUserId as string));
-      const userGroupMembers = await userGroupMembershipDAL.find({
-        groupId: group.id
-      });
+      const userGroupMembers = await userGroupMembershipDAL.find(
+        {
+          groupId: group.id
+        },
+        { tx }
+      );
       const directMemberUserIds = userGroupMembers.filter((el) => !el.isPending).map((membership) => membership.userId);
 
       const pendingGroupAdditionsUserIds = userGroupMembers
