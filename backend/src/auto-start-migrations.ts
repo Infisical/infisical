@@ -1,8 +1,12 @@
+import crypto from "node:crypto";
+import os from "node:os";
 import path from "node:path";
 
 import dotenv from "dotenv";
 import { Knex } from "knex";
 import { Logger } from "pino";
+
+import { applyJitter, delay } from "@app/lib/delay";
 
 import { PgSqlLock } from "./keystore/keystore";
 
@@ -129,6 +133,134 @@ const ensureMigrationTables = async (db: Knex, logger: Logger): Promise<void> =>
   });
 };
 
+const runMigrationsWithStartupLock = async (
+  db: Knex,
+  logger: Logger,
+  doMigrations: () => Promise<void>
+): Promise<void> => {
+  const { tableName } = migrationConfig;
+  const startupLockTableName = getStartupLockTableName(tableName);
+
+  const sessionId = crypto.randomUUID();
+  const node = `${os.hostname()}-${process.pid}`;
+
+  const ACQUIRE_LOCK_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes timeout to acquire lock
+  const HEARTBEAT_INTERVAL_MS = 5000; // Update heartbeat every 5 seconds
+  const BASE_RETRY_DELAY_MS = 2000; // Base delay of 2 seconds between retries
+  // Consider lock stale if heartbeat is older than 3x the heartbeat interval (15 seconds)
+  const STALE_HEARTBEAT_THRESHOLD_MS = HEARTBEAT_INTERVAL_MS * 3;
+
+  let lockAcquired = false;
+  let heartbeatInterval: NodeJS.Timeout | null = null;
+
+  const acquireLock = async (): Promise<boolean> => {
+    const staleThreshold = new Date(Date.now() - STALE_HEARTBEAT_THRESHOLD_MS);
+    const result = await db(startupLockTableName)
+      // 1. is_locked = 0 (lock is free), OR
+      .where({ is_locked: 0 })
+      // 2. is_locked = 1 AND heartbeat is stale (previous instance crashed)
+      .orWhere((qb) => {
+        void qb.where({ is_locked: 1 }).andWhere((subQb) => {
+          void subQb.whereNull("heartbeat_updated_at").orWhere("heartbeat_updated_at", "<", staleThreshold);
+        });
+      })
+      .update({
+        is_locked: 1,
+        session_id: sessionId,
+        node,
+        heartbeat_updated_at: db.fn.now()
+      });
+    return result > 0;
+  };
+
+  const startHeartbeat = () => {
+    heartbeatInterval = setInterval(() => {
+      db(startupLockTableName)
+        .where({ session_id: sessionId, node, is_locked: 1 })
+        .update({
+          heartbeat_updated_at: db.fn.now()
+        })
+        .catch((err) => {
+          logger.error(err, "Failed to update heartbeat");
+        });
+    }, HEARTBEAT_INTERVAL_MS);
+  };
+
+  const stopHeartbeat = () => {
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval);
+      heartbeatInterval = null;
+    }
+  };
+
+  const releaseLock = async () => {
+    try {
+      await db(startupLockTableName).where({ session_id: sessionId, node, is_locked: 1 }).update({
+        is_locked: 0,
+        session_id: null,
+        node: null,
+        heartbeat_updated_at: null
+      });
+      logger.info("Startup lock released");
+    } catch (err) {
+      logger.error(err, "Failed to release startup lock");
+    }
+  };
+
+  // Try to acquire the lock with timeout-based retries
+  const acquireLockStartTime = Date.now();
+  let attemptCount = 0;
+
+  while (Date.now() - acquireLockStartTime < ACQUIRE_LOCK_TIMEOUT_MS) {
+    attemptCount += 1;
+    // eslint-disable-next-line no-await-in-loop -- Intentional retry loop with timeout
+    lockAcquired = await acquireLock();
+
+    if (lockAcquired) {
+      const elapsedTime = Date.now() - acquireLockStartTime;
+      logger.info(
+        `Startup lock acquired [sessionId=${sessionId}] [node=${node}] [attempts=${attemptCount}] [elapsedTime=${elapsedTime}ms]`
+      );
+      break;
+    }
+
+    // Check if we still have time before timeout
+    const elapsedTime = Date.now() - acquireLockStartTime;
+    const remainingTime = ACQUIRE_LOCK_TIMEOUT_MS - elapsedTime;
+
+    if (remainingTime <= 0) {
+      break;
+    }
+
+    // Lock not acquired, wait with random jitter before retrying
+    // Don't wait longer than the remaining timeout
+    const retryDelay = Math.min(Math.floor(applyJitter(BASE_RETRY_DELAY_MS)), remainingTime);
+    logger.debug(
+      `Startup lock not available, retrying in ${retryDelay}ms [attempt=${attemptCount}] [elapsedTime=${elapsedTime}ms] [remainingTime=${remainingTime}ms] [node=${node}]`
+    );
+    // eslint-disable-next-line no-await-in-loop -- Intentional retry delay
+    await delay(retryDelay);
+  }
+
+  if (!lockAcquired) {
+    const elapsedTime = Date.now() - acquireLockStartTime;
+    throw new Error(
+      `Failed to acquire startup lock within ${ACQUIRE_LOCK_TIMEOUT_MS}ms timeout [attempts=${attemptCount}] [elapsedTime=${elapsedTime}ms]. Another instance may be running migrations.`
+    );
+  }
+
+  startHeartbeat();
+  try {
+    // Run migrations while heartbeat is updating
+    await doMigrations();
+    logger.info("Migrations completed successfully");
+  } finally {
+    // Always stop heartbeat and release lock
+    stopHeartbeat();
+    await releaseLock();
+  }
+};
+
 export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs) => {
   try {
     // akhilmhdh(Feb 10 2025): 2 years  from now remove this
@@ -174,7 +306,11 @@ export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs
         logger.info("No audit log migrations pending: Applied by previous instance. Skipping migration process.");
         return;
       }
-      await auditLogDb.migrate.latest(migrationConfig);
+
+      // Use startup lock to ensure only one instance runs migrations at a time
+      await runMigrationsWithStartupLock(auditLogDb, logger, async () => {
+        await auditLogDb.migrate.latest(migrationConfig);
+      });
       logger.info("Finished audit log migrations.");
     }
 
@@ -187,7 +323,11 @@ export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs
       logger.info("No application migrations pending: Applied by previous instance. Skipping migration process.");
       return;
     }
-    await applicationDb.migrate.latest(migrationConfig);
+
+    // Use startup lock to ensure only one instance runs migrations at a time
+    await runMigrationsWithStartupLock(applicationDb, logger, async () => {
+      await applicationDb.migrate.latest(migrationConfig);
+    });
     logger.info("Finished application migrations.");
   } catch (err) {
     logger.error(err, "Boot up migration failed");
