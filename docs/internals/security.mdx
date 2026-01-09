@@ -193,14 +193,30 @@ Project data keys can optionally be managed by an external KMS instead of the In
 
 ### Encryption Operations
 
-When sensitive data needs to be stored, Infisical performs the following operations:
+<Tabs>
+  <Tab title="Storing Data">
+    When sensitive data needs to be stored, Infisical performs the following operations:
 
-1. **Key Retrieval**: The appropriate data key (organization or project) is retrieved from the database in its encrypted form.
-2. **Key Decryption**: The encrypted data key is decrypted using the Internal KMS Root Key (which itself is decrypted using the Root Encryption Key).
-3. **Data Encryption**: The plaintext data is encrypted using AES-256-GCM with a randomly generated 96-bit nonce.
-4. **Storage**: The ciphertext, along with the nonce and authentication tag, is stored in the database (encrypted at rest).
+    1. **Key Retrieval**: The appropriate data key (organization or project) is retrieved from the database in its encrypted form.
+    2. **Key Decryption**: The encrypted data key is decrypted using the Internal KMS Root Key.
+    3. **Data Encryption**: The plaintext data is encrypted using the decrypted data key with AES-256-GCM and a randomly generated 96-bit nonce.
+    4. **Storage**: The ciphertext, along with the nonce and authentication tag, is stored in the database.
+  </Tab>
+  <Tab title="Retrieving Data">
+    When sensitive data needs to be retrieved, Infisical performs the following operations:
 
-When data needs to be retrieved, the process is reversed: keys are decrypted through the hierarchy, and the data is decrypted and verified using the stored nonce and authentication tag. The GCM authentication tag ensures that any tampering with the ciphertext is detected during decryption.
+    1. **Key Retrieval**: The appropriate data key (organization or project) is retrieved from the database in its encrypted form.
+    2. **Key Decryption**: The encrypted data key is decrypted using the Internal KMS Root Key.
+    3. **Data Retrieval**: The ciphertext, nonce, and authentication tag are retrieved from the database.
+    4. **Data Decryption**: The ciphertext is decrypted using the decrypted data key with AES-256-GCM, the stored nonce, and the authentication tag. The GCM authentication tag ensures that any tampering with the ciphertext is detected during decryption.
+  </Tab>
+</Tabs>
+
+<Tip>
+When a project is configured to use an [External KMS](/documentation/platform/kms-configuration/overview), the encryption flow differs slightly:
+
+Instead of the Internal KMS Root Key decrypting the project data key, the encrypted data key is sent to the external KMS provider (e.g., AWS KMS, GCP KMS) for decryption. The external KMS performs the key unwrapping operation and returns the plaintext data key, which is then used for the AES-256-GCM encryption/decryption of the actual data. This approach ensures that the project's root of trust lies with the external KMS, giving organizations full control over key access policies and audit logging at the KMS level.
+</Tip>
 
 ### Key Generation
 
@@ -219,9 +235,9 @@ For detailed configuration instructions, see the [KMS Configuration documentatio
 
 ### FIPS Compliance
 
-Infisical can be deployed in a FIPS-compliant configuration, using FIPS 140-3 validated cryptographic modules for all encryption operations. When FIPS mode is enabled:
+Infisical can be deployed in a FIPS-compliant configuration, using FIPS 140-3 validated cryptographic modules for all encryption operations within the FIPS boundary. When FIPS mode is enabled:
 
-- All cryptographic operations use FIPS-validated implementations
+- All cryptographic operations within the FIPS boundary use FIPS-validated implementations
 - Key generation uses FIPS-approved random number generators
 - External HSM integration is available for root key protection
 
