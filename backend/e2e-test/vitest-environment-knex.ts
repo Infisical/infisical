@@ -138,9 +138,6 @@ export default {
         delete globalThis.jwtAuthToken;
         // @ts-expect-error type
         delete globalThis.testQueue;
-        // called after all tests with this env have been run
-        await db.raw("DROP SCHEMA IF EXISTS public CASCADE");
-        await db.schema.createSchemaIfNotExists("public");
 
         await redis.flushdb("ASYNC");
         redis.disconnect();
