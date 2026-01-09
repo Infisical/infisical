@@ -34,23 +34,73 @@ const getLockTableName = (tableName: string): string => {
   return `${tableName}_lock`;
 };
 
+const getStartupLockTableName = (tableName: string): string => {
+  return `${tableName}_startup_lock`;
+};
+
 const isMigrationInitialized = async (db: Knex, logger: Logger): Promise<boolean> => {
   const { tableName } = migrationConfig;
   const lockTableName = getLockTableName(tableName);
-  const tableExists = await db.schema.hasTable(lockTableName);
-  if (!tableExists) {
-    logger.info("Migration tables not initialized");
+  const startupLockTableName = getStartupLockTableName(tableName);
+
+  const lockTableExists = await db.schema.hasTable(lockTableName);
+  const startupLockTableExists = await db.schema.hasTable(startupLockTableName);
+
+  if (!lockTableExists) {
+    logger.debug("Migration tables not initialized");
+    return false;
+  }
+  if (!startupLockTableExists) {
+    logger.debug("Startup lock table not initialized");
     return false;
   }
 
-  const rowCount = await db(lockTableName).count().first();
-  logger.info(`Migration tables initialized, ${rowCount?.count}`);
-  return (rowCount?.count as number) > 0;
+  const lockRowCount = await db(lockTableName).count().first();
+  const startupLockRowCount = await db(startupLockTableName).count().first();
+
+  const isInitialized = (lockRowCount?.count as number) > 0 && (startupLockRowCount?.count as number) > 0;
+
+  logger.debug(
+    `Migration tables initialized, lock table: ${lockRowCount?.count}, startup lock table: ${startupLockRowCount?.count}`
+  );
+  return isInitialized;
+};
+
+const createStartupLockTable = async (tableName: string, db: Knex): Promise<void> => {
+  await db.schema.createTable(tableName, (t) => {
+    t.increments("index").primary();
+    t.integer("is_locked");
+    t.string("session_id").nullable();
+    t.string("node").nullable();
+    t.timestamp("heartbeat_updated_at").nullable();
+  });
+};
+
+const insertStartupLockRowIfNeeded = async (tableName: string, db: Knex): Promise<void> => {
+  const data: unknown[] = await db.select("*").from(tableName);
+  if (!data.length) {
+    await db.from(tableName).insert({ is_locked: 0 });
+  }
+};
+
+const ensureStartupLockTable = async (db: Knex, logger: Logger): Promise<void> => {
+  const { tableName } = migrationConfig;
+  const startupLockTableName = getStartupLockTableName(tableName);
+
+  const tableExists = await db.schema.hasTable(startupLockTableName);
+  if (!tableExists) {
+    await createStartupLockTable(startupLockTableName, db);
+    logger.info(`Startup lock table created: ${startupLockTableName}`);
+  }
+
+  await insertStartupLockRowIfNeeded(startupLockTableName, db);
 };
 
 const ensureMigrationTables = async (db: Knex, logger: Logger): Promise<void> => {
   const isInitialized = await isMigrationInitialized(db, logger);
   if (isInitialized) {
+    // Even if migration tables are initialized, ensure the startup lock table exists
+    await ensureStartupLockTable(db, logger);
     return;
   }
   await db.transaction(async (tx) => {
@@ -64,12 +114,18 @@ const ensureMigrationTables = async (db: Knex, logger: Logger): Promise<void> =>
       // It's possible multiple instances sees the missing migration table and try to initialize it at the same time.
       // But only the one instance which acquired the lock will be able to initialize the migration table.
       logger.info("Migration tables already initialized by another instance, skipping initialization.");
+      // Ensure the startup lock table exists even if migration tables were already initialized
+      await ensureStartupLockTable(tx, logger);
       return;
     }
     // The currentVersion will call ensureTable, end up creating the migration table, lock table,
     // and insert the first row into the lock table.
     await tx.migrate.currentVersion(migrationConfig);
     logger.info("Migration tables initialized");
+
+    // Ensure the startup lock table is created and initialized
+    await ensureStartupLockTable(tx, logger);
+    logger.info("Startup lock table initialized");
   });
 };
 
