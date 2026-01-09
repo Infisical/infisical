@@ -30,7 +30,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
   };
 
   const removeExpiredTokens = async (tx?: Knex) => {
-    logger.info(`${QueueName.FrequentResourceCleanUp}: remove expired access token started`);
+    logger.info(`${QueueName.DailyResourceCleanUp}: remove expired access token started`);
 
     const BATCH_SIZE = 5000;
     const MAX_RETRY_ON_FAILURE = 3;
@@ -135,7 +135,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
     }
 
     logger.info(
-      `${QueueName.FrequentResourceCleanUp}: remove expired access token completed. Deleted ${totalDeletedCount} tokens.`
+      `${QueueName.DailyResourceCleanUp}: remove expired access token completed. Deleted ${totalDeletedCount} tokens.`
     );
   };
 
