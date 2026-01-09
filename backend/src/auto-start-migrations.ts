@@ -118,8 +118,6 @@ const ensureMigrationTables = async (db: Knex, logger: Logger): Promise<void> =>
       // It's possible multiple instances sees the missing migration table and try to initialize it at the same time.
       // But only the one instance which acquired the lock will be able to initialize the migration table.
       logger.info("Migration tables already initialized by another instance, skipping initialization.");
-      // Ensure the startup lock table exists even if migration tables were already initialized
-      await ensureStartupLockTable(tx, logger);
       return;
     }
     // The currentVersion will call ensureTable, end up creating the migration table, lock table,
