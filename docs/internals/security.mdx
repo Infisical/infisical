@@ -69,16 +69,179 @@ For example, an operator of Infisical may define the following constraints to re
 
 ## Cryptography
 
-All symmetric encryption operations, with the exception of those proxied through external KMS and HSM systems, in Infisical use a software-backed, 256-bit Advanced Encryption Standard (AES) cipher in the Galois Counter Mode (GCM) with 96-bit nonces — AES-256-GCM.
+### Overview
 
-Infisical employs a multilayer approach to its encryption architecture with components that can be optionally linked to external KMS or HSM systems. At a high-level, a master key, backed by an operator-provided key, is used to encrypt (internal) “KMS” keys that are used to then encrypt data keys; the data keys are used to protect sensitive data stored in Infisical. The keys in the architecture are stored encrypted in the storage backend, retrieved, decrypted, and only then used as part of server operations when needed. Since server configuration is needed to decrypt any keys as part of the encryption architecture, accessing any sensitive data in Infisical requires access to both server configuration and data in the storage backend. Note that the platform’s encryption architecture has components that can be linked to external KMS and HSM systems; opting for these make the use of the software more FIPS aligned.
+All symmetric encryption operations in Infisical, with the exception of those proxied through [External KMS](/documentation/platform/kms-configuration/overview#external-kms) and [HSM](/documentation/platform/kms/hsm-integration) systems, use a software-backed 256-bit Advanced Encryption Standard (AES) cipher in Galois Counter Mode (GCM) with 96-bit nonces, **AES-256-GCM**. This authenticated encryption scheme provides both confidentiality and integrity guarantees for all encrypted data.
 
-To be specific:
+Infisical employs a multilayer encryption architecture where keys are organized hierarchically. Each layer encrypts the layer below it, ensuring that accessing any sensitive data requires both server configuration (the root encryption key) and data from the storage backend. This defense-in-depth approach means that compromising the database alone is insufficient to decrypt sensitive data.
 
-- The architecture starts with a 256-bit master key that can be secured by a root key which can either be a 128-bit key, passed into the server by an operator of Infisical as an environment variable, or an external key from an HSM module such as [Thales Luna HSM](https://cpl.thalesgroup.com/encryption/data-protection-on-demand/services/luna-cloud-hsm) or [AWS Cloud HSM](https://aws.amazon.com/cloudhsm/) linked via specified configuration parameters.
-- The master key secures 256-bit keys in Infisical henceforth referred to as KMS keys.
-- Each organization in Infisical has its own KMS key and a separate data key; the KMS key is used to secure the data key which encrypts organization-level data.
-- Each project in Infisical has a designated KMS key and a separate data key; the KMS key is used to secure the data key which encrypts project-level data. Note that a project KMS key can be substituted for an external key from a KMS such as [AWS KMS](https://infisical.com/docs/documentation/platform/kms-configuration/aws-kms), [AWS Cloud HSM](https://infisical.com/docs/documentation/platform/kms-configuration/aws-hsm), and [GCP KMS](https://infisical.com/docs/documentation/platform/kms-configuration/gcp-kms). We recommend reading the fuller [documentation](https://infisical.com/docs/documentation/platform/kms-configuration/overview) or integrating with an external KMS
+### Key Hierarchy
+
+The following diagram illustrates Infisical's key hierarchy, showing how encryption keys are organized and how they protect data at different levels of the platform.
+
+```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ECF26D',
+    'primaryTextColor': '#000000',
+    'primaryBorderColor': '#000000',
+    'lineColor': '#000000',
+    'secondaryColor': '#F5F5F5',
+    'tertiaryColor': '#FFFFFF',
+    'background': '#FFFFFF',
+    'mainBkg': '#FFFFFF',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#FAFAFA',
+    'clusterBorder': '#000000',
+    'titleColor': '#000000',
+    'edgeLabelBackground': '#FFFFFF'
+  }
+}}%%
+
+flowchart LR
+    subgraph INSTANCE["Infisical Instance"]
+        direction LR
+        
+        subgraph LAYER1[" "]
+            ROOT["<b>Root Encryption Key</b><br/><i>256-bit AES</i><br/><i>Environment Variable</i>"]
+        end
+        
+        subgraph LAYER2[" "]
+            INTERNAL["<b>Internal KMS Root Key</b><br/><i>Created on first startup</i>"]
+        end
+        
+        subgraph LAYER3["Tenant Keys"]
+            direction TB
+            ORG["<b>Organization Data Key</b><br/><i>One per organization</i>"]
+            PROJ["<b>Project Data Key</b><br/><i>One per project</i>"]
+        end
+        
+        subgraph LAYER4["Encrypted Data"]
+            direction TB
+            ORGDATA["<b>Organization Data</b><br/><i>SSO, SCIM, Settings</i>"]
+            PROJDATA["<b>Project Data</b><br/><i>Secrets, Certs, Creds</i>"]
+        end
+        
+        ROOT -->|"encrypts"| INTERNAL
+        INTERNAL -->|"encrypts"| ORG
+        INTERNAL -->|"encrypts"| PROJ
+        ORG -->|"encrypts"| ORGDATA
+        PROJ -->|"encrypts"| PROJDATA
+    end
+
+    classDef rootKey fill:#ECF26D,stroke:#000000,stroke-width:2px,color:#000000
+    classDef internalKey fill:#E2E89E,stroke:#000000,stroke-width:2px,color:#000000
+    classDef entityKey fill:#F0F4C3,stroke:#000000,stroke-width:1px,color:#000000
+    classDef data fill:#FAFAFA,stroke:#000000,stroke-width:1px,color:#000000
+    classDef invisible fill:none,stroke:none
+    
+    class ROOT rootKey
+    class INTERNAL internalKey
+    class ORG,PROJ entityKey
+    class ORGDATA,PROJDATA data
+    class LAYER1,LAYER2 invisible
+```
+
+#### Root Encryption Key
+
+The root encryption key is a 256-bit AES key provided by the operator as a hex-encoded environment variable (`ENCRYPTION_KEY`). This key is the foundation of Infisical's encryption architecture and never leaves the server's memory during operation.
+
+**Key characteristics:**
+- **Size**: 256-bit AES key, provided as a hex-encoded string
+- **Source**: Operator-provided environment variable
+- **Purpose**: Encrypts the Internal KMS Root Key
+- **Storage**: Exists as an environment variable accessible by the Infisical runtime.
+
+The root encryption key can alternatively be sourced from an external Hardware Security Module (HSM) such as [Thales Luna HSM](https://cpl.thalesgroup.com/encryption/data-protection-on-demand/services/luna-cloud-hsm) or [AWS CloudHSM](https://aws.amazon.com/cloudhsm/), providing additional security guarantees, and removing the need for the operator to store the root encryption key in an environment variable.
+
+#### Internal KMS Root Key
+
+The Internal KMS Root Key is automatically generated when an Infisical instance starts for the first time. This key serves as an intermediate layer between the operator-provided root key and tenant-specific data keys.
+
+**Key characteristics:**
+- **Size**: 256-bit AES
+- **Generation**: Cryptographically secure random bytes via Node.js's core cryptographic library.
+- **Purpose**: Encrypts all organization and project data keys
+- **Storage**: Encrypted at rest using the Root Encryption Key and stored in the database
+
+This separation ensures that the operator-provided root key is only used to protect a single key (the Internal KMS Root Key), limiting its exposure during cryptographic operations.
+
+#### Organization & Project Data Keys
+
+Data keys are the encryption keys that directly protect sensitive data within Infisical. Each organization and each project has its own dedicated data key, providing cryptographic isolation between tenants.
+
+**Organization Data Keys** protect organization-level sensitive data, including:
+- SSO and SAML configurations
+- Machine Identities
+- SCIM provisioning settings
+- Organization-level integrations and credentials
+
+**Project Data Keys** protect project-level sensitive data, including:
+- Secrets and dynamic secret credentials
+- Certificates and private keys
+- Database credentials and connection strings
+- API keys and authentication tokens
+
+**Key characteristics:**
+- **Size**: 256-bit AES
+- **Generation**: Cryptographically secure random bytes via Node.js's core cryptographic library
+- **Scope**: One key per organization, one key per project
+- **Storage**: Encrypted at rest using the Internal KMS Root Key and stored in the database
+
+Project data keys can optionally be managed by an external KMS instead of the Internal KMS Root Key, allowing organizations to maintain control over their encryption keys. See [External KMS Integration](#external-kms-integration) for more details.
+
+### Encryption Operations
+
+<Tabs>
+  <Tab title="Storing Data">
+    When sensitive data needs to be stored, Infisical performs the following operations:
+
+    1. **Key Retrieval**: The appropriate data key (organization or project) is retrieved from the database in its encrypted form.
+    2. **Key Decryption**: The encrypted data key is decrypted using the Internal KMS Root Key.
+    3. **Data Encryption**: The plaintext data is encrypted using the decrypted data key with AES-256-GCM and a randomly generated 96-bit nonce.
+    4. **Storage**: The ciphertext, along with the nonce and authentication tag, is stored in the database.
+  </Tab>
+  <Tab title="Retrieving Data">
+    When sensitive data needs to be retrieved, Infisical performs the following operations:
+
+    1. **Key Retrieval**: The appropriate data key (organization or project) is retrieved from the database in its encrypted form.
+    2. **Key Decryption**: The encrypted data key is decrypted using the Internal KMS Root Key.
+    3. **Data Retrieval**: The ciphertext, nonce, and authentication tag are retrieved from the database.
+    4. **Data Decryption**: The ciphertext is decrypted using the decrypted data key with AES-256-GCM, the stored nonce, and the authentication tag. The GCM authentication tag ensures that any tampering with the ciphertext is detected during decryption.
+  </Tab>
+</Tabs>
+
+<Tip>
+When a project is configured to use an [External KMS](/documentation/platform/kms-configuration/overview), the encryption flow differs slightly:
+
+Instead of the Internal KMS Root Key decrypting the project data key, the encrypted data key is sent to the external KMS provider (e.g., AWS KMS, GCP KMS) for decryption. The external KMS performs the key unwrapping operation and returns the plaintext data key, which is then used for the AES-256-GCM encryption/decryption of the actual data. This approach ensures that the project's root of trust lies with the external KMS, giving organizations full control over key access policies and audit logging at the KMS level.
+</Tip>
+
+### Key Generation
+
+All cryptographic keys in Infisical are generated using Node.js's core cryptographic library, which provides cryptographically secure pseudo-random data. When FIPS mode is enabled, this library is guaranteed to use FIPS-validated cryptographic implementations.
+
+### External KMS Integration
+
+For organizations with specific compliance requirements or those who need to maintain control over their encryption keys, Infisical supports integration with external Key Management Systems. When configured, project data keys can be encrypted by an external KMS instead of the Internal KMS Root Key.
+
+Supported external KMS providers include:
+- [AWS KMS](/documentation/platform/kms-configuration/aws-kms)
+- [AWS CloudHSM](/documentation/platform/kms-configuration/aws-hsm)
+- [GCP KMS](/documentation/platform/kms-configuration/gcp-kms)
+
+For detailed configuration instructions, see the [KMS Configuration documentation](/documentation/platform/kms-configuration/overview).
+
+### FIPS Compliance
+
+Infisical can be deployed in a FIPS-compliant configuration, using FIPS 140-3 validated cryptographic modules for all encryption operations within the FIPS boundary. When FIPS mode is enabled:
+
+- All cryptographic operations within the FIPS boundary use FIPS-validated implementations
+- Key generation uses FIPS-approved random number generators
+- External HSM integration is available for root key protection
+
+For detailed information on deploying Infisical in FIPS mode, see the [FIPS documentation](/self-hosting/guides/production-hardening#fips-140-3-compliance) _(Enterprise Only)_.
 
 ## Infrastructure & High availability (Infisical Cloud)
 
