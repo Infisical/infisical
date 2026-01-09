@@ -201,6 +201,83 @@ The Infisical Agent Injector supports the following annotations:
     The minimum ephemeral storage request for the agent containers. Doesn't have an explicit default value. The default value will conform to the default ephemeral storage request for the pod.
   </Accordion>
 
+<Accordion title="org.infisical.com/agent-set-security-context">
+  Whether to set a security context on the injected agent containers. Defaults to `false`.
+  
+  When set to `true`, the agent containers will be configured with a hardened security context. The default security context applied is:
+
+    ```yaml
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsGroup: 2000
+      runAsNonRoot: true
+      runAsUser: 1000
+    ```
+
+    You can customize individual security context settings using the other `agent-security-context-*` annotations.
+  </Accordion>
+
+  <Accordion title="org.infisical.com/agent-security-context-run-as-user">
+    The user ID to run the agent containers as. Defaults to `1000`.
+  
+    If set to `0`, `runAsNonRoot` will automatically be set to `false` to allow the container to run as root.
+
+    <Note>
+      This annotation is only applicable when `org.infisical.com/agent-set-security-context` is set to `true`.
+    </Note>
+  </Accordion>
+
+  <Accordion title="org.infisical.com/agent-security-context-run-as-group">
+    The group ID to run the agent containers as. Defaults to `2000`.
+  
+    If set to `0`, `runAsNonRoot` will automatically be set to `false` to allow the container to run as the root group.
+
+    <Note>
+      This annotation is only applicable when `org.infisical.com/agent-set-security-context` is set to `true`.
+    </Note>
+  </Accordion>
+
+  <Accordion title="org.infisical.com/agent-security-context-read-only-root-filesystem">
+    Whether to mount the root filesystem as read-only. Defaults to `true`.
+
+    <Tip>
+      This setting only applies to Linux-based pods.
+      Windows containers do not support read-only root filesystems.
+    </Tip>
+
+    <Note>
+      This annotation is only applicable when `org.infisical.com/agent-set-security-context` is set to `true`.
+    </Note>
+  </Accordion>
+
+  <Accordion title="org.infisical.com/agent-security-context-privileged">
+    Whether to run the agent containers in privileged mode. Defaults to `false`.
+  
+    <Warning>
+      Running containers in privileged mode grants full access to the host and should only be used when absolutely necessary.
+    </Warning>
+
+    <Note>
+      This annotation is only applicable when `org.infisical.com/agent-set-security-context` is set to `true`.
+    </Note>
+  </Accordion>
+
+  <Accordion title="org.infisical.com/agent-security-context-allow-privilege-escalation">
+    Whether to allow privilege escalation for the agent containers. Defaults to `false`.
+  
+    When set to `false`, the container cannot gain more privileges than its parent process. This is a recommended security hardening measure.
+
+    <Note>
+      This annotation is only applicable when `org.infisical.com/agent-set-security-context` is set to `true`.
+    </Note>
+  </Accordion>
+
+
 </AccordionGroup>
 
 ## ConfigMap Configuration
