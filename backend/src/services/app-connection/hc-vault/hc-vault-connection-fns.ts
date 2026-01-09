@@ -647,7 +647,7 @@ export const getHCVaultSecretsForPath = async (
           };
         };
       }>(connection, gatewayService, {
-        url: `${instanceUrl}/v1/${encodeURIComponent(mountPath)}/data/${encodeURIComponent(actualPath)}`,
+        url: `${instanceUrl}/v1/${encodeURIComponent(mountPath)}/data/${actualPath}`,
         method: "GET",
         headers: {
           "X-Vault-Token": accessToken,
@@ -665,7 +665,7 @@ export const getHCVaultSecretsForPath = async (
       lease_id: string;
       renewable: boolean;
     }>(connection, gatewayService, {
-      url: `${instanceUrl}/v1/${encodeURIComponent(mountPath)}/${encodeURIComponent(actualPath)}`,
+      url: `${instanceUrl}/v1/${encodeURIComponent(mountPath)}/${actualPath}`,
       method: "GET",
       headers: {
         "X-Vault-Token": accessToken,

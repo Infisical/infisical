@@ -312,7 +312,10 @@ export const SqlDatabaseInputForm = ({
           parseStandardUrl(new URL(trimmedUrl));
         }
       } catch {
-        // Connection URL parsing failed, user will need to fill in manually
+        createNotification({
+          type: "info",
+          text: "Could not parse connection URL. Host, port, and database fields may need to be filled manually."
+        });
       }
 
       if (role.config.connection_details.username) {
