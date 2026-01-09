@@ -541,18 +541,22 @@ export const secretSharingServiceFactory = ({
     // or can be safely sent to the client.
     if (expiresAt !== null && expiresAt < new Date()) {
       // check lifetime expiry
-      await secretSharingDAL.softDeleteById(sharedSecretId);
-      throw new ForbiddenRequestError({
-        message: "Access denied: Secret has expired by lifetime"
-      });
+      await secretSharingDAL.softDeleteById(sharedSecret.id);
+      return {
+        isPasswordProtected: false,
+        secretOrgId: sharedSecret.orgId,
+        error: "Access denied: Secret has expired by lifetime"
+      };
     }
 
     if (expiresAfterViews !== null && expiresAfterViews === 0) {
       // check view count expiry
-      await secretSharingDAL.softDeleteById(sharedSecretId);
-      throw new ForbiddenRequestError({
-        message: "Access denied: Secret has expired by view count"
-      });
+      await secretSharingDAL.softDeleteById(sharedSecret.id);
+      return {
+        isPasswordProtected: false,
+        secretOrgId: sharedSecret.orgId,
+        error: "Access denied: Secret has expired by view count"
+      };
     }
 
     // Password checks
@@ -563,7 +567,7 @@ export const secretSharingServiceFactory = ({
         const isMatch = await crypto.hashing().compareHash(password as string, sharedSecret.password as string);
         if (!isMatch) throw new UnauthorizedError({ message: "Invalid credentials" });
       } else {
-        return { isPasswordProtected };
+        return { isPasswordProtected, secretOrgId: sharedSecret.orgId };
       }
     }
 
@@ -580,6 +584,7 @@ export const secretSharingServiceFactory = ({
 
     return {
       isPasswordProtected,
+      secretOrgId: sharedSecret.orgId,
       secret: {
         ...sharedSecret,
         ...(decryptedSecretValue && {
@@ -607,7 +612,10 @@ export const secretSharingServiceFactory = ({
 
     const sharedSecret = isUuidV4(sharedSecretId)
       ? await secretSharingDAL.findOne({ id: sharedSecretId, type: deleteSharedSecretInput.type })
-      : await secretSharingDAL.findOne({ identifier: sharedSecretId, type: deleteSharedSecretInput.type });
+      : await secretSharingDAL.findOne({
+          identifier: Buffer.from(sharedSecretId, "base64url").toString("hex"),
+          type: deleteSharedSecretInput.type
+        });
 
     if (sharedSecret.userId !== actorId) {
       throw new ForbiddenRequestError({
@@ -618,9 +626,35 @@ export const secretSharingServiceFactory = ({
       throw new ForbiddenRequestError({ message: "User does not have permission to delete shared secret" });
     }
 
-    const deletedSharedSecret = await secretSharingDAL.deleteById(sharedSecretId);
+    const deletedSharedSecret = await secretSharingDAL.deleteById(sharedSecret.id);
 
     return deletedSharedSecret;
+  };
+
+  const getSharedSecretOrgId = async (sharedSecretId: string) => {
+    const sharedSecret = isUuidV4(sharedSecretId)
+      ? await secretSharingDAL.findOne({
+          id: sharedSecretId,
+          type: SecretSharingType.Share
+        })
+      : await secretSharingDAL.findOne({
+          identifier: Buffer.from(sharedSecretId, "base64url").toString("hex"),
+          type: SecretSharingType.Share
+        });
+
+    return sharedSecret?.orgId ?? null;
+  };
+
+  const getOrgBrandConfig = async (
+    orgId: string
+  ): Promise<{
+    faviconUrl?: string;
+    logoUrl?: string;
+    primaryColor?: string;
+    secondaryColor?: string;
+  } | null> => {
+    const org = await orgDAL.findOrgById(orgId);
+    return org?.secretShareBrandConfig ?? null;
   };
 
   return {
@@ -629,6 +663,8 @@ export const secretSharingServiceFactory = ({
     getSharedSecrets,
     deleteSharedSecretById,
     getSharedSecretById,
+    getSharedSecretOrgId,
+    getOrgBrandConfig,
 
     createSecretRequest,
     getSecretRequestById,

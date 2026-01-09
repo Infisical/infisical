@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { SecretSharingSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { SecretSharingAccessType } from "@app/lib/types";
 import {
   publicEndpointLimit,
@@ -12,6 +13,16 @@ import {
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { SecretSharingType } from "@app/services/secret-sharing/secret-sharing-types";
+
+const ALLOWED_IMAGE_CONTENT_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/svg+xml",
+  "image/x-icon",
+  "image/webp"
+];
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export const registerSecretSharingRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -67,6 +78,14 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       response: {
         200: z.object({
           isPasswordProtected: z.boolean(),
+          brandingConfig: z
+            .object({
+              hasLogoUrl: z.boolean(),
+              hasFaviconUrl: z.boolean(),
+              primaryColor: z.string().optional(),
+              secondaryColor: z.string().optional()
+            })
+            .optional(),
           secret: SecretSharingSchema.pick({
             encryptedValue: true,
             iv: true,
@@ -79,7 +98,8 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
               orgName: z.string().optional(),
               secretValue: z.string().optional()
             })
-            .optional()
+            .optional(),
+          error: z.string().optional()
         })
       }
     },
@@ -92,22 +112,38 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         actorId: req.permission?.id
       });
 
-      if (sharedSecret.secret?.orgId) {
-        await server.services.auditLog.createAuditLog({
-          orgId: sharedSecret.secret.orgId,
-          ...req.auditLogInfo,
-          event: {
-            type: EventType.READ_SHARED_SECRET,
-            metadata: {
-              id: req.params.id,
-              name: sharedSecret.secret.name || undefined,
-              accessType: sharedSecret.secret.accessType
+      let brandingConfig;
+
+      if (sharedSecret.secretOrgId) {
+        const orgBrandConfig = await req.server.services.secretSharing.getOrgBrandConfig(sharedSecret.secretOrgId);
+
+        if (orgBrandConfig) {
+          brandingConfig = {
+            hasLogoUrl: Boolean(orgBrandConfig.logoUrl),
+            hasFaviconUrl: Boolean(orgBrandConfig.faviconUrl),
+            primaryColor: orgBrandConfig.primaryColor,
+            secondaryColor: orgBrandConfig.secondaryColor
+          };
+        }
+
+        // Verify that secret was actually returned
+        if (sharedSecret.secret) {
+          await server.services.auditLog.createAuditLog({
+            orgId: sharedSecret.secretOrgId,
+            ...req.auditLogInfo,
+            event: {
+              type: EventType.READ_SHARED_SECRET,
+              metadata: {
+                id: req.params.id,
+                name: sharedSecret.secret.name || undefined,
+                accessType: sharedSecret.secret.accessType
+              }
             }
-          }
-        });
+          });
+        }
       }
 
-      return sharedSecret;
+      return { ...sharedSecret, brandingConfig };
     }
   });
 
@@ -238,6 +274,69 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       });
 
       return { ...deletedSharedSecret };
+    }
+  });
+
+  // Endpoint to proxy external branding images
+  server.route({
+    method: "GET",
+    url: "/public/:id/branding/:assetType",
+    config: {
+      rateLimit: publicEndpointLimit
+    },
+    schema: {
+      params: z.object({
+        id: z.string(),
+        assetType: z.enum(["logo", "favicon"])
+      })
+    },
+    handler: async (req, res) => {
+      const { id, assetType } = req.params;
+
+      const orgId = await req.server.services.secretSharing.getSharedSecretOrgId(id);
+
+      if (!orgId) {
+        throw new NotFoundError({ message: "Shared secret not found or has no organization" });
+      }
+
+      const orgBrandConfig = await req.server.services.secretSharing.getOrgBrandConfig(orgId);
+
+      if (!orgBrandConfig) {
+        throw new NotFoundError({ message: "No branding configured for this organization" });
+      }
+
+      const imageUrl = assetType === "logo" ? orgBrandConfig.logoUrl : orgBrandConfig.faviconUrl;
+
+      if (!imageUrl) {
+        throw new NotFoundError({ message: `No ${assetType} configured for this organization` });
+      }
+
+      // Fetch image
+      const response = await fetch(imageUrl);
+
+      if (!response.ok) {
+        throw new BadRequestError({ message: `Failed to fetch ${assetType}` });
+      }
+
+      const contentType = response.headers.get("content-type") || "application/octet-stream";
+      const contentLength = response.headers.get("content-length");
+
+      // Validate content type
+      if (!ALLOWED_IMAGE_CONTENT_TYPES.some((allowed) => contentType.startsWith(allowed))) {
+        throw new BadRequestError({ message: "Invalid image type" });
+      }
+
+      // Validate size
+      if (contentLength && parseInt(contentLength, 10) > MAX_IMAGE_SIZE) {
+        throw new BadRequestError({ message: "Image too large" });
+      }
+
+      const imageBuffer = Buffer.from(await response.arrayBuffer());
+
+      void res.header("Content-Type", contentType);
+      void res.header("Cache-Control", "public, max-age=3600"); // Cache for 1 hour
+
+      return res.send(imageBuffer);
     }
   });
 };

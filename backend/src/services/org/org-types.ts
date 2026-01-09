@@ -69,6 +69,13 @@ export type TFindAllWorkspacesDTO = {
   orgId: string;
 };
 
+export type TSecretShareBrandConfig = {
+  faviconUrl?: string;
+  logoUrl?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+} | null;
+
 export type TUpdateOrgDTO = {
   data: Partial<{
     name: string;
@@ -91,6 +98,7 @@ export type TUpdateOrgDTO = {
     maxSharedSecretLifetime: number;
     maxSharedSecretViewLimit: number | null;
     blockDuplicateSecretSyncDestinations: boolean;
+    secretShareBrandConfig: TSecretShareBrandConfig;
   }>;
 } & TOrgPermission;
 

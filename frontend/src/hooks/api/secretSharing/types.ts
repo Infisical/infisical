@@ -50,18 +50,27 @@ export type TRevealSecretRequestValueRequest = {
   id: string;
 };
 
+export type TSharedSecretResponse = {
+  secretValue?: string;
+  encryptedValue: string;
+  iv: string;
+  tag: string;
+  accessType: SecretSharingAccessType;
+  orgName?: string;
+  expiresAt?: Date | string;
+  expiresAfterViews?: number | null;
+};
+
 export type TViewSharedSecretResponse = {
   isPasswordProtected: boolean;
-  secret: {
-    secretValue?: string;
-    encryptedValue: string;
-    iv: string;
-    tag: string;
-    accessType: SecretSharingAccessType;
-    orgName?: string;
-    expiresAt?: Date | string;
-    expiresAfterViews?: number | null;
+  brandingConfig?: {
+    hasLogoUrl: boolean;
+    hasFaviconUrl: boolean;
+    primaryColor?: string;
+    secondaryColor?: string;
   };
+  secret?: TSharedSecretResponse;
+  error?: string;
 };
 
 export type TGetSecretRequestByIdResponse = {

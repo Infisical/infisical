@@ -320,7 +320,31 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         blockDuplicateSecretSyncDestinations: z
           .boolean()
           .optional()
-          .describe("Block duplicate secret sync destinations across the organization")
+          .describe("Block duplicate secret sync destinations across the organization"),
+        secretShareBrandConfig: z
+          .object({
+            faviconUrl: z.string().url().optional().or(z.literal("")),
+            logoUrl: z.string().url().optional().or(z.literal("")),
+            primaryColor: z
+              .string()
+              .refine(
+                (val) => !val || new RE2(/^#[0-9A-Fa-f]{6}$/).test(val),
+                "Primary color must be a valid hex color (e.g., #FF5733)"
+              )
+              .optional()
+              .or(z.literal("")),
+            secondaryColor: z
+              .string()
+              .refine(
+                (val) => !val || new RE2(/^#[0-9A-Fa-f]{6}$/).test(val),
+                "Secondary color must be a valid hex color (e.g., #FF5733)"
+              )
+              .optional()
+              .or(z.literal(""))
+          })
+          .nullable()
+          .optional()
+          .describe("Custom branding configuration for secret sharing pages")
       }),
       response: {
         200: z.object({
