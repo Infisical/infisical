@@ -11,7 +11,7 @@ import { createNotification } from "@app/components/notifications";
 import { Lottie } from "@app/components/v2";
 import { SessionStorageKeys } from "@app/const";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useGetActiveSharedSecretById } from "@app/hooks/api/secretSharing";
+import { TBrandingConfig, useGetActiveSharedSecretById } from "@app/hooks/api/secretSharing";
 import {
   PasswordContainer,
   SecretContainer,
@@ -80,6 +80,9 @@ export const ViewSharedSecretByIDPage = () => {
   const [password, setPassword] = useState<string>();
   const { hashedHex, key } = extractDetailsFromUrl(urlEncodedKey);
 
+  // Store branding config for persistence across password attempts
+  const [savedBrandingConfig, setSavedBrandingConfig] = useState<TBrandingConfig | undefined>();
+
   const {
     data: fetchSecret,
     error,
@@ -103,6 +106,13 @@ export const ViewSharedSecretByIDPage = () => {
   const isEmailUnauthorized =
     ((error as AxiosError)?.response?.data as { message: string })?.message ===
     "Email not authorized to view secret";
+
+  // Save branding config for persistence across password attempts
+  useEffect(() => {
+    if (fetchSecret?.brandingConfig) {
+      setSavedBrandingConfig(fetchSecret.brandingConfig);
+    }
+  }, [fetchSecret?.brandingConfig]);
 
   useEffect(() => {
     if (isUnauthorized && !isInvalidCredential && !isEmailUnauthorized) {
@@ -139,7 +149,7 @@ export const ViewSharedSecretByIDPage = () => {
     isInvalidCredential || (fetchSecret?.isPasswordProtected && !fetchSecret.secret);
   const isValidatingPassword = Boolean(password) && isFetching;
 
-  const brandingConfig = fetchSecret?.brandingConfig;
+  const brandingConfig = fetchSecret?.brandingConfig || savedBrandingConfig;
   const hasCustomBranding = !!brandingConfig;
 
   // Use proxy URLs for branding assets to avoid cross origin issues
