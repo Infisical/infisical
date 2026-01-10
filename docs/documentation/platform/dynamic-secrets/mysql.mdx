@@ -3,6 +3,8 @@ title: "MySQL"
 description: "Learn how to dynamically generate MySQL Database user credentials."
 ---
 
+import DynamicSecretUsernameTemplateParamField from "/snippets/documentation/platform/dynamic-secrets/dynamic-secret-username-template-field.mdx";
+
 The Infisical MySQL dynamic secret allows you to generate MySQL Database credentials on demand based on configured role.
 
 ## Prerequisite
@@ -69,29 +71,7 @@ Create a user with the required permission in your SQL instance. This user will 
   </Step>
   <Step title="(Optional) Modify SQL Statements">
   ![Modify SQL Statements Modal](../../../images/platform/dynamic-secrets/modify-sql-statement-mysql.png)
-<ParamField path="Username Template" type="string" default="{{randomUsername}}">
-    Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
-
-    Allowed template variables are
-    - `{{randomUsername}}`: Random username string
-    - `{{unixTimestamp}}`: Current Unix timestamp
-    - `{{identity.name}}`: Name of the identity that is generating the secret
-    - `{{random N}}`: Random string of N characters
-
-    Allowed template functions are
-    - `truncate`: Truncates a string to a specified length
-    - `replace`: Replaces a substring with another value
-
-    Examples:
-    ```
-    {{randomUsername}}                              // 3POnzeFyK9gW2nioK0q2gMjr6CZqsRiX
-    {{unixTimestamp}}                               // 17490641580
-    {{identity.name}}                               // testuser
-    {{random-5}}                                    // x9k2m
-    {{truncate identity.name 4}}                    // test
-    {{replace identity.name 'user' 'replace'}}      // testreplace
-    ```
-	</ParamField>
+  <DynamicSecretUsernameTemplateParamField />
   </Step>
   <Step title="Click `Submit`">
   	After submitting the form, you will see a dynamic secret created in the dashboard.
