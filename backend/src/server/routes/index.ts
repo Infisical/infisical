@@ -1581,7 +1581,8 @@ export const registerRoutes = async (
     orgDAL,
     kmsService,
     smtpService,
-    userDAL
+    userDAL,
+    licenseService
   });
 
   const accessApprovalPolicyService = accessApprovalPolicyServiceFactory({

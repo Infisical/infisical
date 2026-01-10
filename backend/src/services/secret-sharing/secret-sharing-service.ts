@@ -38,6 +38,7 @@ type TSecretSharingServiceFactoryDep = {
   userDAL: TUserDALFactory;
   kmsService: TKmsServiceFactory;
   smtpService: TSmtpService;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TSecretSharingServiceFactory = ReturnType<typeof secretSharingServiceFactory>;
@@ -49,7 +50,8 @@ export const secretSharingServiceFactory = ({
   orgDAL,
   kmsService,
   smtpService,
-  userDAL
+  userDAL,
+  licenseService
 }: TSecretSharingServiceFactoryDep) => {
   const $validateSharedSecretExpiry = (expiresAt: string) => {
     if (new Date(expiresAt) < new Date()) {
@@ -682,6 +684,11 @@ export const secretSharingServiceFactory = ({
       );
     }
 
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.secretShareExternalBranding) {
+      return null;
+    }
+
     const org = await orgDAL.findOrgById(orgId);
     const assets = await secretShareBrandingAssetDAL.findAllByOrgId(orgId);
 
@@ -718,6 +725,11 @@ export const secretSharingServiceFactory = ({
         OrgPermissionSecretShareAction.ManageSettings,
         OrgPermissionSubjects.SecretShare
       );
+    }
+
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.secretShareExternalBranding) {
+      return null;
     }
 
     const asset = await secretShareBrandingAssetDAL.findByOrgIdAndType(orgId, assetType);
