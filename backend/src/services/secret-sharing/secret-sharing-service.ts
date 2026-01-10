@@ -29,6 +29,7 @@ import {
   TRevealSecretRequestValueDTO,
   TSetSecretRequestValueDTO
 } from "./secret-sharing-types";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 
 type TSecretSharingServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
