@@ -21,7 +21,8 @@ import { getDatabricksConnectionAccessToken } from "@app/services/app-connection
 const DELAY_MS = 1000;
 const EXPIRY_PADDING_IN_DAYS = 3;
 const MAX_DATABRICKS_SECRETS = 4;
-const MAX_ROTATION_INTERVAL_DAYS = 730;
+const MAX_SECRET_LIFETIME = 730; // from databricks
+const MAX_ROTATION_INTERVAL_DAYS = Math.floor((MAX_SECRET_LIFETIME - EXPIRY_PADDING_IN_DAYS) / 2); // needs to be half, since it lives two intervals
 
 const sleep = async () =>
   new Promise((resolve) => {
@@ -201,7 +202,7 @@ export const databricksServicePrincipalSecretRotationFactory: TRotationFactory<
   > = async (callback) => {
     if (rotationInterval > MAX_ROTATION_INTERVAL_DAYS) {
       throw new BadRequestError({
-        message: `Databricks does not support OAuth secret duration over ${MAX_ROTATION_INTERVAL_DAYS} days`
+        message: `Databricks does not support OAuth secret duration over ${MAX_SECRET_LIFETIME} days. Rotation interval must be less than or equal to ${MAX_ROTATION_INTERVAL_DAYS} to accomodate this.`
       });
     }
 
@@ -226,7 +227,7 @@ export const databricksServicePrincipalSecretRotationFactory: TRotationFactory<
   > = async (oldCredentials, callback) => {
     if (rotationInterval > MAX_ROTATION_INTERVAL_DAYS) {
       throw new BadRequestError({
-        message: `Databricks does not support OAuth secret duration over ${MAX_ROTATION_INTERVAL_DAYS} days`
+        message: `Databricks does not support OAuth secret duration over ${MAX_SECRET_LIFETIME} days. Rotation interval must be less than or equal to ${MAX_ROTATION_INTERVAL_DAYS} to accomodate this.`
       });
     }
 
