@@ -57,6 +57,7 @@ export const SecretContainer = ({ secret, secretKey: key, brandingTheme }: Props
   const secretDisplayStyle = brandingTheme
     ? {
         backgroundColor: brandingTheme.inputBg,
+        borderColor: brandingTheme.panelBorder,
         color: brandingTheme.textColor
       }
     : undefined;
@@ -74,8 +75,8 @@ export const SecretContainer = ({ secret, secretKey: key, brandingTheme }: Props
       style={panelStyle}
     >
       <div
-        className={`flex items-center justify-between rounded-md p-2 text-base ${
-          brandingTheme ? "" : "bg-white/5 text-gray-400"
+        className={`flex items-center justify-between rounded-md border p-2 pl-3 text-base ${
+          brandingTheme ? "" : "border-mineshaft-600 bg-mineshaft-700/50 text-gray-400"
         }`}
         style={secretDisplayStyle}
       >
