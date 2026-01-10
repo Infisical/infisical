@@ -76,8 +76,9 @@ export type TViewSharedSecretResponse = {
 };
 
 export type TGetSecretRequestByIdResponse = {
-  secretRequest: {
-    isSecretValueSet: boolean;
+  request: {
+    id: string;
+    orgId: string;
     accessType: SecretSharingAccessType;
     requester: {
       organizationName: string;
@@ -86,6 +87,9 @@ export type TGetSecretRequestByIdResponse = {
       lastName?: string;
     };
   };
+  brandingConfig?: TBrandingConfig;
+  isSecretValueSet: boolean;
+  error?: string;
 };
 
 export type TDeleteSharedSecretRequestDTO = {

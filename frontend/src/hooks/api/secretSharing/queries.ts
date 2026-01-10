@@ -111,7 +111,7 @@ export const useGetSecretRequestById = ({ secretRequestId }: { secretRequestId: 
         `/api/v1/secret-sharing/requests/${secretRequestId}`
       );
 
-      return data.secretRequest;
+      return data;
     }
   });
 };

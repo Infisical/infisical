@@ -26,7 +26,10 @@ export const SecretErrorContainer = ({ error, brandingTheme }: Props) => {
       style={panelStyle}
     >
       <div className="flex items-center gap-4">
-        <TriangleAlertIcon style={{ color: brandingTheme?.textMutedColor || "orangered" }} />
+        <TriangleAlertIcon
+          className="shrink-0"
+          style={{ color: brandingTheme?.textMutedColor || "orangered" }}
+        />
         <span>{error || "The secret you are looking for is missing or has expired"}</span>
       </div>
     </div>

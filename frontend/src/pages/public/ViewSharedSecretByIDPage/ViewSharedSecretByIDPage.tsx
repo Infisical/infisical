@@ -18,11 +18,11 @@ import {
   SecretErrorContainer
 } from "@app/pages/public/ViewSharedSecretByIDPage/components";
 
-const DEFAULT_LOGO_URL = "/images/gradientLogo.svg";
-const DEFAULT_FAVICON_URL = "/infisical.ico";
+export const DEFAULT_LOGO_URL = "/images/gradientLogo.svg";
+export const DEFAULT_FAVICON_URL = "/infisical.ico";
 
 // Returns true if the color is considered "light"
-const isLightColor = (hexColor: string): boolean => {
+export const isLightColor = (hexColor: string): boolean => {
   const hex = hexColor.replace("#", "");
   const r = parseInt(hex.substring(0, 2), 16);
   const g = parseInt(hex.substring(2, 4), 16);
@@ -32,7 +32,7 @@ const isLightColor = (hexColor: string): boolean => {
 };
 
 // Adjusts color brightness by a literal amount (negative for darker, positive for lighter)
-const adjustColor = (hexColor: string, amount: number): string => {
+export const adjustColor = (hexColor: string, amount: number): string => {
   const hex = hexColor.replace("#", "");
   const r = Math.max(0, Math.min(255, parseInt(hex.substring(0, 2), 16) + amount));
   const g = Math.max(0, Math.min(255, parseInt(hex.substring(2, 4), 16) + amount));

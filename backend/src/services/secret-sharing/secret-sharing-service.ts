@@ -1,4 +1,7 @@
+import { ForbiddenError } from "@casl/ability";
+
 import { OrganizationActionScope, TSecretSharing } from "@app/db/schemas";
+import { OrgPermissionSecretShareAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -9,6 +12,7 @@ import { isUuidV4 } from "@app/lib/validator";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TOrgDALFactory } from "../org/org-dal";
+import { TSecretShareBrandConfig } from "../org/org-types";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TSecretShareBrandingAssetDALFactory } from "./secret-share-branding-asset-dal";
@@ -25,9 +29,6 @@ import {
   TRevealSecretRequestValueDTO,
   TSetSecretRequestValueDTO
 } from "./secret-sharing-types";
-import { ForbiddenError } from "@casl/ability";
-import { OrgPermissionSecretShareAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
-import { TSecretShareBrandConfig } from "../org/org-types";
 
 type TSecretSharingServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
@@ -314,15 +315,23 @@ export const secretSharingServiceFactory = ({
     }
 
     if (secretRequest.expiresAt && secretRequest.expiresAt < new Date()) {
-      throw new ForbiddenRequestError({
-        message: "Access denied: Secret request has expired"
-      });
+      return {
+        requestOrgId: secretRequest.orgId,
+        error: "Secret request has expired",
+        isSecretValueSet: false
+      };
     }
 
     return {
-      ...secretRequest,
+      request: secretRequest,
+      requestOrgId: secretRequest.orgId,
       isSecretValueSet: Boolean(secretRequest.encryptedSecret)
     };
+  };
+
+  const getSecretRequestOrgId = async (secretRequestId: string) => {
+    const secretRequest = await secretSharingDAL.getSecretRequestById(secretRequestId);
+    return secretRequest?.orgId ?? null;
   };
 
   const setSecretRequestValue = async ({
@@ -772,6 +781,7 @@ export const secretSharingServiceFactory = ({
 
     createSecretRequest,
     getSecretRequestById,
+    getSecretRequestOrgId,
     setSecretRequestValue,
     revealSecretRequestValue
   };
