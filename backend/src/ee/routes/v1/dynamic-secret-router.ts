@@ -26,7 +26,10 @@ const validateUsernameTemplateCharacters = characterValidator([
   CharacterType.Fullstop,
   CharacterType.SingleQuote,
   CharacterType.Spaces,
-  CharacterType.Pipe
+  CharacterType.Pipe,
+  CharacterType.OpenParen,
+  CharacterType.CloseParen,
+  CharacterType.DoubleQuote
 ]);
 
 const userTemplateSchema = z

@@ -44,6 +44,17 @@ const hbsTruncate = (text: string, length: number) => {
   if (typeof length !== "number" || length <= 0) return textStr;
   return textStr.substring(0, length);
 };
+
+const hbsUppercase = (text: string) => {
+  const textStr = String(text || "");
+  return textStr.toUpperCase();
+};
+
+const hbsLowercase = (text: string) => {
+  const textStr = String(text || "");
+  return textStr.toLowerCase();
+};
+
 const compileUsernameTemplate = ({
   usernameTemplate,
   randomUsername,
@@ -70,6 +81,11 @@ const compileUsernameTemplate = ({
   hbs.registerHelper("replace", hbsReplace);
   // Register truncate helper on local instance
   hbs.registerHelper("truncate", hbsTruncate);
+
+  // Register uppercase helper on local instance
+  hbs.registerHelper("uppercase", hbsUppercase);
+  // Register lowercase helper on local instance
+  hbs.registerHelper("lowercase", hbsLowercase);
 
   // Compile template with context using local instance
   const context = {
