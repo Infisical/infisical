@@ -99,6 +99,10 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
     do {
       try {
         const deleteBatch = async (dbClient: Knex | Knex.Transaction) => {
+          // The default random_page_cost is 4.0, which is too high for this query.
+          // With SSD powered database, random access is way faster.
+          // We set it to 1.1 to make the query opt for random access and thus more likely to use the index.
+          await dbClient.raw(`SET LOCAL random_page_cost = 1.1`);
           const idsToDeleteQuery = getExpiredTokensQuery(dbClient, now).limit(BATCH_SIZE);
           return dbClient(TableName.IdentityAccessToken).whereIn("id", idsToDeleteQuery).del().returning("id");
         };
@@ -109,7 +113,7 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
         } else {
           // eslint-disable-next-line no-await-in-loop
           deletedTokenIds = await db.transaction(async (trx) => {
-            await trx.raw(`SET statement_timeout = ${QUERY_TIMEOUT_MS}`);
+            await trx.raw(`SET LOCAL statement_timeout = ${QUERY_TIMEOUT_MS}`);
             return deleteBatch(trx);
           });
         }
