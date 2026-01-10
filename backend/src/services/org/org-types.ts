@@ -70,8 +70,6 @@ export type TFindAllWorkspacesDTO = {
 };
 
 export type TSecretShareBrandConfig = {
-  faviconUrl?: string;
-  logoUrl?: string;
   primaryColor?: string;
   secondaryColor?: string;
 } | null;

@@ -4,13 +4,14 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { SecretSharingAccessType } from "@app/lib/types";
+import { OrgServiceActor, SecretSharingAccessType } from "@app/lib/types";
 import { isUuidV4 } from "@app/lib/validator";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TOrgDALFactory } from "../org/org-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
+import { TSecretShareBrandingAssetDALFactory } from "./secret-share-branding-asset-dal";
 import { TSecretSharingDALFactory } from "./secret-sharing-dal";
 import {
   SecretSharingType,
@@ -24,10 +25,14 @@ import {
   TRevealSecretRequestValueDTO,
   TSetSecretRequestValueDTO
 } from "./secret-sharing-types";
+import { ForbiddenError } from "@casl/ability";
+import { OrgPermissionSecretShareAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { TSecretShareBrandConfig } from "../org/org-types";
 
 type TSecretSharingServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   secretSharingDAL: TSecretSharingDALFactory;
+  secretShareBrandingAssetDAL: TSecretShareBrandingAssetDALFactory;
   orgDAL: TOrgDALFactory;
   userDAL: TUserDALFactory;
   kmsService: TKmsServiceFactory;
@@ -39,6 +44,7 @@ export type TSecretSharingServiceFactory = ReturnType<typeof secretSharingServic
 export const secretSharingServiceFactory = ({
   permissionService,
   secretSharingDAL,
+  secretShareBrandingAssetDAL,
   orgDAL,
   kmsService,
   smtpService,
@@ -645,16 +651,107 @@ export const secretSharingServiceFactory = ({
     return sharedSecret?.orgId ?? null;
   };
 
-  const getOrgBrandConfig = async (
-    orgId: string
-  ): Promise<{
-    faviconUrl?: string;
-    logoUrl?: string;
-    primaryColor?: string;
-    secondaryColor?: string;
-  } | null> => {
+  const getOrgBrandConfig = async (orgId: string, actor?: OrgServiceActor) => {
+    // When accessed via public endpoint (from shared secret), don't check permission
+    if (actor) {
+      const { permission } = await permissionService.getOrgPermission({
+        actor: actor.type,
+        actorId: actor.id,
+        orgId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        scope: OrganizationActionScope.ParentOrganization
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionSecretShareAction.ManageSettings,
+        OrgPermissionSubjects.SecretShare
+      );
+    }
+
     const org = await orgDAL.findOrgById(orgId);
-    return org?.secretShareBrandConfig ?? null;
+    const assets = await secretShareBrandingAssetDAL.findAllByOrgId(orgId);
+
+    const hasLogo = assets.some((a) => a.assetType === "logo");
+    const hasFavicon = assets.some((a) => a.assetType === "favicon");
+
+    const config = org?.secretShareBrandConfig as TSecretShareBrandConfig;
+
+    if (!config && !hasLogo && !hasFavicon) {
+      return null;
+    }
+
+    return {
+      hasLogo,
+      hasFavicon,
+      primaryColor: config?.primaryColor,
+      secondaryColor: config?.secondaryColor
+    };
+  };
+
+  const getBrandingAsset = async (orgId: string, assetType: string, actor?: OrgServiceActor) => {
+    // When accessed via public endpoint (from shared secret), don't check permission
+    if (actor) {
+      const { permission } = await permissionService.getOrgPermission({
+        actor: actor.type,
+        actorId: actor.id,
+        orgId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        scope: OrganizationActionScope.ParentOrganization
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionSecretShareAction.ManageSettings,
+        OrgPermissionSubjects.SecretShare
+      );
+    }
+
+    const asset = await secretShareBrandingAssetDAL.findByOrgIdAndType(orgId, assetType);
+    return asset;
+  };
+
+  const uploadBrandingAsset = async (
+    orgId: string,
+    assetType: string,
+    data: Buffer,
+    contentType: string,
+    actor: OrgServiceActor
+  ) => {
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.ParentOrganization
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionSecretShareAction.ManageSettings,
+      OrgPermissionSubjects.SecretShare
+    );
+
+    const size = data.length;
+    return secretShareBrandingAssetDAL.upsert(orgId, assetType, data, contentType, size);
+  };
+
+  const deleteBrandingAsset = async (orgId: string, assetType: string, actor: OrgServiceActor) => {
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.ParentOrganization
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionSecretShareAction.ManageSettings,
+      OrgPermissionSubjects.SecretShare
+    );
+
+    await secretShareBrandingAssetDAL.deleteByOrgIdAndType(orgId, assetType);
   };
 
   return {
@@ -665,6 +762,9 @@ export const secretSharingServiceFactory = ({
     getSharedSecretById,
     getSharedSecretOrgId,
     getOrgBrandConfig,
+    getBrandingAsset,
+    uploadBrandingAsset,
+    deleteBrandingAsset,
 
     createSecretRequest,
     getSecretRequestById,

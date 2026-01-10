@@ -112,3 +112,45 @@ export const useDeleteSecretRequest = () => {
     }
   });
 };
+
+export const useUploadBrandingAsset = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    { message: string },
+    { message: string },
+    { assetType: "logo" | "favicon"; file: File }
+  >({
+    mutationFn: async ({ assetType, file }) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const { data } = await apiRequest.post<{ message: string }>(
+        `/api/v1/secret-sharing/shared/branding/${assetType}`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data"
+          }
+        }
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: secretSharingKeys.brandingAssets() });
+    }
+  });
+};
+
+export const useDeleteBrandingAsset = () => {
+  const queryClient = useQueryClient();
+  return useMutation<{ message: string }, { message: string }, { assetType: "logo" | "favicon" }>({
+    mutationFn: async ({ assetType }) => {
+      const { data } = await apiRequest.delete<{ message: string }>(
+        `/api/v1/secret-sharing/shared/branding/${assetType}`
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: secretSharingKeys.brandingAssets() });
+    }
+  });
+};

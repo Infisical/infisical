@@ -143,10 +143,10 @@ export const ViewSharedSecretByIDPage = () => {
   const hasCustomBranding = !!brandingConfig;
 
   // Use proxy URLs for branding assets to avoid cross origin issues
-  const logoUrl = brandingConfig?.hasLogoUrl
+  const logoUrl = brandingConfig?.hasLogo
     ? `/api/v1/secret-sharing/shared/public/${id}/branding/logo`
     : DEFAULT_LOGO_URL;
-  const faviconUrl = brandingConfig?.hasFaviconUrl
+  const faviconUrl = brandingConfig?.hasFavicon
     ? `/api/v1/secret-sharing/shared/public/${id}/branding/favicon`
     : DEFAULT_FAVICON_URL;
 

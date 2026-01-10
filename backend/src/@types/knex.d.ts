@@ -510,6 +510,9 @@ import {
   TSecretScanningScans,
   TSecretScanningScansInsert,
   TSecretScanningScansUpdate,
+  TSecretShareBrandingAssets,
+  TSecretShareBrandingAssetsInsert,
+  TSecretShareBrandingAssetsUpdate,
   TSecretSharing,
   TSecretSharingInsert,
   TSecretSharingUpdate,
@@ -1610,6 +1613,11 @@ declare module "knex/types/tables" {
       TApprovalRequests,
       TApprovalRequestsInsert,
       TApprovalRequestsUpdate
+    >;
+    [TableName.SecretShareBrandingAsset]: KnexOriginal.CompositeTableType<
+      TSecretShareBrandingAssets,
+      TSecretShareBrandingAssetsInsert,
+      TSecretShareBrandingAssetsUpdate
     >;
   }
 }

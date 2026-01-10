@@ -4,8 +4,6 @@ import { IdentityMembershipOrg } from "@app/hooks/api/identities/types";
 import { MfaMethod } from "../auth/types";
 
 export type TSecretShareBrandConfig = {
-  faviconUrl?: string;
-  logoUrl?: string;
   primaryColor?: string;
   secondaryColor?: string;
 } | null;

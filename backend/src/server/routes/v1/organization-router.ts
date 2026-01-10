@@ -323,8 +323,6 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           .describe("Block duplicate secret sync destinations across the organization"),
         secretShareBrandConfig: z
           .object({
-            faviconUrl: z.string().url().optional().or(z.literal("")),
-            logoUrl: z.string().url().optional().or(z.literal("")),
             primaryColor: z
               .string()
               .refine(

@@ -61,14 +61,16 @@ export type TSharedSecretResponse = {
   expiresAfterViews?: number | null;
 };
 
+export type TBrandingConfig = {
+  hasLogo: boolean;
+  hasFavicon: boolean;
+  primaryColor?: string;
+  secondaryColor?: string;
+};
+
 export type TViewSharedSecretResponse = {
   isPasswordProtected: boolean;
-  brandingConfig?: {
-    hasLogoUrl: boolean;
-    hasFaviconUrl: boolean;
-    primaryColor?: string;
-    secondaryColor?: string;
-  };
+  brandingConfig?: TBrandingConfig;
   secret?: TSharedSecretResponse;
   error?: string;
 };

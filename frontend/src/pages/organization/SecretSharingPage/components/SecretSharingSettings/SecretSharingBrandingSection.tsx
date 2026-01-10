@@ -1,13 +1,14 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { LockIcon } from "lucide-react";
+import { LockIcon, TrashIcon, UploadIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, FormControl, Input } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Badge, UnstableButton } from "@app/components/v3";
+import { apiRequest } from "@app/config/request";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -15,12 +16,24 @@ import {
   useSubscription
 } from "@app/context";
 import { useUpdateOrg } from "@app/hooks/api";
+import {
+  useDeleteBrandingAsset,
+  useGetBrandingConfig,
+  useUploadBrandingAsset
+} from "@app/hooks/api/secretSharing";
 
 const hexColorRegex = /^#[0-9A-Fa-f]{6}$/;
+const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
+const ALLOWED_FILE_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/svg+xml",
+  "image/x-icon",
+  "image/webp"
+];
 
 const formSchema = z.object({
-  logoUrl: z.string().url("Must be a valid URL").or(z.literal("")).optional(),
-  faviconUrl: z.string().url("Must be a valid URL").or(z.literal("")).optional(),
   primaryColor: z
     .string()
     .regex(hexColorRegex, "Must be a valid hex color (e.g., #FF5733)")
@@ -35,12 +48,159 @@ const formSchema = z.object({
 
 type TForm = z.infer<typeof formSchema>;
 
+const validateFile = (file: File): string | null => {
+  if (file.size > MAX_FILE_SIZE) {
+    return `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB`;
+  }
+  if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+    return "Invalid file type. Please upload a PNG, JPEG, GIF, SVG, ICO, or WebP image.";
+  }
+  return null;
+};
+
+// Fetch image as base64 data URL using authenticated request
+const fetchAssetAsDataUrl = async (assetType: "logo" | "favicon"): Promise<string | null> => {
+  try {
+    const response = await apiRequest.get(`/api/v1/secret-sharing/shared/branding/${assetType}`, {
+      responseType: "blob"
+    });
+    const blob = response.data as Blob;
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+};
+
+type AssetUploadCardProps = {
+  assetType: "logo" | "favicon";
+  title: string;
+  description: string;
+  hasAsset: boolean;
+  isAllowed: boolean;
+  isPending: boolean;
+  onUpload: (assetType: "logo" | "favicon", file: File) => Promise<void>;
+  onDelete: (assetType: "logo" | "favicon") => Promise<void>;
+};
+
+const AssetUploadCard = ({
+  assetType,
+  title,
+  description,
+  hasAsset,
+  isAllowed,
+  isPending,
+  onUpload,
+  onDelete
+}: AssetUploadCardProps) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Fetch existing asset on mount if it exists
+  useEffect(() => {
+    if (hasAsset) {
+      setIsLoading(true);
+      fetchAssetAsDataUrl(assetType)
+        .then((dataUrl) => {
+          setPreviewUrl(dataUrl);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [hasAsset, assetType]);
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const error = validateFile(file);
+      if (error) {
+        createNotification({ text: error, type: "error" });
+        return;
+      }
+
+      await onUpload(assetType, file);
+
+      // Update preview with the uploaded file
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDelete = async () => {
+    await onDelete(assetType);
+    setPreviewUrl(null);
+  };
+
+  return (
+    <div className="rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3">
+      <p className="mb-1 text-sm font-medium">{title}</p>
+      <p className="mb-2 text-xs text-mineshaft-400">{description}</p>
+      <input
+        ref={inputRef}
+        type="file"
+        accept={ALLOWED_FILE_TYPES.join(",")}
+        onChange={handleFileChange}
+        className="hidden"
+        disabled={!isAllowed || isPending}
+      />
+      <div className="flex gap-2">
+        {isLoading ? (
+          <div className="size-10 animate-pulse rounded border border-mineshaft-500 bg-mineshaft-600" />
+        ) : (
+          previewUrl && (
+            <img
+              src={previewUrl}
+              alt={`${title} preview`}
+              className="size-10 rounded border border-mineshaft-500 object-contain p-1"
+            />
+          )
+        )}
+        <UnstableButton
+          variant="neutral"
+          size="xs"
+          onClick={() => inputRef.current?.click()}
+          isDisabled={!isAllowed || isPending}
+        >
+          <UploadIcon />
+          Upload {title}
+        </UnstableButton>
+        {previewUrl && (
+          <UnstableButton
+            variant="danger"
+            size="xs"
+            onClick={handleDelete}
+            isDisabled={!isAllowed || isPending}
+          >
+            <TrashIcon />
+            Delete
+          </UnstableButton>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export const SecretSharingBrandingSection = () => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
-  const { mutateAsync, isPending } = useUpdateOrg();
+  const { mutateAsync: updateOrg, isPending: isUpdatingOrg } = useUpdateOrg();
+  const { mutateAsync: uploadAsset, isPending: isUploadingAsset } = useUploadBrandingAsset();
+  const { mutateAsync: deleteAsset, isPending: isDeletingAsset } = useDeleteBrandingAsset();
+  const { data: brandingConfig } = useGetBrandingConfig();
 
   const isFeatureEnabled = subscription?.secretShareExternalBranding;
+  const isPending = isUpdatingOrg || isUploadingAsset || isDeletingAsset;
 
   const {
     control,
@@ -50,45 +210,45 @@ export const SecretSharingBrandingSection = () => {
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      logoUrl: currentOrg?.secretShareBrandConfig?.logoUrl || "",
-      faviconUrl: currentOrg?.secretShareBrandConfig?.faviconUrl || "",
       primaryColor: currentOrg?.secretShareBrandConfig?.primaryColor || "",
       secondaryColor: currentOrg?.secretShareBrandConfig?.secondaryColor || ""
     }
   });
 
-  useEffect(() => {
-    if (currentOrg?.secretShareBrandConfig) {
-      reset({
-        logoUrl: currentOrg.secretShareBrandConfig.logoUrl || "",
-        faviconUrl: currentOrg.secretShareBrandConfig.faviconUrl || "",
-        primaryColor: currentOrg.secretShareBrandConfig.primaryColor || "",
-        secondaryColor: currentOrg.secretShareBrandConfig.secondaryColor || ""
-      });
-    }
-  }, [currentOrg?.secretShareBrandConfig, reset]);
-
   const handleFormSubmit = async (data: TForm) => {
     if (!currentOrg?.id) return;
 
-    const hasAnyValue = data.logoUrl || data.faviconUrl || data.primaryColor || data.secondaryColor;
-
-    await mutateAsync({
+    await updateOrg({
       orgId: currentOrg.id,
-      secretShareBrandConfig: hasAnyValue
-        ? {
-            logoUrl: data.logoUrl || undefined,
-            faviconUrl: data.faviconUrl || undefined,
-            primaryColor: data.primaryColor || undefined,
-            secondaryColor: data.secondaryColor || undefined
-          }
-        : null
+      secretShareBrandConfig:
+        data.primaryColor || data.secondaryColor
+          ? {
+              primaryColor: data.primaryColor || undefined,
+              secondaryColor: data.secondaryColor || undefined
+            }
+          : null
     });
 
     reset(data);
 
     createNotification({
-      text: "Successfully updated secret sharing branding",
+      text: "Successfully updated branding colors",
+      type: "success"
+    });
+  };
+
+  const handleFileUpload = async (assetType: "logo" | "favicon", file: File) => {
+    await uploadAsset({ assetType, file });
+    createNotification({
+      text: `Successfully uploaded ${assetType}`,
+      type: "success"
+    });
+  };
+
+  const handleFileDelete = async (assetType: "logo" | "favicon") => {
+    await deleteAsset({ assetType });
+    createNotification({
+      text: `Successfully deleted ${assetType}`,
       type: "success"
     });
   };
@@ -119,109 +279,98 @@ export const SecretSharingBrandingSection = () => {
       ) : (
         <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
           {(isAllowed) => (
-            <form onSubmit={handleSubmit(handleFormSubmit)} autoComplete="off">
+            <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <Controller
-                  control={control}
-                  name="logoUrl"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                      label="Logo URL"
-                      tooltipText="URL to your company logo (displayed on shared secret pages)"
-                    >
-                      <Input
-                        {...field}
-                        placeholder="https://example.com/logo.png"
-                        isDisabled={!isAllowed}
-                      />
-                    </FormControl>
-                  )}
+                <AssetUploadCard
+                  assetType="logo"
+                  title="Logo"
+                  description="Displayed on shared secret pages (max 1MB)"
+                  hasAsset={brandingConfig?.hasLogo ?? false}
+                  isAllowed={isAllowed}
+                  isPending={isPending}
+                  onUpload={handleFileUpload}
+                  onDelete={handleFileDelete}
                 />
-                <Controller
-                  control={control}
-                  name="faviconUrl"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                      label="Favicon URL"
-                      tooltipText="URL to your favicon (displayed in browser tab)"
-                    >
-                      <Input
-                        {...field}
-                        placeholder="https://example.com/favicon.ico"
-                        isDisabled={!isAllowed}
-                      />
-                    </FormControl>
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="primaryColor"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                      label="Primary Color"
-                      tooltipText="Background color for the page (hex format, e.g., #82cec0)"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Input
-                          {...field}
-                          placeholder="#82cec0"
-                          isDisabled={!isAllowed}
-                          className="flex-1"
-                        />
-                        {field.value && hexColorRegex.test(field.value) && (
-                          <div
-                            className="h-9 w-9 rounded border border-mineshaft-500"
-                            style={{ backgroundColor: field.value }}
-                          />
-                        )}
-                      </div>
-                    </FormControl>
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="secondaryColor"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                      label="Secondary Color"
-                      tooltipText="Panel and component colors (hex format, e.g., #14211e)"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Input
-                          {...field}
-                          placeholder="#14211e"
-                          isDisabled={!isAllowed}
-                          className="flex-1"
-                        />
-                        {field.value && hexColorRegex.test(field.value) && (
-                          <div
-                            className="h-9 w-9 rounded border border-mineshaft-500"
-                            style={{ backgroundColor: field.value }}
-                          />
-                        )}
-                      </div>
-                    </FormControl>
-                  )}
+                <AssetUploadCard
+                  assetType="favicon"
+                  title="Favicon"
+                  description="Displayed in browser tab (max 1MB)"
+                  hasAsset={brandingConfig?.hasFavicon ?? false}
+                  isAllowed={isAllowed}
+                  isPending={isPending}
+                  onUpload={handleFileUpload}
+                  onDelete={handleFileDelete}
                 />
               </div>
-              <Button
-                colorSchema="secondary"
-                type="submit"
-                isLoading={isPending}
-                isDisabled={!isDirty || !isAllowed}
-                className="mt-4"
-              >
-                Save
-              </Button>
-            </form>
+
+              <form onSubmit={handleSubmit(handleFormSubmit)} autoComplete="off">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <Controller
+                    control={control}
+                    name="primaryColor"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        isError={Boolean(error)}
+                        errorText={error?.message}
+                        label="Primary Color"
+                        tooltipText="Background color for the page (hex format, e.g., #82cec0)"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Input
+                            {...field}
+                            placeholder="#82cec0"
+                            isDisabled={!isAllowed}
+                            className="flex-1"
+                          />
+                          {field.value && hexColorRegex.test(field.value) && (
+                            <div
+                              className="size-9 shrink-0 rounded border border-mineshaft-500"
+                              style={{ backgroundColor: field.value }}
+                            />
+                          )}
+                        </div>
+                      </FormControl>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="secondaryColor"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        isError={Boolean(error)}
+                        errorText={error?.message}
+                        label="Secondary Color"
+                        tooltipText="Panel and component background color (hex format, e.g., #14211e)"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Input
+                            {...field}
+                            placeholder="#14211e"
+                            isDisabled={!isAllowed}
+                            className="flex-1"
+                          />
+                          {field.value && hexColorRegex.test(field.value) && (
+                            <div
+                              className="size-9 shrink-0 rounded border border-mineshaft-500"
+                              style={{ backgroundColor: field.value }}
+                            />
+                          )}
+                        </div>
+                      </FormControl>
+                    )}
+                  />
+                </div>
+                <Button
+                  colorSchema="secondary"
+                  type="submit"
+                  isLoading={isUpdatingOrg}
+                  isDisabled={!isDirty || !isAllowed}
+                  className="mt-4"
+                >
+                  Save Colors
+                </Button>
+              </form>
+            </div>
           )}
         </OrgPermissionCan>
       )}
