@@ -540,7 +540,11 @@ export const secretSharingServiceFactory = ({
       if (!user || !user.email) throw new UnauthorizedError();
 
       if (!(sharedSecret.authorizedEmails as string[]).includes(user.email))
-        throw new UnauthorizedError({ message: "Email not authorized to view secret" });
+        return {
+          isPasswordProtected: false,
+          secretOrgId: sharedSecret.orgId,
+          error: "Email not authorized to view secret"
+        };
     }
 
     // all secrets pass through here, meaning we check if its expired first and then check if it needs verification
@@ -551,7 +555,7 @@ export const secretSharingServiceFactory = ({
       return {
         isPasswordProtected: false,
         secretOrgId: sharedSecret.orgId,
-        error: "Access denied: Secret has expired by lifetime"
+        error: "Secret lifetime has expired"
       };
     }
 
@@ -561,7 +565,7 @@ export const secretSharingServiceFactory = ({
       return {
         isPasswordProtected: false,
         secretOrgId: sharedSecret.orgId,
-        error: "Access denied: Secret has expired by view count"
+        error: "Secret has expired by view count"
       };
     }
 

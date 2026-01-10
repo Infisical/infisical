@@ -1,14 +1,14 @@
-import { faKey } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { TriangleAlertIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { BrandingTheme } from "../ViewSharedSecretByIDPage";
 
 type Props = {
   brandingTheme?: BrandingTheme;
+  error?: string;
 };
 
-export const SecretErrorContainer = ({ brandingTheme }: Props) => {
+export const SecretErrorContainer = ({ error, brandingTheme }: Props) => {
   const panelStyle = brandingTheme
     ? {
         backgroundColor: brandingTheme.panelBg,
@@ -20,14 +20,14 @@ export const SecretErrorContainer = ({ brandingTheme }: Props) => {
   return (
     <div
       className={twMerge(
-        "rounded-lg border p-8",
+        "rounded-lg border p-6",
         !brandingTheme && "border-mineshaft-600 bg-mineshaft-800"
       )}
       style={panelStyle}
     >
-      <div className="text-center">
-        <FontAwesomeIcon icon={faKey} size="2x" />
-        <p className="mt-4">The secret you are looking for is missing or has expired</p>
+      <div className="flex items-center gap-4">
+        <TriangleAlertIcon style={{ color: brandingTheme?.textMutedColor || "orangered" }} />
+        <span>{error || "The secret you are looking for is missing or has expired"}</span>
       </div>
     </div>
   );

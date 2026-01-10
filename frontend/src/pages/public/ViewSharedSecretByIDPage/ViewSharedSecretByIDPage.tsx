@@ -310,7 +310,7 @@ export const ViewSharedSecretByIDPage = () => {
                 />
               )}
               {(fetchSecret?.error || (error && !isInvalidCredential && !isUnauthorized)) && (
-                <SecretErrorContainer brandingTheme={brandingTheme} />
+                <SecretErrorContainer brandingTheme={brandingTheme} error={fetchSecret?.error} />
               )}
             </>
           )}
