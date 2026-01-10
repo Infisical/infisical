@@ -3,28 +3,19 @@ import { Redis } from "ioredis";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
+import { TDynamicSecrets } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
-import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
+import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretRedisDBSchema, TDynamicProviderFns } from "./models";
-import { compileUsernameTemplate } from "./templateUtils";
+import { generateUsername } from "./templateUtils";
 
 const generatePassword = () => {
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*";
   return customAlphabet(charset, 64)();
-};
-
-const generateUsername = (usernameTemplate?: string | null, identity?: { name: string }) => {
-  const randomUsername = alphaNumericNanoId(32); // Username must start with an ascii letter, so we prepend the username with "inf-"
-  if (!usernameTemplate) return randomUsername;
-  return compileUsernameTemplate({
-    usernameTemplate,
-    randomUsername,
-    identity
-  });
 };
 
 const executeTransactions = async (connection: Redis, commands: string[]): Promise<(string | null)[] | null> => {
@@ -140,13 +131,18 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
     inputs: unknown;
     expireAt: number;
     usernameTemplate?: string | null;
-    identity?: { name: string };
+    identity: ActorIdentityAttributes;
+    dynamicSecret: TDynamicSecrets;
   }) => {
-    const { inputs, expireAt, usernameTemplate, identity } = data;
+    const { inputs, expireAt, usernameTemplate, identity, dynamicSecret } = data;
     const providerInputs = await validateProviderInputs(inputs);
     const connection = await $getClient(providerInputs);
 
-    const username = generateUsername(usernameTemplate, identity);
+    const username = await generateUsername(usernameTemplate, {
+      decryptedDynamicSecretInputs: inputs,
+      dynamicSecret,
+      identity
+    });
     const password = generatePassword();
     const expiration = new Date(expireAt).toISOString();
 

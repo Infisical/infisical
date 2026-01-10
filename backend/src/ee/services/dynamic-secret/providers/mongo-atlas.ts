@@ -2,27 +2,18 @@ import axios, { AxiosError } from "axios";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
+import { TDynamicSecrets } from "@app/db/schemas";
 import { createDigestAuthRequestInterceptor } from "@app/lib/axios/digest-auth";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
-import { alphaNumericNanoId } from "@app/lib/nanoid";
 
+import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { DynamicSecretMongoAtlasSchema, TDynamicProviderFns } from "./models";
-import { compileUsernameTemplate } from "./templateUtils";
+import { generateUsername } from "./templateUtils";
 
 const generatePassword = (size = 48) => {
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*";
   return customAlphabet(charset, 48)(size);
-};
-
-const generateUsername = (usernameTemplate?: string | null, identity?: { name: string }) => {
-  const randomUsername = alphaNumericNanoId(32);
-  if (!usernameTemplate) return randomUsername;
-  return compileUsernameTemplate({
-    usernameTemplate,
-    randomUsername,
-    identity
-  });
 };
 
 export const MongoAtlasProvider = (): TDynamicProviderFns => {
@@ -76,13 +67,18 @@ export const MongoAtlasProvider = (): TDynamicProviderFns => {
     inputs: unknown;
     expireAt: number;
     usernameTemplate?: string | null;
-    identity?: { name: string };
+    identity: ActorIdentityAttributes;
+    dynamicSecret: TDynamicSecrets;
   }) => {
-    const { inputs, expireAt, usernameTemplate, identity } = data;
+    const { inputs, expireAt, usernameTemplate, identity, dynamicSecret } = data;
     const providerInputs = await validateProviderInputs(inputs);
     const client = await $getClient(providerInputs);
 
-    const username = generateUsername(usernameTemplate, identity);
+    const username = await generateUsername(usernameTemplate, {
+      decryptedDynamicSecretInputs: inputs,
+      dynamicSecret,
+      identity
+    });
     const password = generatePassword();
     const expiration = new Date(expireAt).toISOString();
     try {

@@ -3,28 +3,19 @@ import https from "https";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
+import { TDynamicSecrets } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { alphaNumericNanoId } from "@app/lib/nanoid";
 
+import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretRabbitMqSchema, TDynamicProviderFns } from "./models";
-import { compileUsernameTemplate } from "./templateUtils";
+import { generateUsername } from "./templateUtils";
 
 const generatePassword = () => {
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*";
   return customAlphabet(charset, 64)();
-};
-
-const generateUsername = (usernameTemplate?: string | null, identity?: { name: string }) => {
-  const randomUsername = alphaNumericNanoId(32); // Username must start with an ascii letter, so we prepend the username with "inf-"
-  if (!usernameTemplate) return randomUsername;
-  return compileUsernameTemplate({
-    usernameTemplate,
-    randomUsername,
-    identity
-  });
 };
 
 type TCreateRabbitMQUser = {
@@ -127,12 +118,21 @@ export const RabbitMqProvider = (): TDynamicProviderFns => {
     }
   };
 
-  const create = async (data: { inputs: unknown; usernameTemplate?: string | null; identity?: { name: string } }) => {
-    const { inputs, usernameTemplate, identity } = data;
+  const create = async (data: {
+    inputs: unknown;
+    usernameTemplate?: string | null;
+    identity: ActorIdentityAttributes;
+    dynamicSecret: TDynamicSecrets;
+  }) => {
+    const { inputs, usernameTemplate, identity, dynamicSecret } = data;
     const providerInputs = await validateProviderInputs(inputs);
     const connection = await $getClient(providerInputs);
 
-    const username = generateUsername(usernameTemplate, identity);
+    const username = await generateUsername(usernameTemplate, {
+      decryptedDynamicSecretInputs: inputs,
+      dynamicSecret,
+      identity
+    });
     const password = generatePassword();
 
     try {

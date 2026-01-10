@@ -1,10 +1,14 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import { TDynamicSecrets } from "@app/db/schemas";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
-import { TDynamicSecretLeaseConfig } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
+import {
+  ActorIdentityAttributes,
+  TDynamicSecretLeaseConfig
+} from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 
 export type PasswordRequirements = {
   length: number;
@@ -690,9 +694,8 @@ export type TDynamicProviderFns = {
     inputs: unknown;
     expireAt: number;
     usernameTemplate?: string | null;
-    identity?: {
-      name: string;
-    };
+    identity: ActorIdentityAttributes;
+    dynamicSecret: TDynamicSecrets;
     metadata: { projectId: string };
     config?: TDynamicSecretLeaseConfig;
   }) => Promise<{ entityId: string; data: unknown }>;

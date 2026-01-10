@@ -159,6 +159,7 @@ export const dynamicSecretLeaseServiceFactory = ({
         expireAt: expireAt.getTime(),
         usernameTemplate: dynamicSecretCfg.usernameTemplate,
         identity,
+        dynamicSecret: dynamicSecretCfg,
         metadata: { projectId },
         config
       });

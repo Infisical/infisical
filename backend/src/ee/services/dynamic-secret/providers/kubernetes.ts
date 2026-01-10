@@ -1,16 +1,18 @@
 import axios, { AxiosError } from "axios";
-import handlebars from "handlebars";
 import https from "https";
 
+import { TDynamicSecrets } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { GatewayHttpProxyActions, GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
-import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TKubernetesTokenRequest } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 
-import { TDynamicSecretKubernetesLeaseConfig } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
+import {
+  ActorIdentityAttributes,
+  TDynamicSecretKubernetesLeaseConfig
+} from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import {
@@ -20,6 +22,7 @@ import {
   KubernetesRoleType,
   TDynamicProviderFns
 } from "./models";
+import { generateUsername } from "./templateUtils";
 
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
@@ -29,16 +32,6 @@ const GATEWAY_AUTH_DEFAULT_URL = "https://kubernetes.default.svc.cluster.local";
 type TKubernetesProviderDTO = {
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
-};
-
-const generateUsername = (usernameTemplate?: string | null) => {
-  const randomUsername = `dynamic-secret-sa-${alphaNumericNanoId(10).toLowerCase()}`;
-  if (!usernameTemplate) return randomUsername;
-
-  return handlebars.compile(usernameTemplate)({
-    randomUsername,
-    unixTimestamp: Math.floor(Date.now() / 100)
-  });
 };
 
 export const KubernetesProvider = ({
@@ -127,13 +120,23 @@ export const KubernetesProvider = ({
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
 
+    // We create a basic username as this is for testing purposes.
+    const serviceAccountName = await generateUsername("{{randomUsername}}", {
+      decryptedDynamicSecretInputs: null,
+      dynamicSecret: null,
+      identity: null,
+
+      usernameLowercase: true,
+      usernameLength: 10,
+      usernamePrefix: "dynamic-secret-sa-"
+    });
+
     const serviceAccountDynamicCallback = async (host: string, port: number, httpsAgent?: https.Agent) => {
       if (providerInputs.credentialType !== KubernetesCredentialType.Dynamic) {
         throw new Error("invalid callback");
       }
 
       const baseUrl = port ? `${host}:${port}` : host;
-      const serviceAccountName = generateUsername();
       const roleBindingName = `${serviceAccountName}-role-binding`;
 
       const namespaces = providerInputs.namespace.split(",").map((namespace) => namespace.trim());
@@ -413,14 +416,28 @@ export const KubernetesProvider = ({
     inputs,
     expireAt,
     usernameTemplate,
+    identity,
+    dynamicSecret,
     config
   }: {
     inputs: unknown;
     expireAt: number;
     usernameTemplate?: string | null;
+    identity: ActorIdentityAttributes;
+    dynamicSecret: TDynamicSecrets;
     config?: TDynamicSecretKubernetesLeaseConfig;
   }) => {
     const providerInputs = await validateProviderInputs(inputs);
+
+    const serviceAccountName = await generateUsername(usernameTemplate, {
+      decryptedDynamicSecretInputs: inputs,
+      dynamicSecret,
+      identity,
+
+      usernameLowercase: true,
+      usernameLength: 10,
+      usernamePrefix: "dynamic-secret-sa-"
+    });
 
     const serviceAccountDynamicCallback = async (host: string, port: number, httpsAgent?: https.Agent) => {
       if (providerInputs.credentialType !== KubernetesCredentialType.Dynamic) {
@@ -428,7 +445,6 @@ export const KubernetesProvider = ({
       }
 
       const baseUrl = port ? `${host}:${port}` : host;
-      const serviceAccountName = generateUsername(usernameTemplate);
       const roleBindingName = `${serviceAccountName}-role-binding`;
       const allowedNamespaces = providerInputs.namespace.split(",").map((namespace) => namespace.trim());
 
