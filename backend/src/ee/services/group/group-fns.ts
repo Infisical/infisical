@@ -438,9 +438,14 @@ export const removeUsersFromGroupByUserIds = async ({
         )
       );
 
-      for await (const userId of membersToRemoveFromGroupNonPending.map((m) => m.id)) {
-        const t = await userGroupMembershipDAL.filterProjectsByUserMembership(userId, group.id, projectIds, tx);
-        const projectsToDeleteKeyFor = projectIds.filter((p) => !t.has(p));
+      for await (const userId of membersToRemoveFromGroupNonPending.map((member) => member.id)) {
+        const projectsUserStillMemberOf = await userGroupMembershipDAL.filterProjectsByUserMembership(
+          userId,
+          group.id,
+          projectIds,
+          tx
+        );
+        const projectsToDeleteKeyFor = projectIds.filter((projectId) => !projectsUserStillMemberOf.has(projectId));
 
         if (projectsToDeleteKeyFor.length) {
           await projectKeyDAL.delete(
