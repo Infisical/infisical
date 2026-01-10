@@ -327,16 +327,19 @@ export const SecretSharingBrandingSection = () => {
                         <div className="flex items-center gap-2">
                           <Input
                             {...field}
-                            placeholder="#82cec0"
+                            placeholder="#0e1014"
                             isDisabled={!isAllowed}
                             className="flex-1"
                           />
-                          {field.value && hexColorRegex.test(field.value) && (
-                            <div
-                              className="size-9 shrink-0 rounded border border-mineshaft-500"
-                              style={{ backgroundColor: field.value }}
-                            />
-                          )}
+                          <div
+                            className="size-9 shrink-0 rounded border border-mineshaft-500"
+                            style={{
+                              backgroundColor:
+                                field.value && hexColorRegex.test(field.value)
+                                  ? field.value
+                                  : "#0e1014"
+                            }}
+                          />
                         </div>
                       </FormControl>
                     )}
@@ -354,16 +357,19 @@ export const SecretSharingBrandingSection = () => {
                         <div className="flex items-center gap-2">
                           <Input
                             {...field}
-                            placeholder="#14211e"
+                            placeholder="#1e1f22"
                             isDisabled={!isAllowed}
                             className="flex-1"
                           />
-                          {field.value && hexColorRegex.test(field.value) && (
-                            <div
-                              className="size-9 shrink-0 rounded border border-mineshaft-500"
-                              style={{ backgroundColor: field.value }}
-                            />
-                          )}
+                          <div
+                            className="size-9 shrink-0 rounded border border-mineshaft-500"
+                            style={{
+                              backgroundColor:
+                                field.value && hexColorRegex.test(field.value)
+                                  ? field.value
+                                  : "#1e1f22"
+                            }}
+                          />
                         </div>
                       </FormControl>
                     )}
