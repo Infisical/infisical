@@ -271,10 +271,19 @@ export const SecretSharingBrandingSection = () => {
       </p>
 
       {!isFeatureEnabled ? (
-        <div className="rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4 text-center">
+        <div className="flex items-center justify-between gap-2 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
           <p className="text-sm text-mineshaft-300">
             Custom branding for secret sharing pages is available on Enterprise plans.
           </p>
+          <UnstableButton
+            size="xs"
+            variant="default"
+            as="a"
+            href="https://infisical.com/schedule-demo"
+            target="_blank"
+          >
+            Talk to Us
+          </UnstableButton>
         </div>
       ) : (
         <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
