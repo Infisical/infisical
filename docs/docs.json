@@ -626,7 +626,10 @@
               },
               {
                 "group": "Others",
-                "pages": ["integrations/external/backstage"]
+                "pages": [
+                  "integrations/external/backstage",
+                  "integrations/external/swiftapi"
+                ]
               }
             ]
           },

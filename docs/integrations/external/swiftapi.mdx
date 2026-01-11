@@ -1,0 +1,175 @@
+---
+title: SwiftAPI Governance
+description: Add cryptographic attestation and governance to AI agent secret access with SwiftAPI.
+---
+
+Enhance your AI agent security by adding SwiftAPI governance to Infisical secret access. SwiftAPI provides cryptographic attestation to ensure AI agents can only access secrets when authorized, with verifiable proof of every action.
+
+## Overview
+
+When AI agents access secrets from Infisical, SwiftAPI acts as a verification layer that:
+
+- **Attests** every secret access request with Ed25519 signatures
+- **Enforces** policies before secrets are retrieved
+- **Logs** every action for audit compliance
+- **Prevents** unauthorized access at the cryptographic level
+
+## Installation
+
+Install the SwiftAPI Python SDK alongside Infisical:
+
+```bash
+pip install infisical-python swiftapi-python
+```
+
+## Configuration
+
+### Prerequisites
+
+1. An Infisical account with a [Machine Identity](/documentation/platform/identities/machine-identities)
+2. A SwiftAPI API key from [swiftapi.ai](https://swiftapi.ai)
+
+### Environment Variables
+
+```bash
+INFISICAL_CLIENT_ID=your-client-id
+INFISICAL_CLIENT_SECRET=your-client-secret
+SWIFTAPI_KEY=swiftapi_live_...
+```
+
+## Usage
+
+### Basic Governed Secret Access
+
+```python
+from infisical_client import InfisicalClient
+from swiftapi import SwiftAPI, Enforcement
+
+# Initialize clients
+infisical = InfisicalClient(
+    client_id=os.environ["INFISICAL_CLIENT_ID"],
+    client_secret=os.environ["INFISICAL_CLIENT_SECRET"],
+)
+
+swiftapi = SwiftAPI(key=os.environ["SWIFTAPI_KEY"])
+guard = Enforcement(swiftapi)
+
+# Governed secret retrieval
+secret = guard.run(
+    lambda: infisical.get_secret(
+        secret_name="DATABASE_URL",
+        project_id="your-project-id",
+        environment="production"
+    ),
+    action="secret_read",
+    intent="Retrieve database connection for production deployment"
+)
+
+print(secret.secret_value)
+```
+
+### Decorator Pattern
+
+```python
+@guard.protect(action="secret_read", intent="Fetch API credentials")
+def get_api_credentials():
+    return infisical.get_secret(
+        secret_name="API_KEY",
+        project_id="your-project-id",
+        environment="production"
+    )
+
+# Usage - automatically governed
+credentials = get_api_credentials()
+```
+
+### Context Manager
+
+```python
+with guard.guard(action="secret_write", intent="Update encryption key"):
+    infisical.update_secret(
+        secret_name="ENCRYPTION_KEY",
+        secret_value=new_key,
+        project_id="your-project-id",
+        environment="production"
+    )
+```
+
+## How It Works
+
+```
+AI Agent Request
+       │
+       ▼
+┌─────────────────┐
+│  SwiftAPI API   │ ─── Verify identity, check policy
+└─────────────────┘
+       │
+       ▼ (Attestation issued)
+┌─────────────────┐
+│ Signature Check │ ─── Ed25519 verification (offline)
+└─────────────────┘
+       │
+       ▼ (Valid attestation)
+┌─────────────────┐
+│   Infisical     │ ─── Secret retrieved
+└─────────────────┘
+       │
+       ▼
+    Secret Value
+```
+
+If any step fails:
+- **Policy denied**: `PolicyViolation` exception raised
+- **Invalid signature**: `SignatureVerificationError` raised
+- **Revoked attestation**: `AttestationRevokedError` raised
+
+The secret is **never accessed** without valid authorization.
+
+## Error Handling
+
+```python
+from swiftapi import (
+    PolicyViolation,
+    SignatureVerificationError,
+    AttestationRevokedError,
+)
+
+try:
+    secret = guard.run(
+        lambda: infisical.get_secret(...),
+        action="secret_read",
+        intent="Retrieve production secrets"
+    )
+except PolicyViolation as e:
+    print(f"Access denied: {e.denial_reason}")
+except SignatureVerificationError:
+    print("CRITICAL: Attestation signature invalid")
+except AttestationRevokedError as e:
+    print(f"Attestation {e.jti} was revoked")
+```
+
+## Benefits
+
+| Without SwiftAPI | With SwiftAPI |
+|------------------|---------------|
+| Any code with credentials can access secrets | Only attested requests access secrets |
+| No proof of authorization | Cryptographic proof of every action |
+| Trust the agent blindly | Verify every request |
+| Post-hoc audit only | Pre-execution enforcement |
+
+## Paranoid Mode
+
+For maximum security, enable revocation checking:
+
+```python
+guard = Enforcement(swiftapi, paranoid=True)
+```
+
+This adds an online revocation check before every secret access.
+
+## Links
+
+- [SwiftAPI Documentation](https://getswiftapi.com/docs)
+- [SwiftAPI API](https://swiftapi.ai)
+- [Infisical Python SDK](/sdks/languages/python)
