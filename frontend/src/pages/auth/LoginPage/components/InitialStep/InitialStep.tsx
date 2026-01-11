@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { faGithub, faGitlab, faGoogle } from "@fortawesome/free-brands-svg-icons";
-import { faLock } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faEyeSlash, faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -46,6 +46,7 @@ export const InitialStep = ({
   const queryParams = new URLSearchParams(window.location.search);
   const [captchaToken, setCaptchaToken] = useState("");
   const [shouldShowCaptcha, setShouldShowCaptcha] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const captchaRef = useRef<HCaptcha>(null);
   const { data: serverDetails } = useFetchServerStatus();
 
@@ -374,12 +375,27 @@ export const InitialStep = ({
             <Input
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              type="password"
+              type={showPassword ? "text" : "password"}
               placeholder="Enter your password..."
               isRequired
               autoComplete="current-password"
               id="current-password"
               className="select:-webkit-autofill:focus h-10"
+              rightIcon={
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPassword((prev) => !prev);
+                  }}
+                  className="cursor-pointer self-end text-gray-400"
+                >
+                  {showPassword ? (
+                    <FontAwesomeIcon size="sm" icon={faEyeSlash} />
+                  ) : (
+                    <FontAwesomeIcon size="sm" icon={faEye} />
+                  )}
+                </button>
+              }
             />
           </div>
           {shouldShowCaptcha && envConfig.CAPTCHA_SITE_KEY && (
