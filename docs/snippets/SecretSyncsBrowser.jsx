@@ -7,55 +7,56 @@ export const SecretSyncsBrowser = () => {
   const categories = ['All', 'Cloud Providers', 'Databases', 'CI/CD', 'Monitoring', 'Identity & Auth', 'Data Analytics', 'Hosting', 'DevOps Tools', 'Security'];
 
   const syncs = [
-    {"name": "AWS Parameter Store", "slug": "aws-parameter-store", "path": "/integrations/secret-syncs/aws-parameter-store", "description": "Learn how to sync secrets from Infisical to AWS Parameter Store.", "category": "Cloud Providers"},
-    {"name": "AWS Secrets Manager", "slug": "aws-secrets-manager", "path": "/integrations/secret-syncs/aws-secrets-manager", "description": "Learn how to sync secrets from Infisical to AWS Secrets Manager.", "category": "Cloud Providers"},
-    {"name": "Azure Key Vault", "slug": "azure-key-vault", "path": "/integrations/secret-syncs/azure-key-vault", "description": "Learn how to sync secrets from Infisical to Azure Key Vault.", "category": "Cloud Providers"},
-    {"name": "Azure App Configuration", "slug": "azure-app-configuration", "path": "/integrations/secret-syncs/azure-app-configuration", "description": "Learn how to sync secrets from Infisical to Azure App Configuration.", "category": "Cloud Providers"},
-    {"name": "Azure DevOps", "slug": "azure-devops", "path": "/integrations/secret-syncs/azure-devops", "description": "Learn how to sync secrets from Infisical to Azure DevOps.", "category": "CI/CD"},
-    {"name": "GCP Secret Manager", "slug": "gcp-secret-manager", "path": "/integrations/secret-syncs/gcp-secret-manager", "description": "Learn how to sync secrets from Infisical to GCP Secret Manager.", "category": "Cloud Providers"},
-    {"name": "HashiCorp Vault", "slug": "hashicorp-vault", "path": "/integrations/secret-syncs/hashicorp-vault", "description": "Learn how to sync secrets from Infisical to HashiCorp Vault.", "category": "Security"},
-    {"name": "1Password", "slug": "1password", "path": "/integrations/secret-syncs/1password", "description": "Learn how to sync secrets from Infisical to 1Password.", "category": "Security"},
-    {"name": "Vercel", "slug": "vercel", "path": "/integrations/secret-syncs/vercel", "description": "Learn how to sync secrets from Infisical to Vercel.", "category": "Hosting"},
-    {"name": "Netlify", "slug": "netlify", "path": "/integrations/secret-syncs/netlify", "description": "Learn how to sync secrets from Infisical to Netlify.", "category": "Hosting"},
-    {"name": "Railway", "slug": "railway", "path": "/integrations/secret-syncs/railway", "description": "Learn how to sync secrets from Infisical to Railway.", "category": "Hosting"},
-    {"name": "Fly.io", "slug": "flyio", "path": "/integrations/secret-syncs/flyio", "description": "Learn how to sync secrets from Infisical to Fly.io.", "category": "Hosting"},
-    {"name": "Render", "slug": "render", "path": "/integrations/secret-syncs/render", "description": "Learn how to sync secrets from Infisical to Render.", "category": "Hosting"},
-    {"name": "Heroku", "slug": "heroku", "path": "/integrations/secret-syncs/heroku", "description": "Learn how to sync secrets from Infisical to Heroku.", "category": "Hosting"},
-    {"name": "DigitalOcean App Platform", "slug": "digital-ocean-app-platform", "path": "/integrations/secret-syncs/digital-ocean-app-platform", "description": "Learn how to sync secrets from Infisical to DigitalOcean App Platform.", "category": "Hosting"},
-    {"name": "Supabase", "slug": "supabase", "path": "/integrations/secret-syncs/supabase", "description": "Learn how to sync secrets from Infisical to Supabase.", "category": "Databases"},
-    {"name": "Checkly", "slug": "checkly", "path": "/integrations/secret-syncs/checkly", "description": "Learn how to sync secrets from Infisical to Checkly.", "category": "Monitoring"},
-    {"name": "CircleCI", "slug": "circleci", "path": "/integrations/secret-syncs/circleci", "description": "Learn how to sync secrets from Infisical to CircleCI.", "category": "CI/CD"},
-    {"name": "GitHub", "slug": "github", "path": "/integrations/secret-syncs/github", "description": "Learn how to sync secrets from Infisical to GitHub.", "category": "CI/CD"},
-    {"name": "GitLab", "slug": "gitlab", "path": "/integrations/secret-syncs/gitlab", "description": "Learn how to sync secrets from Infisical to GitLab.", "category": "CI/CD"},
-    {"name": "TeamCity", "slug": "teamcity", "path": "/integrations/secret-syncs/teamcity", "description": "Learn how to sync secrets from Infisical to TeamCity.", "category": "CI/CD"},
-    {"name": "Bitbucket", "slug": "bitbucket", "path": "/integrations/secret-syncs/bitbucket", "description": "Learn how to sync secrets from Infisical to Bitbucket.", "category": "CI/CD"},
-    {"name": "Terraform Cloud", "slug": "terraform-cloud", "path": "/integrations/secret-syncs/terraform-cloud", "description": "Learn how to sync secrets from Infisical to Terraform Cloud.", "category": "DevOps Tools"},
-    {"name": "Spacelift", "slug": "spacelift", "path": "/integrations/secret-syncs/spacelift", "description": "Learn how to sync secrets from Infisical to Spacelift.", "category": "DevOps Tools"},
-    {"name": "Cloudflare Pages", "slug": "cloudflare-pages", "path": "/integrations/secret-syncs/cloudflare-pages", "description": "Learn how to sync secrets from Infisical to Cloudflare Pages.", "category": "Hosting"},
-    {"name": "Cloudflare Workers", "slug": "cloudflare-workers", "path": "/integrations/secret-syncs/cloudflare-workers", "description": "Learn how to sync secrets from Infisical to Cloudflare Workers.", "category": "Cloud Providers"},
-    {"name": "Databricks", "slug": "databricks", "path": "/integrations/secret-syncs/databricks", "description": "Learn how to sync secrets from Infisical to Databricks.", "category": "Data Analytics"},
-    {"name": "Windmill", "slug": "windmill", "path": "/integrations/secret-syncs/windmill", "description": "Learn how to sync secrets from Infisical to Windmill.", "category": "DevOps Tools"},
-    {"name": "Camunda", "slug": "camunda", "path": "/integrations/secret-syncs/camunda", "description": "Learn how to sync secrets from Infisical to Camunda.", "category": "DevOps Tools"},
-    {"name": "Humanitec", "slug": "humanitec", "path": "/integrations/secret-syncs/humanitec", "description": "Learn how to sync secrets from Infisical to Humanitec.", "category": "DevOps Tools"},
-    {"name": "OCI Vault", "slug": "oci-vault", "path": "/integrations/secret-syncs/oci-vault", "description": "Learn how to sync secrets from Infisical to OCI Vault.", "category": "Cloud Providers"},
-    {"name": "Zabbix", "slug": "zabbix", "path": "/integrations/secret-syncs/zabbix", "description": "Learn how to sync secrets from Infisical to Zabbix.", "category": "Monitoring"},
-    {"name": "Laravel Forge", "slug": "laravel-forge", "path": "/integrations/secret-syncs/laravel-forge", "description": "Learn how to sync secrets from Infisical to Laravel Forge.", "category": "Hosting"},
-    {"name": "Chef", "slug": "chef", "path": "/integrations/secret-syncs/chef", "description": "Learn how to sync secrets from Infisical to Chef.", "category": "DevOps Tools"},
-    {"name": "Northflank", "slug": "northflank", "path": "/integrations/secret-syncs/northflank", "description": "Learn how to sync secrets from Infisical to Northflank projects.", "category": "Hosting"},
-    {"name": "Ona", "slug": "ona", "path": "/integrations/secret-syncs/ona", "description": "Learn how to sync secrets from Infisical to Ona (Gitpod) projects or user environments.", "category": "Hosting"},
-    {"name": "Octopus Deploy", "slug": "octopus-deploy", "path": "/integrations/secret-syncs/octopus-deploy", "description": "Learn how to sync secrets from Infisical to Octopus Deploy.", "category": "DevOps Tools"},
-    {"name": "Azure Entra ID SCIM", "slug": "azure-entra-id-scim", "path": "/integrations/secret-syncs/azure-entra-id-scim", "description": "Learn how to sync SCIM provisioning tokens from Infisical to Azure Entra ID.", "category": "Identity & Auth"},
-    {"name": "Infisical", "slug": "external-infisical", "path": "/integrations/secret-syncs/external-infisical", "description": "Learn how to sync secrets from one Infisical instance to another.", "category": "Security"},
-    {"name": "OVH", "slug": "ovh", "path": "/integrations/secret-syncs/ovh", "description": "Learn how to sync secrets from Infisical to OVH Secret Manager.", "category": "Cloud Providers"},
-    {"name": "Travis CI", "slug": "travis-ci", "path": "/integrations/secret-syncs/travis-ci", "description": "Learn how to sync secrets from Infisical to Travis CI.", "category": "CI/CD"},
-    {"name": "Snowflake", "slug": "snowflake", "path": "/integrations/secret-syncs/snowflake", "description": "Learn how to sync secrets from Infisical to Snowflake.", "category": "Databases"},
-    {"name": "Trigger.dev", "slug": "trigger-dev", "path": "/integrations/secret-syncs/trigger-dev", "description": "Learn how to sync secrets from Infisical to Trigger.dev.", "category": "DevOps Tools"},
-    {"name": "Rundeck", "slug": "rundeck", "path": "/integrations/secret-syncs/rundeck", "description": "Learn how to sync secrets from Infisical to Rundeck.", "category": "DevOps Tools"},
-    {"name": "Qovery", "slug": "qovery", "path": "/integrations/secret-syncs/qovery", "description": "Learn how to sync secrets from Infisical to Qovery.", "category": "DevOps Tools"},
-    {"name": "Cloud 66", "slug": "cloud-66", "path": "/integrations/secret-syncs/cloud-66", "description": "Learn how to sync secrets from Infisical to Cloud66.", "category": "DevOps Tools"},
-    {"name": "Hasura Cloud", "slug": "hasura-cloud", "path": "/integrations/secret-syncs/hasura-cloud", "description": "Learn how to sync secrets from Infisical to Hasura Cloud.", "category": "Platform"},
+    { "name": "AWS Parameter Store", "slug": "aws-parameter-store", "path": "/integrations/secret-syncs/aws-parameter-store", "description": "Learn how to sync secrets from Infisical to AWS Parameter Store.", "category": "Cloud Providers" },
+    { "name": "AWS Secrets Manager", "slug": "aws-secrets-manager", "path": "/integrations/secret-syncs/aws-secrets-manager", "description": "Learn how to sync secrets from Infisical to AWS Secrets Manager.", "category": "Cloud Providers" },
+    { "name": "Azure Key Vault", "slug": "azure-key-vault", "path": "/integrations/secret-syncs/azure-key-vault", "description": "Learn how to sync secrets from Infisical to Azure Key Vault.", "category": "Cloud Providers" },
+    { "name": "Azure App Configuration", "slug": "azure-app-configuration", "path": "/integrations/secret-syncs/azure-app-configuration", "description": "Learn how to sync secrets from Infisical to Azure App Configuration.", "category": "Cloud Providers" },
+    { "name": "Azure DevOps", "slug": "azure-devops", "path": "/integrations/secret-syncs/azure-devops", "description": "Learn how to sync secrets from Infisical to Azure DevOps.", "category": "CI/CD" },
+    { "name": "GCP Secret Manager", "slug": "gcp-secret-manager", "path": "/integrations/secret-syncs/gcp-secret-manager", "description": "Learn how to sync secrets from Infisical to GCP Secret Manager.", "category": "Cloud Providers" },
+    { "name": "HashiCorp Vault", "slug": "hashicorp-vault", "path": "/integrations/secret-syncs/hashicorp-vault", "description": "Learn how to sync secrets from Infisical to HashiCorp Vault.", "category": "Security" },
+    { "name": "1Password", "slug": "1password", "path": "/integrations/secret-syncs/1password", "description": "Learn how to sync secrets from Infisical to 1Password.", "category": "Security" },
+    { "name": "Vercel", "slug": "vercel", "path": "/integrations/secret-syncs/vercel", "description": "Learn how to sync secrets from Infisical to Vercel.", "category": "Hosting" },
+    { "name": "Netlify", "slug": "netlify", "path": "/integrations/secret-syncs/netlify", "description": "Learn how to sync secrets from Infisical to Netlify.", "category": "Hosting" },
+    { "name": "Railway", "slug": "railway", "path": "/integrations/secret-syncs/railway", "description": "Learn how to sync secrets from Infisical to Railway.", "category": "Hosting" },
+    { "name": "Fly.io", "slug": "flyio", "path": "/integrations/secret-syncs/flyio", "description": "Learn how to sync secrets from Infisical to Fly.io.", "category": "Hosting" },
+    { "name": "Render", "slug": "render", "path": "/integrations/secret-syncs/render", "description": "Learn how to sync secrets from Infisical to Render.", "category": "Hosting" },
+    { "name": "Heroku", "slug": "heroku", "path": "/integrations/secret-syncs/heroku", "description": "Learn how to sync secrets from Infisical to Heroku.", "category": "Hosting" },
+    { "name": "DigitalOcean App Platform", "slug": "digital-ocean-app-platform", "path": "/integrations/secret-syncs/digital-ocean-app-platform", "description": "Learn how to sync secrets from Infisical to DigitalOcean App Platform.", "category": "Hosting" },
+    { "name": "Supabase", "slug": "supabase", "path": "/integrations/secret-syncs/supabase", "description": "Learn how to sync secrets from Infisical to Supabase.", "category": "Databases" },
+    { "name": "Checkly", "slug": "checkly", "path": "/integrations/secret-syncs/checkly", "description": "Learn how to sync secrets from Infisical to Checkly.", "category": "Monitoring" },
+    { "name": "CircleCI", "slug": "circleci", "path": "/integrations/secret-syncs/circleci", "description": "Learn how to sync secrets from Infisical to CircleCI.", "category": "CI/CD" },
+    { "name": "GitHub", "slug": "github", "path": "/integrations/secret-syncs/github", "description": "Learn how to sync secrets from Infisical to GitHub.", "category": "CI/CD" },
+    { "name": "GitLab", "slug": "gitlab", "path": "/integrations/secret-syncs/gitlab", "description": "Learn how to sync secrets from Infisical to GitLab.", "category": "CI/CD" },
+    { "name": "TeamCity", "slug": "teamcity", "path": "/integrations/secret-syncs/teamcity", "description": "Learn how to sync secrets from Infisical to TeamCity.", "category": "CI/CD" },
+    { "name": "Bitbucket", "slug": "bitbucket", "path": "/integrations/secret-syncs/bitbucket", "description": "Learn how to sync secrets from Infisical to Bitbucket.", "category": "CI/CD" },
+    { "name": "Terraform Cloud", "slug": "terraform-cloud", "path": "/integrations/secret-syncs/terraform-cloud", "description": "Learn how to sync secrets from Infisical to Terraform Cloud.", "category": "DevOps Tools" },
+    { "name": "Spacelift", "slug": "spacelift", "path": "/integrations/secret-syncs/spacelift", "description": "Learn how to sync secrets from Infisical to Spacelift.", "category": "DevOps Tools" },
+    { "name": "Cloudflare Pages", "slug": "cloudflare-pages", "path": "/integrations/secret-syncs/cloudflare-pages", "description": "Learn how to sync secrets from Infisical to Cloudflare Pages.", "category": "Hosting" },
+    { "name": "Cloudflare Workers", "slug": "cloudflare-workers", "path": "/integrations/secret-syncs/cloudflare-workers", "description": "Learn how to sync secrets from Infisical to Cloudflare Workers.", "category": "Cloud Providers" },
+    { "name": "Databricks", "slug": "databricks", "path": "/integrations/secret-syncs/databricks", "description": "Learn how to sync secrets from Infisical to Databricks.", "category": "Data Analytics" },
+    { "name": "Windmill", "slug": "windmill", "path": "/integrations/secret-syncs/windmill", "description": "Learn how to sync secrets from Infisical to Windmill.", "category": "DevOps Tools" },
+    { "name": "Camunda", "slug": "camunda", "path": "/integrations/secret-syncs/camunda", "description": "Learn how to sync secrets from Infisical to Camunda.", "category": "DevOps Tools" },
+    { "name": "Humanitec", "slug": "humanitec", "path": "/integrations/secret-syncs/humanitec", "description": "Learn how to sync secrets from Infisical to Humanitec.", "category": "DevOps Tools" },
+    { "name": "OCI Vault", "slug": "oci-vault", "path": "/integrations/secret-syncs/oci-vault", "description": "Learn how to sync secrets from Infisical to OCI Vault.", "category": "Cloud Providers" },
+    { "name": "Zabbix", "slug": "zabbix", "path": "/integrations/secret-syncs/zabbix", "description": "Learn how to sync secrets from Infisical to Zabbix.", "category": "Monitoring" },
+    { "name": "Laravel Forge", "slug": "laravel-forge", "path": "/integrations/secret-syncs/laravel-forge", "description": "Learn how to sync secrets from Infisical to Laravel Forge.", "category": "Hosting" },
+    { "name": "Chef", "slug": "chef", "path": "/integrations/secret-syncs/chef", "description": "Learn how to sync secrets from Infisical to Chef.", "category": "DevOps Tools" },
+    { "name": "Northflank", "slug": "northflank", "path": "/integrations/secret-syncs/northflank", "description": "Learn how to sync secrets from Infisical to Northflank projects.", "category": "Hosting" },
+    { "name": "Ona", "slug": "ona", "path": "/integrations/secret-syncs/ona", "description": "Learn how to sync secrets from Infisical to Ona (Gitpod) projects or user environments.", "category": "Hosting" },
+    { "name": "Octopus Deploy", "slug": "octopus-deploy", "path": "/integrations/secret-syncs/octopus-deploy", "description": "Learn how to sync secrets from Infisical to Octopus Deploy.", "category": "DevOps Tools" },
+    { "name": "Azure Entra ID SCIM", "slug": "azure-entra-id-scim", "path": "/integrations/secret-syncs/azure-entra-id-scim", "description": "Learn how to sync SCIM provisioning tokens from Infisical to Azure Entra ID.", "category": "Identity & Auth" },
+    { "name": "Infisical", "slug": "external-infisical", "path": "/integrations/secret-syncs/external-infisical", "description": "Learn how to sync secrets from one Infisical instance to another.", "category": "Security" },
+    { "name": "OVH", "slug": "ovh", "path": "/integrations/secret-syncs/ovh", "description": "Learn how to sync secrets from Infisical to OVH Secret Manager.", "category": "Cloud Providers" },
+    { "name": "Travis CI", "slug": "travis-ci", "path": "/integrations/secret-syncs/travis-ci", "description": "Learn how to sync secrets from Infisical to Travis CI.", "category": "CI/CD" },
+    { "name": "Snowflake", "slug": "snowflake", "path": "/integrations/secret-syncs/snowflake", "description": "Learn how to sync secrets from Infisical to Snowflake.", "category": "Databases" },
+    { "name": "Trigger.dev", "slug": "trigger-dev", "path": "/integrations/secret-syncs/trigger-dev", "description": "Learn how to sync secrets from Infisical to Trigger.dev.", "category": "DevOps Tools" },
+    { "name": "Rundeck", "slug": "rundeck", "path": "/integrations/secret-syncs/rundeck", "description": "Learn how to sync secrets from Infisical to Rundeck.", "category": "DevOps Tools" },
+    { "name": "Qovery", "slug": "qovery", "path": "/integrations/secret-syncs/qovery", "description": "Learn how to sync secrets from Infisical to Qovery.", "category": "DevOps Tools" },
+    { "name": "Cloud 66", "slug": "cloud-66", "path": "/integrations/secret-syncs/cloud-66", "description": "Learn how to sync secrets from Infisical to Cloud66.", "category": "DevOps Tools" },
+    { "name": "Hasura Cloud", "slug": "hasura-cloud", "path": "/integrations/secret-syncs/hasura-cloud", "description": "Learn how to sync secrets from Infisical to Hasura Cloud.", "category": "Platform" },
+    { "name": "Coolify", "slug": "coolify", "path": "/integrations/secret-syncs/coolify", "description": "Learn how to sync secrets from Infisical to Coolify applications.", "category": "Hosting" },
   ].sort(function(a, b) {
-      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+    return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });
 
   const filteredSyncs = useMemo(() => {
@@ -103,11 +104,10 @@ export const SecretSyncsBrowser = () => {
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors shadow-sm ${
-                selectedCategory === category
-                  ? 'bg-yellow-100 text-yellow-700 border border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700'
-                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-yellow-50 hover:border-yellow-200 dark:bg-black dark:text-gray-200 dark:border-gray-700 dark:hover:bg-yellow-950/20 dark:hover:border-yellow-700'
-              }`}
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors shadow-sm ${selectedCategory === category
+                ? 'bg-yellow-100 text-yellow-700 border border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700'
+                : 'bg-white text-gray-700 border border-gray-200 hover:bg-yellow-50 hover:border-yellow-200 dark:bg-black dark:text-gray-200 dark:border-gray-700 dark:hover:bg-yellow-950/20 dark:hover:border-yellow-700'
+                }`}
             >
               {category}
             </button>
