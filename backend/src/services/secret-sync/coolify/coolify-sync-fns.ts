@@ -94,11 +94,17 @@ const redeployApplication = async (secretSync: TCoolifySyncWithCredentials) => {
   const instanceUrl = getCoolifyInstanceUrl(connection);
   const { apiToken } = connection.credentials;
 
-  await request.post<TCoolifyAPICreateEnvResponse>(`${instanceUrl}/api/v1/applications/${appId}/restart`, undefined, {
-    headers: {
-      Authorization: `Bearer ${apiToken}`
+  await request.post<TCoolifyAPICreateEnvResponse>(
+    `${instanceUrl}/api/v1/deploy`,
+    {
+      uuid: appId
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${apiToken}`
+      }
     }
-  });
+  );
 };
 
 const infisicalSecretToCoolifySecret = (key: string, secret: TSecretMap[keyof TSecretMap]): TCoolifyNewSecret => {
