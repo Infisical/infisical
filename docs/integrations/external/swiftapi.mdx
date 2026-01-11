@@ -42,6 +42,7 @@ SWIFTAPI_KEY=swiftapi_live_...
 ### Basic Governed Secret Access
 
 ```python
+import os
 from infisical_client import InfisicalClient
 from swiftapi import SwiftAPI, Enforcement
 
@@ -86,6 +87,8 @@ credentials = get_api_credentials()
 ### Context Manager
 
 ```python
+new_key = generate_encryption_key()  # Your key generation logic
+
 with guard.guard(action="secret_write", intent="Update encryption key"):
     infisical.update_secret(
         secret_name="ENCRYPTION_KEY",
