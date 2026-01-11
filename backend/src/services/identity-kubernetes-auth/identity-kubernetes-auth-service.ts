@@ -759,6 +759,13 @@ export const identityKubernetesAuthServiceFactory = ({
 
     let isGatewayV1 = true;
     if (gatewayId) {
+      if (!plan.gateway) {
+        throw new BadRequestError({
+          message:
+            "Your current plan does not support gateway usage with identity k8s auth. Please upgrade your plan or contact Infisical Sales for assistance."
+        });
+      }
+
       const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: identityMembershipOrg.scopeOrgId });
       const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: identityMembershipOrg.scopeOrgId });
       if (!gateway && !gatewayV2) {
@@ -943,6 +950,13 @@ export const identityKubernetesAuthServiceFactory = ({
 
     let isGatewayV1 = true;
     if (gatewayId) {
+      if (!plan.gateway) {
+        throw new BadRequestError({
+          message:
+            "Your current plan does not support gateway usage with identity k8s auth. Please upgrade your plan or contact Infisical Sales for assistance."
+        });
+      }
+
       const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: identityMembershipOrg.scopeOrgId });
       const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: identityMembershipOrg.scopeOrgId });
 

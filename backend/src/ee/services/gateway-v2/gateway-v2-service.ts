@@ -27,7 +27,6 @@ import { NotificationType } from "@app/services/notification/notification-types"
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
-import { TLicenseServiceFactory } from "../license/license-service";
 import { PamResource } from "../pam-resource/pam-resource-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
@@ -39,7 +38,6 @@ import { TOrgGatewayConfigV2DALFactory } from "./org-gateway-config-v2-dal";
 
 type TGatewayV2ServiceFactoryDep = {
   orgGatewayConfigV2DAL: Pick<TOrgGatewayConfigV2DALFactory, "findOne" | "create" | "transaction" | "findById">;
-  licenseService: Pick<TLicenseServiceFactory, "onPremFeatures" | "getPlan">;
   kmsService: TKmsServiceFactory;
   relayService: TRelayServiceFactory;
   gatewayV2DAL: TGatewayV2DALFactory;
@@ -54,7 +52,6 @@ export type TGatewayV2ServiceFactory = ReturnType<typeof gatewayV2ServiceFactory
 
 export const gatewayV2ServiceFactory = ({
   orgGatewayConfigV2DAL,
-  licenseService,
   kmsService,
   relayService,
   gatewayV2DAL,
@@ -64,14 +61,6 @@ export const gatewayV2ServiceFactory = ({
   notificationService
 }: TGatewayV2ServiceFactoryDep) => {
   const $validateIdentityAccessToGateway = async (orgId: string, actorId: string, actorAuthMethod: ActorAuthMethod) => {
-    const orgLicensePlan = await licenseService.getPlan(orgId);
-    if (!orgLicensePlan.gateway) {
-      throw new BadRequestError({
-        message:
-          "Gateway operation failed due to organization plan restrictions. Please upgrade your instance to Infisical's Enterprise plan."
-      });
-    }
-
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
       actor: ActorType.IDENTITY,
@@ -304,13 +293,6 @@ export const gatewayV2ServiceFactory = ({
       });
     }
 
-    const orgLicensePlan = await licenseService.getPlan(orgGatewayConfig.orgId);
-    if (!orgLicensePlan.gateway) {
-      throw new BadRequestError({
-        message: "Please upgrade your instance to Infisical's Enterprise plan to use gateways."
-      });
-    }
-
     const { decryptor: orgKmsDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: orgGatewayConfig.orgId
@@ -458,13 +440,6 @@ export const gatewayV2ServiceFactory = ({
     if (!gateway.relayId) {
       throw new BadRequestError({
         message: "Gateway is not associated with a relay"
-      });
-    }
-
-    const orgLicensePlan = await licenseService.getPlan(orgGatewayConfig.orgId);
-    if (!orgLicensePlan.gateway) {
-      throw new BadRequestError({
-        message: "Please upgrade your instance to Infisical's Enterprise plan to use gateways."
       });
     }
 
