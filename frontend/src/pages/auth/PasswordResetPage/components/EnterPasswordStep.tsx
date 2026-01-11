@@ -204,6 +204,7 @@ export const EnterPasswordStep = ({
                       setShowPassword((prev) => !prev);
                     }}
                     className="cursor-pointer self-end text-gray-400"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
                       <FontAwesomeIcon size="sm" icon={faEyeSlash} />
