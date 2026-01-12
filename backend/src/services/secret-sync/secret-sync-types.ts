@@ -103,6 +103,12 @@ import {
   TCloudflareWorkersSyncWithCredentials
 } from "./cloudflare-workers";
 import {
+  TConvexSync,
+  TConvexSyncInput,
+  TConvexSyncListItem,
+  TConvexSyncWithCredentials
+} from "./convex";
+import {
   TDigitalOceanAppPlatformSyncInput,
   TDigitalOceanAppPlatformSyncListItem,
   TDigitalOceanAppPlatformSyncWithCredentials
@@ -205,6 +211,7 @@ export type TSecretSync =
   | TRailwaySync
   | TChecklySync
   | TSupabaseSync
+  | TConvexSync
   | TNetlifySync
   | TNorthflankSync
   | TBitbucketSync
@@ -239,6 +246,7 @@ export type TSecretSyncWithCredentials =
   | TRailwaySyncWithCredentials
   | TChecklySyncWithCredentials
   | TSupabaseSyncWithCredentials
+  | TConvexSyncWithCredentials
   | TDigitalOceanAppPlatformSyncWithCredentials
   | TNetlifySyncWithCredentials
   | TNorthflankSyncWithCredentials
@@ -275,6 +283,7 @@ export type TSecretSyncInput =
   | TRailwaySyncInput
   | TChecklySyncInput
   | TSupabaseSyncInput
+  | TConvexSyncInput
   | TDigitalOceanAppPlatformSyncInput
   | TNetlifySyncInput
   | TNorthflankSyncInput
@@ -312,6 +321,7 @@ export type TSecretSyncListItem =
   | TRailwaySyncListItem
   | TChecklySyncListItem
   | TSupabaseSyncListItem
+  | TConvexSyncListItem
   | TDigitalOceanAppPlatformSyncListItem
   | TNetlifySyncListItem
   | TNorthflankSyncListItem

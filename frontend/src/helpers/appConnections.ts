@@ -22,6 +22,7 @@ import {
   AzureKeyVaultConnectionMethod,
   CamundaConnectionMethod,
   CloudflareConnectionMethod,
+  ConvexConnectionMethod,
   DatabricksConnectionMethod,
   FlyioConnectionMethod,
   GcpConnectionMethod,
@@ -128,6 +129,7 @@ export const APP_CONNECTION_MAP: Record<
     name: "Netlify",
     image: "Netlify.png"
   },
+  [AppConnection.Convex]: { name: "Convex", image: "Convex.png" },
   [AppConnection.Northflank]: { name: "Northflank", image: "Northflank.png" },
   [AppConnection.Okta]: { name: "Okta", image: "Okta.png" },
   [AppConnection.Redis]: { name: "Redis", image: "Redis.png" },
@@ -194,6 +196,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case FlyioConnectionMethod.AccessToken:
     case NetlifyConnectionMethod.AccessToken:
       return { name: "Access Token", icon: faKey };
+    case ConvexConnectionMethod.AdminKey:
+      return { name: "Admin Key", icon: faKey };
     case Auth0ConnectionMethod.ClientCredentials:
       return { name: "Client Credentials", icon: faServer };
     case HCVaultConnectionMethod.AppRole:

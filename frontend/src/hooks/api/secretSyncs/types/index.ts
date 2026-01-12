@@ -13,6 +13,7 @@ import { TChecklySync } from "./checkly-sync";
 import { TChefSync } from "./chef-sync";
 import { TCloudflarePagesSync } from "./cloudflare-pages-sync";
 import { TCloudflareWorkersSync } from "./cloudflare-workers-sync";
+import { TConvexSync } from "./convex-sync";
 import { TDatabricksSync } from "./databricks-sync";
 import { TDigitalOceanAppPlatformSync } from "./digital-ocean-app-platform-sync";
 import { TFlyioSync } from "./flyio-sync";
@@ -71,6 +72,7 @@ export type TSecretSync =
   | TRailwaySync
   | TChecklySync
   | TSupabaseSync
+  | TConvexSync
   | TDigitalOceanAppPlatformSync
   | TNetlifySync
   | TNorthflankSync

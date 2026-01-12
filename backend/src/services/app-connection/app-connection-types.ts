@@ -89,6 +89,12 @@ import {
   TValidateChecklyConnectionCredentialsSchema
 } from "./checkly";
 import {
+  TConvexConnection,
+  TConvexConnectionConfig,
+  TConvexConnectionInput,
+  TValidateConvexConnectionCredentialsSchema
+} from "./convex";
+import {
   TCloudflareConnection,
   TCloudflareConnectionConfig,
   TCloudflareConnectionInput,
@@ -304,6 +310,7 @@ export type TAppConnection = { id: string } & (
   | TSupabaseConnection
   | TDigitalOceanConnection
   | TNetlifyConnection
+  | TConvexConnection
   | TNorthflankConnection
   | TOktaConnection
   | TRedisConnection
@@ -356,6 +363,7 @@ export type TAppConnectionInput = { id: string } & (
   | TSupabaseConnectionInput
   | TDigitalOceanConnectionInput
   | TNetlifyConnectionInput
+  | TConvexConnectionInput
   | TNorthflankConnectionInput
   | TOktaConnectionInput
   | TRedisConnectionInput
@@ -426,6 +434,7 @@ export type TAppConnectionConfig =
   | TSupabaseConnectionConfig
   | TDigitalOceanConnectionConfig
   | TNetlifyConnectionConfig
+  | TConvexConnectionConfig
   | TNorthflankConnectionConfig
   | TOktaConnectionConfig
   | TRedisConnectionConfig
@@ -473,6 +482,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateSupabaseConnectionCredentialsSchema
   | TValidateDigitalOceanCredentialsSchema
   | TValidateNetlifyConnectionCredentialsSchema
+  | TValidateConvexConnectionCredentialsSchema
   | TValidateNorthflankConnectionCredentialsSchema
   | TValidateOktaConnectionCredentialsSchema
   | TValidateRedisConnectionCredentialsSchema

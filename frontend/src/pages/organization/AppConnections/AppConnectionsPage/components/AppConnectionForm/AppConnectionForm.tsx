@@ -22,6 +22,7 @@ import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { ChecklyConnectionForm } from "./ChecklyConnectionForm";
 import { ChefConnectionForm } from "./ChefConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
+import { ConvexConnectionForm } from "./ConvexConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { DigitalOceanConnectionForm } from "./DigitalOceanConnectionForm";
 import { DNSMadeEasyConnectionForm } from "./DNSMadeEasyConnectionForm";
@@ -161,6 +162,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       return <RailwayConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Checkly:
       return <ChecklyConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Convex:
+      return <ConvexConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Chef:
       return <ChefConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Supabase:
@@ -325,6 +328,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <RailwayConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Checkly:
       return <ChecklyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Convex:
+      return <ConvexConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Chef:
       return <ChefConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Supabase:

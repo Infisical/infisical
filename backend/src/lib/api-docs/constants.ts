@@ -2527,6 +2527,9 @@ export const AppConnections = {
       accessKey: "The Key used to access Supabase.",
       instanceUrl: "The URL used to access Supabase."
     },
+    CONVEX: {
+      adminKey: "The admin key used to authenticate with Convex."
+    },
     DIGITAL_OCEAN_APP_PLATFORM: {
       apiToken: "The API token used to authenticate with Digital Ocean App Platform."
     },
@@ -2798,6 +2801,9 @@ export const SecretSyncs = {
     SUPABASE: {
       projectId: "The ID of the Supabase project to sync secrets to.",
       projectName: "The name of the Supabase project to sync secrets to."
+    },
+    CONVEX: {
+      deploymentUrl: "The URL of the Convex deployment to sync secrets to."
     },
     BITBUCKET: {
       workspaceSlug: "The Bitbucket Workspace slug to sync secrets to.",

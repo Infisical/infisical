@@ -33,6 +33,7 @@ import {
   CloudflareWorkersSyncListItemSchema,
   CloudflareWorkersSyncSchema
 } from "@app/services/secret-sync/cloudflare-workers/cloudflare-workers-schemas";
+import { ConvexSyncListItemSchema, ConvexSyncSchema } from "@app/services/secret-sync/convex";
 import { DatabricksSyncListItemSchema, DatabricksSyncSchema } from "@app/services/secret-sync/databricks";
 import {
   DigitalOceanAppPlatformSyncListItemSchema,
@@ -82,6 +83,7 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   GitLabSyncSchema,
   CloudflarePagesSyncSchema,
   CloudflareWorkersSyncSchema,
+  ConvexSyncSchema,
   SupabaseSyncSchema,
   ZabbixSyncSchema,
   RailwaySyncSchema,
@@ -124,6 +126,7 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   RailwaySyncListItemSchema,
   ChecklySyncListItemSchema,
   SupabaseSyncListItemSchema,
+  ConvexSyncListItemSchema,
   NetlifySyncListItemSchema,
   NorthflankSyncListItemSchema,
   BitbucketSyncListItemSchema,

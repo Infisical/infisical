@@ -70,6 +70,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.Railway:
     case SecretSync.Checkly:
     case SecretSync.Supabase:
+    case SecretSync.Convex:
     case SecretSync.DigitalOceanAppPlatform:
     case SecretSync.Netlify:
     case SecretSync.Northflank:
