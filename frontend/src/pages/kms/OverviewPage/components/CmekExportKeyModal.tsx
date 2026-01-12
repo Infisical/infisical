@@ -104,7 +104,7 @@ const ExportKeyForm = ({ cmek }: FormProps) => {
                   className="group relative ml-2"
                   onClick={() => {
                     downloadTxtFile(
-                      isAsymmetricKey ? "private_key" : "key_material",
+                      `${cmek.name}_${isAsymmetricKey ? "private_key" : "key_material"}`,
                       privateKeyData?.privateKey ?? ""
                     );
                   }}
@@ -144,7 +144,7 @@ const ExportKeyForm = ({ cmek }: FormProps) => {
                   colorSchema="secondary"
                   className="group relative ml-2"
                   onClick={() => {
-                    downloadTxtFile("public_key", publicKeyData?.publicKey ?? "");
+                    downloadTxtFile(`${cmek.name}_public_key`, publicKeyData?.publicKey ?? "");
                   }}
                 >
                   <FontAwesomeIcon icon={faDownload} />
