@@ -119,6 +119,11 @@ export const VercelSyncFields = () => {
           >
             <FilterableSelect
               menuPlacement="top"
+              noOptionsMessage={({ inputValue }) => {
+                return inputValue
+                  ? "No projects found matching your search."
+                  : "No projects found.";
+              }}
               isLoading={isProjectsLoading && Boolean(connectionId)}
               isDisabled={!connectionId}
               value={allApps.find((app) => app.id === value) ?? null}
@@ -138,7 +143,7 @@ export const VercelSyncFields = () => {
               onInputChange={(newValue) => setProjectSearch(newValue)}
               filterOption={null}
               options={allApps}
-              placeholder="Select a project..."
+              placeholder="Search for a project..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id.toString()}
               groupBy="project"
