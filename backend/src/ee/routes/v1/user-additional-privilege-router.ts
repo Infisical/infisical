@@ -5,7 +5,7 @@ import { AccessScope, TemporaryPermissionMode } from "@app/db/schemas";
 import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { PROJECT_USER_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -132,6 +132,15 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       if (!data.privilege.actorUserId)
         throw new NotFoundError({ message: `Privilege with id ${req.params.privilegeId} not found` });
 
+      const isLinkedToAccessApproval = await server.services.additionalPrivilege.isPrivilegeLinkedToAccessApproval(
+        req.params.privilegeId
+      );
+      if (isLinkedToAccessApproval) {
+        throw new BadRequestError({
+          message: "Cannot update a privilege that was created from an access approval request"
+        });
+      }
+
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.updateAdditionalPrivilege({
         permission: req.permission,
         scopeData: {
@@ -142,6 +151,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         data: {
           ...req.body,
           ...req.body.type,
+          name: req.body.slug,
           permissions: req.body.permissions
             ? // eslint-disable-next-line @typescript-eslint/ban-ts-comment
               // @ts-ignore-error this is valid ts
@@ -188,6 +198,15 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       if (!data.privilege.actorUserId)
         throw new NotFoundError({ message: `Privilege with id ${req.params.privilegeId} not found` });
 
+      const isLinkedToAccessApproval = await server.services.additionalPrivilege.isPrivilegeLinkedToAccessApproval(
+        req.params.privilegeId
+      );
+      if (isLinkedToAccessApproval) {
+        throw new BadRequestError({
+          message: "Cannot delete a privilege that was created from an access approval request"
+        });
+      }
+
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.deleteAdditionalPrivilege({
         permission: req.permission,
         scopeData: {
@@ -225,7 +244,9 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       }),
       response: {
         200: z.object({
-          privileges: SanitizedUserProjectAdditionalPrivilegeSchema.omit({ permissions: true }).array()
+          privileges: SanitizedUserProjectAdditionalPrivilegeSchema.omit({ permissions: true })
+            .extend({ isLinkedToAccessApproval: z.boolean() })
+            .array()
         })
       }
     },
@@ -237,18 +258,19 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         req.permission.orgId
       );
 
-      const { additionalPrivileges: privileges } = await server.services.additionalPrivilege.listAdditionalPrivileges({
-        permission: req.permission,
-        scopeData: {
-          scope: AccessScope.Project,
-          projectId: membership.scopeProjectId as string,
-          orgId: req.permission.orgId
-        },
-        selector: {
-          actorId: userId,
-          actorType: ActorType.USER
-        }
-      });
+      const { additionalPrivileges: privileges } =
+        await server.services.additionalPrivilege.listAdditionalPrivilegesWithAccessApprovalStatus({
+          permission: req.permission,
+          scopeData: {
+            scope: AccessScope.Project,
+            projectId: membership.scopeProjectId as string,
+            orgId: req.permission.orgId
+          },
+          selector: {
+            actorId: userId,
+            actorType: ActorType.USER
+          }
+        });
 
       return {
         privileges: privileges.map((privilege) => ({

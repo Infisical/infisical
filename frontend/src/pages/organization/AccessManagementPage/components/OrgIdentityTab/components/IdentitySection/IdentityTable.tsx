@@ -236,7 +236,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
         <Table>
           <THead>
             <Tr className="h-14">
-              <Th className="w-1/2">
+              <Th className="w-2/3">
                 <div className="flex items-center">
                   Name
                   <IconButton
@@ -309,7 +309,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                         })
                       }
                     >
-                      <Td className="group">
+                      <Td className="group max-w-0 truncate">
                         {name}
                         {lastLoginAuthMethod && lastLoginTime && (
                           <Tooltip

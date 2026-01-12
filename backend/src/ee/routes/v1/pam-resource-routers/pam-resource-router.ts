@@ -6,6 +6,10 @@ import {
   SanitizedAwsIamResourceSchema
 } from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
 import {
+  KubernetesResourceListItemSchema,
+  SanitizedKubernetesResourceSchema
+} from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
+import {
   MySQLResourceListItemSchema,
   SanitizedMySQLResourceSchema
 } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
@@ -14,6 +18,10 @@ import {
   PostgresResourceListItemSchema,
   SanitizedPostgresResourceSchema
 } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
+import {
+  RedisResourceListItemSchema,
+  SanitizedRedisResourceSchema
+} from "@app/ee/services/pam-resource/redis/redis-resource-schemas";
 import {
   SanitizedSSHResourceSchema,
   SSHResourceListItemSchema
@@ -27,14 +35,18 @@ const SanitizedResourceSchema = z.union([
   SanitizedPostgresResourceSchema,
   SanitizedMySQLResourceSchema,
   SanitizedSSHResourceSchema,
-  SanitizedAwsIamResourceSchema
+  SanitizedKubernetesResourceSchema,
+  SanitizedAwsIamResourceSchema,
+  SanitizedRedisResourceSchema
 ]);
 
 const ResourceOptionsSchema = z.discriminatedUnion("resource", [
   PostgresResourceListItemSchema,
   MySQLResourceListItemSchema,
   SSHResourceListItemSchema,
-  AwsIamResourceListItemSchema
+  KubernetesResourceListItemSchema,
+  AwsIamResourceListItemSchema,
+  RedisResourceListItemSchema
 ]);
 
 export const registerPamResourceRouter = async (server: FastifyZodProvider) => {

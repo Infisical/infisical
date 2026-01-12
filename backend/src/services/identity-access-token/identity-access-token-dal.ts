@@ -30,56 +30,80 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
   };
 
   const removeExpiredTokens = async (tx?: Knex) => {
-    logger.info(`${QueueName.DailyResourceCleanUp}: remove expired access token started`);
+    logger.info(`${QueueName.FrequentResourceCleanUp}: remove expired access token started`);
 
-    const BATCH_SIZE = 10000;
+    const BATCH_SIZE = 5000;
     const MAX_RETRY_ON_FAILURE = 3;
     const QUERY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
     const MAX_TTL = 315_360_000; // Maximum TTL value in seconds (10 years)
 
+    // Get the current timestamp from the database at the start of the operation
+    // This ensures all queries use the same "now" value for consistency
+    // Otherwise we may trap in the loop forever as there will always be new expired tokens to delete.
+    const dbConnection = tx || db;
+    const nowResult = await dbConnection.raw<{ rows: Array<{ now: Date }> }>(`SELECT NOW() AT TIME ZONE 'UTC' as now`);
+    const { now } = nowResult.rows[0];
+
     let deletedTokenIds: { id: string }[] = [];
     let numberOfRetryOnFailure = 0;
     let isRetrying = false;
+    let totalDeletedCount = 0;
 
-    const getExpiredTokensQuery = (dbClient: Knex | Knex.Transaction) =>
-      dbClient(TableName.IdentityAccessToken)
+    const getExpiredTokensQuery = (dbClient: Knex | Knex.Transaction, nowTimestamp: Date) => {
+      const revokedTokensQuery = dbClient(TableName.IdentityAccessToken)
         .where({
           isAccessTokenRevoked: true
         })
-        .orWhere((qb) => {
-          void qb
-            .where("accessTokenNumUsesLimit", ">", 0)
-            .andWhere(
-              "accessTokenNumUses",
-              ">=",
-              db.ref("accessTokenNumUsesLimit").withSchema(TableName.IdentityAccessToken)
-            );
-        })
-        .orWhere((qb) => {
-          void qb.where("accessTokenTTL", ">", 0).andWhereRaw(
-            `
-              -- Check if the token's effective expiration time has passed.
-              -- The expiration time is calculated by adding its TTL to its last renewal/creation time.
-              COALESCE(
-                "${TableName.IdentityAccessToken}"."accessTokenLastRenewedAt", -- Use last renewal time if available
-                "${TableName.IdentityAccessToken}"."createdAt"                 -- Otherwise, use creation time
-              )
-              + make_interval(
-                  secs => LEAST(
-                    "${TableName.IdentityAccessToken}"."accessTokenTTL",      -- Token's specified TTL
-                    ?                                                         -- Capped by MAX_TTL (parameterized value)
-                  )
+        .select("id");
+
+      const exceededUsageLimitQuery = dbClient(TableName.IdentityAccessToken)
+        .where("accessTokenNumUsesLimit", ">", 0)
+        .andWhere(
+          "accessTokenNumUses",
+          ">=",
+          db.ref("accessTokenNumUsesLimit").withSchema(TableName.IdentityAccessToken)
+        )
+        .select("id");
+
+      const expiredTTLQuery = dbClient(TableName.IdentityAccessToken)
+        .where("accessTokenTTL", ">", 0)
+        .andWhereRaw(
+          `
+            -- Check if the token's effective expiration time has passed.
+            -- The expiration time is calculated by adding its TTL to its last renewal/creation time.
+            (COALESCE(
+              "${TableName.IdentityAccessToken}"."accessTokenLastRenewedAt", -- Use last renewal time if available
+              "${TableName.IdentityAccessToken}"."createdAt"                 -- Otherwise, use creation time
+            ) AT TIME ZONE 'UTC')                                            -- Convert to UTC so that it can be an immutable function for our expression index
+            + make_interval(
+                secs => LEAST(
+                  "${TableName.IdentityAccessToken}"."accessTokenTTL",      -- Token's specified TTL
+                  ?                                                         -- Capped by MAX_TTL (parameterized value)
                 )
-              < NOW()                                                         -- Check if the calculated time is before now
-              `,
-            [MAX_TTL]
-          );
-        });
+              )
+            < ?::timestamptz AT TIME ZONE 'UTC'                             -- Check if the calculated time is before now (cast to UTC timestamp for comparison)
+            `,
+          [MAX_TTL, nowTimestamp]
+        )
+        .select("id");
+
+      // Notice: we broken down the query into multiple queries and union them to avoid index usage issues.
+      //         each query got their own index for better performance, therefore, if you want to change
+      //         the query, you need to update the indexes accordingly to avoid performance regressions.
+      return dbClient
+        .select("id")
+        .from(revokedTokensQuery.unionAll(exceededUsageLimitQuery).unionAll(expiredTTLQuery).as("all_expired_tokens"))
+        .distinct();
+    };
 
     do {
       try {
         const deleteBatch = async (dbClient: Knex | Knex.Transaction) => {
-          const idsToDeleteQuery = getExpiredTokensQuery(dbClient).select("id").limit(BATCH_SIZE);
+          // The default random_page_cost is 4.0, which is too high for this query.
+          // With SSD powered database, random access is way faster.
+          // We set it to 1.1 to make the query opt for random access and thus more likely to use the index.
+          await dbClient.raw(`SET LOCAL random_page_cost = 1.1`);
+          const idsToDeleteQuery = getExpiredTokensQuery(dbClient, now).limit(BATCH_SIZE);
           return dbClient(TableName.IdentityAccessToken).whereIn("id", idsToDeleteQuery).del().returning("id");
         };
 
@@ -89,19 +113,20 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
         } else {
           // eslint-disable-next-line no-await-in-loop
           deletedTokenIds = await db.transaction(async (trx) => {
-            await trx.raw(`SET statement_timeout = ${QUERY_TIMEOUT_MS}`);
+            await trx.raw(`SET LOCAL statement_timeout = ${QUERY_TIMEOUT_MS}`);
             return deleteBatch(trx);
           });
         }
 
         numberOfRetryOnFailure = 0; // reset
+        totalDeletedCount += deletedTokenIds.length;
       } catch (error) {
         numberOfRetryOnFailure += 1;
         logger.error(error, "Failed to delete a batch of expired identity access tokens on pruning");
       } finally {
         // eslint-disable-next-line no-await-in-loop
         await new Promise((resolve) => {
-          setTimeout(resolve, 10); // time to breathe for db
+          setTimeout(resolve, 500); // time to breathe for db
         });
       }
       isRetrying = numberOfRetryOnFailure > 0;
@@ -113,7 +138,9 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
       );
     }
 
-    logger.info(`${QueueName.DailyResourceCleanUp}: remove expired access token completed`);
+    logger.info(
+      `${QueueName.FrequentResourceCleanUp}: remove expired access token completed. Deleted ${totalDeletedCount} tokens.`
+    );
   };
 
   return { ...identityAccessTokenOrm, findOne, removeExpiredTokens };

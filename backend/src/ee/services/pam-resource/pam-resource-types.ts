@@ -8,6 +8,12 @@ import {
   TAwsIamResourceConnectionDetails
 } from "./aws-iam/aws-iam-resource-types";
 import {
+  TKubernetesAccount,
+  TKubernetesAccountCredentials,
+  TKubernetesResource,
+  TKubernetesResourceConnectionDetails
+} from "./kubernetes/kubernetes-resource-types";
+import {
   TMySQLAccount,
   TMySQLAccountCredentials,
   TMySQLResource,
@@ -21,29 +27,53 @@ import {
   TPostgresResourceConnectionDetails
 } from "./postgres/postgres-resource-types";
 import {
+  TRedisAccount,
+  TRedisAccountCredentials,
+  TRedisResource,
+  TRedisResourceConnectionDetails
+} from "./redis/redis-resource-types";
+import {
   TSSHAccount,
   TSSHAccountCredentials,
   TSSHResource,
-  TSSHResourceConnectionDetails
+  TSSHResourceConnectionDetails,
+  TSSHResourceMetadata
 } from "./ssh/ssh-resource-types";
 
 // Resource types
-export type TPamResource = TPostgresResource | TMySQLResource | TSSHResource | TAwsIamResource;
+export type TPamResource =
+  | TPostgresResource
+  | TMySQLResource
+  | TSSHResource
+  | TAwsIamResource
+  | TKubernetesResource
+  | TRedisResource;
 export type TPamResourceConnectionDetails =
   | TPostgresResourceConnectionDetails
   | TMySQLResourceConnectionDetails
   | TSSHResourceConnectionDetails
-  | TAwsIamResourceConnectionDetails;
+  | TKubernetesResourceConnectionDetails
+  | TAwsIamResourceConnectionDetails
+  | TRedisResourceConnectionDetails;
+export type TPamResourceMetadata = TSSHResourceMetadata;
 
 // Account types
-export type TPamAccount = TPostgresAccount | TMySQLAccount | TSSHAccount | TAwsIamAccount;
+export type TPamAccount =
+  | TPostgresAccount
+  | TMySQLAccount
+  | TSSHAccount
+  | TAwsIamAccount
+  | TKubernetesAccount
+  | TRedisAccount;
 
 export type TPamAccountCredentials =
   | TPostgresAccountCredentials
   // eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
   | TMySQLAccountCredentials
   | TSSHAccountCredentials
-  | TAwsIamAccountCredentials;
+  | TKubernetesAccountCredentials
+  | TAwsIamAccountCredentials
+  | TRedisAccountCredentials;
 
 // Resource DTOs
 export type TCreateResourceDTO = Pick<TPamResource, "name" | "connectionDetails" | "resourceType" | "projectId"> & {
@@ -79,7 +109,8 @@ export type TPamResourceFactory<T extends TPamResourceConnectionDetails, C exten
   connectionDetails: T,
   gatewayId: string | null | undefined,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  projectId: string | null | undefined
+  projectId: string | null | undefined,
+  resourceMetadata?: TPamResourceMetadata
 ) => {
   validateConnection: TPamResourceFactoryValidateConnection<T>;
   validateAccountCredentials: TPamResourceFactoryValidateAccountCredentials<C>;

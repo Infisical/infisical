@@ -74,6 +74,13 @@ export const getTokenConfig = (tokenType: TokenType) => {
       const expiresAt = new Date(new Date().getTime() + 259200000);
       return { token, expiresAt };
     }
+    case TokenType.TOKEN_WEBAUTHN_SESSION: {
+      // generate random hex token for WebAuthn session
+      const token = crypto.randomBytes(32).toString("hex");
+      const triesLeft = 1;
+      const expiresAt = new Date(new Date().getTime() + 60000); // 60 seconds
+      return { token, triesLeft, expiresAt };
+    }
     default: {
       const token = crypto.randomBytes(16).toString("hex");
       const expiresAt = new Date();

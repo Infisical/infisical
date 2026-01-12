@@ -2,10 +2,13 @@ import { z } from "zod";
 
 import { PamSessionsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { KubernetesSessionCredentialsSchema } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
 import { MySQLSessionCredentialsSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PostgresSessionCredentialsSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
+import { RedisSessionCredentialsSchema } from "@app/ee/services/pam-resource/redis/redis-resource-schemas";
 import { SSHSessionCredentialsSchema } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
 import {
+  HttpEventSchema,
   PamSessionCommandLogSchema,
   SanitizedSessionSchema,
   TerminalEventSchema
@@ -17,7 +20,9 @@ import { AuthMode } from "@app/services/auth/auth-type";
 const SessionCredentialsSchema = z.union([
   SSHSessionCredentialsSchema,
   PostgresSessionCredentialsSchema,
-  MySQLSessionCredentialsSchema
+  MySQLSessionCredentialsSchema,
+  KubernetesSessionCredentialsSchema,
+  RedisSessionCredentialsSchema
 ]);
 
 export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
@@ -89,7 +94,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         sessionId: z.string().uuid()
       }),
       body: z.object({
-        logs: z.array(z.union([PamSessionCommandLogSchema, TerminalEventSchema]))
+        logs: z.array(z.union([PamSessionCommandLogSchema, TerminalEventSchema, HttpEventSchema]))
       }),
       response: {
         200: z.object({

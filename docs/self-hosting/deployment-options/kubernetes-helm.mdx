@@ -104,65 +104,189 @@ description: "Learn how to use Helm chart to install Infisical on your Kubernete
 
     <Accordion title="Full helm values example">
       ```yaml values.yaml
+      # -- Overrides the default release name
+      nameOverride: ""
 
-      nameOverride: "infisical"
-      fullnameOverride: "infisical"
+      # -- Overrides the full name of the release, affecting resource names
+      fullnameOverride: ""
 
       infisical:
+        # -- Enable Infisical chart deployment
         enabled: true
+        # -- Sets the name of the deployment within this chart
         name: infisical
-        autoDatabaseSchemaMigration: true
+
+        autoBootstrap:
+          # -- Enable auto-bootstrap of the Infisical instance
+          enabled: false
+
+          image:
+            # -- Infisical Infisical CLI image tag version
+            tag: "0.41.86"
+
+          # -- Template for the data/stringData section of the Kubernetes secret. Available functions: encodeBase64
+          secretTemplate: '{"data":{"token":"{{.Identity.Credentials.Token}}"}}'
+
+          secretDestination:
+            # -- Name of the bootstrap secret to create in the Kubernetes cluster which will store the formatted root identity credentials
+            name: "infisical-bootstrap-secret"
+
+            # -- Namespace to create the bootstrap secret in. If not provided, the secret will be created in the same namespace as the release.
+            namespace: "default"
+
+          # -- Infisical organization to create in the Infisical instance during auto-bootstrap
+          organization: "default-org"
+
+          credentialSecret:
+            # -- Name of the Kubernetes secret containing the credentials for the auto-bootstrap workflow
+            name: "infisical-bootstrap-credentials"
+
+        databaseSchemaMigrationJob:
+          image:
+            # -- Image repository for migration wait job
+            repository: ghcr.io/groundnuty/k8s-wait-for
+            # -- Image tag version
+            tag: no-root-v2.0
+            # -- Pulls image only if not present on the node
+            pullPolicy: IfNotPresent
+
+        serviceAccount:
+          # -- Creates a new service account if true, with necessary permissions for this chart. If false and `serviceAccount.name` is not defined, the chart will attempt to use the Default service account
+          create: true
+          # -- Custom annotations for the auto-created service account
+          annotations: {}
+          # -- Optional custom service account name, if existing service account is used
+          name: null
+
+        # -- Override for the full name of Infisical resources in this deployment
         fullnameOverride: ""
+        # -- Custom annotations for Infisical pods
         podAnnotations: {}
+        # -- Custom annotations for Infisical deployment
         deploymentAnnotations: {}
-        replicaCount: 6
+        # -- Number of pod replicas for high availability
+        replicaCount: 2
 
         image:
+          # -- Image repository for the Infisical service
           repository: infisical/infisical
-          tag: "v0.46.2-postgres"
+          # -- Specific version tag of the Infisical image. View the latest version here https://hub.docker.com/r/infisical/infisical
+          tag: "v0.151.0"
+          # -- Pulls image only if not already present on the node
           pullPolicy: IfNotPresent
+          # -- Secret references for pulling the image, if needed
+          imagePullSecrets: []
 
+        # -- Node affinity settings for pod placement
         affinity: {}
+        # -- Tolerations definitions
+        tolerations: []
+        # -- Node selector for pod placement
+        nodeSelector: {}
+        # -- Topology spread constraints for multi-zone deployments
+        # -- Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
+        topologySpreadConstraints: []
+
+        # -- Kubernetes Secret reference containing Infisical root credentials
         kubeSecretRef: "infisical-secrets"
+
         service:
+          # -- Custom annotations for Infisical service
           annotations: {}
+          # -- Service type, can be changed based on exposure needs (e.g., LoadBalancer)
           type: ClusterIP
+          # -- Optional node port for service when using NodePort type
           nodePort: ""
 
         resources:
           limits:
-            memory: 210Mi
+            # -- Memory limit for Infisical container
+            memory: 1000Mi
           requests:
-            cpu: 200m
+            # -- CPU request for Infisical container
+            cpu: 350m
 
       ingress:
+        # -- Enable or disable ingress configuration
         enabled: true
+        # -- Hostname for ingress access, e.g., app.example.com
         hostName: ""
+        # -- Specifies the ingress class, useful for multi-ingress setups
         ingressClassName: nginx
+
         nginx:
+          # -- Enable NGINX-specific settings, if using NGINX ingress controller
           enabled: true
+
+        # -- Custom annotations for ingress resource
         annotations: {}
+        # -- TLS settings for HTTPS access
         tls: []
+          # -- TLS secret name for HTTPS
+          # - secretName: letsencrypt-prod
+          # -- Domain name to associate with the TLS certificate
+          #   hosts:
+          #     - some.domain.com
 
       postgresql:
+        # -- Enables an in-cluster PostgreSQL deployment. To achieve HA for Postgres, we recommend deploying https://github.com/zalando/postgres-operator instead.
         enabled: true
+        # -- PostgreSQL resource name
         name: "postgresql"
+        # -- Full name override for PostgreSQL resources
         fullnameOverride: "postgresql"
+
+        image:
+          # -- Image registry for PostgreSQL
+          registry: mirror.gcr.io
+          # -- Image repository for PostgreSQL
+          repository: bitnamilegacy/postgresql
+
         auth:
+          # -- Database username for PostgreSQL
           username: infisical
+          # -- Password for PostgreSQL database access
           password: root
+          # -- Database name for Infisical
           database: infisicalDB
 
-      redis:
-        enabled: true
-        name: "redis"
-        fullnameOverride: "redis"
-        cluster:
+        useExistingPostgresSecret:
+          # -- Set to true if using an existing Kubernetes secret that contains PostgreSQL connection string
           enabled: false
+          existingConnectionStringSecret:
+            # -- Kubernetes secret name containing the PostgreSQL connection string
+            name: ""
+            # -- Key name in the Kubernetes secret that holds the connection string
+            key: ""
+
+      redis:
+        # -- Enables an in-cluster Redis deployment
+        enabled: true
+        # -- Redis resource name
+        name: "redis"
+        # -- Full name override for Redis resources
+        fullnameOverride: "redis"
+
+        image:
+          # -- Image registry for Redis
+          registry: mirror.gcr.io
+          # -- Image repository for Redis
+          repository: bitnamilegacy/redis
+
+        cluster:
+          # -- Clustered Redis deployment
+          enabled: false
+
+        # -- Requires a password for Redis authentication
         usePassword: true
+
         auth:
+          # -- Redis password
           password: "mysecretpassword"
+
+        # -- Redis deployment type (e.g., standalone or cluster)
         architecture: standalone
+
       ```
       </Accordion>
   </Step>

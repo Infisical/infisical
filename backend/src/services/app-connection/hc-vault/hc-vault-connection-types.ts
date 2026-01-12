@@ -118,3 +118,43 @@ export type THCVaultKubernetesRole = {
   config: THCVaultKubernetesSecretsConfig;
   mountPath: string;
 };
+
+export type THCVaultDatabaseConfig = {
+  connection_details: {
+    connection_url?: string;
+    hosts?: string;
+    tls_ca?: string;
+    username?: string;
+  };
+  plugin_name: string;
+};
+
+export type THCVaultDatabaseRole = {
+  name: string;
+  db_name: string;
+  default_ttl?: number;
+  max_ttl?: number;
+  creation_statements?: string[];
+  revocation_statements?: string[];
+  renew_statements?: string[];
+  config: THCVaultDatabaseConfig;
+  mountPath: string;
+};
+
+export type THCVaultLdapConfig = {
+  binddn: string;
+  url: string;
+  certificate?: string;
+};
+
+export type THCVaultLdapRole = {
+  name: string;
+  default_ttl?: number;
+  max_ttl?: number;
+  creation_ldif?: string;
+  deletion_ldif?: string;
+  rollback_ldif?: string;
+  username_template?: string;
+  config: THCVaultLdapConfig;
+  mountPath: string;
+};

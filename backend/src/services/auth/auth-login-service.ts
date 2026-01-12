@@ -882,6 +882,18 @@ export const authLoginServiceFactory = ({
             totp: mfaToken
           });
         }
+      } else if (mfaMethod === MfaMethod.WEBAUTHN) {
+        if (!mfaToken) {
+          throw new BadRequestError({
+            message: "WebAuthn session token is required"
+          });
+        }
+        // Validate the one-time WebAuthn session token (passed as mfaToken)
+        await tokenService.validateTokenForUser({
+          type: TokenType.TOKEN_WEBAUTHN_SESSION,
+          userId,
+          code: mfaToken
+        });
       }
     } catch (err) {
       const updatedUser = await processFailedMfaAttempt(userId);

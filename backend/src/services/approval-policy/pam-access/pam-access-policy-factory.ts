@@ -26,13 +26,16 @@ export const pamAccessPolicyFactory: TApprovalResourceFactory<
 
     let bestMatch: { policy: TPamAccessPolicy; wildcardCount: number; pathLength: number } | null = null;
 
+    const normalizedAccountPath = inputs.accountPath.startsWith("/") ? inputs.accountPath.slice(1) : inputs.accountPath;
+
     for (const policy of policies) {
       const p = policy as TPamAccessPolicy;
       for (const c of p.conditions.conditions) {
         // Find the most specific path pattern
         // TODO(andrey): Make matching logic more advanced by accounting for wildcard positions
         for (const pathPattern of c.accountPaths) {
-          if (picomatch(pathPattern)(inputs.accountPath)) {
+          const normalizedPathPattern = pathPattern.startsWith("/") ? pathPattern.slice(1) : pathPattern;
+          if (picomatch(normalizedPathPattern)(normalizedAccountPath)) {
             const wildcardCount = (pathPattern.match(/\*/g) || []).length;
             const pathLength = pathPattern.length;
 
@@ -65,11 +68,16 @@ export const pamAccessPolicyFactory: TApprovalResourceFactory<
       revokedAt: null
     });
 
+    const normalizedAccountPath = inputs.accountPath.startsWith("/") ? inputs.accountPath.slice(1) : inputs.accountPath;
+
     // TODO(andrey): Move some of this check to be part of SQL query
     return grants.some((grant) => {
       const grantAttributes = grant.attributes as TPamAccessPolicyInputs;
-      const isMatch = picomatch(grantAttributes.accountPath);
-      return isMatch(inputs.accountPath) && (!grant.expiresAt || grant.expiresAt > new Date());
+      const normalizedGrantPath = grantAttributes.accountPath.startsWith("/")
+        ? grantAttributes.accountPath.slice(1)
+        : grantAttributes.accountPath;
+      const isMatch = picomatch(normalizedGrantPath);
+      return isMatch(normalizedAccountPath) && (!grant.expiresAt || grant.expiresAt > new Date());
     });
   };
 

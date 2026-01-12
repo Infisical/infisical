@@ -4,7 +4,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { EmptyState, Input, Pagination, Spinner, Tooltip } from "@app/components/v2";
-import { useSubscription } from "@app/context";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import {
   PAM_RESOURCE_TYPE_MAP,
@@ -18,7 +17,6 @@ type Props = {
 
 export const ResourceTypeSelect = ({ onSelect }: Props) => {
   const { isPending, data: resourceOptions } = useListPamResourceOptions();
-  const { subscription } = useSubscription();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
 
   const appendedResourceOptions = useMemo(() => {
@@ -35,10 +33,8 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
       { name: "DynamoDB", resource: PamResourceType.DynamoDB },
       { name: "Snowflake", resource: PamResourceType.Snowflake },
       { name: "Elasticsearch", resource: PamResourceType.Elasticsearch },
-      { name: "Redis", resource: PamResourceType.Redis },
       { name: "RDP", resource: PamResourceType.RDP },
       { name: "SSH", resource: PamResourceType.SSH },
-      { name: "Kubernetes", resource: PamResourceType.Kubernetes },
       { name: "MCP", resource: PamResourceType.MCP },
       { name: "Web Application", resource: PamResourceType.WebApp }
     ];
@@ -67,20 +63,10 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
   });
 
   const handleResourceSelect = (resource: PamResourceType) => {
-    if (!subscription.pam) {
-      handlePopUpOpen("upgradePlan", {
-        text: "Your current plan does not include access to Infisical PAM. To unlock this feature, please upgrade to Infisical Enterprise plan.",
-        isEnterpriseFeature: true
-      });
-      return;
-    }
-
     // We temporarily show a special license modal for these because we will have to write some code to complete the integration
     if (
       resource === PamResourceType.RDP ||
-      resource === PamResourceType.Kubernetes ||
       resource === PamResourceType.MCP ||
-      resource === PamResourceType.Redis ||
       resource === PamResourceType.MongoDB ||
       resource === PamResourceType.WebApp ||
       resource === PamResourceType.Cassandra ||
@@ -123,6 +109,7 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
 
           return (
             <button
+              key={option.resource}
               type="button"
               onClick={() => handleResourceSelect(option.resource)}
               className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"

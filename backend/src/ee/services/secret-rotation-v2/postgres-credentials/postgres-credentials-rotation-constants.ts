@@ -15,6 +15,7 @@ GRANT CONNECT ON DATABASE my_database TO infisical_user;
    
 -- grant relevant table permissions
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO infisical_user;`,
+    rotationStatement: `ALTER USER "{{username}}" WITH PASSWORD '{{password}}'`,
     secretsMapping: {
       username: "POSTGRES_DB_USERNAME",
       password: "POSTGRES_DB_PASSWORD"

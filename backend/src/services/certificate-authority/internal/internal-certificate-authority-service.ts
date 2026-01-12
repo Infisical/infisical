@@ -38,6 +38,7 @@ import {
   CertStatus,
   TAltNameMapping
 } from "../../certificate/certificate-types";
+import { DEFAULT_CRL_VALIDITY_DAYS } from "../../certificate-common/certificate-constants";
 import { TCertificateTemplateDALFactory } from "../../certificate-template/certificate-template-dal";
 import { validateCertificateDetailsAgainstTemplate } from "../../certificate-template/certificate-template-fns";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority-cert-dal";
@@ -322,10 +323,14 @@ export const internalCertificateAuthorityServiceFactory = ({
       }
 
       // create empty CRL
+      const thisUpdate = new Date();
+      const nextUpdate = new Date(thisUpdate);
+      nextUpdate.setDate(nextUpdate.getDate() + DEFAULT_CRL_VALIDITY_DAYS);
+
       const crl = await x509.X509CrlGenerator.create({
         issuer: internalCa.dn,
-        thisUpdate: new Date(),
-        nextUpdate: new Date("2025/12/12"), // TODO: change
+        thisUpdate,
+        nextUpdate,
         entries: [],
         signingAlgorithm: alg,
         signingKey: keys.privateKey

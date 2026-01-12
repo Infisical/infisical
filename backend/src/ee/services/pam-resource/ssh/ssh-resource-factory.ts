@@ -14,7 +14,7 @@ import {
   TPamResourceFactoryValidateAccountCredentials
 } from "../pam-resource-types";
 import { SSHAuthMethod } from "./ssh-resource-enums";
-import { TSSHAccountCredentials, TSSHResourceConnectionDetails } from "./ssh-resource-types";
+import { TSSHAccountCredentials, TSSHResourceConnectionDetails, TSSHResourceMetadata } from "./ssh-resource-types";
 
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
@@ -56,7 +56,9 @@ export const sshResourceFactory: TPamResourceFactory<TSSHResourceConnectionDetai
   resourceType,
   connectionDetails,
   gatewayId,
-  gatewayV2Service
+  gatewayV2Service,
+  _projectId,
+  resourceMetadata?: TSSHResourceMetadata
 ) => {
   const validateConnection = async () => {
     try {
@@ -190,6 +192,24 @@ export const sshResourceFactory: TPamResourceFactory<TSSHResourceConnectionDetai
                 privateKey: credentials.privateKey,
                 tryKeyboard: false
               });
+              break;
+            case SSHAuthMethod.Certificate:
+              // We cant fully validate the connection since ssh2 doesn't support cert auth
+              if (!resourceMetadata) {
+                reject(
+                  new BadRequestError({
+                    message:
+                      "SSH CA is not configured for this resource. Please set up the CA first using the SSH CA setup script."
+                  })
+                );
+                return;
+              }
+
+              logger.info(
+                { username: credentials.username },
+                "[SSH Resource Factory] Certificate auth - CA is configured, skipping connection validation"
+              );
+              resolve();
               break;
             default:
               reject(new Error(`Unsupported SSH auth method: ${(credentials as TSSHAccountCredentials).authMethod}`));

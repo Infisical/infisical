@@ -13,7 +13,7 @@ export const OrgProductSelectSection = () => {
       enabled: true
     },
     pkiProductEnabled: {
-      name: "Certificate Management",
+      name: "Certificate Manager",
       enabled: true
     },
     kmsProductEnabled: {

@@ -35,6 +35,12 @@ export const PolicyFormSchema = z.object({
         .refine((val) => val.every((path) => path.length > 0), {
           message: "All account paths must be non-empty"
         })
+        .refine((val) => val.every((path) => path.startsWith("/")), {
+          message: "All account paths must start with /"
+        })
+        .refine((val) => val.every((path) => !path.endsWith("/")), {
+          message: "All account paths cannot end with /"
+        })
     })
     .array()
     .min(1, "At least one condition is required"),

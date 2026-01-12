@@ -81,7 +81,7 @@ const Page = () => {
 
     handlePopUpClose("deleteCa");
     navigate({
-      to: "/organizations/$orgId/projects/cert-management/$projectId/certificate-authorities",
+      to: "/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities",
       params: {
         orgId: currentOrg.id,
         projectId
@@ -102,7 +102,7 @@ const Page = () => {
             isAllowed ? (
               <div className="mx-auto mb-6 w-full max-w-8xl">
                 <Link
-                  to="/organizations/$orgId/projects/cert-management/$projectId/certificate-authorities"
+                  to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities"
                   params={{
                     orgId: currentOrg.id,
                     projectId

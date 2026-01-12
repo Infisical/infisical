@@ -1,13 +1,28 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal, Modal, ModalContent, PageHeader } from "@app/components/v2";
+import { DeleteActionModal, Modal, ModalContent, PageHeader } from "@app/components/v2";
+import {
+  OrgIcon,
+  UnstableAlert,
+  UnstableAlertDescription,
+  UnstableAlertTitle,
+  UnstableButton,
+  UnstableCard,
+  UnstableCardContent,
+  UnstableCardDescription,
+  UnstableCardHeader,
+  UnstableCardTitle,
+  UnstableDropdownMenu,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuTrigger
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionActions,
@@ -36,7 +51,7 @@ const Page = () => {
   const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { data } = useGetOrgIdentityMembershipById(identityId);
-  const { mutateAsync: deleteIdentity, isPending: isDeletingIdentity } = useDeleteOrgIdentity();
+  const { mutateAsync: deleteIdentity } = useDeleteOrgIdentity();
   const isAuthHidden = orgId !== data?.identity?.orgId;
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -68,41 +83,55 @@ const Page = () => {
     });
   };
 
+  const isScopeIdentity = data?.identity.orgId === currentOrg.id;
+
   return (
-    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex max-w-8xl flex-col">
       {data && (
-        <div className="mx-auto w-full max-w-8xl">
+        <>
           <Link
             to="/organizations/$orgId/access-management"
             params={{ orgId }}
             search={{
               selectedTab: OrgAccessControlTabSections.Identities
             }}
-            className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
+            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
           >
-            <FontAwesomeIcon icon={faChevronLeft} />
-            Organization Machine Identities
+            <ChevronLeftIcon size={16} />
+            {isSubOrganization ? "Sub-" : ""}Organization Machine Identities
           </Link>
           <PageHeader
             scope={isSubOrganization ? "namespace" : "org"}
-            description={`${isSubOrganization ? "Sub-" : ""}Organization Machine Identity`}
+            description={`Configure and manage${isScopeIdentity ? " machine identity and " : " "}${isSubOrganization ? "sub-" : ""}organization access control`}
             title={data.identity.name}
           >
-            <div className="flex items-center gap-2">
-              {isSubOrganization && data.identity.orgId !== currentOrg.id && (
+            <UnstableDropdownMenu>
+              <UnstableDropdownMenuTrigger asChild>
+                <UnstableButton variant="outline">
+                  Options
+                  <EllipsisIcon />
+                </UnstableButton>
+              </UnstableDropdownMenuTrigger>
+              <UnstableDropdownMenuContent align="end">
+                <UnstableDropdownMenuItem
+                  onClick={() => {
+                    navigator.clipboard.writeText(data.identity.id);
+                    createNotification({
+                      text: "Machine identity ID copied to clipboard",
+                      type: "info"
+                    });
+                  }}
+                >
+                  Copy Machine Identity ID
+                </UnstableDropdownMenuItem>
                 <OrgPermissionCan
                   I={OrgPermissionActions.Delete}
                   a={OrgPermissionSubjects.Identity}
-                  renderTooltip
-                  allowedLabel="Remove from sub-organization"
                 >
                   {(isAllowed) => (
-                    <Button
-                      colorSchema="danger"
-                      variant="outline_bg"
-                      size="xs"
+                    <UnstableDropdownMenuItem
+                      variant="danger"
                       isDisabled={!isAllowed}
-                      isLoading={isDeletingIdentity}
                       onClick={() =>
                         handlePopUpOpen("deleteIdentity", {
                           identityId: data.identity.id,
@@ -110,23 +139,64 @@ const Page = () => {
                         })
                       }
                     >
-                      Unlink Machine Identity
-                    </Button>
+                      {isScopeIdentity ? "Delete Machine Identity" : "Remove From Sub-Organization"}
+                    </UnstableDropdownMenuItem>
                   )}
                 </OrgPermissionCan>
-              )}
-            </div>
+              </UnstableDropdownMenuContent>
+            </UnstableDropdownMenu>
           </PageHeader>
-          <div className="flex flex-col gap-4 md:flex-row">
-            <div className="w-full md:w-96">
-              <IdentityDetailsSection
-                isOrgIdentity={data.identity.orgId === currentOrg.id}
-                identityId={identityId}
-                handlePopUpOpen={handlePopUpOpen}
-              />
-            </div>
-            <div className="flex flex-1 flex-col gap-y-4">
-              {!isAuthHidden && (
+          <div className="flex flex-col gap-5 lg:flex-row">
+            <IdentityDetailsSection
+              isCurrentOrgIdentity={data.identity.orgId === currentOrg.id}
+              identityId={identityId}
+              handlePopUpOpen={handlePopUpOpen}
+            />
+            <div className="flex flex-1 flex-col gap-y-5">
+              {isAuthHidden ? (
+                <UnstableCard>
+                  <UnstableCardHeader>
+                    <UnstableCardTitle>Authentication</UnstableCardTitle>
+                    <UnstableCardDescription>
+                      Configure authentication methods
+                    </UnstableCardDescription>
+                  </UnstableCardHeader>
+                  <UnstableCardContent>
+                    <UnstableAlert variant="org">
+                      <OrgIcon />
+                      <UnstableAlertTitle>
+                        Machine identity managed by organization
+                      </UnstableAlertTitle>
+                      <UnstableAlertDescription>
+                        <p>
+                          This machine identity&apos;s authentication methods are managed by your
+                          organization. <br /> To make changes,{" "}
+                          <OrgPermissionCan
+                            I={OrgPermissionIdentityActions.Read}
+                            an={OrgPermissionSubjects.Identity}
+                          >
+                            {(isAllowed) =>
+                              isAllowed ? (
+                                <Link
+                                  to="/organizations/$orgId/identities/$identityId"
+                                  className="inline-block cursor-pointer text-foreground underline underline-offset-2"
+                                  params={{
+                                    identityId,
+                                    orgId: data.identity.orgId
+                                  }}
+                                >
+                                  go to organization access control
+                                </Link>
+                              ) : null
+                            }
+                          </OrgPermissionCan>
+                          .
+                        </p>
+                      </UnstableAlertDescription>
+                    </UnstableAlert>
+                  </UnstableCardContent>
+                </UnstableCard>
+              ) : (
                 <IdentityAuthenticationSection
                   identityId={identityId}
                   handlePopUpOpen={handlePopUpOpen}
@@ -135,7 +205,7 @@ const Page = () => {
               <IdentityProjectsSection identityId={identityId} />
             </div>
           </div>
-        </div>
+        </>
       )}
       <Modal
         isOpen={popUp?.identity?.isOpen}

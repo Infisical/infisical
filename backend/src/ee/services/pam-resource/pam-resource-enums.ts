@@ -2,7 +2,9 @@ export enum PamResource {
   Postgres = "postgres",
   MySQL = "mysql",
   SSH = "ssh",
-  AwsIam = "aws-iam"
+  Kubernetes = "kubernetes",
+  AwsIam = "aws-iam",
+  Redis = "redis"
 }
 
 export enum PamResourceOrderBy {

@@ -42,6 +42,7 @@ export enum TableName {
   GroupProjectMembershipRole = "group_project_membership_roles",
   ExternalGroupOrgRoleMapping = "external_group_org_role_mappings",
   UserGroupMembership = "user_group_membership",
+  IdentityGroupMembership = "identity_group_membership",
   UserAliases = "user_aliases",
   UserEncryptionKey = "user_encryption_keys",
   AuthTokens = "auth_tokens",
@@ -142,6 +143,7 @@ export enum TableName {
   SnapshotSecretV2 = "secret_snapshot_secrets_v2",
   ProjectSplitBackfillIds = "project_split_backfill_ids",
   UserNotifications = "user_notifications",
+  ScimEvents = "scim_events",
   // Gateway
   OrgGatewayConfig = "org_gateway_config",
   Gateway = "gateways",
@@ -159,6 +161,7 @@ export enum TableName {
   InternalKms = "internal_kms",
   InternalKmsKeyVersion = "internal_kms_key_version",
   TotpConfig = "totp_configs",
+  WebAuthnCredential = "webauthn_credentials",
   // @depreciated
   KmsKeyVersion = "kms_key_versions",
   WorkflowIntegrations = "workflow_integrations",
@@ -224,6 +227,15 @@ export enum TableName {
   PkiAcmeOrderAuth = "pki_acme_order_auths",
   PkiAcmeAuth = "pki_acme_auths",
   PkiAcmeChallenge = "pki_acme_challenges",
+
+  // AI
+  AiMcpServer = "ai_mcp_servers",
+  AiMcpServerTool = "ai_mcp_server_tools",
+  AiMcpServerUserCredential = "ai_mcp_server_user_credentials",
+  AiMcpEndpoint = "ai_mcp_endpoints",
+  AiMcpEndpointServer = "ai_mcp_endpoint_servers",
+  AiMcpEndpointServerTool = "ai_mcp_endpoint_server_tools",
+  AiMcpActivityLog = "ai_mcp_activity_logs",
 
   // Approval Policies
   ApprovalPolicies = "approval_policies",
@@ -326,7 +338,8 @@ export enum ProjectType {
   KMS = "kms",
   SSH = "ssh",
   SecretScanning = "secret-scanning",
-  PAM = "pam"
+  PAM = "pam",
+  AI = "ai"
 }
 
 export enum ActionProjectType {
@@ -336,6 +349,7 @@ export enum ActionProjectType {
   SSH = ProjectType.SSH,
   SecretScanning = ProjectType.SecretScanning,
   PAM = ProjectType.PAM,
+  AI = ProjectType.AI,
   // project operations that happen on all types
   Any = "any"
 }

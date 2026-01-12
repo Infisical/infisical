@@ -3,13 +3,15 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType, TPamResources } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { createSshKeyPair } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
+import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { decryptAccountCredentials, encryptAccountCredentials } from "../pam-account/pam-account-fns";
 import { TPamResourceDALFactory } from "./pam-resource-dal";
 import { PamResource } from "./pam-resource-enums";
@@ -17,15 +19,17 @@ import { PAM_RESOURCE_FACTORY_MAP } from "./pam-resource-factory";
 import {
   decryptResource,
   decryptResourceConnectionDetails,
+  decryptResourceMetadata,
   encryptResourceConnectionDetails,
+  encryptResourceMetadata,
   listResourceOptions
 } from "./pam-resource-fns";
 import { TCreateResourceDTO, TListResourcesDTO, TUpdateResourceDTO } from "./pam-resource-types";
+import { TSSHResourceMetadata } from "./ssh/ssh-resource-types";
 
 type TPamResourceServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2Service: Pick<
     TGatewayV2ServiceFactory,
@@ -38,7 +42,6 @@ export type TPamResourceServiceFactory = ReturnType<typeof pamResourceServiceFac
 export const pamResourceServiceFactory = ({
   pamResourceDAL,
   permissionService,
-  licenseService,
   kmsService,
   gatewayV2Service
 }: TPamResourceServiceFactoryDep) => {
@@ -70,13 +73,6 @@ export const pamResourceServiceFactory = ({
     { resourceType, connectionDetails, gatewayId, name, projectId, rotationAccountCredentials }: TCreateResourceDTO,
     actor: OrgServiceActor
   ) => {
-    const orgLicensePlan = await licenseService.getPlan(actor.orgId);
-    if (!orgLicensePlan.pam) {
-      throw new BadRequestError({
-        message: "PAM operation failed due to organization plan restrictions."
-      });
-    }
-
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorAuthMethod: actor.authMethod,
@@ -131,13 +127,6 @@ export const pamResourceServiceFactory = ({
     { connectionDetails, resourceId, name, rotationAccountCredentials }: TUpdateResourceDTO,
     actor: OrgServiceActor
   ) => {
-    const orgLicensePlan = await licenseService.getPlan(actor.orgId);
-    if (!orgLicensePlan.pam) {
-      throw new BadRequestError({
-        message: "PAM operation failed due to organization plan restrictions."
-      });
-    }
-
     const resource = await pamResourceDAL.findById(resourceId);
     if (!resource) throw new NotFoundError({ message: `Resource with ID '${resourceId}' not found` });
 
@@ -290,12 +279,81 @@ export const pamResourceServiceFactory = ({
     };
   };
 
+  const getOrCreateSshCa = async (resourceId: string, actor: OrgServiceActor) => {
+    const resource = await pamResourceDAL.findById(resourceId);
+    if (!resource) throw new NotFoundError({ message: `Resource with ID '${resourceId}' not found` });
+
+    if (resource.resourceType !== PamResource.SSH) {
+      throw new BadRequestError({ message: "This operation is only available for SSH resources" });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorAuthMethod: actor.authMethod,
+      actorId: actor.id,
+      actorOrgId: actor.orgId,
+      projectId: resource.projectId,
+      actionProjectType: ActionProjectType.PAM
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.PamResources);
+
+    // Check if metadata already exists with CA
+    if (resource.encryptedResourceMetadata) {
+      const metadata = await decryptResourceMetadata<TSSHResourceMetadata>({
+        encryptedMetadata: resource.encryptedResourceMetadata,
+        projectId: resource.projectId,
+        kmsService
+      });
+      return { caPublicKey: metadata.caPublicKey };
+    }
+
+    // Transaction with advisory lock to prevent race conditions
+    const caPublicKey = await pamResourceDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.PamResourceSshCaInit(resourceId)]);
+
+      // Re-check after acquiring lock in case another transaction created it
+      const currentResource = await pamResourceDAL.findById(resourceId, tx);
+      if (currentResource?.encryptedResourceMetadata) {
+        const metadata = await decryptResourceMetadata<TSSHResourceMetadata>({
+          encryptedMetadata: currentResource.encryptedResourceMetadata,
+          projectId: currentResource.projectId,
+          kmsService
+        });
+        return metadata.caPublicKey;
+      }
+
+      // Generate new CA key pair
+      const keyAlgorithm = SshCertKeyAlgorithm.ED25519;
+      const { publicKey, privateKey } = await createSshKeyPair(keyAlgorithm);
+
+      const metadata: TSSHResourceMetadata = {
+        caPrivateKey: privateKey,
+        caPublicKey: publicKey.trim(),
+        caKeyAlgorithm: keyAlgorithm
+      };
+
+      const encryptedResourceMetadata = await encryptResourceMetadata({
+        metadata,
+        projectId: resource.projectId,
+        kmsService
+      });
+
+      await pamResourceDAL.updateById(resourceId, { encryptedResourceMetadata }, tx);
+
+      return metadata.caPublicKey;
+    });
+
+    return { caPublicKey };
+  };
+
   return {
     getById,
     create,
     updateById,
     deleteById,
     list,
-    listResourceOptions
+    listResourceOptions,
+    getOrCreateSshCa
   };
 };

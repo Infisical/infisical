@@ -9,6 +9,7 @@ import {
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
@@ -21,6 +22,7 @@ import {
   TCreateCertificateRequestDTO,
   TGetCertificateFromRequestDTO,
   TGetCertificateRequestDTO,
+  TListCertificateRequestsDTO,
   TUpdateCertificateRequestStatusDTO
 } from "./certificate-request-types";
 
@@ -91,6 +93,7 @@ export const certificateRequestServiceFactory = ({
   permissionService
 }: TCertificateRequestServiceFactoryDep) => {
   const createCertificateRequest = async ({
+    acmeOrderId,
     actor,
     actorId,
     actorAuthMethod,
@@ -123,6 +126,7 @@ export const certificateRequestServiceFactory = ({
       {
         status,
         projectId,
+        acmeOrderId,
         ...validatedData
       },
       tx
@@ -283,11 +287,76 @@ export const certificateRequestServiceFactory = ({
     return certificateRequestDAL.attachCertificate(certificateRequestId, certificateId);
   };
 
+  const listCertificateRequests = async ({
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    projectId,
+    offset = 0,
+    limit = 20,
+    search,
+    status,
+    fromDate,
+    toDate,
+    profileIds,
+    sortBy,
+    sortOrder
+  }: TListCertificateRequestsDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
+
+    const processedRules = getProcessedPermissionRules(
+      permission,
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
+
+    const options: Parameters<typeof certificateRequestDAL.findByProjectIdWithCertificate>[1] = {
+      offset,
+      limit,
+      search,
+      status,
+      fromDate,
+      toDate,
+      profileIds,
+      sortBy,
+      sortOrder
+    };
+
+    const [certificateRequests, totalCount] = await Promise.all([
+      certificateRequestDAL.findByProjectIdWithCertificate(projectId, options, processedRules),
+      certificateRequestDAL.countByProjectId(projectId, options, processedRules)
+    ]);
+
+    const mappedCertificateRequests = certificateRequests.map((request) => ({
+      ...request,
+      status: request.status as CertificateRequestStatus
+    }));
+
+    return {
+      certificateRequests: mappedCertificateRequests,
+      totalCount
+    };
+  };
+
   return {
     createCertificateRequest,
     getCertificateRequest,
     getCertificateFromRequest,
     updateCertificateRequestStatus,
-    attachCertificateToRequest
+    attachCertificateToRequest,
+    listCertificateRequests
   };
 };

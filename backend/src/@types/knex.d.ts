@@ -20,6 +20,27 @@ import {
   TAdditionalPrivileges,
   TAdditionalPrivilegesInsert,
   TAdditionalPrivilegesUpdate,
+  TAiMcpActivityLogs,
+  TAiMcpActivityLogsInsert,
+  TAiMcpActivityLogsUpdate,
+  TAiMcpEndpoints,
+  TAiMcpEndpointServers,
+  TAiMcpEndpointServersInsert,
+  TAiMcpEndpointServersUpdate,
+  TAiMcpEndpointServerTools,
+  TAiMcpEndpointServerToolsInsert,
+  TAiMcpEndpointServerToolsUpdate,
+  TAiMcpEndpointsInsert,
+  TAiMcpEndpointsUpdate,
+  TAiMcpServers,
+  TAiMcpServersInsert,
+  TAiMcpServersUpdate,
+  TAiMcpServerTools,
+  TAiMcpServerToolsInsert,
+  TAiMcpServerToolsUpdate,
+  TAiMcpServerUserCredentials,
+  TAiMcpServerUserCredentialsInsert,
+  TAiMcpServerUserCredentialsUpdate,
   TApiKeys,
   TApiKeysInsert,
   TApiKeysUpdate,
@@ -170,6 +191,9 @@ import {
   TIdentityGcpAuths,
   TIdentityGcpAuthsInsert,
   TIdentityGcpAuthsUpdate,
+  TIdentityGroupMembership,
+  TIdentityGroupMembershipInsert,
+  TIdentityGroupMembershipUpdate,
   TIdentityJwtAuths,
   TIdentityJwtAuthsInsert,
   TIdentityJwtAuthsUpdate,
@@ -401,6 +425,9 @@ import {
   TSamlConfigs,
   TSamlConfigsInsert,
   TSamlConfigsUpdate,
+  TScimEvents,
+  TScimEventsInsert,
+  TScimEventsUpdate,
   TScimTokens,
   TScimTokensInsert,
   TScimTokensUpdate,
@@ -590,6 +617,9 @@ import {
   TVaultExternalMigrationConfigs,
   TVaultExternalMigrationConfigsInsert,
   TVaultExternalMigrationConfigsUpdate,
+  TWebauthnCredentials,
+  TWebauthnCredentialsInsert,
+  TWebauthnCredentialsUpdate,
   TWebhooks,
   TWebhooksInsert,
   TWebhooksUpdate,
@@ -857,6 +887,11 @@ declare module "knex/types/tables" {
       TUserGroupMembershipInsert,
       TUserGroupMembershipUpdate
     >;
+    [TableName.IdentityGroupMembership]: KnexOriginal.CompositeTableType<
+      TIdentityGroupMembership,
+      TIdentityGroupMembershipInsert,
+      TIdentityGroupMembershipUpdate
+    >;
     [TableName.GroupProjectMembership]: KnexOriginal.CompositeTableType<
       TGroupProjectMemberships,
       TGroupProjectMembershipsInsert,
@@ -1121,6 +1156,7 @@ declare module "knex/types/tables" {
     >;
 
     [TableName.ScimToken]: KnexOriginal.CompositeTableType<TScimTokens, TScimTokensInsert, TScimTokensUpdate>;
+    [TableName.ScimEvents]: KnexOriginal.CompositeTableType<TScimEvents, TScimEventsInsert, TScimEventsUpdate>;
     [TableName.SecretApprovalPolicy]: KnexOriginal.CompositeTableType<
       TSecretApprovalPolicies,
       TSecretApprovalPoliciesInsert,
@@ -1498,6 +1534,42 @@ declare module "knex/types/tables" {
       TVaultExternalMigrationConfigs,
       TVaultExternalMigrationConfigsInsert,
       TVaultExternalMigrationConfigsUpdate
+    >;
+    [TableName.WebAuthnCredential]: KnexOriginal.CompositeTableType<
+      TWebauthnCredentials,
+      TWebauthnCredentialsInsert,
+      TWebauthnCredentialsUpdate
+    >;
+    [TableName.AiMcpServer]: KnexOriginal.CompositeTableType<TAiMcpServers, TAiMcpServersInsert, TAiMcpServersUpdate>;
+    [TableName.AiMcpServerTool]: KnexOriginal.CompositeTableType<
+      TAiMcpServerTools,
+      TAiMcpServerToolsInsert,
+      TAiMcpServerToolsUpdate
+    >;
+    [TableName.AiMcpEndpoint]: KnexOriginal.CompositeTableType<
+      TAiMcpEndpoints,
+      TAiMcpEndpointsInsert,
+      TAiMcpEndpointsUpdate
+    >;
+    [TableName.AiMcpEndpointServer]: KnexOriginal.CompositeTableType<
+      TAiMcpEndpointServers,
+      TAiMcpEndpointServersInsert,
+      TAiMcpEndpointServersUpdate
+    >;
+    [TableName.AiMcpEndpointServerTool]: KnexOriginal.CompositeTableType<
+      TAiMcpEndpointServerTools,
+      TAiMcpEndpointServerToolsInsert,
+      TAiMcpEndpointServerToolsUpdate
+    >;
+    [TableName.AiMcpServerUserCredential]: KnexOriginal.CompositeTableType<
+      TAiMcpServerUserCredentials,
+      TAiMcpServerUserCredentialsInsert,
+      TAiMcpServerUserCredentialsUpdate
+    >;
+    [TableName.AiMcpActivityLog]: KnexOriginal.CompositeTableType<
+      TAiMcpActivityLogs,
+      TAiMcpActivityLogsInsert,
+      TAiMcpActivityLogsUpdate
     >;
     [TableName.ApprovalPolicies]: KnexOriginal.CompositeTableType<
       TApprovalPolicies,

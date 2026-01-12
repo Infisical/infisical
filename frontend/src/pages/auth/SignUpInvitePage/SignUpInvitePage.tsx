@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { AxiosError } from "axios";
 
 import { Mfa } from "@app/components/auth/Mfa";
 import InputField from "@app/components/basic/InputField";
@@ -167,7 +168,10 @@ export const SignupInvitePage = () => {
               }
             } catch (err) {
               console.error(err);
-              navigate({ to: "/requestnewinvite" });
+              const message = ((err as AxiosError)?.response?.data as { message?: string })
+                ?.message;
+              const reason = message?.includes("already a member") ? "already_member" : "expired";
+              navigate({ to: "/requestnewinvite", search: { reason } });
             }
           }}
           size="lg"

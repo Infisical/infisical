@@ -41,7 +41,7 @@ export const ServiceTokenSection = withProjectPermission(
 
     return (
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="mb-2 flex items-center justify-between">
+        <div className="mb-2 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-x-2">
               <p className="text-xl font-medium text-mineshaft-100">Service Tokens</p>

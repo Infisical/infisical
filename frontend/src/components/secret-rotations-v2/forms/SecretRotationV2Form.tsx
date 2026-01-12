@@ -101,12 +101,7 @@ export const SecretRotationV2Form = ({
     reValidateMode: "onChange"
   });
 
-  const onSubmit = async ({
-    environment,
-    connection,
-
-    ...formData
-  }: TSecretRotationV2Form) => {
+  const onSubmit = async ({ environment, connection, ...formData }: TSecretRotationV2Form) => {
     const mutation = secretRotation
       ? updateSecretRotation.mutateAsync({
           rotationId: secretRotation.id,

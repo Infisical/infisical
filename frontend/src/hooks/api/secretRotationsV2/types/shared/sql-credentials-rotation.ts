@@ -27,6 +27,7 @@ export type TSqlCredentialsRotationOption = {
   template: {
     secretsMapping: TSqlCredentialsRotationProperties["secretsMapping"];
     createUserStatement: string;
+    rotationStatement: string;
   };
 };
 

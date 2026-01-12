@@ -5,7 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { organizationKeys } from "../organization/queries";
 import { userKeys } from "../users/query-keys";
 import { groupKeys } from "./queries";
-import { TGroup } from "./types";
+import { TGroup, TGroupMachineIdentity } from "./types";
 
 export const useCreateGroup = () => {
   const queryClient = useQueryClient();
@@ -95,6 +95,7 @@ export const useAddUserToGroup = () => {
     },
     onSuccess: (_, { slug }) => {
       queryClient.invalidateQueries({ queryKey: groupKeys.forGroupUserMemberships(slug) });
+      queryClient.invalidateQueries({ queryKey: groupKeys.forGroupMembers(slug) });
     }
   });
 };
@@ -119,6 +120,55 @@ export const useRemoveUserFromGroup = () => {
     onSuccess: (_, { slug, username }) => {
       queryClient.invalidateQueries({ queryKey: groupKeys.forGroupUserMemberships(slug) });
       queryClient.invalidateQueries({ queryKey: userKeys.listUserGroupMemberships(username) });
+      queryClient.invalidateQueries({ queryKey: groupKeys.forGroupMembers(slug) });
+    }
+  });
+};
+
+export const useAddIdentityToGroup = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      groupId,
+      identityId
+    }: {
+      groupId: string;
+      identityId: string;
+      slug: string;
+    }) => {
+      const { data } = await apiRequest.post<Pick<TGroupMachineIdentity, "id" | "name">>(
+        `/api/v1/groups/${groupId}/machine-identities/${identityId}`
+      );
+
+      return data;
+    },
+    onSuccess: (_, { slug }) => {
+      queryClient.invalidateQueries({ queryKey: groupKeys.forGroupIdentitiesMemberships(slug) });
+      queryClient.invalidateQueries({ queryKey: groupKeys.forGroupMembers(slug) });
+    }
+  });
+};
+
+export const useRemoveIdentityFromGroup = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      groupId,
+      identityId
+    }: {
+      groupId: string;
+      identityId: string;
+      slug: string;
+    }) => {
+      const { data } = await apiRequest.delete<Pick<TGroupMachineIdentity, "id" | "name">>(
+        `/api/v1/groups/${groupId}/machine-identities/${identityId}`
+      );
+
+      return data;
+    },
+    onSuccess: (_, { slug }) => {
+      queryClient.invalidateQueries({ queryKey: groupKeys.forGroupIdentitiesMemberships(slug) });
+      queryClient.invalidateQueries({ queryKey: groupKeys.forGroupMembers(slug) });
     }
   });
 };

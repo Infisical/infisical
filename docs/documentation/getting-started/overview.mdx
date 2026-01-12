@@ -18,6 +18,7 @@ description: "The open source platform for managing secrets, certificates, and s
   <Card
     title="Secrets Management"
     href="/documentation/platform/secrets-mgmt/overview"
+    icon="vault"
   >
   Securely store, manage, and control access to sensitive application secrets across your environments.
 
@@ -25,30 +26,28 @@ description: "The open source platform for managing secrets, certificates, and s
   <Card
     title="Secrets Scanning"
     href="/documentation/platform/secret-scanning/overview"
+    icon="radar"
   >
   Automatically detect and alert on hardcoded secrets in source code, CI pipelines, and infrastructure.
   </Card>
   <Card
     title="Certificate Management"
     href="/documentation/platform/pki/overview"
+    icon="file-certificate"
   >
   Automate CA and X.509 certificate lifecycle management across your infrastructure.
   </Card>
   <Card
-    title="Infisical SSH"
-    href="/documentation/platform/ssh/overview"
-  >
-  Replace static SSH keys with short-lived SSH certificates to simplify access and improve security.
-  </Card>
-  <Card
     title="Infisical PAM"
     href="/documentation/platform/pam/overview"
+    icon="user-shield"
   >
     Manage access to resources like databases, servers, and accounts with policy-based controls and approvals.
   </Card>
   <Card
     title="Infisical KMS"
     href="/documentation/platform/kms/overview"
+    icon="key"
   >
     Encrypt and decrypt sensitive data using a centralized key management system.
   </Card>
@@ -57,18 +56,21 @@ description: "The open source platform for managing secrets, certificates, and s
 ## Resources
 
 <Columns cols="2">
-  <Card title="CLI Reference" href="/cli/overview">
+  <Card title="CLI Reference" icon="terminal" href="/cli/overview">
     Explore Infisical’s command-line interface for managing secrets,
     certificates, and system operations via terminal.
   </Card>
-  <Card title="API Reference" href="/api-reference/overview/introduction">
+  <Card title="API Reference" icon="book-open-lines" href="/api-reference/overview/introduction">
     Browse Infisical’s API documentation to programmatically interact with
     secrets, access controls, and certificate workflows.
   </Card>
 </Columns>
-<Columns cols="1">
-  <Card title="Self-Hosting" href="/self-hosting/overview">
+<Columns cols="2">
+  <Card title="Self-Hosting" icon="server" href="/self-hosting/overview">
     Learn how to deploy and operate Infisical on your own infrastructure with
     full control and data ownership.
+  </Card>
+  <Card title="Security" icon="shield" href="/internals/security">
+    Learn about the security model and implementation best practices.
   </Card>
 </Columns>

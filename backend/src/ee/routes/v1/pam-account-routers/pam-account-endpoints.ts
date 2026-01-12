@@ -7,7 +7,7 @@ import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-export const registerPamResourceEndpoints = <C extends TPamAccount>({
+export const registerPamAccountEndpoints = <C extends TPamAccount>({
   server,
   resourceType,
   createAccountSchema,
@@ -24,6 +24,7 @@ export const registerPamResourceEndpoints = <C extends TPamAccount>({
     description?: C["description"];
     rotationEnabled?: C["rotationEnabled"];
     rotationIntervalSeconds?: C["rotationIntervalSeconds"];
+    requireMfa?: C["requireMfa"];
   }>;
   updateAccountSchema: z.ZodType<{
     credentials?: C["credentials"];
@@ -31,6 +32,7 @@ export const registerPamResourceEndpoints = <C extends TPamAccount>({
     description?: C["description"];
     rotationEnabled?: C["rotationEnabled"];
     rotationIntervalSeconds?: C["rotationIntervalSeconds"];
+    requireMfa?: C["requireMfa"];
   }>;
   accountResponseSchema: z.ZodTypeAny;
 }) => {
@@ -66,7 +68,8 @@ export const registerPamResourceEndpoints = <C extends TPamAccount>({
             name: req.body.name,
             description: req.body.description,
             rotationEnabled: req.body.rotationEnabled ?? false,
-            rotationIntervalSeconds: req.body.rotationIntervalSeconds
+            rotationIntervalSeconds: req.body.rotationIntervalSeconds,
+            requireMfa: req.body.requireMfa
           }
         }
       });
@@ -116,7 +119,8 @@ export const registerPamResourceEndpoints = <C extends TPamAccount>({
             name: req.body.name,
             description: req.body.description,
             rotationEnabled: req.body.rotationEnabled,
-            rotationIntervalSeconds: req.body.rotationIntervalSeconds
+            rotationIntervalSeconds: req.body.rotationIntervalSeconds,
+            requireMfa: req.body.requireMfa
           }
         }
       });

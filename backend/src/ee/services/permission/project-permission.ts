@@ -224,6 +224,14 @@ export enum ProjectPermissionPamSessionActions {
   // Terminate = "terminate"
 }
 
+export enum ProjectPermissionMcpEndpointActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  Connect = "connect"
+}
+
 export enum ProjectPermissionApprovalRequestActions {
   Read = "read",
   Create = "create"
@@ -286,7 +294,10 @@ export enum ProjectPermissionSub {
   PamSessions = "pam-sessions",
   CertificateProfiles = "certificate-profiles",
   ApprovalRequests = "approval-requests",
-  ApprovalRequestGrants = "approval-request-grants"
+  ApprovalRequestGrants = "approval-request-grants",
+  McpEndpoints = "mcp-endpoints",
+  McpServers = "mcp-servers",
+  McpActivityLogs = "mcp-activity-logs"
 }
 
 export type SecretSubjectFields = {
@@ -506,6 +517,9 @@ export type ProjectPermissionSet =
       ProjectPermissionSub.PamAccounts | (ForcedSubject<ProjectPermissionSub.PamAccounts> & PamAccountSubjectFields)
     ]
   | [ProjectPermissionPamSessionActions, ProjectPermissionSub.PamSessions]
+  | [ProjectPermissionMcpEndpointActions, ProjectPermissionSub.McpEndpoints]
+  | [ProjectPermissionActions, ProjectPermissionSub.McpServers]
+  | [ProjectPermissionActions, ProjectPermissionSub.McpActivityLogs]
   | [
       ProjectPermissionCertificateProfileActions,
       (
@@ -1117,6 +1131,24 @@ const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.PamSessions).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionPamSessionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.McpEndpoints).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionMcpEndpointActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.McpServers).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.McpActivityLogs).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
   }),

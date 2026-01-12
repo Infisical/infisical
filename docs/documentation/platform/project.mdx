@@ -20,19 +20,18 @@ The supported project types are:
 - [Secrets Management](/documentation/platform/secrets-mgmt/overview): Securely store, access, and distribute secrets across environments with fine-grained controls, automatic rotation, and audit logging.
 - [Secrets Scanning](/documentation/platform/secret-scanning/overview): Detect hardcoded secrets in code, CI pipelines, and infrastructure—integrated with GitHub, GitLab, Bitbucket, and more.
 - [Infisical PKI](/documentation/platform/pki/overview): Issue and manage X.509 certificates using protocols like EST, with support for internal and external CAs.
-- [Infisical SSH](/documentation/platform/ssh/overview): Provide short-lived SSH access to servers using certificate-based authentication, replacing static keys with policy-driven, time-bound control.
 - [Infisical KMS](/documentation/platform/kms/overview): Encrypt and decrypt data using centrally managed keys with enforced access policies and full audit visibility.
 - [Infisical PAM](/documentation/platform/pam/overview): Manage access to resources like databases, servers, and accounts with policy-based controls and approvals.
 
 ## Roles and Access Control
 
-[Users](/documentation/platform/identities/user-identities) and [machine identities](/documentation/platform/identities/machine-identities) must be added to a project to access its resources. Each identity is assigned a [project-level role](/documentation/platform/access-controls/role-based-access-controls#project-level-access-controls) that defines what they can manage—such as secrets, certificates, or SSH access. These roles apply to both individuals and [user groups](/documentation/platform/groups), enabling scalable access across teams and environments.
+[Users](/documentation/platform/identities/user-identities) and [machine identities](/documentation/platform/identities/machine-identities) must be added to a project to access its resources. Each identity is assigned a [project-level role](/documentation/platform/access-controls/role-based-access-controls#project-level-access-controls) that defines what they can manage—such as secrets, certificates, or PAM access. These roles apply to both individuals and [user groups](/documentation/platform/groups), enabling scalable access across teams and environments.
 
 Project access is strictly scoped: only members of a project can view or manage its resources. If someone needs access but isn’t part of the project, they can submit an access request.
 
-Each project in Infisical has its own [access control model](/documentation/platform/access-controls/role-based-access-controls#project-level-access-controls), distinct from [organization-level access control](/documentation/platform/access-controls/role-based-access-controls#organization-level-access-controls). While organization roles govern broader administrative access, project-level roles control what users, groups, and machine identities can do within the boundaries of a specific project—such as managing secrets, issuing certificates, or configuring SSH access.
+Each project in Infisical has its own [access control model](/documentation/platform/access-controls/role-based-access-controls#project-level-access-controls), distinct from [organization-level access control](/documentation/platform/access-controls/role-based-access-controls#organization-level-access-controls). While organization roles govern broader administrative access, project-level roles control what users, groups, and machine identities can do within the boundaries of a specific project—such as managing secrets, issuing certificates, or configuring PAM access.
 
-Depending on the project type (e.g. Secrets Management, PKI, SSH), project-level access control supports advanced features like [temporary access](/documentation/platform/access-controls/temporary-access), [access requests](/documentation/platform/access-controls/access-requests), and [additional privileges](/documentation/platform/access-controls/additional-privileges).
+Depending on the project type (e.g. Secrets Management, PKI, PAM), project-level access control supports advanced features like [temporary access](/documentation/platform/access-controls/temporary-access), [access requests](/documentation/platform/access-controls/access-requests), and [additional privileges](/documentation/platform/access-controls/additional-privileges).
 
 ![project roles](/images/platform/project/project-roles.png)
 
@@ -40,7 +39,7 @@ To learn more about how permissions work in detail, refer to the [access control
 
 ## Audit Logs
 
-Infisical provides [audit logging](/documentation/platform/audit-logs) at the project level to help teams monitor activity and maintain accountability within a specific project. These logs capture all relevant events—such as secret access, certificate issuance, and SSH activity—that occur within the boundaries of that project.
+Infisical provides [audit logging](/documentation/platform/audit-logs) at the project level to help teams monitor activity and maintain accountability within a specific project. These logs capture all relevant events—such as secret access, certificate issuance, and PAM activity—that occur within the boundaries of that project.
 
 Unlike the organization-level audit view, which aggregates logs across all projects in one centralized interface, the project-level audit view is scoped to a single project. This enables relevant project admins and contributors to review activity relevant to their work without having broader access to audit logs in other projects that they are not part of.
 

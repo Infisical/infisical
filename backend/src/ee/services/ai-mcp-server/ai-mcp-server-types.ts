@@ -1,0 +1,140 @@
+import { TProjectPermission } from "@app/lib/types";
+import { ActorAuthMethod } from "@app/services/auth/auth-type";
+
+import { AiMcpServerAuthMethod, AiMcpServerCredentialMode } from "./ai-mcp-server-enum";
+
+// OAuth types from MCP server
+// Protected Resource Metadata (RFC 9728)
+export type TOAuthProtectedResourceMetadata = {
+  resource: string;
+  resource_name?: string;
+  authorization_servers: string[];
+  bearer_methods_supported?: string[];
+  scopes_supported?: string[];
+};
+
+// Authorization Server Metadata (RFC 8414)
+export type TOAuthAuthorizationServerMetadata = {
+  issuer: string;
+  authorization_endpoint: string;
+  token_endpoint: string;
+  registration_endpoint?: string; // Optional - not all servers support DCR
+  scopes_supported?: string[];
+  response_types_supported?: string[];
+  grant_types_supported?: string[];
+  token_endpoint_auth_methods_supported?: string[];
+  code_challenge_methods_supported?: string[];
+};
+
+export type TOAuthDynamicClientMetadata = {
+  client_id: string;
+  client_secret?: string;
+  client_id_issued_at?: number;
+  client_secret_expires_at?: number;
+  redirect_uris: string[];
+  token_endpoint_auth_method: string;
+  grant_types: string[];
+  response_types: string[];
+  client_name?: string;
+};
+
+export type TOAuthTokenResponse = {
+  access_token: string;
+  token_type: string;
+  expires_in?: number;
+  refresh_token?: string;
+  scope?: string;
+};
+
+// Credential types
+export type TBasicCredentials = {
+  username: string;
+  password: string;
+};
+
+export type TBearerCredentials = {
+  token: string;
+};
+
+export type TOAuthCredentials = {
+  accessToken: string;
+  refreshToken?: string;
+  expiresAt?: number;
+  tokenType?: string;
+};
+
+export type TAiMcpServerCredentials = TBasicCredentials | TBearerCredentials | TOAuthCredentials;
+
+// OAuth session stored in keystore
+export type TOAuthSession = {
+  actorId: string;
+  codeVerifier: string;
+  codeChallenge: string;
+  clientId: string;
+  clientSecret?: string; // For servers that don't support DCR (like GitHub)
+  projectId: string;
+  serverUrl: string;
+  redirectUri: string;
+  tokenEndpoint: string; // Stored from OAuth discovery for token exchange
+  // Set after callback
+  accessToken?: string;
+  refreshToken?: string;
+  expiresAt?: number;
+  tokenType?: string;
+  authorized?: boolean;
+};
+
+export type TInitiateOAuthDTO = {
+  projectId: string;
+  url: string;
+  actorId: string;
+  clientId?: string;
+  clientSecret?: string;
+  actor?: string;
+  actorAuthMethod?: ActorAuthMethod;
+  actorOrgId?: string;
+};
+
+export type THandleOAuthCallbackDTO = {
+  sessionId: string;
+  code: string;
+};
+
+export type TGetOAuthStatusDTO = {
+  sessionId: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TCreateAiMcpServerDTO = {
+  name: string;
+  url: string;
+  description?: string;
+  credentialMode: AiMcpServerCredentialMode;
+  authMethod: AiMcpServerAuthMethod;
+  credentials: TBasicCredentials | TBearerCredentials | TOAuthCredentials;
+  oauthClientId?: string;
+  oauthClientSecret?: string;
+} & TProjectPermission;
+
+export type TListMcpServersDTO = TProjectPermission;
+
+export type TGetMcpServerByIdDTO = {
+  serverId: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TUpdateAiMcpServerDTO = {
+  serverId: string;
+  name?: string;
+  description?: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TDeleteMcpServerDTO = {
+  serverId: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TListMcpServerToolsDTO = {
+  serverId: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TSyncMcpServerToolsDTO = {
+  serverId: string;
+} & Omit<TProjectPermission, "projectId">;

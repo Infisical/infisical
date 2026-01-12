@@ -6,7 +6,9 @@ sidebarTitle: "ACME"
 ## Concept
 
 The ACME enrollment method allows Infisical to act as an ACME server. It lets you request and manage certificates against a specific [certificate profile](/documentation/platform/pki/certificates/profiles) using the [ACME protocol](https://en.wikipedia.org/wiki/Automatic_Certificate_Management_Environment).
-This method is suitable for web servers, load balancers, and other general-purpose servers that can run an [ACME client](https://letsencrypt.org/docs/client-options/) for automated certificate management.
+
+This method is suitable for web servers, load balancers, and other general-purpose servers that can run an [ACME client](https://letsencrypt.org/docs/client-options/) for automated certificate management;
+it can also be used with [cert-manager](https://cert-manager.io/) to issue and renew certificates for Kubernetes workloads through the [ACME issuer type](https://cert-manager.io/docs/configuration/acme/).
 
 Infisical's ACME enrollment method is based on [RFC 8555](https://datatracker.ietf.org/doc/html/rfc8555/).
 
@@ -25,6 +27,17 @@ In the following steps, we explore how to issue a X.509 certificate using the AC
     selected as the enrollment method.
 
     ![pki acme config](/images/platform/pki/enrollment-methods/acme/acme-config.png)
+
+    <Note>
+
+    By default, when the ACME client requests a certificate against the certificate profile for a particular domain, Infisical will verify domain ownership using the [HTTP-01 challenge](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) method prior to issuing a certificate back to the client.
+
+    If you want Infisical to skip domain ownership validation entirely, you can enable the **Skip DNS Ownership Validation** checkbox.
+
+    Note that skipping domain ownership validation for the ACME enrollment method is **not the same** as skipping validation for an [External ACME CA integration](/documentation/platform/pki/ca/acme-ca).
+
+    When using the ACME enrollment, the domain ownership check occurring between the ACME client and Infisical can be skipped. In contrast, External ACME CA integrations always require domain ownership validation, as Infisical must complete a DNS-01 challenge with the upstream ACME-compatible CA.
+    </Note>
 
   </Step>
   <Step title="Obtain the ACME configuration">

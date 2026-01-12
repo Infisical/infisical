@@ -1,26 +1,24 @@
 import { useMemo } from "react";
-import {
-  faArrowDown,
-  faArrowUp,
-  faFolder,
-  faMagnifyingGlass,
-  faSearch
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { ChevronDownIcon, PlusIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
+import { Lottie } from "@app/components/v2";
 import {
-  EmptyState,
-  IconButton,
-  Input,
-  Pagination,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
+  UnstableButton,
+  UnstableEmpty,
+  UnstableEmptyContent,
+  UnstableEmptyDescription,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle,
+  UnstableInput,
+  UnstablePagination,
+  UnstableTable,
+  UnstableTableBody,
+  UnstableTableHead,
+  UnstableTableHeader,
+  UnstableTableRow
+} from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -36,7 +34,7 @@ import { IdentityProjectRow } from "./IdentityProjectRow";
 type Props = {
   identityId: string;
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["removeIdentityFromProject"]>,
+    popUpName: keyof UsePopUpState<["removeIdentityFromProject", "addIdentityToProject"]>,
     data?: object
   ) => void;
 };
@@ -47,6 +45,8 @@ enum IdentityProjectsOrderBy {
 
 export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) => {
   const { data: projectMemberships = [], isPending } = useGetIdentityProjectMemberships(identityId);
+
+  const { isSubOrganization } = useOrganization();
 
   const {
     search,
@@ -90,41 +90,43 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
     setPage
   });
 
+  if (isPending) {
+    return (
+      // scott: todo proper loader
+      <div className="flex h-40 w-full items-center justify-center">
+        <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
+      </div>
+    );
+  }
+
   return (
-    <div>
-      <Input
+    <>
+      <UnstableInput
+        className="mb-4"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
         placeholder="Search projects..."
       />
-      <TableContainer className="mt-4">
-        <Table>
-          <THead>
-            <Tr>
-              <Th className="w-2/3">
-                <div className="flex items-center">
-                  Name
-                  <IconButton
-                    variant="plain"
-                    className="ml-2"
-                    ariaLabel="sort"
-                    onClick={toggleOrderDirection}
-                  >
-                    <FontAwesomeIcon
-                      icon={orderDirection === OrderByDirection.DESC ? faArrowUp : faArrowDown}
-                    />
-                  </IconButton>
-                </div>
-              </Th>
+      {filteredProjectMemberships.length ? (
+        <UnstableTable>
+          <UnstableTableHeader>
+            <UnstableTableRow>
+              <UnstableTableHead onClick={toggleOrderDirection} className="w-1/3">
+                Name
+                <ChevronDownIcon
+                  className={twMerge(
+                    orderDirection === OrderByDirection.DESC && "rotate-180",
+                    "transition-transform"
+                  )}
+                />
+              </UnstableTableHead>
 
-              <Th>Role</Th>
-              <Th>Added On</Th>
-              <Th className="w-5" />
-            </Tr>
-          </THead>
-          <TBody>
-            {isPending && <TableSkeleton columns={4} innerKey="identity-project-memberships" />}
+              <UnstableTableHead>Role</UnstableTableHead>
+              <UnstableTableHead>Added On</UnstableTableHead>
+              <UnstableTableHead className="w-5" />
+            </UnstableTableRow>
+          </UnstableTableHeader>
+          <UnstableTableBody>
             {!isPending &&
               filteredProjectMemberships.slice(offset, perPage * page).map((membership) => {
                 return (
@@ -135,28 +137,45 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
                   />
                 );
               })}
-          </TBody>
-        </Table>
-        {Boolean(filteredProjectMemberships.length) && (
-          <Pagination
-            count={filteredProjectMemberships.length}
-            page={page}
-            perPage={perPage}
-            onChangePage={setPage}
-            onChangePerPage={handlePerPageChange}
-          />
-        )}
-        {!isPending && !filteredProjectMemberships?.length && (
-          <EmptyState
-            title={
-              projectMemberships.length
-                ? "No projects match search..."
-                : "This machine identity has not been assigned to any projects"
-            }
-            icon={projectMemberships.length ? faSearch : faFolder}
-          />
-        )}
-      </TableContainer>
-    </div>
+          </UnstableTableBody>
+        </UnstableTable>
+      ) : (
+        <UnstableEmpty className="border">
+          <UnstableEmptyHeader>
+            <UnstableEmptyTitle>
+              {projectMemberships.length
+                ? "No projects match this search"
+                : "This machine identity is not a member of any projects"}
+            </UnstableEmptyTitle>
+            <UnstableEmptyDescription>
+              {projectMemberships.length
+                ? "Adjust search filters to view project memberships."
+                : "Assign this machine identity to a project."}
+            </UnstableEmptyDescription>
+            {!projectMemberships.length && (
+              <UnstableEmptyContent>
+                <UnstableButton
+                  variant={isSubOrganization ? "sub-org" : "org"}
+                  size="xs"
+                  onClick={() => handlePopUpOpen("addIdentityToProject")}
+                >
+                  <PlusIcon />
+                  Add to Project
+                </UnstableButton>
+              </UnstableEmptyContent>
+            )}
+          </UnstableEmptyHeader>
+        </UnstableEmpty>
+      )}
+      {Boolean(filteredProjectMemberships.length) && (
+        <UnstablePagination
+          count={filteredProjectMemberships.length}
+          page={page}
+          perPage={perPage}
+          onChangePage={setPage}
+          onChangePerPage={handlePerPageChange}
+        />
+      )}
+    </>
   );
 };

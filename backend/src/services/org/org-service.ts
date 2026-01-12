@@ -937,10 +937,25 @@ export const orgServiceFactory = ({
       [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId
     });
 
-    if (!orgMembership)
+    if (!orgMembership) {
+      // Check if user is already a member
+      const [acceptedMembership] = await orgDAL.findMembership({
+        [`${TableName.Membership}.actorUserId` as "actorUserId"]: user.id,
+        scope: AccessScope.Organization,
+        status: OrgMembershipStatus.Accepted,
+        [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId
+      });
+
+      if (acceptedMembership) {
+        throw new BadRequestError({
+          message: "User is already a member of this organization"
+        });
+      }
+
       throw new NotFoundError({
         message: "No pending invitation found"
       });
+    }
 
     const organization = await orgDAL.findById(orgId);
 

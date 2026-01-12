@@ -264,12 +264,38 @@ export const additionalPrivilegeServiceFactory = ({
     };
   };
 
+  const listAdditionalPrivilegesWithAccessApprovalStatus = async (dto: TListAdditionalPrivilegesDTO) => {
+    const { scopeData } = dto;
+    const factory = scopeFactory[scopeData.scope];
+    await factory.onListAdditionalPrivilegesGuard(dto);
+    const scope = factory.getScopeField(dto.scopeData);
+    const dbActorField = dto.selector.actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId";
+
+    const additionalPrivileges = await additionalPrivilegeDAL.findWithAccessApprovalStatus({
+      [dbActorField]: dto.selector.actorId,
+      [scope.key]: scope.value
+    });
+
+    return {
+      additionalPrivileges: additionalPrivileges.map((el) => ({
+        ...el,
+        permissions: unpackPermissions(el.permissions)
+      }))
+    };
+  };
+
+  const isPrivilegeLinkedToAccessApproval = async (privilegeId: string): Promise<boolean> => {
+    return additionalPrivilegeDAL.isLinkedToAccessApproval(privilegeId);
+  };
+
   return {
     createAdditionalPrivilege,
     updateAdditionalPrivilege,
     deleteAdditionalPrivilege,
     getAdditionalPrivilegeById,
     getAdditionalPrivilegeByName,
-    listAdditionalPrivileges
+    listAdditionalPrivileges,
+    listAdditionalPrivilegesWithAccessApprovalStatus,
+    isPrivilegeLinkedToAccessApproval
   };
 };

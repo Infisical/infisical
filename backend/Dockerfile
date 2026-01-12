@@ -48,12 +48,39 @@ RUN apt-get install -y \
 
 RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nFileUsage = 1\n" > /etc/odbcinst.ini
 
+# Install Oracle Instant Client for OracleDB mTLS wallet support
+RUN ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ]; then \
+        ORACLE_ZIP="instantclient-basic-linux.x64-23.26.0.0.0.zip" && \
+        ORACLE_URL="https://download.oracle.com/otn_software/linux/instantclient/2326000/${ORACLE_ZIP}" && \
+        EXPECTED_SHA="d6c79cbcf0ff209363e779855c690d4fc730aed847e9198a2c439bcf34760af5" && \
+        apt-get update && apt-get install -y libaio1t64 unzip wget && \
+        ln -sf /lib/x86_64-linux-gnu/libaio.so.1t64 /lib/x86_64-linux-gnu/libaio.so.1 && \
+        wget -q "$ORACLE_URL" && \
+        echo "$EXPECTED_SHA  $ORACLE_ZIP" | sha256sum -c - && \
+        unzip "$ORACLE_ZIP" -d /opt/oracle && \
+        rm "$ORACLE_ZIP"; \
+    elif [ "$ARCH" = "arm64" ]; then \
+        ORACLE_ZIP="instantclient-basic-linux.arm64-23.26.0.0.0.zip" && \
+        ORACLE_URL="https://download.oracle.com/otn_software/linux/instantclient/2326000/${ORACLE_ZIP}" && \
+        EXPECTED_SHA="9c9a32051e97f087016fb334b7ad5c0aea8511ca8363afd8e0dc6ec4fc515c32" && \
+        apt-get update && apt-get install -y libaio1t64 unzip wget && \
+        ln -sf /lib/aarch64-linux-gnu/libaio.so.1t64 /lib/aarch64-linux-gnu/libaio.so.1 && \
+        wget -q "$ORACLE_URL" && \
+        echo "$EXPECTED_SHA  $ORACLE_ZIP" | sha256sum -c - && \
+        unzip "$ORACLE_ZIP" -d /opt/oracle && \
+        rm "$ORACLE_ZIP"; \
+    fi && \
+    echo /opt/oracle/instantclient_23_26 > /etc/ld.so.conf.d/oracle-instantclient.conf && \
+    ldconfig && \
+    rm -rf /var/lib/apt/lists/*
+
 RUN npm ci --only-production && npm cache clean --force
 
 COPY --from=build /app .
 
 # Install Infisical CLI
-RUN apt-get install -y curl bash && \
+RUN apt-get update && apt-get install -y curl bash && \
     curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash && \
     apt-get update && apt-get install -y infisical=0.43.14 git
 

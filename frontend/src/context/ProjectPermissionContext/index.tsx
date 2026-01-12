@@ -11,6 +11,7 @@ export {
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionKmipActions,
+  ProjectPermissionMcpEndpointActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiSyncActions,

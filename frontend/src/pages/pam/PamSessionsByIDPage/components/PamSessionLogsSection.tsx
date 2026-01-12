@@ -1,9 +1,16 @@
 import { faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { PamResourceType, TPamCommandLog, TPamSession, TTerminalEvent } from "@app/hooks/api/pam";
+import {
+  PamResourceType,
+  THttpEvent,
+  TPamCommandLog,
+  TPamSession,
+  TTerminalEvent
+} from "@app/hooks/api/pam";
 
 import { CommandLogView } from "./CommandLogView";
+import { HttpEventView } from "./HttpEventView";
 import { TerminalEventView } from "./TerminalEventView";
 
 type Props = {
@@ -15,7 +22,9 @@ export const PamSessionLogsSection = ({ session }: Props) => {
   const isSSHSession = session.resourceType === PamResourceType.SSH;
   const isDatabaseSession =
     session.resourceType === PamResourceType.Postgres ||
-    session.resourceType === PamResourceType.MySQL;
+    session.resourceType === PamResourceType.MySQL ||
+    session.resourceType === PamResourceType.Redis;
+  const isHttpSession = session.resourceType === PamResourceType.Kubernetes;
   const isAwsIamSession = session.resourceType === PamResourceType.AwsIam;
   const hasLogs = session.logs.length > 0;
 
@@ -27,6 +36,7 @@ export const PamSessionLogsSection = ({ session }: Props) => {
 
       {isDatabaseSession && hasLogs && <CommandLogView logs={session.logs as TPamCommandLog[]} />}
       {isSSHSession && hasLogs && <TerminalEventView events={session.logs as TTerminalEvent[]} />}
+      {isHttpSession && hasLogs && <HttpEventView events={session.logs as THttpEvent[]} />}
       {isAwsIamSession && (
         <div className="flex grow items-center justify-center text-bunker-300">
           <div className="text-center">

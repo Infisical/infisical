@@ -134,9 +134,13 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
     }
 
     if (error instanceof BadRequestError) {
-      void res
-        .status(HttpStatusCodes.BadRequest)
-        .send({ reqId: req.id, statusCode: HttpStatusCodes.BadRequest, message: error.message, error: error.name });
+      void res.status(HttpStatusCodes.BadRequest).send({
+        reqId: req.id,
+        statusCode: HttpStatusCodes.BadRequest,
+        message: error.message,
+        error: error.name,
+        details: error.details
+      });
     } else if (error instanceof NotFoundError) {
       void res
         .status(HttpStatusCodes.NotFound)

@@ -195,6 +195,8 @@ export const CERTIFICATE_RENEWAL_CONFIG = {
   QUEUE_START_DELAY_MS: 5000
 } as const;
 
+export const DEFAULT_CRL_VALIDITY_DAYS = 7;
+
 export const SAN_TYPE_OPTIONS = Object.values(CertSubjectAlternativeNameType);
 export const KEY_USAGE_OPTIONS = Object.values(CertKeyUsageType);
 export const EXTENDED_KEY_USAGE_OPTIONS = Object.values(CertExtendedKeyUsageType);

@@ -272,7 +272,7 @@ const secretManagerIntegrationsRedirect = route("/integrations", [
   )
 ]);
 
-const certManagerRoutes = route("/organizations/$orgId/projects/cert-management/$projectId", [
+const certManagerRoutes = route("/organizations/$orgId/projects/cert-manager/$projectId", [
   layout("cert-manager-layout", "cert-manager/layout.tsx", [
     route("/policies", "cert-manager/PoliciesPage/route.tsx"),
     route("/subscribers", [
@@ -296,6 +296,21 @@ const certManagerRoutes = route("/organizations/$orgId/projects/cert-management/
     route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-cert-manager.tsx"),
     route("/members/$membershipId", "project/MemberDetailsByIDPage/route-cert-manager.tsx"),
     route("/groups/$groupId", "project/GroupDetailsByIDPage/route-cert-manager.tsx")
+  ])
+]);
+
+const aiRoutes = route("/organizations/$orgId/projects/ai/$projectId", [
+  layout("ai-layout", "ai/layout.tsx", [
+    route("/mcp-servers/$serverId", "ai/MCPServerDetailPage/route.tsx"),
+    route("/mcp-endpoints/$endpointId", "ai/MCPEndpointDetailPage/route.tsx"),
+    route("/overview", "ai/MCPPage/route.tsx"),
+    route("/settings", "ai/SettingsPage/route.tsx"),
+    route("/audit-logs", "project/AuditLogsPage/route-ai.tsx"),
+    route("/access-management", "project/AccessControlPage/route-ai.tsx"),
+    route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-ai.tsx"),
+    route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-ai.tsx"),
+    route("/members/$membershipId", "project/MemberDetailsByIDPage/route-ai.tsx"),
+    route("/groups/$groupId", "project/GroupDetailsByIDPage/route-ai.tsx")
   ])
 ]);
 
@@ -428,10 +443,12 @@ export const routes = rootRoute("root.tsx", [
   ]),
   middleware("authenticate.tsx", [
     route("/password-setup", "auth/PasswordSetupPage/route.tsx"),
+    route("/mfa-session/$mfaSessionId", "MfaSessionPage/route.tsx"),
     route("/personal-settings", [
       layout("user/layout.tsx", [index("user/PersonalSettingsPage/route.tsx")])
     ]),
     route("/organizations/none", "organization/NoOrgPage/route.tsx"),
+    route("/organization/mcp-endpoint-finalize", "organization/McpEndpointFinalizePage/route.tsx"),
     middleware("inject-org-details.tsx", [
       route("/organization/$", "redirects/organization-redirect.tsx"),
       route("/projects/$", "redirects/project-redirect.tsx"),
@@ -447,7 +464,8 @@ export const routes = rootRoute("root.tsx", [
         kmsRoutes,
         sshRoutes,
         secretScanningRoutes,
-        pamRoutes
+        pamRoutes,
+        aiRoutes
       ])
     ])
   ])

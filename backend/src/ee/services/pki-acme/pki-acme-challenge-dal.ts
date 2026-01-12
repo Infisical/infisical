@@ -122,6 +122,11 @@ export const pkiAcmeChallengeDALFactory = (db: TDbClient) => {
     const result = await (tx || db)(TableName.PkiAcmeChallenge)
       .join(TableName.PkiAcmeAuth, `${TableName.PkiAcmeChallenge}.authId`, `${TableName.PkiAcmeAuth}.id`)
       .join(TableName.PkiAcmeAccount, `${TableName.PkiAcmeAuth}.accountId`, `${TableName.PkiAcmeAccount}.id`)
+      .join(
+        TableName.PkiCertificateProfile,
+        `${TableName.PkiAcmeAccount}.profileId`,
+        `${TableName.PkiCertificateProfile}.id`
+      )
       .select(
         selectAllTableCols(TableName.PkiAcmeChallenge),
         db.ref("id").withSchema(TableName.PkiAcmeAuth).as("authId"),
@@ -131,7 +136,9 @@ export const pkiAcmeChallengeDALFactory = (db: TDbClient) => {
         db.ref("identifierValue").withSchema(TableName.PkiAcmeAuth).as("authIdentifierValue"),
         db.ref("expiresAt").withSchema(TableName.PkiAcmeAuth).as("authExpiresAt"),
         db.ref("id").withSchema(TableName.PkiAcmeAccount).as("accountId"),
-        db.ref("publicKeyThumbprint").withSchema(TableName.PkiAcmeAccount).as("accountPublicKeyThumbprint")
+        db.ref("publicKeyThumbprint").withSchema(TableName.PkiAcmeAccount).as("accountPublicKeyThumbprint"),
+        db.ref("profileId").withSchema(TableName.PkiAcmeAccount).as("profileId"),
+        db.ref("projectId").withSchema(TableName.PkiCertificateProfile).as("projectId")
       )
       // For all challenges, acquire update lock on the auth to avoid race conditions
       .forUpdate(TableName.PkiAcmeAuth)
@@ -149,6 +156,8 @@ export const pkiAcmeChallengeDALFactory = (db: TDbClient) => {
       authExpiresAt,
       accountId,
       accountPublicKeyThumbprint,
+      profileId,
+      projectId,
       ...challenge
     } = result;
     return {
@@ -161,7 +170,11 @@ export const pkiAcmeChallengeDALFactory = (db: TDbClient) => {
         expiresAt: authExpiresAt,
         account: {
           id: accountId,
-          publicKeyThumbprint: accountPublicKeyThumbprint
+          publicKeyThumbprint: accountPublicKeyThumbprint,
+          project: {
+            id: projectId
+          },
+          profileId
         }
       }
     };

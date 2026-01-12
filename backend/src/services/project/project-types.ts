@@ -144,6 +144,11 @@ export type TListProjectCertsDTO = {
   friendlyName?: string;
   commonName?: string;
   forPkiSync?: boolean;
+  search?: string;
+  status?: string | string[];
+  profileIds?: string[];
+  fromDate?: Date;
+  toDate?: Date;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TListProjectAlertsDTO = TProjectPermission;

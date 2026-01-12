@@ -2,7 +2,6 @@ import { z } from "zod";
 
 import {
   AccessScope,
-  OrgMembershipRole,
   ProjectMembershipRole,
   ProjectMembershipsSchema,
   ProjectUserMembershipRolesSchema,
@@ -275,7 +274,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
           orgId: req.permission.orgId
         },
         data: {
-          roles: [{ isTemporary: false, role: OrgMembershipRole.NoAccess }],
+          roles: [],
           usernames: usernamesAndEmails
         }
       });

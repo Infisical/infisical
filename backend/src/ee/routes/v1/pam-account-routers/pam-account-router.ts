@@ -4,10 +4,12 @@ import { PamFoldersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountOrderBy, PamAccountView } from "@app/ee/services/pam-account/pam-account-enums";
 import { SanitizedAwsIamAccountWithResourceSchema } from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
+import { SanitizedKubernetesAccountWithResourceSchema } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
 import { SanitizedMySQLAccountWithResourceSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { GatewayAccessResponseSchema } from "@app/ee/services/pam-resource/pam-resource-schemas";
 import { SanitizedPostgresAccountWithResourceSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
+import { SanitizedRedisAccountWithResourceSchema } from "@app/ee/services/pam-resource/redis/redis-resource-schemas";
 import { SanitizedSSHAccountWithResourceSchema } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
@@ -21,10 +23,18 @@ const SanitizedAccountSchema = z.union([
   SanitizedSSHAccountWithResourceSchema, // ORDER MATTERS
   SanitizedPostgresAccountWithResourceSchema,
   SanitizedMySQLAccountWithResourceSchema,
+  SanitizedRedisAccountWithResourceSchema,
+  SanitizedKubernetesAccountWithResourceSchema,
   SanitizedAwsIamAccountWithResourceSchema
 ]);
 
-type TSanitizedAccount = z.infer<typeof SanitizedAccountSchema>;
+const ListPamAccountsResponseSchema = z.object({
+  accounts: SanitizedAccountSchema.array(),
+  folders: PamFoldersSchema.array(),
+  totalCount: z.number().default(0),
+  folderId: z.string().optional(),
+  folderPaths: z.record(z.string(), z.string())
+});
 
 export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -55,13 +65,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           .optional()
       }),
       response: {
-        200: z.object({
-          accounts: SanitizedAccountSchema.array(),
-          folders: PamFoldersSchema.array(),
-          totalCount: z.number().default(0),
-          folderId: z.string().optional(),
-          folderPaths: z.record(z.string(), z.string())
-        })
+        200: ListPamAccountsResponseSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
@@ -98,7 +102,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { accounts: accounts as TSanitizedAccount[], folders, totalCount, folderId, folderPaths };
+      return { accounts, folders, totalCount, folderId, folderPaths } as z.infer<typeof ListPamAccountsResponseSchema>;
     }
   });
 
@@ -113,6 +117,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         accountPath: z.string().trim(),
         projectId: z.string().uuid(),
+        mfaSessionId: z.string().optional(),
         duration: z
           .string()
           .min(1)
@@ -131,10 +136,12 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.discriminatedUnion("resourceType", [
-          // Gateway-based resources (Postgres, MySQL, SSH)
+          // Gateway-based resources (Postgres, MySQL, Redis, SSH)
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Postgres) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.MySQL) }),
+          GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Redis) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.SSH) }),
+          GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Kubernetes) }),
           // AWS IAM (no gateway, returns console URL)
           z.object({
             sessionId: z.string(),
@@ -160,7 +167,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           actorUserAgent: req.auditLogInfo.userAgent ?? "",
           accountPath: req.body.accountPath,
           projectId: req.body.projectId,
-          duration: req.body.duration
+          duration: req.body.duration,
+          mfaSessionId: req.body.mfaSessionId
         },
         req.permission
       );

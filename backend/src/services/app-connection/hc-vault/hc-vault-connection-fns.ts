@@ -18,11 +18,15 @@ import {
   THCVaultAuthMountResponse,
   THCVaultConnection,
   THCVaultConnectionConfig,
+  THCVaultDatabaseConfig,
+  THCVaultDatabaseRole,
   THCVaultKubernetesAuthConfig,
   THCVaultKubernetesAuthRole,
   THCVaultKubernetesAuthRoleWithConfig,
   THCVaultKubernetesRole,
   THCVaultKubernetesSecretsConfig,
+  THCVaultLdapConfig,
+  THCVaultLdapRole,
   THCVaultMount,
   THCVaultMountResponse
 } from "./hc-vault-connection-types";
@@ -46,6 +50,23 @@ export const convertVaultValueToString = (value: JsonValue): string => {
 
 // Concurrency limit for HC Vault API requests to avoid rate limiting
 const HC_VAULT_CONCURRENCY_LIMIT = 20;
+
+// Helper to check if error is a 404
+const isVault404Error = (error: unknown): boolean => {
+  if (error && typeof error === "object" && "response" in error) {
+    const axiosError = error as { response?: { status?: number } };
+    return axiosError.response?.status === 404;
+  }
+  return false;
+};
+
+// Helper to extract error message from Vault API errors
+const getVaultErrorMessage = (error: unknown, fallback: string): string => {
+  if (error instanceof AxiosError) {
+    return (error.response?.data as { errors?: string[] })?.errors?.[0] || error.message || fallback;
+  }
+  return fallback;
+};
 
 /**
  * Creates a concurrency limiter that restricts the number of concurrent async operations
@@ -626,7 +647,7 @@ export const getHCVaultSecretsForPath = async (
           };
         };
       }>(connection, gatewayService, {
-        url: `${instanceUrl}/v1/${mountPath}/data/${actualPath}`,
+        url: `${instanceUrl}/v1/${encodeURIComponent(mountPath)}/data/${actualPath}`,
         method: "GET",
         headers: {
           "X-Vault-Token": accessToken,
@@ -644,7 +665,7 @@ export const getHCVaultSecretsForPath = async (
       lease_id: string;
       renewable: boolean;
     }>(connection, gatewayService, {
-      url: `${instanceUrl}/v1/${mountPath}/${actualPath}`,
+      url: `${instanceUrl}/v1/${encodeURIComponent(mountPath)}/${actualPath}`,
       method: "GET",
       headers: {
         "X-Vault-Token": accessToken,
@@ -740,7 +761,7 @@ export const getHCVaultKubernetesAuthRoles = async (
       connection,
       gatewayService,
       {
-        url: `${instanceUrl}/v1/auth/${cleanMountPath}/config`,
+        url: `${instanceUrl}/v1/auth/${encodeURIComponent(cleanMountPath)}/config`,
         method: "GET",
         headers: {
           "X-Vault-Token": accessToken,
@@ -780,7 +801,7 @@ export const getHCVaultKubernetesAuthRoles = async (
           connection,
           gatewayService,
           {
-            url: `${instanceUrl}/v1/auth/${cleanMountPath}/role/${roleName}`,
+            url: `${instanceUrl}/v1/auth/${encodeURIComponent(cleanMountPath)}/role/${encodeURIComponent(roleName)}`,
             method: "GET",
             headers: {
               "X-Vault-Token": accessToken,
@@ -836,7 +857,7 @@ export const getHCVaultKubernetesRoles = async (
       connection,
       gatewayService,
       {
-        url: `${instanceUrl}/v1/${cleanMountPath}/config`,
+        url: `${instanceUrl}/v1/${encodeURIComponent(cleanMountPath)}/config`,
         method: "GET",
         headers: {
           "X-Vault-Token": accessToken,
@@ -854,7 +875,7 @@ export const getHCVaultKubernetesRoles = async (
         connection,
         gatewayService,
         {
-          url: `${instanceUrl}/v1/${cleanMountPath}/roles?list=true`,
+          url: `${instanceUrl}/v1/${encodeURIComponent(cleanMountPath)}/roles?list=true`,
           method: "GET",
           headers: {
             "X-Vault-Token": accessToken,
@@ -864,14 +885,7 @@ export const getHCVaultKubernetesRoles = async (
       );
       roleNames = roleListResponse.data.keys || [];
     } catch (error) {
-      // Vault returns 404 when no roles are configured yet
-      if (error && typeof error === "object" && "response" in error) {
-        const axiosError = error as { response?: { status?: number } };
-        if (axiosError.response?.status === 404) {
-          return [];
-        }
-      }
-
+      if (isVault404Error(error)) return [];
       throw error;
     }
 
@@ -900,7 +914,7 @@ export const getHCVaultKubernetesRoles = async (
             extra_labels?: Record<string, string>;
           };
         }>(connection, gatewayService, {
-          url: `${instanceUrl}/v1/${cleanMountPath}/roles/${roleName}`,
+          url: `${instanceUrl}/v1/${encodeURIComponent(cleanMountPath)}/roles/${encodeURIComponent(roleName)}`,
           method: "GET",
           headers: {
             "X-Vault-Token": accessToken,
@@ -908,7 +922,6 @@ export const getHCVaultKubernetesRoles = async (
           }
         });
 
-        // 4. Merge the role with the config
         return {
           ...roleResponse.data,
           name: roleName,
@@ -918,22 +931,245 @@ export const getHCVaultKubernetesRoles = async (
       })
     );
 
-    const roles = await Promise.all(roleDetailsPromises);
-
-    return roles;
+    return await Promise.all(roleDetailsPromises);
   } catch (error: unknown) {
     logger.error(error, "Unable to list HC Vault Kubernetes secrets engine roles");
+    throw new BadRequestError({
+      message: `Failed to list Kubernetes secrets engine roles: ${getVaultErrorMessage(error, "Unknown error")}`
+    });
+  }
+};
 
-    if (error instanceof AxiosError) {
-      const errorMessage =
-        (error.response?.data as { errors?: string[] })?.errors?.[0] || error.message || "Unknown error";
-      throw new BadRequestError({
-        message: `Failed to list Kubernetes secrets engine roles: ${errorMessage}`
-      });
+export const getHCVaultDatabaseRoles = async (
+  namespace: string,
+  mountPath: string,
+  connection: THCVaultConnection,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+): Promise<THCVaultDatabaseRole[]> => {
+  // Remove trailing slash from mount path
+  const cleanMountPath = mountPath.endsWith("/") ? mountPath.slice(0, -1) : mountPath;
+
+  try {
+    const instanceUrl = await getHCVaultInstanceUrl(connection);
+    const accessToken = await getHCVaultAccessToken(connection, gatewayService);
+
+    // 1. List all database connections in this mount to get their configs
+    let connectionNames: string[] = [];
+    try {
+      const { data: connectionListResponse } = await requestWithHCVaultGateway<{ data: { keys: string[] } }>(
+        connection,
+        gatewayService,
+        {
+          url: `${instanceUrl}/v1/${encodeURIComponent(cleanMountPath)}/config?list=true`,
+          method: "GET",
+          headers: {
+            "X-Vault-Token": accessToken,
+            "X-Vault-Namespace": namespace
+          }
+        }
+      );
+      connectionNames = connectionListResponse.data.keys || [];
+    } catch (error) {
+      if (isVault404Error(error)) return [];
+      throw error;
     }
 
+    // 2. Fetch config for each database connection
+    const limiter = createConcurrencyLimiter(HC_VAULT_CONCURRENCY_LIMIT);
+    const connectionConfigs: Map<string, THCVaultDatabaseConfig> = new Map();
+
+    await Promise.all(
+      connectionNames.map((connName) =>
+        limiter(async () => {
+          try {
+            const { data: configResponse } = await requestWithHCVaultGateway<{
+              data: THCVaultDatabaseConfig;
+            }>(connection, gatewayService, {
+              url: `${instanceUrl}/v1/${encodeURIComponent(cleanMountPath)}/config/${encodeURIComponent(connName)}`,
+              method: "GET",
+              headers: {
+                "X-Vault-Token": accessToken,
+                "X-Vault-Namespace": namespace
+              }
+            });
+            connectionConfigs.set(connName, configResponse.data);
+          } catch {
+            // Skip connections we can't read
+          }
+        })
+      )
+    );
+
+    // 3. List all roles in this mount
+    let roleNames: string[] = [];
+    try {
+      const { data: roleListResponse } = await requestWithHCVaultGateway<{ data: { keys: string[] } }>(
+        connection,
+        gatewayService,
+        {
+          url: `${instanceUrl}/v1/${encodeURIComponent(cleanMountPath)}/roles?list=true`,
+          method: "GET",
+          headers: {
+            "X-Vault-Token": accessToken,
+            "X-Vault-Namespace": namespace
+          }
+        }
+      );
+      roleNames = roleListResponse.data.keys || [];
+    } catch (error) {
+      if (isVault404Error(error)) return [];
+      throw error;
+    }
+
+    if (!roleNames || roleNames.length === 0) {
+      return [];
+    }
+
+    // 4. Fetch details for each role with concurrency control
+    const roleDetailsPromises = roleNames.map((roleName) =>
+      limiter(async () => {
+        const { data: roleResponse } = await requestWithHCVaultGateway<{
+          data: {
+            db_name: string;
+            default_ttl?: number;
+            max_ttl?: number;
+            creation_statements?: string[];
+            revocation_statements?: string[];
+            renew_statements?: string[];
+          };
+        }>(connection, gatewayService, {
+          url: `${instanceUrl}/v1/${encodeURIComponent(cleanMountPath)}/roles/${encodeURIComponent(roleName)}`,
+          method: "GET",
+          headers: {
+            "X-Vault-Token": accessToken,
+            "X-Vault-Namespace": namespace
+          }
+        });
+
+        const dbConfig = connectionConfigs.get(roleResponse.data.db_name) || {
+          plugin_name: "",
+          connection_details: { connection_url: "" }
+        };
+
+        return {
+          name: roleName,
+          db_name: roleResponse.data.db_name,
+          default_ttl: roleResponse.data.default_ttl,
+          max_ttl: roleResponse.data.max_ttl,
+          creation_statements: roleResponse.data.creation_statements,
+          revocation_statements: roleResponse.data.revocation_statements,
+          renew_statements: roleResponse.data.renew_statements,
+          config: dbConfig,
+          mountPath: cleanMountPath
+        } as THCVaultDatabaseRole;
+      })
+    );
+
+    return await Promise.all(roleDetailsPromises);
+  } catch (error: unknown) {
+    logger.error(error, "Unable to list HC Vault database secrets engine roles");
     throw new BadRequestError({
-      message: "Unable to list Kubernetes secrets engine roles from HashiCorp Vault"
+      message: `Failed to list database secrets engine roles: ${getVaultErrorMessage(error, "Unknown error")}`
+    });
+  }
+};
+
+export const getHCVaultLdapRoles = async (
+  namespace: string,
+  mountPath: string,
+  connection: THCVaultConnection,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+): Promise<THCVaultLdapRole[]> => {
+  // Remove trailing slash from mount path
+  const cleanMountPath = mountPath.endsWith("/") ? mountPath.slice(0, -1) : mountPath;
+
+  try {
+    const instanceUrl = await getHCVaultInstanceUrl(connection);
+    const accessToken = await getHCVaultAccessToken(connection, gatewayService);
+
+    // 1. Get the LDAP secrets engine configuration for this mount
+    const { data: configResponse } = await requestWithHCVaultGateway<{ data: THCVaultLdapConfig }>(
+      connection,
+      gatewayService,
+      {
+        url: `${instanceUrl}/v1/${encodeURIComponent(cleanMountPath)}/config`,
+        method: "GET",
+        headers: {
+          "X-Vault-Token": accessToken,
+          "X-Vault-Namespace": namespace
+        }
+      }
+    );
+
+    const ldapConfig = configResponse.data;
+
+    // 2. List all dynamic roles in this mount
+    let roleNames: string[] = [];
+    try {
+      const { data: roleListResponse } = await requestWithHCVaultGateway<{ data: { keys: string[] } }>(
+        connection,
+        gatewayService,
+        {
+          url: `${instanceUrl}/v1/${encodeURIComponent(cleanMountPath)}/role?list=true`,
+          method: "GET",
+          headers: {
+            "X-Vault-Token": accessToken,
+            "X-Vault-Namespace": namespace
+          }
+        }
+      );
+      roleNames = roleListResponse.data.keys || [];
+    } catch (error) {
+      if (isVault404Error(error)) return [];
+      throw error;
+    }
+
+    if (!roleNames || roleNames.length === 0) {
+      return [];
+    }
+
+    // 3. Fetch details for each role with concurrency control
+    const limiter = createConcurrencyLimiter(HC_VAULT_CONCURRENCY_LIMIT);
+
+    const roleDetailsPromises = roleNames.map((roleName) =>
+      limiter(async () => {
+        const { data: roleResponse } = await requestWithHCVaultGateway<{
+          data: {
+            default_ttl?: number;
+            max_ttl?: number;
+            creation_ldif?: string;
+            deletion_ldif?: string;
+            rollback_ldif?: string;
+            username_template?: string;
+          };
+        }>(connection, gatewayService, {
+          url: `${instanceUrl}/v1/${encodeURIComponent(cleanMountPath)}/role/${encodeURIComponent(roleName)}`,
+          method: "GET",
+          headers: {
+            "X-Vault-Token": accessToken,
+            "X-Vault-Namespace": namespace
+          }
+        });
+
+        return {
+          name: roleName,
+          default_ttl: roleResponse.data.default_ttl,
+          max_ttl: roleResponse.data.max_ttl,
+          creation_ldif: roleResponse.data.creation_ldif,
+          deletion_ldif: roleResponse.data.deletion_ldif,
+          rollback_ldif: roleResponse.data.rollback_ldif,
+          username_template: roleResponse.data.username_template,
+          config: ldapConfig,
+          mountPath: cleanMountPath
+        } as THCVaultLdapRole;
+      })
+    );
+
+    return await Promise.all(roleDetailsPromises);
+  } catch (error: unknown) {
+    logger.error(error, "Unable to list HC Vault LDAP secrets engine roles");
+    throw new BadRequestError({
+      message: `Failed to list LDAP secrets engine roles: ${getVaultErrorMessage(error, "Unknown error")}`
     });
   }
 };

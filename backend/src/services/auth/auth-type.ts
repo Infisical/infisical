@@ -30,7 +30,8 @@ export enum AuthMode {
   SERVICE_TOKEN = "serviceToken",
   API_KEY = "apiKey",
   IDENTITY_ACCESS_TOKEN = "identityAccessToken",
-  SCIM_TOKEN = "scimToken"
+  SCIM_TOKEN = "scimToken",
+  MCP_JWT = "mcpJwt"
 }
 
 export enum ActorType { // would extend to AWS, Azure, ...
@@ -41,6 +42,7 @@ export enum ActorType { // would extend to AWS, Azure, ...
   IDENTITY = "identity",
   Machine = "machine",
   SCIM_CLIENT = "scimClient",
+  ACME_PROFILE = "acmeProfile",
   ACME_ACCOUNT = "acmeAccount",
   UNKNOWN_USER = "unknownUser"
 }
@@ -58,6 +60,9 @@ export type AuthModeJwtTokenPayload = {
   subOrganizationId?: string;
   isMfaVerified?: boolean;
   mfaMethod?: MfaMethod;
+  mcp?: {
+    endpointId: string;
+  };
 };
 
 export type AuthModeMfaJwtTokenPayload = {
@@ -95,5 +100,6 @@ export type AuthModeProviderSignUpTokenPayload = {
 
 export enum MfaMethod {
   EMAIL = "email",
-  TOTP = "totp"
+  TOTP = "totp",
+  WEBAUTHN = "webauthn"
 }

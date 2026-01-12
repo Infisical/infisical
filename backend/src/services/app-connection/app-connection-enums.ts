@@ -42,7 +42,8 @@ export enum AppConnection {
   MongoDB = "mongodb",
   LaravelForge = "laravel-forge",
   Chef = "chef",
-  Northflank = "northflank"
+  Northflank = "northflank",
+  OctopusDeploy = "octopus-deploy"
 }
 
 export enum AWSRegion {

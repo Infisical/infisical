@@ -96,9 +96,7 @@ export const IdentityRoleDetailsSection = ({
   return (
     <>
       <UnstableCard>
-        <UnstableCardHeader
-        // className="border-b"
-        >
+        <UnstableCardHeader>
           <UnstableCardTitle>Project Roles</UnstableCardTitle>
           <UnstableCardDescription>
             Manage roles assigned to this machine identity
@@ -171,10 +169,7 @@ export const IdentityRoleDetailsSection = ({
                     }
 
                     return (
-                      <UnstableTableRow
-                        className="group h-10"
-                        key={`user-project-identity-${roleDetails?.id}`}
-                      >
+                      <UnstableTableRow key={`user-project-identity-${roleDetails?.id}`}>
                         <UnstableTableCell className="max-w-0 truncate">
                           {roleDetails.role === "custom"
                             ? roleDetails.customRoleName
@@ -208,8 +203,6 @@ export const IdentityRoleDetailsSection = ({
                                 a={subject(ProjectPermissionSub.Identity, {
                                   identityId: identityMembershipDetails.identity.id
                                 })}
-                                renderTooltip
-                                allowedLabel="Remove Role"
                               >
                                 {(isAllowed) => (
                                   <UnstableDropdownMenuItem
@@ -223,7 +216,6 @@ export const IdentityRoleDetailsSection = ({
                                     isDisabled={!isAllowed}
                                     variant="danger"
                                   >
-                                    {/* <TrashIcon /> */}
                                     Remove Role
                                   </UnstableDropdownMenuItem>
                                 )}
@@ -240,7 +232,7 @@ export const IdentityRoleDetailsSection = ({
               <UnstableEmpty className="border">
                 <UnstableEmptyHeader>
                   <UnstableEmptyTitle>
-                    This machine identity doesn&nbsp;t have any roles
+                    This machine identity doesn&apos;t have any roles
                   </UnstableEmptyTitle>
                   <UnstableEmptyDescription>
                     Give this machine identity one or more roles

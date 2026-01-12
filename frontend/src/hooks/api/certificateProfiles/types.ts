@@ -62,6 +62,7 @@ export type TCertificateProfileWithDetails = TCertificateProfile & {
   acmeConfig?: {
     id: string;
     directoryUrl: string;
+    skipDnsOwnershipVerification?: boolean;
   };
 };
 

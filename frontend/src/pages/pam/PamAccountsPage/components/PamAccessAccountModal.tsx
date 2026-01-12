@@ -83,8 +83,12 @@ export const PamAccessAccountModal = ({
       case PamResourceType.Postgres:
       case PamResourceType.MySQL:
         return `infisical pam db access-account ${fullAccountPath} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
+      case PamResourceType.Redis:
+        return `infisical pam redis access-account ${fullAccountPath} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
       case PamResourceType.SSH:
         return `infisical pam ssh access-account ${fullAccountPath} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
+      case PamResourceType.Kubernetes:
+        return `infisical pam kubernetes access-account ${fullAccountPath} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
       default:
         return "";
     }

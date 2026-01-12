@@ -162,7 +162,7 @@ export const ProjectRoleList = () => {
 
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4 flex justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-x-2">
           <p className="text-xl font-medium text-mineshaft-100">Project Roles</p>
           <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/role-based-access-controls#project-level-access-controls" />
@@ -193,7 +193,7 @@ export const ProjectRoleList = () => {
         <Table>
           <THead>
             <Tr>
-              <Th>
+              <Th className="w-1/3">
                 <div className="flex items-center">
                   Name
                   <IconButton
@@ -206,7 +206,7 @@ export const ProjectRoleList = () => {
                   </IconButton>
                 </div>
               </Th>
-              <Th>
+              <Th className="w-1/3">
                 <div className="flex items-center">
                   Slug
                   <IconButton
@@ -257,8 +257,8 @@ export const ProjectRoleList = () => {
                     })
                   }
                 >
-                  <Td>{name}</Td>
-                  <Td>{slug}</Td>
+                  <Td className="max-w-0 truncate">{name}</Td>
+                  <Td className="max-w-0 truncate">{slug}</Td>
                   <Td>
                     <Badge variant="ghost">
                       {isCustomProjectRole(slug) ? (

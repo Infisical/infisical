@@ -6,6 +6,7 @@ import { NotFoundError } from "@app/lib/errors";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
+import { DEFAULT_CRL_VALIDITY_DAYS } from "../certificate-common/certificate-constants";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import {
   TDNParts,
@@ -372,10 +373,14 @@ export const rebuildCaCrl = async ({
     status: CertStatus.REVOKED
   });
 
+  const thisUpdate = new Date();
+  const nextUpdate = new Date(thisUpdate);
+  nextUpdate.setDate(nextUpdate.getDate() + DEFAULT_CRL_VALIDITY_DAYS);
+
   const crl = await x509.X509CrlGenerator.create({
     issuer: ca.internalCa.dn,
-    thisUpdate: new Date(),
-    nextUpdate: new Date("2025/12/12"),
+    thisUpdate,
+    nextUpdate,
     entries: revokedCerts.map((revokedCert) => {
       const revocationDate = new Date(revokedCert.revokedAt as Date);
       return {
