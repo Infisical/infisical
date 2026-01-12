@@ -39,6 +39,36 @@ Infisical supports the use of [service principals](https://docs.databricks.com/e
     </Step>
 </Steps>
 
+<Accordion title="Configure Permissions for Secret Rotation">
+    <Steps>
+        <Step title="Add Service Principal to Admin Group">
+            Navigate to **Settings** > **Identity & Access** > **Groups** and select the admin group (typically named "admins" or "workspace-admins").
+
+            ![Admin Group](/images/app-connections/databricks/admin-group.png)
+
+            Click **Add** and select the service principal you created for Infisical to add it to the admin group.
+
+            ![Add to Admin Group](/images/app-connections/databricks/add-to-admin-group.png)
+            ![Add to Admin Group Modal](/images/app-connections/databricks/add-to-admin-group-form.png)
+        </Step>
+        <Step title="Grant Manage Permission for Target Service Principals">
+            For each service principal whose secrets you want to rotate, navigate to **Settings** > **Identity & Access** > **Service Principals** and select the target service principal.
+
+            ![Select Target Service Principal](/images/app-connections/databricks/select-target-service-principal.png)
+        </Step>
+        <Step title="Open Permissions Tab">
+            Click on the **Permissions** tab for the selected service principal. And then click the **Grant access** button to open the permission modal
+
+            ![Permissions Tab](/images/app-connections/databricks/permissions-tab.png)
+        </Step>
+        <Step title="Grant Manage Permission to Infisical Service Principal">
+            In the **User, Group or Service Principal** field, select the service principal you created for Infisical. In the **Permission** field, select **Manage** to allow the Infisical service principal to manage credentials and secrets for this service principal. Click **Save** to apply the permissions. Repeat these steps for each service principal whose secrets you want to rotate.
+
+            ![Assign Manage Permission](/images/app-connections/databricks/assign-manage-permission.png)
+        </Step>
+    </Steps>
+</Accordion>
+
 ## Setup Databricks Connection in Infisical
 
 <Steps>
