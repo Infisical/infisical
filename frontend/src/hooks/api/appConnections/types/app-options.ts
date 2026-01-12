@@ -168,6 +168,9 @@ export type TNetlifyConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Netlify;
 };
 
+export type TTriggerDevConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.TriggerDev;
+};
 export type TOktaConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Okta;
 };
@@ -233,6 +236,7 @@ export type TAppConnectionOption =
   | TSupabaseConnectionOption
   | TDigitalOceanConnectionOption
   | TNetlifyConnectionOption
+  | TTriggerDevConnectionOption
   | TNorthflankConnectionOption
   | TOktaConnectionOption
   | TAzureAdCsConnectionOption
@@ -281,6 +285,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Supabase]: TSupabaseConnectionOption;
   [AppConnection.DigitalOcean]: TDigitalOceanConnectionOption;
   [AppConnection.Netlify]: TNetlifyConnectionOption;
+  [AppConnection.TriggerDev]: TTriggerDevConnectionOption;
   [AppConnection.Northflank]: TNorthflankConnectionOption;
   [AppConnection.Okta]: TOktaConnectionOption;
   [AppConnection.AzureADCS]: TAzureAdCsConnectionOption;

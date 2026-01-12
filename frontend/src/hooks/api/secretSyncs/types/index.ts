@@ -32,6 +32,7 @@ import { TRenderSync } from "./render-sync";
 import { TSupabaseSync } from "./supabase";
 import { TTeamCitySync } from "./teamcity-sync";
 import { TTerraformCloudSync } from "./terraform-cloud-sync";
+import { TTriggerDevSync } from "./trigger-dev-sync";
 import { TVercelSync } from "./vercel-sync";
 import { TWindmillSync } from "./windmill-sync";
 import { TZabbixSync } from "./zabbix-sync";
@@ -71,6 +72,7 @@ export type TSecretSync =
   | TRailwaySync
   | TChecklySync
   | TSupabaseSync
+  | TTriggerDevSync
   | TDigitalOceanAppPlatformSync
   | TNetlifySync
   | TNorthflankSync

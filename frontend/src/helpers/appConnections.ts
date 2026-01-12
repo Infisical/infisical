@@ -43,6 +43,7 @@ import {
   TAppConnection,
   TeamCityConnectionMethod,
   TerraformCloudConnectionMethod,
+  TriggerDevConnectionMethod,
   VercelConnectionMethod,
   WindmillConnectionMethod,
   ZabbixConnectionMethod
@@ -128,6 +129,7 @@ export const APP_CONNECTION_MAP: Record<
     name: "Netlify",
     image: "Netlify.png"
   },
+  [AppConnection.TriggerDev]: { name: "Trigger.dev", image: "Trigger.dev.png" },
   [AppConnection.Northflank]: { name: "Northflank", image: "Northflank.png" },
   [AppConnection.Okta]: { name: "Okta", image: "Okta.png" },
   [AppConnection.Redis]: { name: "Redis", image: "Redis.png" },
@@ -178,6 +180,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case NorthflankConnectionMethod.ApiToken:
     case OktaConnectionMethod.ApiToken:
     case LaravelForgeConnectionMethod.ApiToken:
+    case TriggerDevConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:

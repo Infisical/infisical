@@ -119,6 +119,7 @@ import { ValidateTeamCityConnectionCredentialsSchema } from "./teamcity";
 import { teamcityConnectionService } from "./teamcity/teamcity-connection-service";
 import { ValidateTerraformCloudConnectionCredentialsSchema } from "./terraform-cloud";
 import { terraformCloudConnectionService } from "./terraform-cloud/terraform-cloud-connection-service";
+import { ValidateTriggerDevConnectionCredentialsSchema } from "./trigger-dev";
 import { ValidateVercelConnectionCredentialsSchema } from "./vercel";
 import { vercelConnectionService } from "./vercel/vercel-connection-service";
 import { ValidateWindmillConnectionCredentialsSchema } from "./windmill";
@@ -185,7 +186,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Redis]: ValidateRedisConnectionCredentialsSchema,
   [AppConnection.MongoDB]: ValidateMongoDBConnectionCredentialsSchema,
   [AppConnection.Chef]: ValidateChefConnectionCredentialsSchema,
-  [AppConnection.OctopusDeploy]: ValidateOctopusDeployConnectionCredentialsSchema
+  [AppConnection.OctopusDeploy]: ValidateOctopusDeployConnectionCredentialsSchema,
+  [AppConnection.TriggerDev]: ValidateTriggerDevConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({

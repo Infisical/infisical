@@ -252,6 +252,14 @@ export const AppConnectionsBrowser = () => {
       category: "DevOps Tools",
     },
     {
+      name: "Trigger.dev",
+      slug: "trigger-dev",
+      path: "/integrations/app-connections/trigger-dev",
+      description:
+        "Learn how to connect your Trigger.dev project to pull secrets from Infisical.",
+      category: "DevOps Tools",
+    },
+    {
       name: "Humanitec",
       slug: "humanitec",
       path: "/integrations/app-connections/humanitec",
