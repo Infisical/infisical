@@ -2,6 +2,7 @@
 // If you rename the import, update the Dockerfile.fips.standalone-infisical file as well.
 import "./lib/telemetry/instrumentation";
 
+import axios from "axios";
 import dotenv from "dotenv";
 
 import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
@@ -15,6 +16,7 @@ import { formatSmtpConfig, getDatabaseCredentials, getHsmConfig, initEnvConfig }
 import { buildRedisFromConfig } from "./lib/config/redis";
 import { removeTemporaryBaseDirectory } from "./lib/files";
 import { initLogger } from "./lib/logger";
+import { CustomLogger } from "./lib/logger/logger";
 import { queueServiceFactory } from "./queue";
 import { main } from "./server/app";
 import { bootstrapCheck } from "./server/boot-strap-check";
@@ -24,10 +26,32 @@ import { superAdminDALFactory } from "./services/super-admin/super-admin-dal";
 
 dotenv.config();
 
+const setupAxiosResponseInterceptor = (logger: CustomLogger) => {
+  axios.interceptors.response.use((response) => {
+    try {
+      const contentLength = response.headers["content-length"] as string | undefined;
+      const responseSize = contentLength ? parseInt(contentLength, 10) : 0;
+
+      let megabyteSize = "";
+
+      if (responseSize && responseSize > 1024 * 1024) {
+        megabyteSize = `Large payload: ${(responseSize / 1024 / 1024).toFixed(2)} MB`;
+      }
+
+      logger.info({ url: response.config.url, responseSize }, `Intercepted axios response ${megabyteSize}`);
+    } catch (error) {
+      logger.error(error, "Error intercepting axios response");
+    }
+
+    return response;
+  });
+};
+
 const run = async () => {
   const logger = initLogger();
   await removeTemporaryBaseDirectory();
 
+  setupAxiosResponseInterceptor(logger);
   const hsmConfig = getHsmConfig(logger);
 
   const hsmModule = initializeHsmModule(hsmConfig);
