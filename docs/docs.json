@@ -800,16 +800,16 @@
             ]
           },
           {
-            "item": "Agentic Manager",
+            "item": "Agent Sentinel",
             "groups": [
               {
-                "group": "Agentic Manager",
+                "group": "Agent Sentinel",
                 "pages": [
-                  "documentation/platform/agentic-manager/overview",
+                  "documentation/platform/agent-sentinel/overview",
                   {
                     "group": "Concepts",
                     "pages": [
-                      "documentation/platform/agentic-manager/concepts/mcp-overview"
+                      "documentation/platform/agent-sentinel/concepts/mcp-overview"
                     ]
                   }
                 ]
@@ -817,9 +817,9 @@
               {
                 "group": "Product Reference",
                 "pages": [
-                  "documentation/platform/agentic-manager/mcp-servers",
-                  "documentation/platform/agentic-manager/mcp-endpoints",
-                  "documentation/platform/agentic-manager/activity-logs"
+                  "documentation/platform/agent-sentinel/mcp-servers",
+                  "documentation/platform/agent-sentinel/mcp-endpoints",
+                  "documentation/platform/agent-sentinel/activity-logs"
                 ]
               }
             ]
