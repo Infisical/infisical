@@ -2788,7 +2788,9 @@
                   "api-reference/endpoints/kms/keys/get-by-name",
                   "api-reference/endpoints/kms/keys/create",
                   "api-reference/endpoints/kms/keys/update",
-                  "api-reference/endpoints/kms/keys/delete"
+                  "api-reference/endpoints/kms/keys/delete",
+                  "api-reference/endpoints/kms/keys/public-key",
+                  "api-reference/endpoints/kms/keys/private-key"
                 ]
               },
               {
@@ -2803,7 +2805,6 @@
                 "pages": [
                   "api-reference/endpoints/kms/signing/sign",
                   "api-reference/endpoints/kms/signing/verify",
-                  "api-reference/endpoints/kms/signing/public-key",
                   "api-reference/endpoints/kms/signing/signing-algorithms"
                 ]
               }

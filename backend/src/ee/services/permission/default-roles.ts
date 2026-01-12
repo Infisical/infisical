@@ -234,7 +234,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionCmekActions.Encrypt,
       ProjectPermissionCmekActions.Decrypt,
       ProjectPermissionCmekActions.Sign,
-      ProjectPermissionCmekActions.Verify
+      ProjectPermissionCmekActions.Verify,
+      ProjectPermissionCmekActions.ExportPrivateKey
     ],
     ProjectPermissionSub.Cmek
   );
