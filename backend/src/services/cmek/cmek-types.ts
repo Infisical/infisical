@@ -53,6 +53,10 @@ export type TCmekGetPublicKeyDTO = {
   keyId: string;
 };
 
+export type TCmekGetPrivateKeyDTO = {
+  keyId: string;
+};
+
 export type TCmekSignDTO = {
   keyId: string;
   data: string;

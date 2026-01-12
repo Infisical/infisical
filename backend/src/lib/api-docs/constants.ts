@@ -2297,6 +2297,10 @@ export const KMS = {
     keyId: "The ID of the key to get the public key for. The key must be for signing and verifying."
   },
 
+  GET_PRIVATE_KEY: {
+    keyId: "The ID of the key to export the private key or key material for."
+  },
+
   SIGN: {
     keyId: "The ID of the key to sign the data with.",
     data: "The data in string format to be signed (base64 encoded).",
