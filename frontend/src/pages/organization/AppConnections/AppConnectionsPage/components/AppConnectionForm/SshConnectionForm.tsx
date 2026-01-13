@@ -76,13 +76,13 @@ export const SshConnectionForm = ({ appConnection, onSubmit }: Props) => {
         }
       : {
           app: AppConnection.SSH,
-          method: SshConnectionMethod.Password,
+          method: SshConnectionMethod.SshKey,
           gatewayId: null,
           credentials: {
             host: "",
             port: 22,
             username: "",
-            password: ""
+            privateKey: ""
           }
         }
   });
@@ -219,7 +219,7 @@ export const SshConnectionForm = ({ appConnection, onSubmit }: Props) => {
                   isError={Boolean(error?.message)}
                   label="Host"
                 >
-                  <Input {...field} placeholder="hostname or IP address" />
+                  <Input {...field} placeholder="Hostname or IP address" />
                 </FormControl>
               )}
             />

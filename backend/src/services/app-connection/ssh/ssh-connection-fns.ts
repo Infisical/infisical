@@ -87,7 +87,7 @@ export const executeWithPotentialGateway = async <T>(
 ): Promise<T> => {
   const { gatewayId, credentials } = config;
 
-  if (gatewayId && gatewayV2Service) {
+  if (gatewayId) {
     await blockLocalAndPrivateIpAddresses(`ssh://${credentials.host}:${credentials.port}`, true);
 
     const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
