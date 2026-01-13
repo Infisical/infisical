@@ -3,6 +3,8 @@ title: "Elasticsearch"
 description: "Learn how to dynamically generate Elasticsearch user credentials."
 ---
 
+import DynamicSecretUsernameTemplateParamField from "/snippets/documentation/platform/dynamic-secrets/dynamic-secret-username-template-field.mdx";
+
 The Infisical Elasticsearch dynamic secret allows you to generate Elasticsearch credentials on demand based on configured role.
 
 ## Prerequisites
@@ -87,29 +89,7 @@ The port that your Elasticsearch instance is running on. _(Example: 9200)_
     <ParamField path="CA(SSL)" type="string">
     	A CA may be required if your DB requires it for incoming connections. This is often the case when connecting to a managed service.
     </ParamField>
-<ParamField path="Username Template" type="string" default="{{randomUsername}}">
-    Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
-
-    Allowed template variables are
-    - `{{randomUsername}}`: Random username string
-    - `{{unixTimestamp}}`: Current Unix timestamp
-    - `{{identity.name}}`: Name of the identity that is generating the secret
-    - `{{random N}}`: Random string of N characters
-
-    Allowed template functions are
-    - `truncate`: Truncates a string to a specified length
-    - `replace`: Replaces a substring with another value
-
-    Examples:
-    ```
-    {{randomUsername}}                              // 3POnzeFyK9gW2nioK0q2gMjr6CZqsRiX
-    {{unixTimestamp}}                               // 17490641580
-    {{identity.name}}                               // testuser
-    {{random-5}}                                    // x9k2m
-    {{truncate identity.name 4}}                    // test
-    {{replace identity.name 'user' 'replace'}}      // testreplace
-    ```
-	</ParamField>
+    <DynamicSecretUsernameTemplateParamField />
 
 ![Dynamic Secret Setup Modal](../../../images/platform/dynamic-secrets/dynamic-secret-input-modal-elastic-search.png)
 

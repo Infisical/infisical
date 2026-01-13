@@ -3,6 +3,8 @@ title: "Cassandra"
 description: "Learn how to dynamically generate Cassandra database user credentials"
 ---
 
+import DynamicSecretUsernameTemplateParamField from "/snippets/documentation/platform/dynamic-secrets/dynamic-secret-username-template-field.mdx";
+
 The Infisical Cassandra dynamic secret allows you to generate Cassandra database credentials on demand based on configured role.
 
 ## Prerequisite
@@ -79,29 +81,7 @@ The above configuration allows user creation and granting permissions.
   </Step>
   <Step title="(Optional) Modify CQL Statements">
   ![Modify CQL Statements Modal](../../../images/platform/dynamic-secrets/modify-cql-statements.png)
-  <ParamField path="Username Template" type="string" default="{{randomUsername}}">
-    Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
-
-    Allowed template variables are
-    - `{{randomUsername}}`: Random username string
-    - `{{unixTimestamp}}`: Current Unix timestamp
-    - `{{identity.name}}`: Name of the identity that is generating the secret
-    - `{{random N}}`: Random string of N characters
-
-    Allowed template functions are
-    - `truncate`: Truncates a string to a specified length
-    - `replace`: Replaces a substring with another value
-
-    Examples:
-    ```
-    {{randomUsername}}                              // 3POnzeFyK9gW2nioK0q2gMjr6CZqsRiX
-    {{unixTimestamp}}                               // 17490641580
-    {{identity.name}}                               // testuser
-    {{random-5}}                                    // x9k2m
-    {{truncate identity.name 4}}                    // test
-    {{replace identity.name 'user' 'replace'}}      // testreplace
-    ```
-	</ParamField>
+	<DynamicSecretUsernameTemplateParamField />
 	<ParamField path="Customize CQL Statement" type="string">
   	If you want to provide specific privileges for the generated dynamic credentials, you can modify the CQL statement to your needs. This is useful if you want to only give access to a specific key-space(s).
 	</ParamField>

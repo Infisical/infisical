@@ -19,6 +19,7 @@ import {
 import { AssumeRoleCommand, GetSessionTokenCommand, STSClient } from "@aws-sdk/client-sts";
 import { z } from "zod";
 
+import { TDynamicSecrets } from "@app/db/schemas";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -26,22 +27,12 @@ import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
+import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { AwsIamAuthType, AwsIamCredentialType, DynamicSecretAwsIamSchema, TDynamicProviderFns } from "./models";
-import { compileUsernameTemplate } from "./templateUtils";
+import { generateUsername } from "./templateUtils";
 
 // AWS STS duration constants (in seconds)
 const AWS_STS_MIN_DURATION = 900;
-
-const generateUsername = (usernameTemplate?: string | null, identity?: { name: string }) => {
-  const randomUsername = alphaNumericNanoId(32);
-  if (!usernameTemplate) return randomUsername;
-
-  return compileUsernameTemplate({
-    usernameTemplate,
-    randomUsername,
-    identity
-  });
-};
 
 export const AwsIamProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
@@ -213,12 +204,11 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
     inputs: unknown;
     expireAt: number;
     usernameTemplate?: string | null;
-    identity?: {
-      name: string;
-    };
+    identity: ActorIdentityAttributes;
+    dynamicSecret: TDynamicSecrets;
     metadata: { projectId: string };
   }) => {
-    const { inputs, usernameTemplate, metadata, identity, expireAt } = data;
+    const { inputs, usernameTemplate, metadata, identity, expireAt, dynamicSecret } = data;
 
     const providerInputs = await validateProviderInputs(inputs);
 
@@ -382,7 +372,11 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
     if (providerInputs.credentialType === AwsIamCredentialType.IamUser) {
       const client = await $getClient(providerInputs, metadata.projectId);
 
-      const username = generateUsername(usernameTemplate, identity);
+      const username = await generateUsername(usernameTemplate, {
+        decryptedDynamicSecretInputs: inputs,
+        dynamicSecret,
+        identity
+      });
       const { policyArns, userGroups, policyDocument, awsPath, permissionBoundaryPolicyArn } = providerInputs;
       const awsTags = [{ Key: "createdBy", Value: "infisical-dynamic-secret" }];
 
