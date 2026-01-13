@@ -219,8 +219,10 @@ export const ViewSecretRequestByIDPage = () => {
                 className="text-sm"
                 style={brandingTheme ? { color: brandingTheme.textMutedColor } : undefined}
               >
-                Secret requested by {secretRequest.request.requester.username} from the{" "}
-                {secretRequest.request.requester.organizationName} organization
+                Secret requested by {secretRequest.request.requester.username}
+                {!hasCustomBranding && (
+                  <> from the {secretRequest.request.requester.organizationName} organization</>
+                )}
               </p>
             )}
             {!hasCustomBranding && (
