@@ -48,6 +48,7 @@ import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { RailwayConnectionForm } from "./RailwayConnectionForm";
 import { RedisConnectionForm } from "./RedisConnectionForm";
 import { RenderConnectionForm } from "./RenderConnectionForm";
+import { SshConnectionForm } from "./SshConnectionForm";
 import { SupabaseConnectionForm } from "./SupabaseConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
@@ -179,6 +180,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       return <MongoDBConnectionForm onSubmit={onSubmit} />;
     case AppConnection.OctopusDeploy:
       return <OctopusDeployConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.SSH:
+      return <SshConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -341,6 +344,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <MongoDBConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.OctopusDeploy:
       return <OctopusDeployConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.SSH:
+      return <SshConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }
