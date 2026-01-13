@@ -105,7 +105,7 @@ export const ViewSharedSecretByIDPage = () => {
 
   const isEmailUnauthorized =
     ((error as AxiosError)?.response?.data as { message: string })?.message ===
-    "Email not authorized to view secret";
+    "You are not authorized to view this secret";
 
   // Save branding config for persistence across password attempts
   useEffect(() => {

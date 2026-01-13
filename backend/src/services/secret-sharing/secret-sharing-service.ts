@@ -555,7 +555,7 @@ export const secretSharingServiceFactory = ({
         return {
           isPasswordProtected: false,
           secretOrgId: sharedSecret.orgId,
-          error: "Email not authorized to view secret"
+          error: "You are not authorized to view this secret"
         };
     }
 
@@ -567,7 +567,7 @@ export const secretSharingServiceFactory = ({
       return {
         isPasswordProtected: false,
         secretOrgId: sharedSecret.orgId,
-        error: "Secret lifetime has expired"
+        error: "Unable to view secret: secret has expired"
       };
     }
 
@@ -577,7 +577,7 @@ export const secretSharingServiceFactory = ({
       return {
         isPasswordProtected: false,
         secretOrgId: sharedSecret.orgId,
-        error: "Secret has expired by view count"
+        error: "Unable to view secret: view limit reached"
       };
     }
 
