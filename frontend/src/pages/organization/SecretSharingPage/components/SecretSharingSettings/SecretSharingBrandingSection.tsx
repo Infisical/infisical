@@ -260,7 +260,7 @@ export const SecretSharingBrandingSection = () => {
   const handleFileUpload = async (assetType: "brand-logo" | "brand-favicon", file: File) => {
     await uploadAsset({ assetType, file });
     createNotification({
-      text: `Successfully uploaded ${assetType}`,
+      text: `Successfully uploaded ${assetType.replace("brand-", "")}`,
       type: "success"
     });
   };
@@ -268,7 +268,7 @@ export const SecretSharingBrandingSection = () => {
   const handleFileDelete = async (assetType: "brand-logo" | "brand-favicon") => {
     await deleteAsset({ assetType });
     createNotification({
-      text: `Successfully deleted ${assetType}`,
+      text: `Successfully deleted ${assetType.replace("brand-", "")}`,
       type: "success"
     });
   };
