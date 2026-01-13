@@ -43,7 +43,8 @@ export enum AppConnection {
   LaravelForge = "laravel-forge",
   Chef = "chef",
   Northflank = "northflank",
-  OctopusDeploy = "octopus-deploy"
+  OctopusDeploy = "octopus-deploy",
+  SSH = "ssh"
 }
 
 export enum AWSRegion {

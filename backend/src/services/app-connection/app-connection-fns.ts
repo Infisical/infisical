@@ -140,6 +140,7 @@ import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } fr
 import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnectionCredentials } from "./redis";
 import { RenderConnectionMethod } from "./render/render-connection-enums";
 import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
+import { getSshConnectionListItem, SshConnectionMethod, validateSshConnectionCredentials } from "./ssh";
 import {
   getSupabaseConnectionListItem,
   SupabaseConnectionMethod,
@@ -232,7 +233,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getOktaConnectionListItem(),
     getRedisConnectionListItem(),
     getMongoDBConnectionListItem(),
-    getChefConnectionListItem()
+    getChefConnectionListItem(),
+    getSshConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -367,7 +369,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Chef]: validateChefConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Redis]: validateRedisConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.MongoDB]: validateMongoDBConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.OctopusDeploy]: validateOctopusDeployConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.OctopusDeploy]: validateOctopusDeployConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.SSH]: validateSshConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -435,6 +438,10 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "App Role";
     case LdapConnectionMethod.SimpleBind:
       return "Simple Bind";
+    case SshConnectionMethod.Password:
+      return "Password";
+    case SshConnectionMethod.SshKey:
+      return "SSH Key";
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
     case OctopusDeployConnectionMethod.ApiKey:
@@ -519,7 +526,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.MongoDB]: platformManagedCredentialsNotSupported,
   [AppConnection.LaravelForge]: platformManagedCredentialsNotSupported,
   [AppConnection.Chef]: platformManagedCredentialsNotSupported,
-  [AppConnection.OctopusDeploy]: platformManagedCredentialsNotSupported
+  [AppConnection.OctopusDeploy]: platformManagedCredentialsNotSupported,
+  [AppConnection.SSH]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (
