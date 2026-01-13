@@ -5,6 +5,10 @@ export enum DynamicSecretLeaseStatus {
   FailedDeletion = "Failed to delete"
 }
 
+export type ActorIdentityAttributes = {
+  name: string;
+};
+
 export type TCreateDynamicSecretLeaseDTO = {
   name: string;
   path: string;

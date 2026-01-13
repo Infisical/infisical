@@ -26,7 +26,10 @@ const validateUsernameTemplateCharacters = characterValidator([
   CharacterType.Fullstop,
   CharacterType.SingleQuote,
   CharacterType.Spaces,
-  CharacterType.Pipe
+  CharacterType.Pipe,
+  CharacterType.OpenParen,
+  CharacterType.CloseParen,
+  CharacterType.DoubleQuote
 ]);
 
 const userTemplateSchema = z
@@ -36,7 +39,8 @@ const userTemplateSchema = z
   .refine((el) => validateUsernameTemplateCharacters(el))
   .refine((el) =>
     isValidHandleBarTemplate(el, {
-      allowedExpressions: (val) => ["randomUsername", "unixTimestamp", "identity.name"].includes(val)
+      allowedExpressions: (val) =>
+        ["randomUsername", "unixTimestamp", "identity.name", "dynamicSecret.name", "dynamicSecret.type"].includes(val)
     })
   );
 

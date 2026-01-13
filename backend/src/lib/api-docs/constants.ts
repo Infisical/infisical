@@ -2297,6 +2297,10 @@ export const KMS = {
     keyId: "The ID of the key to get the public key for. The key must be for signing and verifying."
   },
 
+  GET_PRIVATE_KEY: {
+    keyId: "The ID of the key to export the private key or key material for."
+  },
+
   SIGN: {
     keyId: "The ID of the key to sign the data with.",
     data: "The data in string format to be signed (base64 encoded).",
@@ -2921,6 +2925,16 @@ export const SecretRotations = {
         "The username of the first MongoDB user to rotate passwords for. This user must already exist in your database.",
       username2:
         "The username of the second MongoDB user to rotate passwords for. This user must already exist in your database."
+    },
+    DATABRICKS_SERVICE_PRINCIPAL_SECRET: {
+      servicePrincipalId: "The ID of the Databricks Service Principal to rotate the OAuth secret for.",
+      servicePrincipalName: "The name of the Databricks Service Principal to rotate the OAuth secret for.",
+      clientId: "The client ID of the Databricks Service Principal to rotate the OAuth secret for."
+    },
+    DATABRICKS_SERVICE_ACCOUNT_SECRET: {
+      servicePrincipalId: "The ID of the Databricks Service Principal to rotate the OAuth secret for.",
+      servicePrincipalName: "The name of the Databricks Service Principal to rotate the OAuth secret for.",
+      clientId: "The client ID of the Databricks Service Principal to rotate the OAuth secret for."
     }
   },
   SECRETS_MAPPING: {
@@ -2955,6 +2969,14 @@ export const SecretRotations = {
     MONGODB_CREDENTIALS: {
       username: "The name of the secret that the active username will be mapped to.",
       password: "The name of the secret that the generated password will be mapped to."
+    },
+    DATABRICKS_SERVICE_PRINCIPAL_SECRET: {
+      clientId: "The name of the secret that the client ID will be mapped to.",
+      clientSecret: "The name of the secret that the rotated OAuth client secret will be mapped to."
+    },
+    DATABRICKS_SERVICE_ACCOUNT_SECRET: {
+      clientId: "The name of the secret that the client ID will be mapped to.",
+      clientSecret: "The name of the secret that the rotated OAuth client secret will be mapped to."
     }
   }
 };

@@ -70,3 +70,39 @@ export type VaultKubernetesRole = {
     kubernetes_ca_cert?: string;
   };
 };
+
+export type VaultDatabaseRole = {
+  name: string;
+  mountPath: string;
+  db_name: string;
+  default_ttl?: number;
+  max_ttl?: number;
+  creation_statements?: string[];
+  revocation_statements?: string[];
+  renew_statements?: string[];
+  config: {
+    connection_details: {
+      connection_url?: string;
+      hosts?: string;
+      tls_ca?: string;
+      username?: string;
+    };
+    plugin_name: string;
+  };
+};
+
+export type VaultLdapRole = {
+  name: string;
+  mountPath: string;
+  default_ttl?: number;
+  max_ttl?: number;
+  creation_ldif?: string;
+  deletion_ldif?: string;
+  rollback_ldif?: string;
+  username_template?: string;
+  config: {
+    binddn: string;
+    url: string;
+    certificate?: string;
+  };
+};

@@ -43,7 +43,8 @@ export enum ProjectPermissionCmekActions {
   Encrypt = "encrypt",
   Decrypt = "decrypt",
   Sign = "sign",
-  Verify = "verify"
+  Verify = "verify",
+  ExportPrivateKey = "export-private-key"
 }
 
 export enum ProjectPermissionKmipActions {

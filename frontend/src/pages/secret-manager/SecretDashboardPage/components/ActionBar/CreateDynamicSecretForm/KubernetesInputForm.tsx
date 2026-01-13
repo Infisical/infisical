@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Controller, FieldValues, useFieldArray, useForm } from "react-hook-form";
-import { faInfoCircle, faQuestionCircle, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faQuestionCircle, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
@@ -22,20 +22,18 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
-import { useOrgPermission } from "@app/context";
 import { OrgPermissionSubjects } from "@app/context/OrgPermissionContext";
 import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
-import { OrgMembershipRole } from "@app/helpers/roles";
 import { gatewaysQueryKeys, useCreateDynamicSecret } from "@app/hooks/api";
 import {
   DynamicSecretProviders,
   KubernetesDynamicSecretCredentialType
 } from "@app/hooks/api/dynamicSecret/types";
-import { useGetVaultExternalMigrationConfigs } from "@app/hooks/api/migration/queries";
 import { VaultKubernetesRole } from "@app/hooks/api/migration/types";
 import { ProjectEnv } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
 
+import { LoadFromVaultBanner } from "./components/LoadFromVaultBanner";
 import { VaultKubernetesImportModal } from "./VaultKubernetesImportModal";
 
 enum RoleType {
@@ -203,10 +201,6 @@ export const KubernetesInputForm = ({
 
   const createDynamicSecret = useCreateDynamicSecret();
   const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
-  const { data: vaultConfigs = [] } = useGetVaultExternalMigrationConfigs();
-  const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
-  const { hasOrgRole } = useOrgPermission();
-  const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
 
   const sslEnabled = watch("provider.sslEnabled");
   const credentialType = watch("provider.credentialType");
@@ -308,38 +302,7 @@ export const KubernetesInputForm = ({
   return (
     <form onSubmit={handleSubmit(handleCreateDynamicSecret)} autoComplete="off">
       <div>
-        {hasVaultConnection && (
-          <div className="mb-4 flex items-center justify-between rounded-md border border-primary-400/30 bg-primary/10 px-3 py-2.5">
-            <div className="flex items-center gap-2 text-sm">
-              <FontAwesomeIcon icon={faInfoCircle} className="text-primary" />
-              <span className="text-mineshaft-200">Load values from HashiCorp Vault</span>
-            </div>
-            <Tooltip
-              content={
-                !isOrgAdmin
-                  ? "Only organization admins can import configurations from HashiCorp Vault"
-                  : undefined
-              }
-            >
-              <Button
-                variant="outline_bg"
-                size="xs"
-                type="button"
-                onClick={() => setIsVaultImportModalOpen(true)}
-                isDisabled={!isOrgAdmin}
-                leftIcon={
-                  <img
-                    src="/images/integrations/Vault.png"
-                    alt="HashiCorp Vault"
-                    className="h-4 w-4"
-                  />
-                }
-              >
-                Load from Vault
-              </Button>
-            </Tooltip>
-          </div>
-        )}
+        <LoadFromVaultBanner onClick={() => setIsVaultImportModalOpen(true)} />
 
         <div className="flex items-center space-x-2">
           <div className="grow">

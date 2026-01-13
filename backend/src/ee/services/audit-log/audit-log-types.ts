@@ -420,6 +420,7 @@ export enum EventType {
   CMEK_VERIFY = "cmek-verify",
   CMEK_LIST_SIGNING_ALGORITHMS = "cmek-list-signing-algorithms",
   CMEK_GET_PUBLIC_KEY = "cmek-get-public-key",
+  CMEK_GET_PRIVATE_KEY = "cmek-get-private-key",
 
   UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "update-external-group-org-role-mapping",
   GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "get-external-group-org-role-mapping",
@@ -3153,6 +3154,15 @@ interface CmekGetPublicKeyEvent {
   type: EventType.CMEK_GET_PUBLIC_KEY;
   metadata: {
     keyId: string;
+    keyName: string;
+  };
+}
+
+interface CmekGetPrivateKeyEvent {
+  type: EventType.CMEK_GET_PRIVATE_KEY;
+  metadata: {
+    keyId: string;
+    keyName: string;
   };
 }
 
@@ -5120,6 +5130,7 @@ export type Event =
   | CmekVerifyEvent
   | CmekListSigningAlgorithmsEvent
   | CmekGetPublicKeyEvent
+  | CmekGetPrivateKeyEvent
   | GetExternalGroupOrgRoleMappingsEvent
   | UpdateExternalGroupOrgRoleMappingsEvent
   | GetProjectTemplatesEvent

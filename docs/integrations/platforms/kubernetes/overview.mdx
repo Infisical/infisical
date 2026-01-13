@@ -20,6 +20,29 @@ It can also automatically reload dependent Deployments resources whenever releva
   [here](https://external-secrets.io/latest/provider/infisical/).
 </Note>
 
+<Tabs>
+  <Tab title="Supported Kubernetes versions">
+    The following [Kubernetes minor releases](https://kubernetes.io/releases/) are currently supported. The latest operator version is tested against each Kubernetes version. It may work with other versions of Kubernetes, but those are not officially supported.
+
+    - 1.33
+    - 1.32
+    - 1.31
+    - 1.30
+    - 1.29
+  </Tab>
+  <Tab title="Supported Kubernetes distributions">
+    The Infisical Kubernetes Operator has been tested successfully in the following hosted Kubernetes environments:
+
+    - Amazon Elastic Kubernetes Service (EKS)
+    - Google Kubernetes Engine (GKE)
+    - Microsoft Azure Kubernetes Service (AKS)
+    - Oracle Container Engine for Kubernetes (OKE)
+    - Red Hat OpenShift
+
+    It may work in other Kubernetes distributions, but those are not officially supported. Please report any issues [here](https://github.com/Infisical/infisical/issues).
+  </Tab>
+</Tabs>
+
 ## Install 
 
 The operator can be installed via [Helm](https://helm.sh). Helm is a package manager for Kubernetes that allows you to define, install, and upgrade Kubernetes applications.

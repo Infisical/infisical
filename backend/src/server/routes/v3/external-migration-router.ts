@@ -445,6 +445,55 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
 
   server.route({
     method: "GET",
+    url: "/vault/database-roles",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      querystring: z.object({
+        namespace: z.string(),
+        mountPath: z.string()
+      }),
+      response: {
+        200: z.object({
+          roles: z.array(
+            z.object({
+              name: z.string(),
+              mountPath: z.string(),
+              db_name: z.string(),
+              default_ttl: z.number().nullish(),
+              max_ttl: z.number().nullish(),
+              creation_statements: z.array(z.string()).nullish(),
+              revocation_statements: z.array(z.string()).nullish(),
+              renew_statements: z.array(z.string()).nullish(),
+              config: z.object({
+                connection_details: z.object({
+                  connection_url: z.string().nullish(),
+                  hosts: z.string().nullish(),
+                  tls_ca: z.string().nullish(),
+                  username: z.string().nullish()
+                }),
+                plugin_name: z.string()
+              })
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const roles = await server.services.migration.getVaultDatabaseRoles({
+        actor: req.permission,
+        namespace: req.query.namespace,
+        mountPath: req.query.mountPath
+      });
+
+      return { roles };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/vault/secret-paths",
     config: {
       rateLimit: readLimit
@@ -518,6 +567,51 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const roles = await server.services.migration.getVaultKubernetesAuthRoles({
+        actor: req.permission,
+        namespace: req.query.namespace,
+        mountPath: req.query.mountPath
+      });
+
+      return { roles };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/vault/ldap-roles",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      querystring: z.object({
+        namespace: z.string(),
+        mountPath: z.string()
+      }),
+      response: {
+        200: z.object({
+          roles: z.array(
+            z.object({
+              name: z.string(),
+              mountPath: z.string(),
+              default_ttl: z.number().nullish(),
+              max_ttl: z.number().nullish(),
+              creation_ldif: z.string().nullish(),
+              deletion_ldif: z.string().nullish(),
+              rollback_ldif: z.string().nullish(),
+              username_template: z.string().nullish(),
+              config: z.object({
+                binddn: z.string(),
+                url: z.string(),
+                certificate: z.string().nullish()
+              })
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const roles = await server.services.migration.getVaultLdapRoles({
         actor: req.permission,
         namespace: req.query.namespace,
         mountPath: req.query.mountPath

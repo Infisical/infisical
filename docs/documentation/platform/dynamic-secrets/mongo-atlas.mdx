@@ -3,6 +3,8 @@ title: "Mongo Atlas"
 description: "Learn how to dynamically generate Mongo Atlas Database user credentials."
 ---
 
+import DynamicSecretUsernameTemplateParamField from "/snippets/documentation/platform/dynamic-secrets/dynamic-secret-username-template-field.mdx";
+
 The Infisical Mongo Atlas dynamic secret allows you to generate Mongo Atlas Database credentials on demand based on configured role.
 
 ## Prerequisite
@@ -63,29 +65,7 @@ Create a project scoped API Key with the required permission in your Mongo Atlas
 
 ![Modify Scope Modal](../../../images/platform/dynamic-secrets/advanced-option-atlas.png)
 
-<ParamField path="Username Template" type="string" default="{{randomUsername}}">
-    Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
-
-    Allowed template variables are
-    - `{{randomUsername}}`: Random username string
-    - `{{unixTimestamp}}`: Current Unix timestamp
-    - `{{identity.name}}`: Name of the identity that is generating the secret
-    - `{{random N}}`: Random string of N characters
-
-    Allowed template functions are
-    - `truncate`: Truncates a string to a specified length
-    - `replace`: Replaces a substring with another value
-
-    Examples:
-    ```
-    {{randomUsername}}                              // 3POnzeFyK9gW2nioK0q2gMjr6CZqsRiX
-    {{unixTimestamp}}                               // 17490641580
-    {{identity.name}}                               // testuser
-    {{random-5}}                                    // x9k2m
-    {{truncate identity.name 4}}                    // test
-    {{replace identity.name 'user' 'replace'}}      // testreplace
-    ```
-	</ParamField>
+    <DynamicSecretUsernameTemplateParamField />
     <ParamField path="Customize Scope" type="string">
 
     List that contains clusters, MongoDB Atlas Data Lakes, and MongoDB Atlas Streams Instances that this database user can access. If omitted, MongoDB Cloud grants the database user access to all the clusters, MongoDB Atlas Data Lakes, and MongoDB Atlas Streams Instances in the project.

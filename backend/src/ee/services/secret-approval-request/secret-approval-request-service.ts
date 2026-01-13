@@ -1470,7 +1470,7 @@ export const secretApprovalRequestServiceFactory = ({
     environment,
     trx: providedTx
   }: TGenerateSecretApprovalRequestV2BridgeDTO & { trx?: Knex }) => {
-    if (actor === ActorType.SERVICE || actor === ActorType.Machine)
+    if (actor === ActorType.SERVICE || actor === ActorType.IDENTITY)
       throw new BadRequestError({ message: "Cannot use service token or machine token over protected branches" });
 
     const { permission } = await permissionService.getProjectPermission({
