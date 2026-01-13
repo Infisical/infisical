@@ -64,6 +64,10 @@ export const auditLogQueueServiceFactory = async ({
         project.auditLogsRetentionDays < retentionDays
           ? project.auditLogsRetentionDays
           : retentionDays;
+          // Skip insertion if effective retention is 0
+          if (ttlInDays === 0) {
+            return;
+          }
 
       const ttl = ttlInDays * MS_IN_DAY;
 
