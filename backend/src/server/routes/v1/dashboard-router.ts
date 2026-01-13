@@ -64,6 +64,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       rateLimit: secretsLimit
     },
     schema: {
+      operationId: "listProjectSecretsOverview",
       description: "List project secrets overview",
       security: [
         {
@@ -583,6 +584,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       rateLimit: secretsLimit
     },
     schema: {
+      operationId: "listProjectSecretsDetails",
       description: "List project secrets details",
       security: [
         {
@@ -1136,6 +1138,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       rateLimit: secretsLimit
     },
     schema: {
+      operationId: "deepSearchSecrets",
       security: [
         {
           bearerAuth: []
@@ -1367,6 +1370,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       rateLimit: secretsLimit
     },
     schema: {
+      operationId: "getAccessibleSecrets",
       querystring: z.object({
         projectId: z.string().trim(),
         environment: z.string().trim(),
@@ -1416,6 +1420,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       rateLimit: secretsLimit
     },
     schema: {
+      operationId: "getSecretsByKeys",
       security: [
         {
           bearerAuth: []
@@ -1503,6 +1508,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       rateLimit: secretsLimit
     },
     schema: {
+      operationId: "getSecretValue",
       security: [
         {
           bearerAuth: []
@@ -1596,6 +1602,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       rateLimit: secretsLimit
     },
     schema: {
+      operationId: "getSecretImports",
       querystring: z.object({
         projectId: z.string().trim(),
         environment: z.string().trim(),
@@ -1662,6 +1669,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listSecretVersions",
       params: z.object({
         secretId: z.string()
       }),
@@ -1703,6 +1711,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getSecretVersionValue",
       params: z.object({
         secretId: z.string(),
         version: z.string()

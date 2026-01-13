@@ -47,6 +47,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "createKmsKey",
       tags: [ApiDocsTags.KmsKeys],
       description: "Create KMS key",
       body: z
@@ -141,6 +142,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "updateKmsKey",
       tags: [ApiDocsTags.KmsKeys],
       description: "Update KMS key",
       params: z.object({
@@ -192,6 +194,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "deleteKmsKey",
       tags: [ApiDocsTags.KmsKeys],
       description: "Delete KMS key",
       params: z.object({
@@ -236,6 +239,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listKmsKeys",
       tags: [ApiDocsTags.KmsKeys],
       description: "List KMS keys",
       querystring: z.object({
@@ -289,6 +293,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "getKmsKeyById",
       tags: [ApiDocsTags.KmsKeys],
       description: "Get KMS key by ID",
       params: z.object({
@@ -332,6 +337,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "getKmsKeyByName",
       tags: [ApiDocsTags.KmsKeys],
       description: "Get KMS key by name",
       params: z.object({
@@ -380,6 +386,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "encryptWithKmsKey",
       tags: [ApiDocsTags.KmsEncryption],
       description: "Encrypt data with KMS key",
       params: z.object({
@@ -427,6 +434,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "getKmsKeyPublicKey",
       tags: [ApiDocsTags.KmsSigning],
       description:
         "Get the public key for a KMS key that is used for signing and verifying data. This endpoint is only available for asymmetric keys.",
@@ -472,6 +480,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "getKmsKeyPrivateKey",
       tags: [ApiDocsTags.KmsKeys],
       description:
         "Export the private key (or key material) for a KMS key. For asymmetric keys (sign/verify), the private key is returned. For symmetric keys (encrypt/decrypt), the key material is returned.",
@@ -517,6 +526,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listKmsKeySigningAlgorithms",
       tags: [ApiDocsTags.KmsSigning],
       description: "List all available signing algorithms for a KMS key",
       params: z.object({
@@ -560,6 +570,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "signWithKmsKey",
       tags: [ApiDocsTags.KmsSigning],
       description: "Sign data with a KMS key.",
       params: z.object({
@@ -615,6 +626,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "verifyWithKmsKey",
       tags: [ApiDocsTags.KmsSigning],
       description: "Verify data signatures with a KMS key.",
       params: z.object({
@@ -673,6 +685,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "decryptWithKmsKey",
       tags: [ApiDocsTags.KmsEncryption],
       description: "Decrypt data with KMS key",
       params: z.object({
