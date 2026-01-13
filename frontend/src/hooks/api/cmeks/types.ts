@@ -76,6 +76,22 @@ export type TCmekDecryptResponse = {
   plaintext: string;
 };
 
+export type TCmekGetPublicKeyDTO = {
+  keyId: string;
+};
+
+export type TCmekGetPublicKeyResponse = {
+  publicKey: string;
+};
+
+export type TCmekGetPrivateKeyDTO = {
+  keyId: string;
+};
+
+export type TCmekGetPrivateKeyResponse = {
+  privateKey: string;
+};
+
 export enum CmekOrderBy {
   Name = "name"
 }

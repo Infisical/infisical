@@ -5,8 +5,8 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
-import { DEFAULT_CRL_VALIDITY_DAYS } from "../certificate-common/certificate-constants";
 import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
+import { DEFAULT_CRL_VALIDITY_DAYS } from "../certificate-common/certificate-constants";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import {
   TDNParts,

@@ -20,6 +20,7 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, ScimRequestError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { AuthTokenType } from "@app/services/auth/auth-type";
@@ -44,8 +45,9 @@ import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { TScimEventsDALFactory } from "./scim-events-dal";
 import { buildScimGroup, buildScimGroupList, buildScimUser, buildScimUserList, parseScimFilter } from "./scim-fns";
-import { TScimGroup, TScimServiceFactory } from "./scim-types";
+import { ScimEvent, TScimGroup, TScimServiceFactory } from "./scim-types";
 
 type TScimServiceFactoryDep = {
   scimDAL: Pick<TScimDALFactory, "create" | "find" | "findById" | "deleteById" | "findExpiringTokens" | "update">;
@@ -98,6 +100,7 @@ type TScimServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
+  scimEventsDAL: Pick<TScimEventsDALFactory, "create" | "findEventsByOrgId">;
 };
 
 export const scimServiceFactory = ({
@@ -117,7 +120,8 @@ export const scimServiceFactory = ({
   membershipGroupDAL,
   membershipUserDAL,
   membershipRoleDAL,
-  additionalPrivilegeDAL
+  additionalPrivilegeDAL,
+  scimEventsDAL
 }: TScimServiceFactoryDep): TScimServiceFactory => {
   const createScimToken: TScimServiceFactory["createScimToken"] = async ({
     actor,
@@ -221,6 +225,40 @@ export const scimServiceFactory = ({
     return scimToken;
   };
 
+  const listScimEvents: TScimServiceFactory["listScimEvents"] = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    orgId,
+    since = "1d",
+    limit = 30,
+    offset = 0
+  }) => {
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.ParentOrganization,
+      actor,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Scim);
+
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.scim)
+      throw new BadRequestError({
+        message: "Failed to get SCIM events due to plan restriction. Upgrade plan to get SCIM events."
+      });
+
+    // Calculate date to fetch from (default: last 30 days)
+    const fromDateTime = Number(new Date()) - ms(since);
+
+    const scimEvents = await scimEventsDAL.findEventsByOrgId(orgId, new Date(fromDateTime), limit, offset);
+
+    return scimEvents;
+  };
+
   // SCIM server endpoints
   const listScimUsers: TScimServiceFactory["listScimUsers"] = async ({
     startIndex = 0,
@@ -257,6 +295,15 @@ export const scimServiceFactory = ({
         })
     );
 
+    await scimEventsDAL.create({
+      orgId,
+      eventType: ScimEvent.LIST_USERS,
+      event: {
+        numberOfUsers: scimUsers.length,
+        filter: filter?.slice(0, 500)
+      }
+    });
+
     return buildScimUserList({
       scimUsers,
       startIndex,
@@ -289,6 +336,18 @@ export const scimServiceFactory = ({
         detail: "SCIM is disabled for the organization",
         status: 403
       });
+
+    await scimEventsDAL.create({
+      orgId,
+      eventType: ScimEvent.GET_USER,
+      event: {
+        username: membership.externalId ?? membership.username,
+        email: membership.email ?? "",
+        firstName: membership.firstName,
+        lastName: membership.lastName,
+        active: membership.isActive
+      }
+    });
 
     return buildScimUser({
       orgMembershipId: membership.id,
@@ -390,13 +449,25 @@ export const scimServiceFactory = ({
           );
         }
       } else {
-        user = await userDAL.findOne(
+        // we fetch all users with this email
+        const usersWithSameEmail = await userDAL.find(
           {
-            email: email.toLowerCase(),
-            isEmailVerified: true
+            email: email.toLowerCase()
           },
-          tx
+          {
+            tx
+          }
         );
+
+        // if there is a verified email user pick that
+        const verifiedEmail = usersWithSameEmail.find((el) => el.isEmailVerified);
+        const userWithSameUsername = usersWithSameEmail.find((el) => el.username === email.toLowerCase());
+        if (verifiedEmail) {
+          user = verifiedEmail;
+          // a user who is invited via email not logged in yet
+        } else if (userWithSameUsername) {
+          user = userWithSameUsername;
+        }
 
         if (!user) {
           const uniqueUsername = await normalizeUsername(
@@ -474,6 +545,20 @@ export const scimServiceFactory = ({
           );
         }
       }
+      await scimEventsDAL.create(
+        {
+          orgId,
+          eventType: ScimEvent.CREATE_USER,
+          event: {
+            username: externalId,
+            email: user.email ?? "",
+            firstName: user.firstName,
+            lastName: user.lastName,
+            active: orgMembership.isActive
+          }
+        },
+        tx
+      );
       await licenseService.updateSubscriptionOrgMemberCount(org.id);
       return { user, orgMembership };
     });
@@ -572,6 +657,20 @@ export const scimServiceFactory = ({
         },
         tx
       );
+
+      await scimEventsDAL.create(
+        {
+          orgId,
+          eventType: ScimEvent.UPDATE_USER,
+          event: {
+            firstName: scimUser.name.givenName,
+            email: scimUser.emails[0].value.toLowerCase(),
+            lastName: scimUser.name.familyName,
+            active: scimUser.active
+          }
+        },
+        tx
+      );
     });
 
     return scimUser;
@@ -653,6 +752,21 @@ export const scimServiceFactory = ({
         },
         tx
       );
+
+      await scimEventsDAL.create(
+        {
+          orgId,
+          eventType: ScimEvent.REPLACE_USER,
+          event: {
+            username: externalId,
+            firstName,
+            email: email?.toLowerCase(),
+            lastName,
+            active
+          }
+        },
+        tx
+      );
     });
 
     return buildScimUser({
@@ -698,6 +812,17 @@ export const scimServiceFactory = ({
       membershipRoleDAL,
       userGroupMembershipDAL,
       additionalPrivilegeDAL
+    });
+
+    await scimEventsDAL.create({
+      orgId,
+      eventType: ScimEvent.DELETE_USER,
+      event: {
+        firstName: membership.firstName,
+        email: membership.email,
+        lastName: membership.lastName,
+        active: membership.isActive
+      }
     });
 
     return {}; // intentionally return empty object upon success
@@ -772,6 +897,15 @@ export const scimServiceFactory = ({
       });
       scimGroups.push(scimGroup);
     }
+
+    await scimEventsDAL.create({
+      orgId,
+      eventType: ScimEvent.LIST_GROUPS,
+      event: {
+        numberOfGroups: scimGroups.length,
+        filter: filter?.slice(0, 500)
+      }
+    });
 
     return buildScimGroupList({
       scimGroups,
@@ -920,6 +1054,15 @@ export const scimServiceFactory = ({
       }
     });
 
+    await scimEventsDAL.create({
+      orgId,
+      eventType: ScimEvent.CREATE_GROUP,
+      event: {
+        groupName: newGroup.group.name,
+        numberOfMembers: orgMemberships.length
+      }
+    });
+
     return buildScimGroup({
       groupId: newGroup.group.id,
       name: newGroup.group.name,
@@ -968,6 +1111,15 @@ export const scimServiceFactory = ({
       }
     });
 
+    await scimEventsDAL.create({
+      orgId,
+      eventType: ScimEvent.GET_GROUP,
+      event: {
+        groupName: group.name,
+        numberOfMembers: orgMemberships.length
+      }
+    });
+
     return buildScimGroup({
       groupId: group.id,
       name: group.name,
@@ -1006,7 +1158,8 @@ export const scimServiceFactory = ({
           },
           {
             groupName: displayName
-          }
+          },
+          tx
         );
 
         const [modifiedGroup] = await groupDAL.update(
@@ -1016,26 +1169,35 @@ export const scimServiceFactory = ({
           },
           {
             name: displayName
-          }
+          },
+          tx
         );
 
         group = modifiedGroup;
       }
 
       const orgMemberships = members.length
-        ? await membershipUserDAL.find({
-            [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
-            [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization,
-            $in: {
-              id: members.map((member) => member.value)
+        ? await membershipUserDAL.find(
+            {
+              [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
+              [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization,
+              $in: {
+                id: members.map((member) => member.value)
+              }
+            },
+            {
+              tx
             }
-          })
+          )
         : [];
 
       const membersIdsSet = new Set(orgMemberships.map((orgMembership) => orgMembership.actorUserId as string));
-      const userGroupMembers = await userGroupMembershipDAL.find({
-        groupId: group.id
-      });
+      const userGroupMembers = await userGroupMembershipDAL.find(
+        {
+          groupId: group.id
+        },
+        { tx }
+      );
       const directMemberUserIds = userGroupMembers.filter((el) => !el.isPending).map((membership) => membership.userId);
 
       const pendingGroupAdditionsUserIds = userGroupMembers
@@ -1111,6 +1273,15 @@ export const scimServiceFactory = ({
 
     const updatedGroup = await $replaceGroupDAL(groupId, orgId, { displayName, members });
 
+    await scimEventsDAL.create({
+      orgId,
+      eventType: ScimEvent.REPLACE_GROUP,
+      event: {
+        groupName: updatedGroup.name,
+        numberOfMembers: members.length
+      }
+    });
+
     return buildScimGroup({
       groupId: updatedGroup.id,
       name: updatedGroup.name,
@@ -1169,6 +1340,16 @@ export const scimServiceFactory = ({
     await $replaceGroupDAL(groupId, orgId, { displayName: scimGroup.displayName, members: scimGroup.members });
 
     const updatedScimMembers = await userGroupMembershipDAL.findGroupMembershipsByGroupIdInOrg(group.id, orgId);
+
+    await scimEventsDAL.create({
+      orgId,
+      eventType: ScimEvent.UPDATE_GROUP,
+      event: {
+        groupName: scimGroup.displayName,
+        numberOfMembers: updatedScimMembers.length
+      }
+    });
+
     return {
       ...scimGroup,
       members: updatedScimMembers.map((member) => ({
@@ -1210,6 +1391,14 @@ export const scimServiceFactory = ({
         status: 404
       });
     }
+
+    await scimEventsDAL.create({
+      orgId,
+      eventType: ScimEvent.DELETE_GROUP,
+      event: {
+        groupName: group.name
+      }
+    });
 
     return {}; // intentionally return empty object upon success
   };
@@ -1305,6 +1494,7 @@ export const scimServiceFactory = ({
     createScimToken,
     listScimTokens,
     deleteScimToken,
+    listScimEvents,
     listScimUsers,
     getScimUser,
     createScimUser,

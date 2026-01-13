@@ -2049,8 +2049,8 @@ describe("CertificateV3Service", () => {
         id: "cert-123",
         profileId: "profile-123",
         renewedByCertificateId: null,
-        notBefore: new Date("2026-01-01"),
-        notAfter: new Date("2026-02-01"),
+        notBefore: new Date(),
+        notAfter: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
         projectId: "project-123",
         status: CertStatus.ACTIVE,
         revokedAt: null,
@@ -2130,8 +2130,8 @@ describe("CertificateV3Service", () => {
         projectId: "project-123",
         status: CertStatus.ACTIVE,
         revokedAt: null,
-        notBefore: new Date("2026-01-01"),
-        notAfter: new Date("2026-02-01")
+        notBefore: new Date(),
+        notAfter: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30)
       };
 
       const mockProfile = {
@@ -2173,8 +2173,8 @@ describe("CertificateV3Service", () => {
         id: "cert-123",
         profileId: "profile-123",
         renewedByCertificateId: null,
-        notBefore: new Date("2026-01-01"),
-        notAfter: new Date("2026-01-08"),
+        notBefore: new Date(),
+        notAfter: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7),
         projectId: "project-123",
         status: CertStatus.ACTIVE,
         revokedAt: null

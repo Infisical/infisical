@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Feature request
+    url: https://github.com/infisical/infisical/discussions/new?category=feature-request
+    about: Suggest a new feature or improvement. Community upvotes help us prioritize what to build next.
+  - name: UI/UX Discussion
+    url: https://github.com/infisical/infisical/discussions/new?category=ui-ux
+    about: Share ideas for improving the look, feel, or usability of Infisical.

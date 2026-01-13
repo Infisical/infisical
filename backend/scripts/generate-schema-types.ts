@@ -100,6 +100,7 @@ const main = async () => {
       !el.tableName.includes("audit_logs_") &&
       !el.tableName.includes("certificate_requests_") &&
       !el.tableName.includes("user_notifications_") &&
+      !el.tableName.includes("scim_events_") &&
       !el.tableName.includes("active_locks") &&
       el.tableName !== "intermediate_audit_logs" &&
       el.tableName !== "intermediate_certificate_requests"

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
@@ -5,6 +6,7 @@ import ms from "ms";
 import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Accordion,
@@ -28,10 +30,13 @@ import {
 } from "@app/context/OrgPermissionContext/types";
 import { gatewaysQueryKeys, useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders, SqlProviders } from "@app/hooks/api/dynamicSecret/types";
+import { VaultDatabaseRole } from "@app/hooks/api/migration/types";
 import { ProjectEnv } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
 
 import { MetadataForm } from "../../DynamicSecretListView/MetadataForm";
+import { LoadFromVaultBanner } from "./components/LoadFromVaultBanner";
+import { VaultSqlDatabaseImportModal } from "./VaultSqlDatabaseImportModal";
 
 const passwordRequirementsSchema = z
   .object({
@@ -170,6 +175,8 @@ export const SqlDatabaseInputForm = ({
   projectSlug,
   isSingleEnvironmentMode
 }: Props) => {
+  const [isVaultImportModalOpen, setIsVaultImportModalOpen] = useState(false);
+
   const {
     control,
     setValue,
@@ -241,10 +248,141 @@ export const SqlDatabaseInputForm = ({
     setValue("provider.passwordRequirements.length", length);
   };
 
+  const handleVaultImport = (role: VaultDatabaseRole) => {
+    try {
+      setValue("name", role.name);
+
+      // Determine the SQL provider from the plugin name
+      const pluginName = role.config.plugin_name?.toLowerCase() || "";
+      let sqlProvider = SqlProviders.Postgres;
+      if (pluginName.includes("mysql")) {
+        sqlProvider = SqlProviders.MySql;
+      } else if (pluginName.includes("oracle")) {
+        sqlProvider = SqlProviders.Oracle;
+      } else if (pluginName.includes("mssql")) {
+        sqlProvider = SqlProviders.MsSQL;
+      }
+      setValue("provider.client", sqlProvider);
+
+      // Parse connection URL to extract host, port, database
+      const connectionUrl = role.config.connection_details.connection_url || "";
+      try {
+        const trimmedUrl = connectionUrl.trim();
+        if (!trimmedUrl) throw new Error("Empty URL");
+
+        const defaultPort = getDefaultPort(sqlProvider);
+
+        const setConnectionDetails = (host: string, port: number | undefined, database: string) => {
+          if (host) setValue("provider.host", host);
+          const parsedPort = port ?? defaultPort;
+          setValue("provider.port", Number.isNaN(parsedPort) ? defaultPort : parsedPort);
+          if (database) setValue("provider.database", database);
+        };
+
+        const parseStandardUrl = (url: URL, dbFromParams?: string) => {
+          if (url.username) {
+            setValue("provider.username", url.username);
+          }
+          const port = url.port ? parseInt(url.port, 10) : undefined;
+          const database = dbFromParams || url.pathname.replace(/^\//, "");
+          setConnectionDetails(url.hostname, port, database);
+        };
+
+        if (sqlProvider === SqlProviders.MySql) {
+          // MySQL format: user:pass@tcp(host:port)/database or standard URL
+          const tcpMatch = trimmedUrl.match(/@tcp\(([^:]+):?(\d+)?\)\/([^?#]+)/);
+          if (tcpMatch) {
+            const port = tcpMatch[2] ? parseInt(tcpMatch[2], 10) : undefined;
+            setConnectionDetails(tcpMatch[1], port, tcpMatch[3]);
+          } else if (trimmedUrl.includes("://")) {
+            parseStandardUrl(new URL(trimmedUrl));
+          }
+        } else if (sqlProvider === SqlProviders.Oracle) {
+          // Oracle format: user/pass@host:port/service_name or user/pass@//host:port/service_name
+          const oracleMatch = trimmedUrl.match(/@(?:\/\/)?([^:/]+):?(\d+)?\/(.+)/);
+          if (oracleMatch) {
+            const port = oracleMatch[2] ? parseInt(oracleMatch[2], 10) : undefined;
+            setConnectionDetails(oracleMatch[1], port, oracleMatch[3]);
+          }
+        } else if (sqlProvider === SqlProviders.MsSQL) {
+          // MSSQL format: sqlserver://user:pass@host:port?database=name
+          const url = new URL(trimmedUrl);
+          const dbParam =
+            url.searchParams.get("database") || url.searchParams.get("databaseName") || "";
+          parseStandardUrl(url, dbParam);
+        } else {
+          // PostgreSQL format: postgresql://user:pass@host:port/database
+          parseStandardUrl(new URL(trimmedUrl));
+        }
+      } catch {
+        createNotification({
+          type: "info",
+          text: "Could not parse connection URL. Host, port, and database fields may need to be filled manually."
+        });
+      }
+
+      if (role.config.connection_details.username) {
+        setValue("provider.username", role.config.connection_details.username);
+      }
+
+      if (role.config.connection_details.tls_ca) {
+        setValue("provider.ca", role.config.connection_details.tls_ca);
+      }
+
+      // Convert {{name}} variable to {{username}}
+      const convertVaultVariables = (statement: string) =>
+        statement.replace(/\{\{name\}\}/g, "{{username}}");
+
+      // Set statements
+      if (role.creation_statements && role.creation_statements.length > 0) {
+        setValue(
+          "provider.creationStatement",
+          role.creation_statements.map(convertVaultVariables).join("\n")
+        );
+      }
+
+      if (role.revocation_statements && role.revocation_statements.length > 0) {
+        setValue(
+          "provider.revocationStatement",
+          role.revocation_statements.map(convertVaultVariables).join("\n")
+        );
+      }
+
+      if (role.renew_statements && role.renew_statements.length > 0) {
+        setValue(
+          "provider.renewStatement",
+          role.renew_statements.map(convertVaultVariables).join("\n")
+        );
+      }
+
+      // Set TTLs
+      if (role.default_ttl) {
+        const defaultTTL = `${role.default_ttl}s`;
+        setValue("defaultTTL", defaultTTL);
+      }
+
+      if (role.max_ttl) {
+        const maxTTL = `${role.max_ttl}s`;
+        setValue("maxTTL", maxTTL);
+      }
+
+      createNotification({
+        type: "info",
+        text: "Configuration loaded successfully from HashiCorp Vault"
+      });
+    } catch {
+      createNotification({
+        type: "error",
+        text: "Failed to load configuration from HashiCorp Vault"
+      });
+    }
+  };
+
   return (
     <div>
       <form onSubmit={handleSubmit(handleCreateDynamicSecret)} autoComplete="off">
         <div>
+          <LoadFromVaultBanner onClick={() => setIsVaultImportModalOpen(true)} />
           <div className="flex items-center space-x-2">
             <div className="grow">
               <Controller
@@ -767,6 +905,11 @@ export const SqlDatabaseInputForm = ({
           </Button>
         </div>
       </form>
+      <VaultSqlDatabaseImportModal
+        isOpen={isVaultImportModalOpen}
+        onOpenChange={setIsVaultImportModalOpen}
+        onImport={handleVaultImport}
+      />
     </div>
   );
 };

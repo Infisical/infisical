@@ -448,6 +448,7 @@
                       "documentation/platform/secret-rotation/auth0-client-secret",
                       "documentation/platform/secret-rotation/aws-iam-user-secret",
                       "documentation/platform/secret-rotation/azure-client-secret",
+                      "documentation/platform/secret-rotation/databricks-service-principal-secret",
                       "documentation/platform/secret-rotation/ldap-password",
                       "documentation/platform/secret-rotation/mongodb-credentials",
                       "documentation/platform/secret-rotation/mssql-credentials",
@@ -748,30 +749,6 @@
             ]
           },
           {
-            "item": "Infisical SSH",
-            "groups": [
-              {
-                "group": "Infisical SSH",
-                "pages": [
-                  "documentation/platform/ssh/overview",
-                  {
-                    "group": "Concepts",
-                    "pages": [
-                      "documentation/platform/ssh/concepts/ssh-certificates"
-                    ]
-                  }
-                ]
-              },
-              {
-                "group": "Platform Reference",
-                "pages": [
-                  "documentation/platform/ssh/usage",
-                  "documentation/platform/ssh/host-groups"
-                ]
-              }
-            ]
-          },
-          {
             "item": "Infisical KMS",
             "groups": [
               {
@@ -802,6 +779,7 @@
                           "documentation/platform/pam/getting-started/resources",
                           "documentation/platform/pam/getting-started/resources/aws-iam",
                           "documentation/platform/pam/getting-started/resources/kubernetes",
+                          "documentation/platform/pam/getting-started/resources/redis",
                           "documentation/platform/pam/getting-started/resources/ssh"
                         ]
                       },
@@ -822,16 +800,16 @@
             ]
           },
           {
-            "item": "Agentic Manager",
+            "item": "Agent Sentinel",
             "groups": [
               {
-                "group": "Agentic Manager",
+                "group": "Agent Sentinel",
                 "pages": [
-                  "documentation/platform/agentic-manager/overview",
+                  "documentation/platform/agent-sentinel/overview",
                   {
                     "group": "Concepts",
                     "pages": [
-                      "documentation/platform/agentic-manager/concepts/mcp-overview"
+                      "documentation/platform/agent-sentinel/concepts/mcp-overview"
                     ]
                   }
                 ]
@@ -839,9 +817,9 @@
               {
                 "group": "Product Reference",
                 "pages": [
-                  "documentation/platform/agentic-manager/mcp-servers",
-                  "documentation/platform/agentic-manager/mcp-endpoints",
-                  "documentation/platform/agentic-manager/activity-logs"
+                  "documentation/platform/agent-sentinel/mcp-servers",
+                  "documentation/platform/agent-sentinel/mcp-endpoints",
+                  "documentation/platform/agent-sentinel/activity-logs"
                 ]
               }
             ]
@@ -1996,6 +1974,19 @@
                     ]
                   },
                   {
+                    "group": "Databricks Service Principal Secret",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/create",
+                      "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/delete",
+                      "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/get-by-id",
+                      "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/get-by-name",
+                      "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/list",
+                      "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/update"
+                    ]
+                  },
+                  {
                     "group": "LDAP Password",
                     "pages": [
                       "api-reference/endpoints/secret-rotations/ldap-password/create",
@@ -2787,68 +2778,6 @@
             ]
           },
           {
-            "group": "Infisical SSH",
-            "pages": [
-              {
-                "group": "Hosts",
-                "pages": [
-                  "api-reference/endpoints/ssh/hosts/list-my",
-                  "api-reference/endpoints/ssh/hosts/list",
-                  "api-reference/endpoints/ssh/hosts/create",
-                  "api-reference/endpoints/ssh/hosts/read",
-                  "api-reference/endpoints/ssh/hosts/update",
-                  "api-reference/endpoints/ssh/hosts/delete",
-                  "api-reference/endpoints/ssh/hosts/issue-host-cert",
-                  "api-reference/endpoints/ssh/hosts/issue-user-cert",
-                  "api-reference/endpoints/ssh/hosts/read-user-ca-pk",
-                  "api-reference/endpoints/ssh/hosts/read-host-ca-pk"
-                ]
-              },
-              {
-                "group": "Host Groups",
-                "pages": [
-                  "api-reference/endpoints/ssh/groups/list",
-                  "api-reference/endpoints/ssh/groups/create",
-                  "api-reference/endpoints/ssh/groups/read",
-                  "api-reference/endpoints/ssh/groups/update",
-                  "api-reference/endpoints/ssh/groups/delete",
-                  "api-reference/endpoints/ssh/groups/add-host",
-                  "api-reference/endpoints/ssh/groups/list-hosts",
-                  "api-reference/endpoints/ssh/groups/remove-host"
-                ]
-              },
-              {
-                "group": "Certificates",
-                "pages": [
-                  "api-reference/endpoints/ssh/certificates/issue-credentials",
-                  "api-reference/endpoints/ssh/certificates/sign-key"
-                ]
-              },
-              {
-                "group": "Certificate Authorities",
-                "pages": [
-                  "api-reference/endpoints/ssh/ca/list",
-                  "api-reference/endpoints/ssh/ca/create",
-                  "api-reference/endpoints/ssh/ca/read",
-                  "api-reference/endpoints/ssh/ca/update",
-                  "api-reference/endpoints/ssh/ca/delete",
-                  "api-reference/endpoints/ssh/ca/public-key",
-                  "api-reference/endpoints/ssh/ca/list-certificate-templates"
-                ]
-              },
-              {
-                "group": "Certificate Templates",
-                "pages": [
-                  "api-reference/endpoints/ssh/certificate-templates/list",
-                  "api-reference/endpoints/ssh/certificate-templates/create",
-                  "api-reference/endpoints/ssh/certificate-templates/read",
-                  "api-reference/endpoints/ssh/certificate-templates/update",
-                  "api-reference/endpoints/ssh/certificate-templates/delete"
-                ]
-              }
-            ]
-          },
-          {
             "group": "Infisical KMS",
             "pages": [
               {
@@ -2859,7 +2788,9 @@
                   "api-reference/endpoints/kms/keys/get-by-name",
                   "api-reference/endpoints/kms/keys/create",
                   "api-reference/endpoints/kms/keys/update",
-                  "api-reference/endpoints/kms/keys/delete"
+                  "api-reference/endpoints/kms/keys/delete",
+                  "api-reference/endpoints/kms/keys/public-key",
+                  "api-reference/endpoints/kms/keys/private-key"
                 ]
               },
               {
@@ -2874,7 +2805,6 @@
                 "pages": [
                   "api-reference/endpoints/kms/signing/sign",
                   "api-reference/endpoints/kms/signing/verify",
-                  "api-reference/endpoints/kms/signing/public-key",
                   "api-reference/endpoints/kms/signing/signing-algorithms"
                 ]
               }

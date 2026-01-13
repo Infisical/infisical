@@ -262,14 +262,17 @@ Supports conditions and permission inversion
 
 #### Subject: `cmek`
 
-| Action    | Description                           |
-| --------- | ------------------------------------- |
-| `read`    | View Customer-Managed Encryption Keys |
-| `create`  | Add new encryption keys               |
-| `edit`    | Modify key properties                 |
-| `delete`  | Remove encryption keys                |
-| `encrypt` | Use keys for encryption operations    |
-| `decrypt` | Use keys for decryption operations    |
+| Action               | Description                                                                 |
+| -------------------- | --------------------------------------------------------------------------- |
+| `read`               | View Customer-Managed Encryption Keys                                       |
+| `create`             | Add new encryption keys                                                     |
+| `edit`               | Modify key properties                                                       |
+| `delete`             | Remove encryption keys                                                      |
+| `encrypt`            | Use keys for encryption operations                                          |
+| `decrypt`            | Use keys for decryption operations                                          |
+| `sign`               | Use keys for signing operations                                             |
+| `verify`             | Use keys for signature verification operations                              |
+| `export-private-key` | Export key material (private key for asymmetric, secret key for symmetric)  |
 
 ### Public Key Infrastructure (PKI)
 
@@ -327,35 +330,6 @@ Supports conditions and permission inversion
 | `create` | Create new collections for organizing PKI resources |
 | `edit`   | Modify collection properties                        |
 | `delete` | Remove PKI collections                              |
-
-### SSH Certificate Management
-
-#### Subject: `ssh-certificate-authorities`
-
-| Action   | Description                            |
-| -------- | -------------------------------------- |
-| `read`   | View SSH certificate authorities       |
-| `create` | Create new SSH certificate authorities |
-| `edit`   | Modify SSH CA configurations           |
-| `delete` | Remove SSH certificate authorities     |
-
-#### Subject: `ssh-certificates`
-
-| Action   | Description                       |
-| -------- | --------------------------------- |
-| `read`   | View SSH certificates             |
-| `create` | Issue new SSH certificates        |
-| `edit`   | Modify SSH certificate properties |
-| `delete` | Revoke or remove SSH certificates |
-
-#### Subject: `ssh-certificate-templates`
-
-| Action   | Description                          |
-| -------- | ------------------------------------ |
-| `read`   | View SSH certificate templates       |
-| `create` | Create new SSH certificate templates |
-| `edit`   | Modify SSH template configurations   |
-| `delete` | Remove SSH certificate templates     |
 
 ### Secret Scanning
 

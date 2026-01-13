@@ -10,6 +10,7 @@ import { OrgServiceActor } from "@app/lib/types";
 import {
   TCmekDecryptDTO,
   TCmekEncryptDTO,
+  TCmekGetPrivateKeyDTO,
   TCmekGetPublicKeyDTO,
   TCmekKeyEncryptionAlgorithm,
   TCmekListSigningAlgorithmsDTO,
@@ -284,7 +285,37 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
 
     const publicKey = await kmsService.getPublicKey({ kmsId: keyId });
-    return { publicKey: publicKey.toString("base64"), projectId: key.projectId };
+    return { publicKey: publicKey.toString("base64"), projectId: key.projectId, keyName: key.name };
+  };
+
+  const getPrivateKey = async ({ keyId }: TCmekGetPrivateKeyDTO, actor: OrgServiceActor) => {
+    const key = await kmsDAL.findCmekById(keyId);
+
+    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+    if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
+    if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: key.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCmekActions.ExportPrivateKey,
+      ProjectPermissionSub.Cmek
+    );
+
+    const keyMaterial = await kmsService.getKeyMaterial({ kmsId: keyId });
+
+    return {
+      privateKey: keyMaterial.toString("base64"),
+      projectId: key.projectId,
+      keyName: key.name
+    };
   };
 
   const cmekSign = async ({ keyId, data, signingAlgorithm, isDigest }: TCmekSignDTO, actor: OrgServiceActor) => {
@@ -400,6 +431,7 @@ export const cmekServiceFactory = ({ kmsService, kmsDAL, permissionService }: TC
     cmekSign,
     cmekVerify,
     listSigningAlgorithms,
-    getPublicKey
+    getPublicKey,
+    getPrivateKey
   };
 };

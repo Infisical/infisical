@@ -57,10 +57,6 @@ const PROJECT_TYPE_MENU_ITEMS = [
     value: ProjectType.KMS
   },
   {
-    label: "SSH",
-    value: ProjectType.SSH
-  },
-  {
     label: "Secret Scanning",
     value: ProjectType.SecretScanning
   },
@@ -69,7 +65,7 @@ const PROJECT_TYPE_MENU_ITEMS = [
     value: ProjectType.PAM
   },
   {
-    label: "Agentic Manager",
+    label: "Agent Sentinel",
     value: ProjectType.AI
   }
 ];
