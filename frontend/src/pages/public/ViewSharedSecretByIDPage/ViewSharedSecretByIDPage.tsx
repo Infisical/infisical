@@ -154,10 +154,10 @@ export const ViewSharedSecretByIDPage = () => {
 
   // Use proxy URLs for branding assets to avoid cross origin issues
   const logoUrl = brandingConfig?.hasLogo
-    ? `/api/v1/secret-sharing/shared/public/${id}/branding/logo`
+    ? `/api/v1/secret-sharing/shared/public/${id}/branding/brand-logo`
     : DEFAULT_LOGO_URL;
   const faviconUrl = brandingConfig?.hasFavicon
-    ? `/api/v1/secret-sharing/shared/public/${id}/branding/favicon`
+    ? `/api/v1/secret-sharing/shared/public/${id}/branding/brand-favicon`
     : DEFAULT_FAVICON_URL;
 
   const brandingTheme = useMemo((): BrandingTheme | undefined => {

@@ -293,6 +293,9 @@ import {
   TOidcConfigs,
   TOidcConfigsInsert,
   TOidcConfigsUpdate,
+  TOrganizationAssets,
+  TOrganizationAssetsInsert,
+  TOrganizationAssetsUpdate,
   TOrganizations,
   TOrganizationsInsert,
   TOrganizationsUpdate,
@@ -510,9 +513,6 @@ import {
   TSecretScanningScans,
   TSecretScanningScansInsert,
   TSecretScanningScansUpdate,
-  TSecretShareBrandingAssets,
-  TSecretShareBrandingAssetsInsert,
-  TSecretShareBrandingAssetsUpdate,
   TSecretSharing,
   TSecretSharingInsert,
   TSecretSharingUpdate,
@@ -1614,10 +1614,10 @@ declare module "knex/types/tables" {
       TApprovalRequestsInsert,
       TApprovalRequestsUpdate
     >;
-    [TableName.SecretShareBrandingAsset]: KnexOriginal.CompositeTableType<
-      TSecretShareBrandingAssets,
-      TSecretShareBrandingAssetsInsert,
-      TSecretShareBrandingAssetsUpdate
+    [TableName.OrganizationAsset]: KnexOriginal.CompositeTableType<
+      TOrganizationAssets,
+      TOrganizationAssetsInsert,
+      TOrganizationAssetsUpdate
     >;
   }
 }

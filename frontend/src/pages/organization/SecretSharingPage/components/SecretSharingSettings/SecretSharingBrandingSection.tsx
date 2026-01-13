@@ -59,7 +59,9 @@ const validateFile = (file: File): string | null => {
 };
 
 // Fetch image as base64 data URL using authenticated request
-const fetchAssetAsDataUrl = async (assetType: "logo" | "favicon"): Promise<string | null> => {
+const fetchAssetAsDataUrl = async (
+  assetType: "brand-logo" | "brand-favicon"
+): Promise<string | null> => {
   try {
     const response = await apiRequest.get(`/api/v1/secret-sharing/shared/branding/${assetType}`, {
       responseType: "blob"
@@ -77,14 +79,14 @@ const fetchAssetAsDataUrl = async (assetType: "logo" | "favicon"): Promise<strin
 };
 
 type AssetUploadCardProps = {
-  assetType: "logo" | "favicon";
+  assetType: "brand-logo" | "brand-favicon";
   title: string;
   description: string;
   hasAsset: boolean;
   isAllowed: boolean;
   isPending: boolean;
-  onUpload: (assetType: "logo" | "favicon", file: File) => Promise<void>;
-  onDelete: (assetType: "logo" | "favicon") => Promise<void>;
+  onUpload: (assetType: "brand-logo" | "brand-favicon", file: File) => Promise<void>;
+  onDelete: (assetType: "brand-logo" | "brand-favicon") => Promise<void>;
 };
 
 const AssetUploadCard = ({
@@ -237,7 +239,7 @@ export const SecretSharingBrandingSection = () => {
     });
   };
 
-  const handleFileUpload = async (assetType: "logo" | "favicon", file: File) => {
+  const handleFileUpload = async (assetType: "brand-logo" | "brand-favicon", file: File) => {
     await uploadAsset({ assetType, file });
     createNotification({
       text: `Successfully uploaded ${assetType}`,
@@ -245,7 +247,7 @@ export const SecretSharingBrandingSection = () => {
     });
   };
 
-  const handleFileDelete = async (assetType: "logo" | "favicon") => {
+  const handleFileDelete = async (assetType: "brand-logo" | "brand-favicon") => {
     await deleteAsset({ assetType });
     createNotification({
       text: `Successfully deleted ${assetType}`,
@@ -291,7 +293,7 @@ export const SecretSharingBrandingSection = () => {
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <AssetUploadCard
-                  assetType="logo"
+                  assetType="brand-logo"
                   title="Logo"
                   description="Displayed on shared secret pages (max 1MB)"
                   hasAsset={brandingConfig?.hasLogo ?? false}
@@ -301,7 +303,7 @@ export const SecretSharingBrandingSection = () => {
                   onDelete={handleFileDelete}
                 />
                 <AssetUploadCard
-                  assetType="favicon"
+                  assetType="brand-favicon"
                   title="Favicon"
                   description="Displayed in browser tab (max 1MB)"
                   hasAsset={brandingConfig?.hasFavicon ?? false}

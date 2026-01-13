@@ -307,6 +307,7 @@ import { incidentContactDALFactory } from "@app/services/org/incident-contacts-d
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { orgServiceFactory } from "@app/services/org/org-service";
 import { orgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
+import { orgAssetDALFactory } from "@app/services/org-asset/org-asset-dal";
 import { orgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { pamAccountRotationServiceFactory } from "@app/services/pam-account-rotation/pam-account-rotation-queue";
 import { pamSessionExpirationServiceFactory } from "@app/services/pam-session-expiration/pam-session-expiration-queue";
@@ -363,7 +364,6 @@ import { secretFolderVersionDALFactory } from "@app/services/secret-folder/secre
 import { secretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { secretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
 import { secretReminderRecipientsDALFactory } from "@app/services/secret-reminder-recipients/secret-reminder-recipients-dal";
-import { secretShareBrandingAssetDALFactory } from "@app/services/secret-sharing/secret-share-branding-asset-dal";
 import { secretSharingDALFactory } from "@app/services/secret-sharing/secret-sharing-dal";
 import { secretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";
 import { secretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal";
@@ -553,7 +553,7 @@ export const registerRoutes = async (
   const userGroupMembershipDAL = userGroupMembershipDALFactory(db);
   const secretScanningDAL = secretScanningDALFactory(db);
   const secretSharingDAL = secretSharingDALFactory(db);
-  const secretShareBrandingAssetDAL = secretShareBrandingAssetDALFactory(db);
+  const orgAssetDAL = orgAssetDALFactory(db);
   const licenseDAL = licenseDALFactory(db);
   const dynamicSecretDAL = dynamicSecretDALFactory(db);
   const dynamicSecretLeaseDAL = dynamicSecretLeaseDALFactory(db);
@@ -1575,7 +1575,7 @@ export const registerRoutes = async (
   const secretSharingService = secretSharingServiceFactory({
     permissionService,
     secretSharingDAL,
-    secretShareBrandingAssetDAL,
+    orgAssetDAL,
     orgDAL,
     kmsService,
     smtpService,

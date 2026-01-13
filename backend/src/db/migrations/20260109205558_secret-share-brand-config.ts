@@ -11,30 +11,30 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  // For storing logo/favicon images
-  const hasAssetsTable = await knex.schema.hasTable(TableName.SecretShareBrandingAsset);
+  // General blob storage for organization assets
+  const hasAssetsTable = await knex.schema.hasTable(TableName.OrganizationAsset);
   if (!hasAssetsTable) {
-    await knex.schema.createTable(TableName.SecretShareBrandingAsset, (t) => {
+    await knex.schema.createTable(TableName.OrganizationAsset, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("orgId").notNullable();
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
-      t.string("assetType").notNullable(); // 'logo' or 'favicon'
+      t.string("assetType").notNullable();
       t.binary("data").notNullable();
       t.string("contentType").notNullable();
       t.integer("size").notNullable();
       t.timestamps(true, true, true);
-      t.unique(["orgId", "assetType"]);
+      t.index(["orgId", "assetType"]);
     });
 
-    await createOnUpdateTrigger(knex, TableName.SecretShareBrandingAsset);
+    await createOnUpdateTrigger(knex, TableName.OrganizationAsset);
   }
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasAssetsTable = await knex.schema.hasTable(TableName.SecretShareBrandingAsset);
+  const hasAssetsTable = await knex.schema.hasTable(TableName.OrganizationAsset);
   if (hasAssetsTable) {
-    await knex.schema.dropTable(TableName.SecretShareBrandingAsset);
-    await dropOnUpdateTrigger(knex, TableName.SecretShareBrandingAsset);
+    await knex.schema.dropTable(TableName.OrganizationAsset);
+    await dropOnUpdateTrigger(knex, TableName.OrganizationAsset);
   }
 
   const hasConfigColumn = await knex.schema.hasColumn(TableName.Organization, "secretShareBrandConfig");

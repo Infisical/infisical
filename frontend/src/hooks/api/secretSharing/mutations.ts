@@ -118,7 +118,7 @@ export const useUploadBrandingAsset = () => {
   return useMutation<
     { message: string },
     { message: string },
-    { assetType: "logo" | "favicon"; file: File }
+    { assetType: "brand-logo" | "brand-favicon"; file: File }
   >({
     mutationFn: async ({ assetType, file }) => {
       const formData = new FormData();
@@ -142,7 +142,11 @@ export const useUploadBrandingAsset = () => {
 
 export const useDeleteBrandingAsset = () => {
   const queryClient = useQueryClient();
-  return useMutation<{ message: string }, { message: string }, { assetType: "logo" | "favicon" }>({
+  return useMutation<
+    { message: string },
+    { message: string },
+    { assetType: "brand-logo" | "brand-favicon" }
+  >({
     mutationFn: async ({ assetType }) => {
       const { data } = await apiRequest.delete<{ message: string }>(
         `/api/v1/secret-sharing/shared/branding/${assetType}`

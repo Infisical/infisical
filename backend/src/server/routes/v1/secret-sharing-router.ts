@@ -295,7 +295,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     schema: {
       params: z.object({
         id: z.string(),
-        assetType: z.enum(["logo", "favicon"])
+        assetType: z.enum(["brand-logo", "brand-favicon"])
       })
     },
     handler: async (req, res) => {
@@ -329,7 +329,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        assetType: z.enum(["logo", "favicon"])
+        assetType: z.enum(["brand-logo", "brand-favicon"])
       }),
       response: {
         200: z.object({
@@ -382,7 +382,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        assetType: z.enum(["logo", "favicon"])
+        assetType: z.enum(["brand-logo", "brand-favicon"])
       }),
       response: {
         200: z.object({
@@ -439,7 +439,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       params: z.object({
-        assetType: z.enum(["logo", "favicon"])
+        assetType: z.enum(["brand-logo", "brand-favicon"])
       })
     },
     onRequest: verifyAuth([AuthMode.JWT]),

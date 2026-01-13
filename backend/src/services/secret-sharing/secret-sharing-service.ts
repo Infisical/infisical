@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope, TSecretSharing } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionSecretShareAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
@@ -13,9 +14,9 @@ import { isUuidV4 } from "@app/lib/validator";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TSecretShareBrandConfig } from "../org/org-types";
+import { TOrgAssetDALFactory } from "../org-asset/org-asset-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
-import { TSecretShareBrandingAssetDALFactory } from "./secret-share-branding-asset-dal";
 import { TSecretSharingDALFactory } from "./secret-sharing-dal";
 import {
   SecretSharingType,
@@ -29,12 +30,11 @@ import {
   TRevealSecretRequestValueDTO,
   TSetSecretRequestValueDTO
 } from "./secret-sharing-types";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 
 type TSecretSharingServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   secretSharingDAL: TSecretSharingDALFactory;
-  secretShareBrandingAssetDAL: TSecretShareBrandingAssetDALFactory;
+  orgAssetDAL: TOrgAssetDALFactory;
   orgDAL: TOrgDALFactory;
   userDAL: TUserDALFactory;
   kmsService: TKmsServiceFactory;
@@ -47,7 +47,7 @@ export type TSecretSharingServiceFactory = ReturnType<typeof secretSharingServic
 export const secretSharingServiceFactory = ({
   permissionService,
   secretSharingDAL,
-  secretShareBrandingAssetDAL,
+  orgAssetDAL,
   orgDAL,
   kmsService,
   smtpService,
@@ -691,10 +691,10 @@ export const secretSharingServiceFactory = ({
     }
 
     const org = await orgDAL.findOrgById(orgId);
-    const assets = await secretShareBrandingAssetDAL.findAllByOrgId(orgId);
+    const assets = await orgAssetDAL.listAssetsByType(orgId, ["brand-logo", "brand-favicon"]);
 
-    const hasLogo = assets.some((a) => a.assetType === "logo");
-    const hasFavicon = assets.some((a) => a.assetType === "favicon");
+    const hasLogo = assets.some((a) => a.assetType === "brand-logo");
+    const hasFavicon = assets.some((a) => a.assetType === "brand-favicon");
 
     const config = org?.secretShareBrandConfig as TSecretShareBrandConfig;
 
@@ -733,7 +733,7 @@ export const secretSharingServiceFactory = ({
       return null;
     }
 
-    const asset = await secretShareBrandingAssetDAL.findByOrgIdAndType(orgId, assetType);
+    const asset = await orgAssetDAL.getFirstAsset(orgId, assetType);
     return asset;
   };
 
@@ -759,7 +759,7 @@ export const secretSharingServiceFactory = ({
     );
 
     const size = data.length;
-    return secretShareBrandingAssetDAL.upsert(orgId, assetType, data, contentType, size);
+    return orgAssetDAL.upsertFirstAsset(orgId, assetType, data, contentType, size);
   };
 
   const deleteBrandingAsset = async (orgId: string, assetType: string, actor: OrgServiceActor) => {
@@ -777,7 +777,7 @@ export const secretSharingServiceFactory = ({
       OrgPermissionSubjects.SecretShare
     );
 
-    await secretShareBrandingAssetDAL.deleteByOrgIdAndType(orgId, assetType);
+    await orgAssetDAL.deleteAssetsByType(orgId, assetType);
   };
 
   return {

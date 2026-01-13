@@ -9,7 +9,7 @@ import { zodBuffer } from "@app/lib/zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const SecretShareBrandingAssetsSchema = z.object({
+export const OrganizationAssetsSchema = z.object({
   id: z.string().uuid(),
   orgId: z.string().uuid(),
   assetType: z.string(),
@@ -20,8 +20,6 @@ export const SecretShareBrandingAssetsSchema = z.object({
   updatedAt: z.date()
 });
 
-export type TSecretShareBrandingAssets = z.infer<typeof SecretShareBrandingAssetsSchema>;
-export type TSecretShareBrandingAssetsInsert = Omit<z.input<typeof SecretShareBrandingAssetsSchema>, TImmutableDBKeys>;
-export type TSecretShareBrandingAssetsUpdate = Partial<
-  Omit<z.input<typeof SecretShareBrandingAssetsSchema>, TImmutableDBKeys>
->;
+export type TOrganizationAssets = z.infer<typeof OrganizationAssetsSchema>;
+export type TOrganizationAssetsInsert = Omit<z.input<typeof OrganizationAssetsSchema>, TImmutableDBKeys>;
+export type TOrganizationAssetsUpdate = Partial<Omit<z.input<typeof OrganizationAssetsSchema>, TImmutableDBKeys>>;
