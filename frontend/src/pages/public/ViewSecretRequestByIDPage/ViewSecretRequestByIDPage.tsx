@@ -214,7 +214,7 @@ export const ViewSecretRequestByIDPage = () => {
             >
               {step === "set-value" ? "Secret Request" : "Secret request shared"}
             </h1>
-            {secretRequest && (
+            {secretRequest?.request && (
               <p
                 className="text-sm"
                 style={brandingTheme ? { color: brandingTheme.textMutedColor } : undefined}
@@ -255,13 +255,12 @@ export const ViewSecretRequestByIDPage = () => {
               {secretRequest?.isSecretValueSet && (
                 <SecretValueAlreadySharedContainer brandingTheme={brandingTheme} />
               )}
-              {secretRequest?.error ||
-                (error && !isInvalidCredential && !isUnauthorized && (
-                  <SecretRequestErrorContainer
-                    brandingTheme={brandingTheme}
-                    error={secretRequest?.error}
-                  />
-                ))}
+              {(secretRequest?.error || (error && !isInvalidCredential && !isUnauthorized)) && (
+                <SecretRequestErrorContainer
+                  brandingTheme={brandingTheme}
+                  error={secretRequest?.error}
+                />
+              )}
               {step === "success" && (
                 <SecretRequestSuccessContainer
                   requesterUsername={secretRequest!.request.requester.username}
