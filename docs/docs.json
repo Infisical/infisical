@@ -3074,6 +3074,9 @@
   "integrations": {
     "koala": {
       "publicApiKey": "pk_b50d7184e0e39ddd5cdb43cf6abeadd9b97d"
+    },
+    "gtm": {
+      "tagId": "GTM-WL5C7MWT"
     }
   },
   "redirects": [
