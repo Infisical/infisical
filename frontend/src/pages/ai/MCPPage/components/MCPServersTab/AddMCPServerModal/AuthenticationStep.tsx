@@ -20,7 +20,7 @@ const AUTH_METHOD_OPTIONS = [{ value: MCPServerAuthMethod.OAUTH, label: "OAuth" 
 const OAUTH_POPUP_WIDTH = 600;
 const OAUTH_POPUP_HEIGHT = 700;
 const OAUTH_POLL_INTERVAL = 2000; // Poll every 2 seconds
-const OAUTH_MAX_TIMEOUT = 2 * 60 * 1000; // 5 minutes
+const OAUTH_MAX_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 type Props = {
   onOAuthSuccess?: () => void;
