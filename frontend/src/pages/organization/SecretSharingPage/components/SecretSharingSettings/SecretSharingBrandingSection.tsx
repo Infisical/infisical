@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, FormControl, Input } from "@app/components/v2";
+import { Button, DeleteActionModal, FormControl, Input } from "@app/components/v2";
 import { Badge, UnstableButton } from "@app/components/v3";
 import { apiRequest } from "@app/config/request";
 import {
@@ -103,6 +103,7 @@ const AssetUploadCard = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Fetch existing asset on mount if it exists
   useEffect(() => {
@@ -147,6 +148,7 @@ const AssetUploadCard = ({
   const handleDelete = async () => {
     await onDelete(assetType);
     setPreviewUrl(null);
+    setIsDeleteModalOpen(false);
   };
 
   return (
@@ -176,13 +178,22 @@ const AssetUploadCard = ({
             <UnstableButton
               variant="danger"
               size="xs"
-              onClick={handleDelete}
+              onClick={() => setIsDeleteModalOpen(true)}
               isDisabled={!isAllowed || isPending}
             >
               <TrashIcon />
               Delete
             </UnstableButton>
           )}
+          <DeleteActionModal
+            isOpen={isDeleteModalOpen}
+            onClose={() => setIsDeleteModalOpen(false)}
+            onChange={setIsDeleteModalOpen}
+            deleteKey="delete"
+            title={`Delete ${title}?`}
+            onDeleteApproved={handleDelete}
+            buttonText="Delete"
+          />
         </div>
       </div>
       {isLoading ? (
