@@ -119,6 +119,7 @@ import {
   RenderConnectionListItemSchema,
   SanitizedRenderConnectionSchema
 } from "@app/services/app-connection/render/render-connection-schema";
+import { SanitizedSshConnectionSchema, SshConnectionListItemSchema } from "@app/services/app-connection/ssh";
 import {
   SanitizedSupabaseConnectionSchema,
   SupabaseConnectionListItemSchema
@@ -185,7 +186,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedLaravelForgeConnectionSchema.options,
   ...SanitizedChefConnectionSchema.options,
   ...SanitizedDNSMadeEasyConnectionSchema.options,
-  ...SanitizedOctopusDeployConnectionSchema.options
+  ...SanitizedOctopusDeployConnectionSchema.options,
+  ...SanitizedSshConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -233,7 +235,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   LaravelForgeConnectionListItemSchema,
   ChefConnectionListItemSchema,
   DNSMadeEasyConnectionListItemSchema,
-  OctopusDeployConnectionListItemSchema
+  OctopusDeployConnectionListItemSchema,
+  SshConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

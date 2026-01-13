@@ -1596,6 +1596,18 @@
                     ]
                   },
                   {
+                    "group": "SSH",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/ssh/list",
+                      "api-reference/endpoints/app-connections/ssh/available",
+                      "api-reference/endpoints/app-connections/ssh/get-by-id",
+                      "api-reference/endpoints/app-connections/ssh/get-by-name",
+                      "api-reference/endpoints/app-connections/ssh/create",
+                      "api-reference/endpoints/app-connections/ssh/update",
+                      "api-reference/endpoints/app-connections/ssh/delete"
+                    ]
+                  },
+                  {
                     "group": "TeamCity",
                     "pages": [
                       "api-reference/endpoints/app-connections/teamcity/list",
