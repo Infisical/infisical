@@ -142,7 +142,7 @@ export const identityV2DALFactory = (db: TDbClient) => {
 
     if (filter.search) void baseQuery.whereILike(`${TableName.Identity}.name`, `%${filter.search}%`);
 
-    const countQuery = baseQuery.clone().count("id as count").first<{ count: string }>();
+    const countQuery = baseQuery.clone().count(`${TableName.Identity}.id as count`).first<{ count: string }>();
 
     const dataQuery = baseQuery
       .clone()
