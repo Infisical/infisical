@@ -42,6 +42,7 @@ export const auditLogQueueServiceFactory = async ({
     const { actor, event, ipAddress, projectId, userAgent, userAgentType } = job.data;
     let { orgId } = job.data;
     const MS_IN_DAY = 24 * 60 * 60 * 1000;
+    const DEFAULT_AUDIT_LOG_RETENTION_DAYS = 90;
     let project;
 
     if (!orgId) {
@@ -53,14 +54,16 @@ export const auditLogQueueServiceFactory = async ({
 
     const plan = await licenseService.getPlan(orgId);
 
+    // Default to 90 days if not defined
+    const retentionDays = plan.auditLogsRetentionDays ?? DEFAULT_AUDIT_LOG_RETENTION_DAYS;
+
     // skip inserting if audit log retention is 0 meaning its not supported
-    if (plan.auditLogsRetentionDays !== 0) {
-      // For project actions, set TTL to project-level audit log retention config
-      // This condition ensures that the plan's audit log retention days cannot be bypassed
+    if (retentionDays !== 0) {
       const ttlInDays =
-        project?.auditLogsRetentionDays && project.auditLogsRetentionDays < plan.auditLogsRetentionDays
+        project?.auditLogsRetentionDays !== undefined &&
+        project.auditLogsRetentionDays < retentionDays
           ? project.auditLogsRetentionDays
-          : plan.auditLogsRetentionDays;
+          : retentionDays;
 
       const ttl = ttlInDays * MS_IN_DAY;
 
