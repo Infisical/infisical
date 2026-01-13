@@ -297,7 +297,7 @@ export const SecretSharingBrandingSection = () => {
           </p>
           <UnstableButton
             size="xs"
-            variant="default"
+            variant="org"
             as="a"
             href="https://infisical.com/schedule-demo"
             target="_blank"
