@@ -37,7 +37,6 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
   const [oauthSessionId, setOauthSessionId] = useState<string | null>(null);
   const [isOAuthPending, setIsOAuthPending] = useState(false);
   const popupRef = useRef<Window | null>(null);
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check if OAuth is already authorized (has access token)
   const oauthCredentials = authMethod === MCPServerAuthMethod.OAUTH ? watch("credentials") : null;
@@ -75,12 +74,6 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
       setIsOAuthPending(false);
       setOauthSessionId(null);
 
-      // Clear polling interval
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
-      }
-
       createNotification({
         text: "OAuth authorization successful",
         type: "success"
@@ -99,9 +92,6 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
       if (popupRef.current && !popupRef.current.closed) {
         popupRef.current.close();
       }
@@ -218,11 +208,6 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
 
     if (popupRef.current && !popupRef.current.closed) {
       popupRef.current.close();
-    }
-
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = null;
     }
   };
 
