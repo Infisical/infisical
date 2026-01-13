@@ -20,11 +20,20 @@ export const orgAssetDALFactory = (db: TDbClient) => {
     contentType: string,
     size: number
   ) => {
-    const existing = await getFirstAsset(orgId, assetType);
-    if (existing) {
-      return organizationAssetOrm.updateById(existing.id, { data, contentType, size });
-    }
-    return organizationAssetOrm.create({ orgId, assetType, data, contentType, size });
+    return db.transaction(async (tx) => {
+      const existing = await tx(TableName.OrganizationAsset).where({ orgId, assetType }).first();
+      if (existing) {
+        const [updated] = await tx(TableName.OrganizationAsset)
+          .where({ id: existing.id })
+          .update({ data, contentType, size })
+          .returning("*");
+        return updated;
+      }
+      const [created] = await tx(TableName.OrganizationAsset)
+        .insert({ orgId, assetType, data, contentType, size })
+        .returning("*");
+      return created;
+    });
   };
 
   const deleteAssetsByType = async (orgId: string, assetType: string) => {
