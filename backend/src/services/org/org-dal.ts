@@ -299,6 +299,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.Organization))
         .select(db.ref("role").withSchema(TableName.MembershipRole).as("userRole"))
         .select(db.ref("status").withSchema(TableName.Membership).as("userStatus"))
+        .select(db.ref("createdAt").withSchema(TableName.Membership).as("userJoinedAt"))
         .select(
           db.raw(`
             CASE
