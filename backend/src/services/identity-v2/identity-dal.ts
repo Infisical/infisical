@@ -145,7 +145,6 @@ export const identityV2DALFactory = (db: TDbClient) => {
     const countQuery = baseQuery.clone().count(`${TableName.Identity}.id as count`).first<{ count: string }>();
 
     const dataQuery = baseQuery
-      .clone()
       .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
         void queryBuilder.on(`${TableName.Identity}.id`, `${TableName.IdentityMetadata}.identityId`);
       })
