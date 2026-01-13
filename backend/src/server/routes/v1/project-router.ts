@@ -65,6 +65,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listProjectUsers",
       querystring: z.object({
         includeGroupMembers: z
           .enum(["true", "false"])
@@ -145,6 +146,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "createProject",
       tags: [ApiDocsTags.Projects],
       description: "Create a new project",
       security: [
@@ -224,6 +226,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listProjects",
       tags: [ApiDocsTags.Projects],
       description: "List projects",
       security: [
@@ -270,6 +273,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "getProjectById",
       tags: [ApiDocsTags.Projects],
       description: "Get project",
       security: [
@@ -310,6 +314,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "getProjectBySlug",
       tags: [ApiDocsTags.Projects],
       description: "Get project details by slug",
       security: [

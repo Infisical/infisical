@@ -112,7 +112,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "updateIdentity",
+      operationId: "updateMachineIdentity",
       tags: [ApiDocsTags.Identities],
       description: "Update machine identity",
       security: [
@@ -177,7 +177,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "deleteIdentity",
+      operationId: "deleteMachineIdentity",
       tags: [ApiDocsTags.Identities],
       description: "Delete machine identity",
       security: [
@@ -227,7 +227,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "getIdentityById",
+      operationId: "getMachineIdentityById",
       tags: [ApiDocsTags.Identities],
       description: "Get a machine identity by id",
       security: [
@@ -286,7 +286,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "listIdentities",
+      operationId: "listMachineIdentities",
       tags: [ApiDocsTags.Identities],
       description: "List machine identities",
       security: [
@@ -337,7 +337,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "searchIdentities",
+      operationId: "searchMachineIdentities",
       tags: [ApiDocsTags.Identities],
       description: "Search machine identities",
       security: [
@@ -436,7 +436,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      operationId: "getIdentityMemberships",
+      operationId: "getMachineIdentityMemberships",
       description: "List project memberships that machine identity with id is part of",
       security: [
         {
@@ -497,7 +497,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
-      operationId: "getIdentityDetails",
+      operationId: "getMachineIdentityDetails",
       response: {
         200: z.object({
           identityDetails: z.object({
