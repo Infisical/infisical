@@ -17,17 +17,14 @@ import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType
 } from "../certificate-common/certificate-constants";
-import { TCertificateTemplateV2DALFactory } from "./certificate-template-v2-dal";
+import { TCertificatePolicyDALFactory } from "./certificate-policy-dal";
+import { certificatePolicyServiceFactory, TCertificatePolicyServiceFactory } from "./certificate-policy-service";
 import {
-  certificateTemplateV2ServiceFactory,
-  TCertificateTemplateV2ServiceFactory
-} from "./certificate-template-v2-service";
-import {
+  TCertificatePolicy,
+  TCertificatePolicyInsert,
   TCertificateRequest,
-  TCertificateTemplateV2,
-  TCertificateTemplateV2Insert,
   TTemplateV2Policy
-} from "./certificate-template-v2-types";
+} from "./certificate-policy-types";
 
 enum CertAttributeRule {
   ALLOW = "allow",
@@ -35,10 +32,10 @@ enum CertAttributeRule {
   REQUIRE = "require"
 }
 
-describe("CertificateTemplateV2Service", () => {
-  let service: TCertificateTemplateV2ServiceFactory;
+describe("CertificatePolicyService", () => {
+  let service: TCertificatePolicyServiceFactory;
 
-  const mockCertificateTemplateV2DAL = {
+  const mockCertificatePolicyDAL = {
     findBySlugAndProjectId: vi.fn(),
     create: vi.fn(),
     findById: vi.fn(),
@@ -46,8 +43,8 @@ describe("CertificateTemplateV2Service", () => {
     deleteById: vi.fn(),
     findByProjectId: vi.fn(),
     countByProjectId: vi.fn(),
-    isTemplateInUse: vi.fn(),
-    getProfilesUsingTemplate: vi.fn(),
+    isPolicyInUse: vi.fn(),
+    getProfilesUsingPolicy: vi.fn(),
     findByNameAndProjectId: vi.fn(),
     transaction: vi.fn(),
     find: vi.fn(),
@@ -109,7 +106,7 @@ describe("CertificateTemplateV2Service", () => {
     }
   };
 
-  const sampleTemplate: TCertificateTemplateV2 = {
+  const sampleTemplate: TCertificatePolicy = {
     id: "template-123",
     projectId: "project-123",
     name: "web-server-template",
@@ -148,11 +145,11 @@ describe("CertificateTemplateV2Service", () => {
       permission: mockPermission
     });
 
-    mockCertificateTemplateV2DAL.findByNameAndProjectId.mockResolvedValue(null);
-    mockCertificateTemplateV2DAL.findBySlugAndProjectId.mockResolvedValue(null);
+    mockCertificatePolicyDAL.findByNameAndProjectId.mockResolvedValue(null);
+    mockCertificatePolicyDAL.findBySlugAndProjectId.mockResolvedValue(null);
 
-    service = certificateTemplateV2ServiceFactory({
-      certificateTemplateV2DAL: mockCertificateTemplateV2DAL as TCertificateTemplateV2DALFactory,
+    service = certificatePolicyServiceFactory({
+      certificatePolicyDAL: mockCertificatePolicyDAL as TCertificatePolicyDALFactory,
       permissionService: mockPermissionService
     });
   });
@@ -161,23 +158,23 @@ describe("CertificateTemplateV2Service", () => {
     vi.resetAllMocks();
   });
 
-  describe("createTemplateV2", () => {
-    const createData: Omit<TCertificateTemplateV2Insert, "projectId"> = {
+  describe("createPolicy", () => {
+    const createData: Omit<TCertificatePolicyInsert, "projectId"> = {
       name: "test-template",
       description: "Test description",
       ...samplePolicy
     };
 
     it("should create template with valid policy", async () => {
-      mockCertificateTemplateV2DAL.create.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.create.mockResolvedValue(sampleTemplate);
 
-      const result = await service.createTemplateV2({
+      const result = await service.createPolicy({
         ...mockActor,
         projectId: "project-123",
         data: createData
       });
 
-      expect(mockCertificateTemplateV2DAL.create).toHaveBeenCalledWith({
+      expect(mockCertificatePolicyDAL.create).toHaveBeenCalledWith({
         ...createData,
         projectId: "project-123",
         name: expect.any(String)
@@ -192,22 +189,22 @@ describe("CertificateTemplateV2Service", () => {
     // - Default key algorithm not in allowed list (now schema-level validation)
   });
 
-  describe("updateTemplateV2", () => {
-    it("should update template with valid data", async () => {
+  describe("updatePolicy", () => {
+    it("should update policy with valid data", async () => {
       const updateData = { name: "updated-template-name" };
       const updatedTemplate = { ...sampleTemplate, ...updateData };
 
-      mockCertificateTemplateV2DAL.findById.mockResolvedValue(sampleTemplate);
-      mockCertificateTemplateV2DAL.updateById.mockResolvedValue(updatedTemplate);
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.updateById.mockResolvedValue(updatedTemplate);
 
-      const result = await service.updateTemplateV2({
+      const result = await service.updatePolicy({
         ...mockActor,
-        templateId: "template-123",
+        policyId: "policy-123",
         data: updateData
       });
 
-      expect(mockCertificateTemplateV2DAL.findById).toHaveBeenCalledWith("template-123");
-      expect(mockCertificateTemplateV2DAL.updateById).toHaveBeenCalledWith("template-123", {
+      expect(mockCertificatePolicyDAL.findById).toHaveBeenCalledWith("policy-123");
+      expect(mockCertificatePolicyDAL.updateById).toHaveBeenCalledWith("policy-123", {
         ...updateData,
         name: expect.any(String)
       });
@@ -215,59 +212,59 @@ describe("CertificateTemplateV2Service", () => {
     });
 
     it("should throw NotFoundError when template does not exist", async () => {
-      mockCertificateTemplateV2DAL.findById.mockResolvedValue(null);
+      mockCertificatePolicyDAL.findById.mockResolvedValue(null);
 
       await expect(
-        service.updateTemplateV2({
+        service.updatePolicy({
           ...mockActor,
-          templateId: "nonexistent-template",
+          policyId: "nonexistent-policy",
           data: { name: "updated-name" }
         })
       ).rejects.toThrow(NotFoundError);
     });
   });
 
-  describe("getTemplateV2ById", () => {
+  describe("getPolicyById", () => {
     it("should return template when found", async () => {
-      mockCertificateTemplateV2DAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
 
-      const result = await service.getTemplateV2ById({
+      const result = await service.getPolicyById({
         ...mockActor,
-        templateId: "template-123"
+        policyId: "policy-123"
       });
 
-      expect(mockCertificateTemplateV2DAL.findById).toHaveBeenCalledWith("template-123");
+      expect(mockCertificatePolicyDAL.findById).toHaveBeenCalledWith("policy-123");
       expect(result).toEqual(sampleTemplate);
     });
 
     it("should throw NotFoundError when template does not exist", async () => {
-      mockCertificateTemplateV2DAL.findById.mockResolvedValue(null);
+      mockCertificatePolicyDAL.findById.mockResolvedValue(null);
 
       await expect(
-        service.getTemplateV2ById({
+        service.getPolicyById({
           ...mockActor,
-          templateId: "nonexistent-template"
+          policyId: "nonexistent-policy"
         })
       ).rejects.toThrow(NotFoundError);
     });
   });
 
-  describe("listTemplatesV2", () => {
-    it("should return templates list with pagination", async () => {
+  describe("listPolicies", () => {
+    it("should return policies list with pagination", async () => {
       const templates = [sampleTemplate];
       const totalCount = 1;
 
-      mockCertificateTemplateV2DAL.findByProjectId.mockResolvedValue(templates);
-      mockCertificateTemplateV2DAL.countByProjectId.mockResolvedValue(totalCount);
+      mockCertificatePolicyDAL.findByProjectId.mockResolvedValue(templates);
+      mockCertificatePolicyDAL.countByProjectId.mockResolvedValue(totalCount);
 
-      const result = await service.listTemplatesV2({
+      const result = await service.listPolicies({
         ...mockActor,
         projectId: "project-123",
         offset: 0,
         limit: 20
       });
 
-      expect(mockCertificateTemplateV2DAL.findByProjectId).toHaveBeenCalledWith(
+      expect(mockCertificatePolicyDAL.findByProjectId).toHaveBeenCalledWith(
         "project-123",
         {
           offset: 0,
@@ -276,7 +273,7 @@ describe("CertificateTemplateV2Service", () => {
         },
         { allowRules: [], forbidRules: [] }
       );
-      expect(mockCertificateTemplateV2DAL.countByProjectId).toHaveBeenCalledWith(
+      expect(mockCertificatePolicyDAL.countByProjectId).toHaveBeenCalledWith(
         "project-123",
         {
           search: undefined
@@ -290,16 +287,16 @@ describe("CertificateTemplateV2Service", () => {
       const templates = [sampleTemplate];
       const totalCount = 1;
 
-      mockCertificateTemplateV2DAL.findByProjectId.mockResolvedValue(templates);
-      mockCertificateTemplateV2DAL.countByProjectId.mockResolvedValue(totalCount);
+      mockCertificatePolicyDAL.findByProjectId.mockResolvedValue(templates);
+      mockCertificatePolicyDAL.countByProjectId.mockResolvedValue(totalCount);
 
-      await service.listTemplatesV2({
+      await service.listPolicies({
         ...mockActor,
         projectId: "project-123",
         search: "web server"
       });
 
-      expect(mockCertificateTemplateV2DAL.findByProjectId).toHaveBeenCalledWith(
+      expect(mockCertificatePolicyDAL.findByProjectId).toHaveBeenCalledWith(
         "project-123",
         {
           offset: 0,
@@ -308,7 +305,7 @@ describe("CertificateTemplateV2Service", () => {
         },
         { allowRules: [], forbidRules: [] }
       );
-      expect(mockCertificateTemplateV2DAL.countByProjectId).toHaveBeenCalledWith(
+      expect(mockCertificatePolicyDAL.countByProjectId).toHaveBeenCalledWith(
         "project-123",
         {
           search: "web server"
@@ -318,53 +315,53 @@ describe("CertificateTemplateV2Service", () => {
     });
   });
 
-  describe("deleteTemplateV2", () => {
-    it("should delete template when not in use", async () => {
-      mockCertificateTemplateV2DAL.findById.mockResolvedValue(sampleTemplate);
-      mockCertificateTemplateV2DAL.isTemplateInUse.mockResolvedValue(false);
-      mockCertificateTemplateV2DAL.deleteById.mockResolvedValue(sampleTemplate);
+  describe("deletePolicy", () => {
+    it("should delete policy when not in use", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.isPolicyInUse.mockResolvedValue(false);
+      mockCertificatePolicyDAL.deleteById.mockResolvedValue(sampleTemplate);
 
-      const result = await service.deleteTemplateV2({
+      const result = await service.deletePolicy({
         ...mockActor,
-        templateId: "template-123"
+        policyId: "policy-123"
       });
 
-      expect(mockCertificateTemplateV2DAL.findById).toHaveBeenCalledWith("template-123");
-      expect(mockCertificateTemplateV2DAL.isTemplateInUse).toHaveBeenCalledWith("template-123");
-      expect(mockCertificateTemplateV2DAL.deleteById).toHaveBeenCalledWith("template-123");
+      expect(mockCertificatePolicyDAL.findById).toHaveBeenCalledWith("policy-123");
+      expect(mockCertificatePolicyDAL.isPolicyInUse).toHaveBeenCalledWith("policy-123");
+      expect(mockCertificatePolicyDAL.deleteById).toHaveBeenCalledWith("policy-123");
       expect(result).toEqual(sampleTemplate);
     });
 
-    it("should throw NotFoundError when template does not exist", async () => {
-      mockCertificateTemplateV2DAL.findById.mockResolvedValue(null);
+    it("should throw NotFoundError when policy does not exist", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(null);
 
       await expect(
-        service.deleteTemplateV2({
+        service.deletePolicy({
           ...mockActor,
-          templateId: "nonexistent-template"
+          policyId: "nonexistent-policy"
         })
       ).rejects.toThrow(NotFoundError);
     });
 
-    it("should throw ForbiddenRequestError when template is in use", async () => {
+    it("should throw ForbiddenRequestError when policy is in use", async () => {
       const mockProfiles = [
         { id: "profile-1", slug: "web-server-profile", description: "Web server certificate profile" },
         { id: "profile-2", slug: "api-gateway-profile", description: "API gateway certificate profile" }
       ];
 
-      mockCertificateTemplateV2DAL.findById.mockResolvedValue(sampleTemplate);
-      mockCertificateTemplateV2DAL.isTemplateInUse.mockResolvedValue(true);
-      mockCertificateTemplateV2DAL.getProfilesUsingTemplate.mockResolvedValue(mockProfiles);
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.isPolicyInUse.mockResolvedValue(true);
+      mockCertificatePolicyDAL.getProfilesUsingPolicy.mockResolvedValue(mockProfiles);
 
       await expect(
-        service.deleteTemplateV2({
+        service.deletePolicy({
           ...mockActor,
-          templateId: "template-123"
+          policyId: "policy-123"
         })
       ).rejects.toThrow(ForbiddenRequestError);
 
-      expect(mockCertificateTemplateV2DAL.getProfilesUsingTemplate).toHaveBeenCalledWith("template-123");
-      expect(mockCertificateTemplateV2DAL.deleteById).not.toHaveBeenCalled();
+      expect(mockCertificatePolicyDAL.getProfilesUsingPolicy).toHaveBeenCalledWith("policy-123");
+      expect(mockCertificatePolicyDAL.deleteById).not.toHaveBeenCalled();
     });
   });
 
@@ -384,7 +381,7 @@ describe("CertificateTemplateV2Service", () => {
     };
 
     beforeEach(() => {
-      mockCertificateTemplateV2DAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
     });
 
     it("should validate valid certificate request", async () => {
@@ -396,15 +393,15 @@ describe("CertificateTemplateV2Service", () => {
     });
 
     it("should throw NotFoundError when template does not exist", async () => {
-      mockCertificateTemplateV2DAL.findById.mockResolvedValue(null);
+      mockCertificatePolicyDAL.findById.mockResolvedValue(null);
 
-      await expect(service.validateCertificateRequest("nonexistent-template", validRequest)).rejects.toThrow(
+      await expect(service.validateCertificateRequest("nonexistent-policy", validRequest)).rejects.toThrow(
         NotFoundError
       );
     });
 
     it("should validate allowed attribute values against pattern", async () => {
-      const result = await service.validateCertificateRequest("template-123", validRequest);
+      const result = await service.validateCertificateRequest("policy-123", validRequest);
 
       expect(result.isValid).toBe(true);
       expect(result.errors).toHaveLength(0);
@@ -433,7 +430,7 @@ describe("CertificateTemplateV2Service", () => {
         ]
       };
 
-      mockCertificateTemplateV2DAL.findById.mockResolvedValue(templateWithDeny);
+      mockCertificatePolicyDAL.findById.mockResolvedValue(templateWithDeny);
 
       const invalidRequest = { ...validRequest, organization: "Forbidden Corp" };
 
@@ -526,7 +523,7 @@ describe("CertificateTemplateV2Service", () => {
         ]
       };
 
-      mockCertificateTemplateV2DAL.findById.mockResolvedValue(templateWithDenySan);
+      mockCertificatePolicyDAL.findById.mockResolvedValue(templateWithDenySan);
 
       const invalidRequest: TCertificateRequest = {
         ...validRequest,
@@ -577,7 +574,7 @@ describe("CertificateTemplateV2Service", () => {
         }
       };
 
-      mockCertificateTemplateV2DAL.findById.mockResolvedValue(templateWithMaxDuration);
+      mockCertificatePolicyDAL.findById.mockResolvedValue(templateWithMaxDuration);
 
       const invalidRequest = { ...validRequest, validity: { ttl: "100d" } };
 
@@ -640,7 +637,7 @@ describe("CertificateTemplateV2Service", () => {
           }
         ]
       };
-      mockCertificateTemplateV2DAL.findById.mockResolvedValue(wildcardTemplate);
+      mockCertificatePolicyDAL.findById.mockResolvedValue(wildcardTemplate);
 
       const requestWithWildcard = {
         commonName: "api.example.com",
@@ -668,7 +665,7 @@ describe("CertificateTemplateV2Service", () => {
           }
         ]
       };
-      mockCertificateTemplateV2DAL.findById.mockResolvedValue(wildcardTemplate);
+      mockCertificatePolicyDAL.findById.mockResolvedValue(wildcardTemplate);
 
       const requestWithNonMatchingWildcard = {
         commonName: "api.notexample.com",
@@ -699,7 +696,7 @@ describe("CertificateTemplateV2Service", () => {
           }
         ]
       };
-      mockCertificateTemplateV2DAL.findById.mockResolvedValue(emptyAllowTemplate);
+      mockCertificatePolicyDAL.findById.mockResolvedValue(emptyAllowTemplate);
 
       const requestWithoutCommonName = {
         keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
@@ -726,7 +723,7 @@ describe("CertificateTemplateV2Service", () => {
           }
         ]
       };
-      mockCertificateTemplateV2DAL.findById.mockResolvedValue(denyTemplate);
+      mockCertificatePolicyDAL.findById.mockResolvedValue(denyTemplate);
 
       const requestWithProhibitedSan = {
         ...validRequest,
@@ -760,7 +757,7 @@ describe("CertificateTemplateV2Service", () => {
           },
           algorithms: undefined
         };
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(minimalTemplate);
+        mockCertificatePolicyDAL.findById.mockResolvedValue(minimalTemplate);
 
         const minimalReq = {
           commonName: "example.com",
@@ -798,7 +795,7 @@ describe("CertificateTemplateV2Service", () => {
             }
           ]
         };
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(allowTemplate);
+        mockCertificatePolicyDAL.findById.mockResolvedValue(allowTemplate);
 
         const emptyRequest = {
           validity: { ttl: "30d" }
@@ -834,7 +831,7 @@ describe("CertificateTemplateV2Service", () => {
             }
           ]
         };
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(denyTemplate);
+        mockCertificatePolicyDAL.findById.mockResolvedValue(denyTemplate);
 
         const requestWithProhibited = {
           commonName: "example.com",
@@ -869,7 +866,7 @@ describe("CertificateTemplateV2Service", () => {
             }
           ]
         };
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(constrainedTemplate);
+        mockCertificatePolicyDAL.findById.mockResolvedValue(constrainedTemplate);
 
         const validConstrainedRequest = {
           commonName: "example.com",
@@ -911,7 +908,7 @@ describe("CertificateTemplateV2Service", () => {
             }
           ]
         };
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(sanTemplate);
+        mockCertificatePolicyDAL.findById.mockResolvedValue(sanTemplate);
 
         const validSanRequest = {
           commonName: "api.example.com",
@@ -972,7 +969,7 @@ describe("CertificateTemplateV2Service", () => {
             }
           ]
         };
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(keyUsageTemplate);
+        mockCertificatePolicyDAL.findById.mockResolvedValue(keyUsageTemplate);
 
         const minimalUsageRequest = {
           commonName: "example.com",
@@ -1024,7 +1021,7 @@ describe("CertificateTemplateV2Service", () => {
             }
           ]
         };
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(algorithmTemplate);
+        mockCertificatePolicyDAL.findById.mockResolvedValue(algorithmTemplate);
 
         const validAlgoRequest = {
           commonName: "example.com",
@@ -1080,7 +1077,7 @@ describe("CertificateTemplateV2Service", () => {
             }
           ]
         };
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(validityTemplate);
+        mockCertificatePolicyDAL.findById.mockResolvedValue(validityTemplate);
 
         const testCases = [
           { ttl: "1d", shouldBeValid: true, description: "minimum duration" },
@@ -1124,7 +1121,7 @@ describe("CertificateTemplateV2Service", () => {
             }
           ]
         };
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(templateWithLimitedAttributes);
+        mockCertificatePolicyDAL.findById.mockResolvedValue(templateWithLimitedAttributes);
 
         const requestWithUnlistedKeyUsage = {
           commonName: "example.com",
@@ -1148,7 +1145,7 @@ describe("CertificateTemplateV2Service", () => {
             }
           ]
         };
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(templateWithLimitedSans);
+        mockCertificatePolicyDAL.findById.mockResolvedValue(templateWithLimitedSans);
 
         const requestWithUnlistedSan = {
           commonName: "example.com",
@@ -1170,7 +1167,7 @@ describe("CertificateTemplateV2Service", () => {
           ...sampleTemplate,
           keyUsages: undefined
         };
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(templateWithoutKeyUsages);
+        mockCertificatePolicyDAL.findById.mockResolvedValue(templateWithoutKeyUsages);
 
         const requestWithKeyUsages = {
           commonName: "example.com",
@@ -1188,7 +1185,7 @@ describe("CertificateTemplateV2Service", () => {
           ...sampleTemplate,
           algorithms: undefined
         };
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(templateWithoutAlgorithms);
+        mockCertificatePolicyDAL.findById.mockResolvedValue(templateWithoutAlgorithms);
 
         const requestWithAlgorithms = {
           commonName: "example.com",
@@ -1227,7 +1224,7 @@ describe("CertificateTemplateV2Service", () => {
             }
           ]
         };
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(comprehensiveTemplate);
+        mockCertificatePolicyDAL.findById.mockResolvedValue(comprehensiveTemplate);
 
         const validComprehensiveRequest = {
           commonName: "example.com",
@@ -1266,7 +1263,7 @@ describe("CertificateTemplateV2Service", () => {
           ],
           sans: []
         };
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(wildcardTemplate);
+        mockCertificatePolicyDAL.findById.mockResolvedValue(wildcardTemplate);
 
         const testCases = [
           // Valid patterns
@@ -1311,7 +1308,7 @@ describe("CertificateTemplateV2Service", () => {
           ],
           sans: []
         };
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(specialCharTemplate);
+        mockCertificatePolicyDAL.findById.mockResolvedValue(specialCharTemplate);
 
         const testCases = [
           { commonName: "app.test-site.com", shouldBeValid: true },
@@ -1350,7 +1347,7 @@ describe("CertificateTemplateV2Service", () => {
             }
           ]
         };
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(algorithmTemplate);
+        mockCertificatePolicyDAL.findById.mockResolvedValue(algorithmTemplate);
 
         const testCases = [
           {
@@ -1422,7 +1419,7 @@ describe("CertificateTemplateV2Service", () => {
           algorithms: undefined,
           sans: undefined
         };
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(templateWithoutAlgorithms);
+        mockCertificatePolicyDAL.findById.mockResolvedValue(templateWithoutAlgorithms);
 
         const request = {
           commonName: "example.com",
@@ -1441,7 +1438,7 @@ describe("CertificateTemplateV2Service", () => {
           ...sampleTemplate,
           algorithms: undefined
         };
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(templateWithoutAlgorithms);
+        mockCertificatePolicyDAL.findById.mockResolvedValue(templateWithoutAlgorithms);
 
         const requestWithAlgorithms = {
           commonName: "example.com",
@@ -1479,7 +1476,7 @@ describe("CertificateTemplateV2Service", () => {
             }
           ]
         };
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(multipleAttributePoliciesTemplate);
+        mockCertificatePolicyDAL.findById.mockResolvedValue(multipleAttributePoliciesTemplate);
 
         // Test case that matches first policy
         const requestMatchingFirstPolicy = {
@@ -1549,7 +1546,7 @@ describe("CertificateTemplateV2Service", () => {
           sans: []
         };
 
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(complexTemplate);
+        mockCertificatePolicyDAL.findById.mockResolvedValue(complexTemplate);
 
         const validComplexRequest = {
           commonName: "api.example.com",
@@ -1594,7 +1591,7 @@ describe("CertificateTemplateV2Service", () => {
           ]
         };
 
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(sanTemplate);
+        mockCertificatePolicyDAL.findById.mockResolvedValue(sanTemplate);
 
         const validSanRequest = {
           commonName: "api.example.com",
@@ -1649,7 +1646,7 @@ describe("CertificateTemplateV2Service", () => {
           ]
         };
 
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(wildcardTemplate);
+        mockCertificatePolicyDAL.findById.mockResolvedValue(wildcardTemplate);
 
         const testCases = [
           { cn: "api.acme.com", san: "v1.api.acme.com", shouldPass: true },
@@ -1692,7 +1689,7 @@ describe("CertificateTemplateV2Service", () => {
           ]
         };
 
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(multiRequiredTemplate);
+        mockCertificatePolicyDAL.findById.mockResolvedValue(multiRequiredTemplate);
 
         const completeRequest = {
           commonName: "api.example.com",

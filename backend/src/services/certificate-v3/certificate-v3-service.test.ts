@@ -22,9 +22,9 @@ import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType
 } from "@app/services/certificate-common/certificate-constants";
+import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
-import { TCertificateTemplateV2ServiceFactory } from "@app/services/certificate-template-v2/certificate-template-v2-service";
 
 import { ActorType, AuthMethod } from "../auth/auth-type";
 import {
@@ -87,12 +87,12 @@ describe("CertificateV3Service", () => {
     findById: vi.fn()
   };
 
-  const mockCertificateTemplateV2Service: Pick<
-    TCertificateTemplateV2ServiceFactory,
-    "validateCertificateRequest" | "getTemplateV2ById"
+  const mockCertificatePolicyService: Pick<
+    TCertificatePolicyServiceFactory,
+    "validateCertificateRequest" | "getPolicyById"
   > = {
     validateCertificateRequest: vi.fn(),
-    getTemplateV2ById: vi.fn()
+    getPolicyById: vi.fn()
   };
 
   const mockAcmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findById"> = {
@@ -161,7 +161,7 @@ describe("CertificateV3Service", () => {
       certificateSecretDAL: mockCertificateSecretDAL,
       certificateAuthorityDAL: mockCertificateAuthorityDAL,
       certificateProfileDAL: mockCertificateProfileDAL,
-      certificateTemplateV2Service: mockCertificateTemplateV2Service,
+      certificatePolicyService: mockCertificatePolicyService,
       acmeAccountDAL: mockAcmeAccountDAL,
       internalCaService: mockInternalCaService,
       permissionService: mockPermissionService,
@@ -229,7 +229,7 @@ describe("CertificateV3Service", () => {
         enrollmentType: EnrollmentType.API,
         issuerType: IssuerType.CA,
         caId: "ca-123",
-        certificateTemplateId: "template-123",
+        certificatePolicyId: "template-123",
         createdAt: new Date(),
         updatedAt: new Date(),
         slug: "test-profile",
@@ -337,19 +337,19 @@ describe("CertificateV3Service", () => {
         notBefore: new Date(),
         notAfter: new Date(),
         caId: "ca-123",
-        certificateTemplateId: "template-123",
+        certificatePolicyId: "template-123",
         revokedAt: null,
         revokedBy: null
       };
 
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
-      vi.mocked(mockCertificateTemplateV2Service.validateCertificateRequest).mockResolvedValue({
+      vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
         isValid: true,
         errors: [],
         warnings: []
       });
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
-      vi.mocked(mockCertificateTemplateV2Service.getTemplateV2ById).mockResolvedValue(mockTemplate);
+      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockTemplate);
       vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue(mockCertificateResult as any);
       vi.mocked(mockCertificateDAL.findOne).mockResolvedValue(mockCertRecord);
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockCertRecord);
@@ -381,7 +381,7 @@ describe("CertificateV3Service", () => {
         enrollmentType: EnrollmentType.API,
         issuerType: IssuerType.CA,
         caId: "ca-123",
-        certificateTemplateId: "template-123",
+        certificatePolicyId: "template-123",
         createdAt: new Date(),
         updatedAt: new Date(),
         slug: "test-profile-camel",
@@ -457,7 +457,7 @@ describe("CertificateV3Service", () => {
         notBefore: new Date(),
         notAfter: new Date(),
         caId: "ca-123",
-        certificateTemplateId: "template-123",
+        certificatePolicyId: "template-123",
         revokedAt: null,
         altNames: null,
         caCertId: null,
@@ -527,13 +527,13 @@ describe("CertificateV3Service", () => {
       };
 
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
-      vi.mocked(mockCertificateTemplateV2Service.validateCertificateRequest).mockResolvedValue({
+      vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
         isValid: true,
         errors: [],
         warnings: []
       });
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
-      vi.mocked(mockCertificateTemplateV2Service.getTemplateV2ById).mockResolvedValue(mockTemplate);
+      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockTemplate);
       vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue(mockCertificateResultWithCa as any);
       vi.mocked(mockCertificateDAL.findOne).mockResolvedValue(mockCertRecord);
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue({
@@ -548,7 +548,7 @@ describe("CertificateV3Service", () => {
         notBefore: new Date(),
         notAfter: new Date(),
         caId: "ca-1",
-        certificateTemplateId: "template-1",
+        certificatePolicyId: "template-1",
         revokedAt: null,
         altNames: null,
         caCertId: null,
@@ -571,7 +571,7 @@ describe("CertificateV3Service", () => {
       });
 
       // Verify that the template validation service was called with mapped snake_case values
-      expect(mockCertificateTemplateV2Service.validateCertificateRequest).toHaveBeenCalledWith(
+      expect(mockCertificatePolicyService.validateCertificateRequest).toHaveBeenCalledWith(
         "template-123",
         expect.objectContaining({
           keyUsages: [
@@ -599,7 +599,7 @@ describe("CertificateV3Service", () => {
         enrollmentType: EnrollmentType.EST, // Wrong enrollment type
         issuerType: IssuerType.CA,
         caId: "ca-123",
-        certificateTemplateId: "template-123",
+        certificatePolicyId: "template-123",
         createdAt: new Date(),
         updatedAt: new Date(),
         slug: "test-profile-est",
@@ -653,7 +653,7 @@ describe("CertificateV3Service", () => {
         enrollmentType: EnrollmentType.API,
         issuerType: IssuerType.CA,
         caId: "ca-123",
-        certificateTemplateId: "template-123",
+        certificatePolicyId: "template-123",
         createdAt: new Date(),
         updatedAt: new Date(),
         slug: "test-profile-sign",
@@ -743,7 +743,7 @@ describe("CertificateV3Service", () => {
         notBefore: new Date(),
         notAfter: new Date(),
         caId: "ca-123",
-        certificateTemplateId: "template-123",
+        certificatePolicyId: "template-123",
         revokedAt: null,
         altNames: null,
         caCertId: null,
@@ -780,8 +780,8 @@ describe("CertificateV3Service", () => {
 
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
-      vi.mocked(mockCertificateTemplateV2Service.getTemplateV2ById).mockResolvedValue(mockTemplate);
-      vi.mocked(mockCertificateTemplateV2Service.validateCertificateRequest).mockResolvedValue({
+      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockTemplate);
+      vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
         isValid: true,
         errors: [],
         warnings: []
@@ -819,7 +819,7 @@ describe("CertificateV3Service", () => {
         enrollmentType: EnrollmentType.EST, // Wrong enrollment type
         issuerType: IssuerType.CA,
         caId: "ca-123",
-        certificateTemplateId: "template-123",
+        certificatePolicyId: "template-123",
         createdAt: new Date(),
         updatedAt: new Date(),
         slug: "test-profile-est-sign",
@@ -871,7 +871,7 @@ describe("CertificateV3Service", () => {
         enrollmentType: EnrollmentType.EST, // Wrong enrollment type
         issuerType: IssuerType.CA,
         caId: "ca-123",
-        certificateTemplateId: "template-123",
+        certificatePolicyId: "template-123",
         createdAt: new Date(),
         updatedAt: new Date(),
         slug: "test-profile-est-order",
@@ -906,7 +906,7 @@ describe("CertificateV3Service", () => {
       slug: "test-profile",
       projectId: "project-1",
       caId: "ca-1",
-      certificateTemplateId: "template-1",
+      certificatePolicyId: "template-1",
       enrollmentType: EnrollmentType.API,
       issuerType: IssuerType.CA,
       createdAt: new Date(),
@@ -987,12 +987,12 @@ describe("CertificateV3Service", () => {
 
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(rsaCa);
-      vi.mocked(mockCertificateTemplateV2Service.validateCertificateRequest).mockResolvedValue({
+      vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
         isValid: true,
         errors: [],
         warnings: []
       });
-      vi.mocked(mockCertificateTemplateV2Service.getTemplateV2ById).mockResolvedValue(rsaTemplate);
+      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(rsaTemplate);
       vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue({
         certificate: "cert",
         certificateChain: "chain",
@@ -1015,7 +1015,7 @@ describe("CertificateV3Service", () => {
         notBefore: new Date(),
         notAfter: new Date(),
         caId: "ca-1",
-        certificateTemplateId: "template-1",
+        certificatePolicyId: "template-1",
         revokedAt: null,
         altNames: null,
         caCertId: null,
@@ -1037,7 +1037,7 @@ describe("CertificateV3Service", () => {
         notBefore: new Date(),
         notAfter: new Date(),
         caId: "ca-1",
-        certificateTemplateId: "template-1",
+        certificatePolicyId: "template-1",
         revokedAt: null,
         altNames: null,
         caCertId: null,
@@ -1059,7 +1059,7 @@ describe("CertificateV3Service", () => {
         notBefore: new Date(),
         notAfter: new Date(),
         caId: "ca-1",
-        certificateTemplateId: "template-1",
+        certificatePolicyId: "template-1",
         revokedAt: null,
         altNames: null,
         caCertId: null,
@@ -1146,12 +1146,12 @@ describe("CertificateV3Service", () => {
 
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(ecCa);
-      vi.mocked(mockCertificateTemplateV2Service.validateCertificateRequest).mockResolvedValue({
+      vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
         isValid: true,
         errors: [],
         warnings: []
       });
-      vi.mocked(mockCertificateTemplateV2Service.getTemplateV2ById).mockResolvedValue(ecdsaTemplate);
+      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(ecdsaTemplate);
       vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue({
         certificate: "cert",
         certificateChain: "chain",
@@ -1174,7 +1174,7 @@ describe("CertificateV3Service", () => {
         notBefore: new Date(),
         notAfter: new Date(),
         caId: "ca-1",
-        certificateTemplateId: "template-1",
+        certificatePolicyId: "template-1",
         revokedAt: null,
         altNames: null,
         caCertId: null,
@@ -1196,7 +1196,7 @@ describe("CertificateV3Service", () => {
         notBefore: new Date(),
         notAfter: new Date(),
         caId: "ca-1",
-        certificateTemplateId: "template-1",
+        certificatePolicyId: "template-1",
         revokedAt: null,
         altNames: null,
         caCertId: null,
@@ -1218,7 +1218,7 @@ describe("CertificateV3Service", () => {
         notBefore: new Date(),
         notAfter: new Date(),
         caId: "ca-1",
-        certificateTemplateId: "template-1",
+        certificatePolicyId: "template-1",
         revokedAt: null,
         altNames: null,
         caCertId: null,
@@ -1305,12 +1305,12 @@ describe("CertificateV3Service", () => {
 
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(rsa8192Ca);
-      vi.mocked(mockCertificateTemplateV2Service.validateCertificateRequest).mockResolvedValue({
+      vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
         isValid: true,
         errors: [],
         warnings: []
       });
-      vi.mocked(mockCertificateTemplateV2Service.getTemplateV2ById).mockResolvedValue(rsaTemplate);
+      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(rsaTemplate);
       vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue({
         certificate: "cert",
         certificateChain: "chain",
@@ -1333,7 +1333,7 @@ describe("CertificateV3Service", () => {
         notBefore: new Date(),
         notAfter: new Date(),
         caId: "ca-1",
-        certificateTemplateId: "template-1",
+        certificatePolicyId: "template-1",
         revokedAt: null,
         altNames: null,
         caCertId: null,
@@ -1355,7 +1355,7 @@ describe("CertificateV3Service", () => {
         notBefore: new Date(),
         notAfter: new Date(),
         caId: "ca-1",
-        certificateTemplateId: "template-1",
+        certificatePolicyId: "template-1",
         revokedAt: null,
         altNames: null,
         caCertId: null,
@@ -1377,7 +1377,7 @@ describe("CertificateV3Service", () => {
         notBefore: new Date(),
         notAfter: new Date(),
         caId: "ca-1",
-        certificateTemplateId: "template-1",
+        certificatePolicyId: "template-1",
         revokedAt: null,
         altNames: null,
         caCertId: null,
@@ -1492,7 +1492,7 @@ describe("CertificateV3Service", () => {
         notBefore: new Date(),
         notAfter: new Date(),
         caId: "ca-1",
-        certificateTemplateId: "template-1",
+        certificatePolicyId: "template-1",
         revokedAt: null,
         altNames: null,
         caCertId: null,
@@ -1514,7 +1514,7 @@ describe("CertificateV3Service", () => {
         notBefore: new Date(),
         notAfter: new Date(),
         caId: "ca-1",
-        certificateTemplateId: "template-1",
+        certificatePolicyId: "template-1",
         revokedAt: null,
         altNames: null,
         caCertId: null,
@@ -1536,7 +1536,7 @@ describe("CertificateV3Service", () => {
         notBefore: new Date(),
         notAfter: new Date(),
         caId: "ca-1",
-        certificateTemplateId: "template-1",
+        certificatePolicyId: "template-1",
         revokedAt: null,
         altNames: null,
         caCertId: null,
@@ -1585,7 +1585,7 @@ describe("CertificateV3Service", () => {
       projectId: "project-123",
       createdAt: new Date(),
       updatedAt: new Date(),
-      certificateTemplateId: "template-123",
+      certificatePolicyId: "template-123",
       revocationReason: null,
       caCertId: null,
       renewedFromCertificateId: null,
@@ -1600,7 +1600,7 @@ describe("CertificateV3Service", () => {
       enrollmentType: EnrollmentType.API,
       issuerType: IssuerType.CA,
       caId: "ca-123",
-      certificateTemplateId: "template-123",
+      certificatePolicyId: "template-123",
       apiConfig: {
         id: "api-config-123",
         autoRenew: true,
@@ -2007,8 +2007,8 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
       vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
-      vi.mocked(mockCertificateTemplateV2Service.getTemplateV2ById).mockResolvedValue(mockTemplate);
-      vi.mocked(mockCertificateTemplateV2Service.validateCertificateRequest).mockResolvedValue({
+      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockTemplate);
+      vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
         isValid: true,
         errors: [],
         warnings: []

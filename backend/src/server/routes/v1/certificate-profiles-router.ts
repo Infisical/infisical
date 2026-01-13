@@ -25,7 +25,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
         .object({
           projectId: z.string().min(1),
           caId: z.string().uuid().optional(),
-          certificateTemplateId: z.string().uuid(),
+          certificatePolicyId: z.string().uuid(),
           slug: z
             .string()
             .min(1)
@@ -311,7 +311,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
                 externalType: z.string().nullable().optional()
               })
               .optional(),
-            certificateTemplate: z
+            certificatePolicy: z
               .object({
                 id: z.string(),
                 projectId: z.string(),

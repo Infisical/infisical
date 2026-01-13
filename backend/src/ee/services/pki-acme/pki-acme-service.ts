@@ -32,6 +32,8 @@ import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "@app/services/certificate-common/certificate-csr-utils";
+import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
+import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import {
   EnrollmentType,
@@ -39,8 +41,6 @@ import {
 } from "@app/services/certificate-profile/certificate-profile-types";
 import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
-import { TCertificateTemplateV2DALFactory } from "@app/services/certificate-template-v2/certificate-template-v2-dal";
-import { TCertificateTemplateV2ServiceFactory } from "@app/services/certificate-template-v2/certificate-template-v2-service";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -100,7 +100,7 @@ type TPkiAcmeServiceFactoryDep = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithOwnerOrgId" | "findByIdWithConfigs">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
-  certificateTemplateV2DAL: Pick<TCertificateTemplateV2DALFactory, "findById">;
+  certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
   acmeAccountDAL: Pick<
     TPkiAcmeAccountDALFactory,
     "findByProjectIdAndAccountId" | "findByProfileIdAndPublicKeyThumbprintAndAlg" | "create"
@@ -128,7 +128,7 @@ type TPkiAcmeServiceFactoryDep = {
     "decryptWithKmsKey" | "generateKmsKey" | "encryptWithKmsKey" | "createCipherPairWithDataKey"
   >;
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
-  certificateTemplateV2Service: Pick<TCertificateTemplateV2ServiceFactory, "validateCertificateRequest">;
+  certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest">;
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;
   certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "queueCertificateIssuance">;
   acmeChallengeService: Pick<TPkiAcmeChallengeServiceFactory, "markChallengeAsReady">;
@@ -141,7 +141,7 @@ export const pkiAcmeServiceFactory = ({
   certificateAuthorityDAL,
   certificateProfileDAL,
   certificateBodyDAL,
-  certificateTemplateV2DAL,
+  certificatePolicyDAL,
   acmeAccountDAL,
   acmeOrderDAL,
   acmeAuthDAL,
@@ -150,7 +150,7 @@ export const pkiAcmeServiceFactory = ({
   keyStore,
   kmsService,
   certificateV3Service,
-  certificateTemplateV2Service,
+  certificatePolicyService,
   certificateRequestService,
   certificateIssuanceQueue,
   acmeChallengeService,
@@ -852,12 +852,12 @@ export const pkiAcmeServiceFactory = ({
         : certificateRequest.validity
     };
 
-    const template = await certificateTemplateV2DAL.findById(profile.certificateTemplateId);
-    if (!template) {
-      throw new NotFoundError({ message: "Certificate template not found" });
+    const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
+    if (!policy) {
+      throw new NotFoundError({ message: "Certificate policy not found" });
     }
-    const validationResult = await certificateTemplateV2Service.validateCertificateRequest(
-      template.id,
+    const validationResult = await certificatePolicyService.validateCertificateRequest(
+      policy.id,
       updatedCertificateRequest
     );
     if (!validationResult.isValid) {

@@ -13,7 +13,7 @@ import {
 } from "../certificate/certificate-types";
 import { parseDistinguishedName } from "../certificate-authority/certificate-authority-fns";
 import { validateAndMapAltNameType } from "../certificate-authority/certificate-authority-validators";
-import { TCertificateRequest } from "../certificate-template-v2/certificate-template-v2-types";
+import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { mapLegacyExtendedKeyUsageToStandard, mapLegacyKeyUsageToStandard } from "./certificate-constants";
 
 /**
