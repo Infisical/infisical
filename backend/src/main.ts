@@ -14,6 +14,7 @@ import { hsmServiceFactory } from "./ee/services/hsm/hsm-service";
 import { keyStoreFactory } from "./keystore/keystore";
 import { formatSmtpConfig, getDatabaseCredentials, getHsmConfig, initEnvConfig } from "./lib/config/env";
 import { buildRedisFromConfig } from "./lib/config/redis";
+import { axiosResponseInterceptor } from "./lib/config/request";
 import { removeTemporaryBaseDirectory } from "./lib/files";
 import { initLogger } from "./lib/logger";
 import { CustomLogger } from "./lib/logger/logger";
@@ -27,24 +28,7 @@ import { superAdminDALFactory } from "./services/super-admin/super-admin-dal";
 dotenv.config();
 
 const setupAxiosResponseInterceptor = (logger: CustomLogger) => {
-  axios.interceptors.response.use((response) => {
-    try {
-      const contentLength = response.headers["content-length"] as string | undefined;
-      const responseSize = contentLength ? parseInt(contentLength, 10) : 0;
-
-      let megabyteSize = "";
-
-      if (responseSize && responseSize > 1024 * 1024) {
-        megabyteSize = `Large payload: ${(responseSize / 1024 / 1024).toFixed(2)} MB`;
-      }
-
-      logger.info({ url: response.config.url, responseSize }, `Intercepted axios response ${megabyteSize}`);
-    } catch (error) {
-      logger.error(error, "Error intercepting axios response");
-    }
-
-    return response;
-  });
+  axios.interceptors.response.use((response) => axiosResponseInterceptor(response, logger));
 };
 
 const run = async () => {
