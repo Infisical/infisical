@@ -35,7 +35,7 @@ export const getSshConnectionClient = async (
       readyTimeout: SSH_TIMEOUT,
       tryKeyboard: false,
       algorithms: {
-        serverHostKey: ["rsa-sha2-512", "rsa-sha2-256", "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp521"]
+        serverHostKey: ["rsa-sha2-512", "rsa-sha2-256", "ssh-rsa", "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp521"]
       }
     };
 
