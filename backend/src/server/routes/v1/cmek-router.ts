@@ -446,7 +446,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         permission
       } = req;
 
-      const { publicKey, projectId } = await server.services.cmek.getPublicKey({ keyId }, permission);
+      const { publicKey, projectId, keyName } = await server.services.cmek.getPublicKey({ keyId }, permission);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -454,12 +454,58 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.CMEK_GET_PUBLIC_KEY,
           metadata: {
-            keyId
+            keyId,
+            keyName
           }
         }
       });
 
       return { publicKey };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/keys/:keyId/private-key",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.KmsKeys],
+      description:
+        "Export the private key (or key material) for a KMS key. For asymmetric keys (sign/verify), the private key is returned. For symmetric keys (encrypt/decrypt), the key material is returned.",
+      params: z.object({
+        keyId: z.string().uuid().describe(KMS.GET_PRIVATE_KEY.keyId)
+      }),
+      response: {
+        200: z.object({
+          privateKey: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        params: { keyId },
+        permission
+      } = req;
+
+      const { privateKey, projectId, keyName } = await server.services.cmek.getPrivateKey({ keyId }, permission);
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.CMEK_GET_PRIVATE_KEY,
+          metadata: {
+            keyId,
+            keyName
+          }
+        }
+      });
+
+      return { privateKey };
     }
   });
 

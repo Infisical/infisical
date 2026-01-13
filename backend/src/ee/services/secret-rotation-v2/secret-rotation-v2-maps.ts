@@ -12,7 +12,8 @@ export const SECRET_ROTATION_NAME_MAP: Record<SecretRotation, string> = {
   [SecretRotation.LdapPassword]: "LDAP Password",
   [SecretRotation.OktaClientSecret]: "Okta Client Secret",
   [SecretRotation.RedisCredentials]: "Redis Credentials",
-  [SecretRotation.MongoDBCredentials]: "MongoDB Credentials"
+  [SecretRotation.MongoDBCredentials]: "MongoDB Credentials",
+  [SecretRotation.DatabricksServicePrincipalSecret]: "Databricks Service Principal Secret"
 };
 
 export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnection> = {
@@ -26,5 +27,6 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.LdapPassword]: AppConnection.LDAP,
   [SecretRotation.OktaClientSecret]: AppConnection.Okta,
   [SecretRotation.RedisCredentials]: AppConnection.Redis,
-  [SecretRotation.MongoDBCredentials]: AppConnection.MongoDB
+  [SecretRotation.MongoDBCredentials]: AppConnection.MongoDB,
+  [SecretRotation.DatabricksServicePrincipalSecret]: AppConnection.Databricks
 };

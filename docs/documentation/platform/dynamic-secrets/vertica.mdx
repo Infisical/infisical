@@ -3,6 +3,8 @@ title: "Vertica"
 description: "Learn how to dynamically generate Vertica database users."
 ---
 
+import DynamicSecretUsernameTemplateParamField from "/snippets/documentation/platform/dynamic-secrets/dynamic-secret-username-template-field.mdx";
+
 The Infisical Vertica dynamic secret allows you to generate Vertica database credentials on demand based on configured role.
 
 ## Prerequisite
@@ -63,13 +65,7 @@ Create a user with the required permission in your Vertica instance. This user w
   </Step>
   <Step title="(Optional) Modify SQL Statements">
 	![Modify SQL Statements Modal](../../../images/platform/dynamic-secrets/vertica/modify-sql-statements-vertica.png)
-	<ParamField path="Username Template" type="string" default="{{randomUsername}}">
-      Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
-
-      Allowed template variables are
-      - `{{randomUsername}}`: Random username string
-      - `{{unixTimestamp}}`: Current Unix timestamp
-	</ParamField>
+	<DynamicSecretUsernameTemplateParamField />
 	<ParamField path="Creation Statement" type="string">
   	Customize the SQL statement used to create new users. Default creates a user with basic schema permissions.
 	</ParamField>

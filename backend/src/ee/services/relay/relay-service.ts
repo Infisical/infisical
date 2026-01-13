@@ -26,7 +26,6 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { verifyHostInputValidity } from "../dynamic-secret/dynamic-secret-fns";
-import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionRelayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { createSshCert, createSshKeyPair } from "../ssh/ssh-certificate-authority-fns";
@@ -46,7 +45,6 @@ export const relayServiceFactory = ({
   orgRelayConfigDAL,
   relayDAL,
   kmsService,
-  licenseService,
   permissionService,
   orgDAL,
   notificationService,
@@ -57,7 +55,6 @@ export const relayServiceFactory = ({
   orgRelayConfigDAL: TOrgRelayConfigDALFactory;
   relayDAL: TRelayDALFactory;
   kmsService: TKmsServiceFactory;
-  licenseService: TLicenseServiceFactory;
   permissionService: TPermissionServiceFactory;
   orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -964,14 +961,6 @@ export const relayServiceFactory = ({
     await verifyHostInputValidity(host);
 
     if (isOrgRelay) {
-      const orgLicensePlan = await licenseService.getPlan(orgId);
-      if (!orgLicensePlan.gateway) {
-        throw new BadRequestError({
-          message:
-            "Relay registration failed due to organization plan restrictions. Please upgrade your instance to Infisical's Enterprise plan."
-        });
-      }
-
       const { permission } = await permissionService.getOrgPermission({
         scope: OrganizationActionScope.Any,
         actor: ActorType.IDENTITY,

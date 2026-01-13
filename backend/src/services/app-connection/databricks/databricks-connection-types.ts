@@ -34,3 +34,17 @@ export type TAuthorizeDatabricksConnection = {
 export type TDatabricksListSecretScopesResponse = {
   scopes?: { name: string; backend_type: string; keyvault_metadata: { resource_id: string; dns_name: string } }[];
 };
+
+export type TDatabricksServicePrincipal = {
+  id: string;
+  displayName: string;
+  applicationId?: string;
+  active?: boolean;
+};
+
+export type TDatabricksListServicePrincipalsResponse = {
+  Resources?: TDatabricksServicePrincipal[];
+  totalResults?: number;
+  itemsPerPage?: number;
+  startIndex?: number;
+};

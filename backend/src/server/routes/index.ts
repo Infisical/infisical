@@ -1288,7 +1288,6 @@ export const registerRoutes = async (
     orgRelayConfigDAL,
     relayDAL,
     kmsService,
-    licenseService,
     permissionService,
     orgDAL,
     notificationService,
@@ -1298,7 +1297,6 @@ export const registerRoutes = async (
 
   const gatewayV2Service = gatewayV2ServiceFactory({
     kmsService,
-    licenseService,
     relayService,
     orgGatewayConfigV2DAL,
     gatewayV2DAL,

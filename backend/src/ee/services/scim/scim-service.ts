@@ -449,13 +449,25 @@ export const scimServiceFactory = ({
           );
         }
       } else {
-        user = await userDAL.findOne(
+        // we fetch all users with this email
+        const usersWithSameEmail = await userDAL.find(
           {
-            email: email.toLowerCase(),
-            isEmailVerified: true
+            email: email.toLowerCase()
           },
-          tx
+          {
+            tx
+          }
         );
+
+        // if there is a verified email user pick that
+        const verifiedEmail = usersWithSameEmail.find((el) => el.isEmailVerified);
+        const userWithSameUsername = usersWithSameEmail.find((el) => el.username === email.toLowerCase());
+        if (verifiedEmail) {
+          user = verifiedEmail;
+          // a user who is invited via email not logged in yet
+        } else if (userWithSameUsername) {
+          user = userWithSameUsername;
+        }
 
         if (!user) {
           const uniqueUsername = await normalizeUsername(
@@ -1146,7 +1158,8 @@ export const scimServiceFactory = ({
           },
           {
             groupName: displayName
-          }
+          },
+          tx
         );
 
         const [modifiedGroup] = await groupDAL.update(
@@ -1156,26 +1169,35 @@ export const scimServiceFactory = ({
           },
           {
             name: displayName
-          }
+          },
+          tx
         );
 
         group = modifiedGroup;
       }
 
       const orgMemberships = members.length
-        ? await membershipUserDAL.find({
-            [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
-            [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization,
-            $in: {
-              id: members.map((member) => member.value)
+        ? await membershipUserDAL.find(
+            {
+              [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
+              [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization,
+              $in: {
+                id: members.map((member) => member.value)
+              }
+            },
+            {
+              tx
             }
-          })
+          )
         : [];
 
       const membersIdsSet = new Set(orgMemberships.map((orgMembership) => orgMembership.actorUserId as string));
-      const userGroupMembers = await userGroupMembershipDAL.find({
-        groupId: group.id
-      });
+      const userGroupMembers = await userGroupMembershipDAL.find(
+        {
+          groupId: group.id
+        },
+        { tx }
+      );
       const directMemberUserIds = userGroupMembers.filter((el) => !el.isPending).map((membership) => membership.userId);
 
       const pendingGroupAdditionsUserIds = userGroupMembers

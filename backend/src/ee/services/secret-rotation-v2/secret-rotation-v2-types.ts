@@ -29,6 +29,13 @@ import {
   TAzureClientSecretRotationWithConnection
 } from "./azure-client-secret";
 import {
+  TDatabricksServicePrincipalSecretRotation,
+  TDatabricksServicePrincipalSecretRotationGeneratedCredentials,
+  TDatabricksServicePrincipalSecretRotationInput,
+  TDatabricksServicePrincipalSecretRotationListItem,
+  TDatabricksServicePrincipalSecretRotationWithConnection
+} from "./databricks-service-principal-secret";
+import {
   TLdapPasswordRotation,
   TLdapPasswordRotationGeneratedCredentials,
   TLdapPasswordRotationInput,
@@ -93,7 +100,8 @@ export type TSecretRotationV2 =
   | TAwsIamUserSecretRotation
   | TOktaClientSecretRotation
   | TRedisCredentialsRotation
-  | TMongoDBCredentialsRotation;
+  | TMongoDBCredentialsRotation
+  | TDatabricksServicePrincipalSecretRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
@@ -106,7 +114,8 @@ export type TSecretRotationV2WithConnection =
   | TAwsIamUserSecretRotationWithConnection
   | TOktaClientSecretRotationWithConnection
   | TRedisCredentialsRotationWithConnection
-  | TMongoDBCredentialsRotationWithConnection;
+  | TMongoDBCredentialsRotationWithConnection
+  | TDatabricksServicePrincipalSecretRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
@@ -115,7 +124,8 @@ export type TSecretRotationV2GeneratedCredentials =
   | TLdapPasswordRotationGeneratedCredentials
   | TAwsIamUserSecretRotationGeneratedCredentials
   | TOktaClientSecretRotationGeneratedCredentials
-  | TRedisCredentialsRotationGeneratedCredentials;
+  | TRedisCredentialsRotationGeneratedCredentials
+  | TDatabricksServicePrincipalSecretRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
@@ -128,7 +138,8 @@ export type TSecretRotationV2Input =
   | TAwsIamUserSecretRotationInput
   | TOktaClientSecretRotationInput
   | TRedisCredentialsRotationInput
-  | TMongoDBCredentialsRotationInput;
+  | TMongoDBCredentialsRotationInput
+  | TDatabricksServicePrincipalSecretRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
@@ -141,7 +152,8 @@ export type TSecretRotationV2ListItem =
   | TAwsIamUserSecretRotationListItem
   | TOktaClientSecretRotationListItem
   | TRedisCredentialsRotationListItem
-  | TMongoDBCredentialsRotationListItem;
+  | TMongoDBCredentialsRotationListItem
+  | TDatabricksServicePrincipalSecretRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters = TLdapPasswordRotationInput["temporaryParameters"] | undefined;
 

@@ -262,14 +262,17 @@ Supports conditions and permission inversion
 
 #### Subject: `cmek`
 
-| Action    | Description                           |
-| --------- | ------------------------------------- |
-| `read`    | View Customer-Managed Encryption Keys |
-| `create`  | Add new encryption keys               |
-| `edit`    | Modify key properties                 |
-| `delete`  | Remove encryption keys                |
-| `encrypt` | Use keys for encryption operations    |
-| `decrypt` | Use keys for decryption operations    |
+| Action               | Description                                                                 |
+| -------------------- | --------------------------------------------------------------------------- |
+| `read`               | View Customer-Managed Encryption Keys                                       |
+| `create`             | Add new encryption keys                                                     |
+| `edit`               | Modify key properties                                                       |
+| `delete`             | Remove encryption keys                                                      |
+| `encrypt`            | Use keys for encryption operations                                          |
+| `decrypt`            | Use keys for decryption operations                                          |
+| `sign`               | Use keys for signing operations                                             |
+| `verify`             | Use keys for signature verification operations                              |
+| `export-private-key` | Export key material (private key for asymmetric, secret key for symmetric)  |
 
 ### Public Key Infrastructure (PKI)
 

@@ -368,11 +368,14 @@ export const removeUsersFromGroupByUserIds = async ({
   membershipGroupDAL
 }: TRemoveUsersFromGroupByUserIds) => {
   const processRemoval = async (tx: Knex) => {
-    const foundMembers = await userDAL.find({
-      $in: {
-        id: userIds
-      }
-    });
+    const foundMembers = await userDAL.find(
+      {
+        $in: {
+          id: userIds
+        }
+      },
+      { tx }
+    );
 
     const foundMembersIdsSet = new Set(foundMembers.map((member) => member.id));
 
@@ -435,45 +438,47 @@ export const removeUsersFromGroupByUserIds = async ({
         )
       );
 
-      const promises: Array<Promise<void>> = [];
-      for (const userId of userIds) {
-        promises.push(
-          (async () => {
-            const t = await userGroupMembershipDAL.filterProjectsByUserMembership(userId, group.id, projectIds, tx);
-            const projectsToDeleteKeyFor = projectIds.filter((p) => !t.has(p));
+      for await (const userId of membersToRemoveFromGroupNonPending.map((member) => member.id)) {
+        const projectsUserStillMemberOf = await userGroupMembershipDAL.filterProjectsByUserMembership(
+          userId,
+          group.id,
+          projectIds,
+          tx
+        );
+        const projectsToDeleteKeyFor = projectIds.filter((projectId) => !projectsUserStillMemberOf.has(projectId));
 
-            if (projectsToDeleteKeyFor.length) {
-              await projectKeyDAL.delete(
-                {
-                  receiverId: userId,
-                  $in: {
-                    projectId: projectsToDeleteKeyFor
-                  }
-                },
-                tx
-              );
-            }
+        if (projectsToDeleteKeyFor.length) {
+          await projectKeyDAL.delete(
+            {
+              receiverId: userId,
+              $in: {
+                projectId: projectsToDeleteKeyFor
+              }
+            },
+            tx
+          );
+        }
 
-            await userGroupMembershipDAL.delete(
-              {
-                groupId: group.id,
-                userId
-              },
-              tx
-            );
-          })()
+        await userGroupMembershipDAL.delete(
+          {
+            groupId: group.id,
+            userId
+          },
+          tx
         );
       }
-      await Promise.all(promises);
     }
 
     if (membersToRemoveFromGroupPending.length) {
-      await userGroupMembershipDAL.delete({
-        groupId: group.id,
-        $in: {
-          userId: membersToRemoveFromGroupPending.map((member) => member.id)
-        }
-      });
+      await userGroupMembershipDAL.delete(
+        {
+          groupId: group.id,
+          $in: {
+            userId: membersToRemoveFromGroupPending.map((member) => member.id)
+          }
+        },
+        tx
+      );
     }
 
     return membersToRemoveFromGroupNonPending.concat(membersToRemoveFromGroupPending);

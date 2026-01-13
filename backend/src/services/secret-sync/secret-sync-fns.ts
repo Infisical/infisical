@@ -179,13 +179,27 @@ export const matchesSchema = (key: string, environment: string, schema?: string)
 
   if (prefix === "" && suffix === "") return true;
 
-  // If prefix is empty, key must end with suffix
-  if (prefix === "") return key.endsWith(suffix);
+  // Check prefix match
+  if (prefix !== "" && !key.startsWith(prefix)) return false;
 
-  // If suffix is empty, key must start with prefix
-  if (suffix === "") return key.startsWith(prefix);
+  // Check suffix match
+  if (suffix !== "" && !key.endsWith(suffix)) return false;
 
-  return key.startsWith(prefix) && key.endsWith(suffix) && key.length >= prefix.length + suffix.length;
+  // Ensure key is long enough
+  if (key.length < prefix.length + suffix.length) return false;
+
+  // Extract the secretKey portion
+  const secretKeyPortion = key.slice(prefix.length, suffix.length > 0 ? key.length - suffix.length : undefined);
+
+  // If the schema uses path separators, the secretKey portion must NOT contain them.
+  // This prevents /path/segment/SECRET from matching /path/{{secretKey}}
+  if (prefix.includes("/") || suffix.includes("/")) {
+    if (secretKeyPortion.includes("/")) {
+      return false;
+    }
+  }
+
+  return true;
 };
 
 // Filter only for secrets with keys that match the schema

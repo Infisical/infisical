@@ -7,12 +7,13 @@ import { TVercelConnectionOrganization } from "./types";
 
 const vercelConnectionKeys = {
   all: [...appConnectionKeys.all, "vercel"] as const,
-  listOrganizations: (connectionId: string) =>
-    [...vercelConnectionKeys.all, "organizations", connectionId] as const
+  listOrganizations: (connectionId: string, projectSearch?: string) =>
+    [...vercelConnectionKeys.all, "organizations", connectionId, { projectSearch }] as const
 };
 
 export const useVercelConnectionListOrganizations = (
   connectionId: string,
+  projectSearch?: string,
   options?: Omit<
     UseQueryOptions<
       TVercelConnectionOrganization[],
@@ -24,10 +25,15 @@ export const useVercelConnectionListOrganizations = (
   >
 ) => {
   return useQuery({
-    queryKey: vercelConnectionKeys.listOrganizations(connectionId),
+    queryKey: vercelConnectionKeys.listOrganizations(connectionId, projectSearch),
     queryFn: async () => {
       const { data } = await apiRequest.get<TVercelConnectionOrganization[]>(
-        `/api/v1/app-connections/vercel/${connectionId}/projects`
+        `/api/v1/app-connections/vercel/${connectionId}/projects`,
+        {
+          params: {
+            projectSearch
+          }
+        }
       );
 
       return data;

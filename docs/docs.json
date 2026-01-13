@@ -448,6 +448,7 @@
                       "documentation/platform/secret-rotation/auth0-client-secret",
                       "documentation/platform/secret-rotation/aws-iam-user-secret",
                       "documentation/platform/secret-rotation/azure-client-secret",
+                      "documentation/platform/secret-rotation/databricks-service-principal-secret",
                       "documentation/platform/secret-rotation/ldap-password",
                       "documentation/platform/secret-rotation/mongodb-credentials",
                       "documentation/platform/secret-rotation/mssql-credentials",
@@ -799,16 +800,16 @@
             ]
           },
           {
-            "item": "Agentic Manager",
+            "item": "Agent Sentinel",
             "groups": [
               {
-                "group": "Agentic Manager",
+                "group": "Agent Sentinel",
                 "pages": [
-                  "documentation/platform/agentic-manager/overview",
+                  "documentation/platform/agent-sentinel/overview",
                   {
                     "group": "Concepts",
                     "pages": [
-                      "documentation/platform/agentic-manager/concepts/mcp-overview"
+                      "documentation/platform/agent-sentinel/concepts/mcp-overview"
                     ]
                   }
                 ]
@@ -816,9 +817,9 @@
               {
                 "group": "Product Reference",
                 "pages": [
-                  "documentation/platform/agentic-manager/mcp-servers",
-                  "documentation/platform/agentic-manager/mcp-endpoints",
-                  "documentation/platform/agentic-manager/activity-logs"
+                  "documentation/platform/agent-sentinel/mcp-servers",
+                  "documentation/platform/agent-sentinel/mcp-endpoints",
+                  "documentation/platform/agent-sentinel/activity-logs"
                 ]
               }
             ]
@@ -1973,6 +1974,19 @@
                     ]
                   },
                   {
+                    "group": "Databricks Service Principal Secret",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/create",
+                      "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/delete",
+                      "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/get-by-id",
+                      "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/get-by-name",
+                      "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/list",
+                      "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/update"
+                    ]
+                  },
+                  {
                     "group": "LDAP Password",
                     "pages": [
                       "api-reference/endpoints/secret-rotations/ldap-password/create",
@@ -2774,7 +2788,9 @@
                   "api-reference/endpoints/kms/keys/get-by-name",
                   "api-reference/endpoints/kms/keys/create",
                   "api-reference/endpoints/kms/keys/update",
-                  "api-reference/endpoints/kms/keys/delete"
+                  "api-reference/endpoints/kms/keys/delete",
+                  "api-reference/endpoints/kms/keys/public-key",
+                  "api-reference/endpoints/kms/keys/private-key"
                 ]
               },
               {
@@ -2789,7 +2805,6 @@
                 "pages": [
                   "api-reference/endpoints/kms/signing/sign",
                   "api-reference/endpoints/kms/signing/verify",
-                  "api-reference/endpoints/kms/signing/public-key",
                   "api-reference/endpoints/kms/signing/signing-algorithms"
                 ]
               }

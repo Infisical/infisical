@@ -91,14 +91,15 @@ const ApprovalPolicyActionSchema = z.object({
 });
 
 const CmekPolicyActionSchema = z.object({
-  read: z.boolean().optional(),
-  edit: z.boolean().optional(),
-  delete: z.boolean().optional(),
-  create: z.boolean().optional(),
-  encrypt: z.boolean().optional(),
-  decrypt: z.boolean().optional(),
-  sign: z.boolean().optional(),
-  verify: z.boolean().optional()
+  [ProjectPermissionCmekActions.Read]: z.boolean().optional(),
+  [ProjectPermissionCmekActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionCmekActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionCmekActions.Create]: z.boolean().optional(),
+  [ProjectPermissionCmekActions.Encrypt]: z.boolean().optional(),
+  [ProjectPermissionCmekActions.Decrypt]: z.boolean().optional(),
+  [ProjectPermissionCmekActions.Sign]: z.boolean().optional(),
+  [ProjectPermissionCmekActions.Verify]: z.boolean().optional(),
+  [ProjectPermissionCmekActions.ExportPrivateKey]: z.boolean().optional()
 });
 
 const DynamicSecretPolicyActionSchema = z.object({
@@ -1038,18 +1039,21 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       const canDecrypt = action.includes(ProjectPermissionCmekActions.Decrypt);
       const canSign = action.includes(ProjectPermissionCmekActions.Sign);
       const canVerify = action.includes(ProjectPermissionCmekActions.Verify);
+      const canExportPrivateKey = action.includes(ProjectPermissionCmekActions.ExportPrivateKey);
 
       if (!formVal[subject]) formVal[subject] = [{}];
 
       // from above statement we are sure it won't be undefined
-      if (canRead) formVal[subject]![0].read = true;
-      if (canEdit) formVal[subject]![0].edit = true;
-      if (canCreate) formVal[subject]![0].create = true;
-      if (canDelete) formVal[subject]![0].delete = true;
-      if (canEncrypt) formVal[subject]![0].encrypt = true;
-      if (canDecrypt) formVal[subject]![0].decrypt = true;
-      if (canSign) formVal[subject]![0].sign = true;
-      if (canVerify) formVal[subject]![0].verify = true;
+      if (canRead) formVal[subject]![0][ProjectPermissionCmekActions.Read] = true;
+      if (canEdit) formVal[subject]![0][ProjectPermissionCmekActions.Edit] = true;
+      if (canCreate) formVal[subject]![0][ProjectPermissionCmekActions.Create] = true;
+      if (canDelete) formVal[subject]![0][ProjectPermissionCmekActions.Delete] = true;
+      if (canEncrypt) formVal[subject]![0][ProjectPermissionCmekActions.Encrypt] = true;
+      if (canDecrypt) formVal[subject]![0][ProjectPermissionCmekActions.Decrypt] = true;
+      if (canSign) formVal[subject]![0][ProjectPermissionCmekActions.Sign] = true;
+      if (canVerify) formVal[subject]![0][ProjectPermissionCmekActions.Verify] = true;
+      if (canExportPrivateKey)
+        formVal[subject]![0][ProjectPermissionCmekActions.ExportPrivateKey] = true;
       return;
     }
 
@@ -1576,14 +1580,15 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   [ProjectPermissionSub.Cmek]: {
     title: "KMS",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" },
-      { label: "Encrypt", value: "encrypt" },
-      { label: "Decrypt", value: "decrypt" },
-      { label: "Sign", value: "sign" },
-      { label: "Verify", value: "verify" }
+      { label: "Read", value: ProjectPermissionCmekActions.Read },
+      { label: "Create", value: ProjectPermissionCmekActions.Create },
+      { label: "Modify", value: ProjectPermissionCmekActions.Edit },
+      { label: "Remove", value: ProjectPermissionCmekActions.Delete },
+      { label: "Encrypt", value: ProjectPermissionCmekActions.Encrypt },
+      { label: "Decrypt", value: ProjectPermissionCmekActions.Decrypt },
+      { label: "Sign", value: ProjectPermissionCmekActions.Sign },
+      { label: "Verify", value: ProjectPermissionCmekActions.Verify },
+      { label: "Export Private Key", value: ProjectPermissionCmekActions.ExportPrivateKey }
     ]
   },
   [ProjectPermissionSub.Kms]: {
