@@ -2,6 +2,7 @@
 // If you rename the import, update the Dockerfile.fips.standalone-infisical file as well.
 import "./lib/telemetry/instrumentation";
 
+import axios from "axios";
 import dotenv from "dotenv";
 
 import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
@@ -13,8 +14,10 @@ import { hsmServiceFactory } from "./ee/services/hsm/hsm-service";
 import { keyStoreFactory } from "./keystore/keystore";
 import { formatSmtpConfig, getDatabaseCredentials, getHsmConfig, initEnvConfig } from "./lib/config/env";
 import { buildRedisFromConfig } from "./lib/config/redis";
+import { axiosResponseInterceptor } from "./lib/config/request";
 import { removeTemporaryBaseDirectory } from "./lib/files";
 import { initLogger } from "./lib/logger";
+import { CustomLogger } from "./lib/logger/logger";
 import { queueServiceFactory } from "./queue";
 import { main } from "./server/app";
 import { bootstrapCheck } from "./server/boot-strap-check";
@@ -24,10 +27,15 @@ import { superAdminDALFactory } from "./services/super-admin/super-admin-dal";
 
 dotenv.config();
 
+const setupAxiosResponseInterceptor = (logger: CustomLogger) => {
+  axios.interceptors.response.use((response) => axiosResponseInterceptor(response, logger));
+};
+
 const run = async () => {
   const logger = initLogger();
   await removeTemporaryBaseDirectory();
 
+  setupAxiosResponseInterceptor(logger);
   const hsmConfig = getHsmConfig(logger);
 
   const hsmModule = initializeHsmModule(hsmConfig);
