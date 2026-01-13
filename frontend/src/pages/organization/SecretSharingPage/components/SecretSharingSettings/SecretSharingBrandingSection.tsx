@@ -30,6 +30,7 @@ const ALLOWED_FILE_TYPES = [
   "image/gif",
   "image/svg+xml",
   "image/x-icon",
+  "image/vnd.microsoft.icon",
   "image/webp"
 ];
 
@@ -121,6 +122,10 @@ const AssetUploadCard = ({
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+
+    // eslint-disable-next-line no-param-reassign
+    event.target.value = "";
+
     if (file) {
       const error = validateFile(file);
       if (error) {

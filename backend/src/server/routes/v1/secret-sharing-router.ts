@@ -21,6 +21,7 @@ const ALLOWED_IMAGE_CONTENT_TYPES = [
   "image/gif",
   "image/svg+xml",
   "image/x-icon",
+  "image/vnd.microsoft.icon",
   "image/webp"
 ];
 const MAX_IMAGE_SIZE = 1 * 1024 * 1024; // 1MB
