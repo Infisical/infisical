@@ -20,6 +20,7 @@ const AUTH_METHOD_OPTIONS = [{ value: MCPServerAuthMethod.OAUTH, label: "OAuth" 
 const OAUTH_POPUP_WIDTH = 600;
 const OAUTH_POPUP_HEIGHT = 700;
 const OAUTH_POLL_INTERVAL = 2000; // Poll every 2 seconds
+const OAUTH_MAX_TIMEOUT = 2 * 60 * 1000; // 5 minutes
 
 type Props = {
   onOAuthSuccess?: () => void;
@@ -37,7 +38,6 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
   const [isOAuthPending, setIsOAuthPending] = useState(false);
   const popupRef = useRef<Window | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const oauthSucceededRef = useRef(false);
 
   // Check if OAuth is already authorized (has access token)
   const oauthCredentials = authMethod === MCPServerAuthMethod.OAUTH ? watch("credentials") : null;
@@ -57,9 +57,6 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
   // Handle OAuth status updates
   useEffect(() => {
     if (oauthStatus?.authorized && oauthStatus.accessToken) {
-      // Mark OAuth as succeeded (for popup close detection)
-      oauthSucceededRef.current = true;
-
       // OAuth completed successfully - use shouldDirty and shouldTouch to trigger re-renders
       setValue(
         "credentials",
@@ -111,39 +108,24 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
     };
   }, []);
 
-  // Check if popup was closed manually
+  // Timeout-based cancellation (popup.closed is unreliable with COOP headers)
   useEffect(() => {
-    let checkPopupClosed: NodeJS.Timeout | null = null;
+    if (!isOAuthPending) return () => {};
 
-    if (isOAuthPending) {
-      // Reset the success ref when starting a new OAuth flow
-      oauthSucceededRef.current = false;
-
-      checkPopupClosed = setInterval(() => {
-        if (popupRef.current?.closed) {
-          if (checkPopupClosed) {
-            clearInterval(checkPopupClosed);
-          }
-          // Don't immediately cancel - give a few more seconds for callback to process
-          setTimeout(() => {
-            // Use ref to check if OAuth succeeded (avoids stale closure)
-            if (!oauthSucceededRef.current) {
-              setIsOAuthPending(false);
-              createNotification({
-                text: "OAuth authorization was cancelled",
-                type: "info"
-              });
-            }
-          }, 3000);
-        }
-      }, 500);
-    }
-
-    return () => {
-      if (checkPopupClosed) {
-        clearInterval(checkPopupClosed);
+    const startTime = Date.now();
+    const checkTimeout = setInterval(() => {
+      if (Date.now() - startTime > OAUTH_MAX_TIMEOUT) {
+        clearInterval(checkTimeout);
+        setIsOAuthPending(false);
+        setOauthSessionId(null);
+        createNotification({
+          text: "OAuth authorization timed out. Please try again.",
+          type: "error"
+        });
       }
-    };
+    }, 5000);
+
+    return () => clearInterval(checkTimeout);
   }, [isOAuthPending]);
 
   const handleAuthMethodChange = useCallback(
@@ -161,7 +143,6 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
       // Reset OAuth state
       setOauthSessionId(null);
       setIsOAuthPending(false);
-      oauthSucceededRef.current = false;
     },
     [setValue]
   );
