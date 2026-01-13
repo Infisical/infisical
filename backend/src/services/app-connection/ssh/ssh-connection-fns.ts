@@ -2,14 +2,14 @@ import { Client, ConnectConfig } from "ssh2";
 
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { SshConnectionMethod } from "./ssh-connection-enums";
-import { TSshConnection, TSshConnectionConfig } from "./ssh-connection-types";
+import { TSshConnectionConfig } from "./ssh-connection-types";
 
 const SSH_TIMEOUT = 15_000;
 
@@ -22,12 +22,22 @@ export const getSshConnectionListItem = () => {
 };
 
 export const getSshConnectionClient = async (
-  credentials: TSshConnection["credentials"],
+  credentials: TSshConnectionConfig,
   targetHost: string,
   targetPort: number
 ): Promise<Client> => {
   return new Promise((resolve, reject) => {
     const client = new Client();
+
+    const connectConfig: ConnectConfig = {
+      host: targetHost,
+      port: targetPort,
+      readyTimeout: SSH_TIMEOUT,
+      tryKeyboard: false,
+      algorithms: {
+        serverHostKey: ["rsa-sha2-512", "rsa-sha2-256", "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp521"]
+      }
+    };
 
     client.on("error", (err: Error) => {
       client.destroy();
@@ -43,20 +53,26 @@ export const getSshConnectionClient = async (
       reject(new Error("SSH Connection Timeout"));
     });
 
-    const connectConfig: ConnectConfig = {
-      host: targetHost,
-      port: targetPort,
-      username: credentials.username,
-      readyTimeout: SSH_TIMEOUT
-    };
-
-    // Handle auth method using discriminated union
-    if (credentials.authMethod === SshConnectionMethod.Password) {
-      connectConfig.password = credentials.password;
-    } else {
-      connectConfig.privateKey = credentials.privateKey;
-      if (credentials.passphrase) {
-        connectConfig.passphrase = credentials.passphrase;
+    switch (credentials.method) {
+      case SshConnectionMethod.Password: {
+        const { credentials: inputCredentials } = credentials;
+        connectConfig.username = inputCredentials.username;
+        connectConfig.password = inputCredentials.password;
+        break;
+      }
+      case SshConnectionMethod.SshKey: {
+        const { credentials: inputCredentials } = credentials;
+        connectConfig.username = inputCredentials.username;
+        connectConfig.privateKey = inputCredentials.privateKey;
+        if (inputCredentials.passphrase) {
+          connectConfig.passphrase = inputCredentials.passphrase;
+        }
+        break;
+      }
+      default: {
+        throw new InternalServerError({
+          message: `Unhandled connection method: ${(credentials as { method: string }).method}`
+        });
       }
     }
 
@@ -109,7 +125,7 @@ export const validateSshConnectionCredentials = async (
 ) => {
   try {
     await executeWithPotentialGateway(config, gatewayV2Service, async (targetHost, targetPort) => {
-      const client = await getSshConnectionClient(config.credentials, targetHost, targetPort);
+      const client = await getSshConnectionClient(config, targetHost, targetPort);
       client.destroy(); // Clean up after successful connection
     });
 
