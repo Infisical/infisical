@@ -150,50 +150,52 @@ const AssetUploadCard = ({
   };
 
   return (
-    <div className="rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3">
-      <p className="mb-1 text-sm font-medium">{title}</p>
-      <p className="mb-2 text-xs text-mineshaft-400">{description}</p>
-      <input
-        ref={inputRef}
-        type="file"
-        accept={ALLOWED_FILE_TYPES.join(",")}
-        onChange={handleFileChange}
-        className="hidden"
-        disabled={!isAllowed || isPending}
-      />
-      <div className="flex gap-2">
-        {isLoading ? (
-          <div className="size-10 animate-pulse rounded border border-mineshaft-500 bg-mineshaft-600" />
-        ) : (
-          previewUrl && (
-            <img
-              src={previewUrl}
-              alt={`${title} preview`}
-              className="size-10 rounded border border-mineshaft-500 object-contain p-1"
-            />
-          )
-        )}
-        <UnstableButton
-          variant="neutral"
-          size="xs"
-          onClick={() => inputRef.current?.click()}
-          isDisabled={!isAllowed || isPending}
-        >
-          <UploadIcon />
-          Upload {title}
-        </UnstableButton>
-        {previewUrl && (
+    <div className="flex h-28 justify-between gap-2 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3">
+      <div className="flex min-h-0 flex-col justify-center">
+        <p className="mb-1 text-sm font-medium">{title}</p>
+        <p className="mb-2 text-xs text-mineshaft-400">{description}</p>
+        <input
+          ref={inputRef}
+          type="file"
+          accept={ALLOWED_FILE_TYPES.join(",")}
+          onChange={handleFileChange}
+          className="hidden"
+          disabled={!isAllowed || isPending}
+        />
+        <div className="flex gap-2">
           <UnstableButton
-            variant="danger"
+            variant="neutral"
             size="xs"
-            onClick={handleDelete}
+            onClick={() => inputRef.current?.click()}
             isDisabled={!isAllowed || isPending}
           >
-            <TrashIcon />
-            Delete
+            <UploadIcon />
+            Upload {title}
           </UnstableButton>
-        )}
+          {previewUrl && (
+            <UnstableButton
+              variant="danger"
+              size="xs"
+              onClick={handleDelete}
+              isDisabled={!isAllowed || isPending}
+            >
+              <TrashIcon />
+              Delete
+            </UnstableButton>
+          )}
+        </div>
       </div>
+      {isLoading ? (
+        <div className="aspect-square h-full w-auto animate-pulse rounded border border-mineshaft-500 bg-mineshaft-600" />
+      ) : (
+        previewUrl && (
+          <img
+            src={previewUrl}
+            alt={`${title} preview`}
+            className="aspect-square h-full w-auto rounded border border-mineshaft-500 object-contain p-1"
+          />
+        )
+      )}
     </div>
   );
 };
