@@ -389,8 +389,8 @@ export const secretV2BridgeServiceFactory = ({
       });
     }
 
+    await snapshotService.performSnapshot(folderId);
     if (inputSecret.type === SecretType.Shared) {
-      await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
         secretPath,
         orgId: actorOrgId,
@@ -639,8 +639,8 @@ export const secretV2BridgeServiceFactory = ({
       });
     }
 
+    await snapshotService.performSnapshot(folderId);
     if (inputSecret.type === SecretType.Shared) {
-      await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
         secretPath,
         actorId,
@@ -761,9 +761,9 @@ export const secretV2BridgeServiceFactory = ({
         await secretDAL.invalidateSecretCacheByProjectId(projectId, tx);
         return modifiedSecretsInDB;
       });
-
+      
+      await snapshotService.performSnapshot(folderId);
       if (inputSecret.type === SecretType.Shared) {
-        await snapshotService.performSnapshot(folderId);
         await secretQueueService.syncSecrets({
           secretPath,
           actorId,

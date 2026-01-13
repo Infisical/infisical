@@ -304,9 +304,9 @@ export const secretServiceFactory = ({
         tx
       })
     );
-
+    
+    await snapshotService.performSnapshot(folderId);
     if (inputSecret.type === SecretType.Shared) {
-      await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
         secretPath: path,
         actorId,
@@ -450,8 +450,8 @@ export const secretServiceFactory = ({
       })
     );
 
+    await snapshotService.performSnapshot(folderId);
     if (inputSecret.type === SecretType.Shared) {
-      await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
         secretPath: path,
         orgId: actorOrgId,
@@ -565,8 +565,9 @@ export const secretServiceFactory = ({
       return secrets;
     });
 
+    // Take snapshot for all secret types to track deletion in environment history
+    await snapshotService.performSnapshot(folderId);
     if (inputSecret.type === SecretType.Shared) {
-      await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
         secretPath: path,
         actorId,
