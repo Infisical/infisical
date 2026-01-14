@@ -1082,7 +1082,7 @@ export const certificateV3ServiceFactory = ({
         actorOrgId,
         isFromProfile: true,
         caSettings: template.caSettings,
-        pathLength: profile.pathLength,
+        pathLength: certificateRequest.basicConstraints?.pathLength,
         organization: certificateSubject.organization,
         country: certificateSubject.country,
         state: certificateSubject.state,
@@ -1261,7 +1261,7 @@ export const certificateV3ServiceFactory = ({
           keyAlgorithm: effectiveKeyAlgorithm,
           isFromProfile: true,
           caSettings: template.caSettings,
-          pathLength: profile.pathLength,
+          pathLength: basicConstraints?.pathLength,
           tx
         });
 
@@ -1689,7 +1689,6 @@ export const certificateV3ServiceFactory = ({
             actorOrgId,
             internal: true,
             caSettings: template?.caSettings,
-            pathLength: profile?.pathLength,
             tx
           });
 

@@ -155,9 +155,7 @@ export const certificateEstV3ServiceFactory = ({
       csr,
       isFromProfile: true,
       // Pass CA settings from template (null for leaf certificates, object for CA certificates)
-      caSettings: template?.caSettings,
-      // Pass path length from profile (only applicable for CA certificates)
-      pathLength: profile.pathLength
+      caSettings: template?.caSettings
     });
 
     return convertRawCertsToPkcs7([certificate.rawData]);
@@ -288,9 +286,7 @@ export const certificateEstV3ServiceFactory = ({
       csr,
       isFromProfile: true,
       // Pass CA settings from template (null for leaf certificates, object for CA certificates)
-      caSettings: template?.caSettings,
-      // Pass path length from profile (only applicable for CA certificates)
-      pathLength: profile.pathLength
+      caSettings: template?.caSettings
     });
 
     return convertRawCertsToPkcs7([certificate.rawData]);
