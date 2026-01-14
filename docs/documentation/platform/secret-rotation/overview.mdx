@@ -1,115 +1,84 @@
 ---
 title: "Secret Rotation"
 sidebarTitle: "Overview"
-description: "Learn how to set up automated secret rotation in Infisical."
+description: "Learn how Infisical rotates secrets to keep your infrastructure secure."
 ---
 
-## Introduction
+Secret rotation is the practice of automatically updating authentication credentials (such as database passwords and API keys) on a regular schedule. By changing your secrets frequently, you limit the lifespan of any leaked credential, significantly reducing the risk of unauthorized access to your infrastructure.
 
-Secret rotation is a security best practice that involves systematically updating credentials and access tokens at regular intervals to minimize the risk of compromise. By proactively replacing existing secrets with new ones, organizations reduce the potential impact of credential theft or leakage.
+Infisical Secret Rotation automates the entire secret rotation process. This ensures that your applications always have valid credentials without downtime.
 
-Examples of rotated secrets include:
+## Core concepts
 
-- API keys and authentication tokens for cloud services and third-party integrations
-- Database credentials across production, staging, and development environments
+Understanding how Infisical handles rotation is key to configuring it correctly. The most common pattern used is **Dual User Rotation**.
 
-## How Rotation Works
+### Dual user rotation
 
-Secret Rotation systematically replaces secrets at regular intervals while ensuring zero downtime for your applications. This overlapping lifecycle approach maintains continuous availability while enhancing your security posture.
+To ensure zero downtime, Infisical often utilizes a "Dual User" strategy. Instead of changing the password for a single user (which would immediately break active connections), Infisical manages **two separate database users** and toggles between them.
 
-### Visual Timeline
+1.  **User A** is active. Applications use User A's credentials.
+2.  When rotation occurs, Infisical updates the password for **User B** and switches the secret in Infisical to point to User B.
+3.  Applications fetch the new secret and start connecting as User B.
+4.  User A remains valid for a grace period (or until the next rotation) to allow ongoing connections to close gracefully.
+
+### Comparison: Rotation vs. Dynamic Secrets (Issuer Pattern)
+
+While "Rotation" focuses on updating existing long-lived credentials, you may also encounter the **Issuer Pattern** (often called **Dynamic Secrets**).
+
+| Feature      | Secret Rotation (Dual User)    | Dynamic Secrets (Issuer Pattern)       |
+| :----------- | :----------------------------- | :------------------------------------- |
+| **Method**   | Swaps between two static users | Generates a new, unique user on-demand |
+| **Duration** | Long-lived (e.g., 30 days)     | Short-lived (e.g., 1 hour)             |
+| **Best For** | Legacy databases, static infra | Microservices, temporary access        |
+
+Infisical supports both. If your environment supports creating/deleting users on the fly, consider looking at our [Dynamic Secrets](/documentation/platform/dynamic-secrets/overview) documentation.
+
+### The credential lifecycle
+
+A common point of confusion is the difference between the **Rotation Interval** and the **Credential Validity**.
+
+If you set a **30-day rotation interval**, your secrets are actually valid for **60 days**.
+
+<Frame caption="The overlap ensures that even if an application deploys at the last second of a cycle, it has valid credentials for the next cycle.">
 
 ```mermaid
-gantt
-    title Credential Lifecycle (Interval = 30 days)
+  gantt
     dateFormat  YYYY-MM-DD
-    axisFormat %b %d
+    axisFormat  %m-%d
+    title       30-Day Rotation Interval = 60-Day Validity
 
-    section Credentials 1
-    Active      :active, a1, 2023-01-01, 30d
-    Inactive    :done, i1, after a1, 30d
-    Revoked     :crit, r1, after i1, 30d
+    section Credential Set A
+    Active (In Secret)       :active,    des1, 2023-01-01, 30d
+    Grace Period (Valid)     :           des2, after des1, 30d
 
-    section Credentials 2
-    Active      :active, a2, 2023-01-31, 30d
-    Inactive    :done, i2, after a2, 30d
-    Revoked     :crit, r2, after i2, 30d
+    section Credential Set B
+    Standby                  :           des3, 2023-01-01, 30d
+    Active (In Secret)       :active,    des4, after des3, 30d
+    Grace Period (Valid)     :           des5, after des4, 30d
 
-    section Credentials 3
-    Active      :active, a3, 2023-03-02, 30d
-    Inactive    :done, i3, after a3, 30d
-    Revoked     :crit, r3, after i3, 30d
 ```
 
-### Credential States
+</Frame>
 
-Each set of credentials transitions through three distinct states:
+- **Active Phase (Days 0-30)**: The credential is the "current" secret. Applications fetching secrets will get this one.
+- **Grace Phase (Days 30-60)**: The credential is no longer served to new requests, but it **still works**. This ensures that an application that started a long-running job on Day 29 isn't cut off on Day 30.
 
-- **Active**: The primary credentials that will be used for new connections
-- **Inactive**: These credentials are still valid but are no longer issued for new connections
-    <Note>
-        Some rotation providers utilize a single credential set due to technical constraints. As a result, inactive credentials for these providers will immediately become invalid once rotated.
-
-        To avoid service interruptions, Infisical recommends manually rotating these credentials to prevent downtime.
-    </Note>
-- **Revoked**: Permanently invalidated and deleted from the system
-
-### Rotation Cycle Example (30-Day Interval)
-
-Using a __30-Day__ rotation interval as an example, here's how the process unfolds:
-
-1. __Day 0__
-    - `Credential set 1` is issued and set to **Active**
-    - Applications begin using this set for authentication
-
-2. __Day 30__
-    - `Credential set 2` is issued and set to **Active**
-    - `Credential set 1` transitions to **Inactive** but remains valid
-    - New connections utilize set 2 while existing connections with set 1 continue to work
-
-    <Note>
-        This overlapping validity period ensures that at any point during the active period of a credential set, you are guaranteed that retrieved credentials will be valid for the specified rotation period.
-    </Note>
-
-3. __Day 60__
-    - `Credential set 3` is issued and set to **Active**
-    - `Credential set 2` transitions to **Inactive** but remains valid
-    - `Credential set 1` is **Revoked** and securely deleted
-    - By now, all applications should have transitioned to using set 2 or 3
-
-4. __Day 90__
-    - `Credential set 4` is issued and set to **Active**
-    - `Credential set 3` transitions to **Inactive** but remains valid
-    - `Credential set 2` is **Revoked** and securely deleted
-    - The cycle continues...
-
-### Benefits of This Approach
-
-- **Zero Downtime**: Applications always have valid credentials
-- **Grace Period**: The inactive period gives applications time to update to new credentials
-- **Reduced Risk**: Credentials are regularly cycled, limiting the impact of potential compromise
-- **Predictable Schedule**: Makes credential management more systematic and easier to automate
-
-### Implementation Considerations
-
-- Choose a rotation interval appropriate for your security requirements and operational needs
-- Ensure your applications can handle credential updates gracefully
-- Monitor for applications still using credentials nearing revocation
-
-## Infisical Secret Rotation Strategies
-
-- [PostgreSQL Credentials](./postgres-credentials)
-- [Microsoft SQL Server Credentials](./mssql-credentials)
-
-## FAQ
+### Common issues
 
 <AccordionGroup>
-    <Accordion title="Why do certain rotations only use a single credential set?">
-        Some credential providers have limitations that affect rotation patterns:
+<Accordion title="Missing database permissions">
+The most common failure reason is insufficient permissions. The user you provide to Infisical (to perform the rotation) must have the authority to `ALTER USER` or change passwords for the target users. Always verify permissions before enabling rotation.
+</Accordion>
 
-        - The third-party provider's API only supports managing one active credential set at a time
-        - The specific use-case (such as personal login accounts) is inherently limited to a single active credential
+<Accordion title="Application restarts">
+  Infisical updates the secret value, but your application must *read* that new
+  value. - If you inject secrets at build time (e.g., in a CI/CD pipeline), you
+  must **re-deploy** your application to pick up the rotated secret. - If you
+  use the Infisical SDK or Agent, your app can fetch the new secret dynamically
+  without a full redeploy.
+</Accordion>
 
-        In either scenario, when service continuity is critical, Infisical recommends disabling auto-rotation and performing manual credential rotation during scheduled maintenance windows.
-    </Accordion>
+<Accordion title="Requesting New Integrations">
+Infisical supports many services out of the box. If you need to rotate a secret for a service not currently listed, please [request a new integration](https://github.com/Infisical/infisical/issues) or check our [Integrations](/integrations/overview) page.
+</Accordion>
 </AccordionGroup>
