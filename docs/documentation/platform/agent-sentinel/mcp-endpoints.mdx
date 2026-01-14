@@ -108,6 +108,30 @@ Once you have your endpoint URL, you can connect AI clients to it.
   </Tab>
 </Tabs>
 
+## Personal Credentials Authentication
+
+When an MCP endpoint includes servers configured with **Personal Credentials** mode, users must authenticate with each of those servers before they can connect to the endpoint.
+
+### Authentication Flow
+
+When a user connects to an endpoint with servers requiring personal credentials:
+
+1. **Authentication Prompt**: After authorizing access to the endpoint, users are shown a list of all MCP servers that require their personal credentials.
+
+![mcp endpoints finalize personal incomplete](/images/platform/ai/mcp/mcp-endpoints-finalize-personal-incomplete.png)
+
+2. **Authenticate Each Server**: Users must authenticate with each server in the list. The authentication method depends on how the server was configured:
+   - **OAuth**: Users are redirected to the service (e.g., GitHub, Notion) to authorize access
+   - **Bearer Token**: Users enter their personal access token directly
+
+![mcp endpoints finalize personal bearer](/images/platform/ai/mcp/mcp-endpoints-finalize-personal-bearer.png)
+
+3. **Re-authentication**: Users can update their credentials for servers they've already authenticated with by clicking the **Re-authenticate** button. This is useful when tokens expire or when users want to switch accounts.
+
+4. **Complete All Authentications**: Users must authenticate with **all** servers requiring personal credentials before they can proceed. The connection will only be established once all required authentications are complete.
+
+![mcp endpoints finalize personal complete](/images/platform/ai/mcp/mcp-endpoints-finalize-personal-complete.png)
+
 ## FAQ
 
 <AccordionGroup>
@@ -124,6 +148,11 @@ Once you have your endpoint URL, you can connect AI clients to it.
     Yes, you can revoke access by managing authorized sessions in the endpoint settings. This immediately disconnects the AI client.
   </Accordion>
   <Accordion title="What if an MCP server requires personal credentials?">
-    If a connected MCP server uses personal credentials, users will be prompted to authenticate with that server when they first connect to the endpoint. This is a one-time process per server.
+    If a connected MCP server uses personal credentials, users will be prompted to authenticate when they first connect to the endpoint. The authentication method depends on how the server was configured:
+
+    - **OAuth servers**: Users complete an OAuth authorization flow
+    - **Bearer Token servers**: Users enter their personal access token directly
+
+    This is a one-time process per server, and users can re-authenticate at any time if needed.
   </Accordion>
 </AccordionGroup>

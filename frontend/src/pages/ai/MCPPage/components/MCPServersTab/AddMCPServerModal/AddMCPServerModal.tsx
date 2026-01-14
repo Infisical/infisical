@@ -67,13 +67,21 @@ export const AddMCPServerModal = ({ isOpen, onOpenChange }: Props) => {
 
   const isFinalStep = selectedTabIndex === FORM_TABS.length - 1;
 
-  // Check if OAuth is completed (has access token)
+  // Check if authentication is complete based on method
   const authMethod = watch("authMethod");
   const credentials = watch("credentials");
+
   const isOAuthCompleted =
     authMethod === MCPServerAuthMethod.OAUTH &&
     "accessToken" in credentials &&
     Boolean(credentials.accessToken);
+
+  const isBearerCompleted =
+    authMethod === MCPServerAuthMethod.BEARER &&
+    "token" in credentials &&
+    Boolean(credentials.token);
+
+  const isAuthCompleted = isOAuthCompleted || isBearerCompleted;
 
   const isStepValid = async (index: number) => {
     const { fields } = FORM_TABS[index];
@@ -212,7 +220,7 @@ export const AddMCPServerModal = ({ isOpen, onOpenChange }: Props) => {
                 onClick={handleNext}
                 colorSchema="primary"
                 isLoading={createMcpServer.isPending}
-                isDisabled={createMcpServer.isPending || (isFinalStep && !isOAuthCompleted)}
+                isDisabled={createMcpServer.isPending || (isFinalStep && !isAuthCompleted)}
               >
                 {isFinalStep ? "Add MCP Server" : "Next"}
               </Button>

@@ -14,9 +14,14 @@ import {
   useGetAiMcpEndpointById,
   useGetServersRequiringAuth,
   useInitiateServerOAuth,
-  useSaveUserServerCredential
+  useSaveUserServerCredential,
+  useVerifyServerBearerToken
 } from "@app/hooks/api";
+import { TServerAuthStatus } from "@app/hooks/api/aiMcpEndpoints/types";
 import { useGetOAuthStatus } from "@app/hooks/api/aiMcpServers/queries";
+import { AiMcpServerAuthMethod } from "@app/hooks/api/aiMcpServers/types";
+
+import { BearerTokenModal } from "./components/BearerTokenModal";
 
 const OAUTH_POPUP_WIDTH = 600;
 const OAUTH_POPUP_HEIGHT = 700;
@@ -38,8 +43,10 @@ export const McpEndpointFinalizePage = () => {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [serverStates, setServerStates] = useState<Map<string, ServerOAuthState>>(new Map());
   const [activeServerId, setActiveServerId] = useState<string | null>(null);
-
-  console.log("I AM A VERSION INDICATOR");
+  const [bearerModalServer, setBearerModalServer] = useState<{ id: string; name: string } | null>(
+    null
+  );
+  const [bearerTokenError, setBearerTokenError] = useState<string | undefined>(undefined);
 
   const search = useSearch({
     from: "/_authenticate/organization/mcp-endpoint-finalize"
@@ -56,6 +63,7 @@ export const McpEndpointFinalizePage = () => {
   const { mutateAsync: finalizeOAuth, isPending } = useFinalizeMcpEndpointOAuth();
   const initiateServerOAuth = useInitiateServerOAuth();
   const saveUserCredential = useSaveUserServerCredential();
+  const verifyBearerToken = useVerifyServerBearerToken();
 
   // Get active server's state for polling
   const activeState = activeServerId ? serverStates.get(activeServerId) : null;
@@ -236,6 +244,75 @@ export const McpEndpointFinalizePage = () => {
     [search.endpointId, initiateServerOAuth]
   );
 
+  const handleServerAuth = useCallback(
+    (server: TServerAuthStatus) => {
+      if (server.authMethod === AiMcpServerAuthMethod.BEARER) {
+        setBearerTokenError(undefined);
+        setBearerModalServer({ id: server.id, name: server.name });
+      } else {
+        // OAuth flow (default for oauth and basic auth types)
+        handleServerOAuth(server.id);
+      }
+    },
+    [handleServerOAuth]
+  );
+
+  const handleBearerTokenSubmit = useCallback(
+    async (token: string) => {
+      if (!bearerModalServer) return;
+
+      setBearerTokenError(undefined);
+
+      try {
+        // First verify the token
+        const { valid, message } = await verifyBearerToken.mutateAsync({
+          endpointId: search.endpointId,
+          serverId: bearerModalServer.id,
+          accessToken: token
+        });
+
+        if (!valid) {
+          setBearerTokenError(message || "Invalid token");
+          return;
+        }
+
+        // Token is valid, save credentials
+        await saveUserCredential.mutateAsync({
+          endpointId: search.endpointId,
+          serverId: bearerModalServer.id,
+          accessToken: token,
+          tokenType: "Bearer"
+        });
+
+        setServerStates((prev) => {
+          const newMap = new Map(prev);
+          newMap.set(bearerModalServer.id, {
+            sessionId: null,
+            isPending: false,
+            isAuthorized: true
+          });
+          return newMap;
+        });
+
+        createNotification({
+          text: "Server authentication successful",
+          type: "success"
+        });
+
+        setBearerModalServer(null);
+      } catch (error) {
+        console.error("Failed to verify/save bearer token:", error);
+        // Extract error message from axios error if available
+        const axiosError = error as { response?: { data?: { message?: string } } };
+        const errorMessage =
+          axiosError?.response?.data?.message ||
+          "Failed to verify token. Please check your token and try again.";
+        setBearerTokenError(errorMessage);
+      }
+    },
+    [bearerModalServer, search.endpointId, verifyBearerToken, saveUserCredential]
+  );
+
   const allServersAuthenticated =
     !serversRequiringAuth ||
     serversRequiringAuth.length === 0 ||
@@ -290,10 +367,6 @@ export const McpEndpointFinalizePage = () => {
   }
 
   const hasServersRequiringAuth = serversRequiringAuth && serversRequiringAuth.length > 0;
-  const pendingServers = serversRequiringAuth?.filter((server) => {
-    const state = serverStates.get(server.id);
-    return !state?.isAuthorized && !server.hasCredentials;
-  });
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-bunker-800">
@@ -342,13 +415,14 @@ export const McpEndpointFinalizePage = () => {
         {/* Servers requiring authentication */}
         {!isServersLoading && hasServersRequiringAuth && (
           <div className="mt-6 mb-6 space-y-2">
-            {pendingServers && pendingServers.length > 0 && (
-              <p className="text-xs text-bunker-300">
-                {pendingServers.length === 1
+            <div className="rounded-md border border-primary-500/30 bg-primary-500/10 p-3">
+              <p className="text-xs text-mineshaft-200">
+                <span className="font-medium text-primary-400">Note:</span>{" "}
+                {serversRequiringAuth.length === 1
                   ? "The following server uses personal credentials. Authenticate with your own account to access its tools."
                   : "The following servers use personal credentials. Authenticate with your own accounts to access their tools."}
               </p>
-            )}
+            </div>
             {serversRequiringAuth.map((server) => {
               const state = serverStates.get(server.id);
               const isAuthorized = state?.isAuthorized || server.hasCredentials;
@@ -366,9 +440,18 @@ export const McpEndpointFinalizePage = () => {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-mineshaft-100">{server.name}</p>
                   </div>
-                  <div className="ml-3 flex-shrink-0">
+                  <div className="ml-3 flex shrink-0 items-center gap-2">
                     {isAuthorized && (
-                      <FontAwesomeIcon icon={faCheckCircle} className="text-green-500" />
+                      <>
+                        <FontAwesomeIcon icon={faCheckCircle} className="text-green-500" />
+                        <Button
+                          size="xs"
+                          variant="outline_bg"
+                          onClick={() => handleServerAuth(server)}
+                        >
+                          Re-authenticate
+                        </Button>
+                      </>
                     )}
                     {!isAuthorized && isServerPending && (
                       <FontAwesomeIcon icon={faSpinner} className="animate-spin text-yellow-500" />
@@ -377,7 +460,7 @@ export const McpEndpointFinalizePage = () => {
                       <Button
                         size="xs"
                         variant="outline_bg"
-                        onClick={() => handleServerOAuth(server.id)}
+                        onClick={() => handleServerAuth(server)}
                         isLoading={initiateServerOAuth.isPending && activeServerId === server.id}
                         leftIcon={<FontAwesomeIcon icon={faExternalLink} />}
                       >
@@ -434,6 +517,15 @@ export const McpEndpointFinalizePage = () => {
           </>
         )}
       </div>
+
+      <BearerTokenModal
+        isOpen={bearerModalServer !== null}
+        onOpenChange={(isOpen) => !isOpen && setBearerModalServer(null)}
+        serverName={bearerModalServer?.name || ""}
+        isLoading={verifyBearerToken.isPending || saveUserCredential.isPending}
+        errorMessage={bearerTokenError}
+        onSubmit={handleBearerTokenSubmit}
+      />
     </div>
   );
 };
