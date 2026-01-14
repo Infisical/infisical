@@ -84,6 +84,7 @@ export type FormControlProps = {
   icon?: ReactNode;
   tooltipText?: ReactElement | string;
   tooltipClassName?: string;
+  labelClassName?: string;
 };
 
 export const FormControl = ({
@@ -98,7 +99,8 @@ export const FormControl = ({
   icon,
   className,
   tooltipText,
-  tooltipClassName
+  tooltipClassName,
+  labelClassName
 }: FormControlProps): JSX.Element => {
   return (
     <div className={twMerge("mb-4", className)}>
@@ -111,6 +113,7 @@ export const FormControl = ({
           icon={icon}
           tooltipText={tooltipText}
           tooltipClassName={tooltipClassName}
+          className={labelClassName}
         />
       ) : (
         label

@@ -11,16 +11,18 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { decryptSymmetric } from "@app/components/utilities/cryptography/crypto";
 import { Button, IconButton } from "@app/components/v2";
 import { useTimedReset, useToggle } from "@app/hooks";
-import { TViewSharedSecretResponse } from "@app/hooks/api/secretSharing";
+import { TSharedSecretResponse } from "@app/hooks/api/secretSharing";
 
+import { BrandingTheme } from "../ViewSharedSecretByIDPage";
 import { SecretShareInfo } from "./SecretShareInfo";
 
 type Props = {
-  secret: TViewSharedSecretResponse["secret"];
+  secret: TSharedSecretResponse;
   secretKey: string | null;
+  brandingTheme?: BrandingTheme;
 };
 
-export const SecretContainer = ({ secret, secretKey: key }: Props) => {
+export const SecretContainer = ({ secret, secretKey: key, brandingTheme }: Props) => {
   const [isVisible, setIsVisible] = useToggle(false);
   const [, isCopyingSecret, setCopyTextSecret] = useTimedReset<string>({
     initialState: "Copy to clipboard"
@@ -45,9 +47,39 @@ export const SecretContainer = ({ secret, secretKey: key }: Props) => {
 
   const hiddenSecret = decryptedSecret ? "*".repeat(decryptedSecret.length) : "";
 
+  const panelStyle = brandingTheme
+    ? {
+        backgroundColor: brandingTheme.panelBg,
+        borderColor: brandingTheme.panelBorder
+      }
+    : undefined;
+
+  const secretDisplayStyle = brandingTheme
+    ? {
+        backgroundColor: brandingTheme.inputBg,
+        borderColor: brandingTheme.panelBorder,
+        color: brandingTheme.textColor
+      }
+    : undefined;
+
+  const iconButtonStyle = brandingTheme
+    ? {
+        backgroundColor: brandingTheme.buttonBg,
+        color: brandingTheme.textColor
+      }
+    : undefined;
+
   return (
-    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
-      <div className="flex items-center justify-between rounded-md bg-white/5 p-2 text-base text-gray-400">
+    <div
+      className={`rounded-lg border p-4 ${brandingTheme ? "" : "border-mineshaft-600 bg-mineshaft-800"}`}
+      style={panelStyle}
+    >
+      <div
+        className={`flex items-center justify-between rounded-md border p-2 pl-3 text-base ${
+          brandingTheme ? "" : "border-mineshaft-600 bg-mineshaft-700/50 text-gray-400"
+        }`}
+        style={secretDisplayStyle}
+      >
         <p className="break-all whitespace-pre-wrap">
           {isVisible ? decryptedSecret : hiddenSecret}
         </p>
@@ -55,35 +87,39 @@ export const SecretContainer = ({ secret, secretKey: key }: Props) => {
           <IconButton
             ariaLabel="copy icon"
             colorSchema="secondary"
-            className="group relative"
+            className="group relative size-9 hover:opacity-70"
             onClick={() => {
               navigator.clipboard.writeText(decryptedSecret);
               setCopyTextSecret("Copied");
             }}
+            style={iconButtonStyle}
           >
             <FontAwesomeIcon icon={isCopyingSecret ? faCheck : faCopy} />
           </IconButton>
           <IconButton
-            ariaLabel="copy icon"
+            ariaLabel="toggle visibility"
             colorSchema="secondary"
-            className="group relative ml-2"
+            className="group relative ml-2 size-9 hover:opacity-70"
             onClick={() => setIsVisible.toggle()}
+            style={iconButtonStyle}
           >
             <FontAwesomeIcon icon={isVisible ? faEyeSlash : faEye} />
           </IconButton>
         </div>
       </div>
-      <SecretShareInfo secret={secret} />
-      <Button
-        className="mt-4 w-full bg-mineshaft-700 py-3 text-bunker-200"
-        colorSchema="primary"
-        variant="outline_bg"
-        size="sm"
-        onClick={() => window.open("/share-secret", "_blank", "noopener")}
-        rightIcon={<FontAwesomeIcon icon={faArrowRight} className="pl-2" />}
-      >
-        Share Your Own Secret
-      </Button>
+      <SecretShareInfo secret={secret} brandingTheme={brandingTheme} />
+      {!brandingTheme && (
+        <Button
+          className="mt-4 w-full bg-mineshaft-700 py-3 text-bunker-200"
+          colorSchema="primary"
+          variant="outline_bg"
+          size="sm"
+          onClick={() => window.open("/share-secret", "_blank", "noopener")}
+          rightIcon={<FontAwesomeIcon icon={faArrowRight} className="pl-2" />}
+        >
+          Share Your Own Secret
+        </Button>
+      )}
     </div>
   );
 };

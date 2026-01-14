@@ -62,4 +62,5 @@ export type SubscriptionPlan = {
   cardDeclinedReason?: string;
   cardDeclinedDays?: number;
   machineIdentityAuthTemplates: boolean;
+  secretShareExternalBranding: boolean;
 };

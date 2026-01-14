@@ -2,7 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TGetSecretRequestByIdResponse, TSharedSecret, TViewSharedSecretResponse } from "./types";
+import {
+  TBrandingConfig,
+  TGetSecretRequestByIdResponse,
+  TSharedSecret,
+  TViewSharedSecretResponse
+} from "./types";
 
 export const secretSharingKeys = {
   allSharedSecrets: () => ["sharedSecrets"] as const,
@@ -15,7 +20,8 @@ export const secretSharingKeys = {
     "shared-secret",
     arg
   ],
-  getSecretRequestById: (arg: { id: string }) => ["secret-request", arg] as const
+  getSecretRequestById: (arg: { id: string }) => ["secret-request", arg] as const,
+  brandingAssets: () => ["brandingAssets"] as const
 };
 
 export const useGetSharedSecrets = ({
@@ -105,7 +111,19 @@ export const useGetSecretRequestById = ({ secretRequestId }: { secretRequestId: 
         `/api/v1/secret-sharing/requests/${secretRequestId}`
       );
 
-      return data.secretRequest;
+      return data;
+    }
+  });
+};
+
+export const useGetBrandingConfig = () => {
+  return useQuery({
+    queryKey: secretSharingKeys.brandingAssets(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TBrandingConfig>(
+        "/api/v1/secret-sharing/shared/branding"
+      );
+      return data;
     }
   });
 };

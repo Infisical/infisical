@@ -50,23 +50,35 @@ export type TRevealSecretRequestValueRequest = {
   id: string;
 };
 
+export type TSharedSecretResponse = {
+  secretValue?: string;
+  encryptedValue: string;
+  iv: string;
+  tag: string;
+  accessType: SecretSharingAccessType;
+  orgName?: string;
+  expiresAt?: Date | string;
+  expiresAfterViews?: number | null;
+};
+
+export type TBrandingConfig = {
+  hasLogo: boolean;
+  hasFavicon: boolean;
+  primaryColor?: string;
+  secondaryColor?: string;
+};
+
 export type TViewSharedSecretResponse = {
   isPasswordProtected: boolean;
-  secret: {
-    secretValue?: string;
-    encryptedValue: string;
-    iv: string;
-    tag: string;
-    accessType: SecretSharingAccessType;
-    orgName?: string;
-    expiresAt?: Date | string;
-    expiresAfterViews?: number | null;
-  };
+  brandingConfig?: TBrandingConfig;
+  secret?: TSharedSecretResponse;
+  error?: string;
 };
 
 export type TGetSecretRequestByIdResponse = {
-  secretRequest: {
-    isSecretValueSet: boolean;
+  request: {
+    id: string;
+    orgId: string;
     accessType: SecretSharingAccessType;
     requester: {
       organizationName: string;
@@ -75,6 +87,9 @@ export type TGetSecretRequestByIdResponse = {
       lastName?: string;
     };
   };
+  brandingConfig?: TBrandingConfig;
+  isSecretValueSet: boolean;
+  error?: string;
 };
 
 export type TDeleteSharedSecretRequestDTO = {

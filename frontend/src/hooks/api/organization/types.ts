@@ -3,6 +3,11 @@ import { IdentityMembershipOrg } from "@app/hooks/api/identities/types";
 
 import { MfaMethod } from "../auth/types";
 
+export type TSecretShareBrandConfig = {
+  primaryColor?: string;
+  secondaryColor?: string;
+} | null;
+
 export type Organization = {
   id: string;
   name: string;
@@ -32,6 +37,7 @@ export type Organization = {
   blockDuplicateSecretSyncDestinations: boolean;
   parentOrgId: string | null;
   rootOrgId: string | null;
+  secretShareBrandConfig?: TSecretShareBrandConfig;
 };
 
 export type UpdateOrgDTO = {
@@ -56,6 +62,7 @@ export type UpdateOrgDTO = {
   maxSharedSecretViewLimit?: number | null;
   maxSharedSecretLifetime?: number;
   blockDuplicateSecretSyncDestinations?: boolean;
+  secretShareBrandConfig?: TSecretShareBrandConfig;
 };
 
 export type BillingDetails = {

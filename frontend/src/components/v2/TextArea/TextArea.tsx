@@ -64,12 +64,12 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(
     ref
   ): JSX.Element => (
     <textarea
-      {...props}
       style={{ resize: reSize }}
       required={isRequired}
       ref={ref}
       disabled={isDisabled}
       className={twMerge(textAreaVariants({ className, isError, size, isRounded, variant }))}
+      {...props}
     />
   )
 );

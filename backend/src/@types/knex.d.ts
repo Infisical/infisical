@@ -293,6 +293,9 @@ import {
   TOidcConfigs,
   TOidcConfigsInsert,
   TOidcConfigsUpdate,
+  TOrganizationAssets,
+  TOrganizationAssetsInsert,
+  TOrganizationAssetsUpdate,
   TOrganizations,
   TOrganizationsInsert,
   TOrganizationsUpdate,
@@ -1610,6 +1613,11 @@ declare module "knex/types/tables" {
       TApprovalRequests,
       TApprovalRequestsInsert,
       TApprovalRequestsUpdate
+    >;
+    [TableName.OrganizationAsset]: KnexOriginal.CompositeTableType<
+      TOrganizationAssets,
+      TOrganizationAssetsInsert,
+      TOrganizationAssetsUpdate
     >;
   }
 }
