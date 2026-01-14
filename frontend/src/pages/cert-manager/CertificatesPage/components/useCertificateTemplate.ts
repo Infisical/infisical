@@ -7,9 +7,9 @@ import {
 } from "@app/hooks/api/certificates/constants";
 import {
   CertSubjectAlternativeNameType,
-  mapTemplateKeyAlgorithmToApi,
-  mapTemplateSignatureAlgorithmToApi
-} from "@app/pages/cert-manager/PoliciesPage/components/CertificateTemplatesV2Tab/shared/certificate-constants";
+  mapPolicyKeyAlgorithmToApi,
+  mapPolicySignatureAlgorithmToApi
+} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 const convertTemplateTtlToCertificateTtl = (templateTtl: string): string => {
   const match = templateTtl.match(/^(\d+)([dmyh])$/);
@@ -79,7 +79,7 @@ export const useCertificateTemplate = (
 
   const availableSignatureAlgorithms = useMemo(() => {
     return constraints.allowedSignatureAlgorithms.map((templateAlgorithm) => {
-      const apiAlgorithm = mapTemplateSignatureAlgorithmToApi(templateAlgorithm);
+      const apiAlgorithm = mapPolicySignatureAlgorithmToApi(templateAlgorithm);
       return {
         value: apiAlgorithm,
         label: apiAlgorithm
@@ -89,7 +89,7 @@ export const useCertificateTemplate = (
 
   const availableKeyAlgorithms = useMemo(() => {
     return constraints.allowedKeyAlgorithms.map((templateAlgorithm) => {
-      const apiAlgorithm = mapTemplateKeyAlgorithmToApi(templateAlgorithm);
+      const apiAlgorithm = mapPolicyKeyAlgorithmToApi(templateAlgorithm);
       return {
         value: apiAlgorithm,
         label: apiAlgorithm

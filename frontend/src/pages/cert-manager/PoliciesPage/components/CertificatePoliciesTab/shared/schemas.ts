@@ -8,7 +8,7 @@ import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeInclude,
   CertSubjectAttributeType,
-  TEMPLATE_PRESET_IDS
+  POLICY_PRESET_IDS
 } from "./certificate-constants";
 
 export const uiAttributeSchema = z.object({
@@ -54,27 +54,27 @@ export const uiKeyAlgorithmSchema = z.object({
 
 export const uiPresetSchema = z
   .enum([
-    TEMPLATE_PRESET_IDS.CUSTOM,
-    TEMPLATE_PRESET_IDS.TLS_SERVER,
-    TEMPLATE_PRESET_IDS.TLS_CLIENT,
-    TEMPLATE_PRESET_IDS.CODE_SIGNING,
-    TEMPLATE_PRESET_IDS.DEVICE,
-    TEMPLATE_PRESET_IDS.USER,
-    TEMPLATE_PRESET_IDS.EMAIL_PROTECTION,
-    TEMPLATE_PRESET_IDS.DUAL_PURPOSE_SERVER
+    POLICY_PRESET_IDS.CUSTOM,
+    POLICY_PRESET_IDS.TLS_SERVER,
+    POLICY_PRESET_IDS.TLS_CLIENT,
+    POLICY_PRESET_IDS.CODE_SIGNING,
+    POLICY_PRESET_IDS.DEVICE,
+    POLICY_PRESET_IDS.USER,
+    POLICY_PRESET_IDS.EMAIL_PROTECTION,
+    POLICY_PRESET_IDS.DUAL_PURPOSE_SERVER
   ])
-  .default(TEMPLATE_PRESET_IDS.CUSTOM);
+  .default(POLICY_PRESET_IDS.CUSTOM);
 
-export const templateSchema = z.object({
+export const policySchema = z.object({
   preset: uiPresetSchema,
   name: z
     .string()
     .trim()
-    .min(1, "Template name is required")
-    .max(255, "Template name must be less than 255 characters")
+    .min(1, "Policy name is required")
+    .max(255, "Policy name must be less than 255 characters")
     .regex(
       /^[a-zA-Z0-9-_]+$/,
-      "Template name must contain only letters, numbers, hyphens, and underscores"
+      "Policy name must contain only letters, numbers, hyphens, and underscores"
     ),
   description: z
     .string()
@@ -90,7 +90,7 @@ export const templateSchema = z.object({
   keyAlgorithm: uiKeyAlgorithmSchema
 });
 
-export type TemplateFormData = z.infer<typeof templateSchema>;
+export type PolicyFormData = z.infer<typeof policySchema>;
 
 export const apiSubjectSchema = z
   .object({
@@ -114,15 +114,15 @@ export const apiSanSchema = z
     message: "At least one allowed, required, or denied value must be provided"
   });
 
-export const apiTemplateSchema = z.object({
+export const apiPolicySchema = z.object({
   name: z
     .string()
     .trim()
-    .min(1, "Template name is required")
-    .max(255, "Template name must be less than 255 characters")
+    .min(1, "Policy name is required")
+    .max(255, "Policy name must be less than 255 characters")
     .regex(
       /^[a-zA-Z0-9-_]+$/,
-      "Template name must contain only letters, numbers, hyphens, and underscores"
+      "Policy name must contain only letters, numbers, hyphens, and underscores"
     ),
   description: z
     .string()
@@ -162,4 +162,4 @@ export const apiTemplateSchema = z.object({
     .optional()
 });
 
-export type ApiTemplateFormData = z.infer<typeof apiTemplateSchema>;
+export type ApiPolicyFormData = z.infer<typeof apiPolicySchema>;

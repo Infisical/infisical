@@ -7,48 +7,47 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { DocumentationLinkBadge } from "@app/components/v3";
 import {
-  ProjectPermissionPkiTemplateActions,
+  ProjectPermissionCertificatePolicyActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import { useDeleteCertificateTemplateV2WithPolicies } from "@app/hooks/api/certificateTemplates/mutations";
-import { type TCertificateTemplateV2WithPolicies } from "@app/hooks/api/certificateTemplates/types";
+import { useDeleteCertificatePolicy } from "@app/hooks/api/certificatePolicies";
+import { type TCertificatePolicy } from "@app/hooks/api/certificatePolicies";
 
-import { CreateTemplateModal } from "./CreateTemplateModal";
-import { TemplateList } from "./TemplateList";
+import { CreatePolicyModal } from "./CreatePolicyModal";
+import { PolicyList } from "./PolicyList";
 
-export const CertificateTemplatesV2Tab = () => {
+export const CertificatePoliciesTab = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] =
-    useState<TCertificateTemplateV2WithPolicies | null>(null);
+  const [selectedPolicy, setSelectedPolicy] = useState<TCertificatePolicy | null>(null);
 
-  const deleteTemplateV2 = useDeleteCertificateTemplateV2WithPolicies();
+  const deletePolicy = useDeleteCertificatePolicy();
 
-  const handleCreateTemplate = () => {
+  const handleCreatePolicy = () => {
     setIsCreateModalOpen(true);
   };
 
-  const handleEditTemplate = (template: TCertificateTemplateV2WithPolicies) => {
-    setSelectedTemplate(template);
+  const handleEditPolicy = (policy: TCertificatePolicy) => {
+    setSelectedPolicy(policy);
     setIsEditModalOpen(true);
   };
 
-  const handleDeleteTemplate = (template: TCertificateTemplateV2WithPolicies) => {
-    setSelectedTemplate(template);
+  const handleDeletePolicy = (policy: TCertificatePolicy) => {
+    setSelectedPolicy(policy);
     setIsDeleteModalOpen(true);
   };
 
   const handleDeleteConfirm = async () => {
-    if (!selectedTemplate) return;
+    if (!selectedPolicy) return;
 
-    await deleteTemplateV2.mutateAsync({
-      templateId: selectedTemplate.id
+    await deletePolicy.mutateAsync({
+      policyId: selectedPolicy.id
     });
     setIsDeleteModalOpen(false);
-    setSelectedTemplate(null);
+    setSelectedPolicy(null);
     createNotification({
-      text: `Certificate template "${selectedTemplate.name}" deleted successfully`,
+      text: `Certificate policy "${selectedPolicy.name}" deleted successfully`,
       type: "success"
     });
   };
@@ -58,8 +57,8 @@ export const CertificateTemplatesV2Tab = () => {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <div className="flex items-center gap-x-2">
-            <h2 className="text-xl font-semibold text-mineshaft-100">Certificate Templates</h2>
-            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificates/templates" />
+            <h2 className="text-xl font-semibold text-mineshaft-100">Certificate Policies</h2>
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificates/policies" />
           </div>
           <p className="text-sm text-bunker-300">
             Define certificate policies, validation rules, and attribute constraints for certificate
@@ -68,8 +67,8 @@ export const CertificateTemplatesV2Tab = () => {
         </div>
 
         <ProjectPermissionCan
-          I={ProjectPermissionPkiTemplateActions.Create}
-          a={ProjectPermissionSub.CertificateTemplates}
+          I={ProjectPermissionCertificatePolicyActions.Create}
+          a={ProjectPermissionSub.CertificatePolicies}
         >
           {(isAllowed) => (
             <Button
@@ -77,43 +76,43 @@ export const CertificateTemplatesV2Tab = () => {
               colorSchema="primary"
               type="button"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={handleCreateTemplate}
+              onClick={handleCreatePolicy}
             >
-              Create Template
+              Create Policy
             </Button>
           )}
         </ProjectPermissionCan>
       </div>
 
-      <TemplateList onEditTemplate={handleEditTemplate} onDeleteTemplate={handleDeleteTemplate} />
+      <PolicyList onEditPolicy={handleEditPolicy} onDeletePolicy={handleDeletePolicy} />
 
-      <CreateTemplateModal
+      <CreatePolicyModal
         isOpen={isCreateModalOpen}
         onClose={() => {
           setIsCreateModalOpen(false);
         }}
       />
 
-      {selectedTemplate && (
+      {selectedPolicy && (
         <>
-          <CreateTemplateModal
+          <CreatePolicyModal
             isOpen={isEditModalOpen}
             onClose={() => {
               setIsEditModalOpen(false);
-              setSelectedTemplate(null);
+              setSelectedPolicy(null);
             }}
-            template={selectedTemplate}
+            policy={selectedPolicy}
             mode="edit"
           />
 
           <DeleteActionModal
             isOpen={isDeleteModalOpen}
-            title={`Delete Certificate Template ${selectedTemplate.name}?`}
+            title={`Delete Certificate Policy ${selectedPolicy.name}?`}
             onChange={(isOpen) => {
               setIsDeleteModalOpen(isOpen);
-              if (!isOpen) setSelectedTemplate(null);
+              if (!isOpen) setSelectedPolicy(null);
             }}
-            deleteKey={selectedTemplate.name}
+            deleteKey={selectedPolicy.name}
             onDeleteApproved={handleDeleteConfirm}
           />
         </>

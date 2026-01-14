@@ -5,7 +5,7 @@ import RE2 from "re2";
 import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
-  ProjectPermissionPkiTemplateActions,
+  ProjectPermissionCertificatePolicyActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
@@ -634,8 +634,8 @@ export const certificatePolicyServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiTemplateActions.Create,
-      subject(ProjectPermissionSub.CertificateTemplates, {
+      ProjectPermissionCertificatePolicyActions.Create,
+      subject(ProjectPermissionSub.CertificatePolicies, {
         name: data.name
       })
     );
@@ -713,8 +713,8 @@ export const certificatePolicyServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiTemplateActions.Edit,
-      subject(ProjectPermissionSub.CertificateTemplates, {
+      ProjectPermissionCertificatePolicyActions.Edit,
+      subject(ProjectPermissionSub.CertificatePolicies, {
         name: existingTemplate.name
       })
     );
@@ -788,8 +788,8 @@ export const certificatePolicyServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionPkiTemplateActions.Read,
-        subject(ProjectPermissionSub.CertificateTemplates, {
+        ProjectPermissionCertificatePolicyActions.Read,
+        subject(ProjectPermissionSub.CertificatePolicies, {
           name: template.name
         })
       );
@@ -828,8 +828,8 @@ export const certificatePolicyServiceFactory = ({
     }
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiTemplateActions.Read,
-      subject(ProjectPermissionSub.CertificateTemplates, {
+      ProjectPermissionCertificatePolicyActions.Read,
+      subject(ProjectPermissionSub.CertificatePolicies, {
         name: template.name
       })
     );
@@ -868,14 +868,14 @@ export const certificatePolicyServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiTemplateActions.Read,
-      ProjectPermissionSub.CertificateTemplates
+      ProjectPermissionCertificatePolicyActions.Read,
+      ProjectPermissionSub.CertificatePolicies
     );
 
     const processedRules = getProcessedPermissionRules(
       permission,
-      ProjectPermissionPkiTemplateActions.Read,
-      ProjectPermissionSub.CertificateTemplates
+      ProjectPermissionCertificatePolicyActions.Read,
+      ProjectPermissionSub.CertificatePolicies
     );
     const policies = await certificatePolicyDAL.findByProjectId(projectId, { offset, limit, search }, processedRules);
 
@@ -915,8 +915,8 @@ export const certificatePolicyServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiTemplateActions.Delete,
-      subject(ProjectPermissionSub.CertificateTemplates, {
+      ProjectPermissionCertificatePolicyActions.Delete,
+      subject(ProjectPermissionSub.CertificatePolicies, {
         name: template.name
       })
     );

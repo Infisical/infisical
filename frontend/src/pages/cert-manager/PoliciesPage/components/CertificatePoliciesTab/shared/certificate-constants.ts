@@ -191,7 +191,6 @@ export enum CertSignatureAlgorithm {
 export const SIGNATURE_ALGORITHM_OPTIONS = Object.values(CertSignatureAlgorithm);
 export const KEY_ALGORITHM_OPTIONS = Object.values(CertKeyAlgorithm);
 
-// Display name mappings for UI
 export const getSignatureAlgorithmDisplayName = (algorithm: CertSignatureAlgorithm): string => {
   switch (algorithm) {
     case CertSignatureAlgorithm.RSA_SHA256:
@@ -228,7 +227,7 @@ export const getKeyAlgorithmDisplayName = (algorithm: CertKeyAlgorithm): string 
   }
 };
 
-export const mapTemplateSignatureAlgorithmToApi = (templateFormat: string): string => {
+export const mapPolicySignatureAlgorithmToApi = (policyFormat: string): string => {
   const mapping: Record<string, string> = {
     "SHA256-RSA": "RSA-SHA256",
     "SHA384-RSA": "RSA-SHA384",
@@ -237,10 +236,10 @@ export const mapTemplateSignatureAlgorithmToApi = (templateFormat: string): stri
     "SHA384-ECDSA": "ECDSA-SHA384",
     "SHA512-ECDSA": "ECDSA-SHA512"
   };
-  return mapping[templateFormat] || templateFormat;
+  return mapping[policyFormat] || policyFormat;
 };
 
-export const mapTemplateKeyAlgorithmToApi = (templateFormat: string): string => {
+export const mapPolicyKeyAlgorithmToApi = (policyFormat: string): string => {
   const mapping: Record<string, string> = {
     "RSA-2048": "RSA_2048",
     "RSA-3072": "RSA_3072",
@@ -248,10 +247,10 @@ export const mapTemplateKeyAlgorithmToApi = (templateFormat: string): string => 
     "ECDSA-P256": "EC_prime256v1",
     "ECDSA-P384": "EC_secp384r1"
   };
-  return mapping[templateFormat] || templateFormat;
+  return mapping[policyFormat] || policyFormat;
 };
 
-export const TEMPLATE_PRESET_IDS = {
+export const POLICY_PRESET_IDS = {
   CUSTOM: "custom",
   TLS_SERVER: "tls-server",
   TLS_CLIENT: "tls-client",
@@ -262,7 +261,7 @@ export const TEMPLATE_PRESET_IDS = {
   DUAL_PURPOSE_SERVER: "dual-purpose-server"
 } as const;
 
-export type TemplatePresetId = (typeof TEMPLATE_PRESET_IDS)[keyof typeof TEMPLATE_PRESET_IDS];
+export type PolicyPresetId = (typeof POLICY_PRESET_IDS)[keyof typeof POLICY_PRESET_IDS];
 
 export const ALGORITHM_FAMILIES = {
   ECDSA: {

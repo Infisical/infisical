@@ -30,37 +30,36 @@ import {
 } from "@app/components/v2";
 import { useProject } from "@app/context";
 import {
-  ProjectPermissionPkiTemplateActions,
+  ProjectPermissionCertificatePolicyActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
-import { useListCertificateTemplatesV2 } from "@app/hooks/api/certificateTemplates/queries";
-import { TCertificateTemplateV2WithPolicies } from "@app/hooks/api/certificateTemplates/types";
+import { TCertificatePolicy, useListCertificatePolicies } from "@app/hooks/api/certificatePolicies";
 
 interface Props {
-  onEditTemplate: (template: TCertificateTemplateV2WithPolicies) => void;
-  onDeleteTemplate: (template: TCertificateTemplateV2WithPolicies) => void;
+  onEditPolicy: (policy: TCertificatePolicy) => void;
+  onDeletePolicy: (policy: TCertificatePolicy) => void;
 }
 
-export const TemplateList = ({ onEditTemplate, onDeleteTemplate }: Props) => {
+export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
   const { currentProject } = useProject();
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
-  const { data, isLoading } = useListCertificateTemplatesV2({
+  const { data, isLoading } = useListCertificatePolicies({
     projectId: currentProject?.id || "",
     limit: 100,
     offset: 0
   });
 
-  const templates = data?.certificateTemplates || [];
+  const policies = data?.certificatePolicies || [];
 
   const handleCopyId = useCallback(
-    (templateId: string) => {
+    (policyId: string) => {
       setIsIdCopied.on();
-      navigator.clipboard.writeText(templateId);
+      navigator.clipboard.writeText(policyId);
 
       createNotification({
-        text: "Template ID copied to clipboard",
+        text: "Policy ID copied to clipboard",
         type: "info"
       });
 
@@ -77,7 +76,7 @@ export const TemplateList = ({ onEditTemplate, onDeleteTemplate }: Props) => {
     return new Date(dateString).toLocaleDateString();
   };
 
-  const hasTemplates = !isLoading && templates && templates.length > 0;
+  const hasPolicies = !isLoading && policies && policies.length > 0;
 
   return (
     <TableContainer>
@@ -90,32 +89,32 @@ export const TemplateList = ({ onEditTemplate, onDeleteTemplate }: Props) => {
           </Tr>
         </THead>
         <TBody>
-          {isLoading && <TableSkeleton columns={3} innerKey="certificate-templates" />}
-          {!isLoading && (!templates || templates.length === 0) && (
+          {isLoading && <TableSkeleton columns={3} innerKey="certificate-policies" />}
+          {!isLoading && (!policies || policies.length === 0) && (
             <Tr>
               <Td colSpan={3}>
-                <EmptyState title="No Certificate Templates" />
+                <EmptyState title="No Certificate Policies" />
               </Td>
             </Tr>
           )}
-          {hasTemplates &&
-            templates.map((template) => (
+          {hasPolicies &&
+            policies.map((policy) => (
               <Tr
-                key={template.id}
+                key={policy.id}
                 className="h-10 transition-colors duration-100 hover:bg-mineshaft-700"
               >
                 <Td>
                   <div className="flex items-center gap-2">
-                    <div className="text-mineshaft-300">{template.name}</div>
-                    {template.description && (
-                      <Tooltip content={template.description}>
+                    <div className="text-mineshaft-300">{policy.name}</div>
+                    {policy.description && (
+                      <Tooltip content={policy.description}>
                         <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
                       </Tooltip>
                     )}
                   </div>
                 </Td>
                 <Td>
-                  <span className="text-sm text-bunker-300">{formatDate(template.createdAt)}</span>
+                  <span className="text-sm text-bunker-300">{formatDate(policy.createdAt)}</span>
                 </Td>
                 <Td className="text-right">
                   <DropdownMenu>
@@ -130,16 +129,16 @@ export const TemplateList = ({ onEditTemplate, onDeleteTemplate }: Props) => {
                       <DropdownMenuItem
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleCopyId(template.id);
+                          handleCopyId(policy.id);
                         }}
                         icon={<FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />}
                       >
-                        Copy Template ID
+                        Copy Policy ID
                       </DropdownMenuItem>
                       <ProjectPermissionCan
-                        I={ProjectPermissionPkiTemplateActions.Edit}
-                        a={subject(ProjectPermissionSub.CertificateTemplates, {
-                          name: template.name
+                        I={ProjectPermissionCertificatePolicyActions.Edit}
+                        a={subject(ProjectPermissionSub.CertificatePolicies, {
+                          name: policy.name
                         })}
                       >
                         {(isAllowed) =>
@@ -147,19 +146,19 @@ export const TemplateList = ({ onEditTemplate, onDeleteTemplate }: Props) => {
                             <DropdownMenuItem
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onEditTemplate(template);
+                                onEditPolicy(policy);
                               }}
                               icon={<FontAwesomeIcon icon={faEdit} />}
                             >
-                              Edit Template
+                              Edit Policy
                             </DropdownMenuItem>
                           )
                         }
                       </ProjectPermissionCan>
                       <ProjectPermissionCan
-                        I={ProjectPermissionPkiTemplateActions.Delete}
-                        a={subject(ProjectPermissionSub.CertificateTemplates, {
-                          name: template.name
+                        I={ProjectPermissionCertificatePolicyActions.Delete}
+                        a={subject(ProjectPermissionSub.CertificatePolicies, {
+                          name: policy.name
                         })}
                       >
                         {(isAllowed) =>
@@ -167,11 +166,11 @@ export const TemplateList = ({ onEditTemplate, onDeleteTemplate }: Props) => {
                             <DropdownMenuItem
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onDeleteTemplate(template);
+                                onDeletePolicy(policy);
                               }}
                               icon={<FontAwesomeIcon icon={faTrash} />}
                             >
-                              Delete Template
+                              Delete Policy
                             </DropdownMenuItem>
                           )
                         }

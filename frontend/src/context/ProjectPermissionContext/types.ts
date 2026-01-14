@@ -132,6 +132,13 @@ export enum ProjectPermissionPkiTemplateActions {
   ListCerts = "list-certs"
 }
 
+export enum ProjectPermissionCertificatePolicyActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
 export enum ProjectPermissionCertificateAuthorityActions {
   Read = "read",
   Create = "create",
@@ -267,6 +274,7 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.CertificateAuthorities
   | ProjectPermissionSub.Certificates
   | ProjectPermissionSub.CertificateProfiles
+  | ProjectPermissionSub.CertificatePolicies
   | ProjectPermissionSub.SecretFolders
   | ProjectPermissionSub.SecretImports
   | ProjectPermissionSub.SecretRotation
@@ -344,6 +352,7 @@ export enum ProjectPermissionSub {
   PkiCollections = "pki-collections",
   PkiSubscribers = "pki-subscribers",
   CertificateProfiles = "certificate-profiles",
+  CertificatePolicies = "certificate-policies",
   Kms = "kms",
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
@@ -437,6 +446,10 @@ export type PkiSubscriberSubjectFields = {
 export type PkiTemplateSubjectFields = {
   name: string;
   // (dangtony98): consider adding [commonName] as a subject field in the future
+};
+
+export type CertificatePolicySubjectFields = {
+  name: string;
 };
 
 export type PamAccountSubjectFields = {
@@ -560,6 +573,13 @@ export type ProjectPermissionSet =
         | ProjectPermissionSub.CertificateProfiles
         | (ForcedSubject<ProjectPermissionSub.CertificateProfiles> &
             CertificateProfileSubjectFields)
+      )
+    ]
+  | [
+      ProjectPermissionCertificatePolicyActions,
+      (
+        | ProjectPermissionSub.CertificatePolicies
+        | (ForcedSubject<ProjectPermissionSub.CertificatePolicies> & CertificatePolicySubjectFields)
       )
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]

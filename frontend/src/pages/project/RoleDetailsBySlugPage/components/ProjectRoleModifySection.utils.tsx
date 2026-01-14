@@ -8,6 +8,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateAuthorityActions,
+  ProjectPermissionCertificatePolicyActions,
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionCmekActions,
   ProjectPermissionSub
@@ -243,6 +244,13 @@ const CertificateProfilePolicyActionSchema = z.object({
   [ProjectPermissionCertificateProfileActions.RotateAcmeEabSecret]: z.boolean().optional()
 });
 
+const CertificatePolicyPolicyActionSchema = z.object({
+  [ProjectPermissionCertificatePolicyActions.Read]: z.boolean().optional(),
+  [ProjectPermissionCertificatePolicyActions.Create]: z.boolean().optional(),
+  [ProjectPermissionCertificatePolicyActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionCertificatePolicyActions.Delete]: z.boolean().optional()
+});
+
 const SecretEventsPolicyActionSchema = z.object({
   [ProjectPermissionSecretEventActions.SubscribeCreated]: z.boolean().optional(),
   [ProjectPermissionSecretEventActions.SubscribeUpdated]: z.boolean().optional(),
@@ -457,6 +465,12 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
+      [ProjectPermissionSub.CertificatePolicies]: CertificatePolicyPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
       [ProjectPermissionSub.SshCertificateAuthorities]: GeneralPolicyActionSchema.array().default(
         []
       ),
@@ -527,6 +541,7 @@ type TConditionalFields =
   | ProjectPermissionSub.CertificateAuthorities
   | ProjectPermissionSub.Certificates
   | ProjectPermissionSub.CertificateProfiles
+  | ProjectPermissionSub.CertificatePolicies
   | ProjectPermissionSub.SshHosts
   | ProjectPermissionSub.SecretRotation
   | ProjectPermissionSub.Identity
@@ -551,6 +566,7 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.CertificateAuthorities ||
   subject === ProjectPermissionSub.Certificates ||
   subject === ProjectPermissionSub.CertificateProfiles ||
+  subject === ProjectPermissionSub.CertificatePolicies ||
   subject === ProjectPermissionSub.SecretSyncs ||
   subject === ProjectPermissionSub.PkiSyncs ||
   subject === ProjectPermissionSub.SecretEvents ||
@@ -1303,6 +1319,29 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       return;
     }
 
+    if (subject === ProjectPermissionSub.CertificatePolicies) {
+      if (!formVal[subject]) formVal[subject] = [];
+
+      formVal[subject]!.push({
+        [ProjectPermissionCertificatePolicyActions.Edit]: action.includes(
+          ProjectPermissionCertificatePolicyActions.Edit
+        ),
+        [ProjectPermissionCertificatePolicyActions.Delete]: action.includes(
+          ProjectPermissionCertificatePolicyActions.Delete
+        ),
+        [ProjectPermissionCertificatePolicyActions.Create]: action.includes(
+          ProjectPermissionCertificatePolicyActions.Create
+        ),
+        [ProjectPermissionCertificatePolicyActions.Read]: action.includes(
+          ProjectPermissionCertificatePolicyActions.Read
+        ),
+        conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+        inverted
+      });
+
+      return;
+    }
+
     if (subject === ProjectPermissionSub.PamAccounts) {
       if (!formVal[subject]) formVal[subject] = [];
 
@@ -1764,6 +1803,15 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Request Certificates", value: ProjectPermissionCertificateProfileActions.IssueCert }
     ]
   },
+  [ProjectPermissionSub.CertificatePolicies]: {
+    title: "Certificate Policies",
+    actions: [
+      { label: "Read", value: ProjectPermissionCertificatePolicyActions.Read },
+      { label: "Create", value: ProjectPermissionCertificatePolicyActions.Create },
+      { label: "Modify", value: ProjectPermissionCertificatePolicyActions.Edit },
+      { label: "Remove", value: ProjectPermissionCertificatePolicyActions.Delete }
+    ]
+  },
   [ProjectPermissionSub.SshCertificateAuthorities]: {
     title: "SSH Certificate Authorities",
     actions: [
@@ -2148,8 +2196,9 @@ const CertificateManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.PkiSubscribers]: enabled,
   [ProjectPermissionSub.PkiSyncs]: enabled,
   [ProjectPermissionSub.CertificateAuthorities]: enabled,
-  [ProjectPermissionSub.CertificateTemplates]: enabled,
+  [ProjectPermissionSub.CertificateTemplates]: false, // Hidden from UI, accessible via API only
   [ProjectPermissionSub.CertificateProfiles]: enabled,
+  [ProjectPermissionSub.CertificatePolicies]: enabled,
   [ProjectPermissionSub.Certificates]: enabled
 });
 

@@ -32,7 +32,7 @@ import {
 import { usePopUp, useToggle } from "@app/hooks";
 import { useGetInternalCaById } from "@app/hooks/api/ca/queries";
 import { IssuerType, TCertificateProfile } from "@app/hooks/api/certificateProfiles";
-import { useGetCertificateTemplateV2ById } from "@app/hooks/api/certificateTemplates/queries";
+import { useGetCertificatePolicyById } from "@app/hooks/api/certificatePolicies";
 import { CertificateIssuanceModal } from "@app/pages/cert-manager/CertificatesPage/components/CertificateIssuanceModal";
 
 interface Props {
@@ -66,8 +66,8 @@ export const ProfileRow = ({
     setTimeout(() => setIsIdCopied.off(), 2000);
   }, [setIsIdCopied]);
 
-  const { data: templateData } = useGetCertificateTemplateV2ById({
-    templateId: profile.certificateTemplateId
+  const { data: policyData } = useGetCertificatePolicyById({
+    policyId: profile.certificatePolicyId
   });
 
   const getEnrollmentTypeBadge = (enrollmentType: string) => {
@@ -111,7 +111,7 @@ export const ProfileRow = ({
       </Td>
       <Td>
         <span className="text-sm text-mineshaft-300">
-          {templateData?.name || profile.certificateTemplateId}
+          {policyData?.name || profile.certificatePolicyId}
         </span>
       </Td>
       <Td className="text-right">

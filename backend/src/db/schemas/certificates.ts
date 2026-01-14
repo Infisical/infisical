@@ -22,7 +22,7 @@ export const CertificatesSchema = z.object({
   revocationReason: z.number().nullable().optional(),
   altNames: z.string().nullable().optional(),
   caCertId: z.string().uuid().nullable().optional(),
-  certificatePolicyId: z.string().uuid().nullable().optional(),
+  certificateTemplateId: z.string().uuid().nullable().optional(),
   keyUsages: z.string().array().nullable().optional(),
   extendedKeyUsages: z.string().array().nullable().optional(),
   projectId: z.string(),

@@ -12,12 +12,6 @@ export async function up(knex: Knex): Promise<void> {
       t.renameColumn("certificateTemplateId", "certificatePolicyId");
     });
   }
-
-  if (await knex.schema.hasColumn(TableName.Certificate, "certificateTemplateId")) {
-    await knex.schema.alterTable(TableName.Certificate, (t) => {
-      t.renameColumn("certificateTemplateId", "certificatePolicyId");
-    });
-  }
 }
 
 export async function down(knex: Knex): Promise<void> {
@@ -27,12 +21,6 @@ export async function down(knex: Knex): Promise<void> {
 
   if (await knex.schema.hasColumn(TableName.PkiCertificateProfile, "certificatePolicyId")) {
     await knex.schema.alterTable(TableName.PkiCertificateProfile, (t) => {
-      t.renameColumn("certificatePolicyId", "certificateTemplateId");
-    });
-  }
-
-  if (await knex.schema.hasColumn(TableName.Certificate, "certificatePolicyId")) {
-    await knex.schema.alterTable(TableName.Certificate, (t) => {
       t.renameColumn("certificatePolicyId", "certificateTemplateId");
     });
   }

@@ -20,7 +20,7 @@ BASE_URL = os.environ.get("INFISICAL_API_URL", "http://localhost:8080")
 PEBBLE_URL = os.environ.get("PEBBLE_URL", "https://pebble:14000/dir")
 PROJECT_ID = os.environ.get("PROJECT_ID")
 CERT_CA_ID = os.environ.get("CERT_CA_ID")
-CERT_TEMPLATE_ID = os.environ.get("CERT_TEMPLATE_ID")
+CERT_POLICY_ID = os.environ.get("CERT_POLICY_ID")
 AUTH_TOKEN = os.environ.get("INFISICAL_TOKEN")
 BOOTSTRAP_INFISICAL = int(os.environ.get("BOOTSTRAP_INFISICAL", 0))
 TECHNITIUM_URL = os.environ.get("TECHNITIUM_URL", "http://localhost:5380")
@@ -115,13 +115,13 @@ def bootstrap_infisical(context: Context):
         body = resp.json()
         ca = body
 
-        cert_template_slug = faker.slug()
+        cert_policy_slug = faker.slug()
         resp = client.post(
-            "/api/v1/cert-manager/certificate-templates",
+            "/api/v1/cert-manager/certificate-policies",
             headers=headers,
             json={
                 "projectId": project["id"],
-                "name": cert_template_slug,
+                "name": cert_policy_slug,
                 "description": "",
                 "subject": [{"type": "common_name", "allowed": ["*"]}],
                 "sans": [{"type": "dns_name", "allowed": ["*"]}],
@@ -173,14 +173,14 @@ def bootstrap_infisical(context: Context):
         )
         resp.raise_for_status()
         body = resp.json()
-        cert_template = body["certificateTemplate"]
+        cert_policy = body["certificatePolicy"]
 
     bootstrap_result = dict(
         org=org,
         user=user,
         project=project,
         ca=ca,
-        cert_template=cert_template,
+        cert_policy=cert_policy,
         auth_token=auth_token,
     )
     bootstrap_result_file.write_text(json.dumps(bootstrap_result))
@@ -200,14 +200,14 @@ def before_all(context: Context):
         vars = base_vars | {
             "PROJECT_ID": details["project"]["id"],
             "CERT_CA_ID": details["ca"]["id"],
-            "CERT_TEMPLATE_ID": details["cert_template"]["id"],
+            "CERT_POLICY_ID": details["cert_policy"]["id"],
             "AUTH_TOKEN": details["auth_token"],
         }
     else:
         vars = base_vars | {
             "PROJECT_ID": PROJECT_ID,
             "CERT_CA_ID": CERT_CA_ID,
-            "CERT_TEMPLATE_ID": CERT_TEMPLATE_ID,
+            "CERT_POLICY_ID": CERT_POLICY_ID,
             "AUTH_TOKEN": AUTH_TOKEN,
         }
     context._initial_vars = vars
