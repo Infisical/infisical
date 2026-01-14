@@ -10,38 +10,6 @@ import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connec
 import { TAppConnection, TAppConnectionInput } from "@app/services/app-connection/app-connection-types";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-// Convert app enum value to PascalCase for operationId
-const getAppNameForOperationId = (app: AppConnection): string => {
-  // Handle special cases
-  const specialCases: Record<string, string> = {
-    [AppConnection.OnePass]: "OnePassword",
-    [AppConnection.GitHub]: "GitHub",
-    [AppConnection.GitHubRadar]: "GitHubRadar",
-    [AppConnection.GitLab]: "GitLab",
-    [AppConnection.MsSql]: "MsSql",
-    [AppConnection.MySql]: "MySql",
-    [AppConnection.OCI]: "Oci",
-    [AppConnection.OracleDB]: "OracleDb",
-    [AppConnection.AWS]: "Aws",
-    [AppConnection.GCP]: "Gcp",
-    [AppConnection.LDAP]: "Ldap",
-    [AppConnection.Okta]: "Okta",
-    [AppConnection.Redis]: "Redis",
-    [AppConnection.MongoDB]: "MongoDb",
-    [AppConnection.SSH]: "Ssh"
-  };
-
-  if (specialCases[app]) {
-    return specialCases[app];
-  }
-
-  // Convert kebab-case to PascalCase
-  return app
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join("");
-};
-
 export const registerAppConnectionEndpoints = <T extends TAppConnection, I extends TAppConnectionInput>({
   server,
   app,
@@ -70,7 +38,25 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
   sanitizedResponseSchema: z.ZodTypeAny;
 }) => {
   const appName = APP_CONNECTION_NAME_MAP[app];
-  const appNameForOpId = getAppNameForOperationId(app);
+  const appNameForOpId = (() => {
+    const specialCases: Record<string, string> = {
+      [AppConnection.OnePass]: "OnePassword",
+      [AppConnection.GitHub]: "GitHub",
+      [AppConnection.GitHubRadar]: "GitHubRadar",
+      [AppConnection.GitLab]: "GitLab",
+      [AppConnection.MsSql]: "MsSql",
+      [AppConnection.MySql]: "MySql",
+      [AppConnection.OracleDB]: "OracleDb",
+      [AppConnection.MongoDB]: "MongoDb"
+    };
+    return (
+      specialCases[app] ??
+      app
+        .split("-")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join("")
+    );
+  })();
 
   server.route({
     method: "GET",

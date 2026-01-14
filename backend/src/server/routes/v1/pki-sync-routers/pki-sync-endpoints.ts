@@ -8,26 +8,6 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import { PKI_SYNC_NAME_MAP } from "@app/services/pki-sync/pki-sync-maps";
 
-// Convert PKI sync destination enum value to PascalCase for operationId
-const getDestinationNameForOperationId = (destination: PkiSync): string => {
-  // Handle special cases
-  const specialCases: Record<string, string> = {
-    "azure-key-vault": "AzureKeyVault",
-    "aws-certificate-manager": "AwsCertificateManager",
-    "aws-secrets-manager": "AwsSecretsManager"
-  };
-
-  if (specialCases[destination]) {
-    return specialCases[destination];
-  }
-
-  // Convert kebab-case to PascalCase
-  return destination
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join("");
-};
-
 export const registerSyncPkiEndpoints = ({
   server,
   destination,
@@ -64,7 +44,10 @@ export const registerSyncPkiEndpoints = ({
   };
 }) => {
   const destinationName = PKI_SYNC_NAME_MAP[destination];
-  const destinationNameForOpId = getDestinationNameForOperationId(destination);
+  const destinationNameForOpId = destination
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("");
 
   server.route({
     method: "GET",

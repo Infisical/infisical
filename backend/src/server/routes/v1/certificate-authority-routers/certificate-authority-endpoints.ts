@@ -35,6 +35,10 @@ export const registerCertificateAuthorityEndpoints = <
   }>;
   responseSchema: z.ZodTypeAny;
 }) => {
+  const caTypeNameForOpId = caType
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("");
   server.route({
     method: "GET",
     url: `/`,
@@ -43,7 +47,7 @@ export const registerCertificateAuthorityEndpoints = <
     },
     schema: {
       hide: false,
-      operationId: "listCertificateAuthorities",
+      operationId: `listCertificateAuthoritiesV1${caTypeNameForOpId}`,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       querystring: z.object({
         projectId: z.string().trim().min(1, "Project ID required")
@@ -86,7 +90,7 @@ export const registerCertificateAuthorityEndpoints = <
     },
     schema: {
       hide: false,
-      operationId: "getCertificateAuthority",
+      operationId: `getCertificateAuthorityV1${caTypeNameForOpId}`,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       params: z.object({
         id: z.string()
@@ -128,7 +132,7 @@ export const registerCertificateAuthorityEndpoints = <
     },
     schema: {
       hide: false,
-      operationId: "createCertificateAuthority",
+      operationId: `createCertificateAuthorityV1${caTypeNameForOpId}`,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       body: createSchema,
       response: {
@@ -166,7 +170,7 @@ export const registerCertificateAuthorityEndpoints = <
     },
     schema: {
       hide: false,
-      operationId: "updateCertificateAuthority",
+      operationId: `updateCertificateAuthorityV1${caTypeNameForOpId}`,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       params: z.object({
         id: z.string()
@@ -214,7 +218,7 @@ export const registerCertificateAuthorityEndpoints = <
     },
     schema: {
       hide: false,
-      operationId: "deleteCertificateAuthority",
+      operationId: `deleteCertificateAuthorityV1${caTypeNameForOpId}`,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       params: z.object({
         id: z.string()

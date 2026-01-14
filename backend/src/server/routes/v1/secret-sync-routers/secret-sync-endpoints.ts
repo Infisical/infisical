@@ -10,30 +10,6 @@ import { SecretSync, SecretSyncImportBehavior } from "@app/services/secret-sync/
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { TSecretSync, TSecretSyncInput } from "@app/services/secret-sync/secret-sync-types";
 
-// Convert secret sync destination enum value to PascalCase for operationId
-const getDestinationNameForOperationId = (destination: SecretSync): string => {
-  // Handle special cases
-  const specialCases: Record<string, string> = {
-    [SecretSync.OnePass]: "OnePassword",
-    [SecretSync.GitHub]: "GitHub",
-    [SecretSync.GitLab]: "GitLab",
-    [SecretSync.AWSParameterStore]: "AwsParameterStore",
-    [SecretSync.AWSSecretsManager]: "AwsSecretsManager",
-    [SecretSync.GCPSecretManager]: "GcpSecretManager",
-    [SecretSync.OCIVault]: "OciVault"
-  };
-
-  if (specialCases[destination]) {
-    return specialCases[destination];
-  }
-
-  // Convert kebab-case to PascalCase
-  return destination
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join("");
-};
-
 export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TSecretSyncInput>({
   server,
   destination,
@@ -67,7 +43,20 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
   responseSchema: z.ZodTypeAny;
 }) => {
   const destinationName = SECRET_SYNC_NAME_MAP[destination];
-  const destinationNameForOpId = getDestinationNameForOperationId(destination);
+  const destinationNameForOpId = (() => {
+    const specialCases: Record<string, string> = {
+      [SecretSync.OnePass]: "OnePassword",
+      [SecretSync.GitHub]: "GitHub",
+      [SecretSync.GitLab]: "GitLab"
+    };
+    return (
+      specialCases[destination] ??
+      destination
+        .split("-")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join("")
+    );
+  })();
 
   server.route({
     method: "GET",

@@ -26,7 +26,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "listCertificateAuthorities",
+      operationId: "listCertificateAuthoritiesV1General",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get Certificate Authorities",
       querystring: z.object({
