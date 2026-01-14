@@ -9,7 +9,7 @@ export * from "./pki-sync-router";
 
 export const PKI_SYNC_REGISTER_ROUTER_MAP: Record<
   PkiSync,
-  (enableOperationId: boolean) => (server: FastifyZodProvider) => Promise<void>
+  (server: FastifyZodProvider, enableOperationId?: boolean) => Promise<void>
 > = {
   [PkiSync.AzureKeyVault]: registerAzureKeyVaultPkiSyncRouter,
   [PkiSync.AwsCertificateManager]: registerAwsCertificateManagerPkiSyncRouter,

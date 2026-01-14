@@ -3,18 +3,16 @@ import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 
 import { registerSyncPkiEndpoints } from "./pki-sync-endpoints";
 
-export const registerChefPkiSyncRouter =
-  (enableOperationId: boolean = true) =>
-  async (server: FastifyZodProvider) =>
-    registerSyncPkiEndpoints({
-      destination: PkiSync.Chef,
-      server,
-      responseSchema: ChefPkiSyncSchema,
-      createSchema: CreateChefPkiSyncSchema,
-      updateSchema: UpdateChefPkiSyncSchema,
-      syncOptions: {
-        canImportCertificates: false,
-        canRemoveCertificates: true
-      },
-      enableOperationId
-    });
+export const registerChefPkiSyncRouter = async (server: FastifyZodProvider, enableOperationId: boolean = true) =>
+  registerSyncPkiEndpoints({
+    destination: PkiSync.Chef,
+    server,
+    responseSchema: ChefPkiSyncSchema,
+    createSchema: CreateChefPkiSyncSchema,
+    updateSchema: UpdateChefPkiSyncSchema,
+    syncOptions: {
+      canImportCertificates: false,
+      canRemoveCertificates: true
+    },
+    enableOperationId
+  });

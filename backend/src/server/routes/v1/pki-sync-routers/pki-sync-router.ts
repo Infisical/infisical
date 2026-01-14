@@ -99,7 +99,7 @@ const PkiSyncCertificateSchema = z.object({
   pkiSyncDestination: z.string().optional()
 });
 
-export const registerPkiSyncRouter = (enableOperationId: boolean) => async (server: FastifyZodProvider) => {
+export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOperationId: boolean = true) => {
   server.route({
     method: "GET",
     url: "/options",
