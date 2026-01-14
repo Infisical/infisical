@@ -1570,7 +1570,7 @@ export const certificateV3ServiceFactory = ({
         }
       }
 
-      const policyId = profile?.certificatePolicyId || originalCert.certificatePolicyId;
+      const policyId = profile?.certificatePolicyId || originalCert.certificateTemplateId;
       const policy = policyId
         ? await certificatePolicyService.getPolicyById({
             actor,

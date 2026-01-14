@@ -222,7 +222,7 @@ export const certificatePolicyDALFactory = (db: TDbClient) => {
       const profileUsage = parseInt((profileCount as unknown as CountResult).count || "0", 10) > 0;
 
       const certCount = await (tx || db)(TableName.Certificate)
-        .where({ certificatePolicyId: policyId })
+        .where({ certificateTemplateId: policyId })
         .count("*")
         .first();
 
