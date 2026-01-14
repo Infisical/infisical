@@ -49,10 +49,12 @@ export const getSshConnectionClient = async (
           err.message.includes("publickey")
         ) {
           reject(new Error("SSH Error: Account credentials invalid."));
+          return;
         }
 
         if (err.message === "Connection timeout") {
           reject(new Error("SSH Error: Connection timeout. Verify that the SSH server is reachable"));
+          return;
         }
       }
 

@@ -8,6 +8,7 @@ import {
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-schemas";
 import { PasswordRequirementsSchema } from "@app/ee/services/secret-rotation-v2/shared/general";
 import { SecretRotations } from "@app/lib/api-docs";
+import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { SecretNameSchema } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -26,7 +27,15 @@ export const SshPasswordRotationGeneratedCredentialsSchema = z
   .max(2);
 
 const SshPasswordRotationParametersSchema = z.object({
-  username: z.string().trim().min(1, "Username required").describe(SecretRotations.PARAMETERS.SSH_PASSWORD.username),
+  username: z
+    .string()
+    .trim()
+    .min(1, "Username required")
+    .refine(
+      (val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen, CharacterType.Underscore])(val),
+      "Name can only contain alphanumeric characters, dashes, underscores, and spaces"
+    )
+    .describe(SecretRotations.PARAMETERS.SSH_PASSWORD.username),
   passwordRequirements: PasswordRequirementsSchema.optional(),
   rotationMethod: z
     .nativeEnum(SshPasswordRotationMethod)
@@ -63,15 +72,13 @@ export const CreateSshPasswordRotationSchema = BaseCreateSecretRotationSchema(Se
       .optional()
   })
   .superRefine((val, ctx) => {
-    // Password is required for both rotation methods during initial setup
-    // Self rotation: needed to authenticate as the user
     if (
       val.parameters.rotationMethod === SshPasswordRotationMethod.LoginAsTarget &&
       !val.temporaryParameters?.password
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Current password is required for initial rotation setup in login as root method",
+        message: "Current password is required for initial rotation setup in login as target method",
         path: ["temporaryParameters", "password"]
       });
     }

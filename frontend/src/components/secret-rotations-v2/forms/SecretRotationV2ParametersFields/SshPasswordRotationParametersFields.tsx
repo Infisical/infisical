@@ -13,7 +13,7 @@ export const SshPasswordRotationParametersFields = () => {
     }
   >();
 
-  const [id] = watch(["id"]);
+  const id = watch("id");
   const rotationMethod = watch(
     "parameters.rotationMethod",
     SshPasswordRotationMethod.LoginAsTarget
