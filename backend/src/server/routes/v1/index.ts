@@ -174,9 +174,9 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await pkiRouter.register(registerPkiAlertRouter, { prefix: "/alerts" });
       await pkiRouter.register(
         async (pkiSyncRouter) => {
-          await pkiSyncRouter.register(registerPkiSyncRouter);
+          await pkiSyncRouter.register(registerPkiSyncRouter(true));
           for await (const [destination, router] of Object.entries(PKI_SYNC_REGISTER_ROUTER_MAP)) {
-            await pkiSyncRouter.register(router, { prefix: `/${destination}` });
+            await pkiSyncRouter.register(router(true), { prefix: `/${destination}` });
           }
         },
         { prefix: "/syncs" }
@@ -208,9 +208,9 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await pkiRouter.register(registerPkiSubscriberRouter, { prefix: "/subscribers" });
       await pkiRouter.register(
         async (pkiSyncRouter) => {
-          await pkiSyncRouter.register(registerPkiSyncRouter);
+          await pkiSyncRouter.register(registerPkiSyncRouter(false));
           for await (const [destination, router] of Object.entries(PKI_SYNC_REGISTER_ROUTER_MAP)) {
-            await pkiSyncRouter.register(router, { prefix: `/${destination}` });
+            await pkiSyncRouter.register(router(false), { prefix: `/${destination}` });
           }
         },
         { prefix: "/syncs" }

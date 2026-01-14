@@ -8,15 +8,18 @@ import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 
 import { registerSyncPkiEndpoints } from "./pki-sync-endpoints";
 
-export const registerAzureKeyVaultPkiSyncRouter = async (server: FastifyZodProvider) =>
-  registerSyncPkiEndpoints({
-    destination: PkiSync.AzureKeyVault,
-    server,
-    responseSchema: AzureKeyVaultPkiSyncSchema,
-    createSchema: CreateAzureKeyVaultPkiSyncSchema,
-    updateSchema: UpdateAzureKeyVaultPkiSyncSchema,
-    syncOptions: {
-      canImportCertificates: AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION.canImportCertificates,
-      canRemoveCertificates: AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION.canRemoveCertificates
-    }
-  });
+export const registerAzureKeyVaultPkiSyncRouter =
+  (enableOperationId: boolean = true) =>
+  async (server: FastifyZodProvider) =>
+    registerSyncPkiEndpoints({
+      destination: PkiSync.AzureKeyVault,
+      server,
+      responseSchema: AzureKeyVaultPkiSyncSchema,
+      createSchema: CreateAzureKeyVaultPkiSyncSchema,
+      updateSchema: UpdateAzureKeyVaultPkiSyncSchema,
+      syncOptions: {
+        canImportCertificates: AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION.canImportCertificates,
+        canRemoveCertificates: AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION.canRemoveCertificates
+      },
+      enableOperationId
+    });
