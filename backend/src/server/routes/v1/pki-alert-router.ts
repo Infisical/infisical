@@ -24,6 +24,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "createPkiAlert",
       description: "Create a new PKI alert",
       tags: [ApiDocsTags.PkiAlerting],
       body: CreatePkiAlertV2Schema.extend({
@@ -92,6 +93,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "listPkiAlerts",
       description: "List PKI alerts for a project",
       tags: [ApiDocsTags.PkiAlerting],
       querystring: z.object({
@@ -153,6 +155,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "getPkiAlert",
       description: "Get a PKI alert by ID",
       tags: [ApiDocsTags.PkiAlerting],
       params: z.object({
@@ -218,6 +221,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "updatePkiAlert",
       description: "Update a PKI alert",
       tags: [ApiDocsTags.PkiAlerting],
       params: z.object({
@@ -288,6 +292,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "deletePkiAlert",
       description: "Delete a PKI alert",
       tags: [ApiDocsTags.PkiAlerting],
       params: z.object({
@@ -404,6 +409,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "previewPkiAlertCertificates",
       description: "Preview certificates that would match the given filter rules",
       tags: [ApiDocsTags.PkiAlerting],
       body: z.object({

@@ -13,6 +13,7 @@ export const registerUserActionRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "createUserAction",
       body: z.object({
         action: z.string().trim()
       }),
@@ -37,6 +38,7 @@ export const registerUserActionRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getUserAction",
       querystring: z.object({
         action: z.string().trim()
       }),

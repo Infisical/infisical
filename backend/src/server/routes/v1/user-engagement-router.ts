@@ -12,6 +12,7 @@ export const registerUserEngagementRouter = async (server: FastifyZodProvider) =
       rateLimit: userEngagementLimit
     },
     schema: {
+      operationId: "createUserWish",
       body: z.object({
         text: z.string().min(1)
       }),
