@@ -56,35 +56,45 @@ sequenceDiagram
     Note right of Database: User A remains valid for existing connections
 ```
 
-### The credential lifecycle
+### Credential lifecycle
 
-A common point of confusion is the difference between the **Rotation Interval** and the **Credential Validity**.
+When you set a rotation interval, Infisical will rotate your secrets at that interval. However, the secrets will be valid for a period equal to twice the rotation interval. This ensures that applications that are still using the old secret will continue to work while Infisical deploys the secret to the new user.
 
-If you set a **30-day rotation interval**, your secrets are actually valid for **60 days**.
-
-<Frame caption="The overlap ensures that even if an application deploys at the last second of a cycle, it has valid credentials for the next cycle.">
+For example, if you set a 30 day rotation interval, your secrets will be valid for 60 days:
 
 ```mermaid
-  gantt
+gantt
     dateFormat  YYYY-MM-DD
-    axisFormat  %m-%d
-    title       30-Day Rotation Interval = 60-Day Validity
+    axisFormat %b %d
 
-    section Credential Set A
-    Active (In Secret)       :active,    des1, 2023-01-01, 30d
-    Grace Period (Valid)     :           des2, after des1, 30d
+    section Credential 1
+    Active      :active, a1, 2023-01-01, 30d
+    Inactive    :done, i1, after a1, 30d
+    Revoked     :crit, r1, after i1, 30d
 
-    section Credential Set B
-    Standby                  :           des3, 2023-01-01, 30d
-    Active (In Secret)       :active,    des4, after des3, 30d
-    Grace Period (Valid)     :           des5, after des4, 30d
+    section Credential 2
+    Active      :active, a2, 2023-01-31, 30d
+    Inactive    :done, i2, after a2, 30d
+    Revoked     :crit, r2, after i2, 30d
 
+    section Credential 3
+    Active      :active, a3, 2023-03-02, 30d
+    Inactive    :done, i3, after a3, 30d
+    Revoked     :crit, r3, after i3, 30d
 ```
 
-</Frame>
+| State    | Description                                                                |
+| -------- | -------------------------------------------------------------------------- |
+| Active   | The primary credential that your application will use for new connections. |
+| Inactive | The credential is still valid but is no longer issued for new connections. |
+| Revoked  | The credentials is permanently invalidated and deleted from the system.    |
 
-- **Active Phase (Days 0-30)**: The credential is the "current" secret. Applications fetching secrets will get this one.
-- **Grace Phase (Days 30-60)**: The credential is no longer served to new requests, but it **still works**. This ensures that an application that started a long-running job on Day 29 isn't cut off on Day 30.
+<Warning>
+  Some rotation providers use a single credential set due to technical
+  constraints. As a result, inactive credentials for these providers will
+  immediately become invalid once rotated. To avoid service interruptions, we
+  recommend manually rotating these credentials to prevent downtime.
+</Warning>
 
 ### Common issues
 
