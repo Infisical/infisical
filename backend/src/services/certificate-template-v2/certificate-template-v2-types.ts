@@ -9,6 +9,10 @@ import {
   CertSubjectAttributeType
 } from "@app/services/certificate-common/certificate-constants";
 
+export interface TCaSettings {
+  maxPathLength?: number; // -1 = unlimited, 0+ = specific limit, undefined = not constrained
+}
+
 export interface TTemplateV2Policy {
   subject?: Array<{
     type: CertSubjectAttributeType;
@@ -48,6 +52,7 @@ export type TCertificateTemplateV2 = TPkiCertificateTemplatesV2 & {
   extendedKeyUsages?: TTemplateV2Policy["extendedKeyUsages"];
   algorithms?: TTemplateV2Policy["algorithms"];
   validity?: TTemplateV2Policy["validity"];
+  caSettings?: TCaSettings | null;
 };
 
 export type TCertificateTemplateV2Insert = TPkiCertificateTemplatesV2Insert & {
@@ -57,12 +62,21 @@ export type TCertificateTemplateV2Insert = TPkiCertificateTemplatesV2Insert & {
   extendedKeyUsages?: TTemplateV2Policy["extendedKeyUsages"];
   algorithms?: TTemplateV2Policy["algorithms"];
   validity?: TTemplateV2Policy["validity"];
+  caSettings?: TCaSettings | null;
 };
 
 export type TCertificateTemplateV2Update = Partial<
   Pick<
     TCertificateTemplateV2,
-    "name" | "description" | "subject" | "sans" | "keyUsages" | "extendedKeyUsages" | "algorithms" | "validity"
+    | "name"
+    | "description"
+    | "subject"
+    | "sans"
+    | "keyUsages"
+    | "extendedKeyUsages"
+    | "algorithms"
+    | "validity"
+    | "caSettings"
   >
 >;
 

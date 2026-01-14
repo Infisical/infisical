@@ -105,6 +105,16 @@ const templateV2AlgorithmsSchema = z.object({
     .optional()
 });
 
+export const templateV2CaSettingsSchema = z
+  .object({
+    maxPathLength: z
+      .number()
+      .int("Path length must be an integer")
+      .min(-1, "Path length must be -1 (unlimited) or a non-negative integer")
+      .optional()
+  })
+  .nullable();
+
 export const certificateTemplateV2ResponseSchema = z.object({
   id: z.string().uuid(),
   projectId: z.string().uuid("Project ID must be valid"),
@@ -121,6 +131,7 @@ export const certificateTemplateV2ResponseSchema = z.object({
   extendedKeyUsages: templateV2ExtendedKeyUsagesSchema.optional(),
   algorithms: templateV2AlgorithmsSchema.optional(),
   validity: templateV2ValiditySchema.optional(),
+  caSettings: templateV2CaSettingsSchema.optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

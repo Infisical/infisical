@@ -52,7 +52,10 @@ export enum CertDurationUnit {
 export enum CertSubjectAttributeType {
   COMMON_NAME = "common_name",
   ORGANIZATION = "organization",
-  COUNTRY = "country"
+  COUNTRY = "country",
+  STATE = "state",
+  LOCALITY = "locality",
+  ORGANIZATIONAL_UNIT = "organizational_unit"
 }
 
 export const mapKeyUsageToLegacy = (usage: CertKeyUsageType): string => {

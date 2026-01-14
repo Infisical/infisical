@@ -22,6 +22,10 @@ export type TCreateCertificateRequestDTO = TProjectPermission & {
   status: CertificateRequestStatus;
   certificateId?: string;
   acmeOrderId?: string;
+  caSettings?: {
+    isCA: boolean;
+    pathLength?: number;
+  };
 };
 
 export type TGetCertificateRequestDTO = TProjectPermission & {

@@ -1,7 +1,7 @@
 /* eslint-disable no-nested-ternary */
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faQuestionCircle, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -20,7 +20,8 @@ import {
   ModalContent,
   Select,
   SelectItem,
-  TextArea
+  TextArea,
+  Tooltip
 } from "@app/components/v2";
 import { useProject } from "@app/context";
 import {
@@ -67,7 +68,12 @@ interface Props {
 }
 
 const ATTRIBUTE_TYPE_LABELS: Record<(typeof SUBJECT_ATTRIBUTE_TYPE_OPTIONS)[number], string> = {
-  common_name: "Common Name (CN)"
+  common_name: "Common Name (CN)",
+  organization: "Organization (O)",
+  organizational_unit: "Organizational Unit (OU)",
+  country: "Country (C)",
+  state: "State/Province (ST)",
+  locality: "Locality (L)"
 };
 
 const SAN_TYPE_LABELS: Record<(typeof SAN_TYPE_OPTIONS)[number], string> = {
@@ -223,10 +229,16 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
       defaultKeyType: ""
     };
 
+    const basicConstraints = {
+      isCA: templateData.caSettings !== undefined && templateData.caSettings !== null,
+      maxPathLength: templateData.caSettings?.maxPathLength ?? undefined
+    };
+
     return {
       preset: TEMPLATE_PRESET_IDS.CUSTOM,
       name: templateData.name || "",
       description: templateData.description || "",
+      basicConstraints,
       attributes,
       subjectAlternativeNames,
       keyUsages,
@@ -242,6 +254,10 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
       preset: TEMPLATE_PRESET_IDS.CUSTOM,
       name: "",
       description: "",
+      basicConstraints: {
+        isCA: false,
+        maxPathLength: undefined
+      },
       attributes: [],
       keyUsages: { requiredUsages: [], optionalUsages: [] },
       extendedKeyUsages: { requiredUsages: [], optionalUsages: [] },
@@ -450,6 +466,12 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
       validity.max = `${data.validity.maxDuration.value}${unit}`;
     }
 
+    const caSettings = data.basicConstraints?.isCA
+      ? {
+          maxPathLength: data.basicConstraints.maxPathLength ?? undefined
+        }
+      : null;
+
     return {
       name: data.name,
       description: data.description,
@@ -458,7 +480,8 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
       keyUsages,
       extendedKeyUsages,
       algorithms,
-      validity
+      validity,
+      caSettings
     };
   };
 
@@ -660,6 +683,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                 )}
               />
             </div>
+
             <AccordionItem value="attributes">
               <AccordionTrigger>Subject Attributes</AccordionTrigger>
               <AccordionContent>
@@ -1053,6 +1077,92 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                       )}
                     />
                   </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="basicConstraints" className="mt-4">
+              <AccordionTrigger>CA Settings</AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-4">
+                  <Controller
+                    control={control}
+                    name="basicConstraints.isCA"
+                    render={({ field: { value, onChange }, fieldState: { error } }) => (
+                      <FormControl isError={Boolean(error)} errorText={error?.message}>
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            id="isCA"
+                            isChecked={value || false}
+                            onCheckedChange={onChange}
+                          />
+                          <div className="space-y-1">
+                            <span className="text-sm font-medium text-mineshaft-100">
+                              Allow Certificate Authority Issuance
+                            </span>
+                            <p className="text-xs text-bunker-300">
+                              Enable this to allow issuing intermediate CA certificates.
+                            </p>
+                          </div>
+                        </div>
+                      </FormControl>
+                    )}
+                  />
+
+                  {watch("basicConstraints.isCA") && (
+                    <Controller
+                      control={control}
+                      name="basicConstraints.maxPathLength"
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label={
+                            <div className="flex items-center gap-1">
+                              <span className="mb-1">Max Path Length</span>
+                              <Tooltip
+                                content={
+                                  <div className="max-w-xs">
+                                    <p className="font-medium">Values:</p>
+                                    <ul className="mt-1 list-disc pl-4 text-xs">
+                                      <li>
+                                        <strong>-1</strong> = Unlimited (no restriction)
+                                      </li>
+                                      <li>
+                                        <strong>0</strong> = Can only sign end-entity certificates
+                                      </li>
+                                      <li>
+                                        <strong>1+</strong> = Number of CA levels allowed beneath
+                                      </li>
+                                    </ul>
+                                  </div>
+                                }
+                              >
+                                <FontAwesomeIcon
+                                  icon={faQuestionCircle}
+                                  size="sm"
+                                  className="ml-1 text-mineshaft-400"
+                                />
+                              </Tooltip>
+                            </div>
+                          }
+                          isError={Boolean(error)}
+                          errorText={error?.message}
+                          helperText="Controls how many levels of CA certificates can be created below certificates issued from this template."
+                        >
+                          <Input
+                            {...field}
+                            type="number"
+                            placeholder="Leave empty for no constraint"
+                            className="w-full"
+                            value={field.value ?? ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              field.onChange(val === "" ? undefined : Number(val));
+                            }}
+                          />
+                        </FormControl>
+                      )}
+                    />
+                  )}
                 </div>
               </AccordionContent>
             </AccordionItem>

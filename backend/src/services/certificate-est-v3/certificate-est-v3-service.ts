@@ -11,6 +11,7 @@ import { extractCertificateRequestFromCSR } from "@app/services/certificate-comm
 import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
+import { TCertificateTemplateV2DALFactory } from "@app/services/certificate-template-v2/certificate-template-v2-dal";
 import { TCertificateTemplateV2ServiceFactory } from "@app/services/certificate-template-v2/certificate-template-v2-service";
 import { TEstEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -23,6 +24,7 @@ import { TLicenseServiceFactory } from "../../ee/services/license/license-servic
 type TCertificateEstV3ServiceFactoryDep = {
   internalCertificateAuthorityService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa">;
   certificateTemplateV2Service: Pick<TCertificateTemplateV2ServiceFactory, "validateCertificateRequest">;
+  certificateTemplateV2DAL: Pick<TCertificateTemplateV2DALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
@@ -37,6 +39,7 @@ export type TCertificateEstV3ServiceFactory = ReturnType<typeof certificateEstV3
 export const certificateEstV3ServiceFactory = ({
   internalCertificateAuthorityService,
   certificateTemplateV2Service,
+  certificateTemplateV2DAL,
   certificateAuthorityCertDAL,
   certificateAuthorityDAL,
   projectDAL,
@@ -143,11 +146,18 @@ export const certificateEstV3ServiceFactory = ({
       });
     }
 
+    // Fetch the template to get caSettings for CA certificate support
+    const template = await certificateTemplateV2DAL.findById(profile.certificateTemplateId);
+
     const { certificate } = await internalCertificateAuthorityService.signCertFromCa({
       isInternal: true,
       caId: profile.caId,
       csr,
-      isFromProfile: true
+      isFromProfile: true,
+      // Pass CA settings from template (null for leaf certificates, object for CA certificates)
+      caSettings: template?.caSettings,
+      // Pass path length from profile (only applicable for CA certificates)
+      pathLength: profile.pathLength
     });
 
     return convertRawCertsToPkcs7([certificate.rawData]);
@@ -269,11 +279,18 @@ export const certificateEstV3ServiceFactory = ({
       });
     }
 
+    // Fetch the template to get caSettings for CA certificate support
+    const template = await certificateTemplateV2DAL.findById(profile.certificateTemplateId);
+
     const { certificate } = await internalCertificateAuthorityService.signCertFromCa({
       isInternal: true,
       caId: profile.caId,
       csr,
-      isFromProfile: true
+      isFromProfile: true,
+      // Pass CA settings from template (null for leaf certificates, object for CA certificates)
+      caSettings: template?.caSettings,
+      // Pass path length from profile (only applicable for CA certificates)
+      pathLength: profile.pathLength
     });
 
     return convertRawCertsToPkcs7([certificate.rawData]);

@@ -2319,6 +2319,7 @@ export const registerRoutes = async (
   const certificateEstV3Service = certificateEstV3ServiceFactory({
     internalCertificateAuthorityService,
     certificateTemplateV2Service,
+    certificateTemplateV2DAL,
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
     projectDAL,

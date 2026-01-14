@@ -987,7 +987,8 @@ export const certificateV3ServiceFactory = ({
           keyAlgorithm: effectiveKeyAlgorithm,
           signatureAlgorithm: effectiveSignatureAlgorithm,
           status: CertificateRequestStatus.ISSUED,
-          certificateId: selfSignedResult.certificateData.id
+          certificateId: selfSignedResult.certificateData.id,
+          caSettings: certificateRequest.basicConstraints
         });
 
         return { ...selfSignedResult, certificateRequestId: certRequestResult.id };
@@ -1080,6 +1081,13 @@ export const certificateV3ServiceFactory = ({
         actorAuthMethod,
         actorOrgId,
         isFromProfile: true,
+        caSettings: template.caSettings,
+        pathLength: profile.pathLength,
+        organization: certificateSubject.organization,
+        country: certificateSubject.country,
+        state: certificateSubject.state,
+        locality: certificateSubject.locality,
+        ou: certificateSubject.organizational_unit,
         tx
       });
 
@@ -1118,7 +1126,8 @@ export const certificateV3ServiceFactory = ({
         keyAlgorithm: effectiveKeyAlgorithm,
         signatureAlgorithm: effectiveSignatureAlgorithm,
         status: CertificateRequestStatus.ISSUED,
-        certificateId: certResult.certificateId
+        certificateId: certResult.certificateId,
+        caSettings: certificateRequest.basicConstraints
       });
 
       return { ...certResult, cert: certificateRecord, certificateRequestId: certRequestResult.id };
@@ -1171,7 +1180,8 @@ export const certificateV3ServiceFactory = ({
     actorAuthMethod,
     actorOrgId,
     enrollmentType,
-    removeRootsFromChain
+    removeRootsFromChain,
+    basicConstraints
   }: TSignCertificateFromProfileDTO): Promise<Omit<TCertificateFromProfileResponse, "privateKey">> => {
     const profile = await validateProfileAndPermissions(
       profileId,
@@ -1250,6 +1260,8 @@ export const certificateV3ServiceFactory = ({
           signatureAlgorithm: effectiveSignatureAlgorithm,
           keyAlgorithm: effectiveKeyAlgorithm,
           isFromProfile: true,
+          caSettings: template.caSettings,
+          pathLength: profile.pathLength,
           tx
         });
 
@@ -1289,7 +1301,8 @@ export const certificateV3ServiceFactory = ({
           keyAlgorithm: effectiveKeyAlgorithm,
           signatureAlgorithm: effectiveSignatureAlgorithm,
           status: CertificateRequestStatus.ISSUED,
-          certificateId: certResult.certificateId
+          certificateId: certResult.certificateId,
+          caSettings: basicConstraints
         });
 
         return { ...certResult, cert: signedCertRecord, certificateRequestId: certRequestResult.id };
@@ -1420,7 +1433,8 @@ export const certificateV3ServiceFactory = ({
         altNames: certificateOrder.altNames?.map((san) => san.value).join(",") || "",
         notBefore: certificateOrder.notBefore,
         notAfter: certificateOrder.notAfter,
-        status: CertificateRequestStatus.PENDING
+        status: CertificateRequestStatus.PENDING,
+        caSettings: certificateOrder.basicConstraints
       });
 
       await certificateIssuanceQueue.queueCertificateIssuance({
@@ -1674,6 +1688,8 @@ export const certificateV3ServiceFactory = ({
             actorAuthMethod,
             actorOrgId,
             internal: true,
+            caSettings: template?.caSettings,
+            pathLength: profile?.pathLength,
             tx
           });
 

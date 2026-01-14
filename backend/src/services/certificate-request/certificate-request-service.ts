@@ -49,7 +49,13 @@ const certificateRequestDataSchema = z
     keyAlgorithm: z.string().max(100).optional(),
     signatureAlgorithm: z.string().max(100).optional(),
     metadata: z.string().max(2000).optional(),
-    certificateId: z.string().optional()
+    certificateId: z.string().optional(),
+    caSettings: z
+      .object({
+        isCA: z.boolean(),
+        pathLength: z.number().int().min(-1).optional()
+      })
+      .optional()
   })
   .refine(
     (data) => {

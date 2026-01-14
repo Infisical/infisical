@@ -115,6 +115,16 @@ const templateV2AlgorithmsSchema = z.object({
   keyAlgorithm: z.array(z.string()).min(1, "At least one key algorithm must be provided").optional()
 });
 
+const templateV2CaSettingsSchema = z
+  .object({
+    maxPathLength: z
+      .number()
+      .int("Path length must be an integer")
+      .min(-1, "Path length must be -1 (unlimited) or a non-negative integer")
+      .optional()
+  })
+  .nullable();
+
 const createCertificateTemplateV2Schema = z.object({
   projectId: z.string().min(1),
   name: z.string().min(1).max(255, "Name must be between 1 and 255 characters"),
@@ -124,7 +134,8 @@ const createCertificateTemplateV2Schema = z.object({
   keyUsages: templateV2KeyUsagesSchema.optional(),
   extendedKeyUsages: templateV2ExtendedKeyUsagesSchema.optional(),
   algorithms: templateV2AlgorithmsSchema.optional(),
-  validity: templateV2ValiditySchema.optional()
+  validity: templateV2ValiditySchema.optional(),
+  caSettings: templateV2CaSettingsSchema.optional()
 });
 
 const updateCertificateTemplateV2Schema = z.object({
@@ -135,7 +146,8 @@ const updateCertificateTemplateV2Schema = z.object({
   keyUsages: templateV2KeyUsagesSchema.optional(),
   extendedKeyUsages: templateV2ExtendedKeyUsagesSchema.optional(),
   algorithms: templateV2AlgorithmsSchema.optional(),
-  validity: templateV2ValiditySchema.optional()
+  validity: templateV2ValiditySchema.optional(),
+  caSettings: templateV2CaSettingsSchema.optional()
 });
 
 export const registerCertificateTemplateRouter = async (server: FastifyZodProvider) => {

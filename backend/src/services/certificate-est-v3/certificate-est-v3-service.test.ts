@@ -171,6 +171,15 @@ describe("CertificateEstV3Service Security Fix", () => {
     validateCertificateRequest: vi.fn()
   };
 
+  const mockCertificateTemplateV2DAL = {
+    findById: vi.fn().mockResolvedValue({
+      id: "template-v2-123",
+      caSettings: null,
+      subject: [],
+      sans: []
+    })
+  };
+
   const mockCertificateAuthorityDAL = {
     findById: vi.fn(),
     findByIdWithAssociatedCa: vi.fn()
@@ -233,6 +242,7 @@ describe("CertificateEstV3Service Security Fix", () => {
     service = certificateEstV3ServiceFactory({
       internalCertificateAuthorityService: mockInternalCertificateAuthorityService,
       certificateTemplateV2Service: mockCertificateTemplateV2Service,
+      certificateTemplateV2DAL: mockCertificateTemplateV2DAL,
       certificateAuthorityDAL: mockCertificateAuthorityDAL,
       certificateAuthorityCertDAL: mockCertificateAuthorityCertDAL,
       projectDAL: mockProjectDAL,
@@ -525,7 +535,9 @@ describe("CertificateEstV3Service Security Fix", () => {
         isInternal: true,
         caId: "ca-123",
         csr: basicCSR,
-        isFromProfile: true
+        isFromProfile: true,
+        caSettings: null,
+        pathLength: undefined
       });
     });
 
@@ -704,7 +716,9 @@ describe("CertificateEstV3Service Security Fix", () => {
         isInternal: true,
         caId: "ca-123",
         isFromProfile: true,
-        csr: basicCSR
+        csr: basicCSR,
+        caSettings: null,
+        pathLength: undefined
       });
     });
 

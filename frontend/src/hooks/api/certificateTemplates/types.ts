@@ -122,9 +122,13 @@ export type TListCertificateTemplatesDTO = {
   projectId: string;
 };
 
+export type TCaSettings = {
+  maxPathLength?: number;
+} | null;
+
 export type TCertificateTemplateV2Policy = {
   subject?: Array<{
-    type: "common_name" | "organization" | "country";
+    type: "common_name" | "organization" | "country" | "state" | "locality" | "organizational_unit";
     allowed?: string[];
     required?: string[];
     denied?: string[];
@@ -154,6 +158,7 @@ export type TCertificateTemplateV2Policy = {
   validity?: {
     max?: string;
   };
+  caSettings?: TCaSettings;
 };
 
 export type TCertificateTemplateV2WithPolicies = {
@@ -167,6 +172,7 @@ export type TCertificateTemplateV2WithPolicies = {
   extendedKeyUsages?: TCertificateTemplateV2Policy["extendedKeyUsages"];
   algorithms?: TCertificateTemplateV2Policy["algorithms"];
   validity?: TCertificateTemplateV2Policy["validity"];
+  caSettings?: TCaSettings;
   createdAt: string;
   updatedAt: string;
 };
@@ -181,6 +187,7 @@ export type TCreateCertificateTemplateV2WithPoliciesDTO = {
   extendedKeyUsages?: TCertificateTemplateV2Policy["extendedKeyUsages"];
   algorithms?: TCertificateTemplateV2Policy["algorithms"];
   validity?: TCertificateTemplateV2Policy["validity"];
+  caSettings?: TCaSettings;
 };
 
 export type TUpdateCertificateTemplateV2WithPoliciesDTO = {
@@ -193,6 +200,7 @@ export type TUpdateCertificateTemplateV2WithPoliciesDTO = {
   extendedKeyUsages?: TCertificateTemplateV2Policy["extendedKeyUsages"];
   algorithms?: TCertificateTemplateV2Policy["algorithms"];
   validity?: TCertificateTemplateV2Policy["validity"];
+  caSettings?: TCaSettings;
 };
 
 export type TDeleteCertificateTemplateV2WithPoliciesDTO = {

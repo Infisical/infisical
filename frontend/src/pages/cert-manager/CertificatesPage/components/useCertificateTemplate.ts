@@ -7,6 +7,7 @@ import {
 } from "@app/hooks/api/certificates/constants";
 import {
   CertSubjectAlternativeNameType,
+  CertSubjectAttributeType,
   mapTemplateKeyAlgorithmToApi,
   mapTemplateSignatureAlgorithmToApi
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificateTemplatesV2Tab/shared/certificate-constants";
@@ -39,8 +40,11 @@ export type TemplateConstraints = {
   allowedSignatureAlgorithms: string[];
   allowedKeyAlgorithms: string[];
   allowedSanTypes: CertSubjectAlternativeNameType[];
+  allowedSubjectAttributeTypes: CertSubjectAttributeType[];
   shouldShowSanSection: boolean;
   shouldShowSubjectSection: boolean;
+  templateAllowsCA: boolean;
+  maxPathLength?: number;
 };
 
 export const useCertificateTemplate = (
@@ -63,8 +67,11 @@ export const useCertificateTemplate = (
       CertSubjectAlternativeNameType.EMAIL,
       CertSubjectAlternativeNameType.URI
     ],
+    allowedSubjectAttributeTypes: [CertSubjectAttributeType.COMMON_NAME],
     shouldShowSanSection: true,
-    shouldShowSubjectSection: true
+    shouldShowSubjectSection: true,
+    templateAllowsCA: false,
+    maxPathLength: undefined
   });
 
   const filteredKeyUsages = useMemo(() => {
@@ -111,13 +118,20 @@ export const useCertificateTemplate = (
         CertSubjectAlternativeNameType.EMAIL,
         CertSubjectAlternativeNameType.URI
       ],
+      allowedSubjectAttributeTypes: [CertSubjectAttributeType.COMMON_NAME],
       shouldShowSanSection: true,
-      shouldShowSubjectSection: true
+      shouldShowSubjectSection: true,
+      templateAllowsCA: false,
+      maxPathLength: undefined
     });
   };
 
   useEffect(() => {
     if (templateData && selectedProfile && isModalOpen) {
+      const templateAllowsCA =
+        templateData.caSettings !== undefined && templateData.caSettings !== null;
+      const maxPathLength = templateData.caSettings?.maxPathLength;
+
       const newConstraints: TemplateConstraints = {
         allowedSignatureAlgorithms: templateData.algorithms?.signature || [],
         allowedKeyAlgorithms: templateData.algorithms?.keyAlgorithm || [],
@@ -132,8 +146,11 @@ export const useCertificateTemplate = (
         requiredKeyUsages: templateData.keyUsages?.required || [],
         requiredExtendedKeyUsages: templateData.extendedKeyUsages?.required || [],
         allowedSanTypes: [],
+        allowedSubjectAttributeTypes: [],
         shouldShowSanSection: true,
-        shouldShowSubjectSection: true
+        shouldShowSubjectSection: true,
+        templateAllowsCA,
+        maxPathLength
       };
 
       // Set TTL if available
@@ -157,15 +174,25 @@ export const useCertificateTemplate = (
         setValue("subjectAltNames", []);
       }
 
-      // Handle subject section
       if (templateData.subject && templateData.subject.length > 0) {
         newConstraints.shouldShowSubjectSection = true;
+        const subjectTypes: CertSubjectAttributeType[] = [];
+        templateData.subject.forEach((subjectPolicy: any) => {
+          if (!subjectTypes.includes(subjectPolicy.type)) {
+            subjectTypes.push(subjectPolicy.type as CertSubjectAttributeType);
+          }
+        });
+        newConstraints.allowedSubjectAttributeTypes =
+          subjectTypes.length > 0 ? subjectTypes : [CertSubjectAttributeType.COMMON_NAME];
+
         const currentSubjectAttrs = watch("subjectAttributes");
         if (!currentSubjectAttrs || currentSubjectAttrs.length === 0) {
-          setValue("subjectAttributes", [{ type: "common_name", value: "" }]);
+          const defaultType = newConstraints.allowedSubjectAttributeTypes[0];
+          setValue("subjectAttributes", [{ type: defaultType, value: "" }]);
         }
       } else {
         newConstraints.shouldShowSubjectSection = false;
+        newConstraints.allowedSubjectAttributeTypes = [];
         setValue("subjectAttributes", undefined);
       }
 

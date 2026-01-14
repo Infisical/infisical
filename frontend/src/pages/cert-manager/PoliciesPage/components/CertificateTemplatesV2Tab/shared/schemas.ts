@@ -52,6 +52,15 @@ export const uiKeyAlgorithmSchema = z.object({
     .min(1, "At least one key type must be selected")
 });
 
+export const uiBasicConstraintsSchema = z.object({
+  isCA: z.boolean().default(false),
+  maxPathLength: z
+    .number()
+    .min(-1, "Path length must be -1 (unlimited) or greater")
+    .nullable()
+    .optional()
+});
+
 export const uiPresetSchema = z
   .enum([
     TEMPLATE_PRESET_IDS.CUSTOM,
@@ -81,6 +90,7 @@ export const templateSchema = z.object({
     .trim()
     .max(1000, "Description must be less than 1000 characters")
     .optional(),
+  basicConstraints: uiBasicConstraintsSchema.optional(),
   attributes: z.array(uiAttributeSchema).optional(),
   subjectAlternativeNames: z.array(uiSanSchema).optional(),
   keyUsages: uiKeyUsagesSchema.optional(),
