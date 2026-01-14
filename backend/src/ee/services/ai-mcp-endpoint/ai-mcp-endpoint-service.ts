@@ -1180,8 +1180,6 @@ export const aiMcpEndpointServiceFactory = ({
 
       return { valid: true };
     } catch (error) {
-      // INFO level as we don't want to spam logs with token verification failures
-      logger.info({ error, serverId, serverUrl: server.url }, "Bearer token verification failed");
 
       const err = error as { code?: string | number; cause?: { code?: string } };
       const errCode = err?.code || err?.cause?.code;
