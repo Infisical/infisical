@@ -19,7 +19,7 @@ where you can manage various aspects of its lifecycle including deployment to cl
 
 ## Guide to Issuing Certificates
 
-To [issue a certificate](/documentation/platform/pki/concepts/certificate-lifecycle#enrollment-request-%2F-issuance), you must first create a [certificate profile](/documentation/platform/pki/certificates/profiles) and a [certificate template](/documentation/platform/pki/certificates/templates) to go along with it.
+To [issue a certificate](/documentation/platform/pki/concepts/certificate-lifecycle#enrollment-request-%2F-issuance), you must first create a [certificate profile](/documentation/platform/pki/certificates/profiles) and a [certificate policy](/documentation/platform/pki/certificates/policies) to go along with it.
 
 - Self-Signed Certificates: To issue a [self-signed certificate](https://en.wikipedia.org/wiki/Self-signed_certificate), you must configure the certificate profile to use the `Self-Signed` issuer type. You can then use the [API enrollment method](/documentation/platform/pki/enrollment-methods/api) to request a self-signed certificate against it.
 - CA-Issued Certificates: To issue a certificate from a certificate authority, you must configure the certificate profile to use the `Certificate Authority` issuer type and select the [issuing CA](/documentation/platform/pki/ca/overview) to use. You can then use one of the [enrollment methods](/documentation/platform/pki/enrollment-methods/overview) to request a certificate against it.

@@ -235,7 +235,7 @@ export const PamAccountsTable = ({ projectId }: Props) => {
   const resources = resourcesData?.resources || [];
 
   const accessAccount = async (account: TPamAccount) => {
-    let fullAccountPath = account.name;
+    let fullAccountPath = `/${account.name}`;
     const folderPath = account.folderId ? folderPaths[account.folderId] : undefined;
     if (folderPath) {
       fullAccountPath = `${folderPath}/${account.name}`;

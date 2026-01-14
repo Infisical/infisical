@@ -20,6 +20,7 @@ import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { deleteOrgMembershipsFn } from "../org/org-fns";
+import { isCustomOrgRole } from "../org/org-role-fns";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TRoleDALFactory } from "../role/role-dal";
@@ -163,7 +164,22 @@ export const membershipUserServiceFactory = ({
     // If roles array is empty and scope is Organization, use org's default role
     let rolesToUse = data.roles;
     if (data.roles.length === 0 && scopeData.scope === AccessScope.Organization) {
-      const defaultRole = orgDetails.defaultMembershipRole || OrgMembershipRole.NoAccess;
+      const defaultMembershipRole = orgDetails.defaultMembershipRole || OrgMembershipRole.NoAccess;
+
+      let defaultRole: string;
+      if (isCustomOrgRole(defaultMembershipRole)) {
+        const customRoles = await roleDAL.find({
+          id: defaultMembershipRole,
+          orgId: dto.permission.orgId
+        });
+        if (customRoles.length === 0) {
+          throw new NotFoundError({ message: "Default custom role not found" });
+        }
+        defaultRole = customRoles[0].slug;
+      } else {
+        defaultRole = defaultMembershipRole;
+      }
+
       rolesToUse = [{ isTemporary: false, role: defaultRole }];
     }
 

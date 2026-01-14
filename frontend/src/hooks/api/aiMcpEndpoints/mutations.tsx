@@ -14,7 +14,9 @@ import {
   TFinalizeMcpEndpointOAuthDTO,
   TInitiateServerOAuthDTO,
   TSaveUserServerCredentialDTO,
-  TUpdateAiMcpEndpointDTO
+  TUpdateAiMcpEndpointDTO,
+  TVerifyServerBearerTokenDTO,
+  TVerifyServerBearerTokenResponse
 } from "./types";
 
 export const useCreateAiMcpEndpoint = () => {
@@ -145,6 +147,18 @@ export const useInitiateServerOAuth = () => {
     mutationFn: async ({ endpointId, serverId }: TInitiateServerOAuthDTO) => {
       const { data } = await apiRequest.post<{ authUrl: string; sessionId: string }>(
         `/api/v1/ai/mcp/endpoints/${endpointId}/servers/${serverId}/oauth/initiate`
+      );
+      return data;
+    }
+  });
+};
+
+export const useVerifyServerBearerToken = () => {
+  return useMutation({
+    mutationFn: async ({ endpointId, serverId, accessToken }: TVerifyServerBearerTokenDTO) => {
+      const { data } = await apiRequest.post<TVerifyServerBearerTokenResponse>(
+        `/api/v1/ai/mcp/endpoints/${endpointId}/servers/${serverId}/verify-token`,
+        { accessToken }
       );
       return data;
     }

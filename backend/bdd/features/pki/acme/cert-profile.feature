@@ -11,7 +11,7 @@ Feature: ACME Cert Profile
         "description": "",
         "enrollmentType": "acme",
         "caId": "{CERT_CA_ID}",
-        "certificateTemplateId": "{CERT_TEMPLATE_ID}",
+        "certificatePolicyId": "{CERT_POLICY_ID}",
         "acmeConfig": {}
       }
       """
@@ -19,7 +19,7 @@ Feature: ACME Cert Profile
     And the value response with jq ".certificateProfile.id" should be present
     And the value response with jq ".certificateProfile.slug" should be equal to "{profile_slug}"
     And the value response with jq ".certificateProfile.caId" should be equal to "{CERT_CA_ID}"
-    And the value response with jq ".certificateProfile.certificateTemplateId" should be equal to "{CERT_TEMPLATE_ID}"
+    And the value response with jq ".certificateProfile.certificatePolicyId" should be equal to "{CERT_POLICY_ID}"
     And the value response with jq ".certificateProfile.enrollmentType" should be equal to "acme"
 
   Scenario: Reveal EAB secret
@@ -33,7 +33,7 @@ Feature: ACME Cert Profile
         "description": "",
         "enrollmentType": "acme",
         "caId": "{CERT_CA_ID}",
-        "certificateTemplateId": "{CERT_TEMPLATE_ID}",
+        "certificatePolicyId": "{CERT_POLICY_ID}",
         "acmeConfig": {}
       }
       """

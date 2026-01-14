@@ -23,28 +23,26 @@ export const SecretSharingAllowShareToAnyone = () => {
   };
 
   return (
-    <div className="mb-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
-      <div className="py-4">
-        <div className="mb-2 flex justify-between">
-          <h3 className="text-md text-mineshaft-100">
-            Allow sharing secrets to members outside of this organization
-          </h3>
-          <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
-            {(isAllowed) => (
-              <Switch
-                id="enable-secret-sharing-outside-org"
-                onCheckedChange={(value) => handleSecretSharingToggle(value)}
-                isChecked={currentOrg?.allowSecretSharingOutsideOrganization ?? false}
-                isDisabled={!isAllowed}
-              />
-            )}
-          </OrgPermissionCan>
-        </div>
-        <p className="text-sm text-mineshaft-300">
-          If enabled, team members will be able to share secrets to members outside of this
-          organization
-        </p>
+    <div className="mb-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="mb-2 flex justify-between">
+        <h3 className="text-md text-mineshaft-100">
+          Allow sharing secrets to members outside of this organization
+        </h3>
+        <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
+          {(isAllowed) => (
+            <Switch
+              id="enable-secret-sharing-outside-org"
+              onCheckedChange={(value) => handleSecretSharingToggle(value)}
+              isChecked={currentOrg?.allowSecretSharingOutsideOrganization ?? false}
+              isDisabled={!isAllowed}
+            />
+          )}
+        </OrgPermissionCan>
       </div>
+      <p className="text-sm text-mineshaft-300">
+        If enabled, team members will be able to share secrets to members outside of this
+        organization
+      </p>
     </div>
   );
 };

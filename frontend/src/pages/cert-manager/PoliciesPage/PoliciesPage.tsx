@@ -7,20 +7,20 @@ import { ContentLoader, PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/co
 import { useProject, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionCertificateActions,
+  ProjectPermissionCertificatePolicyActions,
   ProjectPermissionCertificateProfileActions,
-  ProjectPermissionPkiTemplateActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
+import { CertificatePoliciesTab } from "./components/CertificatePoliciesTab";
 import { CertificateProfilesTab } from "./components/CertificateProfilesTab";
 import { CertificateRequestsTab } from "./components/CertificateRequestsTab";
 import { CertificatesTab } from "./components/CertificatesTab";
-import { CertificateTemplatesV2Tab } from "./components/CertificateTemplatesV2Tab";
 
 enum TabSections {
   CertificateProfiles = "profiles",
-  CertificateTemplatesV2 = "templates-v2",
+  CertificatePolicies = "policies",
   Certificates = "certificates",
   CertificateRequests = "certificate-requests",
   PkiCollections = "pki-collections"
@@ -42,9 +42,9 @@ export const PoliciesPage = () => {
     ProjectPermissionCertificateProfileActions.Read,
     ProjectPermissionSub.CertificateProfiles
   );
-  const canReadCertificateTemplates = permission.can(
-    ProjectPermissionPkiTemplateActions.Read,
-    ProjectPermissionSub.CertificateTemplates
+  const canReadCertificatePolicies = permission.can(
+    ProjectPermissionCertificatePolicyActions.Read,
+    ProjectPermissionSub.CertificatePolicies
   );
   const canReadCertificates = permission.can(
     ProjectPermissionCertificateActions.Read,
@@ -82,8 +82,8 @@ export const PoliciesPage = () => {
             <Tab variant="project" value={TabSections.CertificateProfiles}>
               Certificate Profiles
             </Tab>
-            <Tab variant="project" value={TabSections.CertificateTemplatesV2}>
-              Certificate Templates
+            <Tab variant="project" value={TabSections.CertificatePolicies}>
+              Certificate Policies
             </Tab>
           </TabList>
 
@@ -109,12 +109,8 @@ export const PoliciesPage = () => {
             {canReadCertificateProfiles ? <CertificateProfilesTab /> : <PermissionDeniedBanner />}
           </TabPanel>
 
-          <TabPanel value={TabSections.CertificateTemplatesV2}>
-            {canReadCertificateTemplates ? (
-              <CertificateTemplatesV2Tab />
-            ) : (
-              <PermissionDeniedBanner />
-            )}
+          <TabPanel value={TabSections.CertificatePolicies}>
+            {canReadCertificatePolicies ? <CertificatePoliciesTab /> : <PermissionDeniedBanner />}
           </TabPanel>
         </Tabs>
       </div>

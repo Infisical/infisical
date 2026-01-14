@@ -19,7 +19,7 @@ Feature: External CA
       }
       """
     Then I memorize ext_ca with jq ".id" as ext_ca_id
-    Given I create a certificate template with the following config as cert_template
+    Given I create a certificate policy with the following config as cert_policy
       """
       {
         "subject": [
@@ -86,8 +86,8 @@ Feature: External CA
         }
       }
       """
-    Then I memorize cert_template with jq ".certificateTemplate.id" as cert_template_id
-    Given I create an ACME profile with ca {ext_ca_id} and template {cert_template_id} as "acme_profile"
+    Then I memorize cert_policy with jq ".certificatePolicy.id" as cert_policy_id
+    Given I create an ACME profile with ca {ext_ca_id} and policy {cert_policy_id} as "acme_profile"
     When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/directory"
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
     When I create certificate signing request as csr
@@ -202,7 +202,7 @@ Feature: External CA
       }
       """
     Then I memorize ext_ca with jq ".id" as ext_ca_id
-    Given I create a certificate template with the following config as cert_template
+    Given I create a certificate policy with the following config as cert_policy
       """
       {
         "subject": [
@@ -269,8 +269,8 @@ Feature: External CA
         }
       }
       """
-    Then I memorize cert_template with jq ".certificateTemplate.id" as cert_template_id
-    Given I create an ACME profile with ca {ext_ca_id} and template {cert_template_id} as "acme_profile"
+    Then I memorize cert_policy with jq ".certificatePolicy.id" as cert_policy_id
+    Given I create an ACME profile with ca {ext_ca_id} and policy {cert_policy_id} as "acme_profile"
     When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/directory"
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
     When I create certificate signing request as csr
@@ -370,7 +370,7 @@ Feature: External CA
       | {"COMMON_NAME": "localhost"} |
       | {}                           |
 
-  Scenario Outline: Issue a certificate with bad CSR names disallowed by the template
+  Scenario Outline: Issue a certificate with bad CSR names disallowed by the policy
     Given I create a Cloudflare connection as cloudflare
     Then I memorize cloudflare with jq ".appConnection.id" as app_conn_id
     Given I create a external ACME CA with the following config as ext_ca
@@ -388,7 +388,7 @@ Feature: External CA
       }
       """
     Then I memorize ext_ca with jq ".id" as ext_ca_id
-    Given I create a certificate template with the following config as cert_template
+    Given I create a certificate policy with the following config as cert_policy
       """
       {
         "subject": [
@@ -455,8 +455,8 @@ Feature: External CA
         }
       }
       """
-    Then I memorize cert_template with jq ".certificateTemplate.id" as cert_template_id
-    Given I create an ACME profile with ca {ext_ca_id} and template {cert_template_id} as "acme_profile"
+    Then I memorize cert_policy with jq ".certificatePolicy.id" as cert_policy_id
+    Given I create an ACME profile with ca {ext_ca_id} and policy {cert_policy_id} as "acme_profile"
     When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/directory"
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
     When I create certificate signing request as csr
@@ -544,7 +544,7 @@ Feature: External CA
       | {"COMMON_NAME": "example.com"} | ["infisical.com", "localhost"] | Invalid CSR: dns_name SAN value 'localhost' is not in allowed values list |
 
 
-  Scenario Outline: Issue a certificate with algorithms disallowed by the template
+  Scenario Outline: Issue a certificate with algorithms disallowed by the policy
     Given I create a Cloudflare connection as cloudflare
     Then I memorize cloudflare with jq ".appConnection.id" as app_conn_id
     Given I create a external ACME CA with the following config as ext_ca
@@ -562,7 +562,7 @@ Feature: External CA
       }
       """
     Then I memorize ext_ca with jq ".id" as ext_ca_id
-    Given I create a certificate template with the following config as cert_template
+    Given I create a certificate policy with the following config as cert_policy
       """
       {
         "subject": [
@@ -619,8 +619,8 @@ Feature: External CA
         }
       }
       """
-    Then I memorize cert_template with jq ".certificateTemplate.id" as cert_template_id
-    Given I create an ACME profile with ca {ext_ca_id} and template {cert_template_id} as "acme_profile"
+    Then I memorize cert_policy with jq ".certificatePolicy.id" as cert_policy_id
+    Given I create an ACME profile with ca {ext_ca_id} and policy {cert_policy_id} as "acme_profile"
     When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/directory"
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
     When I create certificate signing request as csr
@@ -703,15 +703,15 @@ Feature: External CA
 
     Examples:
       | allowed_alg | allowed_signature | key_type   | hash_type | err_detail                                                                                                                                  |
-      | RSA-4096    | SHA512-RSA        | RSA-2048   | SHA512    | Invalid CSR: Key algorithm 'RSA_2048' is not allowed by template policy                                                                     |
-      | RSA-4096    | SHA512-RSA        | RSA-3072   | SHA512    | Invalid CSR: Key algorithm 'RSA_3072' is not allowed by template policy                                                                     |
-      | RSA-4096    | ECDSA-SHA512      | ECDSA-P256 | SHA512    | Invalid CSR: Key algorithm 'EC_prime256v1' is not allowed by template policy                                                                |
-      | RSA-4096    | ECDSA-SHA512      | ECDSA-P384 | SHA512    | Invalid CSR: Key algorithm 'EC_secp384r1' is not allowed by template policy                                                                 |
-      | RSA-4096    | ECDSA-SHA512      | ECDSA-P521 | SHA512    | Invalid CSR: Key algorithm 'EC_secp521r1' is not allowed by template policy                                                                 |
-      | RSA-2048    | SHA512-RSA        | RSA-2048   | SHA384    | Invalid CSR: Signature algorithm 'RSA-SHA384' is not allowed by template policy                                                             |
-      | RSA-2048    | SHA512-RSA        | RSA-2048   | SHA256    | Invalid CSR: Signature algorithm 'RSA-SHA256' is not allowed by template policy                                                             |
-      | ECDSA-P256  | SHA512-RSA        | ECDSA-P256 | SHA256    | Invalid CSR: Signature algorithm 'ECDSA-SHA256' is not allowed by template policy                                                           |
-      | ECDSA-P384  | SHA512-RSA        | ECDSA-P384 | SHA256    | Invalid CSR: Signature algorithm 'ECDSA-SHA256' is not allowed by template policy                                                           |
-      | ECDSA-P521  | SHA512-RSA        | ECDSA-P521 | SHA256    | Invalid CSR: Signature algorithm 'ECDSA-SHA256' is not allowed by template policy                                                           |
-      | RSA-2048    | SHA512-RSA        | RSA-2048   | SHA256    | Invalid CSR: Signature algorithm 'RSA-SHA256' is not allowed by template policy                                                             |
-      | RSA-2048    | SHA512-RSA        | RSA-4096   | SHA256    | Invalid CSR: Signature algorithm 'RSA-SHA256' is not allowed by template policy, Key algorithm 'RSA_4096' is not allowed by template policy |
+      | RSA-4096    | SHA512-RSA        | RSA-2048   | SHA512    | Invalid CSR: Key algorithm 'RSA_2048' is not allowed by policy                                                                     |
+      | RSA-4096    | SHA512-RSA        | RSA-3072   | SHA512    | Invalid CSR: Key algorithm 'RSA_3072' is not allowed by policy                                                                     |
+      | RSA-4096    | ECDSA-SHA512      | ECDSA-P256 | SHA512    | Invalid CSR: Key algorithm 'EC_prime256v1' is not allowed by policy                                                                |
+      | RSA-4096    | ECDSA-SHA512      | ECDSA-P384 | SHA512    | Invalid CSR: Key algorithm 'EC_secp384r1' is not allowed by policy                                                                 |
+      | RSA-4096    | ECDSA-SHA512      | ECDSA-P521 | SHA512    | Invalid CSR: Key algorithm 'EC_secp521r1' is not allowed by policy                                                                 |
+      | RSA-2048    | SHA512-RSA        | RSA-2048   | SHA384    | Invalid CSR: Signature algorithm 'RSA-SHA384' is not allowed by policy                                                             |
+      | RSA-2048    | SHA512-RSA        | RSA-2048   | SHA256    | Invalid CSR: Signature algorithm 'RSA-SHA256' is not allowed by policy                                                             |
+      | ECDSA-P256  | SHA512-RSA        | ECDSA-P256 | SHA256    | Invalid CSR: Signature algorithm 'ECDSA-SHA256' is not allowed by policy                                                           |
+      | ECDSA-P384  | SHA512-RSA        | ECDSA-P384 | SHA256    | Invalid CSR: Signature algorithm 'ECDSA-SHA256' is not allowed by policy                                                           |
+      | ECDSA-P521  | SHA512-RSA        | ECDSA-P521 | SHA256    | Invalid CSR: Signature algorithm 'ECDSA-SHA256' is not allowed by policy                                                           |
+      | RSA-2048    | SHA512-RSA        | RSA-2048   | SHA256    | Invalid CSR: Signature algorithm 'RSA-SHA256' is not allowed by policy                                                             |
+      | RSA-2048    | SHA512-RSA        | RSA-4096   | SHA256    | Invalid CSR: Signature algorithm 'RSA-SHA256' is not allowed by policy, Key algorithm 'RSA_4096' is not allowed by policy |

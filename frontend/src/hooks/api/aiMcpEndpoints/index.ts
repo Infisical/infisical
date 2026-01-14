@@ -7,7 +7,8 @@ export {
   useFinalizeMcpEndpointOAuth,
   useInitiateServerOAuth,
   useSaveUserServerCredential,
-  useUpdateAiMcpEndpoint
+  useUpdateAiMcpEndpoint,
+  useVerifyServerBearerToken
 } from "./mutations";
 export {
   aiMcpEndpointKeys,

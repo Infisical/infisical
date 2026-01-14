@@ -104,7 +104,7 @@ Feature: Access Control
         "description": "",
         "enrollmentType": "acme",
         "caId": "{CERT_CA_ID}",
-        "certificateTemplateId": "{CERT_TEMPLATE_ID}",
+        "certificatePolicyId": "{CERT_POLICY_ID}",
         "acmeConfig": {}
       }
       """
@@ -185,7 +185,7 @@ Feature: Access Control
         "description": "",
         "enrollmentType": "acme",
         "caId": "{CERT_CA_ID}",
-        "certificateTemplateId": "{CERT_TEMPLATE_ID}",
+        "certificatePolicyId": "{CERT_POLICY_ID}",
         "acmeConfig": {}
       }
       """

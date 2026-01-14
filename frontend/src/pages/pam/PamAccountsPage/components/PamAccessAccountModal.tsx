@@ -29,10 +29,10 @@ export const PamAccessAccountModal = ({
   const portSuffix = port && port !== "80" && port !== "443" ? `:${port}` : "";
   const siteURL = `${protocol}//${hostname}${portSuffix}`;
 
-  let fullAccountPath = account?.name ?? "";
+  let fullAccountPath = `/${account?.name ?? ""}`;
   if (accountPath) {
     const path = accountPath.replace(/^\/+|\/+$/g, "");
-    fullAccountPath = `${path}/${account?.name ?? ""}`;
+    fullAccountPath = `/${path}/${account?.name ?? ""}`;
   }
 
   const isDurationValid = useMemo(() => duration && ms(duration || "1s") > 0, [duration]);

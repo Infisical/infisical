@@ -15,7 +15,7 @@ type Props = {
 
 const BaseSshConnectionDetailsSchema = z.object({
   host: z.string().trim().min(1, "Host is required"),
-  port: z.number().int().min(1).max(65535)
+  port: z.coerce.number().int().min(1).max(65535)
 });
 
 const formSchema = genericResourceFieldsSchema.extend({

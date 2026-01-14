@@ -64,7 +64,7 @@ export type TCertificateProfileWithConfigs = TCertificateProfile & {
     isExternal?: boolean;
     externalType?: string;
   };
-  certificateTemplate?: {
+  certificatePolicy?: {
     id: string;
     projectId: string;
     name: string;

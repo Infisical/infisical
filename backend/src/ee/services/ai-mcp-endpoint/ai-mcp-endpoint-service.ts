@@ -52,7 +52,8 @@ import {
   TOAuthTokenExchangeDTO,
   TSaveUserServerCredentialDTO,
   TServerAuthStatus,
-  TUpdateAiMcpEndpointDTO
+  TUpdateAiMcpEndpointDTO,
+  TVerifyServerBearerTokenDTO
 } from "./ai-mcp-endpoint-types";
 
 type TAiMcpEndpointServiceFactoryDep = {
@@ -1044,7 +1045,8 @@ export const aiMcpEndpointServiceFactory = ({
           id: server.id,
           name: server.name,
           url: server.url,
-          hasCredentials: Boolean(existingCredential)
+          hasCredentials: Boolean(existingCredential),
+          authMethod: server.authMethod || "oauth"
         };
       })
     );
@@ -1110,6 +1112,94 @@ export const aiMcpEndpointServiceFactory = ({
       clientId: oauthConfig?.clientId,
       clientSecret: oauthConfig?.clientSecret
     });
+  };
+
+  // Verify bearer token against MCP server
+  const verifyServerBearerToken = async ({
+    endpointId,
+    serverId,
+    accessToken,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TVerifyServerBearerTokenDTO): Promise<{ valid: boolean; message?: string }> => {
+    const endpoint = await aiMcpEndpointDAL.findById(endpointId);
+    if (!endpoint) {
+      throw new NotFoundError({ message: `MCP endpoint with ID '${endpointId}' not found` });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: endpoint.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.AI
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionMcpEndpointActions.Connect,
+      ProjectPermissionSub.McpEndpoints
+    );
+
+    const server = await aiMcpServerDAL.findById(serverId);
+    if (!server) {
+      throw new NotFoundError({ message: `MCP server with ID '${serverId}' not found` });
+    }
+
+    // Check that the server is linked to this endpoint
+    const serverLink = await aiMcpEndpointServerDAL.findOne({
+      aiMcpEndpointId: endpointId,
+      aiMcpServerId: serverId
+    });
+
+    if (!serverLink) {
+      throw new BadRequestError({ message: "This MCP server is not linked to the specified endpoint" });
+    }
+
+    // Verify the token by connecting to the MCP server
+    let client: Client | undefined;
+    try {
+      client = new Client({
+        name: "infisical-mcp-client",
+        version: "1.0.0"
+      });
+
+      const transport = new StreamableHTTPClientTransport(new URL(server.url), {
+        requestInit: {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        }
+      });
+
+      await client.connect(transport);
+      await client.listTools();
+      await client.close();
+
+      return { valid: true };
+    } catch (error) {
+      const err = error as { code?: string | number; cause?: { code?: string } };
+      const errCode = err?.code || err?.cause?.code;
+
+      let message = "An unknown error occurred";
+      if (errCode === 401 || errCode === 403) {
+        message = "Invalid token";
+      } else if (errCode === "ECONNREFUSED" || errCode === "ENOTFOUND" || errCode === "ETIMEDOUT") {
+        message = "Server unreachable";
+      }
+
+      return { valid: false, message };
+    } finally {
+      if (client) {
+        try {
+          await client.close();
+        } catch {
+          // Ignore close errors
+        }
+      }
+    }
   };
 
   // Save user credentials after OAuth completes
@@ -1208,6 +1298,7 @@ export const aiMcpEndpointServiceFactory = ({
     oauthTokenExchange,
     getServersRequiringAuth,
     initiateServerOAuth,
+    verifyServerBearerToken,
     saveUserServerCredential
   };
 };

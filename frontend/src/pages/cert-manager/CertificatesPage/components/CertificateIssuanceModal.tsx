@@ -24,15 +24,15 @@ import {
 } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { useGetCert } from "@app/hooks/api";
+import { useGetCertificatePolicyById } from "@app/hooks/api/certificatePolicies";
 import { EnrollmentType, useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import { CertExtendedKeyUsage, CertKeyUsage } from "@app/hooks/api/certificates/enums";
 import { useUnifiedCertificateIssuance } from "@app/hooks/api/certificates/mutations";
-import { useGetCertificateTemplateV2ById } from "@app/hooks/api/certificateTemplates/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType
-} from "@app/pages/cert-manager/PoliciesPage/components/CertificateTemplatesV2Tab/shared/certificate-constants";
+} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import { AlgorithmSelectors } from "./AlgorithmSelectors";
 import { CertificateContent } from "./CertificateContent";
@@ -47,21 +47,21 @@ const createSchema = (shouldShowSubjectSection: boolean) => {
     profileId: z.string().min(1, "Profile is required"),
     subjectAttributes: shouldShowSubjectSection
       ? z
-          .array(
-            z.object({
-              type: z.nativeEnum(CertSubjectAttributeType),
-              value: z.string().min(1, "Value is required")
-            })
-          )
-          .min(1, "At least one subject attribute is required")
+        .array(
+          z.object({
+            type: z.nativeEnum(CertSubjectAttributeType),
+            value: z.string().min(1, "Value is required")
+          })
+        )
+        .min(1, "At least one subject attribute is required")
       : z
-          .array(
-            z.object({
-              type: z.nativeEnum(CertSubjectAttributeType),
-              value: z.string().min(1, "Value is required")
-            })
-          )
-          .optional(),
+        .array(
+          z.object({
+            type: z.nativeEnum(CertSubjectAttributeType),
+            value: z.string().min(1, "Value is required")
+          })
+        )
+        .optional(),
     subjectAltNames: z
       .array(
         z.object({
@@ -179,15 +179,15 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
     [profilesData?.certificateProfiles, actualSelectedProfileId]
   );
 
-  const { data: templateData } = useGetCertificateTemplateV2ById({
-    templateId: actualSelectedProfile?.certificateTemplateId || ""
+  const { data: policyData } = useGetCertificatePolicyById({
+    policyId: actualSelectedProfile?.certificatePolicyId || ""
   });
 
   useEffect(() => {
-    if (templateData !== undefined) {
-      setShouldShowSubjectSection((templateData?.subject?.length || 0) > 0);
+    if (policyData !== undefined) {
+      setShouldShowSubjectSection((policyData?.subject?.length || 0) > 0);
     }
-  }, [templateData]);
+  }, [policyData]);
 
   const {
     constraints,
@@ -197,7 +197,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
     availableKeyAlgorithms,
     resetConstraints
   } = useCertificateTemplate(
-    templateData,
+    policyData,
     actualSelectedProfile,
     popUp?.issueCertificate?.isOpen || false,
     setValue,
@@ -225,15 +225,15 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
             : [{ type: CertSubjectAttributeType.COMMON_NAME, value: "" }],
         subjectAltNames: cert.subjectAltNames
           ? cert.subjectAltNames.split(",").map((name) => {
-              const trimmed = name.trim();
-              if (trimmed.includes("@"))
-                return { type: CertSubjectAlternativeNameType.EMAIL, value: trimmed };
-              if (trimmed.match(/^\d+\.\d+\.\d+\.\d+$/))
-                return { type: CertSubjectAlternativeNameType.IP_ADDRESS, value: trimmed };
-              if (trimmed.startsWith("http"))
-                return { type: CertSubjectAlternativeNameType.URI, value: trimmed };
-              return { type: CertSubjectAlternativeNameType.DNS_NAME, value: trimmed };
-            })
+            const trimmed = name.trim();
+            if (trimmed.includes("@"))
+              return { type: CertSubjectAlternativeNameType.EMAIL, value: trimmed };
+            if (trimmed.match(/^\d+\.\d+\.\d+\.\d+$/))
+              return { type: CertSubjectAlternativeNameType.IP_ADDRESS, value: trimmed };
+            if (trimmed.startsWith("http"))
+              return { type: CertSubjectAlternativeNameType.URI, value: trimmed };
+            return { type: CertSubjectAlternativeNameType.DNS_NAME, value: trimmed };
+          })
           : [],
         ttl: "",
         signatureAlgorithm: "",
@@ -624,8 +624,8 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                                   errorText={error?.message}
                                   helperText={
                                     constraints.maxPathLength !== undefined &&
-                                    constraints.maxPathLength !== null &&
-                                    constraints.maxPathLength !== -1
+                                      constraints.maxPathLength !== null &&
+                                      constraints.maxPathLength !== -1
                                       ? `Required. Template maximum: ${constraints.maxPathLength}`
                                       : "Controls how many CA levels can exist below this certificate."
                                   }
@@ -635,8 +635,8 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                                     type="number"
                                     placeholder={
                                       constraints.maxPathLength !== undefined &&
-                                      constraints.maxPathLength !== null &&
-                                      constraints.maxPathLength !== -1
+                                        constraints.maxPathLength !== null &&
+                                        constraints.maxPathLength !== -1
                                         ? "Enter path length (required)"
                                         : "Leave empty for no constraint"
                                     }

@@ -1,7 +1,9 @@
+import fastifyMultipart from "@fastify/multipart";
 import { z } from "zod";
 
 import { SecretSharingSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { SecretSharingAccessType } from "@app/lib/types";
 import {
   publicEndpointLimit,
@@ -13,7 +15,25 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { SecretSharingType } from "@app/services/secret-sharing/secret-sharing-types";
 
+const ALLOWED_IMAGE_CONTENT_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/svg+xml",
+  "image/x-icon",
+  "image/vnd.microsoft.icon",
+  "image/webp"
+];
+const MAX_IMAGE_SIZE = 1 * 1024 * 1024; // 1MB
+
 export const registerSecretSharingRouter = async (server: FastifyZodProvider) => {
+  // Allow multipart file uploads
+  await server.register(fastifyMultipart, {
+    limits: {
+      fileSize: MAX_IMAGE_SIZE
+    }
+  });
+
   server.route({
     method: "GET",
     url: "/",
@@ -67,6 +87,14 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       response: {
         200: z.object({
           isPasswordProtected: z.boolean(),
+          brandingConfig: z
+            .object({
+              hasLogo: z.boolean(),
+              hasFavicon: z.boolean(),
+              primaryColor: z.string().optional(),
+              secondaryColor: z.string().optional()
+            })
+            .optional(),
           secret: SecretSharingSchema.pick({
             encryptedValue: true,
             iv: true,
@@ -79,7 +107,8 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
               orgName: z.string().optional(),
               secretValue: z.string().optional()
             })
-            .optional()
+            .optional(),
+          error: z.string().optional()
         })
       }
     },
@@ -92,22 +121,38 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         actorId: req.permission?.id
       });
 
-      if (sharedSecret.secret?.orgId) {
-        await server.services.auditLog.createAuditLog({
-          orgId: sharedSecret.secret.orgId,
-          ...req.auditLogInfo,
-          event: {
-            type: EventType.READ_SHARED_SECRET,
-            metadata: {
-              id: req.params.id,
-              name: sharedSecret.secret.name || undefined,
-              accessType: sharedSecret.secret.accessType
+      let brandingConfig;
+
+      if (sharedSecret.secretOrgId) {
+        const orgBrandConfig = await req.server.services.secretSharing.getOrgBrandConfig(sharedSecret.secretOrgId);
+
+        if (orgBrandConfig) {
+          brandingConfig = {
+            hasLogo: orgBrandConfig.hasLogo,
+            hasFavicon: orgBrandConfig.hasFavicon,
+            primaryColor: orgBrandConfig.primaryColor,
+            secondaryColor: orgBrandConfig.secondaryColor
+          };
+        }
+
+        // Verify that secret was actually returned
+        if (sharedSecret.secret) {
+          await server.services.auditLog.createAuditLog({
+            orgId: sharedSecret.secretOrgId,
+            ...req.auditLogInfo,
+            event: {
+              type: EventType.READ_SHARED_SECRET,
+              metadata: {
+                id: req.params.id,
+                name: sharedSecret.secret.name || undefined,
+                accessType: sharedSecret.secret.accessType
+              }
             }
-          }
-        });
+          });
+        }
       }
 
-      return sharedSecret;
+      return { ...sharedSecret, brandingConfig };
     }
   });
 
@@ -238,6 +283,184 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       });
 
       return { ...deletedSharedSecret };
+    }
+  });
+
+  // Serve branding images from database - public (using shared secret ID)
+  server.route({
+    method: "GET",
+    url: "/public/:id/branding/:assetType",
+    config: {
+      rateLimit: publicEndpointLimit
+    },
+    schema: {
+      params: z.object({
+        id: z.string(),
+        assetType: z.enum(["brand-logo", "brand-favicon"])
+      })
+    },
+    handler: async (req, res) => {
+      const { id, assetType } = req.params;
+
+      const orgId = await req.server.services.secretSharing.getSharedSecretOrgId(id);
+
+      if (!orgId) {
+        throw new NotFoundError({ message: "Shared secret not found or has no organization" });
+      }
+
+      const asset = await req.server.services.secretSharing.getBrandingAsset(orgId, assetType);
+
+      if (!asset) {
+        throw new NotFoundError({ message: `No ${assetType} configured for this organization` });
+      }
+
+      void res.header("Content-Type", asset.contentType);
+      void res.header("Cache-Control", "public, max-age=3600"); // Cache for 1 hour
+
+      return res.send(asset.data);
+    }
+  });
+
+  // Upload branding asset
+  server.route({
+    method: "POST",
+    url: "/branding/:assetType",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        assetType: z.enum(["brand-logo", "brand-favicon"])
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { assetType } = req.params;
+      const file = await req.file();
+
+      if (!file) {
+        throw new BadRequestError({ message: "No file uploaded" });
+      }
+
+      const buffer = await file.toBuffer();
+
+      // Validate size
+      if (buffer.length > MAX_IMAGE_SIZE) {
+        throw new BadRequestError({ message: `File too large. Maximum size is ${MAX_IMAGE_SIZE / 1024 / 1024}MB` });
+      }
+
+      // Validate content type
+      const contentType = file.mimetype;
+      if (!ALLOWED_IMAGE_CONTENT_TYPES.includes(contentType)) {
+        throw new BadRequestError({
+          message: `Invalid file type. Allowed types: ${ALLOWED_IMAGE_CONTENT_TYPES.join(", ")}`
+        });
+      }
+
+      await req.server.services.secretSharing.uploadBrandingAsset(
+        req.permission.orgId,
+        assetType,
+        buffer,
+        contentType,
+        req.permission
+      );
+
+      return { message: `Successfully uploaded ${assetType}` };
+    }
+  });
+
+  // Delete branding asset
+  server.route({
+    method: "DELETE",
+    url: "/branding/:assetType",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        assetType: z.enum(["brand-logo", "brand-favicon"])
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { assetType } = req.params;
+
+      await req.server.services.secretSharing.deleteBrandingAsset(req.permission.orgId, assetType, req.permission);
+
+      return { message: `Successfully deleted ${assetType}` };
+    }
+  });
+
+  // Get branding config for current org
+  server.route({
+    method: "GET",
+    url: "/branding",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          hasLogo: z.boolean(),
+          hasFavicon: z.boolean(),
+          primaryColor: z.string().optional(),
+          secondaryColor: z.string().optional()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const config = await req.server.services.secretSharing.getOrgBrandConfig(req.permission.orgId, req.permission);
+
+      return {
+        hasLogo: config?.hasLogo ?? false,
+        hasFavicon: config?.hasFavicon ?? false,
+        primaryColor: config?.primaryColor,
+        secondaryColor: config?.secondaryColor
+      };
+    }
+  });
+
+  // Get branding asset for current org - authenticated (for settings page preview)
+  server.route({
+    method: "GET",
+    url: "/branding/:assetType",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        assetType: z.enum(["brand-logo", "brand-favicon"])
+      })
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req, res) => {
+      const { assetType } = req.params;
+
+      const asset = await req.server.services.secretSharing.getBrandingAsset(
+        req.permission.orgId,
+        assetType,
+        req.permission
+      );
+
+      if (!asset) {
+        throw new NotFoundError({ message: `No ${assetType} configured for this organization` });
+      }
+
+      void res.header("Content-Type", asset.contentType);
+      void res.header("Cache-Control", "private, max-age=300");
+
+      return res.send(asset.data);
     }
   });
 };

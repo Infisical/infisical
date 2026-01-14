@@ -1,14 +1,20 @@
+import { ForbiddenError } from "@casl/ability";
+
 import { OrganizationActionScope, TSecretSharing } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { OrgPermissionSecretShareAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { SecretSharingAccessType } from "@app/lib/types";
+import { OrgServiceActor, SecretSharingAccessType } from "@app/lib/types";
 import { isUuidV4 } from "@app/lib/validator";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TOrgDALFactory } from "../org/org-dal";
+import { TSecretShareBrandConfig } from "../org/org-types";
+import { TOrgAssetDALFactory } from "../org-asset/org-asset-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TSecretSharingDALFactory } from "./secret-sharing-dal";
@@ -28,10 +34,12 @@ import {
 type TSecretSharingServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   secretSharingDAL: TSecretSharingDALFactory;
+  orgAssetDAL: TOrgAssetDALFactory;
   orgDAL: TOrgDALFactory;
   userDAL: TUserDALFactory;
   kmsService: TKmsServiceFactory;
   smtpService: TSmtpService;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TSecretSharingServiceFactory = ReturnType<typeof secretSharingServiceFactory>;
@@ -39,10 +47,12 @@ export type TSecretSharingServiceFactory = ReturnType<typeof secretSharingServic
 export const secretSharingServiceFactory = ({
   permissionService,
   secretSharingDAL,
+  orgAssetDAL,
   orgDAL,
   kmsService,
   smtpService,
-  userDAL
+  userDAL,
+  licenseService
 }: TSecretSharingServiceFactoryDep) => {
   const $validateSharedSecretExpiry = (expiresAt: string) => {
     if (new Date(expiresAt) < new Date()) {
@@ -308,15 +318,23 @@ export const secretSharingServiceFactory = ({
     }
 
     if (secretRequest.expiresAt && secretRequest.expiresAt < new Date()) {
-      throw new ForbiddenRequestError({
-        message: "Access denied: Secret request has expired"
-      });
+      return {
+        requestOrgId: secretRequest.orgId,
+        error: "Secret request has expired",
+        isSecretValueSet: false
+      };
     }
 
     return {
-      ...secretRequest,
+      request: secretRequest,
+      requestOrgId: secretRequest.orgId,
       isSecretValueSet: Boolean(secretRequest.encryptedSecret)
     };
+  };
+
+  const getSecretRequestOrgId = async (secretRequestId: string) => {
+    const secretRequest = await secretSharingDAL.getSecretRequestById(secretRequestId);
+    return secretRequest?.orgId ?? null;
   };
 
   const setSecretRequestValue = async ({
@@ -534,25 +552,33 @@ export const secretSharingServiceFactory = ({
       if (!user || !user.email) throw new UnauthorizedError();
 
       if (!(sharedSecret.authorizedEmails as string[]).includes(user.email))
-        throw new UnauthorizedError({ message: "Email not authorized to view secret" });
+        return {
+          isPasswordProtected: false,
+          secretOrgId: sharedSecret.orgId,
+          error: "You are not authorized to view this secret"
+        };
     }
 
     // all secrets pass through here, meaning we check if its expired first and then check if it needs verification
     // or can be safely sent to the client.
     if (expiresAt !== null && expiresAt < new Date()) {
       // check lifetime expiry
-      await secretSharingDAL.softDeleteById(sharedSecretId);
-      throw new ForbiddenRequestError({
-        message: "Access denied: Secret has expired by lifetime"
-      });
+      await secretSharingDAL.softDeleteById(sharedSecret.id);
+      return {
+        isPasswordProtected: false,
+        secretOrgId: sharedSecret.orgId,
+        error: "Unable to view secret: secret has expired"
+      };
     }
 
     if (expiresAfterViews !== null && expiresAfterViews === 0) {
       // check view count expiry
-      await secretSharingDAL.softDeleteById(sharedSecretId);
-      throw new ForbiddenRequestError({
-        message: "Access denied: Secret has expired by view count"
-      });
+      await secretSharingDAL.softDeleteById(sharedSecret.id);
+      return {
+        isPasswordProtected: false,
+        secretOrgId: sharedSecret.orgId,
+        error: "Unable to view secret: view limit reached"
+      };
     }
 
     // Password checks
@@ -563,7 +589,7 @@ export const secretSharingServiceFactory = ({
         const isMatch = await crypto.hashing().compareHash(password as string, sharedSecret.password as string);
         if (!isMatch) throw new UnauthorizedError({ message: "Invalid credentials" });
       } else {
-        return { isPasswordProtected };
+        return { isPasswordProtected, secretOrgId: sharedSecret.orgId };
       }
     }
 
@@ -580,6 +606,7 @@ export const secretSharingServiceFactory = ({
 
     return {
       isPasswordProtected,
+      secretOrgId: sharedSecret.orgId,
       secret: {
         ...sharedSecret,
         ...(decryptedSecretValue && {
@@ -607,7 +634,10 @@ export const secretSharingServiceFactory = ({
 
     const sharedSecret = isUuidV4(sharedSecretId)
       ? await secretSharingDAL.findOne({ id: sharedSecretId, type: deleteSharedSecretInput.type })
-      : await secretSharingDAL.findOne({ identifier: sharedSecretId, type: deleteSharedSecretInput.type });
+      : await secretSharingDAL.findOne({
+          identifier: Buffer.from(sharedSecretId, "base64url").toString("hex"),
+          type: deleteSharedSecretInput.type
+        });
 
     if (sharedSecret.userId !== actorId) {
       throw new ForbiddenRequestError({
@@ -618,9 +648,136 @@ export const secretSharingServiceFactory = ({
       throw new ForbiddenRequestError({ message: "User does not have permission to delete shared secret" });
     }
 
-    const deletedSharedSecret = await secretSharingDAL.deleteById(sharedSecretId);
+    const deletedSharedSecret = await secretSharingDAL.deleteById(sharedSecret.id);
 
     return deletedSharedSecret;
+  };
+
+  const getSharedSecretOrgId = async (sharedSecretId: string) => {
+    const sharedSecret = isUuidV4(sharedSecretId)
+      ? await secretSharingDAL.findOne({
+          id: sharedSecretId,
+          type: SecretSharingType.Share
+        })
+      : await secretSharingDAL.findOne({
+          identifier: Buffer.from(sharedSecretId, "base64url").toString("hex"),
+          type: SecretSharingType.Share
+        });
+
+    return sharedSecret?.orgId ?? null;
+  };
+
+  const getOrgBrandConfig = async (orgId: string, actor?: OrgServiceActor) => {
+    // When accessed via public endpoint (from shared secret), don't check permission
+    if (actor) {
+      const { permission } = await permissionService.getOrgPermission({
+        actor: actor.type,
+        actorId: actor.id,
+        orgId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        scope: OrganizationActionScope.ParentOrganization
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionSecretShareAction.ManageSettings,
+        OrgPermissionSubjects.SecretShare
+      );
+    }
+
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.secretShareExternalBranding) {
+      return null;
+    }
+
+    const org = await orgDAL.findOrgById(orgId);
+    const assets = await orgAssetDAL.listAssetsByType(orgId, ["brand-logo", "brand-favicon"]);
+
+    const hasLogo = assets.some((a) => a.assetType === "brand-logo");
+    const hasFavicon = assets.some((a) => a.assetType === "brand-favicon");
+
+    const config = org?.secretShareBrandConfig as TSecretShareBrandConfig;
+
+    if (!config && !hasLogo && !hasFavicon) {
+      return null;
+    }
+
+    return {
+      hasLogo,
+      hasFavicon,
+      primaryColor: config?.primaryColor,
+      secondaryColor: config?.secondaryColor
+    };
+  };
+
+  const getBrandingAsset = async (orgId: string, assetType: string, actor?: OrgServiceActor) => {
+    // When accessed via public endpoint (from shared secret), don't check permission
+    if (actor) {
+      const { permission } = await permissionService.getOrgPermission({
+        actor: actor.type,
+        actorId: actor.id,
+        orgId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        scope: OrganizationActionScope.ParentOrganization
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionSecretShareAction.ManageSettings,
+        OrgPermissionSubjects.SecretShare
+      );
+    }
+
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.secretShareExternalBranding) {
+      return null;
+    }
+
+    const asset = await orgAssetDAL.getFirstAsset(orgId, assetType);
+    return asset;
+  };
+
+  const uploadBrandingAsset = async (
+    orgId: string,
+    assetType: string,
+    data: Buffer,
+    contentType: string,
+    actor: OrgServiceActor
+  ) => {
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.ParentOrganization
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionSecretShareAction.ManageSettings,
+      OrgPermissionSubjects.SecretShare
+    );
+
+    const size = data.length;
+    return orgAssetDAL.upsertFirstAsset(orgId, assetType, data, contentType, size);
+  };
+
+  const deleteBrandingAsset = async (orgId: string, assetType: string, actor: OrgServiceActor) => {
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.ParentOrganization
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionSecretShareAction.ManageSettings,
+      OrgPermissionSubjects.SecretShare
+    );
+
+    await orgAssetDAL.deleteAssetsByType(orgId, assetType);
   };
 
   return {
@@ -629,9 +786,15 @@ export const secretSharingServiceFactory = ({
     getSharedSecrets,
     deleteSharedSecretById,
     getSharedSecretById,
+    getSharedSecretOrgId,
+    getOrgBrandConfig,
+    getBrandingAsset,
+    uploadBrandingAsset,
+    deleteBrandingAsset,
 
     createSecretRequest,
     getSecretRequestById,
+    getSecretRequestOrgId,
     setSecretRequestValue,
     revealSecretRequestValue
   };

@@ -133,6 +133,7 @@ export type TServerAuthStatus = {
   name: string;
   url: string;
   hasCredentials: boolean;
+  authMethod: string;
   oauthClientId?: string;
   oauthClientSecret?: string;
 };
@@ -149,4 +150,10 @@ export type TSaveUserServerCredentialDTO = {
   refreshToken?: string;
   expiresAt?: number;
   tokenType?: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TVerifyServerBearerTokenDTO = {
+  endpointId: string;
+  serverId: string;
+  accessToken: string;
 } & Omit<TProjectPermission, "projectId">;

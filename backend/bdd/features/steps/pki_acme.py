@@ -70,7 +70,7 @@ def step_impl(context: Context, profile_var: str):
                 "description": "ACME Profile created by BDD test",
                 "enrollmentType": "acme",
                 "caId": context.vars["CERT_CA_ID"],
-                "certificateTemplateId": context.vars["CERT_TEMPLATE_ID"],
+                "certificatePolicyId": context.vars["CERT_POLICY_ID"],
                 "acmeConfig": {},
             },
         )
@@ -208,17 +208,17 @@ def step_impl(context: Context, var_name: str):
     context.vars[var_name] = response
 
 
-@given("I create a certificate template with the following config as {var_name}")
+@given("I create a certificate policy with the following config as {var_name}")
 def step_impl(context: Context, var_name: str):
     jwt_token = context.vars["AUTH_TOKEN"]
-    template_slug = faker.slug()
+    policy_slug = faker.slug()
     config = replace_vars(json.loads(context.text), context.vars)
     response = context.http_client.post(
-        "/api/v1/cert-manager/certificate-templates",
+        "/api/v1/cert-manager/certificate-policies",
         headers=dict(authorization="Bearer {}".format(jwt_token)),
         json={
             "projectId": context.vars["PROJECT_ID"],
-            "name": template_slug,
+            "name": policy_slug,
             "description": "",
         }
         | config,
@@ -228,9 +228,9 @@ def step_impl(context: Context, var_name: str):
 
 
 @given(
-    'I create an ACME profile with ca {ca_id} and template {template_id} as "{profile_var}"'
+    'I create an ACME profile with ca {ca_id} and policy {policy_id} as "{profile_var}"'
 )
-def step_impl(context: Context, ca_id: str, template_id: str, profile_var: str):
+def step_impl(context: Context, ca_id: str, policy_id: str, profile_var: str):
     profile_slug = faker.slug()
     jwt_token = context.vars["AUTH_TOKEN"]
     response = context.http_client.post(
@@ -242,7 +242,7 @@ def step_impl(context: Context, ca_id: str, template_id: str, profile_var: str):
             "description": "ACME Profile created by BDD test",
             "enrollmentType": "acme",
             "caId": replace_vars(ca_id, context.vars),
-            "certificateTemplateId": replace_vars(template_id, context.vars),
+            "certificatePolicyId": replace_vars(policy_id, context.vars),
             "acmeConfig": {},
         },
     )
@@ -280,7 +280,7 @@ def step_impl(context: Context, profile_var: str):
             "description": "ACME Profile created by BDD test",
             "enrollmentType": "acme",
             "caId": context.vars["CERT_CA_ID"],
-            "certificateTemplateId": context.vars["CERT_TEMPLATE_ID"],
+            "certificatePolicyId": context.vars["CERT_POLICY_ID"],
             "acmeConfig": acme_config,
         },
     )
@@ -322,7 +322,7 @@ def step_impl(context: Context, profile_var: str):
                 "description": "ACME Profile created by BDD test",
                 "enrollmentType": "acme",
                 "caId": context.vars["CERT_CA_ID"],
-                "certificateTemplateId": context.vars["CERT_TEMPLATE_ID"],
+                "certificatePolicyId": context.vars["CERT_POLICY_ID"],
                 "acmeConfig": {},
             },
         )

@@ -14,8 +14,10 @@ import {
   TAddMCPServerForm
 } from "./AddMCPServerForm.schema";
 
-// Only OAuth is supported for now - other methods are defined in schema for future use
-const AUTH_METHOD_OPTIONS = [{ value: MCPServerAuthMethod.OAUTH, label: "OAuth" }];
+const AUTH_METHOD_OPTIONS = [
+  { value: MCPServerAuthMethod.OAUTH, label: "OAuth" },
+  { value: MCPServerAuthMethod.BEARER, label: "Bearer Token" }
+];
 
 const OAUTH_POPUP_WIDTH = 600;
 const OAUTH_POPUP_HEIGHT = 700;

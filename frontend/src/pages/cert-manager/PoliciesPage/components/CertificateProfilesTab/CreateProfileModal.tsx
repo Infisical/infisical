@@ -31,7 +31,7 @@ import {
   useCreateCertificateProfile,
   useUpdateCertificateProfile
 } from "@app/hooks/api/certificateProfiles";
-import { useListCertificateTemplatesV2 } from "@app/hooks/api/certificateTemplates/queries";
+import { useListCertificatePolicies } from "@app/hooks/api/certificatePolicies";
 
 const createSchema = z
   .object({
@@ -52,7 +52,7 @@ const createSchema = z
     enrollmentType: z.nativeEnum(EnrollmentType),
     issuerType: z.nativeEnum(IssuerType),
     certificateAuthorityId: z.string().nullable().optional(),
-    certificateTemplateId: z.string().min(1, "Certificate Template is required"),
+    certificatePolicyId: z.string().min(1, "Certificate Policy is required"),
     estConfig: z
       .object({
         disableBootstrapCaValidation: z.boolean().optional(),
@@ -208,7 +208,7 @@ const editSchema = z
     enrollmentType: z.nativeEnum(EnrollmentType),
     issuerType: z.nativeEnum(IssuerType),
     certificateAuthorityId: z.string().nullable().optional(),
-    certificateTemplateId: z.string().optional(),
+    certificatePolicyId: z.string().optional(),
     estConfig: z
       .object({
         disableBootstrapCaValidation: z.boolean().optional(),
@@ -346,7 +346,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
   const { currentProject } = useProject();
 
   const { data: allCaData } = useListCasByProjectId(currentProject?.id || "");
-  const { data: templateData } = useListCertificateTemplatesV2({
+  const { data: policyData } = useListCertificatePolicies({
     projectId: currentProject?.id || "",
     limit: 100,
     offset: 0
@@ -361,7 +361,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
     ...ca,
     groupType: ca.type === "internal" ? "internal" : "external"
   }));
-  const certificateTemplates = templateData?.certificateTemplates || [];
+  const certificatePolicies = policyData?.certificatePolicies || [];
 
   const getGroupHeaderLabel = (groupType: "internal" | "external") => {
     switch (groupType) {
@@ -383,7 +383,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
           enrollmentType: profile.enrollmentType,
           issuerType: profile.issuerType,
           certificateAuthorityId: profile.caId || undefined,
-          certificateTemplateId: profile.certificateTemplateId,
+          certificatePolicyId: profile.certificatePolicyId,
           estConfig:
             profile.enrollmentType === EnrollmentType.EST
               ? {
@@ -424,7 +424,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
           enrollmentType: EnrollmentType.API,
           issuerType: IssuerType.CA,
           certificateAuthorityId: "",
-          certificateTemplateId: "",
+          certificatePolicyId: "",
           apiConfig: {
             autoRenew: false,
             renewBeforeDays: 30
@@ -461,7 +461,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
         enrollmentType: profile.enrollmentType,
         issuerType: profile.issuerType,
         certificateAuthorityId: profile.caId || undefined,
-        certificateTemplateId: profile.certificateTemplateId,
+        certificatePolicyId: profile.certificatePolicyId,
         estConfig:
           profile.enrollmentType === "est"
             ? {
@@ -569,7 +569,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
           data.issuerType === IssuerType.SELF_SIGNED
             ? undefined
             : data.certificateAuthorityId || undefined,
-        certificateTemplateId: data.certificateTemplateId
+        certificatePolicyId: data.certificatePolicyId
       };
 
       if (data.enrollmentType === EnrollmentType.EST && data.estConfig) {
@@ -770,10 +770,10 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
 
           <Controller
             control={control}
-            name="certificateTemplateId"
+            name="certificatePolicyId"
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
               <FormControl
-                label="Certificate Template"
+                label="Certificate Policy"
                 isRequired
                 isError={Boolean(error)}
                 errorText={error?.message}
@@ -804,14 +804,14 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                     }
                     onChange(value);
                   }}
-                  placeholder="Select a certificate template"
+                  placeholder="Select a certificate policy"
                   className="w-full"
                   position="popper"
                   isDisabled={Boolean(isEdit)}
                 >
-                  {certificateTemplates.map((template) => (
-                    <SelectItem key={template.id} value={template.id}>
-                      {template.name}
+                  {certificatePolicies.map((policy) => (
+                    <SelectItem key={policy.id} value={policy.id}>
+                      {policy.name}
                     </SelectItem>
                   ))}
                 </Select>

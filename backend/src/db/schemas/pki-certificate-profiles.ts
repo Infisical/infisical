@@ -11,7 +11,7 @@ export const PkiCertificateProfilesSchema = z.object({
   id: z.string().uuid(),
   projectId: z.string(),
   caId: z.string().uuid().nullable().optional(),
-  certificateTemplateId: z.string().uuid(),
+  certificatePolicyId: z.string().uuid(),
   slug: z.string(),
   description: z.string().nullable().optional(),
   enrollmentType: z.string(),

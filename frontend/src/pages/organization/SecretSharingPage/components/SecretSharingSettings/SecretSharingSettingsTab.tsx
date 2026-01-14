@@ -4,6 +4,7 @@ import { withPermission } from "@app/hoc";
 
 import { OrgSecretShareLimitSection } from "./OrgSecretShareLimitSection";
 import { SecretSharingAllowShareToAnyone } from "./SecretSharingAllowShareToAnyone";
+import { SecretSharingBrandingSection } from "./SecretSharingBrandingSection";
 
 export const SecretSharingSettingsTab = withPermission(
   () => {
@@ -11,6 +12,7 @@ export const SecretSharingSettingsTab = withPermission(
       <div className="w-full">
         <SecretSharingAllowShareToAnyone />
         <OrgSecretShareLimitSection />
+        <SecretSharingBrandingSection />
       </div>
     );
   },

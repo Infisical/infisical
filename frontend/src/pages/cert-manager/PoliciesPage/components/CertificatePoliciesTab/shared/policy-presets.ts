@@ -7,22 +7,22 @@ import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeInclude,
   CertSubjectAttributeType,
-  TEMPLATE_PRESET_IDS,
-  type TemplatePresetId
+  POLICY_PRESET_IDS,
+  type PolicyPresetId
 } from "./certificate-constants";
-import { TemplateFormData } from ".";
+import { PolicyFormData } from ".";
 
-export interface CertificateTemplatePreset {
-  readonly id: TemplatePresetId;
+export interface CertificatePolicyPreset {
+  readonly id: PolicyPresetId;
   readonly name: string;
   readonly description: string;
   readonly useCase: string;
-  readonly formData: Omit<TemplateFormData, "preset">;
+  readonly formData: Omit<PolicyFormData, "preset">;
 }
 
-export const CERTIFICATE_TEMPLATE_PRESETS: CertificateTemplatePreset[] = [
+export const CERTIFICATE_POLICY_PRESETS: CertificatePolicyPreset[] = [
   {
-    id: TEMPLATE_PRESET_IDS.TLS_SERVER,
+    id: POLICY_PRESET_IDS.TLS_SERVER,
     name: "TLS Server Certificate",
     description: "Standard TLS/SSL server certificate for HTTPS services and API endpoints.",
     useCase: "Web servers, API endpoints, HTTPS services",
@@ -71,7 +71,7 @@ export const CERTIFICATE_TEMPLATE_PRESETS: CertificateTemplatePreset[] = [
     }
   },
   {
-    id: TEMPLATE_PRESET_IDS.TLS_CLIENT,
+    id: POLICY_PRESET_IDS.TLS_CLIENT,
     name: "TLS Client Certificate",
     description: "Client certificate for mutual TLS authentication and API access.",
     useCase: "Client authentication, mTLS, API authentication",
@@ -120,7 +120,7 @@ export const CERTIFICATE_TEMPLATE_PRESETS: CertificateTemplatePreset[] = [
     }
   },
   {
-    id: TEMPLATE_PRESET_IDS.CODE_SIGNING,
+    id: POLICY_PRESET_IDS.CODE_SIGNING,
     name: "Code Signing Certificate",
     description:
       "Certificate for signing software, executables, and packages. Requires hardware security modules.",
@@ -169,7 +169,7 @@ export const CERTIFICATE_TEMPLATE_PRESETS: CertificateTemplatePreset[] = [
     }
   },
   {
-    id: TEMPLATE_PRESET_IDS.DEVICE,
+    id: POLICY_PRESET_IDS.DEVICE,
     name: "Device Certificate",
     description:
       "Certificate for IoT devices and embedded systems authentication. IEEE 802.1AR compliant.",
@@ -220,7 +220,7 @@ export const CERTIFICATE_TEMPLATE_PRESETS: CertificateTemplatePreset[] = [
     }
   },
   {
-    id: TEMPLATE_PRESET_IDS.USER,
+    id: POLICY_PRESET_IDS.USER,
     name: "User Certificate",
     description:
       "Personal certificate for user authentication and email signing. FIPS 201 PIV compliant.",
@@ -276,7 +276,7 @@ export const CERTIFICATE_TEMPLATE_PRESETS: CertificateTemplatePreset[] = [
     }
   },
   {
-    id: TEMPLATE_PRESET_IDS.EMAIL_PROTECTION,
+    id: POLICY_PRESET_IDS.EMAIL_PROTECTION,
     name: "Email Protection Certificate",
     description: "S/MIME certificate for email encryption and digital signing. RFC 8550 compliant.",
     useCase: "Email encryption, digital signing, secure messaging",
@@ -325,7 +325,7 @@ export const CERTIFICATE_TEMPLATE_PRESETS: CertificateTemplatePreset[] = [
     }
   },
   {
-    id: TEMPLATE_PRESET_IDS.DUAL_PURPOSE_SERVER,
+    id: POLICY_PRESET_IDS.DUAL_PURPOSE_SERVER,
     name: "Dual-Purpose Server Certificate",
     description:
       "Certificate for services requiring both server and client authentication capabilities",
