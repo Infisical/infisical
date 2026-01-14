@@ -88,6 +88,7 @@ export type TServerAuthStatus = {
   name: string;
   url: string;
   hasCredentials: boolean;
+  authMethod: string;
 };
 
 export type TInitiateServerOAuthDTO = {
@@ -102,4 +103,15 @@ export type TSaveUserServerCredentialDTO = {
   refreshToken?: string;
   expiresAt?: number;
   tokenType?: string;
+};
+
+export type TVerifyServerBearerTokenDTO = {
+  endpointId: string;
+  serverId: string;
+  accessToken: string;
+};
+
+export type TVerifyServerBearerTokenResponse = {
+  valid: boolean;
+  message?: string;
 };
