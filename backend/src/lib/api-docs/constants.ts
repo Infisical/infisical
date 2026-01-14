@@ -2884,6 +2884,9 @@ export const SecretRotations = {
   ROTATE: (type: SecretRotation) => ({
     rotationId: `The ID of the ${SECRET_ROTATION_NAME_MAP[type]} Rotation to rotate generated credentials for.`
   }),
+  RECONCILE: {
+    rotationId: "The ID of the SSH Password Rotation to reconcile credentials for."
+  },
   PARAMETERS: {
     SQL_CREDENTIALS: {
       username1:
@@ -2905,6 +2908,12 @@ export const SecretRotations = {
       rotationMethod:
         'Whether the rotation should be performed by the LDAP "connection-principal" or the "target-principal" (defaults to \'connection-principal\').',
       password: 'The password of the provided principal if "parameters.rotationMethod" is set to "target-principal".'
+    },
+    SSH_PASSWORD: {
+      username: "The username of the Unix/Linux user account to rotate the password for.",
+      rotationMethod:
+        'Whether the rotation should be performed using "self" (the target user\'s own credentials) or "managed" (the SSH connection\'s admin credentials). Defaults to "managed".',
+      password: 'The current password of the target user if "parameters.rotationMethod" is set to "managed".'
     },
     GENERAL: {
       PASSWORD_REQUIREMENTS: {
@@ -2965,6 +2974,10 @@ export const SecretRotations = {
     },
     LDAP_PASSWORD: {
       dn: "The name of the secret that the Distinguished Name (DN) or User Principal Name (UPN) of the principal will be mapped to.",
+      password: "The name of the secret that the rotated password will be mapped to."
+    },
+    SSH_PASSWORD: {
+      username: "The name of the secret that the username will be mapped to.",
       password: "The name of the secret that the rotated password will be mapped to."
     },
     AWS_IAM_USER_SECRET: {

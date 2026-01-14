@@ -487,6 +487,7 @@ export enum EventType {
   UPDATE_SECRET_ROTATION = "update-secret-rotation",
   DELETE_SECRET_ROTATION = "delete-secret-rotation",
   SECRET_ROTATION_ROTATE_SECRETS = "secret-rotation-rotate-secrets",
+  RECONCILE_SECRET_ROTATION = "reconcile-secret-rotation",
 
   PROJECT_ACCESS_REQUEST = "project-access-request",
 
@@ -3702,6 +3703,15 @@ interface RotateSecretRotationEvent {
   };
 }
 
+interface ReconcileSecretRotationEvent {
+  type: EventType.RECONCILE_SECRET_ROTATION;
+  metadata: {
+    type: string;
+    rotationId: string;
+    reconciled: boolean;
+  };
+}
+
 interface MicrosoftTeamsWorkflowIntegrationCreateEvent {
   type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CREATE;
   metadata: {
@@ -5204,6 +5214,7 @@ export type Event =
   | UpdateSecretRotationEvent
   | DeleteSecretRotationEvent
   | RotateSecretRotationEvent
+  | ReconcileSecretRotationEvent
   | MicrosoftTeamsWorkflowIntegrationCreateEvent
   | MicrosoftTeamsWorkflowIntegrationDeleteEvent
   | MicrosoftTeamsWorkflowIntegrationCheckInstallationStatusEvent

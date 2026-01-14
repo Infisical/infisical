@@ -12,6 +12,7 @@ import { OktaClientSecretRotationSchema } from "@app/ee/services/secret-rotation
 import { OracleDBCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/oracledb-credentials";
 import { PostgresCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/postgres-credentials";
 import { RedisCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/redis-credentials";
+import { SshPasswordRotationSchema } from "@app/ee/services/secret-rotation-v2/ssh-password";
 
 export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   PostgresCredentialsRotationSchema,
@@ -25,5 +26,6 @@ export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   OktaClientSecretRotationSchema,
   RedisCredentialsRotationSchema,
   MongoDBCredentialsRotationSchema,
-  DatabricksServicePrincipalSecretRotationSchema
+  DatabricksServicePrincipalSecretRotationSchema,
+  SshPasswordRotationSchema
 ]);

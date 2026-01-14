@@ -89,6 +89,12 @@ import { mongodbCredentialsRotationFactory } from "./mongodb-credentials/mongodb
 import { oktaClientSecretRotationFactory } from "./okta-client-secret/okta-client-secret-rotation-fns";
 import { redisCredentialsRotationFactory } from "./redis-credentials/redis-credentials-rotation-fns";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
+import { sshPasswordRotationFactory } from "./ssh-password/ssh-password-rotation-fns";
+import { SshPasswordRotationMethod } from "./ssh-password/ssh-password-rotation-schemas";
+import {
+  TSshPasswordRotation,
+  TSshPasswordRotationGeneratedCredentials
+} from "./ssh-password/ssh-password-rotation-types";
 
 export type TSecretRotationV2ServiceFactoryDep = {
   secretRotationV2DAL: TSecretRotationV2DALFactory;
@@ -139,7 +145,8 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.RedisCredentials]: redisCredentialsRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.MongoDBCredentials]: mongodbCredentialsRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.DatabricksServicePrincipalSecret]:
-    databricksServicePrincipalSecretRotationFactory as TRotationFactoryImplementation
+    databricksServicePrincipalSecretRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.SshPassword]: sshPasswordRotationFactory as TRotationFactoryImplementation
 };
 
 export const secretRotationV2ServiceFactory = ({
@@ -1374,6 +1381,166 @@ export const secretRotationV2ServiceFactory = ({
     return secretRotations as TSecretRotationV2[];
   };
 
+  const reconcileSshPasswordRotation = async ({ rotationId }: { rotationId: string }, actor: OrgServiceActor) => {
+    const plan = await licenseService.getPlan(actor.orgId);
+
+    if (!plan.secretRotation)
+      throw new BadRequestError({
+        message:
+          "Failed to reconcile secret rotation due to plan restriction. Upgrade plan to reconcile secret rotations."
+      });
+
+    const secretRotation = await secretRotationV2DAL.findById(rotationId);
+
+    if (!secretRotation)
+      throw new NotFoundError({
+        message: `Could not find Secret Rotation with ID "${rotationId}"`
+      });
+
+    if (secretRotation.type !== SecretRotation.SshPassword)
+      throw new BadRequestError({
+        message: "Reconcile operation is only supported for SSH Password rotations"
+      });
+
+    const { projectId, environment, folder, connection, encryptedGeneratedCredentials, parameters, folderId } =
+      secretRotation;
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager,
+      projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretRotationActions.Edit,
+      subject(ProjectPermissionSub.SecretRotation, {
+        environment: environment.slug,
+        secretPath: folder.path
+      })
+    );
+
+    const sshParams = parameters as TSshPasswordRotation["parameters"];
+
+    // Only allow reconcile for self-rotation mode
+    if (sshParams.rotationMethod !== SshPasswordRotationMethod.LoginAsTarget) {
+      throw new BadRequestError({
+        message: "Reconcile operation is only supported for self-rotation mode SSH Password rotations"
+      });
+    }
+
+    // Get current generated credentials
+    const generatedCredentials = await decryptSecretRotationCredentials({
+      projectId,
+      encryptedGeneratedCredentials,
+      kmsService
+    });
+
+    const activeCredentials = generatedCredentials[
+      secretRotation.activeIndex
+    ] as TSshPasswordRotationGeneratedCredentials[number];
+    const appConnection = await decryptAppConnection(connection, kmsService);
+
+    // Use the rotation factory to perform a rotation using the app connection credentials
+    const rotationFactory = SECRET_ROTATION_FACTORY_MAP[SecretRotation.SshPassword](
+      {
+        ...secretRotation,
+        // Override rotation method to managed so it uses the app connection credentials
+        parameters: {
+          ...sshParams,
+          rotationMethod: SshPasswordRotationMethod.LoginAsRoot
+        },
+        connection: appConnection
+      } as TSecretRotationV2WithConnection,
+      appConnectionDAL,
+      kmsService,
+      gatewayService,
+      gatewayV2Service
+    );
+
+    // Issue new credentials using managed mode (app connection credentials)
+    const updatedRotation = await rotationFactory.issueCredentials(
+      async (newCredentials) => {
+        const sshCredentials = newCredentials as TSshPasswordRotationGeneratedCredentials[number];
+        const updatedCredentials = [...generatedCredentials];
+        updatedCredentials[secretRotation.activeIndex] = sshCredentials;
+
+        const encryptedUpdatedCredentials = await encryptSecretRotationCredentials({
+          projectId,
+          generatedCredentials: updatedCredentials as TSecretRotationV2GeneratedCredentials,
+          kmsService
+        });
+
+        return secretRotationV2DAL.transaction(async (tx) => {
+          const { encryptor } = await kmsService.createCipherPairWithDataKey({
+            type: KmsDataKey.SecretManager,
+            projectId
+          });
+
+          // Update the password secret with the new value
+          const secretsMapping = secretRotation.secretsMapping as TSshPasswordRotation["secretsMapping"];
+
+          await fnSecretBulkUpdate({
+            folderId,
+            orgId: connection.orgId,
+            tx,
+            inputSecrets: [
+              {
+                filter: {
+                  key: secretsMapping.password,
+                  folderId,
+                  type: SecretType.Shared
+                },
+                data: {
+                  encryptedValue: encryptor({
+                    plainText: Buffer.from(sshCredentials.password)
+                  }).cipherTextBlob,
+                  references: []
+                }
+              }
+            ],
+            secretDAL: secretV2BridgeDAL,
+            secretVersionDAL: secretVersionV2BridgeDAL,
+            secretVersionTagDAL: secretVersionTagV2BridgeDAL,
+            folderCommitService,
+            actor: { type: ActorType.PLATFORM },
+            secretTagDAL,
+            resourceMetadataDAL
+          });
+
+          return secretRotationV2DAL.updateById(
+            rotationId,
+            {
+              encryptedGeneratedCredentials: encryptedUpdatedCredentials,
+              lastRotatedAt: new Date(),
+              rotationStatus: SecretRotationStatus.Success
+            },
+            tx
+          );
+        });
+      },
+      { password: activeCredentials.password }
+    );
+
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
+    await snapshotService.performSnapshot(folder.id);
+    await secretQueueService.syncSecrets({
+      orgId: connection.orgId,
+      secretPath: folder.path,
+      projectId,
+      environmentSlug: environment.slug,
+      excludeReplication: true
+    });
+
+    return {
+      message: "SSH password credentials reconciled successfully",
+      reconciled: true,
+      secretRotation: await expandSecretRotation(updatedRotation, kmsService)
+    };
+  };
+
   return {
     listSecretRotationOptions,
     listSecretRotationsByProjectId,
@@ -1387,6 +1554,7 @@ export const secretRotationV2ServiceFactory = ({
     rotateGeneratedCredentials,
     getDashboardSecretRotationCount,
     getDashboardSecretRotations,
-    getQuickSearchSecretRotations
+    getQuickSearchSecretRotations,
+    reconcileSshPasswordRotation
   };
 };
