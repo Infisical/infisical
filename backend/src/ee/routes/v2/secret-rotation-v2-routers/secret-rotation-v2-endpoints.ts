@@ -58,6 +58,7 @@ export const registerSecretRotationEndpoints = <
   generatedCredentialsSchema: z.ZodTypeAny;
 }) => {
   const rotationType = SECRET_ROTATION_NAME_MAP[type];
+  const rotationTypeId = rotationType.replace(/\s+/g, "");
 
   server.route({
     method: "GET",
@@ -67,6 +68,7 @@ export const registerSecretRotationEndpoints = <
     },
     schema: {
       hide: false,
+      operationId: `list${rotationTypeId}Rotations`,
       tags: [ApiDocsTags.SecretRotations],
       description: `List the ${rotationType} Rotations for the specified project.`,
       querystring: z.object({
@@ -112,6 +114,7 @@ export const registerSecretRotationEndpoints = <
     },
     schema: {
       hide: false,
+      operationId: `get${rotationTypeId}Rotation`,
       tags: [ApiDocsTags.SecretRotations],
       description: `Get the specified ${rotationType} Rotation by ID.`,
       params: z.object({
@@ -156,6 +159,7 @@ export const registerSecretRotationEndpoints = <
     },
     schema: {
       hide: false,
+      operationId: `get${rotationTypeId}RotationByName`,
       tags: [ApiDocsTags.SecretRotations],
       description: `Get the specified ${rotationType} Rotation by name, secret path, environment and project ID.`,
       params: z.object({
@@ -222,6 +226,7 @@ export const registerSecretRotationEndpoints = <
     },
     schema: {
       hide: false,
+      operationId: `create${rotationTypeId}Rotation`,
       tags: [ApiDocsTags.SecretRotations],
       description: `Create ${
         startsWithVowel(rotationType) ? "an" : "a"
@@ -263,6 +268,7 @@ export const registerSecretRotationEndpoints = <
     },
     schema: {
       hide: false,
+      operationId: `update${rotationTypeId}Rotation`,
       tags: [ApiDocsTags.SecretRotations],
       description: `Update the specified ${rotationType} Rotation.`,
       params: z.object({
@@ -307,6 +313,7 @@ export const registerSecretRotationEndpoints = <
     },
     schema: {
       hide: false,
+      operationId: `delete${rotationTypeId}Rotation`,
       tags: [ApiDocsTags.SecretRotations],
       description: `Delete the specified ${rotationType} Rotation.`,
       params: z.object({
@@ -364,6 +371,7 @@ export const registerSecretRotationEndpoints = <
     },
     schema: {
       hide: false,
+      operationId: `get${rotationTypeId}RotationGeneratedCredentials`,
       tags: [ApiDocsTags.SecretRotations],
       description: `Get the generated credentials for the specified ${rotationType} Rotation.`,
       params: z.object({
@@ -419,6 +427,7 @@ export const registerSecretRotationEndpoints = <
     },
     schema: {
       hide: false,
+      operationId: `rotate${rotationTypeId}Rotation`,
       tags: [ApiDocsTags.SecretRotations],
       description: `Rotate the generated credentials for the specified ${rotationType} Rotation.`,
       params: z.object({
