@@ -96,6 +96,7 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
     },
     schema: {
       hide: false,
+      operationId: "loginWithJwtAuth",
       tags: [ApiDocsTags.JwtAuth],
       description: "Login with JWT Auth for machine identity",
       body: z.object({
@@ -146,6 +147,7 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "attachJwtAuth",
       tags: [ApiDocsTags.JwtAuth],
       description: "Attach JWT Auth configuration onto machine identity",
       security: [
@@ -215,6 +217,7 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "updateJwtAuth",
       tags: [ApiDocsTags.JwtAuth],
       description: "Update JWT Auth configuration on machine identity",
       security: [
@@ -281,6 +284,7 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "getJwtAuth",
       tags: [ApiDocsTags.JwtAuth],
       description: "Retrieve JWT Auth configuration on machine identity",
       security: [
@@ -330,6 +334,7 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "deleteJwtAuth",
       tags: [ApiDocsTags.JwtAuth],
       description: "Delete JWT Auth configuration on machine identity",
       security: [

@@ -91,6 +91,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       rateLimit: authRateLimit
     },
     schema: {
+      operationId: "unlockUser",
       querystring: z.object({
         token: z.string().trim()
       }),

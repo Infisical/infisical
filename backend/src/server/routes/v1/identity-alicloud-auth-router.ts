@@ -21,6 +21,7 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
     },
     schema: {
       hide: false,
+      operationId: "loginWithAlicloudAuth",
       tags: [ApiDocsTags.AliCloudAuth],
       description: "Login with Alibaba Cloud Auth for machine identity",
       body: z.object({
@@ -109,6 +110,7 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "attachAlicloudAuth",
       tags: [ApiDocsTags.AliCloudAuth],
       description: "Attach Alibaba Cloud Auth configuration onto machine identity",
       security: [
@@ -201,6 +203,7 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "updateAlicloudAuth",
       tags: [ApiDocsTags.AliCloudAuth],
       description: "Update Alibaba Cloud Auth configuration on machine identity",
       security: [
@@ -293,6 +296,7 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "getAlicloudAuth",
       tags: [ApiDocsTags.AliCloudAuth],
       description: "Retrieve Alibaba Cloud Auth configuration on machine identity",
       security: [
@@ -341,6 +345,7 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "deleteAlicloudAuth",
       tags: [ApiDocsTags.AliCloudAuth],
       description: "Delete Alibaba Cloud Auth configuration on machine identity",
       security: [

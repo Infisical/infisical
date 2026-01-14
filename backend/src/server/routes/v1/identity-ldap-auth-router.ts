@@ -120,6 +120,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     },
     schema: {
       hide: false,
+      operationId: "loginWithLdapAuth",
       tags: [ApiDocsTags.LdapAuth],
       description: "Login with LDAP Auth for machine identity",
       body: z.object({
@@ -200,6 +201,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "attachLdapAuth",
       tags: [ApiDocsTags.LdapAuth],
       description: "Attach LDAP Auth configuration onto machine identity",
       security: [
@@ -391,6 +393,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "updateLdapAuth",
       tags: [ApiDocsTags.LdapAuth],
       description: "Update LDAP Auth configuration on machine identity",
       security: [
@@ -512,6 +515,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "getLdapAuth",
       tags: [ApiDocsTags.LdapAuth],
       description: "Retrieve LDAP Auth configuration on machine identity",
       security: [
@@ -570,6 +574,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "deleteLdapAuth",
       tags: [ApiDocsTags.LdapAuth],
       description: "Delete LDAP Auth configuration on machine identity",
       security: [
@@ -623,6 +628,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "clearLdapAuthLockouts",
       tags: [ApiDocsTags.LdapAuth],
       description: "Clear LDAP Auth Lockouts for machine identity",
       security: [
