@@ -27,7 +27,6 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
     },
     schema: {
       hide: false,
-      operationId: "listProjectMemberships",
       tags: [ApiDocsTags.ProjectUsers],
       description: "Return project user memberships",
       security: [
@@ -97,7 +96,6 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
       rateLimit: readLimit
     },
     schema: {
-      operationId: "getProjectMembership",
       description: "Return project user membership",
       security: [
         {
@@ -173,7 +171,6 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
     },
     schema: {
       hide: false,
-      operationId: "getProjectMembershipByUsername",
       tags: [ApiDocsTags.ProjectUsers],
       description: "Return project user memberships",
       security: [
@@ -235,7 +232,6 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
       rateLimit: writeLimit
     },
     schema: {
-      operationId: "addUsersToProject",
       params: z.object({
         workspaceId: z.string().trim()
       }),
@@ -299,7 +295,6 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
     },
     schema: {
       hide: false,
-      operationId: "updateProjectMembership",
       tags: [ApiDocsTags.ProjectUsers],
       description: "Update project user membership",
       security: [
@@ -372,7 +367,6 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
       rateLimit: writeLimit
     },
     schema: {
-      operationId: "deleteProjectMembership",
       description: "Delete project user membership",
       security: [
         {

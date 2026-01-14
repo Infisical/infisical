@@ -28,7 +28,6 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "getCertificate",
       tags: [ApiDocsTags.PkiCertificates],
       description: "Get certificate",
       params: z.object({
@@ -78,7 +77,6 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "getCertificatePrivateKey",
       tags: [ApiDocsTags.PkiCertificates],
       description: "Get certificate private key",
       params: z.object({
@@ -126,7 +124,6 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "getCertificateBundle",
       tags: [ApiDocsTags.PkiCertificates],
       description: "Get certificate bundle including the certificate, chain, and private key.",
       params: z.object({
@@ -184,7 +181,6 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "issueCertificate",
       tags: [ApiDocsTags.PkiCertificates],
       description: "Issue certificate",
       body: z
@@ -299,7 +295,6 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "importCertificate",
       tags: [ApiDocsTags.PkiCertificates],
       description: "Import certificate",
       body: z.object({
@@ -362,7 +357,6 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "signCertificate",
       tags: [ApiDocsTags.PkiCertificates],
       description: "Sign certificate",
       body: z
@@ -477,7 +471,6 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "revokeCertificate",
       tags: [ApiDocsTags.PkiCertificates],
       description: "Revoke",
       params: z.object({
@@ -534,7 +527,6 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "deleteCertificate",
       tags: [ApiDocsTags.PkiCertificates],
       description: "Delete certificate",
       params: z.object({
@@ -583,7 +575,6 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "getCertificateBody",
       tags: [ApiDocsTags.PkiCertificates],
       description: "Get certificate body of certificate",
       params: z.object({
@@ -636,7 +627,6 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       hide: true,
-      operationId: "exportCertificatePkcs12",
       tags: [ApiDocsTags.PkiCertificates],
       description: "Download certificate in PKCS12 format",
       params: z.object({

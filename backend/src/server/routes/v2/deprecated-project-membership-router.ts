@@ -16,7 +16,6 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
     },
     schema: {
       hide: false,
-      operationId: "inviteMembersToProject",
       tags: [ApiDocsTags.ProjectUsers],
       description: "Invite members to project",
       security: [
@@ -109,7 +108,6 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
     },
     schema: {
       hide: false,
-      operationId: "removeMembersFromProject",
       tags: [ApiDocsTags.ProjectUsers],
       description: "Remove members from project",
       security: [

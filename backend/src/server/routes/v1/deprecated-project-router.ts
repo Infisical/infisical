@@ -38,7 +38,6 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
-      operationId: "listProjects",
       querystring: z.object({
         includeRoles: z
           .enum(["true", "false"])
@@ -78,7 +77,6 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: false,
-      operationId: "getProject",
       tags: [ApiDocsTags.Projects],
       description: "Get project",
       security: [
@@ -119,7 +117,6 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: false,
-      operationId: "deleteProject",
       tags: [ApiDocsTags.Projects],
       description: "Delete project",
       security: [
@@ -171,7 +168,6 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: false,
-      operationId: "updateProject",
       tags: [ApiDocsTags.Projects],
       description: "Update project",
       security: [
@@ -268,7 +264,6 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
       rateLimit: writeLimit
     },
     schema: {
-      operationId: "updateProjectAuditLogsRetention",
       params: z.object({
         workspaceSlug: z.string().trim()
       }),
@@ -322,7 +317,6 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: false,
-      operationId: "listProjectIntegrations",
       tags: [ApiDocsTags.Integrations],
       description: "List integrations for a project.",
       security: [
@@ -368,7 +362,6 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: false,
-      operationId: "listProjectIntegrationAuthorizations",
       tags: [ApiDocsTags.Integrations],
       description: "List integration auth objects for a workspace.",
       security: [
@@ -405,7 +398,6 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
-      operationId: "getProjectSshConfig",
       params: z.object({
         workspaceId: z.string().trim()
       }),
@@ -453,7 +445,6 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
       rateLimit: writeLimit
     },
     schema: {
-      operationId: "updateProjectSshConfig",
       params: z.object({
         workspaceId: z.string().trim()
       }),
@@ -508,7 +499,6 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
-      operationId: "getProjectWorkflowIntegrationConfig",
       params: z.object({
         workspaceId: z.string().trim(),
         integration: z.nativeEnum(WorkflowIntegration)
@@ -576,7 +566,6 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
       rateLimit: writeLimit
     },
     schema: {
-      operationId: "deleteProjectWorkflowIntegration",
       params: z.object({
         projectId: z.string().trim(),
         integration: z.nativeEnum(WorkflowIntegration),
@@ -615,7 +604,6 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
-      operationId: "updateProjectWorkflowIntegration",
       params: z.object({
         workspaceId: z.string().trim()
       }),
@@ -710,7 +698,6 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
-      operationId: "searchProjects",
       body: z.object({
         limit: z.number().default(100),
         offset: z.number().default(0),
