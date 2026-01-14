@@ -1180,7 +1180,6 @@ export const aiMcpEndpointServiceFactory = ({
 
       return { valid: true };
     } catch (error) {
-
       const err = error as { code?: string | number; cause?: { code?: string } };
       const errCode = err?.code || err?.cause?.code;
 
