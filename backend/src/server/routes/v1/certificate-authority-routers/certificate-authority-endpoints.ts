@@ -43,6 +43,7 @@ export const registerCertificateAuthorityEndpoints = <
     },
     schema: {
       hide: false,
+      operationId: "listCertificateAuthorities",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       querystring: z.object({
         projectId: z.string().trim().min(1, "Project ID required")
@@ -85,6 +86,7 @@ export const registerCertificateAuthorityEndpoints = <
     },
     schema: {
       hide: false,
+      operationId: "getCertificateAuthority",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       params: z.object({
         id: z.string()
@@ -126,6 +128,7 @@ export const registerCertificateAuthorityEndpoints = <
     },
     schema: {
       hide: false,
+      operationId: "createCertificateAuthority",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       body: createSchema,
       response: {
@@ -163,6 +166,7 @@ export const registerCertificateAuthorityEndpoints = <
     },
     schema: {
       hide: false,
+      operationId: "updateCertificateAuthority",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       params: z.object({
         id: z.string()
@@ -210,6 +214,7 @@ export const registerCertificateAuthorityEndpoints = <
     },
     schema: {
       hide: false,
+      operationId: "deleteCertificateAuthority",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       params: z.object({
         id: z.string()
