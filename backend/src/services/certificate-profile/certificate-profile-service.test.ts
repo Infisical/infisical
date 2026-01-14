@@ -96,7 +96,7 @@ describe("CertificateProfileService", () => {
     enrollmentType: EnrollmentType.API,
     issuerType: IssuerType.CA,
     caId: "ca-123",
-    certificatePolicyId: "template-123",
+    certificatePolicyId: "policy-123",
     apiConfigId: "api-config-123",
     estConfigId: null,
     externalConfigs: null,
@@ -112,11 +112,11 @@ describe("CertificateProfileService", () => {
       status: "active",
       name: "Test CA"
     },
-    certificateTemplate: {
-      id: "template-123",
+    certificatePolicy: {
+      id: "policy-123",
       projectId: "project-123",
-      name: "Test Template",
-      description: "Test template"
+      name: "Test Policy",
+      description: "Test policy"
     },
     apiConfig: {
       id: "api-config-123",
@@ -125,10 +125,10 @@ describe("CertificateProfileService", () => {
     }
   };
 
-  const sampleTemplate = {
-    id: "template-123",
+  const samplePolicy = {
+    id: "policy-123",
     projectId: "project-123",
-    name: "Test Template"
+    name: "Test Policy"
   };
 
   const mockApiEnrollmentConfigDAL = {
@@ -269,7 +269,7 @@ describe("CertificateProfileService", () => {
       enrollmentType: EnrollmentType.API,
       issuerType: IssuerType.CA,
       caId: "ca-123",
-      certificatePolicyId: "template-123",
+      certificatePolicyId: "policy-123",
       apiConfig: {
         autoRenew: true,
         renewBeforeDays: 30
@@ -281,7 +281,7 @@ describe("CertificateProfileService", () => {
         id: "project-123",
         orgId: "org-123"
       });
-      (mockCertificatePolicyDAL.findById as any).mockResolvedValue(sampleTemplate);
+      (mockCertificatePolicyDAL.findById as any).mockResolvedValue(samplePolicy);
       (mockCertificateProfileDAL.findByNameAndProjectId as any).mockResolvedValue(null);
       (mockCertificateProfileDAL.findBySlugAndProjectId as any).mockResolvedValue(null);
       (mockCertificateProfileDAL.create as any).mockResolvedValue({
@@ -298,7 +298,7 @@ describe("CertificateProfileService", () => {
       });
 
       expect(result).toEqual(sampleProfile);
-      expect(mockCertificatePolicyDAL.findById).toHaveBeenCalledWith("template-123");
+      expect(mockCertificatePolicyDAL.findById).toHaveBeenCalledWith("policy-123");
       expect(mockCertificateProfileDAL.findBySlugAndProjectId).toHaveBeenCalledWith("new-profile", "project-123");
       expect(mockCertificateProfileDAL.create).toHaveBeenCalledWith(
         {
@@ -307,7 +307,7 @@ describe("CertificateProfileService", () => {
           enrollmentType: EnrollmentType.API,
           issuerType: IssuerType.CA,
           caId: "ca-123",
-          certificateTemplateId: "template-123",
+          certificatePolicyId: "policy-123",
           apiConfigId: "api-config-123",
           estConfigId: null,
           acmeConfigId: null,
@@ -331,7 +331,7 @@ describe("CertificateProfileService", () => {
 
     it("should throw ForbiddenRequestError when template belongs to different project", async () => {
       (mockCertificatePolicyDAL.findById as any).mockResolvedValue({
-        ...sampleTemplate,
+        ...samplePolicy,
         projectId: "different-project"
       });
 
@@ -379,7 +379,7 @@ describe("CertificateProfileService", () => {
         enrollmentType: EnrollmentType.API,
         issuerType: IssuerType.CA,
         caId: "ca-123",
-        certificatePolicyId: "template-123"
+        certificatePolicyId: "policy-123"
       };
 
       await expect(
@@ -398,7 +398,7 @@ describe("CertificateProfileService", () => {
         enrollmentType: EnrollmentType.API,
         issuerType: IssuerType.CA,
         caId: "ca-123",
-        certificatePolicyId: "template-123",
+        certificatePolicyId: "policy-123",
         apiConfig: {
           autoRenew: true,
           renewBeforeDays: 30
@@ -412,7 +412,7 @@ describe("CertificateProfileService", () => {
       });
 
       expect(result).toEqual(sampleProfile);
-      expect(mockCertificatePolicyDAL.findById).toHaveBeenCalledWith("template-123");
+      expect(mockCertificatePolicyDAL.findById).toHaveBeenCalledWith("policy-123");
     });
   });
 
@@ -455,12 +455,12 @@ describe("CertificateProfileService", () => {
       ).rejects.toThrow(NotFoundError);
     });
 
-    it("should validate certificate template when updating", async () => {
-      (mockCertificatePolicyDAL.findById as any).mockResolvedValue(sampleTemplate);
+    it("should validate certificate policy when updating", async () => {
+      (mockCertificatePolicyDAL.findById as any).mockResolvedValue(samplePolicy);
 
       const updateWithTemplate = {
         ...updateData,
-        certificateTemplateId: "template-123"
+        certificatePolicyId: "policy-123"
       };
 
       await service.updateProfile({
@@ -469,7 +469,7 @@ describe("CertificateProfileService", () => {
         data: updateWithTemplate
       });
 
-      expect(mockCertificatePolicyDAL.findById).toHaveBeenCalledWith("template-123");
+      expect(mockCertificatePolicyDAL.findById).toHaveBeenCalledWith("policy-123");
     });
   });
 
@@ -710,7 +710,7 @@ describe("CertificateProfileService", () => {
           enrollmentType: EnrollmentType.EST,
           issuerType: IssuerType.CA,
           caId: "ca-123",
-          certificatePolicyId: "template-123",
+          certificatePolicyId: "policy-123",
           estConfig: {
             disableBootstrapCaValidation: false,
             passphrase: "secret-passphrase",
@@ -723,7 +723,7 @@ describe("CertificateProfileService", () => {
           id: "project-123",
           orgId: "org-123"
         });
-        (mockCertificatePolicyDAL.findById as any).mockResolvedValue(sampleTemplate);
+        (mockCertificatePolicyDAL.findById as any).mockResolvedValue(samplePolicy);
         (mockCertificateProfileDAL.findByNameAndProjectId as any).mockResolvedValue(null);
         (mockCertificateProfileDAL.findBySlugAndProjectId as any).mockResolvedValue(null);
         (mockCertificateProfileDAL.create as any).mockResolvedValue({
@@ -758,14 +758,14 @@ describe("CertificateProfileService", () => {
           enrollmentType: EnrollmentType.API,
           issuerType: IssuerType.CA,
           caId: "ca-123",
-          certificatePolicyId: "template-123",
+          certificatePolicyId: "policy-123",
           apiConfig: {
             autoRenew: true,
             renewBeforeDays: 30
           }
         };
 
-        (mockCertificatePolicyDAL.findById as any).mockResolvedValue(sampleTemplate);
+        (mockCertificatePolicyDAL.findById as any).mockResolvedValue(samplePolicy);
         (mockCertificateProfileDAL.findBySlugAndProjectId as any).mockResolvedValue(sampleProfile);
 
         await expect(
@@ -784,14 +784,14 @@ describe("CertificateProfileService", () => {
           enrollmentType: EnrollmentType.API,
           issuerType: IssuerType.CA,
           caId: "ca-123",
-          certificatePolicyId: "template-123",
+          certificatePolicyId: "policy-123",
           apiConfig: {
             autoRenew: true,
             renewBeforeDays: 7
           }
         };
 
-        (mockCertificatePolicyDAL.findById as any).mockResolvedValue(sampleTemplate);
+        (mockCertificatePolicyDAL.findById as any).mockResolvedValue(samplePolicy);
         (mockCertificateProfileDAL.findByNameAndProjectId as any).mockResolvedValue(null);
         (mockCertificateProfileDAL.findBySlugAndProjectId as any).mockResolvedValue(null);
         (mockCertificateProfileDAL.create as any).mockResolvedValue({
@@ -975,13 +975,13 @@ describe("CertificateProfileService", () => {
           enrollmentType: EnrollmentType.API,
           issuerType: IssuerType.CA,
           caId: "ca-123",
-          certificatePolicyId: "template-123",
+          certificatePolicyId: "policy-123",
           apiConfig: {
             autoRenew: false
           }
         };
 
-        (mockCertificatePolicyDAL.findById as any).mockResolvedValue(sampleTemplate);
+        (mockCertificatePolicyDAL.findById as any).mockResolvedValue(samplePolicy);
         (mockCertificateProfileDAL.findByNameAndProjectId as any).mockResolvedValue(null);
         (mockCertificateProfileDAL.findBySlugAndProjectId as any).mockResolvedValue(null);
         (mockCertificateProfileDAL.create as any).mockRejectedValue(new Error("Unique constraint violation"));
@@ -1034,13 +1034,13 @@ describe("CertificateProfileService", () => {
           enrollmentType: EnrollmentType.API,
           issuerType: IssuerType.CA,
           caId: "ca-123",
-          certificatePolicyId: "template-123",
+          certificatePolicyId: "policy-123",
           apiConfig: {
             autoRenew: false
           }
         };
 
-        (mockCertificatePolicyDAL.findById as any).mockResolvedValue(sampleTemplate);
+        (mockCertificatePolicyDAL.findById as any).mockResolvedValue(samplePolicy);
         (mockCertificateProfileDAL.findByNameAndProjectId as any).mockResolvedValue(null);
         (mockCertificateProfileDAL.findBySlugAndProjectId as any).mockResolvedValue(null);
         (mockCertificateProfileDAL.create as any).mockResolvedValue({

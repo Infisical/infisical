@@ -251,10 +251,10 @@ describe("CertificatePolicyService", () => {
 
   describe("listPolicies", () => {
     it("should return policies list with pagination", async () => {
-      const templates = [sampleTemplate];
+      const policies = [sampleTemplate];
       const totalCount = 1;
 
-      mockCertificatePolicyDAL.findByProjectId.mockResolvedValue(templates);
+      mockCertificatePolicyDAL.findByProjectId.mockResolvedValue(policies);
       mockCertificatePolicyDAL.countByProjectId.mockResolvedValue(totalCount);
 
       const result = await service.listPolicies({
@@ -280,7 +280,7 @@ describe("CertificatePolicyService", () => {
         },
         { allowRules: [], forbidRules: [] }
       );
-      expect(result).toEqual({ templates, totalCount });
+      expect(result).toEqual({ policies, totalCount });
     });
 
     it("should handle search parameter", async () => {

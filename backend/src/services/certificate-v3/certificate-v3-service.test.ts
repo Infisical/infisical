@@ -1464,12 +1464,12 @@ describe("CertificateV3Service", () => {
 
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(newEcCa);
-      vi.mocked(mockCertificateTemplateV2Service.validateCertificateRequest).mockResolvedValue({
+      vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
         isValid: true,
         errors: [],
         warnings: []
       });
-      vi.mocked(mockCertificateTemplateV2Service.getTemplateV2ById).mockResolvedValue(ecdsaTemplate);
+      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(ecdsaTemplate);
       vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue({
         certificate: "cert",
         certificateChain: "chain",
@@ -1688,8 +1688,8 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
-      vi.mocked(mockCertificateTemplateV2Service.getTemplateV2ById).mockResolvedValue(mockTemplate);
-      vi.mocked(mockCertificateTemplateV2Service.validateCertificateRequest).mockResolvedValue({
+      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockTemplate);
+      vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
         isValid: true,
         errors: [],
         warnings: []
@@ -1746,8 +1746,8 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
-      vi.mocked(mockCertificateTemplateV2Service.getTemplateV2ById).mockResolvedValue(mockTemplate);
-      vi.mocked(mockCertificateTemplateV2Service.validateCertificateRequest).mockResolvedValue({
+      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockTemplate);
+      vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
         isValid: false,
         errors: ["Subject alternative name not allowed"],
         warnings: []
@@ -1779,7 +1779,7 @@ describe("CertificateV3Service", () => {
 
       // Should store template validation error
       expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", {
-        renewalError: "Template validation failed: Subject alternative name not allowed"
+        renewalError: "Policy validation failed: Subject alternative name not allowed"
       });
     });
 
