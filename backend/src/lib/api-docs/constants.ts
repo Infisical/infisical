@@ -2559,6 +2559,15 @@ export const AppConnections = {
     OCTOPUS_DEPLOY: {
       instanceUrl: "The Octopus Deploy instance URL to connect to.",
       apiKey: "The API key used to authenticate with Octopus Deploy."
+    },
+    SSH: {
+      host: "The hostname or IP address of the SSH server.",
+      port: "The port number of the SSH server (default: 22).",
+      username: "The username for SSH authentication.",
+      authMethod: "The authentication method to use (password or ssh-key).",
+      password: "The password for SSH authentication (required when authMethod is 'password').",
+      privateKey: "The private key in PEM format for SSH authentication (required when authMethod is 'ssh-key').",
+      passphrase: "The passphrase for the private key, if encrypted (optional, only for 'ssh-key' authMethod)."
     }
   }
 };

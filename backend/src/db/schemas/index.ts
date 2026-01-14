@@ -104,6 +104,7 @@ export * from "./org-gateway-config-v2";
 export * from "./org-memberships";
 export * from "./org-relay-config";
 export * from "./org-roles";
+export * from "./organization-assets";
 export * from "./organizations";
 export * from "./pam-accounts";
 export * from "./pam-folders";

@@ -293,6 +293,9 @@ import {
   TOidcConfigs,
   TOidcConfigsInsert,
   TOidcConfigsUpdate,
+  TOrganizationAssets,
+  TOrganizationAssetsInsert,
+  TOrganizationAssetsUpdate,
   TOrganizations,
   TOrganizationsInsert,
   TOrganizationsUpdate,
@@ -1618,6 +1621,11 @@ declare module "knex/types/tables" {
       TPkiCertificatePolicies,
       TPkiCertificatePoliciesInsert,
       TPkiCertificatePoliciesUpdate
+    >;
+    [TableName.OrganizationAsset]: KnexOriginal.CompositeTableType<
+      TOrganizationAssets,
+      TOrganizationAssetsInsert,
+      TOrganizationAssetsUpdate
     >;
   }
 }

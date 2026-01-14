@@ -92,6 +92,7 @@ export type TFeatureSet = {
   pkiLegacyTemplates: false;
   fips: false;
   eventSubscriptions: false;
+  secretShareExternalBranding: false;
 };
 
 export type TOrgPlansTableDTO = {

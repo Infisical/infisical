@@ -196,6 +196,10 @@ export type TDNSMadeEasyConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.DNSMadeEasy;
 };
 
+export type TSshConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.SSH;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -241,7 +245,8 @@ export type TAppConnectionOption =
   | TMongoDBConnectionOption
   | TChefConnectionOption
   | TDNSMadeEasyConnectionOption
-  | TOctopusDeployConnectionOption;
+  | TOctopusDeployConnectionOption
+  | TSshConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -289,4 +294,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.LaravelForge]: TLaravelForgeConnectionOption;
   [AppConnection.Chef]: TChefConnectionOption;
   [AppConnection.OctopusDeploy]: TOctopusDeployConnectionOption;
+  [AppConnection.SSH]: TSshConnectionOption;
 };

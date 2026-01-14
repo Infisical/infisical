@@ -59,17 +59,24 @@ interface ApiResponse<T> {
   [key: string]: unknown;
 }
 
-async function fetchAllPages<T>(
-  apiUrl: string,
-  apiToken: string,
-  initialParams: Record<string, string | number> = {},
-  dataPath?: string
-): Promise<T[]> {
+async function fetchAllPages<T>({
+  apiUrl,
+  apiToken,
+  initialParams,
+  dataPath,
+  maxItems
+}: {
+  apiUrl: string;
+  apiToken: string;
+  initialParams?: Record<string, string | number>;
+  dataPath?: string;
+  maxItems?: number;
+}): Promise<T[]> {
   const allItems: T[] = [];
   let hasMoreItems = true;
-  let params: Record<string, string | number> = { ...initialParams, limit: 100 };
+  let params: Record<string, string | number> = { limit: 100, ...initialParams };
 
-  while (hasMoreItems) {
+  while (hasMoreItems && (!maxItems || allItems.length < maxItems)) {
     try {
       const response = await request.get<ApiResponse<T>>(apiUrl, {
         params,
@@ -119,13 +126,19 @@ async function fetchAllPages<T>(
   return allItems;
 }
 
-async function fetchOrgProjects(orgId: string, apiToken: string): Promise<VercelApp[]> {
-  return fetchAllPages<VercelApp>(
-    `${IntegrationUrls.VERCEL_API_URL}/v9/projects`,
+async function fetchOrgProjects(orgId: string, apiToken: string, projectSearch?: string): Promise<VercelApp[]> {
+  const params: Record<string, string | number> = {
+    teamId: orgId,
+    ...(projectSearch ? { search: projectSearch } : {}),
+    limit: 10
+  };
+  return fetchAllPages<VercelApp>({
+    apiUrl: `${IntegrationUrls.VERCEL_API_URL}/v10/projects`,
     apiToken,
-    { teamId: orgId },
-    "projects"
-  );
+    initialParams: params,
+    dataPath: "projects",
+    maxItems: 10
+  });
 }
 
 async function fetchProjectEnvironments(
@@ -134,12 +147,12 @@ async function fetchProjectEnvironments(
   apiToken: string
 ): Promise<VercelEnvironment[]> {
   try {
-    return await fetchAllPages<VercelEnvironment>(
-      `${IntegrationUrls.VERCEL_API_URL}/v9/projects/${projectId}/custom-environments?teamId=${teamId}`,
-      apiToken,
-      {},
-      "environments"
-    );
+    return await fetchAllPages<VercelEnvironment>({
+      apiUrl: `${IntegrationUrls.VERCEL_API_URL}/v10/projects/${projectId}/custom-environments?teamId=${teamId}`,
+      initialParams: {},
+      dataPath: "environments",
+      apiToken
+    });
   } catch (error) {
     return [];
   }
@@ -179,11 +192,19 @@ type VercelUserResponse = {
   };
 };
 
-export const listProjects = async (appConnection: TVercelConnection): Promise<VercelOrgWithApps[]> => {
+export const listProjects = async (
+  appConnection: TVercelConnection,
+  projectSearch?: string
+): Promise<VercelOrgWithApps[]> => {
   const { credentials } = appConnection;
   const { apiToken } = credentials;
 
-  const orgs = await fetchAllPages<VercelTeam>(`${IntegrationUrls.VERCEL_API_URL}/v2/teams`, apiToken, {}, "teams");
+  const orgs = await fetchAllPages<VercelTeam>({
+    apiUrl: `${IntegrationUrls.VERCEL_API_URL}/v2/teams`,
+    apiToken,
+    initialParams: {},
+    dataPath: "teams"
+  });
 
   const personalAccountResponse = await request.get<VercelUserResponse>(`${IntegrationUrls.VERCEL_API_URL}/v2/user`, {
     headers: {
@@ -205,7 +226,7 @@ export const listProjects = async (appConnection: TVercelConnection): Promise<Ve
 
   const orgPromises = orgs.map(async (org) => {
     try {
-      const projects = await fetchOrgProjects(org.id, apiToken);
+      const projects = await fetchOrgProjects(org.id, apiToken, projectSearch);
 
       const enhancedProjectsPromises = projects.map(async (project) => {
         try {

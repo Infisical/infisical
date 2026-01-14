@@ -776,7 +776,8 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
               id: z.string(),
               name: z.string(),
               url: z.string(),
-              hasCredentials: z.boolean()
+              hasCredentials: z.boolean(),
+              authMethod: z.string()
             })
           )
         })
@@ -822,6 +823,44 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         serverId: req.params.serverId,
         actorId: req.permission.id,
         actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return result;
+    }
+  });
+
+  // Verify bearer token against MCP server
+  server.route({
+    method: "POST",
+    url: "/:endpointId/servers/:serverId/verify-token",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        endpointId: z.string().uuid().trim().min(1),
+        serverId: z.string().uuid().trim().min(1)
+      }),
+      body: z.object({
+        accessToken: z.string().min(1)
+      }),
+      response: {
+        200: z.object({
+          valid: z.boolean(),
+          message: z.string().optional()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const result = await server.services.aiMcpEndpoint.verifyServerBearerToken({
+        endpointId: req.params.endpointId,
+        serverId: req.params.serverId,
+        accessToken: req.body.accessToken,
+        actor: req.permission.type,
+        actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });

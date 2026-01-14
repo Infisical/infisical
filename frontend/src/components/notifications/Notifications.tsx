@@ -65,7 +65,7 @@ export const createNotification = (
   toast(<NotificationContent {...myProps} />, {
     position: "bottom-right",
     ...toastProps,
-    autoClose: toastProps.autoClose || 15000,
+    autoClose: toastProps.autoClose || (myProps?.type === "error" ? 8000 : 5000),
     theme: "dark",
     type: myProps?.type || "info",
     className: `pointer-events-auto ${toastProps.className}`

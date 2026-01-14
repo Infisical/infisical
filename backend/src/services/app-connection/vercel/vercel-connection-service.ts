@@ -12,10 +12,10 @@ type TGetAppConnectionFunc = (
 ) => Promise<TVercelConnection>;
 
 export const vercelConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
-  const listProjects = async (connectionId: string, actor: OrgServiceActor) => {
+  const listProjects = async (connectionId: string, actor: OrgServiceActor, projectSearch?: string) => {
     const appConnection = await getAppConnection(AppConnection.Vercel, connectionId, actor);
     try {
-      const projects = await getVercelProjects(appConnection);
+      const projects = await getVercelProjects(appConnection, projectSearch);
       return projects;
     } catch (error) {
       logger.error(error, "Failed to establish connection with Vercel");

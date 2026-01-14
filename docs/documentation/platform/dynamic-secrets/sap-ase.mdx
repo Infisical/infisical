@@ -3,6 +3,8 @@ title: "SAP ASE"
 description: "Learn how to dynamically generate SAP ASE database account credentials."
 ---
 
+import DynamicSecretUsernameTemplateParamField from "/snippets/documentation/platform/dynamic-secrets/dynamic-secret-username-template-field.mdx";
+
 The Infisical SAP ASE dynamic secret allows you to generate SAP ASE database credentials on demand.
 
 ## Prerequisite
@@ -64,29 +66,7 @@ The Infisical SAP ASE dynamic secret allows you to generate SAP ASE database cre
   </Step>
   <Step title="(Optional) Modify SAP SQL Statements">
     ![Modify SQL Statements Modal](../../../images/platform/dynamic-secrets/sap-ase/dynamic-secret-sap-ase-statements.png)
-<ParamField path="Username Template" type="string" default="{{randomUsername}}">
-    Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
-
-    Allowed template variables are
-    - `{{randomUsername}}`: Random username string
-    - `{{unixTimestamp}}`: Current Unix timestamp
-    - `{{identity.name}}`: Name of the identity that is generating the secret
-    - `{{random N}}`: Random string of N characters
-
-    Allowed template functions are
-    - `truncate`: Truncates a string to a specified length
-    - `replace`: Replaces a substring with another value
-
-    Examples:
-    ```
-    {{randomUsername}}                              // 3POnzeFyK9gW2nioK0q2gMjr6CZqsRiX
-    {{unixTimestamp}}                               // 17490641580
-    {{identity.name}}                               // testuser
-    {{random-5}}                                    // x9k2m
-    {{truncate identity.name 4}}                    // test
-    {{replace identity.name 'user' 'replace'}}      // testreplace
-    ```
-	</ParamField>
+    <DynamicSecretUsernameTemplateParamField />
     <ParamField path="Customize Statement" type="string">
 
 If you want to provide specific privileges for the generated dynamic credentials, you can modify the SQL statement to your needs.

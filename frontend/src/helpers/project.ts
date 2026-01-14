@@ -94,7 +94,7 @@ export const getProjectTitle = (type: ProjectType) => {
     [ProjectType.SSH]: "SSH",
     [ProjectType.SecretScanning]: "Secret Scanning",
     [ProjectType.PAM]: "PAM",
-    [ProjectType.AI]: "Agentic Manager"
+    [ProjectType.AI]: "Agent Sentinel"
   };
   return titleConvert[type];
 };

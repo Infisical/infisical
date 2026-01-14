@@ -3,6 +3,8 @@ title: "AWS IAM"
 description: "Learn how to dynamically generate AWS IAM Users."
 ---
 
+import DynamicSecretUsernameTemplateParamField from "/snippets/documentation/platform/dynamic-secrets/dynamic-secret-username-template-field.mdx";
+
 The Infisical AWS IAM dynamic secret allows you to generate AWS IAM Users and temporary credentials on demand based on a configured AWS policy. Infisical supports several authentication methods to connect to your AWS account, including assuming an IAM Role, using IAM Roles for Service Accounts (IRSA) on EKS, or static Access Keys.
 
 ## AWS STS Duration Limits
@@ -185,29 +187,7 @@ Infisical needs an AWS IAM principal (a user or a role) with the required permis
           Maximum time-to-live for a generated secret
         </ParamField>
 
-        <ParamField path="Username Template" type="string" default="{{randomUsername}}">
-          Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
-
-          Allowed template variables are
-          - `{{randomUsername}}`: Random username string
-          - `{{unixTimestamp}}`: Current Unix timestamp
-          - `{{identity.name}}`: Name of the identity that is generating the secret
-          - `{{random N}}`: Random string of N characters
-
-          Allowed template functions are
-          - `truncate`: Truncates a string to a specified length
-          - `replace`: Replaces a substring with another value
-
-          Examples:
-          ```
-          {{randomUsername}}                              // 3POnzeFyK9gW2nioK0q2gMjr6CZqsRiX
-          {{unixTimestamp}}                               // 17490641580
-          {{identity.name}}                               // testuser
-          {{random-5}}                                    // x9k2m
-          {{truncate identity.name 4}}                    // test
-          {{replace identity.name 'user' 'replace'}}      // testreplace
-          ```
-        </ParamField>
+        <DynamicSecretUsernameTemplateParamField />
 
         <ParamField path="Tags" type="map<string, string>[]">
           Tags to be added to the created IAM User resource.
@@ -253,19 +233,7 @@ Infisical needs an AWS IAM principal (a user or a role) with the required permis
               The AWS IAM inline policy that should be attached to the created users. Multiple values can be provided by separating them with commas.
             </ParamField>
 
-            <ParamField path="Username Template" type="string" default="{{randomUsername}}">
-              Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
-
-              Allowed template variables are:
-              - `{{randomUsername}}`: Random username string
-              - `{{unixTimestamp}}`: Current Unix timestamp
-              - `{{identity.name}}`: Name of the identity that is generating the secret
-              - `{{random N}}`: Random string of N characters
-
-              Allowed template functions are:
-              - `truncate`: Truncates a string to a specified length
-              - `replace`: Replaces a substring with another value
-            </ParamField>
+            <DynamicSecretUsernameTemplateParamField />
 
             <ParamField path="Tags" type="map<string, string>[]">
               Tags to be added to the created IAM User resource.
@@ -405,29 +373,7 @@ Infisical needs an AWS IAM principal (a user or a role) with the required permis
             <ParamField path="Max TTL" type="string" required>
                 Maximum time-to-live for a generated secret
             </ParamField>
-            <ParamField path="Username Template" type="string" default="{{randomUsername}}">
-                Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
-
-                Allowed template variables are
-                - `{{randomUsername}}`: Random username string
-                - `{{unixTimestamp}}`: Current Unix timestamp
-                - `{{identity.name}}`: Name of the identity that is generating the secret
-                - `{{random N}}`: Random string of N characters
-
-                Allowed template functions are
-                - `truncate`: Truncates a string to a specified length
-                - `replace`: Replaces a substring with another value
-
-                Examples:
-                ```
-                {{randomUsername}}                              // 3POnzeFyK9gW2nioK0q2gMjr6CZqsRiX
-                {{unixTimestamp}}                               // 17490641580
-                {{identity.name}}                               // testuser
-                {{random-5}}                                    // x9k2m
-                {{truncate identity.name 4}}                    // test
-                {{replace identity.name 'user' 'replace'}}      // testreplace
-                ```
-            </ParamField>
+            <DynamicSecretUsernameTemplateParamField />
             <ParamField path="Tags" type="map<string, string>[]">
                 Tags to be added to the created IAM User resource.
             </ParamField>
@@ -469,19 +415,7 @@ Infisical needs an AWS IAM principal (a user or a role) with the required permis
                     The AWS IAM inline policy that should be attached to the created users. Multiple values can be provided by separating them with commas.
                 </ParamField>
 
-                <ParamField path="Username Template" type="string" default="{{randomUsername}}">
-                    Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
-
-                    Allowed template variables are:
-                    - `{{randomUsername}}`: Random username string
-                    - `{{unixTimestamp}}`: Current Unix timestamp
-                    - `{{identity.name}}`: Name of the identity that is generating the secret
-                    - `{{random N}}`: Random string of N characters
-
-                    Allowed template functions are:
-                    - `truncate`: Truncates a string to a specified length
-                    - `replace`: Replaces a substring with another value
-                </ParamField>
+                <DynamicSecretUsernameTemplateParamField />
 
                 <ParamField path="Tags" type="map<string, string>[]">
                     Tags to be added to the created IAM User resource.
@@ -600,19 +534,7 @@ Infisical needs an AWS IAM principal (a user or a role) with the required permis
               The AWS IAM inline policy that should be attached to the created users. Multiple values can be provided by separating them with commas.
             </ParamField>
 
-            <ParamField path="Username Template" type="string" default="{{randomUsername}}">
-              Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
-
-              Allowed template variables are:
-              - `{{randomUsername}}`: Random username string
-              - `{{unixTimestamp}}`: Current Unix timestamp
-              - `{{identity.name}}`: Name of the identity that is generating the secret
-              - `{{random N}}`: Random string of N characters
-
-              Allowed template functions are:
-              - `truncate`: Truncates a string to a specified length
-              - `replace`: Replaces a substring with another value
-            </ParamField>
+            <DynamicSecretUsernameTemplateParamField />
 
             <ParamField path="Tags" type="map[string]string">
               Tags to be added to the created IAM User resource.
