@@ -29,6 +29,7 @@ export const registerDNSMadeEasyConnectionRouter = async (server: FastifyZodProv
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listDnsMadeEasyZones",
       params: z.object({
         connectionId: z.string().uuid()
       }),

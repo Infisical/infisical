@@ -108,6 +108,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listPkiSyncOptions",
       tags: [ApiDocsTags.PkiSyncs],
       description: "List the available PKI Sync Options.",
       response: {
@@ -131,6 +132,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listPkiSyncs",
       tags: [ApiDocsTags.PkiSyncs],
       description: "List all the PKI Syncs for the specified project.",
       querystring: z.object({
@@ -173,6 +175,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "getPkiSync",
       tags: [ApiDocsTags.PkiSyncs],
       description: "Get a PKI Sync by ID.",
       params: z.object({
@@ -212,6 +215,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listPkiSyncCertificates",
       tags: [ApiDocsTags.PkiSyncs],
       description: "List all certificates associated with a PKI Sync.",
       params: z.object({
@@ -264,6 +268,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "addCertificatesToPkiSync",
       tags: [ApiDocsTags.PkiSyncs],
       description: "Add certificates to a PKI Sync.",
       params: z.object({
@@ -323,6 +328,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "removeCertificatesFromPkiSync",
       tags: [ApiDocsTags.PkiSyncs],
       description: "Remove certificates from a PKI Sync.",
       params: z.object({

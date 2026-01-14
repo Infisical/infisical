@@ -30,6 +30,7 @@ export const registerBitbucketConnectionRouter = async (server: FastifyZodProvid
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listBitbucketWorkspaces",
       params: z.object({
         connectionId: z.string().uuid()
       }),
@@ -58,6 +59,7 @@ export const registerBitbucketConnectionRouter = async (server: FastifyZodProvid
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listBitbucketRepositories",
       params: z.object({
         connectionId: z.string().uuid()
       }),
@@ -93,6 +95,7 @@ export const registerBitbucketConnectionRouter = async (server: FastifyZodProvid
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listBitbucketEnvironments",
       params: z.object({
         connectionId: z.string().uuid()
       }),

@@ -30,6 +30,7 @@ export const registerAzureAdCsCertificateAuthorityRouter = async (server: Fastif
     },
     schema: {
       hide: false,
+      operationId: "getAzureAdcsTemplates",
       description: "Get available certificate templates from Azure AD CS CA",
       params: z.object({
         caId: z.string().describe("Azure AD CS CA ID")

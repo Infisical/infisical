@@ -29,6 +29,7 @@ export const registerOctopusDeployConnectionRouter = async (server: FastifyZodPr
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listOctopusDeploySpaces",
       params: z.object({
         connectionId: z.string().uuid()
       }),
@@ -60,6 +61,7 @@ export const registerOctopusDeployConnectionRouter = async (server: FastifyZodPr
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listOctopusDeployProjects",
       params: z.object({
         connectionId: z.string().uuid()
       }),
@@ -98,6 +100,7 @@ export const registerOctopusDeployConnectionRouter = async (server: FastifyZodPr
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getOctopusDeployScopeValues",
       params: z.object({
         connectionId: z.string().uuid()
       }),

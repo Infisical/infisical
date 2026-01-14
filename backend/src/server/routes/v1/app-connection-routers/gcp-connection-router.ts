@@ -29,6 +29,7 @@ export const registerGcpConnectionRouter = async (server: FastifyZodProvider) =>
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listGcpSecretManagerProjects",
       params: z.object({
         connectionId: z.string().uuid()
       }),
@@ -53,6 +54,7 @@ export const registerGcpConnectionRouter = async (server: FastifyZodProvider) =>
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listGcpSecretManagerProjectLocations",
       params: z.object({
         connectionId: z.string().uuid()
       }),

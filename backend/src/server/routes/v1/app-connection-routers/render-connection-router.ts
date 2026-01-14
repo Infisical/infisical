@@ -29,6 +29,7 @@ export const registerRenderConnectionRouter = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listRenderServices",
       params: z.object({
         connectionId: z.string().uuid()
       }),
@@ -57,6 +58,7 @@ export const registerRenderConnectionRouter = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listRenderEnvironmentGroups",
       params: z.object({
         connectionId: z.string().uuid()
       }),

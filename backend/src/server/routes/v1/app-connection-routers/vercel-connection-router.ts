@@ -30,6 +30,7 @@ export const registerVercelConnectionRouter = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listVercelProjects",
       params: z.object({
         connectionId: z.string().uuid()
       }),
