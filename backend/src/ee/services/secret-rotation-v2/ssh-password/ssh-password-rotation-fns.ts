@@ -193,6 +193,10 @@ export const sshPasswordRotationFactory: TRotationFactory<
     const isSelfRotation = rotationMethod === SshPasswordRotationMethod.LoginAsTarget;
     if (username === credentials.username)
       throw new BadRequestError({ message: "Provided username is used in Infisical app connections." });
+    
+    const privilegedAccounts = ['root', 'admin', 'administrator', 'sudo'];
+    if (privilegedAccounts.includes(username.toLowerCase()))
+      throw new BadRequestError({ message: "Cannot rotate passwords for privileged system accounts." });
 
     // Determine which credentials to use for the SSH connection
     let connectConfig: TSshConnectionConfig;
