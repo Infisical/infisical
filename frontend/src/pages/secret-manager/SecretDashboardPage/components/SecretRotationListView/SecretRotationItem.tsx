@@ -3,6 +3,7 @@ import { subject } from "@casl/ability";
 import {
   faAsterisk,
   faEdit,
+  faHandshake,
   faInfoCircle,
   faKey,
   faRotate,
@@ -19,7 +20,8 @@ import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretRotationActions } from "@app/context/ProjectPermissionContext/types";
 import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
-import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
+import { SecretRotation, TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
+import { SshPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/types/ssh-password-rotation";
 import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 
 import { SecretListView } from "../SecretListView";
@@ -29,6 +31,7 @@ type Props = {
   secretRotation: TSecretRotationV2;
   onEdit: () => void;
   onRotate: () => void;
+  onReconcile: () => void;
   onViewGeneratedCredentials: () => void;
   onDelete: () => void;
   projectId: string;
@@ -54,6 +57,7 @@ export const SecretRotationItem = ({
   secretRotation,
   onEdit,
   onRotate,
+  onReconcile,
   onViewGeneratedCredentials,
   onDelete,
   projectId,
@@ -180,6 +184,35 @@ export const SecretRotationItem = ({
                 </IconButton>
               )}
             </ProjectPermissionCan>
+            {secretRotation.type === SecretRotation.SshPassword &&
+              secretRotation.parameters.rotationMethod ===
+                SshPasswordRotationMethod.LoginAsTarget && (
+                <ProjectPermissionCan
+                  I={ProjectPermissionSecretRotationActions.RotateSecrets}
+                  a={subject(ProjectPermissionSub.SecretRotation, {
+                    environment: environment.slug,
+                    secretPath: folder.path
+                  })}
+                  renderTooltip
+                  allowedLabel="Reconcile Secret"
+                >
+                  {(isAllowed) => (
+                    <IconButton
+                      ariaLabel="Reconcile secret"
+                      variant="plain"
+                      size="sm"
+                      isDisabled={!isAllowed}
+                      className="w-0 overflow-hidden p-0 group-hover:w-5"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onReconcile();
+                      }}
+                    >
+                      <FontAwesomeIcon icon={faHandshake} />
+                    </IconButton>
+                  )}
+                </ProjectPermissionCan>
+              )}
           </div>
         </div>
         <AnimatePresence mode="wait">

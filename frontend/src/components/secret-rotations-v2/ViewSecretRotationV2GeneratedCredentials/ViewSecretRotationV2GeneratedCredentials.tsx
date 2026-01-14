@@ -25,6 +25,7 @@ import { ViewSqlCredentialsRotationGeneratedCredentials } from "./shared";
 import { ViewAwsIamUserSecretRotationGeneratedCredentials } from "./ViewAwsIamUserSecretRotationGeneratedCredentials";
 import { ViewOktaClientSecretRotationGeneratedCredentials } from "./ViewOktaClientSecretRotationGeneratedCredentials";
 import { ViewRedisCredentialsRotationGeneratedCredentials } from "./ViewRedisCredentialsRotationGeneratedCredentials";
+import { ViewSshPasswordRotationGeneratedCredentials } from "./ViewSshPasswordRotationGeneratedCredentials";
 
 type Props = {
   secretRotation?: TSecretRotationV2;
@@ -120,6 +121,13 @@ const Content = ({ secretRotation }: ContentProps) => {
     case SecretRotation.DatabricksServicePrincipalSecret:
       Component = (
         <ViewDatabricksServicePrincipalSecretRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
+    case SecretRotation.SshPassword:
+      Component = (
+        <ViewSshPasswordRotationGeneratedCredentials
           generatedCredentialsResponse={generatedCredentialsResponse}
         />
       );

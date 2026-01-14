@@ -1,10 +1,11 @@
 import { DeleteSecretRotationV2Modal } from "@app/components/secret-rotations-v2/DeleteSecretRotationV2Modal";
 import { EditSecretRotationV2Modal } from "@app/components/secret-rotations-v2/EditSecretRotationV2Modal";
+import { ReconcileSshPasswordRotationModal } from "@app/components/secret-rotations-v2/ReconcileSshPasswordRotationModal";
 import { RotateSecretRotationV2Modal } from "@app/components/secret-rotations-v2/RotateSecretRotationV2Modal";
 import { ViewSecretRotationV2GeneratedCredentialsModal } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials";
 import { usePopUp } from "@app/hooks";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
-import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
+import { SecretRotation, TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 
 import { SecretRotationItem } from "./SecretRotationItem";
@@ -45,7 +46,8 @@ export const SecretRotationListView = ({
     "editSecretRotation",
     "rotateSecretRotation",
     "viewSecretRotationGeneratedCredentials",
-    "deleteSecretRotation"
+    "deleteSecretRotation",
+    "reconcileSecretRotation"
   ] as const);
 
   return (
@@ -56,6 +58,7 @@ export const SecretRotationListView = ({
           secretRotation={secretRotation}
           onEdit={() => handlePopUpOpen("editSecretRotation", secretRotation)}
           onRotate={() => handlePopUpOpen("rotateSecretRotation", secretRotation)}
+          onReconcile={() => handlePopUpOpen("reconcileSecretRotation", secretRotation)}
           onViewGeneratedCredentials={() =>
             handlePopUpOpen("viewSecretRotationGeneratedCredentials", secretRotation)
           }
@@ -80,6 +83,16 @@ export const SecretRotationListView = ({
         secretRotation={popUp.rotateSecretRotation.data as TSecretRotationV2}
         onOpenChange={(isOpen) => handlePopUpToggle("rotateSecretRotation", isOpen)}
       />
+      <ReconcileSshPasswordRotationModal
+        isOpen={
+          popUp.reconcileSecretRotation.isOpen &&
+          (popUp.reconcileSecretRotation.data as TSecretRotationV2)?.type ===
+            SecretRotation.SshPassword
+        }
+        secretRotation={popUp.reconcileSecretRotation.data as TSecretRotationV2}
+        onOpenChange={(isOpen) => handlePopUpToggle("reconcileSecretRotation", isOpen)}
+      />
+
       <ViewSecretRotationV2GeneratedCredentialsModal
         isOpen={popUp.viewSecretRotationGeneratedCredentials.isOpen}
         secretRotation={popUp.viewSecretRotationGeneratedCredentials.data as TSecretRotationV2}

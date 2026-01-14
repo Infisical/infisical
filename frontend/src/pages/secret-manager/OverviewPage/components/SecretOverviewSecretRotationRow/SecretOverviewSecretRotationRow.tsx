@@ -6,6 +6,7 @@ import {
   faEdit,
   faEye,
   faEyeSlash,
+  faHandshake,
   faInfoCircle,
   faRotate,
   faXmark
@@ -24,7 +25,12 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import { useToggle } from "@app/hooks";
-import { SecretRotationStatus, TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
+import {
+  SecretRotation,
+  SecretRotationStatus,
+  TSecretRotationV2
+} from "@app/hooks/api/secretRotationsV2";
+import { SshPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/types/ssh-password-rotation";
 import { getExpandedRowStyle } from "@app/pages/secret-manager/OverviewPage/components/utils";
 
 import { SecretOverviewRotationSecretRow } from "./SecretOverviewRotationSecretRow";
@@ -38,6 +44,7 @@ type Props = {
   scrollOffset: number;
   onEdit: (secretRotation: TSecretRotationV2) => void;
   onRotate: (secretRotation: TSecretRotationV2) => void;
+  onReconcile: (secretRotation: TSecretRotationV2) => void;
   onViewGeneratedCredentials: (secretRotation: TSecretRotationV2) => void;
   onDelete: (secretRotation: TSecretRotationV2) => void;
 };
@@ -52,7 +59,8 @@ export const SecretOverviewSecretRotationRow = ({
   onEdit,
   onRotate,
   onViewGeneratedCredentials,
-  onDelete
+  onDelete,
+  onReconcile
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
   const [isSecretVisible, setIsSecretVisible] = useToggle();
@@ -203,6 +211,31 @@ export const SecretOverviewSecretRotationRow = ({
                                   </IconButton>
                                 )}
                               </ProjectPermissionCan>
+                              {secretRotation.type === SecretRotation.SshPassword &&
+                                secretRotation.parameters.rotationMethod ===
+                                  SshPasswordRotationMethod.LoginAsTarget && (
+                                  <ProjectPermissionCan
+                                    I={ProjectPermissionSecretRotationActions.RotateSecrets}
+                                    a={subject(ProjectPermissionSub.SecretRotation, {
+                                      environment: environment.slug,
+                                      secretPath: folder.path
+                                    })}
+                                    renderTooltip
+                                    allowedLabel="Reconcile Secret"
+                                  >
+                                    {(isAllowed) => (
+                                      <IconButton
+                                        ariaLabel="Reconcile secret"
+                                        variant="plain"
+                                        size="sm"
+                                        isDisabled={!isAllowed}
+                                        onClick={() => onReconcile(secretRotation)}
+                                      >
+                                        <FontAwesomeIcon icon={faHandshake} />
+                                      </IconButton>
+                                    )}
+                                  </ProjectPermissionCan>
+                                )}
                               <ProjectPermissionCan
                                 I={ProjectPermissionSecretRotationActions.Edit}
                                 a={subject(ProjectPermissionSub.SecretRotation, {

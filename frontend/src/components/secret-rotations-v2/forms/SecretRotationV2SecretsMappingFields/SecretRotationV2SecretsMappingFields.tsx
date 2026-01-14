@@ -11,6 +11,7 @@ import { LdapPasswordRotationSecretsMappingFields } from "./LdapPasswordRotation
 import { OktaClientSecretRotationSecretsMappingFields } from "./OktaClientSecretRotationSecretsMappingFields";
 import { RedisCredentialsRotationSecretsMappingFields } from "./RedisCredentialsRotationSecretsMappingFields";
 import { SqlCredentialsRotationSecretsMappingFields } from "./shared";
+import { SshPasswordRotationSecretsMappingFields } from "./SshPasswordRotationSecretsMappingFields";
 
 const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.PostgresCredentials]: SqlCredentialsRotationSecretsMappingFields,
@@ -25,7 +26,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.RedisCredentials]: RedisCredentialsRotationSecretsMappingFields,
   [SecretRotation.MongoDBCredentials]: SqlCredentialsRotationSecretsMappingFields,
   [SecretRotation.DatabricksServicePrincipalSecret]:
-    DatabricksServicePrincipalSecretRotationSecretsMappingFields
+    DatabricksServicePrincipalSecretRotationSecretsMappingFields,
+  [SecretRotation.SshPassword]: SshPasswordRotationSecretsMappingFields
 };
 
 export const SecretRotationV2SecretsMappingFields = () => {

@@ -11,10 +11,12 @@ import { MySqlCredentialsRotationSchema } from "@app/components/secret-rotations
 import { PostgresCredentialsRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/postgres-credentials-rotation-schema";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { LdapPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/types/ldap-password-rotation";
+import { SshPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/types/ssh-password-rotation";
 
 import { OktaClientSecretRotationSchema } from "./okta-client-secret-rotation-schema";
 import { OracleDBCredentialsRotationSchema } from "./oracledb-credentials-rotation-schema";
 import { RedisCredentialsRotationSchema } from "./redis-credentials-rotation-schema";
+import { SshPasswordRotationSchema } from "./ssh-password-rotation-schema";
 
 export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
   z
@@ -31,23 +33,39 @@ export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
         OktaClientSecretRotationSchema,
         RedisCredentialsRotationSchema,
         MongoDBCredentialsRotationSchema,
-        DatabricksServicePrincipalSecretRotationSchema
+        DatabricksServicePrincipalSecretRotationSchema,
+        SshPasswordRotationSchema
       ]),
       z.object({ id: z.string().optional() })
     )
     .superRefine((val, ctx) => {
-      if (val.type !== SecretRotation.LdapPassword || isUpdate) return;
+      if (isUpdate) return;
 
       // this has to go on union or breaks discrimination
-      if (
-        val.parameters.rotationMethod === LdapPasswordRotationMethod.TargetPrincipal &&
-        !val.temporaryParameters?.password
-      ) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Password required",
-          path: ["temporaryParameters", "password"]
-        });
+      if (val.type === SecretRotation.LdapPassword) {
+        if (
+          val.parameters.rotationMethod === LdapPasswordRotationMethod.TargetPrincipal &&
+          !val.temporaryParameters?.password
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Password required",
+            path: ["temporaryParameters", "password"]
+          });
+        }
+      }
+
+      if (val.type === SecretRotation.SshPassword) {
+        if (
+          val.parameters.rotationMethod === SshPasswordRotationMethod.LoginAsTarget &&
+          !val.temporaryParameters?.password
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Password required",
+            path: ["temporaryParameters", "password"]
+          });
+        }
       }
     });
 
