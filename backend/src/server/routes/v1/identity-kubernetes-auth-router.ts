@@ -41,6 +41,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     },
     schema: {
       hide: false,
+      operationId: "loginWithKubernetesAuth",
       tags: [ApiDocsTags.KubernetesAuth],
       description: "Login with Kubernetes Auth for machine identity",
       body: z.object({
@@ -91,6 +92,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "attachKubernetesAuth",
       tags: [ApiDocsTags.KubernetesAuth],
       description: "Attach Kubernetes Auth configuration onto machine identity",
       security: [
@@ -238,6 +240,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "updateKubernetesAuth",
       tags: [ApiDocsTags.KubernetesAuth],
       description: "Update Kubernetes Auth configuration on machine identity",
       security: [
@@ -381,6 +384,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "getKubernetesAuth",
       tags: [ApiDocsTags.KubernetesAuth],
       description: "Retrieve Kubernetes Auth configuration on machine identity",
       security: [
@@ -430,6 +434,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "deleteKubernetesAuth",
       tags: [ApiDocsTags.KubernetesAuth],
       description: "Delete Kubernetes Auth configuration on machine identity",
       security: [
