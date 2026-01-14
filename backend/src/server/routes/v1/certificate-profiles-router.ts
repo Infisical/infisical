@@ -20,6 +20,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     },
     schema: {
       hide: false,
+      operationId: "createCertificateProfile",
       tags: [ApiDocsTags.PkiCertificateProfiles],
       body: z
         .object({
@@ -199,6 +200,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     },
     schema: {
       hide: false,
+      operationId: "listCertificateProfiles",
       tags: [ApiDocsTags.PkiCertificateProfiles],
       querystring: z.object({
         projectId: z.string().min(1),
@@ -292,6 +294,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     },
     schema: {
       hide: false,
+      operationId: "getCertificateProfile",
       tags: [ApiDocsTags.PkiCertificateProfiles],
       params: z.object({
         id: z.string().uuid()
@@ -373,6 +376,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     },
     schema: {
       hide: false,
+      operationId: "getCertificateProfileBySlug",
       tags: [ApiDocsTags.PkiCertificateProfiles],
       params: z.object({
         slug: z.string().min(1)
@@ -411,6 +415,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     },
     schema: {
       hide: false,
+      operationId: "updateCertificateProfile",
       tags: [ApiDocsTags.PkiCertificateProfiles],
       params: z.object({
         id: z.string().uuid()
@@ -507,6 +512,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     },
     schema: {
       hide: false,
+      operationId: "deleteCertificateProfile",
       tags: [ApiDocsTags.PkiCertificateProfiles],
       params: z.object({
         id: z.string().uuid()
@@ -553,6 +559,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     },
     schema: {
       hide: false,
+      operationId: "listCertificateProfileCertificates",
       tags: [ApiDocsTags.PkiCertificateProfiles],
       params: z.object({
         id: z.string().uuid()
@@ -603,6 +610,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     },
     schema: {
       hide: false,
+      operationId: "getCertificateProfileLatestActiveBundle",
       tags: [ApiDocsTags.PkiCertificateProfiles],
       description: "Get latest active certificate bundle for a profile",
       params: z.object({
@@ -668,6 +676,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     },
     schema: {
       hide: false,
+      operationId: "revealCertificateProfileAcmeEabSecret",
       tags: [ApiDocsTags.PkiCertificateProfiles],
       params: z.object({
         id: z.string().uuid()

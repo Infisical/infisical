@@ -18,6 +18,7 @@ export const registerExternalGroupOrgRoleMappingRouter = async (server: FastifyZ
     },
     schema: {
       hide: false,
+      operationId: "listExternalGroupOrgRoleMappings",
       tags: [ApiDocsTags.Scim],
       response: {
         200: ExternalGroupOrgRoleMappingsSchema.array()
@@ -48,6 +49,7 @@ export const registerExternalGroupOrgRoleMappingRouter = async (server: FastifyZ
     },
     schema: {
       hide: false,
+      operationId: "updateExternalGroupOrgRoleMappings",
       tags: [ApiDocsTags.Scim],
       body: z.object({
         mappings: z
