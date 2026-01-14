@@ -17,6 +17,7 @@ export const registerDeprecatedProjectEnvRouter = async (server: FastifyZodProvi
     },
     schema: {
       hide: false,
+      operationId: "getEnvironment",
       tags: [ApiDocsTags.Environments],
       description: "Get Environment",
       security: [
@@ -68,6 +69,7 @@ export const registerDeprecatedProjectEnvRouter = async (server: FastifyZodProvi
     },
     schema: {
       hide: false,
+      operationId: "getEnvironmentById",
       tags: [ApiDocsTags.Environments],
       description: "Get Environment by ID",
       security: [
@@ -117,6 +119,7 @@ export const registerDeprecatedProjectEnvRouter = async (server: FastifyZodProvi
     },
     schema: {
       hide: false,
+      operationId: "createEnvironment",
       tags: [ApiDocsTags.Environments],
       description: "Create environment",
       security: [
@@ -178,6 +181,7 @@ export const registerDeprecatedProjectEnvRouter = async (server: FastifyZodProvi
     },
     schema: {
       hide: false,
+      operationId: "updateEnvironment",
       tags: [ApiDocsTags.Environments],
       description: "Update environment",
       security: [
@@ -246,6 +250,7 @@ export const registerDeprecatedProjectEnvRouter = async (server: FastifyZodProvi
     },
     schema: {
       hide: false,
+      operationId: "deleteEnvironment",
       tags: [ApiDocsTags.Environments],
       description: "Delete environment",
       security: [

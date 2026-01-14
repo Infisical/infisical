@@ -29,6 +29,7 @@ export const registerZabbixConnectionRouter = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listZabbixHosts",
       params: z.object({
         connectionId: z.string().uuid()
       }),

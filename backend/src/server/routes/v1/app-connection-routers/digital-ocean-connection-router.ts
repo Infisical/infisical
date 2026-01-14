@@ -29,6 +29,7 @@ export const registerDigitalOceanConnectionRouter = async (server: FastifyZodPro
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listDigitalOceanApps",
       params: z.object({
         connectionId: z.string().uuid()
       }),

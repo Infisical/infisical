@@ -27,6 +27,7 @@ export const registerLaravelForgeConnectionRouter = async (server: FastifyZodPro
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listLaravelForgeOrganizations",
       params: z.object({
         connectionId: z.string().uuid()
       }),
@@ -59,6 +60,7 @@ export const registerLaravelForgeConnectionRouter = async (server: FastifyZodPro
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listLaravelForgeServers",
       params: z.object({
         connectionId: z.string().uuid()
       }),
@@ -95,6 +97,7 @@ export const registerLaravelForgeConnectionRouter = async (server: FastifyZodPro
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listLaravelForgeSites",
       params: z.object({
         connectionId: z.string().uuid()
       }),

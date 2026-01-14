@@ -19,6 +19,7 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
     },
     schema: {
       hide: false,
+      operationId: "createSecretImport",
       tags: [ApiDocsTags.SecretImports],
       description: "Create secret imports",
       security: [
@@ -86,6 +87,7 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
     },
     schema: {
       hide: false,
+      operationId: "updateSecretImport",
       tags: [ApiDocsTags.SecretImports],
       description: "Update secret imports",
       security: [
@@ -162,6 +164,7 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
     },
     schema: {
       hide: false,
+      operationId: "deleteSecretImport",
       tags: [ApiDocsTags.SecretImports],
       description: "Delete secret imports",
       security: [
@@ -226,6 +229,7 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
       rateLimit: secretsLimit
     },
     schema: {
+      operationId: "resyncSecretImportReplication",
       description: "Resync secret replication of secret imports",
       security: [
         {
@@ -270,6 +274,7 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
     },
     schema: {
       hide: false,
+      operationId: "listSecretImports",
       tags: [ApiDocsTags.SecretImports],
       description: "Get secret imports",
       security: [
@@ -328,6 +333,7 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
     },
     schema: {
       hide: false,
+      operationId: "getSecretImport",
       tags: [ApiDocsTags.SecretImports],
       description: "Get single secret import",
       security: [
@@ -387,6 +393,7 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
       rateLimit: secretsLimit
     },
     schema: {
+      operationId: "getSecretsFromImports",
       querystring: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
@@ -432,6 +439,7 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
     },
     schema: {
       hide: false,
+      operationId: "getRawSecretsFromImports",
       tags: [ApiDocsTags.SecretImports],
       querystring: z.object({
         workspaceId: z.string().trim(),

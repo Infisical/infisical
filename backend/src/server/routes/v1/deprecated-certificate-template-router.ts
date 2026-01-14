@@ -28,6 +28,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
     },
     schema: {
       hide: false,
+      operationId: "getCertificateTemplate",
       tags: [ApiDocsTags.PkiCertificateTemplates],
       params: z.object({
         certificateTemplateId: z.string().describe(CERTIFICATE_TEMPLATES.GET.certificateTemplateId)
@@ -58,6 +59,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
     },
     schema: {
       hide: false,
+      operationId: "createCertificateTemplate",
       tags: [ApiDocsTags.PkiCertificateTemplates],
       body: z.object({
         caId: z.string().describe(CERTIFICATE_TEMPLATES.CREATE.caId),
@@ -110,6 +112,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
     },
     schema: {
       hide: false,
+      operationId: "updateCertificateTemplate",
       tags: [ApiDocsTags.PkiCertificateTemplates],
       body: z.object({
         caId: z.string().optional().describe(CERTIFICATE_TEMPLATES.UPDATE.caId),
@@ -161,6 +164,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
     },
     schema: {
       hide: false,
+      operationId: "deleteCertificateTemplate",
       tags: [ApiDocsTags.PkiCertificateTemplates],
       params: z.object({
         certificateTemplateId: z.string().describe(CERTIFICATE_TEMPLATES.DELETE.certificateTemplateId)
@@ -192,6 +196,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "createCertificateTemplateEstConfig",
       tags: [ApiDocsTags.PkiCertificateTemplates],
       description: "Create Certificate Template EST configuration",
       params: z.object({
@@ -248,6 +253,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "updateCertificateTemplateEstConfig",
       tags: [ApiDocsTags.PkiCertificateTemplates],
       description: "Update Certificate Template EST configuration",
       params: z.object({
@@ -298,6 +304,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "getCertificateTemplateEstConfig",
       tags: [ApiDocsTags.PkiCertificateTemplates],
       description: "Get Certificate Template EST configuration",
       params: z.object({
