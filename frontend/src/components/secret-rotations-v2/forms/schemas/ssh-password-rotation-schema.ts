@@ -15,7 +15,7 @@ export const SshPasswordRotationSchema = z
     }),
     secretsMapping: z.object({
       username: z.string().trim().min(1, "Username required"),
-      password: z.string().trim().optional()
+      password: z.string().trim().min(1, "Password required")
     }),
     temporaryParameters: z
       .object({
@@ -23,4 +23,18 @@ export const SshPasswordRotationSchema = z
       })
       .optional()
   })
-  .merge(BaseSecretRotationSchema);
+  .merge(BaseSecretRotationSchema)
+  .superRefine((val, ctx) => {
+    if (val.type === SecretRotation.SshPassword) {
+      if (
+        val.parameters.rotationMethod === SshPasswordRotationMethod.LoginAsTarget &&
+        !val.temporaryParameters?.password
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Password required",
+          path: ["temporaryParameters", "password"]
+        });
+      }
+    }
+  });

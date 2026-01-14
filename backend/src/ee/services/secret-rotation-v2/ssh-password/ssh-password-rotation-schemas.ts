@@ -67,7 +67,7 @@ export const CreateSshPasswordRotationSchema = BaseCreateSecretRotationSchema(Se
     secretsMapping: SshPasswordRotationSecretsMappingSchema,
     temporaryParameters: z
       .object({
-        password: z.string().min(1, "Password required").describe(SecretRotations.PARAMETERS.SSH_PASSWORD.password)
+        password: z.string().optional().describe(SecretRotations.PARAMETERS.SSH_PASSWORD.password)
       })
       .optional()
   })
