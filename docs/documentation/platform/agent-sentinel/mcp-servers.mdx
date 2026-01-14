@@ -88,17 +88,20 @@ In the following steps, we explore how to add an MCP server to your Agent Sentin
       <Step title="Configure authentication">
         Choose the authentication method for your MCP server:
 
-        **OAuth Authentication:**
-        - For servers with Dynamic Client Registration (e.g., Notion): Click **Authorize** to complete the OAuth flow
-        - For servers without Dynamic Client Registration (e.g., GitHub): Enter the **Client ID** and **Client Secret**, then click **Authorize**
+        <AccordionGroup>
+          <Accordion title="OAuth Authentication">
+            - For servers with Dynamic Client Registration (e.g., Notion): Click **Authorize** to complete the OAuth flow
+            - For servers without Dynamic Client Registration (e.g., GitHub): Enter the **Client ID** and **Client Secret**, then click **Authorize**
 
-        ![mcp server auth](/images/platform/ai/mcp/mcp-servers-auth.png)
+            ![mcp server auth](/images/platform/ai/mcp/mcp-servers-auth.png)
+          </Accordion>
+          <Accordion title="Bearer Token Authentication">
+            - Select **Bearer Token** as the authentication method
+            - Users will be prompted to enter their personal access token when connecting to endpoints that include this server
 
-        **Bearer Token Authentication:**
-        - Select **Bearer Token** as the authentication method
-        - Users will be prompted to enter their personal access token when connecting to endpoints that include this server
-
-        ![mcp server add bearer](/images/platform/ai/mcp/mcp-servers-add-bearer.png)
+            ![mcp server add bearer](/images/platform/ai/mcp/mcp-servers-add-bearer.png)
+          </Accordion>
+        </AccordionGroup>
       </Step>
       <Step title="Review available tools">
         After authorization, Infisical discovers and displays all tools available from the MCP server.
