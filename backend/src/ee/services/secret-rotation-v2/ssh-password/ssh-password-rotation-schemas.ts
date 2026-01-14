@@ -65,11 +65,13 @@ export const CreateSshPasswordRotationSchema = BaseCreateSecretRotationSchema(Se
   .superRefine((val, ctx) => {
     // Password is required for both rotation methods during initial setup
     // Self rotation: needed to authenticate as the user
-    // Managed rotation: needed to verify initial credentials
-    if (!val.temporaryParameters?.password) {
+    if (
+      val.parameters.rotationMethod === SshPasswordRotationMethod.LoginAsTarget &&
+      !val.temporaryParameters?.password
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Current password is required for initial rotation setup",
+        message: "Current password is required for initial rotation setup in login as root method",
         path: ["temporaryParameters", "password"]
       });
     }

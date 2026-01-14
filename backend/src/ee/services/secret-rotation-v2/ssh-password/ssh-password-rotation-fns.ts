@@ -89,7 +89,7 @@ const changeSelfPassword = async (client: Client, oldPassword: string, newPasswo
           stream.end("exit\n");
           reject(new Error(`Password change timed out. Output: ${output}`));
         }
-      }, 30000); // 30 second timeout
+      }, 15000); // 15 second timeout
 
       stream.on("data", (data: Buffer) => {
         const text = data.toString();
@@ -113,21 +113,16 @@ const changeSelfPassword = async (client: Client, oldPassword: string, newPasswo
           stream.write(`${newPassword}\n`);
           step = 3;
         } else if (
-          step >= 1 &&
-          (lower.includes("error") ||
-            lower.includes("fail") ||
-            lower.includes("unchanged") ||
-            lower.includes("authentication"))
-        ) {
-          // Password change failed
-          errorMessage = text.trim();
-        } else if (
           step === 3 &&
           (lower.includes("success") || lower.includes("updated") || lower.includes("changed"))
         ) {
           // Password changed successfully
           completed = true;
           clearTimeout(timeout);
+          stream.end("exit\n");
+        } else if (step >= 1 && (lower.includes("error") || lower.includes("fail") || lower.includes("unchanged"))) {
+          // Password change failed
+          errorMessage = text.trim();
           stream.end("exit\n");
         }
       });
@@ -253,9 +248,6 @@ export const sshPasswordRotationFactory: TRotationFactory<
     TSshPasswordRotationGeneratedCredentials,
     TSshPasswordRotationInput["temporaryParameters"]
   > = async (callback, temporaryParameters) => {
-    // For both self and managed rotation, we need the current password for initial setup
-    // Self rotation: to authenticate as the user and change their own password
-    // Managed rotation: to verify the temporary password works before rotating
     const credentials = await $rotatePassword(temporaryParameters?.password);
     return callback(credentials);
   };

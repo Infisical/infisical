@@ -1415,7 +1415,7 @@ export const secretRotationV2ServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretRotationActions.Edit,
+      ProjectPermissionSecretRotationActions.RotateSecrets,
       subject(ProjectPermissionSub.SecretRotation, {
         environment: environment.slug,
         secretPath: folder.path
