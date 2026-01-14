@@ -8,30 +8,53 @@ Secret rotation is the practice of automatically updating authentication credent
 
 Infisical Secret Rotation automates the entire secret rotation process. This ensures that your applications always have valid credentials without downtime.
 
-## Core concepts
+## Rotation strategy
 
-Understanding how Infisical handles rotation is key to configuring it correctly. The most common pattern used is **Dual User Rotation**.
+Before configuring rotation, determine which strategy fits your infrastructure. Infisical supports both secret rotation (swapping static users) and dynamic secrets (generating temporary users).
 
-### Dual user rotation
+| Feature      | Secret rotation                            | Dynamic secrets (issuer pattern)       |
+| ------------ | ------------------------------------------ | -------------------------------------- |
+| **Method**   | Swaps between two static users             | Generates a new, unique user on-demand |
+| **Duration** | Long-lived (for example, 30 days)          | Short-lived (for example, one hour)    |
+| **Best for** | Legacy databases and static infrastructure | Microservices and temporary access     |
 
-To ensure zero downtime, Infisical often utilizes a "Dual User" strategy. Instead of changing the password for a single user (which would immediately break active connections), Infisical manages **two separate database users** and toggles between them.
+<Tip>
+  If your use case requires short-lived, on-demand credentials (the issuer
+  pattern), refer to [Dynamic
+  Secrets](/documentation/platform/dynamic-secrets/overview).
+</Tip>
 
-1.  **User A** is active. Applications use User A's credentials.
-2.  When rotation occurs, Infisical updates the password for **User B** and switches the secret in Infisical to point to User B.
+### Two-user rotation
+
+Infisical uses a two-user rotation strategy to ensure zero downtime. Changing the password for a single user would immediately break active connections. Instead, Infisical manages two separate database users and toggles between them.
+
+1.  User A is active. Applications use User A's credentials.
+2.  When rotation occurs, Infisical updates the password for User B and switches the secret in Infisical to point to User B.
 3.  Applications fetch the new secret and start connecting as User B.
-4.  User A remains valid for a grace period (or until the next rotation) to allow ongoing connections to close gracefully.
+4.  User A remains valid for a grace period (or until the next rotation) to allow ongoing connections to close without interruption.
 
-### Comparison: Rotation vs. Dynamic Secrets (Issuer Pattern)
+```mermaid
+sequenceDiagram
+    participant App
+    participant Infisical
+    participant Database
 
-While "Rotation" focuses on updating existing long-lived credentials, you may also encounter the **Issuer Pattern** (often called **Dynamic Secrets**).
+    Note over App, Database: Initial state: User A is active
+    App->>Infisical: Fetch credentials
+    Infisical-->>App: Returns User A
+    App->>Database: Connect (User A)
 
-| Feature      | Secret Rotation (Dual User)    | Dynamic Secrets (Issuer Pattern)       |
-| :----------- | :----------------------------- | :------------------------------------- |
-| **Method**   | Swaps between two static users | Generates a new, unique user on-demand |
-| **Duration** | Long-lived (e.g., 30 days)     | Short-lived (e.g., 1 hour)             |
-| **Best For** | Legacy databases, static infra | Microservices, temporary access        |
+    Note over Infisical, Database: Rotation event triggered
+    Infisical->>Database: Update password for User B
+    Infisical->>Infisical: Switch active compass to User B
 
-Infisical supports both. If your environment supports creating/deleting users on the fly, consider looking at our [Dynamic Secrets](/documentation/platform/dynamic-secrets/overview) documentation.
+    Note over App, Database: Rotation complete
+    App->>Infisical: Fetch credentials (next request)
+    Infisical-->>App: Returns User B
+    App->>Database: Connect (User B)
+
+    Note right of Database: User A remains valid for existing connections
+```
 
 ### The credential lifecycle
 
