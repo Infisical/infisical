@@ -8,6 +8,26 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import { PKI_SYNC_NAME_MAP } from "@app/services/pki-sync/pki-sync-maps";
 
+// Convert PKI sync destination enum value to PascalCase for operationId
+const getDestinationNameForOperationId = (destination: PkiSync): string => {
+  // Handle special cases
+  const specialCases: Record<string, string> = {
+    "azure-key-vault": "AzureKeyVault",
+    "aws-certificate-manager": "AwsCertificateManager",
+    "aws-secrets-manager": "AwsSecretsManager"
+  };
+
+  if (specialCases[destination]) {
+    return specialCases[destination];
+  }
+
+  // Convert kebab-case to PascalCase
+  return destination
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("");
+};
+
 export const registerSyncPkiEndpoints = ({
   server,
   destination,
@@ -44,6 +64,7 @@ export const registerSyncPkiEndpoints = ({
   };
 }) => {
   const destinationName = PKI_SYNC_NAME_MAP[destination];
+  const destinationNameForOpId = getDestinationNameForOperationId(destination);
 
   server.route({
     method: "GET",
@@ -53,7 +74,7 @@ export const registerSyncPkiEndpoints = ({
     },
     schema: {
       hide: false,
-      operationId: "listPkiSyncs",
+      operationId: `listPkiSyncs${destinationNameForOpId}`,
       tags: [ApiDocsTags.PkiSyncs],
       description: `List the ${destinationName} PKI Syncs for the specified project.`,
       querystring: z.object({
@@ -94,7 +115,7 @@ export const registerSyncPkiEndpoints = ({
     },
     schema: {
       hide: false,
-      operationId: "getPkiSync",
+      operationId: `getPkiSync${destinationNameForOpId}`,
       tags: [ApiDocsTags.PkiSyncs],
       description: `Get the specified ${destinationName} PKI Sync by ID.`,
       params: z.object({
@@ -134,7 +155,7 @@ export const registerSyncPkiEndpoints = ({
     },
     schema: {
       hide: false,
-      operationId: "createPkiSync",
+      operationId: `createPkiSync${destinationNameForOpId}`,
       tags: [ApiDocsTags.PkiSyncs],
       description: `Create a ${destinationName} PKI Sync for the specified project.`,
       body: createSchema,
@@ -171,7 +192,7 @@ export const registerSyncPkiEndpoints = ({
     },
     schema: {
       hide: false,
-      operationId: "updatePkiSync",
+      operationId: `updatePkiSync${destinationNameForOpId}`,
       tags: [ApiDocsTags.PkiSyncs],
       description: `Update the specified ${destinationName} PKI Sync.`,
       params: z.object({
@@ -212,7 +233,7 @@ export const registerSyncPkiEndpoints = ({
     },
     schema: {
       hide: false,
-      operationId: "deletePkiSync",
+      operationId: `deletePkiSync${destinationNameForOpId}`,
       tags: [ApiDocsTags.PkiSyncs],
       description: `Delete the specified ${destinationName} PKI Sync.`,
       params: z.object({
@@ -253,7 +274,7 @@ export const registerSyncPkiEndpoints = ({
     },
     schema: {
       hide: false,
-      operationId: "syncPkiSync",
+      operationId: `syncPkiSync${destinationNameForOpId}`,
       tags: [ApiDocsTags.PkiSyncs],
       description: `Trigger a sync for the specified ${destinationName} PKI Sync.`,
       params: z.object({
@@ -288,7 +309,7 @@ export const registerSyncPkiEndpoints = ({
       },
       schema: {
         hide: false,
-        operationId: "importPkiSyncCertificates",
+        operationId: `importPkiSyncCertificates${destinationNameForOpId}`,
         tags: [ApiDocsTags.PkiSyncs],
         description: `Import certificates from the specified ${destinationName} PKI Sync destination.`,
         params: z.object({
@@ -322,7 +343,7 @@ export const registerSyncPkiEndpoints = ({
     },
     schema: {
       hide: false,
-      operationId: "removePkiSyncCertificates",
+      operationId: `removePkiSyncCertificates${destinationNameForOpId}`,
       tags: [ApiDocsTags.PkiSyncs],
       description: `Remove certificates from the specified ${destinationName} PKI Sync destination.`,
       params: z.object({

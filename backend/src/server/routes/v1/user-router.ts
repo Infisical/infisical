@@ -18,7 +18,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
-      operationId: "getCurrentUser",
+      operationId: "getCurrentUserV1",
       response: {
         200: z.object({
           user: UsersSchema.extend({

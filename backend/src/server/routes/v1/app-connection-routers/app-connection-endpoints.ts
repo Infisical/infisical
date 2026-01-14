@@ -10,6 +10,38 @@ import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connec
 import { TAppConnection, TAppConnectionInput } from "@app/services/app-connection/app-connection-types";
 import { AuthMode } from "@app/services/auth/auth-type";
 
+// Convert app enum value to PascalCase for operationId
+const getAppNameForOperationId = (app: AppConnection): string => {
+  // Handle special cases
+  const specialCases: Record<string, string> = {
+    [AppConnection.OnePass]: "OnePassword",
+    [AppConnection.GitHub]: "GitHub",
+    [AppConnection.GitHubRadar]: "GitHubRadar",
+    [AppConnection.GitLab]: "GitLab",
+    [AppConnection.MsSql]: "MsSql",
+    [AppConnection.MySql]: "MySql",
+    [AppConnection.OCI]: "Oci",
+    [AppConnection.OracleDB]: "OracleDb",
+    [AppConnection.AWS]: "Aws",
+    [AppConnection.GCP]: "Gcp",
+    [AppConnection.LDAP]: "Ldap",
+    [AppConnection.Okta]: "Okta",
+    [AppConnection.Redis]: "Redis",
+    [AppConnection.MongoDB]: "MongoDb",
+    [AppConnection.SSH]: "Ssh"
+  };
+
+  if (specialCases[app]) {
+    return specialCases[app];
+  }
+
+  // Convert kebab-case to PascalCase
+  return app
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("");
+};
+
 export const registerAppConnectionEndpoints = <T extends TAppConnection, I extends TAppConnectionInput>({
   server,
   app,
@@ -38,6 +70,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
   sanitizedResponseSchema: z.ZodTypeAny;
 }) => {
   const appName = APP_CONNECTION_NAME_MAP[app];
+  const appNameForOpId = getAppNameForOperationId(app);
 
   server.route({
     method: "GET",
@@ -47,7 +80,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     },
     schema: {
       hide: false,
-      operationId: "listAppConnections",
+      operationId: `listAppConnections${appNameForOpId}`,
       tags: [ApiDocsTags.AppConnections],
       description: `List the ${appName} Connections for the current organization or project.`,
       querystring: z.object({
@@ -92,7 +125,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     },
     schema: {
       hide: false,
-      operationId: "listAvailableAppConnections",
+      operationId: `listAvailableAppConnections${appNameForOpId}`,
       tags: [ApiDocsTags.AppConnections],
       description: `List the ${appName} Connections the current user has permission to establish connections within this project.`,
       querystring: z.object({
@@ -147,7 +180,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     },
     schema: {
       hide: false,
-      operationId: "getAppConnection",
+      operationId: `getAppConnection${appNameForOpId}`,
       tags: [ApiDocsTags.AppConnections],
       description: `Get the specified ${appName} Connection by ID.`,
       params: z.object({
@@ -191,7 +224,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     },
     schema: {
       hide: false,
-      operationId: "getAppConnectionByName",
+      operationId: `getAppConnectionByName${appNameForOpId}`,
       tags: [ApiDocsTags.AppConnections],
       description: `Get the specified ${appName} Connection by name.`,
       params: z.object({
@@ -246,7 +279,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     },
     schema: {
       hide: false,
-      operationId: "createAppConnection",
+      operationId: `createAppConnection${appNameForOpId}`,
       tags: [ApiDocsTags.AppConnections],
       description: `Create ${startsWithVowel(appName) ? "an" : "a"} ${appName} Connection.`,
       body: createSchema,
@@ -291,7 +324,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     },
     schema: {
       hide: false,
-      operationId: "updateAppConnection",
+      operationId: `updateAppConnection${appNameForOpId}`,
       tags: [ApiDocsTags.AppConnections],
       description: `Update the specified ${appName} Connection.`,
       params: z.object({
@@ -340,7 +373,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     },
     schema: {
       hide: false,
-      operationId: "deleteAppConnection",
+      operationId: `deleteAppConnection${appNameForOpId}`,
       tags: [ApiDocsTags.AppConnections],
       description: `Delete the specified ${appName} Connection.`,
       params: z.object({

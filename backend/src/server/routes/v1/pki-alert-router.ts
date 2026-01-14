@@ -24,7 +24,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "createPkiAlert",
+      operationId: "createPkiAlertV1",
       description: "Create a new PKI alert",
       tags: [ApiDocsTags.PkiAlerting],
       body: CreatePkiAlertV2Schema.extend({
@@ -93,7 +93,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "listPkiAlerts",
+      operationId: "listPkiAlertsV1",
       description: "List PKI alerts for a project",
       tags: [ApiDocsTags.PkiAlerting],
       querystring: z.object({
@@ -155,7 +155,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "getPkiAlert",
+      operationId: "getPkiAlertV1",
       description: "Get a PKI alert by ID",
       tags: [ApiDocsTags.PkiAlerting],
       params: z.object({
@@ -221,7 +221,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "updatePkiAlert",
+      operationId: "updatePkiAlertV1",
       description: "Update a PKI alert",
       tags: [ApiDocsTags.PkiAlerting],
       params: z.object({
@@ -292,7 +292,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "deletePkiAlert",
+      operationId: "deletePkiAlertV1",
       description: "Delete a PKI alert",
       tags: [ApiDocsTags.PkiAlerting],
       params: z.object({
@@ -409,7 +409,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "previewPkiAlertCertificates",
+      operationId: "previewPkiAlertCertificatesV1",
       description: "Preview certificates that would match the given filter rules",
       tags: [ApiDocsTags.PkiAlerting],
       body: z.object({
