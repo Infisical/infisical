@@ -52,6 +52,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     },
     schema: {
       hide: false,
+      operationId: "listSecretSyncs",
       tags: [ApiDocsTags.SecretSyncs],
       description: `List the ${destinationName} Syncs for the specified project.`,
       querystring: z.object({
@@ -97,6 +98,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     },
     schema: {
       hide: false,
+      operationId: "getSecretSync",
       tags: [ApiDocsTags.SecretSyncs],
       description: `Get the specified ${destinationName} Sync by ID.`,
       params: z.object({
@@ -139,6 +141,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     },
     schema: {
       hide: false,
+      operationId: "getSecretSyncByName",
       tags: [ApiDocsTags.SecretSyncs],
       description: `Get the specified ${destinationName} Sync by name and project ID.`,
       params: z.object({
@@ -189,6 +192,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     },
     schema: {
       hide: false,
+      operationId: "createSecretSync",
       tags: [ApiDocsTags.SecretSyncs],
       description: `Create ${
         startsWithVowel(destinationName) ? "an" : "a"
@@ -230,6 +234,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     },
     schema: {
       hide: false,
+      operationId: "updateSecretSync",
       tags: [ApiDocsTags.SecretSyncs],
       description: `Update the specified ${destinationName} Sync.`,
       params: z.object({
@@ -274,6 +279,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     },
     schema: {
       hide: false,
+      operationId: "deleteSecretSync",
       tags: [ApiDocsTags.SecretSyncs],
       description: `Delete the specified ${destinationName} Sync.`,
       params: z.object({
@@ -325,6 +331,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     },
     schema: {
       hide: false,
+      operationId: "syncSecretSync",
       tags: [ApiDocsTags.SecretSyncs],
       description: `Trigger a sync for the specified ${destinationName} Sync.`,
       params: z.object({
@@ -359,6 +366,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     },
     schema: {
       hide: false,
+      operationId: "importSecretSyncSecrets",
       tags: [ApiDocsTags.SecretSyncs],
       description: `Import secrets from the specified ${destinationName} Sync destination.`,
       params: z.object({
@@ -400,6 +408,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     },
     schema: {
       hide: false,
+      operationId: "removeSecretSyncSecrets",
       tags: [ApiDocsTags.SecretSyncs],
       description: `Remove previously synced secrets from the specified ${destinationName} Sync destination.`,
       params: z.object({
@@ -433,6 +442,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
       rateLimit: readLimit
     },
     schema: {
+      operationId: "checkSecretSyncDestination",
       tags: [ApiDocsTags.SecretSyncs],
       body: z.object({
         destinationConfig: z.unknown(),
