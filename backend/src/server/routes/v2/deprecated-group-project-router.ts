@@ -27,6 +27,7 @@ export const registerDeprecatedGroupProjectRouter = async (server: FastifyZodPro
     },
     schema: {
       hide: false,
+      operationId: "addGroupToProject",
       tags: [ApiDocsTags.ProjectGroups],
       description: "Add group to project",
       security: [
@@ -110,6 +111,7 @@ export const registerDeprecatedGroupProjectRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "updateGroupInProject",
       tags: [ApiDocsTags.ProjectGroups],
       description: "Update group in project",
       security: [
@@ -176,6 +178,7 @@ export const registerDeprecatedGroupProjectRouter = async (server: FastifyZodPro
     },
     schema: {
       hide: false,
+      operationId: "removeGroupFromProject",
       tags: [ApiDocsTags.ProjectGroups],
       description: "Remove group from project",
       security: [
@@ -225,6 +228,7 @@ export const registerDeprecatedGroupProjectRouter = async (server: FastifyZodPro
     },
     schema: {
       hide: false,
+      operationId: "listGroupsInProject",
       tags: [ApiDocsTags.ProjectGroups],
       description: "Return list of groups in project",
       security: [
@@ -287,6 +291,7 @@ export const registerDeprecatedGroupProjectRouter = async (server: FastifyZodPro
     },
     schema: {
       hide: false,
+      operationId: "getProjectGroup",
       tags: [ApiDocsTags.ProjectGroups],
       description: "Return project group",
       security: [
@@ -356,6 +361,7 @@ export const registerDeprecatedGroupProjectRouter = async (server: FastifyZodPro
     },
     schema: {
       hide: false,
+      operationId: "listProjectGroupUsers",
       tags: [ApiDocsTags.ProjectGroups],
       description: "Return project group users",
       params: z.object({

@@ -29,6 +29,7 @@ export const registerDeprecatedIdentityProjectRouter = async (server: FastifyZod
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "createProjectIdentityMembership",
       tags: [ApiDocsTags.ProjectIdentities],
       description: "Create project identity membership",
       security: [
@@ -111,6 +112,7 @@ export const registerDeprecatedIdentityProjectRouter = async (server: FastifyZod
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "updateProjectIdentityMembership",
       tags: [ApiDocsTags.ProjectIdentities],
       description: "Update project identity memberships",
       security: [
@@ -190,6 +192,7 @@ export const registerDeprecatedIdentityProjectRouter = async (server: FastifyZod
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "deleteProjectIdentityMembership",
       tags: [ApiDocsTags.ProjectIdentities],
       description: "Delete project identity memberships",
       security: [
@@ -235,6 +238,7 @@ export const registerDeprecatedIdentityProjectRouter = async (server: FastifyZod
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "listProjectIdentityMemberships",
       tags: [ApiDocsTags.ProjectIdentities],
       description: "Return project identity memberships",
       security: [
@@ -330,6 +334,7 @@ export const registerDeprecatedIdentityProjectRouter = async (server: FastifyZod
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "getProjectIdentityMembership",
       tags: [ApiDocsTags.ProjectIdentities],
       description: "Return project identity membership",
       security: [
@@ -392,6 +397,7 @@ export const registerDeprecatedIdentityProjectRouter = async (server: FastifyZod
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "getProjectIdentityMembershipById",
       tags: [ApiDocsTags.ProjectIdentities],
       params: z.object({
         identityMembershipId: z.string().trim()

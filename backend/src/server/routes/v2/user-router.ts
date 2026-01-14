@@ -17,6 +17,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       })
     },
     schema: {
+      operationId: "sendEmailVerificationCode",
       body: z.object({
         token: z.string().trim()
       }),

@@ -45,6 +45,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getProjectEncryptedKey",
       description: "Return encrypted project key",
       params: z.object({
         workspaceId: z.string().trim().describe(PROJECTS.GET_KEY.projectId)
@@ -93,6 +94,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: false,
+      operationId: "createProject",
       tags: [ApiDocsTags.Projects],
       description: "Create a new project",
       security: [
@@ -174,6 +176,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: false,
+      operationId: "deleteProject",
       tags: [ApiDocsTags.Projects],
       description: "Delete project",
       security: [
@@ -227,6 +230,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: false,
+      operationId: "getProject",
       tags: [ApiDocsTags.Projects],
       description: "Get project details by slug",
       security: [
@@ -267,6 +271,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "updateProject",
       params: z.object({
         slug: slugSchema({ min: 5, max: 64 }).describe("The slug of the project to update.")
       }),
@@ -322,6 +327,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: false,
+      operationId: "listProjectCas",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       params: z.object({
         slug: slugSchema({ min: 5, max: 64 }).describe(PROJECTS.LIST_CAS.slug)
@@ -365,6 +371,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: false,
+      operationId: "listProjectCertificates",
       tags: [ApiDocsTags.PkiCertificates],
       params: z.object({
         slug: slugSchema({ min: 5, max: 64 }).describe(PROJECTS.LIST_CERTIFICATES.slug)
@@ -408,6 +415,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: false,
+      operationId: "listProjectPkiAlerts",
       tags: [ApiDocsTags.PkiAlerting],
       params: z.object({
         projectId: z.string().trim()
@@ -440,6 +448,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: false,
+      operationId: "listProjectPkiCollections",
       tags: [ApiDocsTags.PkiCertificateCollections],
       params: z.object({
         projectId: z.string().trim()
@@ -472,6 +481,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: false,
+      operationId: "listProjectPkiSubscribers",
       tags: [ApiDocsTags.PkiSubscribers],
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.LIST_PKI_SUBSCRIBERS.projectId)
@@ -504,6 +514,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: false,
+      operationId: "listProjectCertificateTemplates",
       tags: [ApiDocsTags.PkiCertificateTemplates],
       params: z.object({
         projectId: z.string().trim()
@@ -535,6 +546,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listProjectSshCertificates",
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.LIST_SSH_CAS.projectId)
       }),
@@ -573,6 +585,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: false,
+      operationId: "listProjectSshCertificateTemplates",
       tags: [ApiDocsTags.SshCertificateTemplates],
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.LIST_SSH_CERTIFICATE_TEMPLATES.projectId)
@@ -605,6 +618,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: false,
+      operationId: "listProjectSshCas",
       tags: [ApiDocsTags.SshCertificateAuthorities],
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.LIST_SSH_CAS.projectId)
@@ -637,6 +651,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: false,
+      operationId: "listProjectSshHosts",
       tags: [ApiDocsTags.SshHosts],
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.LIST_SSH_HOSTS.projectId)
@@ -677,6 +692,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: false,
+      operationId: "listProjectSshHostGroups",
       tags: [ApiDocsTags.SshHostGroups],
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.LIST_SSH_HOST_GROUPS.projectId)
