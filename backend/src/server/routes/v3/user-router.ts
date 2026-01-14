@@ -13,6 +13,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getMyApiKeysV3",
       response: {
         200: z.object({
           apiKeyData: ApiKeysSchema.omit({ secretHash: true }).array()

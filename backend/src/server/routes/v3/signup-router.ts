@@ -19,6 +19,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       })
     },
     schema: {
+      operationId: "beginEmailSignupV3",
       body: z.object({
         email: z.string().email().trim()
       }),
@@ -61,6 +62,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       })
     },
     schema: {
+      operationId: "verifyEmailSignupV3",
       body: z.object({
         email: z.string().email().trim(),
         code: z.string().trim()
@@ -93,6 +95,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       rateLimit: authRateLimit
     },
     schema: {
+      operationId: "completeEmailAccountSignupV3",
       body: z
         .object({
           email: z.string().trim(),
@@ -175,6 +178,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       rateLimit: authRateLimit
     },
     schema: {
+      operationId: "completeAccountInviteV3",
       body: z.object({
         email: z.string().email().trim(),
         password: z.string(),
