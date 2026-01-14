@@ -33,7 +33,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "createCertificateAuthority",
+      operationId: "createCertificateAuthorityV1",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Create CA",
       body: z
@@ -117,7 +117,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "getCertificateAuthority",
+      operationId: "getCertificateAuthorityV1",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get CA",
       params: z.object({
@@ -196,7 +196,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "updateCertificateAuthority",
+      operationId: "updateCertificateAuthorityV1",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Update CA",
       params: z.object({
@@ -255,7 +255,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      operationId: "deleteCertificateAuthority",
+      operationId: "deleteCertificateAuthorityV1",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Delete CA",
       params: z.object({
