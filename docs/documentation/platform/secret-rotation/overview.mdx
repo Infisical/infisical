@@ -96,22 +96,51 @@ gantt
   recommend manually rotating these credentials to prevent downtime.
 </Warning>
 
+### Benefits of Secret Rotation
+
+<CardGroup cols={2}>
+  <Card title="Zero downtime" icon="clock">
+    Applications always have valid credentials via the dual-user strategy.
+  </Card>
+  <Card title="Grace period" icon="hourglass">
+    Overlapping validity gives apps time to update without breaking.
+  </Card>
+  <Card title="Reduced risk" icon="shield-check">
+    Regular cycling limits the window of opportunity for attackers.
+  </Card>
+  <Card title="Predictable schedule" icon="calendar">
+    Systematic rotation makes automation reliable and audit-friendly.
+  </Card>
+</CardGroup>
+
+## Set up rotation
+
+To get started with Secret Rotation, refer to the list of [supported integrations](/integrations/secret-rotations) and follow the instructions for your specific service.
+
+## Best practices
+
+To ensure Secret Rotation works as expected, follow these best practices:
+
+- Choose a rotation interval that balances security with your team's operational capacity.
+- Ensure your apps either re-fetch secrets or restart when credentials change.
+- Set up alerts for rotation failures to catch and fix permission issues early.
+
 ### Common issues
 
 <AccordionGroup>
 <Accordion title="Missing database permissions">
-The most common failure reason is insufficient permissions. The user you provide to Infisical (to perform the rotation) must have the authority to `ALTER USER` or change passwords for the target users. Always verify permissions before enabling rotation.
+The most common reason for failure is insufficient permissions. The user you provide to Infisical to perform the rotation must have the authority to `ALTER USER` or change passwords for the target users. Always verify permissions before configuring rotation.
 </Accordion>
 
 <Accordion title="Application restarts">
-  Infisical updates the secret value, but your application must *read* that new
-  value. - If you inject secrets at build time (e.g., in a CI/CD pipeline), you
-  must **re-deploy** your application to pick up the rotated secret. - If you
-  use the Infisical SDK or Agent, your app can fetch the new secret dynamically
-  without a full redeploy.
+  Infisical updates the secret value, but your application must read that new
+  value. If you inject secrets at build time (e.g., in a CI/CD pipeline), you
+  must re-deploy your application to pick up the rotated secret. If you use the
+  Infisical SDK or Agent, your app can fetch the new secret dynamically without
+  a full redeploy.
 </Accordion>
 
-<Accordion title="Requesting New Integrations">
-Infisical supports many services out of the box. If you need to rotate a secret for a service not currently listed, please [request a new integration](https://github.com/Infisical/infisical/issues) or check our [Integrations](/integrations/overview) page.
+<Accordion title="Integration not supported">
+Infisical supports many services out of the box. If you need to rotate a secret for a service not currently listed, [request a new integration](https://github.com/Infisical/infisical/issues).
 </Accordion>
 </AccordionGroup>
