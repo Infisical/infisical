@@ -15,11 +15,11 @@ export const SshPasswordRotationSchema = z
     }),
     secretsMapping: z.object({
       username: z.string().trim().min(1, "Username required"),
-      password: z.string().trim().min(1, "Password required")
+      password: z.string().trim().optional()
     }),
     temporaryParameters: z
       .object({
-        password: z.string().min(1, "Password required")
+        password: z.string().optional()
       })
       .optional()
   })

@@ -34,7 +34,8 @@ export const SshPasswordRotationParametersFields = () => {
                 <ul className="mt-2 ml-4 flex list-disc flex-col gap-2">
                   <li>
                     <span className="font-medium">Login as Root</span> - The SSH connection
-                    credentials (admin) will be used to change the target user&#39;s password.
+                    credentials of the app connection linked will be used to change the target
+                    user&#39;s password.
                   </li>
                   <li>
                     <span className="font-medium">Login as Target</span> - The target user will
