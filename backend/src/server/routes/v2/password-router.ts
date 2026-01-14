@@ -15,6 +15,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       rateLimit: authRateLimit
     },
     schema: {
+      operationId: "resetPassword",
       body: z.object({
         newPassword: z.string().trim()
       })
@@ -33,6 +34,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/user/password-reset",
     schema: {
+      operationId: "resetUserPassword",
       body: z.object({
         oldPassword: z.string().trim(),
         newPassword: z.string().trim()
