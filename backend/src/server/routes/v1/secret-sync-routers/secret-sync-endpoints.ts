@@ -66,7 +66,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     },
     schema: {
       hide: false,
-      operationId: `listSecretSyncs${destinationNameForOpId}`,
+      operationId: `list${destinationNameForOpId}SecretSyncs`,
       tags: [ApiDocsTags.SecretSyncs],
       description: `List the ${destinationName} Syncs for the specified project.`,
       querystring: z.object({
@@ -112,7 +112,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     },
     schema: {
       hide: false,
-      operationId: `getSecretSync${destinationNameForOpId}`,
+      operationId: `get${destinationNameForOpId}SecretSync`,
       tags: [ApiDocsTags.SecretSyncs],
       description: `Get the specified ${destinationName} Sync by ID.`,
       params: z.object({
@@ -155,7 +155,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     },
     schema: {
       hide: false,
-      operationId: `getSecretSyncByName${destinationNameForOpId}`,
+      operationId: `get${destinationNameForOpId}SecretSyncByName`,
       tags: [ApiDocsTags.SecretSyncs],
       description: `Get the specified ${destinationName} Sync by name and project ID.`,
       params: z.object({
@@ -206,7 +206,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     },
     schema: {
       hide: false,
-      operationId: `createSecretSync${destinationNameForOpId}`,
+      operationId: `create${destinationNameForOpId}SecretSync`,
       tags: [ApiDocsTags.SecretSyncs],
       description: `Create ${
         startsWithVowel(destinationName) ? "an" : "a"
@@ -248,7 +248,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     },
     schema: {
       hide: false,
-      operationId: `updateSecretSync${destinationNameForOpId}`,
+      operationId: `update${destinationNameForOpId}SecretSync`,
       tags: [ApiDocsTags.SecretSyncs],
       description: `Update the specified ${destinationName} Sync.`,
       params: z.object({
@@ -293,7 +293,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     },
     schema: {
       hide: false,
-      operationId: `deleteSecretSync${destinationNameForOpId}`,
+      operationId: `delete${destinationNameForOpId}SecretSync`,
       tags: [ApiDocsTags.SecretSyncs],
       description: `Delete the specified ${destinationName} Sync.`,
       params: z.object({
@@ -345,7 +345,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     },
     schema: {
       hide: false,
-      operationId: `syncSecretSync${destinationNameForOpId}`,
+      operationId: `sync${destinationNameForOpId}SecretSync`,
       tags: [ApiDocsTags.SecretSyncs],
       description: `Trigger a sync for the specified ${destinationName} Sync.`,
       params: z.object({
@@ -380,7 +380,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     },
     schema: {
       hide: false,
-      operationId: `importSecretSyncSecrets${destinationNameForOpId}`,
+      operationId: `import${destinationNameForOpId}SecretSyncSecrets`,
       tags: [ApiDocsTags.SecretSyncs],
       description: `Import secrets from the specified ${destinationName} Sync destination.`,
       params: z.object({
@@ -422,7 +422,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     },
     schema: {
       hide: false,
-      operationId: `removeSecretSyncSecrets${destinationNameForOpId}`,
+      operationId: `remove${destinationNameForOpId}SecretSyncSecrets`,
       tags: [ApiDocsTags.SecretSyncs],
       description: `Remove previously synced secrets from the specified ${destinationName} Sync destination.`,
       params: z.object({
@@ -456,7 +456,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
       rateLimit: readLimit
     },
     schema: {
-      operationId: `checkSecretSyncDestination${destinationNameForOpId}`,
+      operationId: `check${destinationNameForOpId}SecretSyncDestination`,
       tags: [ApiDocsTags.SecretSyncs],
       body: z.object({
         destinationConfig: z.unknown(),
