@@ -20,10 +20,10 @@ import {
 } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { useGetCert } from "@app/hooks/api";
+import { useGetCertificatePolicyById } from "@app/hooks/api/certificatePolicies";
 import { EnrollmentType, useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import { CertExtendedKeyUsage, CertKeyUsage } from "@app/hooks/api/certificates/enums";
 import { useUnifiedCertificateIssuance } from "@app/hooks/api/certificates/mutations";
-import { useGetCertificatePolicyById } from "@app/hooks/api/certificatePolicies";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { CertSubjectAlternativeNameType } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
@@ -32,7 +32,7 @@ import { CertificateContent } from "./CertificateContent";
 import { filterUsages, formatSubjectAltNames, getAttributeValue } from "./certificateUtils";
 import { KeyUsageSection } from "./KeyUsageSection";
 import { SubjectAltNamesField } from "./SubjectAltNamesField";
-import { useCertificateTemplate } from "./useCertificateTemplate";
+import { useCertificatePolicy } from "./useCertificatePolicy";
 
 const createSchema = (shouldShowSubjectSection: boolean) => {
   return z.object({
@@ -178,7 +178,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
     availableSignatureAlgorithms,
     availableKeyAlgorithms,
     resetConstraints
-  } = useCertificateTemplate(
+  } = useCertificatePolicy(
     policyData,
     actualSelectedProfile,
     popUp?.issueCertificate?.isOpen || false,

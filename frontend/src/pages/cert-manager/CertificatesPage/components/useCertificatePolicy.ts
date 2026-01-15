@@ -43,7 +43,7 @@ export type TemplateConstraints = {
   shouldShowSubjectSection: boolean;
 };
 
-export const useCertificateTemplate = (
+export const useCertificatePolicy = (
   templateData: any,
   selectedProfile: any,
   isModalOpen: boolean,
