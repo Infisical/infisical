@@ -77,6 +77,18 @@ const certificateRequestDataSchema = z
     {
       message: "notAfter must be after notBefore"
     }
+  )
+  .refine(
+    (data) => {
+      // pathLength should only be set when isCA is true
+      if (data.caSettings?.pathLength !== undefined && !data.caSettings?.isCA) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "pathLength can only be set when isCA is true"
+    }
   );
 
 const validateCertificateRequestData = (data: unknown) => {

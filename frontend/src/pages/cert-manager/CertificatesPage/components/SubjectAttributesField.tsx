@@ -39,6 +39,7 @@ const getSubjectAttributePlaceholder = (type: CertSubjectAttributeType): string 
 };
 
 type SubjectAttributesFieldProps = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   control: Control<any>;
   allowedAttributeTypes: CertSubjectAttributeType[];
   error?: string;
@@ -103,7 +104,9 @@ export const SubjectAttributesField = ({
                       variant="plain"
                       size="sm"
                       onClick={() => {
-                        const newValue = currentValues.filter((_: any, i: number) => i !== index);
+                        const newValue = currentValues.filter(
+                          (_: SubjectAttribute, i: number) => i !== index
+                        );
                         onChange(newValue);
                       }}
                     >

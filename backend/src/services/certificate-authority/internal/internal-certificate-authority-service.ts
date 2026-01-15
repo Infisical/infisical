@@ -144,6 +144,75 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
   };
 
+  /**
+   * Validates CA path length constraints and creates the BasicConstraints extension.
+   * This handles both policy-level validation and issuing CA hierarchy validation.
+   */
+  const $createBasicConstraintsExtension = ({
+    caSettings,
+    pathLength,
+    caCertObj
+  }: {
+    caSettings?: { maxPathLength?: number } | null;
+    pathLength?: number | null;
+    caCertObj: x509.X509Certificate;
+  }): x509.BasicConstraintsExtension => {
+    const shouldIssueCaCertificate = caSettings !== undefined && caSettings !== null;
+
+    if (!shouldIssueCaCertificate) {
+      return new x509.BasicConstraintsExtension(false);
+    }
+
+    // Validate against policy's maxPathLength
+    const policyMaxPathLength = caSettings.maxPathLength;
+    if (policyMaxPathLength !== undefined && policyMaxPathLength !== null && policyMaxPathLength !== -1) {
+      if (pathLength === undefined || pathLength === null) {
+        throw new BadRequestError({
+          message: `Path length is required when issuing CA certificates. Policy allows maximum path length of ${policyMaxPathLength}.`
+        });
+      }
+      if (pathLength > policyMaxPathLength) {
+        throw new BadRequestError({
+          message: `Path length (${pathLength}) exceeds policy's maximum allowed path length (${policyMaxPathLength})`
+        });
+      }
+    }
+
+    // Validate against issuing CA's BasicConstraints
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    const issuingCaBasicConstraints = caCertObj.getExtension("2.5.29.19") as x509.BasicConstraintsExtension | null;
+
+    if (issuingCaBasicConstraints) {
+      const issuingCaPathLength = issuingCaBasicConstraints.pathLength;
+
+      if (issuingCaPathLength === 0) {
+        throw new BadRequestError({
+          message: "Issuing CA cannot issue subordinate CA certificates (path length is 0)"
+        });
+      }
+
+      if (issuingCaPathLength !== undefined && pathLength !== undefined && pathLength !== null) {
+        if (pathLength >= issuingCaPathLength) {
+          throw new BadRequestError({
+            message: `Path length (${pathLength}) must be less than issuing CA's path length (${issuingCaPathLength})`
+          });
+        }
+      }
+
+      const effectivePathLength =
+        pathLength !== undefined && pathLength !== null
+          ? pathLength
+          : issuingCaPathLength !== undefined
+            ? issuingCaPathLength - 1
+            : undefined;
+
+      return new x509.BasicConstraintsExtension(true, effectivePathLength, true);
+    }
+
+    const effectivePathLength = pathLength !== undefined && pathLength !== null ? pathLength : undefined;
+    return new x509.BasicConstraintsExtension(true, effectivePathLength, true);
+  };
+
   const createCa = async ({
     type,
     friendlyName,
@@ -1372,60 +1441,11 @@ export const internalCertificateAuthorityServiceFactory = ({
     const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/crl/${caCrl.id}/der`;
     const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${caCert.id}/der`;
 
-    const shouldIssueCaCertificate = caSettings !== undefined && caSettings !== null;
-
-    let basicConstraintsExtension: x509.BasicConstraintsExtension;
-    if (shouldIssueCaCertificate) {
-      const templateMaxPathLength = caSettings.maxPathLength;
-      if (templateMaxPathLength !== undefined && templateMaxPathLength !== null && templateMaxPathLength !== -1) {
-        // When template has a maxPathLength set (not unlimited), pathLength is required
-        if (pathLength === undefined || pathLength === null) {
-          throw new BadRequestError({
-            message: `Path length is required when issuing CA certificates. Template allows maximum path length of ${templateMaxPathLength}.`
-          });
-        }
-        if (pathLength > templateMaxPathLength) {
-          throw new BadRequestError({
-            message: `Path length (${pathLength}) exceeds template's maximum allowed path length (${templateMaxPathLength})`
-          });
-        }
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      const issuingCaBasicConstraints = caCertObj.getExtension("2.5.29.19") as x509.BasicConstraintsExtension | null;
-
-      if (issuingCaBasicConstraints) {
-        const issuingCaPathLength = issuingCaBasicConstraints.pathLength;
-
-        if (issuingCaPathLength === 0) {
-          throw new BadRequestError({
-            message: "Issuing CA cannot issue subordinate CA certificates (path length is 0)"
-          });
-        }
-
-        if (issuingCaPathLength !== undefined && pathLength !== undefined && pathLength !== null) {
-          if (pathLength >= issuingCaPathLength) {
-            throw new BadRequestError({
-              message: `Path length (${pathLength}) must be less than issuing CA's path length (${issuingCaPathLength})`
-            });
-          }
-        }
-
-        const effectivePathLength =
-          pathLength !== undefined && pathLength !== null
-            ? pathLength
-            : issuingCaPathLength !== undefined
-              ? issuingCaPathLength - 1
-              : undefined;
-
-        basicConstraintsExtension = new x509.BasicConstraintsExtension(true, effectivePathLength, true);
-      } else {
-        const effectivePathLength = pathLength !== undefined && pathLength !== null ? pathLength : undefined;
-        basicConstraintsExtension = new x509.BasicConstraintsExtension(true, effectivePathLength, true);
-      }
-    } else {
-      basicConstraintsExtension = new x509.BasicConstraintsExtension(false);
-    }
+    const basicConstraintsExtension = $createBasicConstraintsExtension({
+      caSettings,
+      pathLength,
+      caCertObj
+    });
 
     const extensions: x509.Extension[] = [
       basicConstraintsExtension,
@@ -1795,60 +1815,11 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${caCert.id}/der`;
 
-    const shouldIssueCaCertificate = caSettings !== undefined && caSettings !== null;
-
-    let basicConstraintsExtension: x509.BasicConstraintsExtension;
-    if (shouldIssueCaCertificate) {
-      const templateMaxPathLength = caSettings.maxPathLength;
-      if (templateMaxPathLength !== undefined && templateMaxPathLength !== null && templateMaxPathLength !== -1) {
-        // When template has a maxPathLength set (not unlimited), pathLength is required
-        if (pathLength === undefined || pathLength === null) {
-          throw new BadRequestError({
-            message: `Path length is required when issuing CA certificates. Template allows maximum path length of ${templateMaxPathLength}.`
-          });
-        }
-        if (pathLength > templateMaxPathLength) {
-          throw new BadRequestError({
-            message: `Path length (${pathLength}) exceeds template's maximum allowed path length (${templateMaxPathLength})`
-          });
-        }
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      const issuingCaBasicConstraints = caCertObj.getExtension("2.5.29.19") as x509.BasicConstraintsExtension | null;
-
-      if (issuingCaBasicConstraints) {
-        const issuingCaPathLength = issuingCaBasicConstraints.pathLength;
-
-        if (issuingCaPathLength === 0) {
-          throw new BadRequestError({
-            message: "Issuing CA cannot issue subordinate CA certificates (path length is 0)"
-          });
-        }
-
-        if (issuingCaPathLength !== undefined && pathLength !== undefined && pathLength !== null) {
-          if (pathLength >= issuingCaPathLength) {
-            throw new BadRequestError({
-              message: `Path length (${pathLength}) must be less than issuing CA's path length (${issuingCaPathLength})`
-            });
-          }
-        }
-
-        const effectivePathLength =
-          pathLength !== undefined && pathLength !== null
-            ? pathLength
-            : issuingCaPathLength !== undefined
-              ? issuingCaPathLength - 1
-              : undefined;
-
-        basicConstraintsExtension = new x509.BasicConstraintsExtension(true, effectivePathLength, true);
-      } else {
-        const effectivePathLength = pathLength !== undefined && pathLength !== null ? pathLength : undefined;
-        basicConstraintsExtension = new x509.BasicConstraintsExtension(true, effectivePathLength, true);
-      }
-    } else {
-      basicConstraintsExtension = new x509.BasicConstraintsExtension(false);
-    }
+    const basicConstraintsExtension = $createBasicConstraintsExtension({
+      caSettings,
+      pathLength,
+      caCertObj
+    });
 
     const extensions: x509.Extension[] = [
       basicConstraintsExtension,

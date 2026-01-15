@@ -650,7 +650,12 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                                   isDisabled={!watchedIsCA}
                                   onChange={(e) => {
                                     const val = e.target.value;
-                                    field.onChange(val === "" ? undefined : Number(val));
+                                    if (val === "") {
+                                      field.onChange(undefined);
+                                    } else {
+                                      const numVal = parseInt(val, 10);
+                                      field.onChange(Number.isNaN(numVal) ? undefined : numVal);
+                                    }
                                   }}
                                 />
                               </FormControl>
