@@ -6,14 +6,14 @@ import { SecretRotation, useSecretRotationV2Option } from "@app/hooks/api/secret
 
 import { SecretsMappingTable } from "./shared";
 
-export const SshPasswordRotationSecretsMappingFields = () => {
+export const UnixLinuxLocalAccountRotationSecretsMappingFields = () => {
   const { control } = useFormContext<
     TSecretRotationV2Form & {
-      type: SecretRotation.SshPassword;
+      type: SecretRotation.UnixLinuxLocalAccount;
     }
   >();
 
-  const { rotationOption } = useSecretRotationV2Option(SecretRotation.SshPassword);
+  const { rotationOption } = useSecretRotationV2Option(SecretRotation.UnixLinuxLocalAccount);
 
   const items = [
     {

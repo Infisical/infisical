@@ -30,7 +30,7 @@ import {
   SecretRotationStatus,
   TSecretRotationV2
 } from "@app/hooks/api/secretRotationsV2";
-import { SshPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/types/ssh-password-rotation";
+import { UnixLinuxLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/unix-linux-local-account-rotation";
 import { getExpandedRowStyle } from "@app/pages/secret-manager/OverviewPage/components/utils";
 
 import { SecretOverviewRotationSecretRow } from "./SecretOverviewRotationSecretRow";
@@ -211,9 +211,9 @@ export const SecretOverviewSecretRotationRow = ({
                                   </IconButton>
                                 )}
                               </ProjectPermissionCan>
-                              {secretRotation.type === SecretRotation.SshPassword &&
+                              {secretRotation.type === SecretRotation.UnixLinuxLocalAccount &&
                                 secretRotation.parameters.rotationMethod ===
-                                  SshPasswordRotationMethod.LoginAsTarget && (
+                                  UnixLinuxLocalAccountRotationMethod.LoginAsTarget && (
                                   <ProjectPermissionCan
                                     I={ProjectPermissionSecretRotationActions.RotateSecrets}
                                     a={subject(ProjectPermissionSub.SecretRotation, {

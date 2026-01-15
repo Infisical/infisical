@@ -1,8 +1,8 @@
 import { createNotification } from "@app/components/notifications";
 import { Button, Modal, ModalClose, ModalContent } from "@app/components/v2";
 import { SecretRotation, TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
-import { useReconcileSshPasswordRotation } from "@app/hooks/api/secretRotationsV2/mutations";
-import { TSshPasswordRotation } from "@app/hooks/api/secretRotationsV2/types/ssh-password-rotation";
+import { useReconcileUnixLinuxLocalAccountRotation } from "@app/hooks/api/secretRotationsV2/mutations";
+import { TUnixLinuxLocalAccountRotation } from "@app/hooks/api/secretRotationsV2/types/unix-linux-local-account-rotation";
 
 type Props = {
   secretRotation?: TSecretRotationV2;
@@ -11,17 +11,17 @@ type Props = {
 };
 
 type ContentProps = {
-  secretRotation: TSshPasswordRotation;
+  secretRotation: TUnixLinuxLocalAccountRotation;
   onComplete: () => void;
 };
 
 const Content = ({ secretRotation, onComplete }: ContentProps) => {
-  const reconcileSshPassword = useReconcileSshPasswordRotation();
+  const reconcileUnixLinuxLocalAccount = useReconcileUnixLinuxLocalAccountRotation();
 
   const { id: rotationId, projectId, folder } = secretRotation;
 
   const handleReconcile = async () => {
-    const result = await reconcileSshPassword.mutateAsync({
+    const result = await reconcileUnixLinuxLocalAccount.mutateAsync({
       rotationId,
       projectId,
       secretPath: folder.path
@@ -29,8 +29,8 @@ const Content = ({ secretRotation, onComplete }: ContentProps) => {
 
     createNotification({
       text: result.reconciled
-        ? "Successfully reconciled SSH password rotation"
-        : "SSH password rotation is already in sync",
+        ? "Successfully reconciled Unix/Linux Local Account rotation"
+        : "Unix/Linux Local Account rotation is already in sync",
       type: "success"
     });
 
@@ -55,8 +55,8 @@ const Content = ({ secretRotation, onComplete }: ContentProps) => {
         </ModalClose>
         <Button
           onClick={handleReconcile}
-          isDisabled={reconcileSshPassword.isPending}
-          isLoading={reconcileSshPassword.isPending}
+          isDisabled={reconcileUnixLinuxLocalAccount.isPending}
+          isLoading={reconcileUnixLinuxLocalAccount.isPending}
           colorSchema="secondary"
         >
           Reconcile
@@ -66,21 +66,21 @@ const Content = ({ secretRotation, onComplete }: ContentProps) => {
   );
 };
 
-export const ReconcileSshPasswordRotationModal = ({
+export const ReconcileUnixLinuxLocalAccountRotationModal = ({
   isOpen,
   onOpenChange,
   secretRotation
 }: Props) => {
-  if (!secretRotation || secretRotation.type !== SecretRotation.SshPassword) return null;
+  if (!secretRotation || secretRotation.type !== SecretRotation.UnixLinuxLocalAccount) return null;
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
-        title="Reconcile SSH Password"
-        subTitle="Sync the SSH password between Infisical and the server."
+        title="Reconcile Unix/Linux Local Account"
+        subTitle="Sync the Unix/Linux Local Account password between Infisical and the server."
       >
         <Content
-          secretRotation={secretRotation as TSshPasswordRotation}
+          secretRotation={secretRotation as TUnixLinuxLocalAccountRotation}
           onComplete={() => onOpenChange(false)}
         />
       </ModalContent>

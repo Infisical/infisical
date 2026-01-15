@@ -1,12 +1,12 @@
-import { TSshPasswordRotationGeneratedCredentialsResponse } from "@app/hooks/api/secretRotationsV2/types/ssh-password-rotation";
+import { TUnixLinuxLocalAccountRotationGeneratedCredentialsResponse } from "@app/hooks/api/secretRotationsV2/types/unix-linux-local-account-rotation";
 
 import { CredentialDisplay, ViewRotationGeneratedCredentialsDisplay } from "./shared";
 
 type Props = {
-  generatedCredentialsResponse: TSshPasswordRotationGeneratedCredentialsResponse;
+  generatedCredentialsResponse: TUnixLinuxLocalAccountRotationGeneratedCredentialsResponse;
 };
 
-export const ViewSshPasswordRotationGeneratedCredentials = ({
+export const ViewUnixLinuxLocalAccountRotationGeneratedCredentials = ({
   generatedCredentialsResponse: { generatedCredentials, activeIndex }
 }: Props) => {
   const inactiveIndex = activeIndex === 0 ? 1 : 0;

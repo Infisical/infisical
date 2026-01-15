@@ -6,16 +6,16 @@ import {
   TSecretRotationV2GeneratedCredentialsResponseBase
 } from "@app/hooks/api/secretRotationsV2/types/shared";
 
-export enum SshPasswordRotationMethod {
+export enum UnixLinuxLocalAccountRotationMethod {
   LoginAsTarget = "login-as-target",
   LoginAsRoot = "login-as-root"
 }
 
-export type TSshPasswordRotation = TSecretRotationV2Base & {
-  type: SecretRotation.SshPassword;
+export type TUnixLinuxLocalAccountRotation = TSecretRotationV2Base & {
+  type: SecretRotation.UnixLinuxLocalAccount;
   parameters: {
     username: string;
-    rotationMethod?: SshPasswordRotationMethod;
+    rotationMethod?: UnixLinuxLocalAccountRotationMethod;
     passwordRequirements?: TPasswordRequirements;
   };
   secretsMapping: {
@@ -24,22 +24,22 @@ export type TSshPasswordRotation = TSecretRotationV2Base & {
   };
 };
 
-export type TSshPasswordRotationGeneratedCredentials = {
+export type TUnixLinuxLocalAccountRotationGeneratedCredentials = {
   username: string;
   password: string;
 };
 
-export type TSshPasswordRotationGeneratedCredentialsResponse =
+export type TUnixLinuxLocalAccountRotationGeneratedCredentialsResponse =
   TSecretRotationV2GeneratedCredentialsResponseBase<
-    SecretRotation.SshPassword,
-    TSshPasswordRotationGeneratedCredentials
+    SecretRotation.UnixLinuxLocalAccount,
+    TUnixLinuxLocalAccountRotationGeneratedCredentials
   >;
 
-export type TSshPasswordRotationOption = {
+export type TUnixLinuxLocalAccountRotationOption = {
   name: string;
-  type: SecretRotation.SshPassword;
+  type: SecretRotation.UnixLinuxLocalAccount;
   connection: AppConnection.SSH;
   template: {
-    secretsMapping: TSshPasswordRotation["secretsMapping"];
+    secretsMapping: TUnixLinuxLocalAccountRotation["secretsMapping"];
   };
 };

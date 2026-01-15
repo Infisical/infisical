@@ -4,19 +4,19 @@ import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms
 import { DEFAULT_PASSWORD_REQUIREMENTS } from "@app/components/secret-rotations-v2/forms/schemas/shared";
 import { FormControl, Input, Select, SelectItem } from "@app/components/v2";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
-import { SshPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/types/ssh-password-rotation";
+import { UnixLinuxLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/unix-linux-local-account-rotation";
 
-export const SshPasswordRotationParametersFields = () => {
+export const UnixLinuxLocalAccountRotationParametersFields = () => {
   const { control, watch, setValue } = useFormContext<
     TSecretRotationV2Form & {
-      type: SecretRotation.SshPassword;
+      type: SecretRotation.UnixLinuxLocalAccount;
     }
   >();
 
   const id = watch("id");
   const rotationMethod = watch(
     "parameters.rotationMethod",
-    SshPasswordRotationMethod.LoginAsTarget
+    UnixLinuxLocalAccountRotationMethod.LoginAsTarget
   );
   const isUpdate = Boolean(id);
 
@@ -25,7 +25,7 @@ export const SshPasswordRotationParametersFields = () => {
       <Controller
         name="parameters.rotationMethod"
         control={control}
-        defaultValue={SshPasswordRotationMethod.LoginAsTarget}
+        defaultValue={UnixLinuxLocalAccountRotationMethod.LoginAsTarget}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl
             tooltipText={
@@ -52,7 +52,7 @@ export const SshPasswordRotationParametersFields = () => {
               // eslint-disable-next-line no-nested-ternary
               isUpdate
                 ? "Cannot be updated."
-                : value === SshPasswordRotationMethod.LoginAsRoot
+                : value === UnixLinuxLocalAccountRotationMethod.LoginAsRoot
                   ? "The SSH connection credentials will change the target user's password"
                   : "The target user will change their own password"
             }
@@ -70,7 +70,7 @@ export const SshPasswordRotationParametersFields = () => {
               position="popper"
               dropdownContainerClassName="max-w-none"
             >
-              {Object.values(SshPasswordRotationMethod).map((method) => {
+              {Object.values(UnixLinuxLocalAccountRotationMethod).map((method) => {
                 return (
                   <SelectItem value={method} className="capitalize" key={method}>
                     {method.replace(/-/g, " ")}
@@ -104,7 +104,7 @@ export const SshPasswordRotationParametersFields = () => {
             </FormControl>
           )}
         />
-        {!isUpdate && rotationMethod === SshPasswordRotationMethod.LoginAsTarget && (
+        {!isUpdate && rotationMethod === UnixLinuxLocalAccountRotationMethod.LoginAsTarget && (
           <Controller
             name="temporaryParameters.password"
             control={control}

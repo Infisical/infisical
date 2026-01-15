@@ -6,8 +6,8 @@ import { SecretRotation } from "@app/hooks/api/secretRotationsV2/enums";
 import {
   TCreateSecretRotationV2DTO,
   TDeleteSecretRotationV2DTO,
-  TReconcileSshPasswordRotationDTO,
-  TReconcileSshPasswordRotationResponse,
+  TReconcileUnixLinuxLocalAccountRotationDTO,
+  TReconcileUnixLinuxLocalAccountRotationResponse,
   TRotateSecretRotationV2DTO,
   TSecretRotationV2Response,
   TUpdateSecretRotationV2DTO
@@ -93,12 +93,12 @@ export const useDeleteSecretRotationV2 = () => {
   });
 };
 
-export const useReconcileSshPasswordRotation = () => {
+export const useReconcileUnixLinuxLocalAccountRotation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ rotationId }: TReconcileSshPasswordRotationDTO) => {
-      const { data } = await apiRequest.post<TReconcileSshPasswordRotationResponse>(
-        `/api/v2/secret-rotations/${SecretRotation.SshPassword}/${rotationId}/reconcile`
+    mutationFn: async ({ rotationId }: TReconcileUnixLinuxLocalAccountRotationDTO) => {
+      const { data } = await apiRequest.post<TReconcileUnixLinuxLocalAccountRotationResponse>(
+        `/api/v2/secret-rotations/${SecretRotation.UnixLinuxLocalAccount}/${rotationId}/reconcile`
       );
 
       return data;

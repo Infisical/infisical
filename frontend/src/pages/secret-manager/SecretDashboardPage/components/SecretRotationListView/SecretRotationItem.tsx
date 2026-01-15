@@ -21,7 +21,7 @@ import { ProjectPermissionSecretRotationActions } from "@app/context/ProjectPerm
 import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { SecretRotation, TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
-import { SshPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/types/ssh-password-rotation";
+import { UnixLinuxLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/unix-linux-local-account-rotation";
 import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 
 import { SecretListView } from "../SecretListView";
@@ -184,9 +184,9 @@ export const SecretRotationItem = ({
                 </IconButton>
               )}
             </ProjectPermissionCan>
-            {secretRotation.type === SecretRotation.SshPassword &&
+            {secretRotation.type === SecretRotation.UnixLinuxLocalAccount &&
               secretRotation.parameters.rotationMethod ===
-                SshPasswordRotationMethod.LoginAsTarget && (
+                UnixLinuxLocalAccountRotationMethod.LoginAsTarget && (
                 <ProjectPermissionCan
                   I={ProjectPermissionSecretRotationActions.RotateSecrets}
                   a={subject(ProjectPermissionSub.SecretRotation, {

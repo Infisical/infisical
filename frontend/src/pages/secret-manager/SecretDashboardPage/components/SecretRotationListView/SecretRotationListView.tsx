@@ -1,6 +1,6 @@
 import { DeleteSecretRotationV2Modal } from "@app/components/secret-rotations-v2/DeleteSecretRotationV2Modal";
 import { EditSecretRotationV2Modal } from "@app/components/secret-rotations-v2/EditSecretRotationV2Modal";
-import { ReconcileSshPasswordRotationModal } from "@app/components/secret-rotations-v2/ReconcileSshPasswordRotationModal";
+import { ReconcileUnixLinuxLocalAccountRotationModal } from "@app/components/secret-rotations-v2/ReconcileUnixLinuxLocalAccountRotationModal";
 import { RotateSecretRotationV2Modal } from "@app/components/secret-rotations-v2/RotateSecretRotationV2Modal";
 import { ViewSecretRotationV2GeneratedCredentialsModal } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials";
 import { usePopUp } from "@app/hooks";
@@ -83,11 +83,11 @@ export const SecretRotationListView = ({
         secretRotation={popUp.rotateSecretRotation.data as TSecretRotationV2}
         onOpenChange={(isOpen) => handlePopUpToggle("rotateSecretRotation", isOpen)}
       />
-      <ReconcileSshPasswordRotationModal
+      <ReconcileUnixLinuxLocalAccountRotationModal
         isOpen={
           popUp.reconcileSecretRotation.isOpen &&
           (popUp.reconcileSecretRotation.data as TSecretRotationV2)?.type ===
-            SecretRotation.SshPassword
+            SecretRotation.UnixLinuxLocalAccount
         }
         secretRotation={popUp.reconcileSecretRotation.data as TSecretRotationV2}
         onOpenChange={(isOpen) => handlePopUpToggle("reconcileSecretRotation", isOpen)}

@@ -6,10 +6,10 @@ import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 import { SecretRotationReviewSection } from "./shared";
 
-export const SshPasswordRotationReviewFields = () => {
+export const UnixLinuxLocalAccountRotationReviewFields = () => {
   const { watch } = useFormContext<
     TSecretRotationV2Form & {
-      type: SecretRotation.SshPassword;
+      type: SecretRotation.UnixLinuxLocalAccount;
     }
   >();
 

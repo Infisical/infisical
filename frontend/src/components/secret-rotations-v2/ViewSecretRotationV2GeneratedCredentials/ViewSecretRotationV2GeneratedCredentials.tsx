@@ -25,7 +25,7 @@ import { ViewSqlCredentialsRotationGeneratedCredentials } from "./shared";
 import { ViewAwsIamUserSecretRotationGeneratedCredentials } from "./ViewAwsIamUserSecretRotationGeneratedCredentials";
 import { ViewOktaClientSecretRotationGeneratedCredentials } from "./ViewOktaClientSecretRotationGeneratedCredentials";
 import { ViewRedisCredentialsRotationGeneratedCredentials } from "./ViewRedisCredentialsRotationGeneratedCredentials";
-import { ViewSshPasswordRotationGeneratedCredentials } from "./ViewSshPasswordRotationGeneratedCredentials";
+import { ViewUnixLinuxLocalAccountRotationGeneratedCredentials } from "./ViewUnixLinuxLocalAccountRotationGeneratedCredentials";
 
 type Props = {
   secretRotation?: TSecretRotationV2;
@@ -125,9 +125,9 @@ const Content = ({ secretRotation }: ContentProps) => {
         />
       );
       break;
-    case SecretRotation.SshPassword:
+    case SecretRotation.UnixLinuxLocalAccount:
       Component = (
-        <ViewSshPasswordRotationGeneratedCredentials
+        <ViewUnixLinuxLocalAccountRotationGeneratedCredentials
           generatedCredentialsResponse={generatedCredentialsResponse}
         />
       );

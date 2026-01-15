@@ -11,7 +11,7 @@ export enum SecretRotation {
   RedisCredentials = "redis-credentials",
   MongoDBCredentials = "mongodb-credentials",
   DatabricksServicePrincipalSecret = "databricks-service-principal-secret",
-  SshPassword = "ssh-password"
+  UnixLinuxLocalAccount = "unix-linux-local-account"
 }
 
 export enum SecretRotationStatus {

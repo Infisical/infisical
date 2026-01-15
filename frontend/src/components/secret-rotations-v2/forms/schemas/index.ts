@@ -11,12 +11,12 @@ import { MySqlCredentialsRotationSchema } from "@app/components/secret-rotations
 import { PostgresCredentialsRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/postgres-credentials-rotation-schema";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { LdapPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/types/ldap-password-rotation";
-import { SshPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/types/ssh-password-rotation";
+import { UnixLinuxLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/unix-linux-local-account-rotation";
 
 import { OktaClientSecretRotationSchema } from "./okta-client-secret-rotation-schema";
 import { OracleDBCredentialsRotationSchema } from "./oracledb-credentials-rotation-schema";
 import { RedisCredentialsRotationSchema } from "./redis-credentials-rotation-schema";
-import { SshPasswordRotationSchema } from "./ssh-password-rotation-schema";
+import { UnixLinuxLocalAccountRotationSchema } from "./unix-linux-local-account-rotation-schema";
 
 export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
   z
@@ -34,7 +34,7 @@ export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
         RedisCredentialsRotationSchema,
         MongoDBCredentialsRotationSchema,
         DatabricksServicePrincipalSecretRotationSchema,
-        SshPasswordRotationSchema
+        UnixLinuxLocalAccountRotationSchema
       ]),
       z.object({ id: z.string().optional() })
     )
@@ -55,9 +55,9 @@ export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
         }
       }
 
-      if (val.type === SecretRotation.SshPassword) {
+      if (val.type === SecretRotation.UnixLinuxLocalAccount) {
         if (
-          val.parameters.rotationMethod === SshPasswordRotationMethod.LoginAsTarget &&
+          val.parameters.rotationMethod === UnixLinuxLocalAccountRotationMethod.LoginAsTarget &&
           !val.temporaryParameters?.password
         ) {
           ctx.addIssue({

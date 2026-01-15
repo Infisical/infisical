@@ -60,10 +60,10 @@ import {
   TRedisCredentialsRotationOption
 } from "./redis-credentials-rotation";
 import {
-  TSshPasswordRotation,
-  TSshPasswordRotationGeneratedCredentialsResponse,
-  TSshPasswordRotationOption
-} from "./ssh-password-rotation";
+  TUnixLinuxLocalAccountRotation,
+  TUnixLinuxLocalAccountRotationGeneratedCredentialsResponse,
+  TUnixLinuxLocalAccountRotationOption
+} from "./unix-linux-local-account-rotation";
 
 export type TSecretRotationV2 = (
   | TPostgresCredentialsRotation
@@ -78,7 +78,7 @@ export type TSecretRotationV2 = (
   | TRedisCredentialsRotation
   | TMongoDBCredentialsRotation
   | TDatabricksServicePrincipalSecretRotation
-  | TSshPasswordRotation
+  | TUnixLinuxLocalAccountRotation
 ) & {
   secrets: (SecretV3RawSanitized | null)[];
 };
@@ -93,7 +93,7 @@ export type TSecretRotationV2Option =
   | TRedisCredentialsRotationOption
   | TMongoDBCredentialsRotationOption
   | TDatabricksServicePrincipalSecretRotationOption
-  | TSshPasswordRotationOption;
+  | TUnixLinuxLocalAccountRotationOption;
 
 export type TListSecretRotationV2Options = { secretRotationOptions: TSecretRotationV2Option[] };
 
@@ -112,7 +112,7 @@ export type TViewSecretRotationGeneratedCredentialsResponse =
   | TRedisCredentialsRotationGeneratedCredentialsResponse
   | TMongoDBCredentialsRotationGeneratedCredentialsResponse
   | TDatabricksServicePrincipalSecretRotationGeneratedCredentialsResponse
-  | TSshPasswordRotationGeneratedCredentialsResponse;
+  | TUnixLinuxLocalAccountRotationGeneratedCredentialsResponse;
 
 export type TCreateSecretRotationV2DTO = DiscriminativePick<
   TSecretRotationV2,
@@ -168,7 +168,7 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.RedisCredentials]: TRedisCredentialsRotationOption;
   [SecretRotation.MongoDBCredentials]: TMongoDBCredentialsRotationOption;
   [SecretRotation.DatabricksServicePrincipalSecret]: TDatabricksServicePrincipalSecretRotationOption;
-  [SecretRotation.SshPassword]: TSshPasswordRotationOption;
+  [SecretRotation.UnixLinuxLocalAccount]: TUnixLinuxLocalAccountRotationOption;
 };
 
 export type TSecretRotationGeneratedCredentialsResponseMap = {
@@ -184,18 +184,18 @@ export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.RedisCredentials]: TRedisCredentialsRotationGeneratedCredentialsResponse;
   [SecretRotation.MongoDBCredentials]: TMongoDBCredentialsRotationGeneratedCredentialsResponse;
   [SecretRotation.DatabricksServicePrincipalSecret]: TDatabricksServicePrincipalSecretRotationGeneratedCredentialsResponse;
-  [SecretRotation.SshPassword]: TSshPasswordRotationGeneratedCredentialsResponse;
+  [SecretRotation.UnixLinuxLocalAccount]: TUnixLinuxLocalAccountRotationGeneratedCredentialsResponse;
 };
 
-export type TReconcileSshPasswordRotationDTO = {
+export type TReconcileUnixLinuxLocalAccountRotationDTO = {
   rotationId: string;
   // required for query invalidation
   secretPath: string;
   projectId: string;
 };
 
-export type TReconcileSshPasswordRotationResponse = {
+export type TReconcileUnixLinuxLocalAccountRotationResponse = {
   message: string;
   reconciled: boolean;
-  secretRotation: TSshPasswordRotation;
+  secretRotation: TUnixLinuxLocalAccountRotation;
 };
