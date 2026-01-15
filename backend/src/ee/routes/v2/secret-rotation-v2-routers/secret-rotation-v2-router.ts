@@ -43,6 +43,7 @@ export const registerSecretRotationV2Router = async (server: FastifyZodProvider)
     },
     schema: {
       hide: false,
+      operationId: "listSecretRotationOptions",
       tags: [ApiDocsTags.SecretRotations],
       description: "List the available Secret Rotation Options.",
       response: {
@@ -66,6 +67,7 @@ export const registerSecretRotationV2Router = async (server: FastifyZodProvider)
     },
     schema: {
       hide: false,
+      operationId: "listSecretRotations",
       tags: [ApiDocsTags.SecretRotations],
       description: "List all the Secret Rotations for the specified project.",
       querystring: z.object({

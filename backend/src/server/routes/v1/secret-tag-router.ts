@@ -16,6 +16,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listSecretTags",
       tags: [ApiDocsTags.Folders],
       params: z.object({
         projectId: z.string().trim().describe(SECRET_TAGS.LIST.projectId)
@@ -47,6 +48,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "getSecretTagById",
       tags: [ApiDocsTags.Folders],
       params: z.object({
         projectId: z.string().trim().describe(SECRET_TAGS.GET_TAG_BY_ID.projectId),
@@ -80,6 +82,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "getSecretTagBySlug",
       tags: [ApiDocsTags.Folders],
       params: z.object({
         projectId: z.string().trim().describe(SECRET_TAGS.GET_TAG_BY_SLUG.projectId),
@@ -114,6 +117,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "createSecretTag",
       tags: [ApiDocsTags.Folders],
       params: z.object({
         projectId: z.string().trim().describe(SECRET_TAGS.CREATE.projectId)
@@ -150,6 +154,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "updateSecretTag",
       tags: [ApiDocsTags.Folders],
       params: z.object({
         projectId: z.string().trim().describe(SECRET_TAGS.UPDATE.projectId),
@@ -187,6 +192,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "deleteSecretTag",
       tags: [ApiDocsTags.Folders],
       params: z.object({
         projectId: z.string().trim().describe(SECRET_TAGS.DELETE.projectId),

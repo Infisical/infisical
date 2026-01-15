@@ -26,6 +26,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      operationId: "getPkiSubscriber",
       tags: [ApiDocsTags.PkiSubscribers],
       description: "Get PKI Subscriber",
       params: z.object({
@@ -73,6 +74,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      operationId: "createPkiSubscriber",
       tags: [ApiDocsTags.PkiSubscribers],
       description: "Create PKI Subscriber",
       body: z.object({
@@ -241,6 +243,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "updatePkiSubscriber",
       tags: [ApiDocsTags.PkiSubscribers],
       description: "Update PKI Subscriber",
       params: z.object({
@@ -456,6 +459,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "orderPkiSubscriberCertificate",
       tags: [ApiDocsTags.PkiSubscribers],
       description: "Order certificate",
       params: z.object({
@@ -518,6 +522,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "issuePkiSubscriberCertificate",
       tags: [ApiDocsTags.PkiSubscribers],
       description: "Issue certificate",
       params: z.object({
@@ -590,6 +595,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "signPkiSubscriberCertificate",
       tags: [ApiDocsTags.PkiSubscribers],
       description: "Sign certificate",
       params: z.object({
@@ -661,6 +667,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      operationId: "getPkiSubscriberLatestCertificateBundle",
       tags: [ApiDocsTags.PkiSubscribers],
       description: "Get latest certificate bundle of a subscriber",
       params: z.object({
@@ -727,6 +734,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      operationId: "listPkiSubscriberCertificates",
       tags: [ApiDocsTags.PkiSubscribers],
       description: "List PKI Subscriber certificates",
       params: z.object({

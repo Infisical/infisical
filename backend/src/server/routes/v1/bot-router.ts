@@ -13,6 +13,7 @@ export const registerProjectBotRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getProjectBot",
       params: z.object({
         projectId: z.string().trim()
       }),
@@ -48,6 +49,7 @@ export const registerProjectBotRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "updateProjectBotActiveState",
       body: z.object({
         isActive: z.boolean(),
         botKey: z

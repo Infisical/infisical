@@ -29,6 +29,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getSlackInstallUrl",
       security: [
         {
           bearerAuth: []
@@ -75,6 +76,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getSlackReinstallUrl",
       security: [
         {
           bearerAuth: []
@@ -119,6 +121,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listSlackIntegrations",
       security: [
         {
           bearerAuth: []
@@ -148,6 +151,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteSlackIntegration",
       security: [
         {
           bearerAuth: []
@@ -192,6 +196,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getSlackIntegration",
       security: [
         {
           bearerAuth: []
@@ -236,6 +241,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listSlackIntegrationChannels",
       security: [
         {
           bearerAuth: []
@@ -274,6 +280,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "updateSlackIntegration",
       security: [
         {
           bearerAuth: []

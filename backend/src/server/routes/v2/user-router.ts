@@ -17,6 +17,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       })
     },
     schema: {
+      operationId: "sendEmailVerificationCode",
       body: z.object({
         token: z.string().trim()
       }),
@@ -39,6 +40,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       })
     },
     schema: {
+      operationId: "verifyEmailVerificationCode",
       body: z.object({
         username: z.string().trim(),
         code: z.string().trim()
@@ -60,6 +62,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "updateUserMfa",
       body: z.object({
         isMfaEnabled: z.boolean().optional(),
         selectedMfaMethod: z.nativeEnum(MfaMethod).optional()
@@ -89,6 +92,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "updateUserName",
       body: z.object({
         firstName: z.string().trim(),
         lastName: z.string().trim()
@@ -113,6 +117,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "updateUserAuthMethods",
       body: z.object({
         authMethods: z.nativeEnum(AuthMethod).array().min(1)
       }),
@@ -138,6 +143,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       })
     },
     schema: {
+      operationId: "requestEmailChangeOtp",
       body: z.object({
         newEmail: z.string().email().trim()
       }),
@@ -165,6 +171,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "updateUserEmail",
       body: z.object({
         newEmail: z.string().email().trim(),
         otpCode: z.string().trim().length(6)
@@ -193,6 +200,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listUserOrganizations",
       description: "Return organizations that current user is part of",
       response: {
         200: z.object({
@@ -214,6 +222,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listUserApiKeys",
       response: {
         200: ApiKeysSchema.omit({ secretHash: true }).array()
       }
@@ -232,6 +241,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "createUserApiKey",
       body: z.object({
         name: z.string().trim(),
         expiresIn: z.number()
@@ -257,6 +267,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteUserApiKey",
       params: z.object({
         apiKeyDataId: z.string().trim()
       }),
@@ -280,6 +291,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listUserSessions",
       response: {
         200: AuthTokenSessionsSchema.array()
       }
@@ -298,6 +310,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "revokeAllUserSessions",
       response: {
         200: z.object({
           message: z.string()
@@ -320,6 +333,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "revokeUserSession",
       params: z.object({
         sessionId: z.string().trim()
       }),
@@ -345,6 +359,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getCurrentUser",
       description: "Retrieve the current user on the request",
       response: {
         200: z.object({
@@ -382,6 +397,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteUser",
       response: {
         200: z.object({
           user: UsersSchema

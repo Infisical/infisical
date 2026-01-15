@@ -170,13 +170,23 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       );
       await pkiRouter.register(registerCertificateRouter, { prefix: "/certificates" });
       await pkiRouter.register(registerCertificatePolicyRouter, { prefix: "/certificate-policies" });
-      await pkiRouter.register(registerCertificateProfilesRouter, { prefix: "/certificate-profiles" });
+      await pkiRouter.register(
+        async (profilesRouter) => {
+          await registerCertificateProfilesRouter(profilesRouter as unknown as FastifyZodProvider);
+        },
+        { prefix: "/certificate-profiles" }
+      );
       await pkiRouter.register(registerPkiAlertRouter, { prefix: "/alerts" });
       await pkiRouter.register(
         async (pkiSyncRouter) => {
-          await pkiSyncRouter.register(registerPkiSyncRouter);
+          await registerPkiSyncRouter(pkiSyncRouter as unknown as FastifyZodProvider);
           for await (const [destination, router] of Object.entries(PKI_SYNC_REGISTER_ROUTER_MAP)) {
-            await pkiSyncRouter.register(router, { prefix: `/${destination}` });
+            await pkiSyncRouter.register(
+              async (destinationRouter) => {
+                await router(destinationRouter as unknown as FastifyZodProvider);
+              },
+              { prefix: `/${destination}` }
+            );
           }
         },
         { prefix: "/syncs" }
@@ -202,15 +212,25 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       );
       await pkiRouter.register(registerDeprecatedCertRouter, { prefix: "/certificates" });
       await pkiRouter.register(registerDeprecatedCertificateTemplateRouter, { prefix: "/certificate-templates" });
-      await pkiRouter.register(registerCertificateProfilesRouter, { prefix: "/certificate-profiles" });
+      await pkiRouter.register(
+        async (pkiProfilesRouter) => {
+          await registerCertificateProfilesRouter(pkiProfilesRouter as unknown as FastifyZodProvider, false);
+        },
+        { prefix: "/certificate-profiles" }
+      );
       await pkiRouter.register(registerDeprecatedPkiAlertRouter, { prefix: "/alerts" });
       await pkiRouter.register(registerPkiCollectionRouter, { prefix: "/collections" });
       await pkiRouter.register(registerPkiSubscriberRouter, { prefix: "/subscribers" });
       await pkiRouter.register(
         async (pkiSyncRouter) => {
-          await pkiSyncRouter.register(registerPkiSyncRouter);
+          await registerPkiSyncRouter(pkiSyncRouter as unknown as FastifyZodProvider, false);
           for await (const [destination, router] of Object.entries(PKI_SYNC_REGISTER_ROUTER_MAP)) {
-            await pkiSyncRouter.register(router, { prefix: `/${destination}` });
+            await pkiSyncRouter.register(
+              async (destinationRouter) => {
+                await router(destinationRouter as unknown as FastifyZodProvider, false);
+              },
+              { prefix: `/${destination}` }
+            );
           }
         },
         { prefix: "/syncs" }

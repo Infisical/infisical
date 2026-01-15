@@ -18,6 +18,7 @@ export const registerIdentityOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "listOrgIdentityMemberships",
       tags: [ApiDocsTags.Organizations],
       description: "Return organization identity memberships",
       security: [

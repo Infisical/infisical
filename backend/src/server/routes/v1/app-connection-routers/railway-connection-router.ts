@@ -29,6 +29,7 @@ export const registerRailwayConnectionRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listRailwayProjects",
       params: z.object({
         connectionId: z.string().uuid()
       }),

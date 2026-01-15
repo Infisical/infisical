@@ -31,6 +31,7 @@ export const registerAwsConnectionRouter = async (server: FastifyZodProvider) =>
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listAwsKmsKeys",
       params: z.object({
         connectionId: z.string().uuid()
       }),
@@ -67,6 +68,7 @@ export const registerAwsConnectionRouter = async (server: FastifyZodProvider) =>
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listAwsIamUsers",
       params: z.object({
         connectionId: z.string().uuid()
       }),

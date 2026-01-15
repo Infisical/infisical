@@ -290,6 +290,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     url: "/redirect/google",
     method: "GET",
     schema: {
+      operationId: "redirectGoogleSSO",
       querystring: z.object({
         callback_port: z.string().optional(),
         org_slug: z.string().optional(),
@@ -355,6 +356,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     url: "/redirect/github",
     method: "GET",
     schema: {
+      operationId: "redirectGitHubSSO",
       querystring: z.object({
         callback_port: z.string().optional(),
         is_admin_login: z
@@ -395,6 +397,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       rateLimit: authRateLimit
     },
     schema: {
+      operationId: "redirectOrgSSO",
       params: z.object({
         orgSlug: z.string().trim()
       }),
@@ -470,6 +473,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     url: "/redirect/gitlab",
     method: "GET",
     schema: {
+      operationId: "redirectGitLabSSO",
       querystring: z.object({
         callback_port: z.string().optional(),
         is_admin_login: z
@@ -534,6 +538,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     url: "/token-exchange",
     method: "POST",
     schema: {
+      operationId: "exchangeOAuthToken",
       body: z.object({
         providerAuthToken: z.string(),
         email: z.string()

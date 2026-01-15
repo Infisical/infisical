@@ -23,6 +23,7 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
     },
     schema: {
       hide: false,
+      operationId: "loginWithAwsAuth",
       tags: [ApiDocsTags.AwsAuth],
       description: "Login with AWS Auth for machine identity",
       body: z.object({
@@ -76,6 +77,7 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "attachAwsAuth",
       tags: [ApiDocsTags.AwsAuth],
       description: "Attach AWS Auth configuration onto machine identity",
       security: [
@@ -172,6 +174,7 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "updateAwsAuth",
       tags: [ApiDocsTags.AwsAuth],
       description: "Update AWS Auth configuration on machine identity",
       security: [
@@ -256,6 +259,7 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "getAwsAuth",
       tags: [ApiDocsTags.AwsAuth],
       description: "Retrieve AWS Auth configuration on machine identity",
       security: [
@@ -304,6 +308,7 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "deleteAwsAuth",
       tags: [ApiDocsTags.AwsAuth],
       description: "Delete AWS Auth configuration on machine identity",
       security: [

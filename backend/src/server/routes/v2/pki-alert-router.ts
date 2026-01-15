@@ -23,6 +23,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      operationId: "createPkiAlert",
       description: "Create a new PKI alert",
       tags: [ApiDocsTags.PkiAlerting],
       body: CreatePkiAlertV2Schema.extend({
@@ -90,6 +91,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      operationId: "listPkiAlerts",
       description: "List PKI alerts for a project",
       tags: [ApiDocsTags.PkiAlerting],
       querystring: z.object({
@@ -150,6 +152,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      operationId: "getPkiAlert",
       description: "Get a PKI alert by ID",
       tags: [ApiDocsTags.PkiAlerting],
       params: z.object({
@@ -214,6 +217,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      operationId: "updatePkiAlert",
       description: "Update a PKI alert",
       tags: [ApiDocsTags.PkiAlerting],
       params: z.object({
@@ -283,6 +287,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      operationId: "deletePkiAlert",
       description: "Delete a PKI alert",
       tags: [ApiDocsTags.PkiAlerting],
       params: z.object({
@@ -347,6 +352,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      operationId: "listPkiAlertCertificates",
       description: "List certificates that match an alert's filter rules",
       tags: [ApiDocsTags.PkiAlerting],
       params: z.object({
@@ -397,6 +403,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      operationId: "previewPkiAlertCertificates",
       description: "Preview certificates that would match the given filter rules",
       tags: [ApiDocsTags.PkiAlerting],
       body: z.object({

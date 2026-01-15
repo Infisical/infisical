@@ -7,7 +7,10 @@ import { registerChefPkiSyncRouter } from "./chef-pki-sync-router";
 
 export * from "./pki-sync-router";
 
-export const PKI_SYNC_REGISTER_ROUTER_MAP: Record<PkiSync, (server: FastifyZodProvider) => Promise<void>> = {
+export const PKI_SYNC_REGISTER_ROUTER_MAP: Record<
+  PkiSync,
+  (server: FastifyZodProvider, enableOperationId?: boolean) => Promise<void>
+> = {
   [PkiSync.AzureKeyVault]: registerAzureKeyVaultPkiSyncRouter,
   [PkiSync.AwsCertificateManager]: registerAwsCertificateManagerPkiSyncRouter,
   [PkiSync.AwsSecretsManager]: registerAwsSecretsManagerPkiSyncRouter,

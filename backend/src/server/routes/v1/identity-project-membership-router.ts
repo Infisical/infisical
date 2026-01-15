@@ -25,6 +25,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "createProjectIdentityMembership",
       tags: [ApiDocsTags.ProjectIdentities],
       description: "Create project identity membership",
       security: [
@@ -120,6 +121,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "updateProjectIdentityMembership",
       tags: [ApiDocsTags.ProjectIdentities],
       description: "Update project identity memberships",
       security: [
@@ -212,6 +214,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "deleteProjectIdentityMembership",
       tags: [ApiDocsTags.ProjectIdentities],
       description: "Delete project identity memberships",
       security: [
@@ -269,6 +272,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "listProjectIdentityMemberships",
       tags: [ApiDocsTags.IdentityProjectMembership],
       description: "List project identity memberships",
       security: [
@@ -362,6 +366,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "getProjectIdentityMembershipById",
       tags: [ApiDocsTags.IdentityProjectMembership],
       description: "Get project identity membership by identity ID",
       security: [
@@ -436,6 +441,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       hide: false,
+      operationId: "listAvailableProjectIdentities",
       tags: [ApiDocsTags.IdentityProjectMembership],
       description: "List available identities for project membership",
       security: [

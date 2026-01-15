@@ -28,6 +28,7 @@ export const registerAzureClientSecretsConnectionRouter = async (server: Fastify
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listAzureClientSecretsClients",
       params: z.object({
         connectionId: z.string().uuid()
       }),

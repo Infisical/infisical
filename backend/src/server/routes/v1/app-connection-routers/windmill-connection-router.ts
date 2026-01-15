@@ -29,6 +29,7 @@ export const registerWindmillConnectionRouter = async (server: FastifyZodProvide
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listWindmillWorkspaces",
       params: z.object({
         connectionId: z.string().uuid()
       }),

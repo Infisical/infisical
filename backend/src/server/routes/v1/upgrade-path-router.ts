@@ -13,6 +13,7 @@ export const registerUpgradePathRouter = async (server: FastifyZodProvider) => {
       rateLimit: publicEndpointLimit
     },
     schema: {
+      operationId: "listUpgradeVersions",
       response: {
         200: z.object({
           versions: z.array(
@@ -51,6 +52,7 @@ export const registerUpgradePathRouter = async (server: FastifyZodProvider) => {
       rateLimit: publicEndpointLimit
     },
     schema: {
+      operationId: "calculateUpgradePath",
       body: z.object({
         fromVersion: versionSchema,
         toVersion: versionSchema

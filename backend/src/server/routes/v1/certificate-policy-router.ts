@@ -147,6 +147,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: false,
+      operationId: "createCertificatePolicy",
       tags: [ApiDocsTags.PkiCertificatePolicies],
       body: createCertificatePolicySchema,
       response: {
@@ -192,6 +193,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: false,
+      operationId: "listCertificatePolicies",
       tags: [ApiDocsTags.PkiCertificatePolicies],
       querystring: z.object({
         projectId: z.string().min(1),
@@ -239,6 +241,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: false,
+      operationId: "getCertificatePolicy",
       tags: [ApiDocsTags.PkiCertificatePolicies],
       params: z.object({
         id: z.string().uuid()
@@ -283,6 +286,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: false,
+      operationId: "updateCertificatePolicy",
       tags: [ApiDocsTags.PkiCertificatePolicies],
       params: z.object({
         id: z.string().uuid()
@@ -329,6 +333,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: false,
+      operationId: "deleteCertificatePolicy",
       tags: [ApiDocsTags.PkiCertificatePolicies],
       params: z.object({
         id: z.string().uuid()

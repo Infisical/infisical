@@ -21,6 +21,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/",
     schema: {
+      operationId: "registerGateway",
       body: z.object({
         relayName: slugSchema({ min: 1, max: 32, field: "relayName" }),
         name: slugSchema({ min: 1, max: 32, field: "name" })
@@ -66,6 +67,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "gatewayHeartbeat",
       response: {
         200: z.object({
           message: z.string()
@@ -86,6 +88,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/",
     schema: {
+      operationId: "listGateways",
       response: {
         200: SanitizedGatewayV2Schema.extend({
           identity: z.object({
@@ -115,6 +118,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteGateway",
       params: z.object({
         id: z.string()
       }),
@@ -139,6 +143,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getGatewayPamSessionKey",
       response: {
         200: zodBuffer
       }

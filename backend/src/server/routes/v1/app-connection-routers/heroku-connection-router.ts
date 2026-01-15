@@ -30,6 +30,7 @@ export const registerHerokuConnectionRouter = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listHerokuApps",
       params: z.object({
         connectionId: z.string().uuid()
       }),
