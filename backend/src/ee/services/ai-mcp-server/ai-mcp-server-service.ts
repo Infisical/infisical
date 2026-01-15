@@ -280,8 +280,11 @@ export const aiMcpServerServiceFactory = ({
             authServer
           };
         }
-      } catch {
-        // Fall through to error
+      } catch (err) {
+        // Log non-404 errors for debugging, but still fall through
+        if (!axios.isAxiosError(err) || err.response?.status !== 404) {
+          logger.warn(err, "Failed to fetch OAuth authorization server metadata");
+        }
       }
 
       throw new BadRequestError({
