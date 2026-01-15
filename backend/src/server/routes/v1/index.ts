@@ -170,7 +170,12 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       );
       await pkiRouter.register(registerCertificateRouter, { prefix: "/certificates" });
       await pkiRouter.register(registerCertificatePolicyRouter, { prefix: "/certificate-policies" });
-      await pkiRouter.register(registerCertificateProfilesRouter, { prefix: "/certificate-profiles" });
+      await pkiRouter.register(
+        async (profilesRouter) => {
+          await registerCertificateProfilesRouter(profilesRouter as unknown as FastifyZodProvider);
+        },
+        { prefix: "/certificate-profiles" }
+      );
       await pkiRouter.register(registerPkiAlertRouter, { prefix: "/alerts" });
       await pkiRouter.register(
         async (pkiSyncRouter) => {
