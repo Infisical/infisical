@@ -6,7 +6,7 @@ description: "Learn how Infisical rotates secrets to keep your infrastructure se
 
 Secret rotation is the practice of automatically updating authentication credentials (such as database passwords and API keys) on a regular schedule. By changing your secrets frequently, you limit the lifespan of any leaked credential, significantly reducing the risk of unauthorized access to your infrastructure.
 
-Infisical Secret Rotation automates the entire secret rotation process. This ensures that your applications always have valid credentials without downtime.
+Infisical Secret Rotation automates the entire secret rotation process. To get started with Secret Rotation, refer to the list of [supported integrations](/integrations/secret-rotations) and follow the instructions for your specific service.
 
 ## Rotation strategy
 
@@ -26,7 +26,9 @@ Before configuring rotation, determine which strategy fits your infrastructure. 
 
 ### Two-user rotation
 
-Infisical uses a two-user rotation strategy to ensure zero downtime. Changing the password for a single user would immediately break active connections. Instead, Infisical manages two separate database users and toggles between them.
+Infisical uses a two-user rotation strategy to ensure zero application downtime from credential issues. Changing the password for a single user would immediately break active connections. Instead, Infisical manages two separate database users and toggles between them. Using this method, applications can update without breaking and lowers attack risk.
+
+Two-rotation strategy works in the following way:
 
 1.  User A is active. Applications use User A's credentials.
 2.  When rotation occurs, Infisical updates the password for User B and switches the secret in Infisical to point to User B.
@@ -95,27 +97,6 @@ gantt
   immediately become invalid once rotated. To avoid service interruptions, we
   recommend manually rotating these credentials to prevent downtime.
 </Warning>
-
-### Benefits of Secret Rotation
-
-<CardGroup cols={2}>
-  <Card title="Zero downtime" icon="clock">
-    Applications always have valid credentials via the two-user strategy.
-  </Card>
-  <Card title="Grace period" icon="hourglass">
-    Overlapping validity gives apps time to update without breaking.
-  </Card>
-  <Card title="Reduced risk" icon="shield-check">
-    Regular cycling limits the window of opportunity for attackers.
-  </Card>
-  <Card title="Predictable schedule" icon="calendar">
-    Systematic rotation makes automation reliable and audit-friendly.
-  </Card>
-</CardGroup>
-
-## Set up rotation
-
-To get started with Secret Rotation, refer to the list of [supported integrations](/integrations/secret-rotations) and follow the instructions for your specific service.
 
 ## Best practices
 
