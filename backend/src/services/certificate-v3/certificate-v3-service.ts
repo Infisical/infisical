@@ -1380,6 +1380,12 @@ export const certificateV3ServiceFactory = ({
       };
     }
 
+    if (certificateRequest.basicConstraints?.isCA) {
+      throw new BadRequestError({
+        message: "CA certificate issuance is not supported for external certificate authorities."
+      });
+    }
+
     const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
 
     if (certificateOrder.csr) {

@@ -72,10 +72,6 @@ export type TOrderCertificateFromProfileDTO = {
     keyAlgorithm?: string;
     template?: string;
     csr?: string;
-    basicConstraints?: {
-      isCA: boolean;
-      pathLength?: number;
-    };
   };
   removeRootsFromChain?: boolean;
 } & Omit<TProjectPermission, "projectId">;
