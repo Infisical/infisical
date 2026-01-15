@@ -3,9 +3,9 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  const hasTemplateCaSettingsColumn = await knex.schema.hasColumn(TableName.PkiCertificateTemplateV2, "caSettings");
+  const hasTemplateCaSettingsColumn = await knex.schema.hasColumn(TableName.PkiCertificatePolicy, "caSettings");
   if (!hasTemplateCaSettingsColumn) {
-    await knex.schema.alterTable(TableName.PkiCertificateTemplateV2, (t) => {
+    await knex.schema.alterTable(TableName.PkiCertificatePolicy, (t) => {
       t.jsonb("caSettings");
     });
   }
@@ -19,9 +19,9 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasTemplateCaSettingsColumn = await knex.schema.hasColumn(TableName.PkiCertificateTemplateV2, "caSettings");
+  const hasTemplateCaSettingsColumn = await knex.schema.hasColumn(TableName.PkiCertificatePolicy, "caSettings");
   if (hasTemplateCaSettingsColumn) {
-    await knex.schema.alterTable(TableName.PkiCertificateTemplateV2, (t) => {
+    await knex.schema.alterTable(TableName.PkiCertificatePolicy, (t) => {
       t.dropColumn("caSettings");
     });
   }

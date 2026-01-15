@@ -3,7 +3,7 @@ import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Button, FormControl, IconButton, Input, Select, SelectItem } from "@app/components/v2";
-import { CertSubjectAttributeType } from "@app/pages/cert-manager/PoliciesPage/components/CertificateTemplatesV2Tab/shared/certificate-constants";
+import { CertSubjectAttributeType } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 export type SubjectAttribute = {
   type: CertSubjectAttributeType;

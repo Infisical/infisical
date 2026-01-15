@@ -100,6 +100,10 @@ export interface TCertificateRequest {
   notAfter?: Date;
   signatureAlgorithm?: string;
   keyAlgorithm?: string;
+  basicConstraints?: {
+    isCA: boolean;
+    pathLength?: number;
+  };
 }
 
 export interface TPolicyValidationResult {

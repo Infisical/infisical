@@ -984,8 +984,7 @@ export const certificateV3ServiceFactory = ({
           keyAlgorithm: effectiveKeyAlgorithm,
           signatureAlgorithm: effectiveSignatureAlgorithm,
           status: CertificateRequestStatus.ISSUED,
-          certificateId: selfSignedResult.certificateData.id,
-          caSettings: certificateRequest.basicConstraints
+          certificateId: selfSignedResult.certificateData.id
         });
 
         return { ...selfSignedResult, certificateRequestId: certRequestResult.id };
@@ -1052,6 +1051,13 @@ export const certificateV3ServiceFactory = ({
     validateCaSupport(ca, "direct certificate issuance");
     validateAlgorithmCompatibility(ca, policy);
 
+    const shouldIssueAsCA = certificateRequest.basicConstraints?.isCA === true;
+    if (shouldIssueAsCA && !policy.caSettings) {
+      throw new BadRequestError({
+        message: "CA certificate issuance is not allowed by this policy. The policy must have caSettings configured."
+      });
+    }
+
     const {
       certificate,
       certificateChain,
@@ -1066,6 +1072,8 @@ export const certificateV3ServiceFactory = ({
         friendlyName: certificateSubject.common_name || "Certificate",
         commonName: certificateSubject.common_name || "",
         altNames: subjectAlternativeNames,
+        caSettings: shouldIssueAsCA ? policy.caSettings : undefined,
+        pathLength: certificateRequest.basicConstraints?.pathLength,
         ttl: certificateRequest.validity.ttl,
         keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || [],
         extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || [],
@@ -1078,13 +1086,6 @@ export const certificateV3ServiceFactory = ({
         actorAuthMethod,
         actorOrgId,
         isFromProfile: true,
-        caSettings: template.caSettings,
-        pathLength: certificateRequest.basicConstraints?.pathLength,
-        organization: certificateSubject.organization,
-        country: certificateSubject.country,
-        state: certificateSubject.state,
-        locality: certificateSubject.locality,
-        ou: certificateSubject.organizational_unit,
         tx
       });
 
@@ -1244,12 +1245,21 @@ export const certificateV3ServiceFactory = ({
     const effectiveSignatureAlgorithm = extractedSignatureAlgorithm;
     const effectiveKeyAlgorithm = extractedKeyAlgorithm;
 
+    const shouldIssueAsCA = basicConstraints?.isCA === true;
+    if (shouldIssueAsCA && !policy.caSettings) {
+      throw new BadRequestError({
+        message: "CA certificate issuance is not allowed by this policy. The policy must have caSettings configured."
+      });
+    }
+
     const { certificate, certificateChain, issuingCaCertificate, serialNumber, cert, certificateRequestId } =
       await certificateDAL.transaction(async (tx) => {
         const certResult = await internalCaService.signCertFromCa({
           isInternal: true,
           caId: ca.id,
           csr,
+          caSettings: shouldIssueAsCA ? policy.caSettings : undefined,
+          pathLength: basicConstraints?.pathLength,
           ttl: validity.ttl,
           altNames: undefined,
           notBefore: normalizeDateForApi(notBefore),
@@ -1257,8 +1267,6 @@ export const certificateV3ServiceFactory = ({
           signatureAlgorithm: effectiveSignatureAlgorithm,
           keyAlgorithm: effectiveKeyAlgorithm,
           isFromProfile: true,
-          caSettings: template.caSettings,
-          pathLength: basicConstraints?.pathLength,
           tx
         });
 
@@ -1430,8 +1438,7 @@ export const certificateV3ServiceFactory = ({
         altNames: certificateOrder.altNames?.map((san) => san.value).join(",") || "",
         notBefore: certificateOrder.notBefore,
         notAfter: certificateOrder.notAfter,
-        status: CertificateRequestStatus.PENDING,
-        caSettings: certificateOrder.basicConstraints
+        status: CertificateRequestStatus.PENDING
       });
 
       await certificateIssuanceQueue.queueCertificateIssuance({
@@ -1685,7 +1692,6 @@ export const certificateV3ServiceFactory = ({
             actorAuthMethod,
             actorOrgId,
             internal: true,
-            caSettings: template?.caSettings,
             tx
           });
 

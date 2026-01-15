@@ -82,10 +82,10 @@ const SAN_TYPE_LABELS: Record<(typeof SAN_TYPE_OPTIONS)[number], string> = {
 };
 
 const SUBJECT_ATTRIBUTE_LABELS: Record<(typeof SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS)[number], string> =
-{
-  optional: "Allow",
-  prohibit: "Deny"
-};
+  {
+    optional: "Allow",
+    prohibit: "Deny"
+  };
 
 const SAN_INCLUDE_LABELS: Record<(typeof SAN_INCLUDE_OPTIONS)[number], string> = {
   mandatory: "Require",
@@ -188,32 +188,32 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
 
     const validity = policyData.validity?.max
       ? (() => {
-        const maxValue = policyData.validity.max;
-        if (maxValue.length < 2) return undefined;
+          const maxValue = policyData.validity.max;
+          if (maxValue.length < 2) return undefined;
 
-        const lastChar = maxValue.slice(-1);
-        const numberPart = maxValue.slice(0, -1);
-        const value = parseInt(numberPart, 10);
+          const lastChar = maxValue.slice(-1);
+          const numberPart = maxValue.slice(0, -1);
+          const value = parseInt(numberPart, 10);
 
-        if (Number.isNaN(value) || value <= 0 || numberPart !== value.toString()) {
-          return undefined;
-        }
+          if (Number.isNaN(value) || value <= 0 || numberPart !== value.toString()) {
+            return undefined;
+          }
 
-        let unit: CertDurationUnit = CertDurationUnit.DAYS;
-        if (lastChar === "d") {
-          unit = CertDurationUnit.DAYS;
-        } else if (lastChar === "m") {
-          unit = CertDurationUnit.MONTHS;
-        } else if (lastChar === "y") {
-          unit = CertDurationUnit.YEARS;
-        } else {
-          return undefined;
-        }
+          let unit: CertDurationUnit = CertDurationUnit.DAYS;
+          if (lastChar === "d") {
+            unit = CertDurationUnit.DAYS;
+          } else if (lastChar === "m") {
+            unit = CertDurationUnit.MONTHS;
+          } else if (lastChar === "y") {
+            unit = CertDurationUnit.YEARS;
+          } else {
+            return undefined;
+          }
 
-        return {
-          maxDuration: { value, unit }
-        };
-      })()
+          return {
+            maxDuration: { value, unit }
+          };
+        })()
       : { maxDuration: { value: 365, unit: CertDurationUnit.DAYS } };
 
     const signatureAlgorithm = {
@@ -298,6 +298,7 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
     optionalUsages: []
   };
   const watchedPreset = watch("preset") || POLICY_PRESET_IDS.CUSTOM;
+  const watchedIsCA = watch("basicConstraints.isCA") || false;
 
   const handlePresetChange = async (presetId: PolicyPresetId) => {
     setValue("preset", presetId);
@@ -465,8 +466,8 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
 
     const caSettings = data.basicConstraints?.isCA
       ? {
-        maxPathLength: data.basicConstraints.maxPathLength ?? undefined
-      }
+          maxPathLength: data.basicConstraints.maxPathLength ?? undefined
+        }
       : null;
 
     return {
@@ -773,10 +774,11 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
                                   setValue("preset", POLICY_PRESET_IDS.CUSTOM);
                                 }
                               }}
-                              className={`flex-1 ${attr.value && attr.value.length > 0 && attr.value[0] === ""
+                              className={`flex-1 ${
+                                attr.value && attr.value.length > 0 && attr.value[0] === ""
                                   ? "border-red-500 focus:border-red-500"
                                   : ""
-                                }`}
+                              }`}
                               required
                             />
 
@@ -889,10 +891,11 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
                                 setValue("preset", POLICY_PRESET_IDS.CUSTOM);
                               }
                             }}
-                            className={`flex-1 ${san.value && san.value.length > 0 && san.value[0] === ""
+                            className={`flex-1 ${
+                              san.value && san.value.length > 0 && san.value[0] === ""
                                 ? "border-red-500 focus:border-red-500"
                                 : ""
-                              }`}
+                            }`}
                             required
                           />
 
@@ -1077,7 +1080,7 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
             </AccordionItem>
 
             <AccordionItem value="basicConstraints" className="mt-4">
-              <AccordionTrigger>CA Settings</AccordionTrigger>
+              <AccordionTrigger>Basic Constraints</AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-4">
                   <Controller
@@ -1089,14 +1092,20 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
                           <Checkbox
                             id="isCA"
                             isChecked={value || false}
-                            onCheckedChange={onChange}
+                            onCheckedChange={(checked) => {
+                              onChange(checked);
+                              if (!checked) {
+                                setValue("basicConstraints.maxPathLength", undefined);
+                              }
+                            }}
                           />
                           <div className="space-y-1">
                             <span className="text-sm font-medium text-mineshaft-100">
-                              Allow Certificate Authority Issuance
+                              Allow issuance of CA certificates
                             </span>
                             <p className="text-xs text-bunker-300">
-                              Enable this to allow issuing intermediate CA certificates.
+                              When enabled, certificates issued under this policy may be Certificate
+                              Authorities (CA:TRUE).
                             </p>
                           </div>
                         </div>
@@ -1104,60 +1113,59 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
                     )}
                   />
 
-                  {watch("basicConstraints.isCA") && (
-                    <Controller
-                      control={control}
-                      name="basicConstraints.maxPathLength"
-                      render={({ field, fieldState: { error } }) => (
-                        <FormControl
-                          label={
-                            <div className="flex items-center gap-1">
-                              <span className="mb-1">Max Path Length</span>
-                              <Tooltip
-                                content={
-                                  <div className="max-w-xs">
-                                    <p className="font-medium">Values:</p>
-                                    <ul className="mt-1 list-disc pl-4 text-xs">
-                                      <li>
-                                        <strong>-1</strong> = Unlimited (no restriction)
-                                      </li>
-                                      <li>
-                                        <strong>0</strong> = Can only sign end-entity certificates
-                                      </li>
-                                      <li>
-                                        <strong>1+</strong> = Number of CA levels allowed beneath
-                                      </li>
-                                    </ul>
-                                  </div>
-                                }
-                              >
-                                <FontAwesomeIcon
-                                  icon={faQuestionCircle}
-                                  size="sm"
-                                  className="ml-1 text-mineshaft-400"
-                                />
-                              </Tooltip>
-                            </div>
-                          }
-                          isError={Boolean(error)}
-                          errorText={error?.message}
-                          helperText="Controls how many levels of CA certificates can be created below certificates issued from this policy."
-                        >
-                          <Input
-                            {...field}
-                            type="number"
-                            placeholder="Leave empty for no constraint"
-                            className="w-full"
-                            value={field.value ?? ""}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              field.onChange(val === "" ? undefined : Number(val));
-                            }}
-                          />
-                        </FormControl>
-                      )}
-                    />
-                  )}
+                  <Controller
+                    control={control}
+                    name="basicConstraints.maxPathLength"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label={
+                          <div className="flex items-center gap-1">
+                            <span className="mb-1">Maximum allowed path length</span>
+                            <Tooltip
+                              content={
+                                <div className="max-w-xs">
+                                  <p className="font-medium">Values:</p>
+                                  <ul className="mt-1 list-disc pl-4 text-xs">
+                                    <li>
+                                      <strong>-1</strong> = Unlimited (no restriction)
+                                    </li>
+                                    <li>
+                                      <strong>0</strong> = Can only sign end-entity certificates
+                                    </li>
+                                    <li>
+                                      <strong>1+</strong> = Number of CA levels allowed beneath
+                                    </li>
+                                  </ul>
+                                </div>
+                              }
+                            >
+                              <FontAwesomeIcon
+                                icon={faQuestionCircle}
+                                size="sm"
+                                className="ml-1 text-mineshaft-400"
+                              />
+                            </Tooltip>
+                          </div>
+                        }
+                        isError={Boolean(error)}
+                        errorText={error?.message}
+                        helperText="Defines the pathLen constraint applied to issued CA certificates."
+                      >
+                        <Input
+                          {...field}
+                          type="number"
+                          placeholder="Leave empty to omit the constraint"
+                          className="w-full"
+                          value={field.value ?? ""}
+                          isDisabled={!watchedIsCA}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            field.onChange(val === "" ? undefined : Number(val));
+                          }}
+                        />
+                      </FormControl>
+                    )}
+                  />
                 </div>
               </AccordionContent>
             </AccordionItem>

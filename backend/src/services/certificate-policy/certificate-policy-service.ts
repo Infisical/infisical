@@ -602,6 +602,30 @@ export const certificatePolicyServiceFactory = ({
       }
     }
 
+    if (request.basicConstraints?.isCA) {
+      if (!template.caSettings) {
+        errors.push(
+          "CA certificate issuance is not allowed by this policy. The policy must have caSettings configured to issue CA certificates."
+        );
+      } else {
+        const { maxPathLength } = template.caSettings;
+
+        if (maxPathLength !== undefined && maxPathLength !== null && maxPathLength !== -1) {
+          if (request.basicConstraints.pathLength === undefined || request.basicConstraints.pathLength === null) {
+            errors.push(
+              `Path length is required when issuing CA certificates. Policy allows maximum path length of ${maxPathLength}.`
+            );
+          } else if (request.basicConstraints.pathLength > maxPathLength) {
+            errors.push(
+              `Requested path length (${request.basicConstraints.pathLength}) exceeds maximum allowed by policy (${maxPathLength}).`
+            );
+          } else if (request.basicConstraints.pathLength < 0 && request.basicConstraints.pathLength !== -1) {
+            errors.push("Path length must be -1 (unlimited), 0, or a positive integer.");
+          }
+        }
+      }
+    }
+
     return {
       isValid: errors.length === 0,
       errors,
