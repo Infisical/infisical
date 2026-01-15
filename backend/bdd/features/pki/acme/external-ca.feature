@@ -702,16 +702,16 @@ Feature: External CA
     And the value error.detail should be equal to "<err_detail>"
 
     Examples:
-      | allowed_alg | allowed_signature | key_type   | hash_type | err_detail                                                                                                                                  |
-      | RSA-4096    | SHA512-RSA        | RSA-2048   | SHA512    | Invalid CSR: Key algorithm 'RSA_2048' is not allowed by policy                                                                     |
-      | RSA-4096    | SHA512-RSA        | RSA-3072   | SHA512    | Invalid CSR: Key algorithm 'RSA_3072' is not allowed by policy                                                                     |
-      | RSA-4096    | ECDSA-SHA512      | ECDSA-P256 | SHA512    | Invalid CSR: Key algorithm 'EC_prime256v1' is not allowed by policy                                                                |
-      | RSA-4096    | ECDSA-SHA512      | ECDSA-P384 | SHA512    | Invalid CSR: Key algorithm 'EC_secp384r1' is not allowed by policy                                                                 |
-      | RSA-4096    | ECDSA-SHA512      | ECDSA-P521 | SHA512    | Invalid CSR: Key algorithm 'EC_secp521r1' is not allowed by policy                                                                 |
-      | RSA-2048    | SHA512-RSA        | RSA-2048   | SHA384    | Invalid CSR: Signature algorithm 'RSA-SHA384' is not allowed by policy                                                             |
-      | RSA-2048    | SHA512-RSA        | RSA-2048   | SHA256    | Invalid CSR: Signature algorithm 'RSA-SHA256' is not allowed by policy                                                             |
-      | ECDSA-P256  | SHA512-RSA        | ECDSA-P256 | SHA256    | Invalid CSR: Signature algorithm 'ECDSA-SHA256' is not allowed by policy                                                           |
-      | ECDSA-P384  | SHA512-RSA        | ECDSA-P384 | SHA256    | Invalid CSR: Signature algorithm 'ECDSA-SHA256' is not allowed by policy                                                           |
-      | ECDSA-P521  | SHA512-RSA        | ECDSA-P521 | SHA256    | Invalid CSR: Signature algorithm 'ECDSA-SHA256' is not allowed by policy                                                           |
-      | RSA-2048    | SHA512-RSA        | RSA-2048   | SHA256    | Invalid CSR: Signature algorithm 'RSA-SHA256' is not allowed by policy                                                             |
-      | RSA-2048    | SHA512-RSA        | RSA-4096   | SHA256    | Invalid CSR: Signature algorithm 'RSA-SHA256' is not allowed by policy, Key algorithm 'RSA_4096' is not allowed by policy |
+      | allowed_alg | allowed_signature | key_type   | hash_type | err_detail                                                                                                                                                    |
+      | RSA-4096    | SHA512-RSA        | RSA-2048   | SHA512    | Invalid CSR: Key algorithm 'RSA_2048' is not allowed by template policy                                                                              |
+      | RSA-4096    | SHA512-RSA        | RSA-3072   | SHA512    | Invalid CSR: Key algorithm 'RSA_3072' is not allowed by template policy                                                                              |
+      | RSA-4096    | ECDSA-SHA512      | ECDSA-P256 | SHA512    | Invalid CSR: Key algorithm 'EC_prime256v1' is not allowed by template policy                                                                         |
+      | RSA-4096    | ECDSA-SHA512      | ECDSA-P384 | SHA512    | Invalid CSR: Key algorithm 'EC_secp384r1' is not allowed by template policy                                                                          |
+      | RSA-4096    | ECDSA-SHA512      | ECDSA-P521 | SHA512    | Invalid CSR: Key algorithm 'EC_secp521r1' is not allowed by template policy                                                                          |
+      | RSA-2048    | SHA512-RSA        | RSA-2048   | SHA384    | Invalid CSR: Signature algorithm 'RSA-SHA384' is not allowed by template policy                                                                      |
+      | RSA-2048    | SHA512-RSA        | RSA-2048   | SHA256    | Invalid CSR: Signature algorithm 'RSA-SHA256' is not allowed by template policy                                                                      |
+      | ECDSA-P256  | SHA512-RSA        | ECDSA-P256 | SHA256    | Invalid CSR: Signature algorithm 'ECDSA-SHA256' is not allowed by template policy                                                                    |
+      | ECDSA-P384  | SHA512-RSA        | ECDSA-P384 | SHA256    | Invalid CSR: Signature algorithm 'ECDSA-SHA256' is not allowed by template policy                                                                    |
+      | ECDSA-P521  | SHA512-RSA        | ECDSA-P521 | SHA256    | Invalid CSR: Signature algorithm 'ECDSA-SHA256' is not allowed by template policy                                                                    |
+      | RSA-2048    | SHA512-RSA        | RSA-2048   | SHA256    | Invalid CSR: Signature algorithm 'RSA-SHA256' is not allowed by template policy                                                                      |
+      | RSA-2048    | SHA512-RSA        | RSA-4096   | SHA256    | Invalid CSR: Signature algorithm 'RSA-SHA256' is not allowed by template policy, Key algorithm 'RSA_4096' is not allowed by template policy |
