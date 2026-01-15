@@ -43,20 +43,17 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
   responseSchema: z.ZodTypeAny;
 }) => {
   const destinationName = SECRET_SYNC_NAME_MAP[destination];
-  const destinationNameForOpId = (() => {
-    const specialCases: Record<string, string> = {
-      [SecretSync.OnePass]: "OnePassword",
-      [SecretSync.GitHub]: "GitHub",
-      [SecretSync.GitLab]: "GitLab"
-    };
-    return (
-      specialCases[destination] ??
-      destination
-        .split("-")
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join("")
-    );
-  })();
+  const specialCases: Record<string, string> = {
+    [SecretSync.OnePass]: "OnePassword",
+    [SecretSync.GitHub]: "GitHub",
+    [SecretSync.GitLab]: "GitLab"
+  };
+  const destinationNameForOpId =
+    specialCases[destination] ??
+    destination
+      .split("-")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join("");
 
   server.route({
     method: "GET",
