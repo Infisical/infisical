@@ -575,14 +575,16 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
       params: z.object({
         endpointId: z.string().uuid().trim().min(1)
       }),
-      body: z.object({
-        redirect_uris: z.array(z.string()),
-        token_endpoint_auth_method: z.string(),
-        grant_types: z.array(z.string()),
-        response_types: z.array(z.string()),
-        client_name: z.string(),
-        client_uri: z.string().optional()
-      }),
+      body: z
+        .object({
+          redirect_uris: z.array(z.string()),
+          token_endpoint_auth_method: z.string(),
+          grant_types: z.array(z.string()),
+          response_types: z.array(z.string()),
+          client_name: z.string(),
+          client_uri: z.string().optional()
+        })
+        .passthrough(),
       response: {
         200: z.object({
           client_id: z.string(),
@@ -733,13 +735,15 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
       params: z.object({
         endpointId: z.string().uuid().trim().min(1)
       }),
-      body: z.object({
-        grant_type: z.literal("authorization_code"),
-        code: z.string(),
-        redirect_uri: z.string().url(),
-        code_verifier: z.string(),
-        client_id: z.string()
-      }),
+      body: z
+        .object({
+          grant_type: z.literal("authorization_code"),
+          code: z.string(),
+          redirect_uri: z.string().url(),
+          code_verifier: z.string(),
+          client_id: z.string()
+        })
+        .passthrough(),
       response: {
         200: z.object({
           access_token: z.string(),

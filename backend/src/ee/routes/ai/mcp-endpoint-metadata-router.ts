@@ -102,3 +102,40 @@ export const registerMcpEndpointAuthServerMetadataRouter = async (server: Fastif
     }
   });
 };
+
+// RFC 9728 compliant: Protected Resource metadata at path-appended URL
+// MCP Inspector uses this pattern: /.well-known/oauth-protected-resource + resource path
+// GET /.well-known/oauth-protected-resource/api/v1/ai/mcp/endpoints/:endpointId/connect
+export const registerRfc9728ProtectedResourceMetadataRouter = async (server: FastifyZodProvider) => {
+  const appCfg = getConfig();
+  const siteUrl = removeTrailingSlash(appCfg.SITE_URL || "");
+  if (!siteUrl) {
+    return;
+  }
+
+  const siteHost = new URL(siteUrl).host;
+  const scopeAccess = `https://${siteHost}/mcp:access`;
+
+  server.route({
+    method: "GET",
+    url: "/api/v1/ai/mcp/endpoints/:endpointId/connect",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        endpointId: z.string().trim().min(1)
+      })
+    },
+    handler: async (req) => {
+      const { resourceUrl, authServerIssuer } = getMcpUrls(siteUrl, req.params.endpointId);
+      // Return endpoint-specific auth server so MCP Inspector uses endpoint-specific OAuth endpoints
+      return {
+        resource: resourceUrl,
+        authorization_servers: [authServerIssuer],
+        scopes_supported: ["openid", scopeAccess],
+        bearer_methods_supported: ["header"]
+      };
+    }
+  });
+};
