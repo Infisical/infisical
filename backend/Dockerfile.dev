@@ -1,4 +1,4 @@
-FROM node:20.19.5-trixie-slim
+FROM node:20.20.0-trixie-slim
 
 # ? Setup a test SoftHSM module. In production a real HSM is used.
 
