@@ -40,7 +40,7 @@ import { filterUsages, formatSubjectAltNames } from "./certificateUtils";
 import { KeyUsageSection } from "./KeyUsageSection";
 import { SubjectAltNamesField } from "./SubjectAltNamesField";
 import { SubjectAttributesField } from "./SubjectAttributesField";
-import { useCertificateTemplate } from "./useCertificateTemplate";
+import { useCertificatePolicy } from "./useCertificatePolicy";
 
 const createSchema = (shouldShowSubjectSection: boolean) => {
   return z.object({
@@ -197,7 +197,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
     availableSignatureAlgorithms,
     availableKeyAlgorithms,
     resetConstraints
-  } = useCertificateTemplate(
+  } = useCertificatePolicy(
     policyData,
     actualSelectedProfile,
     popUp?.issueCertificate?.isOpen || false,

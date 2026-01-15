@@ -47,7 +47,7 @@ export type TemplateConstraints = {
   maxPathLength?: number;
 };
 
-export const useCertificateTemplate = (
+export const useCertificatePolicy = (
   templateData: any,
   selectedProfile: any,
   isModalOpen: boolean,

@@ -26,6 +26,7 @@ export type Organization = {
   allowSecretSharingOutsideOrganization?: boolean;
   userTokenExpiration?: string;
   userRole: string;
+  userJoinedAt: string;
   secretsProductEnabled: boolean;
   pkiProductEnabled: boolean;
   kmsProductEnabled: boolean;
