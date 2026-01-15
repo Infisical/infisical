@@ -122,6 +122,7 @@ export * from "./pki-alert-history-certificate";
 export * from "./pki-alerts";
 export * from "./pki-alerts-v2";
 export * from "./pki-api-enrollment-configs";
+export * from "./pki-certificate-policies";
 export * from "./pki-certificate-profiles";
 export * from "./pki-certificate-templates-v2";
 export * from "./pki-collection-items";

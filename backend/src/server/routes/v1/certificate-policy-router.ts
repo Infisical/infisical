@@ -12,12 +12,12 @@ import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType
 } from "@app/services/certificate-common/certificate-constants";
-import { certificateTemplateV2ResponseSchema } from "@app/services/certificate-template-v2/certificate-template-v2-schemas";
+import { certificatePolicyResponseSchema } from "@app/services/certificate-policy/certificate-policy-schemas";
 
 const attributeTypeSchema = z.nativeEnum(CertSubjectAttributeType);
 const sanTypeSchema = z.nativeEnum(CertSubjectAlternativeNameType);
 
-const templateV2SubjectSchema = z
+const policySubjectSchema = z
   .object({
     type: attributeTypeSchema,
     allowed: z.array(z.string()).optional(),
@@ -36,7 +36,7 @@ const templateV2SubjectSchema = z
     }
   );
 
-const templateV2KeyUsagesSchema = z
+const policyKeyUsagesSchema = z
   .object({
     allowed: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
     required: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
@@ -54,7 +54,7 @@ const templateV2KeyUsagesSchema = z
     }
   );
 
-const templateV2ExtendedKeyUsagesSchema = z
+const policyExtendedKeyUsagesSchema = z
   .object({
     allowed: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
     required: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
@@ -72,7 +72,7 @@ const templateV2ExtendedKeyUsagesSchema = z
     }
   );
 
-const templateV2SanSchema = z
+const policySanSchema = z
   .object({
     type: sanTypeSchema,
     allowed: z.array(z.string()).optional(),
@@ -91,7 +91,7 @@ const templateV2SanSchema = z
     }
   );
 
-const templateV2ValiditySchema = z.object({
+const policyValiditySchema = z.object({
   max: z
     .string()
     .refine(
@@ -110,35 +110,35 @@ const templateV2ValiditySchema = z.object({
     .optional()
 });
 
-const templateV2AlgorithmsSchema = z.object({
+const policyAlgorithmsSchema = z.object({
   signature: z.array(z.string()).min(1, "At least one signature algorithm must be provided").optional(),
   keyAlgorithm: z.array(z.string()).min(1, "At least one key algorithm must be provided").optional()
 });
 
-const createCertificateTemplateV2Schema = z.object({
+const createCertificatePolicySchema = z.object({
   projectId: z.string().min(1),
   name: z.string().min(1).max(255, "Name must be between 1 and 255 characters"),
   description: z.string().max(1000).optional(),
-  subject: z.array(templateV2SubjectSchema).optional(),
-  sans: z.array(templateV2SanSchema).optional(),
-  keyUsages: templateV2KeyUsagesSchema.optional(),
-  extendedKeyUsages: templateV2ExtendedKeyUsagesSchema.optional(),
-  algorithms: templateV2AlgorithmsSchema.optional(),
-  validity: templateV2ValiditySchema.optional()
+  subject: z.array(policySubjectSchema).optional(),
+  sans: z.array(policySanSchema).optional(),
+  keyUsages: policyKeyUsagesSchema.optional(),
+  extendedKeyUsages: policyExtendedKeyUsagesSchema.optional(),
+  algorithms: policyAlgorithmsSchema.optional(),
+  validity: policyValiditySchema.optional()
 });
 
-const updateCertificateTemplateV2Schema = z.object({
+const updateCertificatePolicySchema = z.object({
   name: z.string().min(1).max(255, "Name must be between 1 and 255 characters").optional(),
   description: z.string().max(1000).optional(),
-  subject: z.array(templateV2SubjectSchema).optional(),
-  sans: z.array(templateV2SanSchema).optional(),
-  keyUsages: templateV2KeyUsagesSchema.optional(),
-  extendedKeyUsages: templateV2ExtendedKeyUsagesSchema.optional(),
-  algorithms: templateV2AlgorithmsSchema.optional(),
-  validity: templateV2ValiditySchema.optional()
+  subject: z.array(policySubjectSchema).optional(),
+  sans: z.array(policySanSchema).optional(),
+  keyUsages: policyKeyUsagesSchema.optional(),
+  extendedKeyUsages: policyExtendedKeyUsagesSchema.optional(),
+  algorithms: policyAlgorithmsSchema.optional(),
+  validity: policyValiditySchema.optional()
 });
 
-export const registerCertificateTemplateRouter = async (server: FastifyZodProvider) => {
+export const registerCertificatePolicyRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/",
@@ -147,18 +147,18 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
     },
     schema: {
       hide: false,
-      tags: [ApiDocsTags.PkiCertificateTemplates],
-      body: createCertificateTemplateV2Schema,
+      tags: [ApiDocsTags.PkiCertificatePolicies],
+      body: createCertificatePolicySchema,
       response: {
         200: z.object({
-          certificateTemplate: certificateTemplateV2ResponseSchema
+          certificatePolicy: certificatePolicyResponseSchema
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { projectId, ...data } = req.body;
-      const certificateTemplate = await server.services.certificateTemplateV2.createTemplateV2({
+      const certificatePolicy = await server.services.certificatePolicy.createPolicy({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod!,
@@ -171,16 +171,16 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         ...req.auditLogInfo,
         projectId,
         event: {
-          type: EventType.CREATE_CERTIFICATE_TEMPLATE,
+          type: EventType.CREATE_CERTIFICATE_POLICY,
           metadata: {
-            certificateTemplateId: certificateTemplate.id,
-            name: certificateTemplate.name,
-            projectId: certificateTemplate.projectId
+            certificatePolicyId: certificatePolicy.id,
+            name: certificatePolicy.name,
+            projectId: certificatePolicy.projectId
           }
         }
       });
 
-      return { certificateTemplate };
+      return { certificatePolicy };
     }
   });
 
@@ -192,7 +192,7 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
     },
     schema: {
       hide: false,
-      tags: [ApiDocsTags.PkiCertificateTemplates],
+      tags: [ApiDocsTags.PkiCertificatePolicies],
       querystring: z.object({
         projectId: z.string().min(1),
         offset: z.coerce.number().min(0).default(0),
@@ -201,14 +201,14 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
       }),
       response: {
         200: z.object({
-          certificateTemplates: certificateTemplateV2ResponseSchema.array(),
+          certificatePolicies: certificatePolicyResponseSchema.array(),
           totalCount: z.number()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { templates, totalCount } = await server.services.certificateTemplateV2.listTemplatesV2({
+      const { policies, totalCount } = await server.services.certificatePolicy.listPolicies({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod!,
@@ -220,14 +220,14 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         ...req.auditLogInfo,
         projectId: req.query.projectId,
         event: {
-          type: EventType.LIST_CERTIFICATE_TEMPLATES,
+          type: EventType.LIST_CERTIFICATE_POLICIES,
           metadata: {
             projectId: req.query.projectId
           }
         }
       });
 
-      return { certificateTemplates: templates, totalCount };
+      return { certificatePolicies: policies, totalCount };
     }
   });
 
@@ -239,39 +239,39 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
     },
     schema: {
       hide: false,
-      tags: [ApiDocsTags.PkiCertificateTemplates],
+      tags: [ApiDocsTags.PkiCertificatePolicies],
       params: z.object({
         id: z.string().uuid()
       }),
       response: {
         200: z.object({
-          certificateTemplate: certificateTemplateV2ResponseSchema
+          certificatePolicy: certificatePolicyResponseSchema
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const certificateTemplate = await server.services.certificateTemplateV2.getTemplateV2ById({
+      const certificatePolicy = await server.services.certificatePolicy.getPolicyById({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod!,
         actorOrgId: req.permission.orgId,
-        templateId: req.params.id
+        policyId: req.params.id
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: certificateTemplate.projectId,
+        projectId: certificatePolicy.projectId,
         event: {
-          type: EventType.GET_CERTIFICATE_TEMPLATE,
+          type: EventType.GET_CERTIFICATE_POLICY,
           metadata: {
-            certificateTemplateId: certificateTemplate.id,
-            name: certificateTemplate.name
+            certificatePolicyId: certificatePolicy.id,
+            name: certificatePolicy.name
           }
         }
       });
 
-      return { certificateTemplate };
+      return { certificatePolicy };
     }
   });
 
@@ -283,41 +283,41 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
     },
     schema: {
       hide: false,
-      tags: [ApiDocsTags.PkiCertificateTemplates],
+      tags: [ApiDocsTags.PkiCertificatePolicies],
       params: z.object({
         id: z.string().uuid()
       }),
-      body: updateCertificateTemplateV2Schema,
+      body: updateCertificatePolicySchema,
       response: {
         200: z.object({
-          certificateTemplate: certificateTemplateV2ResponseSchema
+          certificatePolicy: certificatePolicyResponseSchema
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const certificateTemplate = await server.services.certificateTemplateV2.updateTemplateV2({
+      const certificatePolicy = await server.services.certificatePolicy.updatePolicy({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod!,
         actorOrgId: req.permission.orgId,
-        templateId: req.params.id,
+        policyId: req.params.id,
         data: req.body
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: certificateTemplate.projectId,
+        projectId: certificatePolicy.projectId,
         event: {
-          type: EventType.UPDATE_CERTIFICATE_TEMPLATE,
+          type: EventType.UPDATE_CERTIFICATE_POLICY,
           metadata: {
-            certificateTemplateId: certificateTemplate.id,
-            name: certificateTemplate.name
+            certificatePolicyId: certificatePolicy.id,
+            name: certificatePolicy.name
           }
         }
       });
 
-      return { certificateTemplate };
+      return { certificatePolicy };
     }
   });
 
@@ -329,39 +329,39 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
     },
     schema: {
       hide: false,
-      tags: [ApiDocsTags.PkiCertificateTemplates],
+      tags: [ApiDocsTags.PkiCertificatePolicies],
       params: z.object({
         id: z.string().uuid()
       }),
       response: {
         200: z.object({
-          certificateTemplate: certificateTemplateV2ResponseSchema
+          certificatePolicy: certificatePolicyResponseSchema
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const certificateTemplate = await server.services.certificateTemplateV2.deleteTemplateV2({
+      const certificatePolicy = await server.services.certificatePolicy.deletePolicy({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod!,
         actorOrgId: req.permission.orgId,
-        templateId: req.params.id
+        policyId: req.params.id
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: certificateTemplate.projectId,
+        projectId: certificatePolicy.projectId,
         event: {
-          type: EventType.DELETE_CERTIFICATE_TEMPLATE,
+          type: EventType.DELETE_CERTIFICATE_POLICY,
           metadata: {
-            certificateTemplateId: certificateTemplate.id,
-            name: certificateTemplate.name
+            certificatePolicyId: certificatePolicy.id,
+            name: certificatePolicy.name
           }
         }
       });
 
-      return { certificateTemplate };
+      return { certificatePolicy };
     }
   });
 };

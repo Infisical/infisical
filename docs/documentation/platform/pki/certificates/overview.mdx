@@ -3,13 +3,13 @@ title: "Overview"
 sidebarTitle: "Overview"
 ---
 
-To issue a certificate with Infisical, you create a certificate profile and a certificate template to go along with it. You then issue a certificate against
+To issue a certificate with Infisical, you create a certificate profile and a certificate policy to go along with it. You then issue a certificate against
 a specific profile depending on the enrollment method associated with it.
 
 There are three components to understand:
 
-- [Certificate Profile](/documentation/platform/pki/certificates/profiles): A configuration set specifying how certificates should be issued under that profile including the [issuing CA](/documentation/platform/pki/ca/overview), a certificate template, and the [enrollment method](/documentation/platform/pki/enrollment-methods/overview) (such as ACME, EST, API, etc.) used to enroll certificates.
+- [Certificate Profile](/documentation/platform/pki/certificates/profiles): A configuration set specifying how certificates should be issued under that profile including the [issuing CA](/documentation/platform/pki/ca/overview), a certificate policy, and the [enrollment method](/documentation/platform/pki/enrollment-methods/overview) (such as ACME, EST, API, etc.) used to enroll certificates.
 
-- [Certificate Template](/documentation/platform/pki/certificates/templates): A policy structure specifying the permitted attributes for requested certificates including subject naming conventions, SAN fields, key usages, and extended key usages.
+- [Certificate Policy](/documentation/platform/pki/certificates/policies): A policy structure specifying the permitted attributes for requested certificates including subject naming conventions, SAN fields, key usages, and extended key usages.
 
 - [Certificate](/documentation/platform/pki/certificates/certificates): The actual X.509 certificate issued for a profile. Once issued, a certificate kept track of in the certificate inventory.

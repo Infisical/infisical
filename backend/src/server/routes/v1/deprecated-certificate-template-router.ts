@@ -46,18 +46,6 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
         actorOrgId: req.permission.orgId
       });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: certificateTemplate.projectId,
-        event: {
-          type: EventType.GET_CERTIFICATE_TEMPLATE,
-          metadata: {
-            certificateTemplateId: certificateTemplate.id,
-            name: certificateTemplate.name
-          }
-        }
-      });
-
       return certificateTemplate;
     }
   });
@@ -108,24 +96,6 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: certificateTemplate.projectId,
-        event: {
-          type: EventType.CREATE_CERTIFICATE_TEMPLATE,
-          metadata: {
-            certificateTemplateId: certificateTemplate.id,
-            caId: certificateTemplate.caId,
-            pkiCollectionId: certificateTemplate.pkiCollectionId as string,
-            name: certificateTemplate.name,
-            commonName: certificateTemplate.commonName,
-            subjectAlternativeName: certificateTemplate.subjectAlternativeName,
-            ttl: certificateTemplate.ttl,
-            projectId: certificateTemplate.projectId
-          }
-        }
       });
 
       return certificateTemplate;
@@ -179,23 +149,6 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
         actorOrgId: req.permission.orgId
       });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: certificateTemplate.projectId,
-        event: {
-          type: EventType.UPDATE_CERTIFICATE_TEMPLATE,
-          metadata: {
-            certificateTemplateId: certificateTemplate.id,
-            name: certificateTemplate.name,
-            caId: certificateTemplate.caId,
-            pkiCollectionId: certificateTemplate.pkiCollectionId as string,
-            commonName: certificateTemplate.commonName,
-            subjectAlternativeName: certificateTemplate.subjectAlternativeName,
-            ttl: certificateTemplate.ttl
-          }
-        }
-      });
-
       return certificateTemplate;
     }
   });
@@ -224,18 +177,6 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: certificateTemplate.projectId,
-        event: {
-          type: EventType.DELETE_CERTIFICATE_TEMPLATE,
-          metadata: {
-            certificateTemplateId: certificateTemplate.id,
-            name: certificateTemplate.name
-          }
-        }
       });
 
       return certificateTemplate;

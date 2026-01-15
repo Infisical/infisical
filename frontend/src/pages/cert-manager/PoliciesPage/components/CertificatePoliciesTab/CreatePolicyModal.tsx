@@ -24,13 +24,11 @@ import {
 } from "@app/components/v2";
 import { useProject } from "@app/context";
 import {
-  useCreateCertificateTemplateV2WithPolicies,
-  useUpdateCertificateTemplateV2WithPolicies
-} from "@app/hooks/api/certificateTemplates/mutations";
-import {
-  TCertificateTemplateV2Policy,
-  TCertificateTemplateV2WithPolicies
-} from "@app/hooks/api/certificateTemplates/types";
+  TCertificatePolicy,
+  TCertificatePolicyRule,
+  useCreateCertificatePolicy,
+  useUpdateCertificatePolicy
+} from "@app/hooks/api/certificatePolicies";
 
 import {
   CertDurationUnit,
@@ -40,29 +38,29 @@ import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeInclude,
   CertSubjectAttributeType,
+  POLICY_PRESET_IDS,
+  type PolicyPresetId,
   SAN_INCLUDE_OPTIONS,
   SAN_TYPE_OPTIONS,
   SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS,
-  SUBJECT_ATTRIBUTE_TYPE_OPTIONS,
-  TEMPLATE_PRESET_IDS,
-  type TemplatePresetId
+  SUBJECT_ATTRIBUTE_TYPE_OPTIONS
 } from "./shared/certificate-constants";
-import { CERTIFICATE_TEMPLATE_PRESETS } from "./shared/template-presets";
-import { KeyUsagesSection, TemplateFormData, templateSchema } from "./shared";
+import { CERTIFICATE_POLICY_PRESETS } from "./shared/policy-presets";
+import { KeyUsagesSection, PolicyFormData, policySchema } from "./shared";
 
-export type FormData = TemplateFormData;
+export type FormData = PolicyFormData;
 
-type AttributeTransform = NonNullable<TCertificateTemplateV2Policy["subject"]>[0];
-type SanTransform = NonNullable<TCertificateTemplateV2Policy["sans"]>[0];
-type KeyUsagesTransform = TCertificateTemplateV2Policy["keyUsages"];
-type ExtendedKeyUsagesTransform = TCertificateTemplateV2Policy["extendedKeyUsages"];
-type AlgorithmsTransform = TCertificateTemplateV2Policy["algorithms"];
-type ValidityTransform = TCertificateTemplateV2Policy["validity"];
+type AttributeTransform = NonNullable<TCertificatePolicyRule["subject"]>[0];
+type SanTransform = NonNullable<TCertificatePolicyRule["sans"]>[0];
+type KeyUsagesTransform = TCertificatePolicyRule["keyUsages"];
+type ExtendedKeyUsagesTransform = TCertificatePolicyRule["extendedKeyUsages"];
+type AlgorithmsTransform = TCertificatePolicyRule["algorithms"];
+type ValidityTransform = TCertificatePolicyRule["validity"];
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  template?: TCertificateTemplateV2WithPolicies;
+  policy?: TCertificatePolicy;
   mode?: "create" | "edit";
 }
 
@@ -107,17 +105,17 @@ const KEY_ALGORITHMS = [
   "ECDSA-P521"
 ] as const;
 
-export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create" }: Props) => {
+export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: Props) => {
   const { currentProject } = useProject();
-  const createTemplate = useCreateCertificateTemplateV2WithPolicies();
-  const updateTemplate = useUpdateCertificateTemplateV2WithPolicies();
+  const createPolicy = useCreateCertificatePolicy();
+  const updatePolicy = useUpdateCertificatePolicy();
 
-  const isEdit = mode === "edit" && template;
+  const isEdit = mode === "edit" && policy;
 
-  const convertApiToUiFormat = (templateData: TCertificateTemplateV2WithPolicies): FormData => {
+  const convertApiToUiFormat = (policyData: TCertificatePolicy): FormData => {
     const attributes: FormData["attributes"] = [];
-    if (templateData.subject && Array.isArray(templateData.subject)) {
-      templateData.subject.forEach((subj) => {
+    if (policyData.subject && Array.isArray(policyData.subject)) {
+      policyData.subject.forEach((subj) => {
         if (subj.allowed && Array.isArray(subj.allowed)) {
           subj.allowed.forEach((allowedValue) => {
             attributes.push({
@@ -140,8 +138,8 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
     }
 
     const subjectAlternativeNames: FormData["subjectAlternativeNames"] = [];
-    if (templateData.sans && Array.isArray(templateData.sans)) {
-      templateData.sans.forEach((san) => {
+    if (policyData.sans && Array.isArray(policyData.sans)) {
+      policyData.sans.forEach((san) => {
         if (san.required && Array.isArray(san.required)) {
           san.required.forEach((requiredValue) => {
             subjectAlternativeNames.push({
@@ -173,19 +171,18 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
     }
 
     const keyUsages = {
-      requiredUsages: (templateData.keyUsages?.required || []) as CertKeyUsageType[],
-      optionalUsages: (templateData.keyUsages?.allowed || []) as CertKeyUsageType[]
+      requiredUsages: (policyData.keyUsages?.required || []) as CertKeyUsageType[],
+      optionalUsages: (policyData.keyUsages?.allowed || []) as CertKeyUsageType[]
     };
 
     const extendedKeyUsages = {
-      requiredUsages: (templateData.extendedKeyUsages?.required ||
-        []) as CertExtendedKeyUsageType[],
-      optionalUsages: (templateData.extendedKeyUsages?.allowed || []) as CertExtendedKeyUsageType[]
+      requiredUsages: (policyData.extendedKeyUsages?.required || []) as CertExtendedKeyUsageType[],
+      optionalUsages: (policyData.extendedKeyUsages?.allowed || []) as CertExtendedKeyUsageType[]
     };
 
-    const validity = templateData.validity?.max
+    const validity = policyData.validity?.max
       ? (() => {
-          const maxValue = templateData.validity.max;
+          const maxValue = policyData.validity.max;
           if (maxValue.length < 2) return undefined;
 
           const lastChar = maxValue.slice(-1);
@@ -214,19 +211,19 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
       : { maxDuration: { value: 365, unit: CertDurationUnit.DAYS } };
 
     const signatureAlgorithm = {
-      allowedAlgorithms: templateData.algorithms?.signature || [],
+      allowedAlgorithms: policyData.algorithms?.signature || [],
       defaultAlgorithm: ""
     };
 
     const keyAlgorithm = {
-      allowedKeyTypes: templateData.algorithms?.keyAlgorithm || [],
+      allowedKeyTypes: policyData.algorithms?.keyAlgorithm || [],
       defaultKeyType: ""
     };
 
     return {
-      preset: TEMPLATE_PRESET_IDS.CUSTOM,
-      name: templateData.name || "",
-      description: templateData.description || "",
+      preset: POLICY_PRESET_IDS.CUSTOM,
+      name: policyData.name || "",
+      description: policyData.description || "",
       attributes,
       subjectAlternativeNames,
       keyUsages,
@@ -237,9 +234,9 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
     };
   };
 
-  const getDefaultValues = (): FormData & { preset: TemplatePresetId } => {
+  const getDefaultValues = (): FormData & { preset: PolicyPresetId } => {
     return {
-      preset: TEMPLATE_PRESET_IDS.CUSTOM,
+      preset: POLICY_PRESET_IDS.CUSTOM,
       name: "",
       description: "",
       attributes: [],
@@ -259,9 +256,9 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
   };
 
   const { control, handleSubmit, reset, watch, setValue, formState, trigger } = useForm<
-    FormData & { preset: TemplatePresetId }
+    FormData & { preset: PolicyPresetId }
   >({
-    resolver: zodResolver(templateSchema),
+    resolver: zodResolver(policySchema),
     defaultValues: getDefaultValues(),
     mode: "onChange",
     reValidateMode: "onChange",
@@ -269,13 +266,13 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
   });
 
   useEffect(() => {
-    if (isEdit && template) {
-      const convertedData = convertApiToUiFormat(template);
-      reset({ ...convertedData, preset: TEMPLATE_PRESET_IDS.CUSTOM });
+    if (isEdit && policy) {
+      const convertedData = convertApiToUiFormat(policy);
+      reset({ ...convertedData, preset: POLICY_PRESET_IDS.CUSTOM });
     } else if (!isEdit) {
       reset(getDefaultValues());
     }
-  }, [isEdit, template, reset]);
+  }, [isEdit, policy, reset]);
 
   const watchedAttributes = watch("attributes") || [];
   const watchedSans = watch("subjectAlternativeNames") || [];
@@ -284,17 +281,17 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
     requiredUsages: [],
     optionalUsages: []
   };
-  const watchedPreset = watch("preset") || TEMPLATE_PRESET_IDS.CUSTOM;
+  const watchedPreset = watch("preset") || POLICY_PRESET_IDS.CUSTOM;
 
-  const handlePresetChange = async (presetId: TemplatePresetId) => {
+  const handlePresetChange = async (presetId: PolicyPresetId) => {
     setValue("preset", presetId);
 
-    if (presetId === TEMPLATE_PRESET_IDS.CUSTOM) {
+    if (presetId === POLICY_PRESET_IDS.CUSTOM) {
       await trigger();
       return;
     }
 
-    const selectedPreset = CERTIFICATE_TEMPLATE_PRESETS.find((p) => p.id === presetId);
+    const selectedPreset = CERTIFICATE_POLICY_PRESETS.find((p) => p.id === presetId);
     if (selectedPreset) {
       if (selectedPreset.formData.keyUsages) {
         setValue("keyUsages", selectedPreset.formData.keyUsages);
@@ -485,24 +482,24 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
 
     if (isEdit) {
       const updateData = {
-        templateId: template.id,
+        policyId: policy.id,
         ...transformedData
       };
-      await updateTemplate.mutateAsync(updateData);
+      await updatePolicy.mutateAsync(updateData);
     } else {
       if (!currentProject?.id) {
-        throw new Error("Project ID is required for creating a template");
+        throw new Error("Project ID is required for creating a policy");
       }
 
       const createData = {
         projectId: currentProject.id,
         ...transformedData
       };
-      await createTemplate.mutateAsync(createData);
+      await createPolicy.mutateAsync(createData);
     }
 
     createNotification({
-      text: `Certificate template ${isEdit ? "updated" : "created"} successfully`,
+      text: `Certificate policy ${isEdit ? "updated" : "created"} successfully`,
       type: "success"
     });
 
@@ -518,8 +515,8 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
     };
     setValue("attributes", [...watchedAttributes, newAttribute]);
 
-    if (watchedPreset !== TEMPLATE_PRESET_IDS.CUSTOM) {
-      setValue("preset", TEMPLATE_PRESET_IDS.CUSTOM);
+    if (watchedPreset !== POLICY_PRESET_IDS.CUSTOM) {
+      setValue("preset", POLICY_PRESET_IDS.CUSTOM);
     }
   };
 
@@ -527,8 +524,8 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
     const newAttributes = watchedAttributes.filter((_, i) => i !== index);
     setValue("attributes", newAttributes);
 
-    if (watchedPreset !== TEMPLATE_PRESET_IDS.CUSTOM) {
-      setValue("preset", TEMPLATE_PRESET_IDS.CUSTOM);
+    if (watchedPreset !== POLICY_PRESET_IDS.CUSTOM) {
+      setValue("preset", POLICY_PRESET_IDS.CUSTOM);
     }
   };
 
@@ -540,8 +537,8 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
     };
     setValue("subjectAlternativeNames", [...watchedSans, newSan]);
 
-    if (watchedPreset !== TEMPLATE_PRESET_IDS.CUSTOM) {
-      setValue("preset", TEMPLATE_PRESET_IDS.CUSTOM);
+    if (watchedPreset !== POLICY_PRESET_IDS.CUSTOM) {
+      setValue("preset", POLICY_PRESET_IDS.CUSTOM);
     }
   };
 
@@ -549,8 +546,8 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
     const newSans = watchedSans.filter((_, i) => i !== index);
     setValue("subjectAlternativeNames", newSans);
 
-    if (watchedPreset !== TEMPLATE_PRESET_IDS.CUSTOM) {
-      setValue("preset", TEMPLATE_PRESET_IDS.CUSTOM);
+    if (watchedPreset !== POLICY_PRESET_IDS.CUSTOM) {
+      setValue("preset", POLICY_PRESET_IDS.CUSTOM);
     }
   };
 
@@ -563,8 +560,8 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
       optionalUsages: usages.optionalUsages
     });
 
-    if (watchedPreset !== TEMPLATE_PRESET_IDS.CUSTOM) {
-      setValue("preset", TEMPLATE_PRESET_IDS.CUSTOM);
+    if (watchedPreset !== POLICY_PRESET_IDS.CUSTOM) {
+      setValue("preset", POLICY_PRESET_IDS.CUSTOM);
     }
   };
 
@@ -577,8 +574,8 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
       optionalUsages: usages.optionalUsages
     });
 
-    if (watchedPreset !== TEMPLATE_PRESET_IDS.CUSTOM) {
-      setValue("preset", TEMPLATE_PRESET_IDS.CUSTOM);
+    if (watchedPreset !== POLICY_PRESET_IDS.CUSTOM) {
+      setValue("preset", POLICY_PRESET_IDS.CUSTOM);
     }
   };
 
@@ -594,10 +591,10 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
     >
       <ModalContent
         className="max-w-4xl"
-        title={isEdit ? "Edit Certificate Template" : "Create Certificate Template"}
+        title={isEdit ? "Edit Certificate Policy" : "Create Certificate Policy"}
         subTitle={
           isEdit
-            ? `Update configuration for ${template?.name}`
+            ? `Update configuration for ${policy?.name}`
             : "Define comprehensive certificate policies, validation rules, and constraints"
         }
       >
@@ -609,12 +606,12 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                 name="name"
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
-                    label="Template Name"
+                    label="Policy Name"
                     isRequired
                     isError={Boolean(error)}
                     errorText={error?.message}
                   >
-                    <Input {...field} placeholder="Enter template name" className="w-full" />
+                    <Input {...field} placeholder="Enter policy name" className="w-full" />
                   </FormControl>
                 )}
               />
@@ -628,7 +625,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                     isError={Boolean(error)}
                     errorText={error?.message}
                   >
-                    <TextArea {...field} placeholder="Enter template description" rows={3} />
+                    <TextArea {...field} placeholder="Enter policy description" rows={3} />
                   </FormControl>
                 )}
               />
@@ -638,7 +635,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                 name="preset"
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
-                    label="Template Preset"
+                    label="Policy Preset"
                     isError={Boolean(error)}
                     errorText={error?.message}
                   >
@@ -649,8 +646,8 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                       position="popper"
                       dropdownContainerClassName="max-w-none"
                     >
-                      <SelectItem value={TEMPLATE_PRESET_IDS.CUSTOM}>Custom</SelectItem>
-                      {CERTIFICATE_TEMPLATE_PRESETS.map((preset) => (
+                      <SelectItem value={POLICY_PRESET_IDS.CUSTOM}>Custom</SelectItem>
+                      {CERTIFICATE_POLICY_PRESETS.map((preset) => (
                         <SelectItem key={preset.id} value={preset.id}>
                           {preset.name}
                         </SelectItem>
@@ -700,8 +697,8 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                                 };
                                 setValue("attributes", newAttributes);
 
-                                if (watchedPreset !== TEMPLATE_PRESET_IDS.CUSTOM) {
-                                  setValue("preset", TEMPLATE_PRESET_IDS.CUSTOM);
+                                if (watchedPreset !== POLICY_PRESET_IDS.CUSTOM) {
+                                  setValue("preset", POLICY_PRESET_IDS.CUSTOM);
                                 }
                               }}
                               className="w-48"
@@ -724,8 +721,8 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                                 };
                                 setValue("attributes", newAttributes);
 
-                                if (watchedPreset !== TEMPLATE_PRESET_IDS.CUSTOM) {
-                                  setValue("preset", TEMPLATE_PRESET_IDS.CUSTOM);
+                                if (watchedPreset !== POLICY_PRESET_IDS.CUSTOM) {
+                                  setValue("preset", POLICY_PRESET_IDS.CUSTOM);
                                 }
                               }}
                               className="w-32"
@@ -748,8 +745,8 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                                 };
                                 setValue("attributes", newAttributes);
 
-                                if (watchedPreset !== TEMPLATE_PRESET_IDS.CUSTOM) {
-                                  setValue("preset", TEMPLATE_PRESET_IDS.CUSTOM);
+                                if (watchedPreset !== POLICY_PRESET_IDS.CUSTOM) {
+                                  setValue("preset", POLICY_PRESET_IDS.CUSTOM);
                                 }
                               }}
                               className={`flex-1 ${
@@ -818,8 +815,8 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                               };
                               setValue("subjectAlternativeNames", newSans);
 
-                              if (watchedPreset !== TEMPLATE_PRESET_IDS.CUSTOM) {
-                                setValue("preset", TEMPLATE_PRESET_IDS.CUSTOM);
+                              if (watchedPreset !== POLICY_PRESET_IDS.CUSTOM) {
+                                setValue("preset", POLICY_PRESET_IDS.CUSTOM);
                               }
                             }}
                             className="w-36"
@@ -841,8 +838,8 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                               };
                               setValue("subjectAlternativeNames", newSans);
 
-                              if (watchedPreset !== TEMPLATE_PRESET_IDS.CUSTOM) {
-                                setValue("preset", TEMPLATE_PRESET_IDS.CUSTOM);
+                              if (watchedPreset !== POLICY_PRESET_IDS.CUSTOM) {
+                                setValue("preset", POLICY_PRESET_IDS.CUSTOM);
                               }
                             }}
                             className="w-32"
@@ -865,8 +862,8 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                               };
                               setValue("subjectAlternativeNames", newSans);
 
-                              if (watchedPreset !== TEMPLATE_PRESET_IDS.CUSTOM) {
-                                setValue("preset", TEMPLATE_PRESET_IDS.CUSTOM);
+                              if (watchedPreset !== POLICY_PRESET_IDS.CUSTOM) {
+                                setValue("preset", POLICY_PRESET_IDS.CUSTOM);
                               }
                             }}
                             className={`flex-1 ${
@@ -1062,9 +1059,9 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
             <Button
               type="submit"
               colorSchema="primary"
-              isLoading={isEdit ? updateTemplate.isPending : createTemplate.isPending}
+              isLoading={isEdit ? updatePolicy.isPending : createPolicy.isPending}
               isDisabled={
-                !formState.isValid || (isEdit ? updateTemplate.isPending : createTemplate.isPending)
+                !formState.isValid || (isEdit ? updatePolicy.isPending : createPolicy.isPending)
               }
             >
               {isEdit ? "Save Changes" : "Create"}
@@ -1072,7 +1069,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
             <Button
               variant="outline_bg"
               onClick={onClose}
-              disabled={isEdit ? updateTemplate.isPending : createTemplate.isPending}
+              disabled={isEdit ? updatePolicy.isPending : createPolicy.isPending}
             >
               Cancel
             </Button>

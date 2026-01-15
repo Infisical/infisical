@@ -20,19 +20,19 @@ import {
 } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { useGetCert } from "@app/hooks/api";
+import { useGetCertificatePolicyById } from "@app/hooks/api/certificatePolicies";
 import { EnrollmentType, useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import { CertExtendedKeyUsage, CertKeyUsage } from "@app/hooks/api/certificates/enums";
 import { useUnifiedCertificateIssuance } from "@app/hooks/api/certificates/mutations";
-import { useGetCertificateTemplateV2ById } from "@app/hooks/api/certificateTemplates/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-import { CertSubjectAlternativeNameType } from "@app/pages/cert-manager/PoliciesPage/components/CertificateTemplatesV2Tab/shared/certificate-constants";
+import { CertSubjectAlternativeNameType } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import { AlgorithmSelectors } from "./AlgorithmSelectors";
 import { CertificateContent } from "./CertificateContent";
 import { filterUsages, formatSubjectAltNames, getAttributeValue } from "./certificateUtils";
 import { KeyUsageSection } from "./KeyUsageSection";
 import { SubjectAltNamesField } from "./SubjectAltNamesField";
-import { useCertificateTemplate } from "./useCertificateTemplate";
+import { useCertificatePolicy } from "./useCertificatePolicy";
 
 const createSchema = (shouldShowSubjectSection: boolean) => {
   return z.object({
@@ -161,15 +161,15 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
     [profilesData?.certificateProfiles, actualSelectedProfileId]
   );
 
-  const { data: templateData } = useGetCertificateTemplateV2ById({
-    templateId: actualSelectedProfile?.certificateTemplateId || ""
+  const { data: policyData } = useGetCertificatePolicyById({
+    policyId: actualSelectedProfile?.certificatePolicyId || ""
   });
 
   useEffect(() => {
-    if (templateData !== undefined) {
-      setShouldShowSubjectSection((templateData?.subject?.length || 0) > 0);
+    if (policyData !== undefined) {
+      setShouldShowSubjectSection((policyData?.subject?.length || 0) > 0);
     }
-  }, [templateData]);
+  }, [policyData]);
 
   const {
     constraints,
@@ -178,8 +178,8 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
     availableSignatureAlgorithms,
     availableKeyAlgorithms,
     resetConstraints
-  } = useCertificateTemplate(
-    templateData,
+  } = useCertificatePolicy(
+    policyData,
     actualSelectedProfile,
     popUp?.issueCertificate?.isOpen || false,
     setValue,

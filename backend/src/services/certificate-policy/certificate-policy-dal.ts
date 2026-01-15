@@ -1,8 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
-import { TPkiCertificateTemplatesV2Insert } from "@app/db/schemas/pki-certificate-templates-v2";
+import { TableName, TPkiCertificatePoliciesInsert } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 import {
@@ -10,22 +9,18 @@ import {
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
 
-import {
-  TCertificateTemplateV2,
-  TCertificateTemplateV2Insert,
-  TCertificateTemplateV2Update
-} from "./certificate-template-v2-types";
+import { TCertificatePolicy, TCertificatePolicyInsert, TCertificatePolicyUpdate } from "./certificate-policy-types";
 
-export type TCertificateTemplateV2DALFactory = ReturnType<typeof certificateTemplateV2DALFactory>;
+export type TCertificatePolicyDALFactory = ReturnType<typeof certificatePolicyDALFactory>;
 
 interface CountResult {
   count: string;
 }
 
-export const certificateTemplateV2DALFactory = (db: TDbClient) => {
-  const certificateTemplateV2Orm = ormify(db, TableName.PkiCertificateTemplateV2);
+export const certificatePolicyDALFactory = (db: TDbClient) => {
+  const certificatePolicyOrm = ormify(db, TableName.PkiCertificatePolicy);
 
-  const serializeJsonFields = (data: TCertificateTemplateV2Insert | TCertificateTemplateV2Update) => {
+  const serializeJsonFields = (data: TCertificatePolicyInsert | TCertificatePolicyUpdate) => {
     const serialized = { ...data } as Record<string, unknown>;
 
     const jsonFields = ["subject", "sans", "keyUsages", "extendedKeyUsages", "algorithms", "validity"];
@@ -40,7 +35,7 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
     return serialized;
   };
 
-  const parseJsonFields = (raw: Record<string, unknown>): TCertificateTemplateV2 => {
+  const parseJsonFields = (raw: Record<string, unknown>): TCertificatePolicy => {
     const jsonFields = ["subject", "sans", "keyUsages", "extendedKeyUsages", "algorithms", "validity"];
     const parsed = { ...raw } as Record<string, unknown>;
 
@@ -63,70 +58,70 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
       }
     });
 
-    return parsed as TCertificateTemplateV2;
+    return parsed as TCertificatePolicy;
   };
 
-  const create = async (data: TCertificateTemplateV2Insert, tx?: Knex) => {
+  const create = async (data: TCertificatePolicyInsert, tx?: Knex) => {
     try {
       const serializedData = serializeJsonFields(data);
-      const [certificateTemplateV2] = (await (tx || db)(TableName.PkiCertificateTemplateV2)
-        .insert(serializedData as TPkiCertificateTemplatesV2Insert)
+      const [certificatePolicy] = (await (tx || db)(TableName.PkiCertificatePolicy)
+        .insert(serializedData as TPkiCertificatePoliciesInsert)
         .returning("*")) as Record<string, unknown>[];
 
-      if (!certificateTemplateV2) {
-        throw new Error("Failed to create certificate template v2");
+      if (!certificatePolicy) {
+        throw new Error("Failed to create certificate policy");
       }
 
-      return parseJsonFields(certificateTemplateV2);
+      return parseJsonFields(certificatePolicy);
     } catch (error) {
-      throw new DatabaseError({ error, name: "Create certificate template v2" });
+      throw new DatabaseError({ error, name: "Create certificate policy" });
     }
   };
 
-  const updateById = async (id: string, data: TCertificateTemplateV2Update, tx?: Knex) => {
+  const updateById = async (id: string, data: TCertificatePolicyUpdate, tx?: Knex) => {
     try {
       const serializedData = serializeJsonFields(data);
-      const [certificateTemplateV2] = (await (tx || db)(TableName.PkiCertificateTemplateV2)
+      const [certificatePolicy] = (await (tx || db)(TableName.PkiCertificatePolicy)
         .where({ id })
         .update(serializedData)
         .returning("*")) as Record<string, unknown>[];
 
-      if (!certificateTemplateV2) {
+      if (!certificatePolicy) {
         return null;
       }
 
-      return parseJsonFields(certificateTemplateV2);
+      return parseJsonFields(certificatePolicy);
     } catch (error) {
-      throw new DatabaseError({ error, name: "Update certificate template v2" });
+      throw new DatabaseError({ error, name: "Update certificate policy" });
     }
   };
 
   const deleteById = async (id: string, tx?: Knex) => {
     try {
-      const [certificateTemplateV2] = (await (tx || db)(TableName.PkiCertificateTemplateV2)
+      const [certificatePolicy] = (await (tx || db)(TableName.PkiCertificatePolicy)
         .where({ id })
         .del()
         .returning("*")) as Record<string, unknown>[];
 
-      return certificateTemplateV2;
+      return certificatePolicy;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Delete certificate template v2" });
+      throw new DatabaseError({ error, name: "Delete certificate policy" });
     }
   };
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const certificateTemplateV2 = (await (tx || db)(TableName.PkiCertificateTemplateV2).where({ id }).first()) as
+      const certificatePolicy = (await (tx || db)(TableName.PkiCertificatePolicy).where({ id }).first()) as
         | Record<string, unknown>
         | undefined;
 
-      if (!certificateTemplateV2) {
+      if (!certificatePolicy) {
         return null;
       }
 
-      return parseJsonFields(certificateTemplateV2);
+      return parseJsonFields(certificatePolicy);
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find certificate template v2 by id" });
+      throw new DatabaseError({ error, name: "Find certificate policy by id" });
     }
   };
 
@@ -143,7 +138,7 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
     try {
       const { offset = 0, limit = 20, search } = options;
 
-      let query = (tx || db)(TableName.PkiCertificateTemplateV2).where({ projectId });
+      let query = (tx || db)(TableName.PkiCertificatePolicy).where({ projectId });
 
       if (search) {
         query = query.where((builder) => {
@@ -154,16 +149,16 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
       if (processedRules) {
         query = applyProcessedPermissionRulesToQuery(
           query,
-          TableName.PkiCertificateTemplateV2,
+          TableName.PkiCertificatePolicy,
           processedRules
         ) as typeof query;
       }
 
-      const certificateTemplatesV2 = await query.orderBy("createdAt", "desc").offset(offset).limit(limit);
+      const certificatePolicies = await query.orderBy("createdAt", "desc").offset(offset).limit(limit);
 
-      return certificateTemplatesV2.map((template: Record<string, unknown>) => parseJsonFields(template));
+      return certificatePolicies.map((policy: Record<string, unknown>) => parseJsonFields(policy));
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find certificate templates v2 by project id" });
+      throw new DatabaseError({ error, name: "Find certificate policies by project id" });
     }
   };
 
@@ -178,7 +173,7 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
     try {
       const { search } = options;
 
-      let query = (tx || db)(TableName.PkiCertificateTemplateV2).where({ projectId });
+      let query = (tx || db)(TableName.PkiCertificatePolicy).where({ projectId });
 
       if (search) {
         query = query.where((builder) => {
@@ -189,7 +184,7 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
       if (processedRules) {
         query = applyProcessedPermissionRulesToQuery(
           query,
-          TableName.PkiCertificateTemplateV2,
+          TableName.PkiCertificatePolicy,
           processedRules
         ) as typeof query;
       }
@@ -197,37 +192,37 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
       const result = await query.count("*").first();
       return parseInt((result as unknown as { count: string }).count || "0", 10);
     } catch (error) {
-      throw new DatabaseError({ error, name: "Count certificate templates v2 by project id" });
+      throw new DatabaseError({ error, name: "Count certificate policies by project id" });
     }
   };
 
   const findByNameAndProjectId = async (name: string, projectId: string, tx?: Knex) => {
     try {
-      const certificateTemplateV2 = (await (tx || db)(TableName.PkiCertificateTemplateV2)
+      const certificatePolicy = (await (tx || db)(TableName.PkiCertificatePolicy)
         .where({ name, projectId })
         .first()) as Record<string, unknown> | undefined;
 
-      if (!certificateTemplateV2) {
+      if (!certificatePolicy) {
         return null;
       }
 
-      return parseJsonFields(certificateTemplateV2);
+      return parseJsonFields(certificatePolicy);
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find certificate template v2 by name and project id" });
+      throw new DatabaseError({ error, name: "Find certificate policy by name and project id" });
     }
   };
 
-  const isTemplateInUse = async (templateId: string, tx?: Knex) => {
+  const isPolicyInUse = async (policyId: string, tx?: Knex) => {
     try {
       const profileCount = await (tx || db)(TableName.PkiCertificateProfile)
-        .where({ certificateTemplateId: templateId })
+        .where({ certificatePolicyId: policyId })
         .count("*")
         .first();
 
       const profileUsage = parseInt((profileCount as unknown as CountResult).count || "0", 10) > 0;
 
       const certCount = await (tx || db)(TableName.Certificate)
-        .where({ certificateTemplateId: templateId })
+        .where({ certificateTemplateId: policyId })
         .count("*")
         .first();
 
@@ -235,24 +230,24 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
 
       return profileUsage || certUsage;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Check if certificate template v2 is in use" });
+      throw new DatabaseError({ error, name: "Check if certificate policy is in use" });
     }
   };
 
-  const getProfilesUsingTemplate = async (templateId: string, tx?: Knex) => {
+  const getProfilesUsingPolicy = async (policyId: string, tx?: Knex) => {
     try {
       const profiles = await (tx || db)(TableName.PkiCertificateProfile)
         .select("id", "slug", "description")
-        .where({ certificateTemplateId: templateId });
+        .where({ certificatePolicyId: policyId });
 
       return profiles as Array<{ id: string; slug: string; description?: string }>;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Get profiles using certificate template v2" });
+      throw new DatabaseError({ error, name: "Get profiles using certificate policy" });
     }
   };
 
   return {
-    ...certificateTemplateV2Orm,
+    ...certificatePolicyOrm,
     create,
     updateById,
     deleteById,
@@ -260,7 +255,7 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
     findByProjectId,
     countByProjectId,
     findByNameAndProjectId,
-    isTemplateInUse,
-    getProfilesUsingTemplate
+    isPolicyInUse,
+    getProfilesUsingPolicy
   };
 };

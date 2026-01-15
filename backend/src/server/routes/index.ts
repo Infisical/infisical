@@ -209,6 +209,8 @@ import { internalCertificateAuthorityDALFactory } from "@app/services/certificat
 import { InternalCertificateAuthorityFns } from "@app/services/certificate-authority/internal/internal-certificate-authority-fns";
 import { internalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { certificateEstV3ServiceFactory } from "@app/services/certificate-est-v3/certificate-est-v3-service";
+import { certificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
+import { certificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { certificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { certificateProfileServiceFactory } from "@app/services/certificate-profile/certificate-profile-service";
 import { certificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
@@ -217,8 +219,6 @@ import { certificateSyncDALFactory } from "@app/services/certificate-sync/certif
 import { certificateTemplateDALFactory } from "@app/services/certificate-template/certificate-template-dal";
 import { certificateTemplateEstConfigDALFactory } from "@app/services/certificate-template/certificate-template-est-config-dal";
 import { certificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
-import { certificateTemplateV2DALFactory } from "@app/services/certificate-template-v2/certificate-template-v2-dal";
-import { certificateTemplateV2ServiceFactory } from "@app/services/certificate-template-v2/certificate-template-v2-service";
 import { certificateV3QueueServiceFactory } from "@app/services/certificate-v3/certificate-v3-queue";
 import { certificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { cmekServiceFactory } from "@app/services/cmek/cmek-service";
@@ -1132,7 +1132,7 @@ export const registerRoutes = async (
   const certificateAuthorityCrlDAL = certificateAuthorityCrlDALFactory(db);
   const certificateTemplateDAL = certificateTemplateDALFactory(db);
   const certificateTemplateEstConfigDAL = certificateTemplateEstConfigDALFactory(db);
-  const certificateTemplateV2DAL = certificateTemplateV2DALFactory(db);
+  const certificatePolicyDAL = certificatePolicyDALFactory(db);
   const certificateProfileDAL = certificateProfileDALFactory(db);
   const apiEnrollmentConfigDAL = apiEnrollmentConfigDALFactory(db);
   const estEnrollmentConfigDAL = estEnrollmentConfigDALFactory(db);
@@ -1227,14 +1227,14 @@ export const registerRoutes = async (
     licenseService
   });
 
-  const certificateTemplateV2Service = certificateTemplateV2ServiceFactory({
-    certificateTemplateV2DAL,
+  const certificatePolicyService = certificatePolicyServiceFactory({
+    certificatePolicyDAL,
     permissionService
   });
 
   const certificateProfileService = certificateProfileServiceFactory({
     certificateProfileDAL,
-    certificateTemplateV2DAL,
+    certificatePolicyDAL,
     apiEnrollmentConfigDAL,
     estEnrollmentConfigDAL,
     acmeEnrollmentConfigDAL,
@@ -2299,7 +2299,7 @@ export const registerRoutes = async (
     certificateSecretDAL,
     certificateAuthorityDAL,
     certificateProfileDAL,
-    certificateTemplateV2Service,
+    certificatePolicyService,
     acmeAccountDAL,
     internalCaService: internalCertificateAuthorityService,
     permissionService,
@@ -2322,7 +2322,7 @@ export const registerRoutes = async (
 
   const certificateEstV3Service = certificateEstV3ServiceFactory({
     internalCertificateAuthorityService,
-    certificateTemplateV2Service,
+    certificatePolicyService,
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
     projectDAL,
@@ -2347,7 +2347,7 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     certificateProfileDAL,
     certificateBodyDAL,
-    certificateTemplateV2DAL,
+    certificatePolicyDAL,
     acmeAccountDAL,
     acmeOrderDAL,
     acmeAuthDAL,
@@ -2356,7 +2356,7 @@ export const registerRoutes = async (
     keyStore,
     kmsService,
     certificateV3Service,
-    certificateTemplateV2Service,
+    certificatePolicyService,
     certificateRequestService,
     certificateIssuanceQueue,
     acmeChallengeService,
@@ -2694,7 +2694,7 @@ export const registerRoutes = async (
     certificateAuthority: certificateAuthorityService,
     internalCertificateAuthority: internalCertificateAuthorityService,
     certificateTemplate: certificateTemplateService,
-    certificateTemplateV2: certificateTemplateV2Service,
+    certificatePolicy: certificatePolicyService,
     certificateProfile: certificateProfileService,
     certificateAuthorityCrl: certificateAuthorityCrlService,
     certificateEst: certificateEstService,

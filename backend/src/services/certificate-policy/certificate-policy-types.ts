@@ -1,7 +1,4 @@
-import {
-  TPkiCertificateTemplatesV2,
-  TPkiCertificateTemplatesV2Insert
-} from "@app/db/schemas/pki-certificate-templates-v2";
+import { TPkiCertificatePolicies, TPkiCertificatePoliciesInsert } from "@app/db/schemas/pki-certificate-policies";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
@@ -41,7 +38,7 @@ export interface TTemplateV2Policy {
   };
 }
 
-export type TCertificateTemplateV2 = TPkiCertificateTemplatesV2 & {
+export type TCertificatePolicy = TPkiCertificatePolicies & {
   subject?: TTemplateV2Policy["subject"];
   sans?: TTemplateV2Policy["sans"];
   keyUsages?: TTemplateV2Policy["keyUsages"];
@@ -50,7 +47,7 @@ export type TCertificateTemplateV2 = TPkiCertificateTemplatesV2 & {
   validity?: TTemplateV2Policy["validity"];
 };
 
-export type TCertificateTemplateV2Insert = TPkiCertificateTemplatesV2Insert & {
+export type TCertificatePolicyInsert = TPkiCertificatePoliciesInsert & {
   subject?: TTemplateV2Policy["subject"];
   sans?: TTemplateV2Policy["sans"];
   keyUsages?: TTemplateV2Policy["keyUsages"];
@@ -59,9 +56,9 @@ export type TCertificateTemplateV2Insert = TPkiCertificateTemplatesV2Insert & {
   validity?: TTemplateV2Policy["validity"];
 };
 
-export type TCertificateTemplateV2Update = Partial<
+export type TCertificatePolicyUpdate = Partial<
   Pick<
-    TCertificateTemplateV2,
+    TCertificatePolicy,
     "name" | "description" | "subject" | "sans" | "keyUsages" | "extendedKeyUsages" | "algorithms" | "validity"
   >
 >;
@@ -91,7 +88,7 @@ export interface TCertificateRequest {
   keyAlgorithm?: string;
 }
 
-export interface TTemplateValidationResult {
+export interface TPolicyValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];

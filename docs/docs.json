@@ -699,7 +699,7 @@
                     "pages": [
                       "documentation/platform/pki/certificates/overview",
                       "documentation/platform/pki/certificates/profiles",
-                      "documentation/platform/pki/certificates/templates",
+                      "documentation/platform/pki/certificates/policies",
                       "documentation/platform/pki/certificates/certificates"
                     ]
                   },
@@ -2627,13 +2627,13 @@
                 ]
               },
               {
-                "group": "Certificate Templates",
+                "group": "Certificate Policies",
                 "pages": [
-                  "api-reference/endpoints/certificate-templates/list",
-                  "api-reference/endpoints/certificate-templates/create",
-                  "api-reference/endpoints/certificate-templates/update",
-                  "api-reference/endpoints/certificate-templates/get-by-id",
-                  "api-reference/endpoints/certificate-templates/delete"
+                  "api-reference/endpoints/certificate-policies/list",
+                  "api-reference/endpoints/certificate-policies/create",
+                  "api-reference/endpoints/certificate-policies/update",
+                  "api-reference/endpoints/certificate-policies/get-by-id",
+                  "api-reference/endpoints/certificate-policies/delete"
                 ]
               },
               {

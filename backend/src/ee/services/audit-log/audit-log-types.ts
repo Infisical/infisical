@@ -372,11 +372,11 @@ export enum EventType {
   USER_LOGIN = "user-login",
   SELECT_ORGANIZATION = "select-organization",
   SELECT_SUB_ORGANIZATION = "select-sub-organization",
-  CREATE_CERTIFICATE_TEMPLATE = "create-certificate-template",
-  UPDATE_CERTIFICATE_TEMPLATE = "update-certificate-template",
-  DELETE_CERTIFICATE_TEMPLATE = "delete-certificate-template",
-  GET_CERTIFICATE_TEMPLATE = "get-certificate-template",
-  LIST_CERTIFICATE_TEMPLATES = "list-certificate-templates",
+  CREATE_CERTIFICATE_POLICY = "create-certificate-policy",
+  UPDATE_CERTIFICATE_POLICY = "update-certificate-policy",
+  DELETE_CERTIFICATE_POLICY = "delete-certificate-policy",
+  GET_CERTIFICATE_POLICY = "get-certificate-policy",
+  LIST_CERTIFICATE_POLICIES = "list-certificate-policies",
   CREATE_CERTIFICATE_TEMPLATE_EST_CONFIG = "create-certificate-template-est-config",
   UPDATE_CERTIFICATE_TEMPLATE_EST_CONFIG = "update-certificate-template-est-config",
   GET_CERTIFICATE_TEMPLATE_EST_CONFIG = "get-certificate-template-est-config",
@@ -2829,16 +2829,16 @@ interface GetCertificateTemplateEstConfig {
   };
 }
 
-interface CreateCertificateTemplate {
-  type: EventType.CREATE_CERTIFICATE_TEMPLATE;
+interface CreateCertificatePolicy {
+  type: EventType.CREATE_CERTIFICATE_POLICY;
   metadata:
     | {
-        certificateTemplateId: string;
+        certificatePolicyId: string;
         name: string;
         projectId: string;
       }
     | {
-        certificateTemplateId: string;
+        certificatePolicyId: string;
         caId: string;
         pkiCollectionId: string;
         name: string;
@@ -2849,15 +2849,15 @@ interface CreateCertificateTemplate {
       };
 }
 
-interface UpdateCertificateTemplate {
-  type: EventType.UPDATE_CERTIFICATE_TEMPLATE;
+interface UpdateCertificatePolicy {
+  type: EventType.UPDATE_CERTIFICATE_POLICY;
   metadata:
     | {
-        certificateTemplateId: string;
+        certificatePolicyId: string;
         name: string;
       }
     | {
-        certificateTemplateId: string;
+        certificatePolicyId: string;
         caId: string;
         pkiCollectionId: string;
         name: string;
@@ -2868,24 +2868,24 @@ interface UpdateCertificateTemplate {
       };
 }
 
-interface DeleteCertificateTemplate {
-  type: EventType.DELETE_CERTIFICATE_TEMPLATE;
+interface DeleteCertificatePolicy {
+  type: EventType.DELETE_CERTIFICATE_POLICY;
   metadata: {
-    certificateTemplateId: string;
+    certificatePolicyId: string;
     name: string;
   };
 }
 
-interface GetCertificateTemplate {
-  type: EventType.GET_CERTIFICATE_TEMPLATE;
+interface GetCertificatePolicy {
+  type: EventType.GET_CERTIFICATE_POLICY;
   metadata: {
-    certificateTemplateId: string;
+    certificatePolicyId: string;
     name: string;
   };
 }
 
-interface ListCertificateTemplates {
-  type: EventType.LIST_CERTIFICATE_TEMPLATES;
+interface ListCertificatePolicies {
+  type: EventType.LIST_CERTIFICATE_POLICIES;
   metadata: {
     projectId: string;
   };
@@ -5093,11 +5093,11 @@ export type Event =
   | CreateCertificateTemplateEstConfig
   | UpdateCertificateTemplateEstConfig
   | GetCertificateTemplateEstConfig
-  | CreateCertificateTemplate
-  | UpdateCertificateTemplate
-  | DeleteCertificateTemplate
-  | GetCertificateTemplate
-  | ListCertificateTemplates
+  | CreateCertificatePolicy
+  | UpdateCertificatePolicy
+  | DeleteCertificatePolicy
+  | GetCertificatePolicy
+  | ListCertificatePolicies
   | CreateCertificateProfile
   | UpdateCertificateProfile
   | DeleteCertificateProfile

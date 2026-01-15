@@ -5,11 +5,8 @@ import { apiRequest } from "@app/config/request";
 import {
   TCertificateTemplate,
   TCertificateTemplateV2,
-  TCertificateTemplateV2WithPolicies,
   TEstConfig,
-  TGetCertificateTemplateV2ByIdDTO,
-  TListCertificateTemplatesDTO,
-  TListCertificateTemplatesV2DTO
+  TListCertificateTemplatesDTO
 } from "./types";
 
 export const certTemplateKeys = {
@@ -19,16 +16,7 @@ export const certTemplateKeys = {
     projectId,
     el
   ],
-  getEstConfig: (id: string) => [{ id }, "cert-template-est-config"],
-  listTemplatesV2: ({
-    projectId,
-    ...el
-  }: {
-    limit?: number;
-    offset?: number;
-    projectId: string;
-  }) => ["list-templates-v2", projectId, el],
-  getTemplateV2ById: (id: string) => ["cert-template-v2", id]
+  getEstConfig: (id: string) => [{ id }, "cert-template-est-config"]
 };
 
 // TODO: DEPRECATE
@@ -81,44 +69,5 @@ export const useGetEstConfig = (certificateTemplateId: string) => {
       return estConfig;
     },
     enabled: Boolean(certificateTemplateId)
-  });
-};
-
-export const useListCertificateTemplatesV2 = ({
-  projectId,
-  limit = 20,
-  offset = 0
-}: TListCertificateTemplatesV2DTO) => {
-  return useQuery({
-    queryKey: certTemplateKeys.listTemplatesV2({ projectId, limit, offset }),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{
-        certificateTemplates: TCertificateTemplateV2WithPolicies[];
-        totalCount: number;
-      }>("/api/v1/cert-manager/certificate-templates", {
-        params: {
-          projectId,
-          limit,
-          offset
-        }
-      });
-      return data;
-    },
-    enabled: Boolean(projectId)
-  });
-};
-
-export const useGetCertificateTemplateV2ById = ({
-  templateId
-}: TGetCertificateTemplateV2ByIdDTO) => {
-  return useQuery({
-    queryKey: certTemplateKeys.getTemplateV2ById(templateId),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{
-        certificateTemplate: TCertificateTemplateV2WithPolicies;
-      }>(`/api/v1/cert-manager/certificate-templates/${templateId}`);
-      return data.certificateTemplate;
-    },
-    enabled: Boolean(templateId)
   });
 };

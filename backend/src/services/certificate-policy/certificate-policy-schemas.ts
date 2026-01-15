@@ -11,7 +11,7 @@ import {
 const attributeTypeSchema = z.nativeEnum(CertSubjectAttributeType);
 const sanTypeSchema = z.nativeEnum(CertSubjectAlternativeNameType);
 
-const templateV2SubjectSchema = z
+const policySubjectSchema = z
   .object({
     type: attributeTypeSchema,
     allowed: z.array(z.string().trim().min(1, "Value cannot be empty")).optional(),
@@ -30,7 +30,7 @@ const templateV2SubjectSchema = z
     }
   );
 
-const templateV2KeyUsagesSchema = z
+const policyKeyUsagesSchema = z
   .object({
     allowed: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
     required: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
@@ -48,7 +48,7 @@ const templateV2KeyUsagesSchema = z
     }
   );
 
-const templateV2ExtendedKeyUsagesSchema = z
+const policyExtendedKeyUsagesSchema = z
   .object({
     allowed: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
     required: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
@@ -66,7 +66,7 @@ const templateV2ExtendedKeyUsagesSchema = z
     }
   );
 
-const templateV2SanSchema = z
+const policySanSchema = z
   .object({
     type: sanTypeSchema,
     allowed: z.array(z.string().trim().min(1, "Value cannot be empty")).optional(),
@@ -85,7 +85,7 @@ const templateV2SanSchema = z
     }
   );
 
-const templateV2ValiditySchema = z.object({
+const policyValiditySchema = z.object({
   max: z
     .string()
     .regex(new RE2("^\\d+[dhmy]$"), {
@@ -94,7 +94,7 @@ const templateV2ValiditySchema = z.object({
     .optional()
 });
 
-const templateV2AlgorithmsSchema = z.object({
+const policyAlgorithmsSchema = z.object({
   signature: z
     .array(z.string().trim().min(1, "Algorithm cannot be empty"))
     .min(1, "At least one signature algorithm must be provided")
@@ -105,22 +105,22 @@ const templateV2AlgorithmsSchema = z.object({
     .optional()
 });
 
-export const certificateTemplateV2ResponseSchema = z.object({
+export const certificatePolicyResponseSchema = z.object({
   id: z.string().uuid(),
   projectId: z.string().uuid("Project ID must be valid"),
   name: z
     .string()
     .trim()
-    .min(1, "Template name is required")
-    .max(255, "Template name must be less than 255 characters")
-    .regex(new RE2("^[a-zA-Z0-9-_]+$"), "Template name must contain only letters, numbers, hyphens, and underscores"),
+    .min(1, "Policy name is required")
+    .max(255, "Policy name must be less than 255 characters")
+    .regex(new RE2("^[a-zA-Z0-9-_]+$"), "Policy name must contain only letters, numbers, hyphens, and underscores"),
   description: z.string().trim().max(1000, "Description must be less than 1000 characters").nullable().optional(),
-  subject: z.array(templateV2SubjectSchema).optional(),
-  sans: z.array(templateV2SanSchema).optional(),
-  keyUsages: templateV2KeyUsagesSchema.optional(),
-  extendedKeyUsages: templateV2ExtendedKeyUsagesSchema.optional(),
-  algorithms: templateV2AlgorithmsSchema.optional(),
-  validity: templateV2ValiditySchema.optional(),
+  subject: z.array(policySubjectSchema).optional(),
+  sans: z.array(policySanSchema).optional(),
+  keyUsages: policyKeyUsagesSchema.optional(),
+  extendedKeyUsages: policyExtendedKeyUsagesSchema.optional(),
+  algorithms: policyAlgorithmsSchema.optional(),
+  validity: policyValiditySchema.optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });
@@ -173,9 +173,4 @@ export const certificateRequestSchema = z.object({
     .optional(),
   signatureAlgorithm: z.string().trim().min(1, "Signature algorithm cannot be empty").optional(),
   keyAlgorithm: z.string().trim().min(1, "Key algorithm cannot be empty").optional()
-});
-
-export const validateCertificateRequestSchema = z.object({
-  templateId: z.string().uuid(),
-  request: certificateRequestSchema
 });

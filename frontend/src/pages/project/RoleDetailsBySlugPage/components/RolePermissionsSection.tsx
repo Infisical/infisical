@@ -23,6 +23,7 @@ import { AddPoliciesButton } from "./AddPoliciesButton";
 import { AppConnectionPermissionConditions } from "./AppConnectionPermissionConditions";
 import { CertificateAuthorityPermissionConditions } from "./CertificateAuthorityPermissionConditions";
 import { CertificatePermissionConditions } from "./CertificatePermissionConditions";
+import { CertificatePolicyPermissionConditions } from "./CertificatePolicyPermissionConditions";
 import { CertificateProfilePermissionConditions } from "./CertificateProfilePermissionConditions";
 import { DynamicSecretPermissionConditions } from "./DynamicSecretPermissionConditions";
 import { GeneralPermissionConditions } from "./GeneralPermissionConditions";
@@ -109,6 +110,10 @@ export const renderConditionalComponents = (
 
     if (subject === ProjectPermissionSub.CertificateProfiles) {
       return <CertificateProfilePermissionConditions isDisabled={isDisabled} />;
+    }
+
+    if (subject === ProjectPermissionSub.CertificatePolicies) {
+      return <CertificatePolicyPermissionConditions isDisabled={isDisabled} />;
     }
 
     return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;

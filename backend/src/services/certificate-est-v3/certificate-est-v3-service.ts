@@ -9,9 +9,9 @@ import { getCaCertChain, getCaCertChains } from "@app/services/certificate-autho
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
 import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
+import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
-import { TCertificateTemplateV2ServiceFactory } from "@app/services/certificate-template-v2/certificate-template-v2-service";
 import { TEstEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -22,7 +22,7 @@ import { TLicenseServiceFactory } from "../../ee/services/license/license-servic
 
 type TCertificateEstV3ServiceFactoryDep = {
   internalCertificateAuthorityService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa">;
-  certificateTemplateV2Service: Pick<TCertificateTemplateV2ServiceFactory, "validateCertificateRequest">;
+  certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
@@ -36,7 +36,7 @@ export type TCertificateEstV3ServiceFactory = ReturnType<typeof certificateEstV3
 
 export const certificateEstV3ServiceFactory = ({
   internalCertificateAuthorityService,
-  certificateTemplateV2Service,
+  certificatePolicyService,
   certificateAuthorityCertDAL,
   certificateAuthorityDAL,
   projectDAL,
@@ -132,8 +132,8 @@ export const certificateEstV3ServiceFactory = ({
 
     const certificateRequest = extractCertificateRequestFromCSR(csr);
     const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
-    const validationResult = await certificateTemplateV2Service.validateCertificateRequest(
-      profile.certificateTemplateId,
+    const validationResult = await certificatePolicyService.validateCertificateRequest(
+      profile.certificatePolicyId,
       mappedCertificateRequest
     );
 
@@ -258,8 +258,8 @@ export const certificateEstV3ServiceFactory = ({
 
     const certificateRequest = extractCertificateRequestFromCSR(csr);
     const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
-    const validationResult = await certificateTemplateV2Service.validateCertificateRequest(
-      profile.certificateTemplateId,
+    const validationResult = await certificatePolicyService.validateCertificateRequest(
+      profile.certificatePolicyId,
       mappedCertificateRequest
     );
 

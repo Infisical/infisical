@@ -5,7 +5,7 @@ import RE2 from "re2";
 import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
-  ProjectPermissionPkiTemplateActions,
+  ProjectPermissionCertificatePolicyActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
@@ -14,24 +14,24 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { CertSubjectAttributeType } from "../certificate-common/certificate-constants";
-import { TCertificateTemplateV2DALFactory } from "./certificate-template-v2-dal";
+import { TCertificatePolicyDALFactory } from "./certificate-policy-dal";
 import {
+  TCertificatePolicy,
+  TCertificatePolicyInsert,
+  TCertificatePolicyUpdate,
   TCertificateRequest,
-  TCertificateTemplateV2,
-  TCertificateTemplateV2Insert,
-  TCertificateTemplateV2Update,
-  TTemplateValidationResult
-} from "./certificate-template-v2-types";
+  TPolicyValidationResult
+} from "./certificate-policy-types";
 
-type TCertificateTemplateV2ServiceFactoryDep = {
-  certificateTemplateV2DAL: TCertificateTemplateV2DALFactory;
+type TCertificatePolicyServiceFactoryDep = {
+  certificatePolicyDAL: TCertificatePolicyDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
-export const certificateTemplateV2ServiceFactory = ({
-  certificateTemplateV2DAL,
+export const certificatePolicyServiceFactory = ({
+  certificatePolicyDAL,
   permissionService
-}: TCertificateTemplateV2ServiceFactoryDep) => {
+}: TCertificatePolicyServiceFactoryDep) => {
   const consolidateAttributeArray = <
     T extends { type: string; allowed?: string[]; required?: string[]; denied?: string[] }
   >(
@@ -150,13 +150,13 @@ export const certificateTemplateV2ServiceFactory = ({
     return slugify(alphaNumericNanoId(12));
   };
 
-  const ensureUniqueSlug = async (projectId: string, desiredSlug: string, templateId?: string): Promise<string> => {
-    const existingTemplate = await certificateTemplateV2DAL.findByNameAndProjectId(desiredSlug, projectId);
-    if (!existingTemplate || (templateId && existingTemplate.id === templateId)) {
+  const ensureUniqueSlug = async (projectId: string, desiredSlug: string, policyId?: string): Promise<string> => {
+    const existingTemplate = await certificatePolicyDAL.findByNameAndProjectId(desiredSlug, projectId);
+    if (!existingTemplate || (policyId && existingTemplate.id === policyId)) {
       return desiredSlug;
     }
     const alternativeSlug = `${desiredSlug}-${alphaNumericNanoId(8)}`;
-    const existingAlternative = await certificateTemplateV2DAL.findByNameAndProjectId(alternativeSlug, projectId);
+    const existingAlternative = await certificatePolicyDAL.findByNameAndProjectId(alternativeSlug, projectId);
     if (!existingAlternative) {
       return alternativeSlug;
     }
@@ -302,9 +302,9 @@ export const certificateTemplateV2ServiceFactory = ({
   };
 
   const validateRequestAgainstPolicy = (
-    template: TCertificateTemplateV2,
+    template: TCertificatePolicy,
     request: TCertificateRequest
-  ): TTemplateValidationResult => {
+  ): TPolicyValidationResult => {
     const errors: string[] = [];
     const warnings: string[] = [];
 
@@ -609,7 +609,7 @@ export const certificateTemplateV2ServiceFactory = ({
     };
   };
 
-  const createTemplateV2 = async ({
+  const createPolicy = async ({
     actor,
     actorId,
     actorAuthMethod,
@@ -622,8 +622,8 @@ export const certificateTemplateV2ServiceFactory = ({
     actorAuthMethod: ActorAuthMethod;
     actorOrgId: string;
     projectId: string;
-    data: Omit<TCertificateTemplateV2Insert, "projectId">;
-  }): Promise<TCertificateTemplateV2> => {
+    data: Omit<TCertificatePolicyInsert, "projectId">;
+  }): Promise<TCertificatePolicy> => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -634,8 +634,8 @@ export const certificateTemplateV2ServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiTemplateActions.Create,
-      subject(ProjectPermissionSub.CertificateTemplates, {
+      ProjectPermissionCertificatePolicyActions.Create,
+      subject(ProjectPermissionSub.CertificatePolicies, {
         name: data.name
       })
     );
@@ -674,7 +674,7 @@ export const certificateTemplateV2ServiceFactory = ({
     const slug = generateTemplateSlug(data.name);
     const uniqueSlug = await ensureUniqueSlug(projectId, slug);
 
-    const template = await certificateTemplateV2DAL.create({
+    const template = await certificatePolicyDAL.create({
       ...consolidatedData,
       name: uniqueSlug,
       projectId
@@ -683,24 +683,24 @@ export const certificateTemplateV2ServiceFactory = ({
     return template;
   };
 
-  const updateTemplateV2 = async ({
+  const updatePolicy = async ({
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId,
-    templateId,
+    policyId,
     data
   }: {
     actor: ActorType;
     actorId: string;
     actorAuthMethod: ActorAuthMethod;
     actorOrgId: string;
-    templateId: string;
-    data: TCertificateTemplateV2Update;
-  }): Promise<TCertificateTemplateV2> => {
-    const existingTemplate = await certificateTemplateV2DAL.findById(templateId);
+    policyId: string;
+    data: TCertificatePolicyUpdate;
+  }): Promise<TCertificatePolicy> => {
+    const existingTemplate = await certificatePolicyDAL.findById(policyId);
     if (!existingTemplate) {
-      throw new NotFoundError({ message: "Certificate template not found" });
+      throw new NotFoundError({ message: "Certificate policy not found" });
     }
 
     const { permission } = await permissionService.getProjectPermission({
@@ -713,8 +713,8 @@ export const certificateTemplateV2ServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiTemplateActions.Edit,
-      subject(ProjectPermissionSub.CertificateTemplates, {
+      ProjectPermissionCertificatePolicyActions.Edit,
+      subject(ProjectPermissionSub.CertificatePolicies, {
         name: existingTemplate.name
       })
     );
@@ -745,36 +745,36 @@ export const certificateTemplateV2ServiceFactory = ({
     if (data.name && typeof data.name === "string") {
       const newSlug = generateTemplateSlug(data.name);
       if (newSlug !== existingTemplate.name) {
-        const uniqueSlug = await ensureUniqueSlug(existingTemplate.projectId, newSlug, templateId);
+        const uniqueSlug = await ensureUniqueSlug(existingTemplate.projectId, newSlug, policyId);
         updateData.name = uniqueSlug;
       }
     }
 
-    const updatedTemplate = await certificateTemplateV2DAL.updateById(templateId, updateData);
+    const updatedTemplate = await certificatePolicyDAL.updateById(policyId, updateData);
     if (!updatedTemplate) {
-      throw new NotFoundError({ message: "Failed to update certificate template" });
+      throw new NotFoundError({ message: "Failed to update certificate policy" });
     }
     return updatedTemplate;
   };
 
-  const getTemplateV2ById = async ({
+  const getPolicyById = async ({
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId,
-    templateId,
+    policyId,
     internal = false
   }: {
     actor: ActorType;
     actorId: string;
     actorAuthMethod: ActorAuthMethod;
     actorOrgId: string;
-    templateId: string;
+    policyId: string;
     internal?: boolean;
-  }): Promise<TCertificateTemplateV2> => {
-    const template = await certificateTemplateV2DAL.findById(templateId);
+  }): Promise<TCertificatePolicy> => {
+    const template = await certificatePolicyDAL.findById(policyId);
     if (!template) {
-      throw new NotFoundError({ message: "Certificate template not found" });
+      throw new NotFoundError({ message: "Certificate policy not found" });
     }
 
     if (!internal) {
@@ -788,8 +788,8 @@ export const certificateTemplateV2ServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionPkiTemplateActions.Read,
-        subject(ProjectPermissionSub.CertificateTemplates, {
+        ProjectPermissionCertificatePolicyActions.Read,
+        subject(ProjectPermissionSub.CertificatePolicies, {
           name: template.name
         })
       );
@@ -798,7 +798,7 @@ export const certificateTemplateV2ServiceFactory = ({
     return template;
   };
 
-  const getTemplateV2BySlug = async ({
+  const getPolicyBySlug = async ({
     actor,
     actorId,
     actorAuthMethod,
@@ -812,7 +812,7 @@ export const certificateTemplateV2ServiceFactory = ({
     actorOrgId: string;
     projectId: string;
     slug: string;
-  }): Promise<TCertificateTemplateV2> => {
+  }): Promise<TCertificatePolicy> => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -822,21 +822,21 @@ export const certificateTemplateV2ServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    const template = await certificateTemplateV2DAL.findByNameAndProjectId(slug, projectId);
+    const template = await certificatePolicyDAL.findByNameAndProjectId(slug, projectId);
     if (!template) {
-      throw new NotFoundError({ message: "Certificate template not found" });
+      throw new NotFoundError({ message: "Certificate policy not found" });
     }
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiTemplateActions.Read,
-      subject(ProjectPermissionSub.CertificateTemplates, {
+      ProjectPermissionCertificatePolicyActions.Read,
+      subject(ProjectPermissionSub.CertificatePolicies, {
         name: template.name
       })
     );
     return template;
   };
 
-  const listTemplatesV2 = async ({
+  const listPolicies = async ({
     actor,
     actorId,
     actorAuthMethod,
@@ -855,7 +855,7 @@ export const certificateTemplateV2ServiceFactory = ({
     limit?: number;
     search?: string;
   }): Promise<{
-    templates: TCertificateTemplateV2[];
+    policies: TCertificatePolicy[];
     totalCount: number;
   }> => {
     const { permission } = await permissionService.getProjectPermission({
@@ -868,45 +868,41 @@ export const certificateTemplateV2ServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiTemplateActions.Read,
-      ProjectPermissionSub.CertificateTemplates
+      ProjectPermissionCertificatePolicyActions.Read,
+      ProjectPermissionSub.CertificatePolicies
     );
 
     const processedRules = getProcessedPermissionRules(
       permission,
-      ProjectPermissionPkiTemplateActions.Read,
-      ProjectPermissionSub.CertificateTemplates
+      ProjectPermissionCertificatePolicyActions.Read,
+      ProjectPermissionSub.CertificatePolicies
     );
-    const templates = await certificateTemplateV2DAL.findByProjectId(
-      projectId,
-      { offset, limit, search },
-      processedRules
-    );
+    const policies = await certificatePolicyDAL.findByProjectId(projectId, { offset, limit, search }, processedRules);
 
-    const totalCount = await certificateTemplateV2DAL.countByProjectId(projectId, { search }, processedRules);
+    const totalCount = await certificatePolicyDAL.countByProjectId(projectId, { search }, processedRules);
 
     return {
-      templates,
+      policies,
       totalCount
     };
   };
 
-  const deleteTemplateV2 = async ({
+  const deletePolicy = async ({
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId,
-    templateId
+    policyId
   }: {
     actor: ActorType;
     actorId: string;
     actorAuthMethod: ActorAuthMethod;
     actorOrgId: string;
-    templateId: string;
-  }): Promise<TCertificateTemplateV2> => {
-    const template = await certificateTemplateV2DAL.findById(templateId);
+    policyId: string;
+  }): Promise<TCertificatePolicy> => {
+    const template = await certificatePolicyDAL.findById(policyId);
     if (!template) {
-      throw new NotFoundError({ message: "Certificate template not found" });
+      throw new NotFoundError({ message: "Certificate policy not found" });
     }
 
     const { permission } = await permissionService.getProjectPermission({
@@ -919,15 +915,15 @@ export const certificateTemplateV2ServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiTemplateActions.Delete,
-      subject(ProjectPermissionSub.CertificateTemplates, {
+      ProjectPermissionCertificatePolicyActions.Delete,
+      subject(ProjectPermissionSub.CertificatePolicies, {
         name: template.name
       })
     );
 
-    const isInUse = await certificateTemplateV2DAL.isTemplateInUse(templateId);
+    const isInUse = await certificatePolicyDAL.isPolicyInUse(policyId);
     if (isInUse) {
-      const profilesUsingTemplate = await certificateTemplateV2DAL.getProfilesUsingTemplate(templateId);
+      const profilesUsingTemplate = await certificatePolicyDAL.getProfilesUsingPolicy(policyId);
       const profileNames = profilesUsingTemplate
         .map((profile: { slug?: string; id: string }) => profile.slug || profile.id)
         .join(", ");
@@ -935,39 +931,40 @@ export const certificateTemplateV2ServiceFactory = ({
       throw new ForbiddenRequestError({
         message:
           profilesUsingTemplate.length > 0
-            ? `Cannot delete template '${template.name}' as it is currently in use by the following certificate profiles: ${profileNames}. Please remove this template from these profiles before deleting it.`
-            : `Cannot delete template '${template.name}' as it is currently in use by one or more certificates. Please ensure no certificates are using this template before deleting it.`
+            ? `Cannot delete policy '${template.name}' as it is currently in use by the following certificate profiles: ${profileNames}. Please remove this policy from these profiles before deleting it.`
+            : `Cannot delete policy '${template.name}' as it is currently in use by one or more certificates. Please ensure no certificates are using this policy before deleting it.`
       });
     }
 
-    const deletedTemplate = await certificateTemplateV2DAL.deleteById(templateId);
+    const deletedTemplate = await certificatePolicyDAL.deleteById(policyId);
     if (!deletedTemplate) {
-      throw new NotFoundError({ message: "Failed to delete certificate template" });
+      throw new NotFoundError({ message: "Failed to delete certificate policy" });
     }
-    return deletedTemplate as TCertificateTemplateV2;
+
+    return deletedTemplate as TCertificatePolicy;
   };
 
   const validateCertificateRequest = async (
-    templateId: string,
+    policyId: string,
     request: TCertificateRequest
-  ): Promise<TTemplateValidationResult> => {
-    const template = await certificateTemplateV2DAL.findById(templateId);
-    if (!template) {
-      throw new NotFoundError({ message: "Certificate template not found" });
+  ): Promise<TPolicyValidationResult> => {
+    const policy = await certificatePolicyDAL.findById(policyId);
+    if (!policy) {
+      throw new NotFoundError({ message: "Certificate policy not found" });
     }
 
-    return validateRequestAgainstPolicy(template, request);
+    return validateRequestAgainstPolicy(policy, request);
   };
 
   return {
-    createTemplateV2,
-    updateTemplateV2,
-    getTemplateV2ById,
-    getTemplateV2BySlug,
-    listTemplatesV2,
-    deleteTemplateV2,
+    createPolicy,
+    updatePolicy,
+    getPolicyById,
+    getPolicyBySlug,
+    listPolicies,
+    deletePolicy,
     validateCertificateRequest
   };
 };
 
-export type TCertificateTemplateV2ServiceFactory = ReturnType<typeof certificateTemplateV2ServiceFactory>;
+export type TCertificatePolicyServiceFactory = ReturnType<typeof certificatePolicyServiceFactory>;
