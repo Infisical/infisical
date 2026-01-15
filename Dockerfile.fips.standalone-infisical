@@ -3,7 +3,7 @@ ARG POSTHOG_API_KEY=posthog-api-key
 ARG INTERCOM_ID=intercom-id
 ARG CAPTCHA_SITE_KEY=captcha-site-key
 
-FROM node:20.19.5-trixie-slim AS base
+FROM node:20.20.0-trixie-slim AS base
 
 # Fixes NPM vulnerability: https://security.snyk.io/vuln/SNYK-JS-CROSSSPAWN-8303230
 RUN npm install -g npm@10.9.0

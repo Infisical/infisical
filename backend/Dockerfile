@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20.19.5-trixie-slim AS build
+FROM node:20.20.0-trixie-slim AS build
 
 WORKDIR /app
 
@@ -26,7 +26,7 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM node:20.19.5-trixie-slim
+FROM node:20.20.0-trixie-slim
 WORKDIR /app
 
 ENV npm_config_cache /home/node/.npm
