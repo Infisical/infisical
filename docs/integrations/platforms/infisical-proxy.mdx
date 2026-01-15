@@ -42,7 +42,7 @@ When a request arrives, the proxy first checks its in-memory cache for a matchin
 
 For requests that aren't in the cache, the proxy forwards them to Infisical, waits for the response, and then stores the response in its cache before returning it to the application. This means the first request for any unique combination of parameters will have normal latency, but subsequent identical requests will be served from cache.
 
-To keep cached data fresh, the proxy runs two background processes. The first periodically validates that cached access tokens are still valid by making test requests to Infisical, if a token has been revoked, all cache entries associated with that token are immediately evicted. The second process refreshes cached secrets on a configurable interval, re-fetching data from Infisical and updating the cache with the latest values. Both processes use an optimistic strategy: if Infisical is unreachable, the proxy continues serving cached data rather than evicting entries, ensuring your applications remain operational during outages.
+To keep cached data fresh, the proxy runs two background processes. The first periodically validates that cached access tokens are still valid by making test requests to Infisical. If a token has been revoked, all cache entries associated with that token are immediately evicted. The second process refreshes cached secrets on a configurable interval, re-fetching data from Infisical and updating the cache with the latest values. Both processes use an optimistic strategy: if Infisical is unreachable, the proxy continues serving cached data rather than evicting entries, ensuring your applications remain operational during outages.
 
 ## Install the Infisical Proxy
 
@@ -101,12 +101,8 @@ Then configure your application to use `http://localhost:8081` as the Infisical 
   How often to validate that access tokens are still valid. If a token is deemed to be invalid _(such as if it has been revoked or has expired)_, the proxy will evict all cached secrets that are associated with that token. Supports duration formats like `60s|5m|1h|1d|1w|1y`.
 </ParamField>
 
-<ParamField query="--secret-refresh-interval" type="duration" default="1h">
+<ParamField query="--static-secrets-refresh-interval" type="duration" default="1h">
   How often to refresh cached secrets from Infisical. Defaults to `1h`. Supports duration formats like `60s|5m|1h|1d|1w|1y`.
-</ParamField>
-
-<ParamField query="--cache-size" type="number" default="1000">
-  The maximum number of cached secrets to store. Defaults to `1000`.
 </ParamField>
 
 # Caching Behavior
@@ -209,7 +205,7 @@ Configure your Infisical SDK to point to the proxy instead of Infisical directly
 ```javascript
 import { InfisicalSDK } from '@infisical/sdk'
 
-const client = new InfisicalClient({
+const client = new InfisicalSDK({
   siteUrl: "http://localhost:8081", // Proxy address instead of Infisical
   // ... other configuration options
 });
@@ -229,7 +225,7 @@ client = InfisicalSDKClient(host="http://localhost:8081") # Proxy address instea
 # curl https://app.infisical.com/api/v3/secrets/raw?...
 
 # Call the proxy:
-curl http://localhost:8081/api/v4/secrets \
+curl -G http://localhost:8081/api/v4/secrets \
   -H "Authorization: Bearer <your-access-token>" \
   --data-urlencode "projectId=<your-project-id>" \
   --data-urlencode "environment=dev" \
@@ -248,7 +244,7 @@ The encryption key itself is protected in memory, using multiple layers of memor
 * **Memory locking via `mlock()`:** prevents the key from being swapped to disk
 * **Memory protection via `mprotect()`:** guards against buffer overflows and unauthorized access
 * **Secure allocation via `mmap()`:** ensures the memory region is allocated safely
-* **In-memory encryption using XSalsa20-Poly1305 :** protects the key even within RAM
+* **In-memory encryption using XSalsa20-Poly1305:** protects the key even within RAM
 
 
 ### Network Security
@@ -263,7 +259,7 @@ The proxy should only be accessible to trusted applications within your infrastr
 
 ### Token Isolation
 The proxy caches responses separately for each authentication token.
-If a token is compromised, only the cache entries associated with that specific token are exposed. Other token's cached data remains isolated and protected.
+If a token is compromised, only the cache entries associated with that specific token are exposed. Other tokens cached data remains isolated and protected.
 
 ## Troubleshooting
 
