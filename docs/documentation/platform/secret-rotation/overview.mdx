@@ -48,7 +48,7 @@ sequenceDiagram
 
     Note over Infisical, Database: Rotation event triggered
     Infisical->>Database: Update password for User B
-    Infisical->>Infisical: Switch active compass to User B
+    Infisical->>Infisical: Switch active credential to User B
 
     Note over App, Database: Rotation complete
     App->>Infisical: Fetch credentials (next request)
