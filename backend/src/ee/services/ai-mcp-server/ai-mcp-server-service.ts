@@ -240,9 +240,10 @@ export const aiMcpServerServiceFactory = ({
       }
     }
 
+    const urlObj = new URL(mcpUrl);
+
     if (!resourceMetadataUrl) {
       // Fallback: Try common .well-known paths
-      const urlObj = new URL(mcpUrl);
       const possiblePaths = [
         `${urlObj.origin}/.well-known/oauth-protected-resource${urlObj.pathname}`,
         `${urlObj.origin}/.well-known/oauth-protected-resource`
@@ -265,8 +266,26 @@ export const aiMcpServerServiceFactory = ({
     }
 
     if (!resourceMetadataUrl) {
+      // Fallback: Try auth server metadata directly (for servers like Linear
+      // that don't support RFC 9728 Protected Resource Metadata)
+      try {
+        const authServerMetadataUrl = `${urlObj.origin}/.well-known/oauth-authorization-server`;
+        const { data: authServer } = await request.get<TOAuthAuthorizationServerMetadata>(authServerMetadataUrl);
+        if (authServer.authorization_endpoint && authServer.token_endpoint) {
+          return {
+            protectedResource: {
+              resource: mcpUrl,
+              authorization_servers: [urlObj.origin]
+            } as TOAuthProtectedResourceMetadata,
+            authServer
+          };
+        }
+      } catch {
+        // Fall through to error
+      }
+
       throw new BadRequestError({
-        message: "Could not discover OAuth metadata for MCP server. WWW-Authenticate header not found."
+        message: "Could not discover OAuth metadata for MCP server."
       });
     }
 
