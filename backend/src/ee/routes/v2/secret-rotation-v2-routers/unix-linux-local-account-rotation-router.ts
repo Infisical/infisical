@@ -3,12 +3,12 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
-  CreateSshPasswordRotationSchema,
-  SshPasswordRotationGeneratedCredentialsSchema,
-  SshPasswordRotationSchema,
-  TSshPasswordRotation,
-  UpdateSshPasswordRotationSchema
-} from "@app/ee/services/secret-rotation-v2/ssh-password";
+  CreateUnixLinuxLocalAccountRotationSchema,
+  UnixLinuxLocalAccountRotationGeneratedCredentialsSchema,
+  UnixLinuxLocalAccountRotationSchema,
+  TUnixLinuxLocalAccountRotation,
+  UpdateUnixLinuxLocalAccountRotationSchema
+} from "@app/ee/services/secret-rotation-v2/unix-linux-local-account-rotation";
 import { ApiDocsTags, SecretRotations } from "@app/lib/api-docs";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -16,18 +16,18 @@ import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerSecretRotationEndpoints } from "./secret-rotation-v2-endpoints";
 
-export const registerSshPasswordRotationRouter = async (server: FastifyZodProvider) => {
+export const registerUnixLinuxLocalAccountRotationRouter = async (server: FastifyZodProvider) => {
   // Register standard CRUD endpoints
   registerSecretRotationEndpoints({
-    type: SecretRotation.SshPassword,
+    type: SecretRotation.UnixLinuxLocalAccount,
     server,
-    responseSchema: SshPasswordRotationSchema,
-    createSchema: CreateSshPasswordRotationSchema,
-    updateSchema: UpdateSshPasswordRotationSchema,
-    generatedCredentialsSchema: SshPasswordRotationGeneratedCredentialsSchema
+    responseSchema: UnixLinuxLocalAccountRotationSchema,
+    createSchema: CreateUnixLinuxLocalAccountRotationSchema,
+    updateSchema: UpdateUnixLinuxLocalAccountRotationSchema,
+    generatedCredentialsSchema: UnixLinuxLocalAccountRotationGeneratedCredentialsSchema
   });
 
-  // Add reconcile endpoint for SSH password rotation
+  // Add reconcile endpoint for Unix/Linux Local Account rotation
   server.route({
     method: "POST",
     url: "/:rotationId/reconcile",
@@ -38,7 +38,7 @@ export const registerSshPasswordRotationRouter = async (server: FastifyZodProvid
       hide: false,
       tags: [ApiDocsTags.SecretRotations],
       description:
-        "Reconcile SSH password rotation credentials. This operation uses the SSH app connection credentials to reset the password when credentials are out of sync.",
+        "Reconcile Unix/Linux Local Account rotation credentials. This operation uses the SSH app connection credentials to reset the password when credentials are out of sync.",
       params: z.object({
         rotationId: z.string().uuid().describe(SecretRotations.RECONCILE.rotationId)
       }),
@@ -46,7 +46,7 @@ export const registerSshPasswordRotationRouter = async (server: FastifyZodProvid
         200: z.object({
           message: z.string(),
           reconciled: z.boolean(),
-          secretRotation: SshPasswordRotationSchema
+          secretRotation: UnixLinuxLocalAccountRotationSchema
         })
       }
     },
@@ -54,7 +54,7 @@ export const registerSshPasswordRotationRouter = async (server: FastifyZodProvid
     handler: async (req) => {
       const { rotationId } = req.params;
 
-      const result = await server.services.secretRotationV2.reconcileSshPasswordRotation(
+      const result = await server.services.secretRotationV2.reconcileUnixLinuxLocalAccountRotation(
         { rotationId },
         req.permission
       );
@@ -65,7 +65,7 @@ export const registerSshPasswordRotationRouter = async (server: FastifyZodProvid
         event: {
           type: EventType.RECONCILE_SECRET_ROTATION,
           metadata: {
-            type: SecretRotation.SshPassword,
+            type: SecretRotation.UnixLinuxLocalAccount,
             rotationId,
             reconciled: result.reconciled
           }
@@ -75,7 +75,7 @@ export const registerSshPasswordRotationRouter = async (server: FastifyZodProvid
       return {
         message: result.message,
         reconciled: result.reconciled,
-        secretRotation: result.secretRotation as TSshPasswordRotation
+        secretRotation: result.secretRotation as TUnixLinuxLocalAccountRotation
       };
     }
   });

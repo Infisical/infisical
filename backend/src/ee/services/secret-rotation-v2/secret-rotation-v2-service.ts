@@ -89,12 +89,12 @@ import { mongodbCredentialsRotationFactory } from "./mongodb-credentials/mongodb
 import { oktaClientSecretRotationFactory } from "./okta-client-secret/okta-client-secret-rotation-fns";
 import { redisCredentialsRotationFactory } from "./redis-credentials/redis-credentials-rotation-fns";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
-import { sshPasswordRotationFactory } from "./ssh-password/ssh-password-rotation-fns";
-import { SshPasswordRotationMethod } from "./ssh-password/ssh-password-rotation-schemas";
+import { unixLinuxLocalAccountRotationFactory } from "./unix-linux-local-account-rotation/unix-linux-local-account-rotation-fns";
+import { UnixLinuxLocalAccountRotationMethod } from "./unix-linux-local-account-rotation/unix-linux-local-account-rotation-schemas";
 import {
-  TSshPasswordRotation,
-  TSshPasswordRotationGeneratedCredentials
-} from "./ssh-password/ssh-password-rotation-types";
+  TUnixLinuxLocalAccountRotation,
+  TUnixLinuxLocalAccountRotationGeneratedCredentials
+} from "./unix-linux-local-account-rotation/unix-linux-local-account-rotation-types";
 
 export type TSecretRotationV2ServiceFactoryDep = {
   secretRotationV2DAL: TSecretRotationV2DALFactory;
@@ -146,7 +146,7 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.MongoDBCredentials]: mongodbCredentialsRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.DatabricksServicePrincipalSecret]:
     databricksServicePrincipalSecretRotationFactory as TRotationFactoryImplementation,
-  [SecretRotation.SshPassword]: sshPasswordRotationFactory as TRotationFactoryImplementation
+  [SecretRotation.UnixLinuxLocalAccount]: unixLinuxLocalAccountRotationFactory as TRotationFactoryImplementation
 };
 
 export const secretRotationV2ServiceFactory = ({
@@ -1381,7 +1381,7 @@ export const secretRotationV2ServiceFactory = ({
     return secretRotations as TSecretRotationV2[];
   };
 
-  const reconcileSshPasswordRotation = async ({ rotationId }: { rotationId: string }, actor: OrgServiceActor) => {
+  const reconcileUnixLinuxLocalAccountRotation = async ({ rotationId }: { rotationId: string }, actor: OrgServiceActor) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
     if (!plan.secretRotation)
@@ -1397,9 +1397,9 @@ export const secretRotationV2ServiceFactory = ({
         message: `Could not find Secret Rotation with ID "${rotationId}"`
       });
 
-    if (secretRotation.type !== SecretRotation.SshPassword)
+    if (secretRotation.type !== SecretRotation.UnixLinuxLocalAccount)
       throw new BadRequestError({
-        message: "Reconcile operation is only supported for SSH Password rotations"
+        message: "Reconcile operation is only supported for Unix/Linux Local Account rotations"
       });
 
     const { projectId, environment, folder, connection, encryptedGeneratedCredentials, parameters, folderId } =
@@ -1422,12 +1422,12 @@ export const secretRotationV2ServiceFactory = ({
       })
     );
 
-    const sshParams = parameters as TSshPasswordRotation["parameters"];
+    const unixLinuxParams = parameters as TUnixLinuxLocalAccountRotation["parameters"];
 
     // Only allow reconcile for self-rotation mode
-    if (sshParams.rotationMethod !== SshPasswordRotationMethod.LoginAsTarget) {
+    if (unixLinuxParams.rotationMethod !== UnixLinuxLocalAccountRotationMethod.LoginAsTarget) {
       throw new BadRequestError({
-        message: "Reconcile operation is only supported for self-rotation mode SSH Password rotations"
+        message: "Reconcile operation is only supported for self-rotation mode Unix/Linux Local Account rotations"
       });
     }
 
@@ -1440,17 +1440,17 @@ export const secretRotationV2ServiceFactory = ({
 
     const activeCredentials = generatedCredentials[
       secretRotation.activeIndex
-    ] as TSshPasswordRotationGeneratedCredentials[number];
+    ] as TUnixLinuxLocalAccountRotationGeneratedCredentials[number];
     const appConnection = await decryptAppConnection(connection, kmsService);
 
     // Use the rotation factory to perform a rotation using the app connection credentials
-    const rotationFactory = SECRET_ROTATION_FACTORY_MAP[SecretRotation.SshPassword](
+    const rotationFactory = SECRET_ROTATION_FACTORY_MAP[SecretRotation.UnixLinuxLocalAccount](
       {
         ...secretRotation,
         // Override rotation method to managed so it uses the app connection credentials
         parameters: {
-          ...sshParams,
-          rotationMethod: SshPasswordRotationMethod.LoginAsRoot
+          ...unixLinuxParams,
+          rotationMethod: UnixLinuxLocalAccountRotationMethod.LoginAsRoot
         },
         connection: appConnection
       } as TSecretRotationV2WithConnection,
@@ -1463,9 +1463,9 @@ export const secretRotationV2ServiceFactory = ({
     // Issue new credentials using managed mode (app connection credentials)
     const updatedRotation = await rotationFactory.issueCredentials(
       async (newCredentials) => {
-        const sshCredentials = newCredentials as TSshPasswordRotationGeneratedCredentials[number];
+        const unixLinuxCredentials = newCredentials as TUnixLinuxLocalAccountRotationGeneratedCredentials[number];
         const updatedCredentials = [...generatedCredentials];
-        updatedCredentials[secretRotation.activeIndex] = sshCredentials;
+        updatedCredentials[secretRotation.activeIndex] = unixLinuxCredentials;
 
         const encryptedUpdatedCredentials = await encryptSecretRotationCredentials({
           projectId,
@@ -1480,7 +1480,7 @@ export const secretRotationV2ServiceFactory = ({
           });
 
           // Update the password secret with the new value
-          const secretsMapping = secretRotation.secretsMapping as TSshPasswordRotation["secretsMapping"];
+          const secretsMapping = secretRotation.secretsMapping as TUnixLinuxLocalAccountRotation["secretsMapping"];
 
           await fnSecretBulkUpdate({
             folderId,
@@ -1495,7 +1495,7 @@ export const secretRotationV2ServiceFactory = ({
                 },
                 data: {
                   encryptedValue: encryptor({
-                    plainText: Buffer.from(sshCredentials.password)
+                    plainText: Buffer.from(unixLinuxCredentials.password)
                   }).cipherTextBlob,
                   references: []
                 }
@@ -1535,7 +1535,7 @@ export const secretRotationV2ServiceFactory = ({
     });
 
     return {
-      message: "SSH password credentials reconciled successfully",
+      message: "Unix/Linux Local Account credentials reconciled successfully",
       reconciled: true,
       secretRotation: await expandSecretRotation(updatedRotation, kmsService)
     };
@@ -1555,6 +1555,6 @@ export const secretRotationV2ServiceFactory = ({
     getDashboardSecretRotationCount,
     getDashboardSecretRotations,
     getQuickSearchSecretRotations,
-    reconcileSshPasswordRotation
+    reconcileUnixLinuxLocalAccountRotation
   };
 };

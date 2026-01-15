@@ -2909,7 +2909,7 @@ export const SecretRotations = {
         'Whether the rotation should be performed by the LDAP "connection-principal" or the "target-principal" (defaults to \'connection-principal\').',
       password: 'The password of the provided principal if "parameters.rotationMethod" is set to "target-principal".'
     },
-    SSH_PASSWORD: {
+    UNIX_LINUX_LOCAL_ACCOUNT: {
       username: "The username of the Unix/Linux user account to rotate the password for.",
       rotationMethod:
         'Whether the rotation should be performed using "self" (the target user\'s own credentials) or "managed" (the SSH connection\'s admin credentials). Defaults to "managed".',
@@ -2976,7 +2976,7 @@ export const SecretRotations = {
       dn: "The name of the secret that the Distinguished Name (DN) or User Principal Name (UPN) of the principal will be mapped to.",
       password: "The name of the secret that the rotated password will be mapped to."
     },
-    SSH_PASSWORD: {
+    UNIX_LINUX_LOCAL_ACCOUNT: {
       username: "The name of the secret that the username will be mapped to.",
       password: "The name of the secret that the rotated password will be mapped to."
     },

@@ -28,7 +28,7 @@ import {
   TSecretRotationV2Raw,
   TUpdateSecretRotationV2DTO
 } from "./secret-rotation-v2-types";
-import { SSH_PASSWORD_ROTATION_LIST_OPTION, TSshPasswordRotation } from "./ssh-password";
+import { UNIX_LINUX_LOCAL_ACCOUNT_ROTATION_LIST_OPTION, TUnixLinuxLocalAccountRotation } from "./unix-linux-local-account-rotation";
 
 const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2ListItem> = {
   [SecretRotation.PostgresCredentials]: POSTGRES_CREDENTIALS_ROTATION_LIST_OPTION,
@@ -43,7 +43,7 @@ const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2List
   [SecretRotation.RedisCredentials]: REDIS_CREDENTIALS_ROTATION_LIST_OPTION,
   [SecretRotation.MongoDBCredentials]: MONGODB_CREDENTIALS_ROTATION_LIST_OPTION,
   [SecretRotation.DatabricksServicePrincipalSecret]: DATABRICKS_SERVICE_PRINCIPAL_SECRET_ROTATION_LIST_OPTION,
-  [SecretRotation.SshPassword]: SSH_PASSWORD_ROTATION_LIST_OPTION
+  [SecretRotation.UnixLinuxLocalAccount]: UNIX_LINUX_LOCAL_ACCOUNT_ROTATION_LIST_OPTION
 };
 
 export const listSecretRotationOptions = () => {
@@ -274,11 +274,11 @@ export const throwOnImmutableParameterUpdate = (
         throw new BadRequestError({ message: "Cannot update rotation method or DN" });
       }
       break;
-    case SecretRotation.SshPassword:
+    case SecretRotation.UnixLinuxLocalAccount:
       if (
         haveUnequalProperties(
-          updatePayload.parameters as TSshPasswordRotation["parameters"],
-          secretRotation.parameters as TSshPasswordRotation["parameters"],
+          updatePayload.parameters as TUnixLinuxLocalAccountRotation["parameters"],
+          secretRotation.parameters as TUnixLinuxLocalAccountRotation["parameters"],
           ["rotationMethod", "username"]
         )
       ) {

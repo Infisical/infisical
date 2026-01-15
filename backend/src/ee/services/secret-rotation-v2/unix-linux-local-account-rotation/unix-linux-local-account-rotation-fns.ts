@@ -17,12 +17,12 @@ import {
 } from "@app/services/app-connection/ssh";
 
 import { generatePassword } from "../shared/utils";
-import { SshPasswordRotationMethod } from "./ssh-password-rotation-schemas";
+import { UnixLinuxLocalAccountRotationMethod } from "./unix-linux-local-account-rotation-schemas";
 import {
-  TSshPasswordRotationGeneratedCredentials,
-  TSshPasswordRotationInput,
-  TSshPasswordRotationWithConnection
-} from "./ssh-password-rotation-types";
+  TUnixLinuxLocalAccountRotationGeneratedCredentials,
+  TUnixLinuxLocalAccountRotationInput,
+  TUnixLinuxLocalAccountRotationWithConnection
+} from "./unix-linux-local-account-rotation-types";
 
 // Execute command over SSH and return stdout
 const executeCommand = (client: Client, command: string): Promise<string> => {
@@ -64,7 +64,7 @@ const changeManagedPassword = async (client: Client, username: string, newPasswo
   try {
     await executeCommand(client, command);
   } catch (error) {
-    logger.error(error, "SSH Password Rotation: Failed to change password (managed)");
+    logger.error(error, "Unix/Linux Local Account Rotation: Failed to change password (managed)");
     throw new Error(`Failed to change password: ${(error as Error).message}`);
   }
 };
@@ -152,13 +152,13 @@ const changeSelfPassword = async (client: Client, oldPassword: string, newPasswo
   });
 };
 
-export const sshPasswordRotationFactory: TRotationFactory<
-  TSshPasswordRotationWithConnection,
-  TSshPasswordRotationGeneratedCredentials,
-  TSshPasswordRotationInput["temporaryParameters"]
+export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
+  TUnixLinuxLocalAccountRotationWithConnection,
+  TUnixLinuxLocalAccountRotationGeneratedCredentials,
+  TUnixLinuxLocalAccountRotationInput["temporaryParameters"]
 > = (secretRotation, appConnectionDAL, kmsService, _gatewayService, gatewayV2Service) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
-  const { username, passwordRequirements, rotationMethod = SshPasswordRotationMethod.LoginAsRoot } = parameters;
+  const { username, passwordRequirements, rotationMethod = UnixLinuxLocalAccountRotationMethod.LoginAsRoot } = parameters;
 
   // Helper to verify SSH credentials work
   const $verifyCredentials = async (targetUsername: string, targetPassword: string): Promise<void> => {
@@ -190,7 +190,7 @@ export const sshPasswordRotationFactory: TRotationFactory<
     const { credentials } = connection;
     const newPassword = generatePassword(passwordRequirements);
 
-    const isSelfRotation = rotationMethod === SshPasswordRotationMethod.LoginAsTarget;
+    const isSelfRotation = rotationMethod === UnixLinuxLocalAccountRotationMethod.LoginAsTarget;
     if (username === credentials.username)
       throw new BadRequestError({ message: "Provided username is used in Infisical app connections." });
 
@@ -249,14 +249,14 @@ export const sshPasswordRotationFactory: TRotationFactory<
   };
 
   const issueCredentials: TRotationFactoryIssueCredentials<
-    TSshPasswordRotationGeneratedCredentials,
-    TSshPasswordRotationInput["temporaryParameters"]
+    TUnixLinuxLocalAccountRotationGeneratedCredentials,
+    TUnixLinuxLocalAccountRotationInput["temporaryParameters"]
   > = async (callback, temporaryParameters) => {
     const credentials = await $rotatePassword(temporaryParameters?.password);
     return callback(credentials);
   };
 
-  const revokeCredentials: TRotationFactoryRevokeCredentials<TSshPasswordRotationGeneratedCredentials> = async (
+  const revokeCredentials: TRotationFactoryRevokeCredentials<TUnixLinuxLocalAccountRotationGeneratedCredentials> = async (
     credentialsToRevoke,
     callback
   ) => {
@@ -268,7 +268,7 @@ export const sshPasswordRotationFactory: TRotationFactory<
     return callback();
   };
 
-  const rotateCredentials: TRotationFactoryRotateCredentials<TSshPasswordRotationGeneratedCredentials> = async (
+  const rotateCredentials: TRotationFactoryRotateCredentials<TUnixLinuxLocalAccountRotationGeneratedCredentials> = async (
     _,
     callback,
     activeCredentials
@@ -280,7 +280,7 @@ export const sshPasswordRotationFactory: TRotationFactory<
     return callback(credentials);
   };
 
-  const getSecretsPayload: TRotationFactoryGetSecretsPayload<TSshPasswordRotationGeneratedCredentials> = (
+  const getSecretsPayload: TRotationFactoryGetSecretsPayload<TUnixLinuxLocalAccountRotationGeneratedCredentials> = (
     generatedCredentials
   ) => {
     return [
