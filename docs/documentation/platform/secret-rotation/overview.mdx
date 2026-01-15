@@ -100,7 +100,7 @@ gantt
 
 <CardGroup cols={2}>
   <Card title="Zero downtime" icon="clock">
-    Applications always have valid credentials via the dual-user strategy.
+    Applications always have valid credentials via the two-user strategy.
   </Card>
   <Card title="Grace period" icon="hourglass">
     Overlapping validity gives apps time to update without breaking.
@@ -125,7 +125,7 @@ To ensure Secret Rotation works as expected, follow these best practices:
 - Ensure your apps either re-fetch secrets or restart when credentials change.
 - Set up alerts for rotation failures to catch and fix permission issues early.
 
-### Common issues
+## Common issues
 
 <AccordionGroup>
 <Accordion title="Missing database permissions">
