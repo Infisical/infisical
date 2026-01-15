@@ -498,6 +498,7 @@
                 "pages": [
                   "integrations/platforms/ansible",
                   "integrations/platforms/apache-airflow",
+                  "integrations/platforms/infisical-proxy",
                   {
                     "group": "AWS",
                     "pages": ["integrations/platforms/aws/lambda"]
