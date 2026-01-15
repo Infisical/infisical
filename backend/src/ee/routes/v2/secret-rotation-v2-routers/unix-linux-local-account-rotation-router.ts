@@ -4,9 +4,9 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
   CreateUnixLinuxLocalAccountRotationSchema,
+  TUnixLinuxLocalAccountRotation,
   UnixLinuxLocalAccountRotationGeneratedCredentialsSchema,
   UnixLinuxLocalAccountRotationSchema,
-  TUnixLinuxLocalAccountRotation,
   UpdateUnixLinuxLocalAccountRotationSchema
 } from "@app/ee/services/secret-rotation-v2/unix-linux-local-account-rotation";
 import { ApiDocsTags, SecretRotations } from "@app/lib/api-docs";

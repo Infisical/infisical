@@ -1381,7 +1381,10 @@ export const secretRotationV2ServiceFactory = ({
     return secretRotations as TSecretRotationV2[];
   };
 
-  const reconcileUnixLinuxLocalAccountRotation = async ({ rotationId }: { rotationId: string }, actor: OrgServiceActor) => {
+  const reconcileUnixLinuxLocalAccountRotation = async (
+    { rotationId }: { rotationId: string },
+    actor: OrgServiceActor
+  ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
     if (!plan.secretRotation)

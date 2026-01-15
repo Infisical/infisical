@@ -158,7 +158,11 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
   TUnixLinuxLocalAccountRotationInput["temporaryParameters"]
 > = (secretRotation, appConnectionDAL, kmsService, _gatewayService, gatewayV2Service) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
-  const { username, passwordRequirements, rotationMethod = UnixLinuxLocalAccountRotationMethod.LoginAsRoot } = parameters;
+  const {
+    username,
+    passwordRequirements,
+    rotationMethod = UnixLinuxLocalAccountRotationMethod.LoginAsRoot
+  } = parameters;
 
   // Helper to verify SSH credentials work
   const $verifyCredentials = async (targetUsername: string, targetPassword: string): Promise<void> => {
@@ -256,10 +260,9 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
     return callback(credentials);
   };
 
-  const revokeCredentials: TRotationFactoryRevokeCredentials<TUnixLinuxLocalAccountRotationGeneratedCredentials> = async (
-    credentialsToRevoke,
-    callback
-  ) => {
+  const revokeCredentials: TRotationFactoryRevokeCredentials<
+    TUnixLinuxLocalAccountRotationGeneratedCredentials
+  > = async (credentialsToRevoke, callback) => {
     const currentPassword = credentialsToRevoke[activeIndex].password;
     // We just rotate to a new password, essentially revoking old credentials
     // For self rotation: we need current password to authenticate
@@ -268,11 +271,9 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
     return callback();
   };
 
-  const rotateCredentials: TRotationFactoryRotateCredentials<TUnixLinuxLocalAccountRotationGeneratedCredentials> = async (
-    _,
-    callback,
-    activeCredentials
-  ) => {
+  const rotateCredentials: TRotationFactoryRotateCredentials<
+    TUnixLinuxLocalAccountRotationGeneratedCredentials
+  > = async (_, callback, activeCredentials) => {
     // For both methods, pass the current password
     // Self rotation: needed to authenticate as the user
     // Managed rotation: admin doesn't need it but it's harmless to pass

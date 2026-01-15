@@ -55,13 +55,17 @@ export const UnixLinuxLocalAccountRotationTemplateSchema = z.object({
   })
 });
 
-export const UnixLinuxLocalAccountRotationSchema = BaseSecretRotationSchema(SecretRotation.UnixLinuxLocalAccount).extend({
+export const UnixLinuxLocalAccountRotationSchema = BaseSecretRotationSchema(
+  SecretRotation.UnixLinuxLocalAccount
+).extend({
   type: z.literal(SecretRotation.UnixLinuxLocalAccount),
   parameters: UnixLinuxLocalAccountRotationParametersSchema,
   secretsMapping: UnixLinuxLocalAccountRotationSecretsMappingSchema
 });
 
-export const CreateUnixLinuxLocalAccountRotationSchema = BaseCreateSecretRotationSchema(SecretRotation.UnixLinuxLocalAccount)
+export const CreateUnixLinuxLocalAccountRotationSchema = BaseCreateSecretRotationSchema(
+  SecretRotation.UnixLinuxLocalAccount
+)
   .extend({
     parameters: UnixLinuxLocalAccountRotationParametersSchema,
     secretsMapping: UnixLinuxLocalAccountRotationSecretsMappingSchema,
@@ -84,7 +88,9 @@ export const CreateUnixLinuxLocalAccountRotationSchema = BaseCreateSecretRotatio
     }
   });
 
-export const UpdateUnixLinuxLocalAccountRotationSchema = BaseUpdateSecretRotationSchema(SecretRotation.UnixLinuxLocalAccount).extend({
+export const UpdateUnixLinuxLocalAccountRotationSchema = BaseUpdateSecretRotationSchema(
+  SecretRotation.UnixLinuxLocalAccount
+).extend({
   parameters: UnixLinuxLocalAccountRotationParametersSchema.optional(),
   secretsMapping: UnixLinuxLocalAccountRotationSecretsMappingSchema.optional()
 });

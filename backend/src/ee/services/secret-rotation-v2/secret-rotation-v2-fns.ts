@@ -28,7 +28,10 @@ import {
   TSecretRotationV2Raw,
   TUpdateSecretRotationV2DTO
 } from "./secret-rotation-v2-types";
-import { UNIX_LINUX_LOCAL_ACCOUNT_ROTATION_LIST_OPTION, TUnixLinuxLocalAccountRotation } from "./unix-linux-local-account-rotation";
+import {
+  TUnixLinuxLocalAccountRotation,
+  UNIX_LINUX_LOCAL_ACCOUNT_ROTATION_LIST_OPTION
+} from "./unix-linux-local-account-rotation";
 
 const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2ListItem> = {
   [SecretRotation.PostgresCredentials]: POSTGRES_CREDENTIALS_ROTATION_LIST_OPTION,

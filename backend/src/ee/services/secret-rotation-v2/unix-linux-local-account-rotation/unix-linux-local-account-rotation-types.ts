@@ -19,4 +19,6 @@ export type TUnixLinuxLocalAccountRotationWithConnection = TUnixLinuxLocalAccoun
   connection: TSshConnection;
 };
 
-export type TUnixLinuxLocalAccountRotationGeneratedCredentials = z.infer<typeof UnixLinuxLocalAccountRotationGeneratedCredentialsSchema>;
+export type TUnixLinuxLocalAccountRotationGeneratedCredentials = z.infer<
+  typeof UnixLinuxLocalAccountRotationGeneratedCredentialsSchema
+>;
