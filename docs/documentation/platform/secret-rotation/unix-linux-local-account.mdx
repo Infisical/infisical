@@ -1,10 +1,10 @@
 ---
-title: "SSH Password Rotation"
-description: "Learn how to automatically rotate SSH passwords."
+title: "Unix/Linux Local Account Rotation"
+description: "Learn how to automatically rotate Unix/Linux local account passwords."
 ---
 
 <Note>
-    Due to how SSH passwords are rotated, retired credentials will not be able to
+    Due to how Unix/Linux local account passwords are rotated, retired credentials will not be able to
     authenticate with the SSH provider during their [inactive period](./overview#how-rotation-works).
 
     This is a limitation of the SSH provider and cannot be
@@ -16,30 +16,30 @@ description: "Learn how to automatically rotate SSH passwords."
 - Create an [SSH Connection](/integrations/app-connections/ssh) with the **Secret Rotation** requirements
 - Ensure your network security policies allow incoming requests from Infisical to this rotation provider, if network restrictions apply.
 
-## Create an SSH Password Rotation in Infisical
+## Create a Unix/Linux Local Account Rotation in Infisical
 
 <Tabs>
     <Tab title="Infisical UI">
         1. Navigate to your Secret Manager Project's Dashboard and select **Add Secret Rotation** from the actions dropdown.
         ![Secret Manager Dashboard](/images/secret-rotations-v2/generic/add-secret-rotation.png)
 
-        2. Select the **SSH Password** option.
-        ![Select SSH Password](/images/secret-rotations-v2/ssh-password/select-ssh-password-option.png)
+        2. Select the **Unix/Linux Local Account** option.
+        ![Select Unix/Linux Local Account](/images/secret-rotations-v2/unix-linux-local-account/select-unix-linux-local-account-option.png)
 
         3. Select the **SSH Connection** to use and configure the rotation behavior. Then click **Next**.
-        ![Rotation Configuration](/images/secret-rotations-v2/ssh-password/ssh-password-configuration.png)
+        ![Rotation Configuration](/images/secret-rotations-v2/unix-linux-local-account/unix-linux-local-account-configuration.png)
 
             - **SSH Connection** - the connection that will perform the rotation of the configured user's password.
             - **Rotation Interval** - the interval, in days, that once elapsed will trigger a rotation.
             - **Rotate At** - the local time of day when rotation should occur once the interval has elapsed.
             - **Auto-Rotation Enabled** - whether secrets should automatically be rotated once the rotation interval has elapsed. Disable this option to manually rotate secrets or pause secret rotation.
             <Note>
-                Due to SSH Password Rotations rotating a single credential set, auto-rotation may result in service interruptions. If you need to ensure service continuity, we recommend disabling this option.
+                Due to Unix/Linux Local Account Rotations rotating a single credential set, auto-rotation may result in service interruptions. If you need to ensure service continuity, we recommend disabling this option.
             </Note>
 
 
         4. Configure the required Parameters for your rotation. Then click **Next**.
-        ![Rotation Parameters](/images/secret-rotations-v2/ssh-password/ssh-password-parameters.png)
+        ![Rotation Parameters](/images/secret-rotations-v2/unix-linux-local-account/unix-linux-local-account-parameters.png)
 
         - **Rotation Method** - The method to use when rotating the target user's password.
             - **Login as Target** - Infisical will use the provided SSH username and password to log in and rotate its own password.
@@ -48,45 +48,45 @@ description: "Learn how to automatically rotate SSH passwords."
         - **Current Password** - The current password of the target user (required when **Rotation Method** is set to **Login as Target**).
         - **Password Requirements** - The constraints to apply when generating new passwords.
 
-        5. Specify the secret names that the SSH credentials should be mapped to. Then click **Next**.
-        ![Rotation Secrets Mapping](/images/secret-rotations-v2/ssh-password/ssh-password-secrets-mapping.png)
+        5. Specify the secret names that the Unix/Linux credentials should be mapped to. Then click **Next**.
+        ![Rotation Secrets Mapping](/images/secret-rotations-v2/unix-linux-local-account/unix-linux-local-account-secrets-mapping.png)
 
-            - **Username** - the name of the secret that the SSH username will be stored in.
+            - **Username** - the name of the secret that the Unix/Linux username will be stored in.
             - **Password** - the name of the secret that the rotated password will be stored in.
 
         6. Give your rotation a name and description (optional). Then click **Next**.
-        ![Rotation Details](/images/secret-rotations-v2/ssh-password/ssh-password-details.png)
+        ![Rotation Details](/images/secret-rotations-v2/unix-linux-local-account/unix-linux-local-account-details.png)
 
             - **Name** - the name of the secret rotation configuration. Must be slug-friendly.
             - **Description** (optional) - a description of this rotation configuration.
 
         7. Review your configuration, then click **Create Secret Rotation**.
-        ![Rotation Review](/images/secret-rotations-v2/ssh-password/ssh-password-confirm.png)
+        ![Rotation Review](/images/secret-rotations-v2/unix-linux-local-account/unix-linux-local-account-confirm.png)
 
-        8. Your **SSH Password** credentials are now available for use via the mapped secrets.
-        ![Rotation Created](/images/secret-rotations-v2/ssh-password/ssh-password-created.png)
+        8. Your **Unix/Linux Local Account** credentials are now available for use via the mapped secrets.
+        ![Rotation Created](/images/secret-rotations-v2/unix-linux-local-account/unix-linux-local-account-created.png)
 
-        ### Reconcile SSH Password
+        ### Reconcile Unix/Linux Local Account
 
-        If you suspect the credentials are out of sync (for example, after a manual password change on the server), you can regain access by using **Reconcile SSH**. This will use the configured SSH App Connection's root account to reset the target user's password and sync it with Infisical.
+        If you suspect the credentials are out of sync (for example, after a manual password change on the server), you can regain access by using **Reconcile**. This will use the configured SSH App Connection's root account to reset the target user's password and sync it with Infisical.
 
-        ![Reconcile Option](/images/secret-rotations-v2/ssh-password/ssh-password-reconcile.png)
-        ![Reconcile Confirmation](/images/secret-rotations-v2/ssh-password/ssh-password-reconcile-confirm.png)
+        ![Reconcile Option](/images/secret-rotations-v2/unix-linux-local-account/unix-linux-local-account-reconcile.png)
+        ![Reconcile Confirmation](/images/secret-rotations-v2/unix-linux-local-account/unix-linux-local-account-reconcile-confirm.png)
     </Tab>
     <Tab title="API">
-        To create an SSH Password Rotation, make an API request to the [Create SSH
-        Password Rotation](/api-reference/endpoints/secret-rotations/ssh-password/create) API endpoint.
+        To create a Unix/Linux Local Account Rotation, make an API request to the [Create Unix/Linux
+        Local Account Rotation](/api-reference/endpoints/secret-rotations/unix-linux-local-account/create) API endpoint.
 
         ### Sample request
 
         ```bash Request
         curl --request POST \
-        --url https://us.infisical.com/api/v2/secret-rotations/ssh-password \
+        --url https://us.infisical.com/api/v2/secret-rotations/unix-linux-local-account \
         --header 'Content-Type: application/json' \
         --data '{
-            "name": "my-ssh-rotation",
+            "name": "my-unix-linux-rotation",
             "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-            "description": "my ssh password rotation",
+            "description": "my unix/linux local account rotation",
             "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
             "environment": "dev",
             "secretPath": "/",
@@ -111,14 +111,14 @@ description: "Learn how to automatically rotate SSH passwords."
                 }
             },
             "secretsMapping": {
-                "username": "SSH_USERNAME",
-                "password": "SSH_PASSWORD"
+                "username": "UNIX_USERNAME",
+                "password": "UNIX_PASSWORD"
             }
         }'
         ```
 
         <Note>
-            Due to SSH Password Rotations rotating a single credential set, auto-rotation may result in service interruptions. If you need to ensure service continuity, we recommend disabling this option.
+            Due to Unix/Linux Local Account Rotations rotating a single credential set, auto-rotation may result in service interruptions. If you need to ensure service continuity, we recommend disabling this option.
         </Note>
 
         ### Sample response
@@ -127,11 +127,11 @@ description: "Learn how to automatically rotate SSH passwords."
         {
             "secretRotation": {
                 "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-                "name": "my-ssh-rotation",
-                "description": "my ssh password rotation",
+                "name": "my-unix-linux-rotation",
+                "description": "my unix/linux local account rotation",
                 "secretsMapping": {
-                    "username": "SSH_USERNAME",
-                    "password": "SSH_PASSWORD"
+                    "username": "UNIX_USERNAME",
+                    "password": "UNIX_PASSWORD"
                 },
                 "isAutoRotationEnabled": false,
                 "activeIndex": 0,
@@ -165,7 +165,7 @@ description: "Learn how to automatically rotate SSH passwords."
                     "minutes": 0
                 },
                 "lastRotationMessage": null,
-                "type": "ssh-password",
+                "type": "unix-linux-local-account",
                 "parameters": {
                     "rotationMethod": "login-as-root",
                     "username": "appuser",

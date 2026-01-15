@@ -451,7 +451,7 @@
                       "documentation/platform/secret-rotation/azure-client-secret",
                       "documentation/platform/secret-rotation/databricks-service-principal-secret",
                       "documentation/platform/secret-rotation/ldap-password",
-                      "documentation/platform/secret-rotation/ssh-password",
+                      "documentation/platform/secret-rotation/unix-linux-local-account",
                       "documentation/platform/secret-rotation/mongodb-credentials",
                       "documentation/platform/secret-rotation/mssql-credentials",
                       "documentation/platform/secret-rotation/mysql-credentials",
@@ -2014,17 +2014,17 @@
                     ]
                   },
                   {
-                    "group": "SSH Password",
+                    "group": "Unix/Linux Local Account",
                     "pages": [
-                      "api-reference/endpoints/secret-rotations/ssh-password/create",
-                      "api-reference/endpoints/secret-rotations/ssh-password/delete",
-                      "api-reference/endpoints/secret-rotations/ssh-password/get-by-id",
-                      "api-reference/endpoints/secret-rotations/ssh-password/get-by-name",
-                      "api-reference/endpoints/secret-rotations/ssh-password/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/ssh-password/list",
-                      "api-reference/endpoints/secret-rotations/ssh-password/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/ssh-password/update",
-                      "api-reference/endpoints/secret-rotations/ssh-password/reconcile"
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/create",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/delete",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-by-id",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-by-name",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/list",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/update",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/reconcile"
                     ]
                   },
                   {

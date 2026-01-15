@@ -52,10 +52,10 @@ export const RotationsBrowser = () => {
       category: "Identity & Auth",
     },
     {
-      name: "SSH Password",
-      slug: "ssh-password",
-      path: "/documentation/platform/secret-rotation/ssh-password",
-      description: "Learn how to automatically rotate SSH password of a user.",
+      name: "Unix/Linux Local Account",
+      slug: "unix-linux-local-account",
+      path: "/documentation/platform/secret-rotation/unix-linux-local-account",
+      description: "Learn how to automatically rotate Unix/Linux local account passwords.",
       category: "Networking & DNS",
     },
     {
