@@ -116,7 +116,7 @@ export const main = async ({
             (req.url.includes("/ai/mcp/endpoints/") && req.url.includes("/oauth/"));
 
           if (isMcpOAuthRoute) {
-            callback(null, { origin: true, credentials: true });
+            callback(null, { origin: true, credentials: false });
             return;
           }
 
