@@ -513,6 +513,7 @@
                   },
                   "integrations/platforms/kubernetes-injector",
                   "integrations/platforms/kubernetes-csi",
+                  "integrations/platforms/infisical-proxy",
                   {
                     "group": "Agent",
                     "pages": [
@@ -2952,6 +2953,10 @@
           {
             "label": "Infisical Agent",
             "href": "https://infisical.com/docs/documentation/getting-started/introduction"
+          },
+          {
+            "label": "Infisical Proxy",
+            "href": "https://infisical.com/docs/integrations/platforms/infisical-proxy"
           },
           {
             "label": "Kubernetes",
