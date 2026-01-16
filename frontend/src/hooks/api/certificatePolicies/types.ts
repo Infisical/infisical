@@ -1,3 +1,5 @@
+import { CertPolicyState } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
+
 export type TCertificatePolicyRule = {
   subject?: Array<{
     type: "common_name" | "organization" | "country" | "state" | "locality" | "organizational_unit";
@@ -32,8 +34,6 @@ export type TCertificatePolicyRule = {
   };
   basicConstraints?: TBasicConstraints;
 };
-
-import { CertPolicyState } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 export type TBasicConstraintsIsCAPolicy = CertPolicyState;
 
