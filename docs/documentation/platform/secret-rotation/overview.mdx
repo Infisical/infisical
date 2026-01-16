@@ -18,13 +18,6 @@ Before configuring rotation, determine which strategy fits your infrastructure. 
 | **Duration** | Long-lived (for example, 30 days)          | Short-lived (for example, one hour)        |
 | **Best for** | Legacy databases and static infrastructure | CI/CD, microservices, and temporary access |
 
-<Warning>
-  Some rotation providers use a single credential set due to technical
-  constraints. As a result, inactive credentials for these providers will
-  immediately become invalid once rotated. To avoid service interruptions, we
-  recommend manually rotating these credentials to prevent downtime.
-</Warning>
-
 ### Two-user rotation
 
 Infisical uses a two-user rotation strategy by default for many services to ensure zero application downtime. Changing the password for a single user would immediately break active connections. Instead, Infisical manages two separate database users and toggles between them. Using this method, applications can update without breaking, lowering attack risk.
@@ -59,13 +52,7 @@ sequenceDiagram
     Note right of Database: User A remains valid for existing connections
 ```
 
-### Single-user rotation
-
-Certain services, such as [Unix/Linux local accounts](/documentation/platform/secret-rotation/unix-linux-local-account) and [LDAP](/documentation/platform/secret-rotation/ldap-password), rely on a single set of credentials. In these cases, Infisical updates the password for the existing user directly.
-
-Because there is no secondary user to toggle to, there is no rotation grace period. Once the rotation occurs, any service still using the old password will fail to authenticate until it fetches the updated secret. To avoid downtime with single-user rotation, we recommend scheduling rotations during low-traffic maintenance windows and configuring [Dynamic Secrets](/documentation/platform/dynamic-secrets/overview).
-
-### Credential lifecycle
+#### Credential lifecycle
 
 When you set a rotation interval, Infisical will rotate your secrets at that interval. However, the secrets will be valid for a period equal to twice the rotation interval. This ensures that applications that are still using the old secret will continue to work while Infisical deploys the secret to the new user.
 
@@ -97,6 +84,19 @@ gantt
 | Active   | The primary credential that your application will use for new connections. |
 | Inactive | The credential is still valid but is no longer issued for new connections. |
 | Revoked  | The credentials is permanently invalidated and deleted from the system.    |
+
+### Single-user rotation
+
+Certain services, such as [Unix/Linux local accounts](/documentation/platform/secret-rotation/unix-linux-local-account) and [LDAP](/documentation/platform/secret-rotation/ldap-password), rely on a single set of credentials. In these cases, Infisical updates the password for the existing user directly.
+
+Because there is no secondary user to toggle to, there is no rotation grace period. Once the rotation occurs, any service still using the old password will fail to authenticate until it fetches the updated secret. To avoid downtime with single-user rotation, we recommend scheduling rotations during low-traffic maintenance windows and configuring [Dynamic Secrets](/documentation/platform/dynamic-secrets/overview).
+
+<Warning>
+  Some rotation providers use a single credential set due to technical
+  constraints. As a result, inactive credentials for these providers will
+  immediately become invalid once rotated. To avoid service interruptions, we
+  recommend manually rotating these credentials to prevent downtime.
+</Warning>
 
 ## Best practices
 
