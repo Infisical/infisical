@@ -10,30 +10,31 @@ Infisical Secret Rotation automates the entire secret rotation process. To get s
 
 ## Rotation strategy
 
-Before configuring rotation, determine which strategy fits your infrastructure. Infisical supports both secret rotation (swapping static users) and [dynamic secrets](/documentation/platform/dynamic-secrets/overview) (generating temporary users).
+Before configuring rotation, determine which strategy fits your infrastructure. Infisical supports both secret rotation (swapping static users) and [dynamic secrets](/documentation/platform/dynamic-secrets/overview) (generating temporary users). The rotation strategy you choose depends on your use case:
 
-| Feature      | Secret rotation                            | Dynamic secrets (issuer pattern)       |
-| ------------ | ------------------------------------------ | -------------------------------------- |
-| **Method**   | Swaps between two static users             | Generates a new, unique user on-demand |
-| **Duration** | Long-lived (for example, 30 days)          | Short-lived (for example, one hour)    |
-| **Best for** | Legacy databases and static infrastructure | Microservices and temporary access     |
+| Feature      | Secret rotation                            | Dynamic secrets (issuer pattern)           |
+| ------------ | ------------------------------------------ | ------------------------------------------ |
+| **Method**   | Swaps between two static users             | Generates a new, unique user on-demand     |
+| **Duration** | Long-lived (for example, 30 days)          | Short-lived (for example, one hour)        |
+| **Best for** | Legacy databases and static infrastructure | CI/CD, microservices, and temporary access |
 
-<Tip>
-  If your use case requires short-lived, on-demand credentials (the issuer
-  pattern), refer to [Dynamic
-  Secrets](/documentation/platform/dynamic-secrets/overview).
-</Tip>
+<Warning>
+  Some rotation providers use a single credential set due to technical
+  constraints. As a result, inactive credentials for these providers will
+  immediately become invalid once rotated. To avoid service interruptions, we
+  recommend manually rotating these credentials to prevent downtime.
+</Warning>
 
 ### Two-user rotation
 
-Infisical uses a two-user rotation strategy to ensure zero application downtime from credential issues. Changing the password for a single user would immediately break active connections. Instead, Infisical manages two separate database users and toggles between them. Using this method, applications can update without breaking and lowers attack risk.
+Infisical uses a two-user rotation strategy by default for many services to ensure zero application downtime. Changing the password for a single user would immediately break active connections. Instead, Infisical manages two separate database users and toggles between them. Using this method, applications can update without breaking, lowering attack risk.
 
 Two-rotation strategy works in the following way:
 
 1.  User A is active. Applications use User A's credentials.
 2.  When rotation occurs, Infisical updates the password for User B and switches the secret in Infisical to point to User B.
 3.  Applications fetch the new secret and start connecting as User B.
-4.  User A remains valid for a grace period (or until the next rotation) to allow ongoing connections to close without interruption.
+4.  User A remains valid for a grace period (exactly one full rotation cycle) to allow ongoing connections to close without interruption.
 
 ```mermaid
 sequenceDiagram
@@ -57,6 +58,12 @@ sequenceDiagram
 
     Note right of Database: User A remains valid for existing connections
 ```
+
+### Single-user rotation
+
+Certain services, such as [Unix/Linux local accounts](/documentation/platform/secret-rotation/unix-linux-local-account) and [LDAP](/documentation/platform/secret-rotation/ldap-password), rely on a single set of credentials. In these cases, Infisical updates the password for the existing user directly.
+
+Because there is no secondary user to toggle to, there is no rotation grace period. Once the rotation occurs, any service still using the old password will fail to authenticate until it fetches the updated secret. To avoid downtime with single-user rotation, we recommend scheduling rotations during low-traffic maintenance windows and configuring [Dynamic Secrets](/documentation/platform/dynamic-secrets/overview).
 
 ### Credential lifecycle
 
@@ -91,13 +98,6 @@ gantt
 | Inactive | The credential is still valid but is no longer issued for new connections. |
 | Revoked  | The credentials is permanently invalidated and deleted from the system.    |
 
-<Warning>
-  Some rotation providers use a single credential set due to technical
-  constraints. As a result, inactive credentials for these providers will
-  immediately become invalid once rotated. To avoid service interruptions, we
-  recommend manually rotating these credentials to prevent downtime.
-</Warning>
-
 ## Best practices
 
 To ensure Secret Rotation works as expected, follow these best practices:
@@ -110,7 +110,7 @@ To ensure Secret Rotation works as expected, follow these best practices:
 
 <AccordionGroup>
 <Accordion title="Missing database permissions">
-The most common reason for failure is insufficient permissions. The user you provide to Infisical to perform the rotation must have the authority to `ALTER USER` or change passwords for the target users. Always verify permissions before configuring rotation.
+The most common reason for failure is insufficient permissions. The user you provide to Infisical to perform the rotation must have the authority to `ALTER USER` or change passwords for the target users. Required permissions vary by service. For specific requirements, refer to the individual integration documentation.
 </Accordion>
 
 <Accordion title="Application restarts">
@@ -122,6 +122,6 @@ The most common reason for failure is insufficient permissions. The user you pro
 </Accordion>
 
 <Accordion title="Integration not supported">
-Infisical supports many services out of the box. If you need to rotate a secret for a service not currently listed, [request a new integration](https://github.com/Infisical/infisical/issues).
+Infisical supports many services out of the box. If you need to rotate a secret for a service not currently listed, request a new integration with a [feature request](https://github.com/Infisical/infisical/discussions/categories/feature-request).
 </Accordion>
 </AccordionGroup>
