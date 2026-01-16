@@ -9,6 +9,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
+  CertPolicyState,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType
 } from "@app/services/certificate-common/certificate-constants";
@@ -115,8 +116,9 @@ const policyAlgorithmsSchema = z.object({
   keyAlgorithm: z.array(z.string()).min(1, "At least one key algorithm must be provided").optional()
 });
 
-const policyCaSettingsSchema = z
+const policyBasicConstraintsSchema = z
   .object({
+    isCA: z.nativeEnum(CertPolicyState).optional(),
     maxPathLength: z
       .number()
       .int("Path length must be an integer")
@@ -135,7 +137,7 @@ const createCertificatePolicySchema = z.object({
   extendedKeyUsages: policyExtendedKeyUsagesSchema.optional(),
   algorithms: policyAlgorithmsSchema.optional(),
   validity: policyValiditySchema.optional(),
-  caSettings: policyCaSettingsSchema.optional()
+  basicConstraints: policyBasicConstraintsSchema.optional()
 });
 
 const updateCertificatePolicySchema = z.object({
@@ -147,7 +149,7 @@ const updateCertificatePolicySchema = z.object({
   extendedKeyUsages: policyExtendedKeyUsagesSchema.optional(),
   algorithms: policyAlgorithmsSchema.optional(),
   validity: policyValiditySchema.optional(),
-  caSettings: policyCaSettingsSchema.optional()
+  basicConstraints: policyBasicConstraintsSchema.optional()
 });
 
 export const registerCertificatePolicyRouter = async (server: FastifyZodProvider) => {

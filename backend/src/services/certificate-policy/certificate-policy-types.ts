@@ -2,11 +2,15 @@ import { TPkiCertificatePolicies, TPkiCertificatePoliciesInsert } from "@app/db/
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
+  CertPolicyState,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType
 } from "@app/services/certificate-common/certificate-constants";
 
-export interface TCaSettings {
+export type TBasicConstraintsIsCAPolicy = CertPolicyState;
+
+export interface TBasicConstraints {
+  isCA?: TBasicConstraintsIsCAPolicy;
   maxPathLength?: number; // -1 = unlimited, 0+ = specific limit, undefined = not constrained
 }
 
@@ -49,7 +53,7 @@ export type TCertificatePolicy = TPkiCertificatePolicies & {
   extendedKeyUsages?: TTemplateV2Policy["extendedKeyUsages"];
   algorithms?: TTemplateV2Policy["algorithms"];
   validity?: TTemplateV2Policy["validity"];
-  caSettings?: TCaSettings | null;
+  basicConstraints?: TBasicConstraints | null;
 };
 
 export type TCertificatePolicyInsert = TPkiCertificatePoliciesInsert & {
@@ -59,7 +63,7 @@ export type TCertificatePolicyInsert = TPkiCertificatePoliciesInsert & {
   extendedKeyUsages?: TTemplateV2Policy["extendedKeyUsages"];
   algorithms?: TTemplateV2Policy["algorithms"];
   validity?: TTemplateV2Policy["validity"];
-  caSettings?: TCaSettings | null;
+  basicConstraints?: TBasicConstraints | null;
 };
 
 export type TCertificatePolicyUpdate = Partial<
@@ -73,7 +77,7 @@ export type TCertificatePolicyUpdate = Partial<
     | "extendedKeyUsages"
     | "algorithms"
     | "validity"
-    | "caSettings"
+    | "basicConstraints"
   >
 >;
 

@@ -30,10 +30,15 @@ export type TCertificatePolicyRule = {
   validity?: {
     max?: string;
   };
-  caSettings?: TCaSettings;
+  basicConstraints?: TBasicConstraints;
 };
 
-export type TCaSettings = {
+import { CertPolicyState } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
+
+export type TBasicConstraintsIsCAPolicy = CertPolicyState;
+
+export type TBasicConstraints = {
+  isCA?: TBasicConstraintsIsCAPolicy;
   maxPathLength?: number;
 } | null;
 
@@ -50,7 +55,7 @@ export type TCertificatePolicy = {
   validity?: TCertificatePolicyRule["validity"];
   createdAt: string;
   updatedAt: string;
-  caSettings?: TCaSettings | null;
+  basicConstraints?: TBasicConstraints | null;
 };
 
 export type TCreateCertificatePolicyDTO = {
@@ -63,7 +68,7 @@ export type TCreateCertificatePolicyDTO = {
   extendedKeyUsages?: TCertificatePolicyRule["extendedKeyUsages"];
   algorithms?: TCertificatePolicyRule["algorithms"];
   validity?: TCertificatePolicyRule["validity"];
-  caSettings?: TCaSettings;
+  basicConstraints?: TBasicConstraints;
 };
 
 export type TUpdateCertificatePolicyDTO = {
@@ -76,7 +81,7 @@ export type TUpdateCertificatePolicyDTO = {
   extendedKeyUsages?: TCertificatePolicyRule["extendedKeyUsages"];
   algorithms?: TCertificatePolicyRule["algorithms"];
   validity?: TCertificatePolicyRule["validity"];
-  caSettings?: TCaSettings;
+  basicConstraints?: TBasicConstraints;
 };
 
 export type TDeleteCertificatePolicyDTO = {

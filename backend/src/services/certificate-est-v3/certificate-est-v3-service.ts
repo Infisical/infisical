@@ -7,6 +7,7 @@ import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-a
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { getCaCertChain, getCaCertChains } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
+import { CertPolicyState } from "@app/services/certificate-common/certificate-constants";
 import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
 import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
@@ -146,16 +147,36 @@ export const certificateEstV3ServiceFactory = ({
       });
     }
 
-    // Fetch the policy to get caSettings for CA certificate support
+    // Fetch the policy to get basicConstraints for CA certificate support
     const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
+
+    const csrRequestsCA = certificateRequest.basicConstraints?.isCA === true;
+    const policyIsCAState: CertPolicyState =
+      (policy?.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
+
+    if (csrRequestsCA && policyIsCAState === CertPolicyState.DENIED) {
+      throw new BadRequestError({
+        message:
+          "CA certificate issuance is not allowed by this policy. The policy's basicConstraints must be set to 'allowed' or 'required'."
+      });
+    }
+
+    if (policyIsCAState === CertPolicyState.REQUIRED && !csrRequestsCA) {
+      throw new BadRequestError({
+        message:
+          "CA certificate issuance is required by this policy. The CSR must include basicConstraints with CA:TRUE."
+      });
+    }
+
+    const caBasicConstraints = csrRequestsCA ? { maxPathLength: policy?.basicConstraints?.maxPathLength } : undefined;
 
     const { certificate } = await internalCertificateAuthorityService.signCertFromCa({
       isInternal: true,
       caId: profile.caId,
       csr,
       isFromProfile: true,
-      // Pass CA settings from policy (null for leaf certificates, object for CA certificates)
-      caSettings: policy?.caSettings
+      // Pass CA settings to the CA service (undefined for leaf certificates, object for CA certificates)
+      basicConstraints: caBasicConstraints
     });
 
     return convertRawCertsToPkcs7([certificate.rawData]);
@@ -277,16 +298,38 @@ export const certificateEstV3ServiceFactory = ({
       });
     }
 
-    // Fetch the policy to get caSettings for CA certificate support
+    // Fetch the policy to get basicConstraints for CA certificate support
     const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
+
+    // Check if the CSR requests CA certificate
+    const csrRequestsCA = certificateRequest.basicConstraints?.isCA === true;
+    const policyIsCAState: CertPolicyState =
+      (policy?.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
+
+    // Validate CA request against policy
+    if (csrRequestsCA && policyIsCAState === CertPolicyState.DENIED) {
+      throw new BadRequestError({
+        message:
+          "CA certificate issuance is not allowed by this policy. The policy's basicConstraints must be set to 'allowed' or 'required'."
+      });
+    }
+
+    if (policyIsCAState === CertPolicyState.REQUIRED && !csrRequestsCA) {
+      throw new BadRequestError({
+        message:
+          "CA certificate issuance is required by this policy. The CSR must include basicConstraints with CA:TRUE."
+      });
+    }
+
+    const caBasicConstraints = csrRequestsCA ? { maxPathLength: policy?.basicConstraints?.maxPathLength } : undefined;
 
     const { certificate } = await internalCertificateAuthorityService.signCertFromCa({
       isInternal: true,
       caId: profile.caId,
       csr,
       isFromProfile: true,
-      // Pass CA settings from policy (null for leaf certificates, object for CA certificates)
-      caSettings: policy?.caSettings
+      // Pass CA settings to the CA service (undefined for leaf certificates, object for CA certificates)
+      basicConstraints: caBasicConstraints
     });
 
     return convertRawCertsToPkcs7([certificate.rawData]);

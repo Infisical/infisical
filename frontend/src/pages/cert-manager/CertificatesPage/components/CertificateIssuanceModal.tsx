@@ -351,10 +351,13 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
           }
         }
 
-        if (constraints.templateAllowsCA && basicConstraints?.isCA) {
+        if (
+          (constraints.templateAllowsCA && basicConstraints?.isCA) ||
+          constraints.templateRequiresCA
+        ) {
           request.attributes.basicConstraints = {
             isCA: true,
-            pathLength: basicConstraints.pathLength ?? undefined
+            pathLength: basicConstraints?.pathLength ?? undefined
           };
         }
 
@@ -569,11 +572,14 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                               <div className="flex items-center gap-3">
                                 <Checkbox
                                   id="isCA"
-                                  isChecked={value || false}
+                                  isChecked={constraints.templateRequiresCA || value || false}
+                                  isDisabled={constraints.templateRequiresCA}
                                   onCheckedChange={(checked) => {
-                                    onChange(checked);
-                                    if (!checked) {
-                                      setValue("basicConstraints.pathLength", undefined);
+                                    if (!constraints.templateRequiresCA) {
+                                      onChange(checked);
+                                      if (!checked) {
+                                        setValue("basicConstraints.pathLength", undefined);
+                                      }
                                     }
                                   }}
                                 />
@@ -584,7 +590,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                                     label="Issue as Certificate Authority"
                                   />
                                   <p className="text-xs text-bunker-300">
-                                    This certificate will be issued with CA:TRUE
+                                    This certificate will be issued with the CA:TRUE extension
                                   </p>
                                 </div>
                               </div>

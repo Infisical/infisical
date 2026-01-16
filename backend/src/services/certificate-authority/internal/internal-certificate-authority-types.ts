@@ -121,7 +121,7 @@ export type TImportCertToCaDTO = {
   certificateChain: string;
 } & Omit<TProjectPermission, "projectId">;
 
-export type TCaSettings = {
+export type TBasicConstraints = {
   maxPathLength?: number;
 } | null;
 
@@ -142,7 +142,7 @@ export type TIssueCertFromCaDTO = {
   isFromProfile?: boolean;
   profileId?: string;
   internal?: boolean;
-  caSettings?: TCaSettings;
+  basicConstraints?: TBasicConstraints;
   pathLength?: number | null;
   organization?: string;
   country?: string;
@@ -171,7 +171,7 @@ export type TSignCertFromCaDTO =
       keyAlgorithm?: string;
       isFromProfile?: boolean;
       profileId?: string;
-      caSettings?: TCaSettings;
+      basicConstraints?: TBasicConstraints;
       pathLength?: number | null;
       tx?: Knex;
     }
@@ -193,7 +193,7 @@ export type TSignCertFromCaDTO =
       keyAlgorithm?: string;
       isFromProfile?: boolean;
       profileId?: string;
-      caSettings?: TCaSettings;
+      basicConstraints?: TBasicConstraints;
       pathLength?: number | null;
       tx?: Knex;
     } & Omit<TProjectPermission, "projectId">);

@@ -28,7 +28,7 @@ export const CertificateRequestsSchema = z.object({
   errorMessage: z.string().nullable().optional(),
   metadata: z.string().nullable().optional(),
   acmeOrderId: z.string().uuid().nullable().optional(),
-  caSettings: z.unknown().nullable().optional()
+  basicConstraints: z.unknown().nullable().optional()
 });
 
 export type TCertificateRequests = z.infer<typeof CertificateRequestsSchema>;

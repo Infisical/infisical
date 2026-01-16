@@ -50,7 +50,7 @@ const certificateRequestDataSchema = z
     signatureAlgorithm: z.string().max(100).optional(),
     metadata: z.string().max(2000).optional(),
     certificateId: z.string().optional(),
-    caSettings: z
+    basicConstraints: z
       .object({
         isCA: z.boolean(),
         pathLength: z.number().int().min(-1).optional()
@@ -81,7 +81,7 @@ const certificateRequestDataSchema = z
   .refine(
     (data) => {
       // pathLength should only be set when isCA is true
-      if (data.caSettings?.pathLength !== undefined && !data.caSettings?.isCA) {
+      if (data.basicConstraints?.pathLength !== undefined && !data.basicConstraints?.isCA) {
         return false;
       }
       return true;

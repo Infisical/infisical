@@ -48,6 +48,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
+  CertPolicyState,
   CertSubjectAlternativeNameType,
   mapLegacyExtendedKeyUsageToStandard,
   mapLegacyKeyUsageToStandard
@@ -1052,11 +1053,17 @@ export const certificateV3ServiceFactory = ({
     validateAlgorithmCompatibility(ca, policy);
 
     const shouldIssueAsCA = certificateRequest.basicConstraints?.isCA === true;
-    if (shouldIssueAsCA && !policy.caSettings) {
+    const policyIsCAState: CertPolicyState =
+      (policy.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
+
+    if (shouldIssueAsCA && policyIsCAState === CertPolicyState.DENIED) {
       throw new BadRequestError({
-        message: "CA certificate issuance is not allowed by this policy. The policy must have caSettings configured."
+        message:
+          "CA certificate issuance is not allowed by this policy. The policy's basicConstraints must be set to 'allowed' or 'required'."
       });
     }
+
+    const caBasicConstraints = shouldIssueAsCA ? { maxPathLength: policy.basicConstraints?.maxPathLength } : undefined;
 
     const {
       certificate,
@@ -1072,7 +1079,7 @@ export const certificateV3ServiceFactory = ({
         friendlyName: certificateSubject.common_name || "Certificate",
         commonName: certificateSubject.common_name || "",
         altNames: subjectAlternativeNames,
-        caSettings: shouldIssueAsCA ? policy.caSettings : undefined,
+        basicConstraints: caBasicConstraints,
         pathLength: certificateRequest.basicConstraints?.pathLength,
         ttl: certificateRequest.validity.ttl,
         keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || [],
@@ -1125,7 +1132,7 @@ export const certificateV3ServiceFactory = ({
         signatureAlgorithm: effectiveSignatureAlgorithm,
         status: CertificateRequestStatus.ISSUED,
         certificateId: certResult.certificateId,
-        caSettings: certificateRequest.basicConstraints
+        basicConstraints: certificateRequest.basicConstraints
       });
 
       return { ...certResult, cert: certificateRecord, certificateRequestId: certRequestResult.id };
@@ -1246,11 +1253,18 @@ export const certificateV3ServiceFactory = ({
     const effectiveKeyAlgorithm = extractedKeyAlgorithm;
 
     const shouldIssueAsCA = basicConstraints?.isCA === true;
-    if (shouldIssueAsCA && !policy.caSettings) {
+    const policyIsCAState: CertPolicyState =
+      (policy.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
+
+    if (shouldIssueAsCA && policyIsCAState === CertPolicyState.DENIED) {
       throw new BadRequestError({
-        message: "CA certificate issuance is not allowed by this policy. The policy must have caSettings configured."
+        message:
+          "CA certificate issuance is not allowed by this policy. The policy's basicConstraints must be set to 'allowed' or 'required'."
       });
     }
+
+    // Transform policy basicConstraints to the format expected by the CA service
+    const caBasicConstraints = shouldIssueAsCA ? { maxPathLength: policy.basicConstraints?.maxPathLength } : undefined;
 
     const { certificate, certificateChain, issuingCaCertificate, serialNumber, cert, certificateRequestId } =
       await certificateDAL.transaction(async (tx) => {
@@ -1258,7 +1272,7 @@ export const certificateV3ServiceFactory = ({
           isInternal: true,
           caId: ca.id,
           csr,
-          caSettings: shouldIssueAsCA ? policy.caSettings : undefined,
+          basicConstraints: caBasicConstraints,
           pathLength: basicConstraints?.pathLength,
           ttl: validity.ttl,
           altNames: undefined,
@@ -1307,7 +1321,7 @@ export const certificateV3ServiceFactory = ({
           signatureAlgorithm: effectiveSignatureAlgorithm,
           status: CertificateRequestStatus.ISSUED,
           certificateId: certResult.certificateId,
-          caSettings: basicConstraints
+          basicConstraints
         });
 
         return { ...certResult, cert: signedCertRecord, certificateRequestId: certRequestResult.id };

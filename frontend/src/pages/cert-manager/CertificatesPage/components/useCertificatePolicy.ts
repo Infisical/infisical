@@ -6,6 +6,7 @@ import {
   KEY_USAGES_OPTIONS
 } from "@app/hooks/api/certificates/constants";
 import {
+  CertPolicyState,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType,
   mapPolicyKeyAlgorithmToApi,
@@ -44,6 +45,7 @@ export type TemplateConstraints = {
   shouldShowSanSection: boolean;
   shouldShowSubjectSection: boolean;
   templateAllowsCA: boolean;
+  templateRequiresCA: boolean;
   maxPathLength?: number;
 };
 
@@ -71,6 +73,7 @@ export const useCertificatePolicy = (
     shouldShowSanSection: true,
     shouldShowSubjectSection: true,
     templateAllowsCA: false,
+    templateRequiresCA: false,
     maxPathLength: undefined
   });
 
@@ -122,15 +125,19 @@ export const useCertificatePolicy = (
       shouldShowSanSection: true,
       shouldShowSubjectSection: true,
       templateAllowsCA: false,
+      templateRequiresCA: false,
       maxPathLength: undefined
     });
   };
 
   useEffect(() => {
     if (templateData && selectedProfile && isModalOpen) {
+      const isCaPolicy =
+        (templateData.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
       const templateAllowsCA =
-        templateData.caSettings !== undefined && templateData.caSettings !== null;
-      const maxPathLength = templateData.caSettings?.maxPathLength;
+        isCaPolicy === CertPolicyState.ALLOWED || isCaPolicy === CertPolicyState.REQUIRED;
+      const templateRequiresCA = isCaPolicy === CertPolicyState.REQUIRED;
+      const maxPathLength = templateData.basicConstraints?.maxPathLength;
 
       const newConstraints: TemplateConstraints = {
         allowedSignatureAlgorithms: templateData.algorithms?.signature || [],
@@ -150,6 +157,7 @@ export const useCertificatePolicy = (
         shouldShowSanSection: true,
         shouldShowSubjectSection: true,
         templateAllowsCA,
+        templateRequiresCA,
         maxPathLength
       };
 
@@ -212,6 +220,10 @@ export const useCertificatePolicy = (
 
       setValue("keyUsages", initialKeyUsages);
       setValue("extendedKeyUsages", initialExtendedKeyUsages);
+
+      if (templateRequiresCA) {
+        setValue("basicConstraints.isCA", true);
+      }
     }
   }, [templateData, selectedProfile, setValue, watch, isModalOpen]);
 

@@ -35,6 +35,7 @@ import {
   CertDurationUnit,
   CertExtendedKeyUsageType,
   CertKeyUsageType,
+  CertPolicyState,
   CertSanInclude,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeInclude,
@@ -226,9 +227,9 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
       defaultKeyType: ""
     };
 
-    const basicConstraints = {
-      isCA: policyData.caSettings !== undefined && policyData.caSettings !== null,
-      maxPathLength: policyData.caSettings?.maxPathLength ?? undefined
+    const basicConstraints: FormData["basicConstraints"] = {
+      isCA: (policyData.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED,
+      maxPathLength: policyData.basicConstraints?.maxPathLength ?? undefined
     };
 
     return {
@@ -252,7 +253,7 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
       name: "",
       description: "",
       basicConstraints: {
-        isCA: false,
+        isCA: CertPolicyState.DENIED,
         maxPathLength: undefined
       },
       attributes: [],
@@ -298,7 +299,7 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
     optionalUsages: []
   };
   const watchedPreset = watch("preset") || POLICY_PRESET_IDS.CUSTOM;
-  const watchedIsCA = watch("basicConstraints.isCA") || false;
+  const watchedIsCAPolicy = watch("basicConstraints.isCA") || CertPolicyState.DENIED;
 
   const handlePresetChange = async (presetId: PolicyPresetId) => {
     setValue("preset", presetId);
@@ -327,6 +328,12 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
       }
       if (selectedPreset.formData.keyAlgorithm) {
         setValue("keyAlgorithm", selectedPreset.formData.keyAlgorithm);
+      }
+      if (selectedPreset.formData.basicConstraints) {
+        setValue("basicConstraints", selectedPreset.formData.basicConstraints);
+      }
+      if (selectedPreset.formData.validity) {
+        setValue("validity", selectedPreset.formData.validity);
       }
 
       await trigger();
@@ -464,11 +471,13 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
       validity.max = `${data.validity.maxDuration.value}${unit}`;
     }
 
-    const caSettings = data.basicConstraints?.isCA
-      ? {
-          maxPathLength: data.basicConstraints.maxPathLength ?? undefined
-        }
-      : null;
+    const basicConstraints =
+      data.basicConstraints?.isCA && data.basicConstraints.isCA !== CertPolicyState.DENIED
+        ? {
+            isCA: data.basicConstraints.isCA,
+            maxPathLength: data.basicConstraints.maxPathLength ?? undefined
+          }
+        : null;
 
     return {
       name: data.name,
@@ -479,7 +488,7 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
       extendedKeyUsages,
       algorithms,
       validity,
-      caSettings
+      basicConstraints
     };
   };
 
@@ -1088,26 +1097,30 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
                     name="basicConstraints.isCA"
                     render={({ field: { value, onChange }, fieldState: { error } }) => (
                       <FormControl isError={Boolean(error)} errorText={error?.message}>
-                        <div className="flex items-center gap-3">
-                          <Checkbox
-                            id="isCA"
-                            isChecked={value || false}
-                            onCheckedChange={(checked) => {
-                              onChange(checked);
-                              if (!checked) {
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <span className="text-sm font-medium text-mineshaft-100">
+                              CA Certificate Property
+                            </span>
+                            <p className="text-xs text-bunker-300">
+                              Controls whether certificates issued under this policy can have the
+                              CA:TRUE property.
+                            </p>
+                          </div>
+                          <Select
+                            value={value || CertPolicyState.DENIED}
+                            onValueChange={(newValue) => {
+                              onChange(newValue);
+                              if (newValue === CertPolicyState.DENIED) {
                                 setValue("basicConstraints.maxPathLength", undefined);
                               }
                             }}
-                          />
-                          <div className="space-y-1">
-                            <span className="text-sm font-medium text-mineshaft-100">
-                              Allow issuance of CA certificates
-                            </span>
-                            <p className="text-xs text-bunker-300">
-                              When enabled, certificates issued under this policy may be Certificate
-                              Authorities (CA:TRUE).
-                            </p>
-                          </div>
+                            className="w-32"
+                          >
+                            <SelectItem value={CertPolicyState.DENIED}>Deny</SelectItem>
+                            <SelectItem value={CertPolicyState.ALLOWED}>Allow</SelectItem>
+                            <SelectItem value={CertPolicyState.REQUIRED}>Require</SelectItem>
+                          </Select>
                         </div>
                       </FormControl>
                     )}
@@ -1157,7 +1170,7 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
                           placeholder="Leave empty to omit the constraint"
                           className="w-full"
                           value={field.value ?? ""}
-                          isDisabled={!watchedIsCA}
+                          isDisabled={watchedIsCAPolicy === CertPolicyState.DENIED}
                           onChange={(e) => {
                             const val = e.target.value;
                             if (val === "") {

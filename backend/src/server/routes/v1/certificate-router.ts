@@ -514,11 +514,6 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         .object({
           profileId: z.string().uuid(),
           commonName: validateTemplateRegexField.optional(),
-          organization: validateTemplateRegexField.optional(),
-          organizationalUnit: validateTemplateRegexField.optional(),
-          country: validateTemplateRegexField.optional(),
-          state: validateTemplateRegexField.optional(),
-          locality: validateTemplateRegexField.optional(),
           ttl: z
             .string()
             .trim()
@@ -563,11 +558,6 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const certificateRequestForService: CertificateRequestForService = {
         commonName: req.body.commonName,
-        organization: req.body.organization,
-        organizationalUnit: req.body.organizationalUnit,
-        country: req.body.country,
-        state: req.body.state,
-        locality: req.body.locality,
         keyUsages: req.body.keyUsages,
         extendedKeyUsages: req.body.extendedKeyUsages,
         altNames: req.body.altNames,

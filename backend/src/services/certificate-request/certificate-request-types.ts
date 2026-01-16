@@ -22,7 +22,7 @@ export type TCreateCertificateRequestDTO = TProjectPermission & {
   status: CertificateRequestStatus;
   certificateId?: string;
   acmeOrderId?: string;
-  caSettings?: {
+  basicConstraints?: {
     isCA: boolean;
     pathLength?: number;
   };

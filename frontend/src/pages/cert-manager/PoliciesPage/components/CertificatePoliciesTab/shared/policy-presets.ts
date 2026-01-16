@@ -3,6 +3,7 @@ import {
   CertDurationUnit,
   CertExtendedKeyUsageType,
   CertKeyUsageType,
+  CertPolicyState,
   CertSanInclude,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeInclude,
@@ -379,6 +380,62 @@ export const CERTIFICATE_POLICY_PRESETS: CertificatePolicyPreset[] = [
       },
       keyAlgorithm: {
         allowedKeyTypes: [...ALGORITHM_FAMILIES.ECDSA.key]
+      }
+    }
+  },
+  {
+    id: POLICY_PRESET_IDS.INTERMEDIATE_CA,
+    name: "Intermediate CA Certificate",
+    description:
+      "Certificate for intermediate Certificate Authorities. Allows signing end-entity certificates and CRLs.",
+    useCase: "Intermediate CA, subordinate CA, issuing CA",
+    formData: {
+      name: "Intermediate CA Certificate",
+      description:
+        "Certificate for intermediate Certificate Authorities. Allows signing end-entity certificates and CRLs.",
+      basicConstraints: {
+        isCA: CertPolicyState.REQUIRED,
+        maxPathLength: 0
+      },
+      keyUsages: {
+        requiredUsages: [CertKeyUsageType.KEY_CERT_SIGN, CertKeyUsageType.CRL_SIGN],
+        optionalUsages: [
+          CertKeyUsageType.KEY_CERT_SIGN,
+          CertKeyUsageType.CRL_SIGN,
+          CertKeyUsageType.DIGITAL_SIGNATURE
+        ]
+      },
+      extendedKeyUsages: {
+        requiredUsages: [],
+        optionalUsages: [CertExtendedKeyUsageType.OCSP_SIGNING]
+      },
+      validity: {
+        maxDuration: {
+          value: 10,
+          unit: CertDurationUnit.YEARS
+        }
+      },
+      attributes: [
+        {
+          type: CertSubjectAttributeType.COMMON_NAME,
+          include: CertSubjectAttributeInclude.OPTIONAL,
+          value: ["*"]
+        },
+        {
+          type: CertSubjectAttributeType.ORGANIZATION,
+          include: CertSubjectAttributeInclude.OPTIONAL,
+          value: ["*"]
+        }
+      ],
+      subjectAlternativeNames: [],
+      signatureAlgorithm: {
+        allowedAlgorithms: [
+          ...ALGORITHM_FAMILIES.RSA.signature,
+          ...ALGORITHM_FAMILIES.ECDSA.signature
+        ]
+      },
+      keyAlgorithm: {
+        allowedKeyTypes: [...ALGORITHM_FAMILIES.RSA.key, ...ALGORITHM_FAMILIES.ECDSA.key]
       }
     }
   }

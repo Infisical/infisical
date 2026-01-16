@@ -174,7 +174,7 @@ describe("CertificateEstV3Service Security Fix", () => {
   const mockCertificatePolicyDAL = {
     findById: vi.fn().mockResolvedValue({
       id: "policy-123",
-      caSettings: null,
+      basicConstraints: null,
       subject: [],
       sans: []
     })
@@ -540,8 +540,7 @@ describe("CertificateEstV3Service Security Fix", () => {
         caId: "ca-123",
         csr: basicCSR,
         isFromProfile: true,
-        caSettings: null,
-        pathLength: undefined
+        basicConstraints: undefined
       });
     });
 
@@ -721,8 +720,7 @@ describe("CertificateEstV3Service Security Fix", () => {
         caId: "ca-123",
         isFromProfile: true,
         csr: basicCSR,
-        caSettings: null,
-        pathLength: undefined
+        basicConstraints: undefined
       });
     });
 

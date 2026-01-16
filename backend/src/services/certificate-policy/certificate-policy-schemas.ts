@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
+  CertPolicyState,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType
 } from "@app/services/certificate-common/certificate-constants";
@@ -105,8 +106,9 @@ const policyAlgorithmsSchema = z.object({
     .optional()
 });
 
-export const policyCaSettingsSchema = z
+export const policyBasicConstraintsSchema = z
   .object({
+    isCA: z.nativeEnum(CertPolicyState).optional(),
     maxPathLength: z
       .number()
       .int("Path length must be an integer")
@@ -131,7 +133,7 @@ export const certificatePolicyResponseSchema = z.object({
   extendedKeyUsages: policyExtendedKeyUsagesSchema.optional(),
   algorithms: policyAlgorithmsSchema.optional(),
   validity: policyValiditySchema.optional(),
-  caSettings: policyCaSettingsSchema.optional(),
+  basicConstraints: policyBasicConstraintsSchema.optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

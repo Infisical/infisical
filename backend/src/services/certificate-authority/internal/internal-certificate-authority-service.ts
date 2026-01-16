@@ -149,22 +149,22 @@ export const internalCertificateAuthorityServiceFactory = ({
    * This handles both policy-level validation and issuing CA hierarchy validation.
    */
   const $createBasicConstraintsExtension = ({
-    caSettings,
+    basicConstraints,
     pathLength,
     caCertObj
   }: {
-    caSettings?: { maxPathLength?: number } | null;
+    basicConstraints?: { maxPathLength?: number } | null;
     pathLength?: number | null;
     caCertObj: x509.X509Certificate;
   }): x509.BasicConstraintsExtension => {
-    const shouldIssueCaCertificate = caSettings !== undefined && caSettings !== null;
+    const shouldIssueCaCertificate = basicConstraints !== undefined && basicConstraints !== null;
 
     if (!shouldIssueCaCertificate) {
       return new x509.BasicConstraintsExtension(false);
     }
 
     // Validate against policy's maxPathLength
-    const policyMaxPathLength = caSettings.maxPathLength;
+    const policyMaxPathLength = basicConstraints.maxPathLength;
     if (policyMaxPathLength !== undefined && policyMaxPathLength !== null && policyMaxPathLength !== -1) {
       if (pathLength === undefined || pathLength === null) {
         throw new BadRequestError({
@@ -1273,7 +1273,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     keyAlgorithm,
     isFromProfile,
     internal = false,
-    caSettings,
+    basicConstraints,
     pathLength,
     organization,
     country,
@@ -1442,7 +1442,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${caCert.id}/der`;
 
     const basicConstraintsExtension = $createBasicConstraintsExtension({
-      caSettings,
+      basicConstraints,
       pathLength,
       caCertObj
     });
@@ -1673,7 +1673,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       extendedKeyUsages,
       signatureAlgorithm,
       keyAlgorithm,
-      caSettings,
+      basicConstraints,
       pathLength,
       tx
     } = dto;
@@ -1816,7 +1816,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${caCert.id}/der`;
 
     const basicConstraintsExtension = $createBasicConstraintsExtension({
-      caSettings,
+      basicConstraints,
       pathLength,
       caCertObj
     });

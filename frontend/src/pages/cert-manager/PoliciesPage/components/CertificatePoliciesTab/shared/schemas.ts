@@ -4,6 +4,7 @@ import {
   CertDurationUnit,
   CertExtendedKeyUsageType,
   CertKeyUsageType,
+  CertPolicyState,
   CertSanInclude,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeInclude,
@@ -53,7 +54,7 @@ export const uiKeyAlgorithmSchema = z.object({
 });
 
 export const uiBasicConstraintsSchema = z.object({
-  isCA: z.boolean().default(false),
+  isCA: z.nativeEnum(CertPolicyState).default(CertPolicyState.DENIED),
   maxPathLength: z
     .number()
     .min(-1, "Path length must be -1 (unlimited) or greater")
@@ -70,7 +71,8 @@ export const uiPresetSchema = z
     POLICY_PRESET_IDS.DEVICE,
     POLICY_PRESET_IDS.USER,
     POLICY_PRESET_IDS.EMAIL_PROTECTION,
-    POLICY_PRESET_IDS.DUAL_PURPOSE_SERVER
+    POLICY_PRESET_IDS.DUAL_PURPOSE_SERVER,
+    POLICY_PRESET_IDS.INTERMEDIATE_CA
   ])
   .default(POLICY_PRESET_IDS.CUSTOM);
 

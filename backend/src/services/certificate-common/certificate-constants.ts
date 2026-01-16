@@ -43,6 +43,12 @@ export enum CertSanEffect {
   REQUIRE = "require"
 }
 
+export enum CertPolicyState {
+  ALLOWED = "allowed",
+  REQUIRED = "required",
+  DENIED = "denied"
+}
+
 export enum CertDurationUnit {
   DAYS = "days",
   MONTHS = "months",
@@ -208,5 +214,6 @@ export const DURATION_UNIT_OPTIONS = Object.values(CertDurationUnit);
 export const SUBJECT_ATTRIBUTE_TYPE_OPTIONS = Object.values(CertSubjectAttributeType);
 export const ATTRIBUTE_RULE_OPTIONS = Object.values(CertAttributeRule);
 export const SAN_EFFECT_OPTIONS = Object.values(CertSanEffect);
+export const POLICY_STATE_OPTIONS = Object.values(CertPolicyState);
 export const KEY_ALGORITHM_OPTIONS = Object.values(CertKeyAlgorithm);
 export const SIGNATURE_ALGORITHM_OPTIONS = Object.values(CertSignatureAlgorithm);
