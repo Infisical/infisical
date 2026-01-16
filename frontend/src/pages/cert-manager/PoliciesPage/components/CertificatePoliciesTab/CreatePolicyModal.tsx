@@ -1126,64 +1126,65 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
                     )}
                   />
 
-                  <Controller
-                    control={control}
-                    name="basicConstraints.maxPathLength"
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        label={
-                          <div className="flex items-center gap-1">
-                            <span className="mb-1">Maximum allowed path length</span>
-                            <Tooltip
-                              content={
-                                <div className="max-w-xs">
-                                  <p className="font-medium">Values:</p>
-                                  <ul className="mt-1 list-disc pl-4 text-xs">
-                                    <li>
-                                      <strong>-1</strong> = Unlimited (no restriction)
-                                    </li>
-                                    <li>
-                                      <strong>0</strong> = Can only sign end-entity certificates
-                                    </li>
-                                    <li>
-                                      <strong>1+</strong> = Number of CA levels allowed beneath
-                                    </li>
-                                  </ul>
-                                </div>
+                  {watchedIsCAPolicy !== CertPolicyState.DENIED && (
+                    <Controller
+                      control={control}
+                      name="basicConstraints.maxPathLength"
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label={
+                            <div className="flex items-center gap-1">
+                              <span className="mb-1">Maximum allowed path length</span>
+                              <Tooltip
+                                content={
+                                  <div className="max-w-xs">
+                                    <p className="font-medium">Values:</p>
+                                    <ul className="mt-1 list-disc pl-4 text-xs">
+                                      <li>
+                                        <strong>-1</strong> = Unlimited (no restriction)
+                                      </li>
+                                      <li>
+                                        <strong>0</strong> = Can only sign end-entity certificates
+                                      </li>
+                                      <li>
+                                        <strong>1+</strong> = Number of CA levels allowed beneath
+                                      </li>
+                                    </ul>
+                                  </div>
+                                }
+                              >
+                                <FontAwesomeIcon
+                                  icon={faQuestionCircle}
+                                  size="sm"
+                                  className="ml-1 text-mineshaft-400"
+                                />
+                              </Tooltip>
+                            </div>
+                          }
+                          isError={Boolean(error)}
+                          errorText={error?.message}
+                          helperText="Defines the pathLen constraint applied to issued certificates."
+                        >
+                          <Input
+                            {...field}
+                            type="number"
+                            placeholder="Leave empty to omit the constraint"
+                            className="w-full"
+                            value={field.value ?? ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === "") {
+                                field.onChange(undefined);
+                              } else {
+                                const numVal = parseInt(val, 10);
+                                field.onChange(Number.isNaN(numVal) ? undefined : numVal);
                               }
-                            >
-                              <FontAwesomeIcon
-                                icon={faQuestionCircle}
-                                size="sm"
-                                className="ml-1 text-mineshaft-400"
-                              />
-                            </Tooltip>
-                          </div>
-                        }
-                        isError={Boolean(error)}
-                        errorText={error?.message}
-                        helperText="Defines the pathLen constraint applied to issued CA certificates."
-                      >
-                        <Input
-                          {...field}
-                          type="number"
-                          placeholder="Leave empty to omit the constraint"
-                          className="w-full"
-                          value={field.value ?? ""}
-                          isDisabled={watchedIsCAPolicy === CertPolicyState.DENIED}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (val === "") {
-                              field.onChange(undefined);
-                            } else {
-                              const numVal = parseInt(val, 10);
-                              field.onChange(Number.isNaN(numVal) ? undefined : numVal);
-                            }
-                          }}
-                        />
-                      </FormControl>
-                    )}
-                  />
+                            }}
+                          />
+                        </FormControl>
+                      )}
+                    />
+                  )}
                 </div>
               </AccordionContent>
             </AccordionItem>

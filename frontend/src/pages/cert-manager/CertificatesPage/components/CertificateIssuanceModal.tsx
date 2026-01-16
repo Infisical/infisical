@@ -597,76 +597,77 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                             )}
                           />
 
-                          <Controller
-                            control={control}
-                            name="basicConstraints.pathLength"
-                            render={({ field, fieldState: { error } }) => (
-                              <FormControl
-                                label={
-                                  <div className="flex items-center gap-1">
-                                    <span className="mb-1">Path Length</span>
-                                    <Tooltip
-                                      content={
-                                        <div className="max-w-xs">
-                                          <p className="font-medium">Values:</p>
-                                          <ul className="mt-1 list-disc pl-4 text-xs">
-                                            <li>
-                                              <strong>-1</strong> = Unlimited depth
-                                            </li>
-                                            <li>
-                                              <strong>0</strong> = Can only sign end-entity certs
-                                            </li>
-                                            <li>
-                                              <strong>1+</strong> = CA levels allowed beneath
-                                            </li>
-                                          </ul>
-                                        </div>
-                                      }
-                                    >
-                                      <FontAwesomeIcon
-                                        icon={faQuestionCircle}
-                                        size="sm"
-                                        className="ml-1 text-mineshaft-400"
-                                      />
-                                    </Tooltip>
-                                  </div>
-                                }
-                                isError={Boolean(error)}
-                                errorText={error?.message}
-                                helperText={
-                                  constraints.maxPathLength !== undefined &&
-                                  constraints.maxPathLength !== null &&
-                                  constraints.maxPathLength !== -1
-                                    ? `Required. Policy maximum: ${constraints.maxPathLength}`
-                                    : "Sets the pathLen for this CA certificate. Controls how many levels of sub-CAs can exist below."
-                                }
-                              >
-                                <Input
-                                  {...field}
-                                  type="number"
-                                  placeholder={
+                          {watchedIsCA && (
+                            <Controller
+                              control={control}
+                              name="basicConstraints.pathLength"
+                              render={({ field, fieldState: { error } }) => (
+                                <FormControl
+                                  label={
+                                    <div className="flex items-center gap-1">
+                                      <span className="mb-1">Path Length</span>
+                                      <Tooltip
+                                        content={
+                                          <div className="max-w-xs">
+                                            <p className="font-medium">Values:</p>
+                                            <ul className="mt-1 list-disc pl-4 text-xs">
+                                              <li>
+                                                <strong>-1</strong> = Unlimited depth
+                                              </li>
+                                              <li>
+                                                <strong>0</strong> = Can only sign end-entity certs
+                                              </li>
+                                              <li>
+                                                <strong>1+</strong> = CA levels allowed beneath
+                                              </li>
+                                            </ul>
+                                          </div>
+                                        }
+                                      >
+                                        <FontAwesomeIcon
+                                          icon={faQuestionCircle}
+                                          size="sm"
+                                          className="ml-1 text-mineshaft-400"
+                                        />
+                                      </Tooltip>
+                                    </div>
+                                  }
+                                  isError={Boolean(error)}
+                                  errorText={error?.message}
+                                  helperText={
                                     constraints.maxPathLength !== undefined &&
                                     constraints.maxPathLength !== null &&
                                     constraints.maxPathLength !== -1
-                                      ? "Enter path length (required)"
-                                      : "Leave empty for no constraint"
+                                      ? `Required. Policy maximum: ${constraints.maxPathLength}`
+                                      : "Sets the pathLen for this CA certificate. Controls how many levels of sub-CAs can exist below."
                                   }
-                                  className="w-full"
-                                  value={field.value ?? ""}
-                                  isDisabled={!watchedIsCA}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    if (val === "") {
-                                      field.onChange(undefined);
-                                    } else {
-                                      const numVal = parseInt(val, 10);
-                                      field.onChange(Number.isNaN(numVal) ? undefined : numVal);
+                                >
+                                  <Input
+                                    {...field}
+                                    type="number"
+                                    placeholder={
+                                      constraints.maxPathLength !== undefined &&
+                                      constraints.maxPathLength !== null &&
+                                      constraints.maxPathLength !== -1
+                                        ? "Enter path length (required)"
+                                        : "Leave empty for no constraint"
                                     }
-                                  }}
-                                />
-                              </FormControl>
-                            )}
-                          />
+                                    className="w-full"
+                                    value={field.value ?? ""}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      if (val === "") {
+                                        field.onChange(undefined);
+                                      } else {
+                                        const numVal = parseInt(val, 10);
+                                        field.onChange(Number.isNaN(numVal) ? undefined : numVal);
+                                      }
+                                    }}
+                                  />
+                                </FormControl>
+                              )}
+                            />
+                          )}
                         </div>
                       </AccordionContent>
                     </AccordionItem>
