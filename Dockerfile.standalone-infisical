@@ -170,7 +170,7 @@ RUN ARCH=$(dpkg --print-architecture) && \
 
 # Install Infisical CLI
 RUN curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
-    && apt-get update && apt-get install -y infisical=0.43.14 \
+    && apt-get update && apt-get install -y infisical=0.43.47 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /
