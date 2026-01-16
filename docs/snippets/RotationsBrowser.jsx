@@ -4,7 +4,7 @@ export const RotationsBrowser = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const categories = ["All", "Databases", "Identity & Auth", "Cloud Providers"];
+  const categories = ["All", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS"];
 
   const rotations = [
     {
@@ -50,6 +50,13 @@ export const RotationsBrowser = () => {
       path: "/documentation/platform/secret-rotation/ldap-password",
       description: "Learn how to automatically rotate LDAP user passwords.",
       category: "Identity & Auth",
+    },
+    {
+      name: "Unix/Linux Local Account",
+      slug: "unix-linux-local-account",
+      path: "/documentation/platform/secret-rotation/unix-linux-local-account",
+      description: "Learn how to automatically rotate Unix/Linux local account passwords.",
+      category: "Networking & DNS",
     },
     {
       name: "MySQL",

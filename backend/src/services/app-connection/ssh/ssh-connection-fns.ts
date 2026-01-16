@@ -41,6 +41,23 @@ export const getSshConnectionClient = async (
 
     client.on("error", (err: Error) => {
       client.destroy();
+      if (err instanceof Error) {
+        // Check for common authentication failure messages
+        if (
+          err.message.includes("authentication") ||
+          err.message.includes("All configured authentication methods failed") ||
+          err.message.includes("publickey")
+        ) {
+          reject(new Error("SSH Error: Account credentials invalid."));
+          return;
+        }
+
+        if (err.message === "Connection timeout") {
+          reject(new Error("SSH Error: Connection timeout. Verify that the SSH server is reachable"));
+          return;
+        }
+      }
+
       reject(new Error(`SSH Error: ${err.message}`));
     });
 
