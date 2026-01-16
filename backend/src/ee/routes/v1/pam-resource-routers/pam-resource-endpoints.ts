@@ -31,6 +31,12 @@ export const registerPamResourceEndpoints = <T extends TPamResource>({
   }>;
   resourceResponseSchema: z.ZodTypeAny;
 }) => {
+  // Convert resource type enum value to PascalCase for operation IDs
+  // e.g., "postgres" -> "Postgres", "aws-iam" -> "AwsIam"
+  const resourceTypeId = resourceType
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("");
   server.route({
     method: "GET",
     url: "/:resourceId",
@@ -38,6 +44,7 @@ export const registerPamResourceEndpoints = <T extends TPamResource>({
       rateLimit: readLimit
     },
     schema: {
+      operationId: `get${resourceTypeId}PamResource`,
       description: "Get PAM resource",
       params: z.object({
         resourceId: z.string().uuid()
@@ -77,6 +84,7 @@ export const registerPamResourceEndpoints = <T extends TPamResource>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: `create${resourceTypeId}PamResource`,
       description: "Create PAM resource",
       body: createResourceSchema,
       response: {
@@ -120,6 +128,7 @@ export const registerPamResourceEndpoints = <T extends TPamResource>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: `update${resourceTypeId}PamResource`,
       description: "Update PAM resource",
       params: z.object({
         resourceId: z.string().uuid()
@@ -167,6 +176,7 @@ export const registerPamResourceEndpoints = <T extends TPamResource>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: `delete${resourceTypeId}PamResource`,
       description: "Delete PAM resource",
       params: z.object({
         resourceId: z.string().uuid()
@@ -207,6 +217,7 @@ export const registerSshCaPublicKeyEndpoint = (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getSshPamResourceCaPublicKey",
       description: "Get the SSH CA public key for the PAM resource",
       params: z.object({
         resourceId: z.string().uuid()
@@ -233,6 +244,7 @@ export const registerSshCaSetupEndpoint = (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getSshPamResourceCaSetup",
       description: "Get PAM resource SSH CA setup script for configuring the target server to trust the CA",
       params: z.object({
         resourceId: z.string().uuid()
