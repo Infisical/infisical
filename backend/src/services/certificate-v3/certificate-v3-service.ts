@@ -1059,7 +1059,7 @@ export const certificateV3ServiceFactory = ({
     if (shouldIssueAsCA && policyIsCAState === CertPolicyState.DENIED) {
       throw new BadRequestError({
         message:
-          "CA certificate issuance is not allowed by this policy. The policy's basicConstraints must be set to 'allowed' or 'required'."
+          "CA certificate issuance is not allowed by this policy. The policy's CA:true basicConstraints must be set to 'allowed' or 'required'."
       });
     }
 
@@ -1259,7 +1259,7 @@ export const certificateV3ServiceFactory = ({
     if (shouldIssueAsCA && policyIsCAState === CertPolicyState.DENIED) {
       throw new BadRequestError({
         message:
-          "CA certificate issuance is not allowed by this policy. The policy's basicConstraints must be set to 'allowed' or 'required'."
+          "CA certificate issuance is not allowed by this policy. The policy's CA:true basicConstraints must be set to 'allowed' or 'required'."
       });
     }
 
