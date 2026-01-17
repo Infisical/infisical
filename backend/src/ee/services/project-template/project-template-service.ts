@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 
-import { OrganizationActionScope, ProjectType, TProjectTemplates } from "@app/db/schemas";
+import { OrganizationActionScope, ProjectMembershipRole, ProjectType, TProjectTemplates } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -249,6 +249,25 @@ export const projectTemplateServiceFactory = ({
       throw new BadRequestError({
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         message: `Failed to update project template due to environment count exceeding your current limit of ${plan.environmentLimit}. Contact Infisical to increase limit.`
+      });
+    }
+
+    if (users) {
+      const templateRoles = roles ?? (projectTemplate.roles as TProjectTemplateRole[]);
+
+      const availableRoleSlugs = new Set([
+        ...Object.values(ProjectMembershipRole),
+        ...templateRoles.map((r) => r.slug)
+      ]);
+
+      users.forEach((user) => {
+        user.roles.forEach((roleSlug) => {
+          if (!availableRoleSlugs.has(roleSlug)) {
+            throw new BadRequestError({
+              message: `User "${user.username}" references invalid role slug "${roleSlug}". Role must be a predefined role or defined in the template roles.`
+            });
+          }
+        });
       });
     }
 
