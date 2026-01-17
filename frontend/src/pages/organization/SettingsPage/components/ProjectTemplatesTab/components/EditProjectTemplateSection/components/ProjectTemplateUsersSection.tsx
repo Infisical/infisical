@@ -306,6 +306,7 @@ export const ProjectTemplateUsersSection = ({ projectTemplate, isInfisicalTempla
                                     getOptionValue={(option) => option.slug}
                                     getOptionLabel={(option) => option.name}
                                     placeholder="Select roles..."
+                                    menuPosition="fixed"
                                   />
                                 </FormControl>
                               )}
