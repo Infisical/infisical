@@ -11,6 +11,7 @@ import {
   TProjectTemplateEnvironment,
   TProjectTemplateRole,
   TProjectTemplateServiceFactory,
+  TProjectTemplateUser,
   TUnpackedPermission
 } from "@app/ee/services/project-template/project-template-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -25,7 +26,7 @@ type TProjectTemplatesServiceFactoryDep = {
   projectTemplateDAL: TProjectTemplateDALFactory;
 };
 
-const $unpackProjectTemplate = ({ roles, environments, ...rest }: TProjectTemplates) => ({
+const $unpackProjectTemplate = ({ roles, environments, users, ...rest }: TProjectTemplates & { users?: unknown }) => ({
   ...rest,
   environments: environments as TProjectTemplateEnvironment[],
   roles: [
@@ -40,7 +41,8 @@ const $unpackProjectTemplate = ({ roles, environments, ...rest }: TProjectTempla
       ...role,
       permissions: unpackPermissions(role.permissions)
     }))
-  ]
+  ],
+  users: (users as TProjectTemplateUser[]) ?? null
 });
 
 export const projectTemplateServiceFactory = ({
@@ -114,7 +116,8 @@ export const projectTemplateServiceFactory = ({
 
     return {
       ...$unpackProjectTemplate(projectTemplate),
-      packedRoles: projectTemplate.roles as TProjectTemplateRole[] // preserve packed for when applying template
+      packedRoles: projectTemplate.roles as TProjectTemplateRole[], // preserve packed for when applying template
+      users: (projectTemplate.users as TProjectTemplateUser[]) ?? null
     };
   };
 
@@ -143,12 +146,13 @@ export const projectTemplateServiceFactory = ({
 
     return {
       ...$unpackProjectTemplate(projectTemplate),
-      packedRoles: projectTemplate.roles as TProjectTemplateRole[] // preserve packed for when applying template
+      packedRoles: projectTemplate.roles as TProjectTemplateRole[], // preserve packed for when applying template
+      users: (projectTemplate.users as TProjectTemplateUser[]) ?? null
     };
   };
 
   const createProjectTemplate: TProjectTemplateServiceFactory["createProjectTemplate"] = async (
-    { roles, environments, type, ...params },
+    { roles, environments, users, type, ...params },
     actor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
@@ -201,6 +205,7 @@ export const projectTemplateServiceFactory = ({
       ...params,
       roles: JSON.stringify(roles.map((role) => ({ ...role, permissions: packRules(role.permissions) }))),
       environments: JSON.stringify(projectTemplateEnvironments),
+      users: users?.length ? JSON.stringify(users) : undefined,
       orgId: actor.orgId,
       type
     });
@@ -210,7 +215,7 @@ export const projectTemplateServiceFactory = ({
 
   const updateProjectTemplateById: TProjectTemplateServiceFactory["updateProjectTemplateById"] = async (
     id,
-    { roles, environments, ...params },
+    { roles, environments, users, ...params },
     actor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
@@ -266,7 +271,8 @@ export const projectTemplateServiceFactory = ({
       roles: roles
         ? JSON.stringify(roles.map((role) => ({ ...role, permissions: packRules(role.permissions) })))
         : undefined,
-      environments: environments ? JSON.stringify(environments) : undefined
+      environments: environments ? JSON.stringify(environments) : undefined,
+      users: users ? JSON.stringify(users) : undefined
     });
 
     return $unpackProjectTemplate(updatedProjectTemplate);
