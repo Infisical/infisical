@@ -195,7 +195,7 @@ export const ProjectTemplateUsersSection = ({ projectTemplate, isInfisicalTempla
       >
         <div className="mb-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
           <div>
-            <h2 className="text-lg font-medium">Default Project Members</h2>
+            <h2 className="text-lg font-medium">Project Members</h2>
             <p className="text-sm text-mineshaft-400">
               {isInfisicalTemplate
                 ? "Users that will be automatically added to projects created from this template"
