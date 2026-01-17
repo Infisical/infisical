@@ -31,8 +31,8 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp, useToggle } from "@app/hooks";
 import { useGetInternalCaById } from "@app/hooks/api/ca/queries";
-import { IssuerType, TCertificateProfile } from "@app/hooks/api/certificateProfiles";
 import { useGetCertificatePolicyById } from "@app/hooks/api/certificatePolicies";
+import { IssuerType, TCertificateProfile } from "@app/hooks/api/certificateProfiles";
 import { CertificateIssuanceModal } from "@app/pages/cert-manager/CertificatesPage/components/CertificateIssuanceModal";
 
 interface Props {

@@ -4,7 +4,7 @@ import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
 import {
-  UnstableButton,
+  Button,
   UnstableCard,
   UnstableCardAction,
   UnstableCardContent,
@@ -55,7 +55,7 @@ export const GroupProjectsSection = ({ groupId, groupSlug }: Props) => {
           <UnstableCardAction>
             <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
               {(isAllowed) => (
-                <UnstableButton
+                <Button
                   isDisabled={!isAllowed}
                   onClick={() => {
                     handlePopUpOpen("addGroupProjects", {
@@ -68,7 +68,7 @@ export const GroupProjectsSection = ({ groupId, groupSlug }: Props) => {
                 >
                   <PlusIcon />
                   Add to Project
-                </UnstableButton>
+                </Button>
               )}
             </OrgPermissionCan>
           </UnstableCardAction>
