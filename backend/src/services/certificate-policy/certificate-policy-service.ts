@@ -13,7 +13,7 @@ import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
-import { CertSubjectAttributeType } from "../certificate-common/certificate-constants";
+import { CertPolicyState, CertSubjectAttributeType } from "../certificate-common/certificate-constants";
 import { TCertificatePolicyDALFactory } from "./certificate-policy-dal";
 import {
   TCertificatePolicy,
@@ -598,6 +598,40 @@ export const certificatePolicyServiceFactory = ({
           errors.push(
             `Requested validity period (notBefore to notAfter) exceeds maximum allowed duration of ${template.validity.max}`
           );
+        }
+      }
+    }
+
+    const isCaPolicy: CertPolicyState = (template.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
+    const requestWantsCA = request.basicConstraints?.isCA === true;
+
+    if (isCaPolicy === CertPolicyState.DENIED) {
+      if (requestWantsCA) {
+        errors.push(
+          "CA certificate issuance is denied by this policy. The policy does not allow issuing CA certificates."
+        );
+      }
+    } else if (isCaPolicy === CertPolicyState.REQUIRED) {
+      if (!requestWantsCA) {
+        errors.push(
+          "CA certificate issuance is required by this policy. The request must include basicConstraints with isCA set to true."
+        );
+      }
+    }
+    if (requestWantsCA && isCaPolicy !== CertPolicyState.DENIED) {
+      const { maxPathLength } = template.basicConstraints || {};
+
+      if (maxPathLength !== undefined && maxPathLength !== null && maxPathLength !== -1) {
+        if (request.basicConstraints?.pathLength === undefined || request.basicConstraints?.pathLength === null) {
+          errors.push(
+            `Path length is required when issuing CA certificates because the policy only allows a maximum path length of ${maxPathLength}.`
+          );
+        } else if (request.basicConstraints.pathLength > maxPathLength) {
+          errors.push(
+            `Requested path length (${request.basicConstraints.pathLength}) exceeds maximum allowed by policy (${maxPathLength}).`
+          );
+        } else if (request.basicConstraints.pathLength < 0 && request.basicConstraints.pathLength !== -1) {
+          errors.push("Path length must be -1 (unlimited), 0, or a positive integer.");
         }
       }
     }

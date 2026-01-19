@@ -1,6 +1,8 @@
+import { CertPolicyState } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
+
 export type TCertificatePolicyRule = {
   subject?: Array<{
-    type: "common_name" | "organization" | "country";
+    type: "common_name" | "organization" | "country" | "state" | "locality" | "organizational_unit";
     allowed?: string[];
     required?: string[];
     denied?: string[];
@@ -30,7 +32,15 @@ export type TCertificatePolicyRule = {
   validity?: {
     max?: string;
   };
+  basicConstraints?: TBasicConstraints;
 };
+
+export type TBasicConstraintsIsCAPolicy = CertPolicyState;
+
+export type TBasicConstraints = {
+  isCA?: TBasicConstraintsIsCAPolicy;
+  maxPathLength?: number;
+} | null;
 
 export type TCertificatePolicy = {
   id: string;
@@ -45,6 +55,7 @@ export type TCertificatePolicy = {
   validity?: TCertificatePolicyRule["validity"];
   createdAt: string;
   updatedAt: string;
+  basicConstraints?: TBasicConstraints | null;
 };
 
 export type TCreateCertificatePolicyDTO = {
@@ -57,6 +68,7 @@ export type TCreateCertificatePolicyDTO = {
   extendedKeyUsages?: TCertificatePolicyRule["extendedKeyUsages"];
   algorithms?: TCertificatePolicyRule["algorithms"];
   validity?: TCertificatePolicyRule["validity"];
+  basicConstraints?: TBasicConstraints;
 };
 
 export type TUpdateCertificatePolicyDTO = {
@@ -69,6 +81,7 @@ export type TUpdateCertificatePolicyDTO = {
   extendedKeyUsages?: TCertificatePolicyRule["extendedKeyUsages"];
   algorithms?: TCertificatePolicyRule["algorithms"];
   validity?: TCertificatePolicyRule["validity"];
+  basicConstraints?: TBasicConstraints;
 };
 
 export type TDeleteCertificatePolicyDTO = {

@@ -22,6 +22,7 @@ import {
 import { useProject } from "@app/context";
 import { CaType } from "@app/hooks/api/ca/enums";
 import { useGetAzureAdcsTemplates, useListCasByProjectId } from "@app/hooks/api/ca/queries";
+import { useListCertificatePolicies } from "@app/hooks/api/certificatePolicies";
 import {
   EnrollmentType,
   IssuerType,
@@ -31,7 +32,6 @@ import {
   useCreateCertificateProfile,
   useUpdateCertificateProfile
 } from "@app/hooks/api/certificateProfiles";
-import { useListCertificatePolicies } from "@app/hooks/api/certificatePolicies";
 
 const createSchema = z
   .object({

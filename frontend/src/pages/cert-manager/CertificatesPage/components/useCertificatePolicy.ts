@@ -6,7 +6,9 @@ import {
   KEY_USAGES_OPTIONS
 } from "@app/hooks/api/certificates/constants";
 import {
+  CertPolicyState,
   CertSubjectAlternativeNameType,
+  CertSubjectAttributeType,
   mapPolicyKeyAlgorithmToApi,
   mapPolicySignatureAlgorithmToApi
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
@@ -39,8 +41,12 @@ export type TemplateConstraints = {
   allowedSignatureAlgorithms: string[];
   allowedKeyAlgorithms: string[];
   allowedSanTypes: CertSubjectAlternativeNameType[];
+  allowedSubjectAttributeTypes: CertSubjectAttributeType[];
   shouldShowSanSection: boolean;
   shouldShowSubjectSection: boolean;
+  templateAllowsCA: boolean;
+  templateRequiresCA: boolean;
+  maxPathLength?: number;
 };
 
 export const useCertificatePolicy = (
@@ -63,8 +69,12 @@ export const useCertificatePolicy = (
       CertSubjectAlternativeNameType.EMAIL,
       CertSubjectAlternativeNameType.URI
     ],
+    allowedSubjectAttributeTypes: [CertSubjectAttributeType.COMMON_NAME],
     shouldShowSanSection: true,
-    shouldShowSubjectSection: true
+    shouldShowSubjectSection: true,
+    templateAllowsCA: false,
+    templateRequiresCA: false,
+    maxPathLength: undefined
   });
 
   const filteredKeyUsages = useMemo(() => {
@@ -111,13 +121,24 @@ export const useCertificatePolicy = (
         CertSubjectAlternativeNameType.EMAIL,
         CertSubjectAlternativeNameType.URI
       ],
+      allowedSubjectAttributeTypes: [CertSubjectAttributeType.COMMON_NAME],
       shouldShowSanSection: true,
-      shouldShowSubjectSection: true
+      shouldShowSubjectSection: true,
+      templateAllowsCA: false,
+      templateRequiresCA: false,
+      maxPathLength: undefined
     });
   };
 
   useEffect(() => {
     if (templateData && selectedProfile && isModalOpen) {
+      const isCaPolicy =
+        (templateData.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
+      const templateAllowsCA =
+        isCaPolicy === CertPolicyState.ALLOWED || isCaPolicy === CertPolicyState.REQUIRED;
+      const templateRequiresCA = isCaPolicy === CertPolicyState.REQUIRED;
+      const maxPathLength = templateData.basicConstraints?.maxPathLength;
+
       const newConstraints: TemplateConstraints = {
         allowedSignatureAlgorithms: templateData.algorithms?.signature || [],
         allowedKeyAlgorithms: templateData.algorithms?.keyAlgorithm || [],
@@ -132,8 +153,12 @@ export const useCertificatePolicy = (
         requiredKeyUsages: templateData.keyUsages?.required || [],
         requiredExtendedKeyUsages: templateData.extendedKeyUsages?.required || [],
         allowedSanTypes: [],
+        allowedSubjectAttributeTypes: [],
         shouldShowSanSection: true,
-        shouldShowSubjectSection: true
+        shouldShowSubjectSection: true,
+        templateAllowsCA,
+        templateRequiresCA,
+        maxPathLength
       };
 
       // Set TTL if available
@@ -157,15 +182,25 @@ export const useCertificatePolicy = (
         setValue("subjectAltNames", []);
       }
 
-      // Handle subject section
       if (templateData.subject && templateData.subject.length > 0) {
         newConstraints.shouldShowSubjectSection = true;
+        const subjectTypes: CertSubjectAttributeType[] = [];
+        templateData.subject.forEach((subjectPolicy: any) => {
+          if (!subjectTypes.includes(subjectPolicy.type)) {
+            subjectTypes.push(subjectPolicy.type as CertSubjectAttributeType);
+          }
+        });
+        newConstraints.allowedSubjectAttributeTypes =
+          subjectTypes.length > 0 ? subjectTypes : [CertSubjectAttributeType.COMMON_NAME];
+
         const currentSubjectAttrs = watch("subjectAttributes");
         if (!currentSubjectAttrs || currentSubjectAttrs.length === 0) {
-          setValue("subjectAttributes", [{ type: "common_name", value: "" }]);
+          const defaultType = newConstraints.allowedSubjectAttributeTypes[0];
+          setValue("subjectAttributes", [{ type: defaultType, value: "" }]);
         }
       } else {
         newConstraints.shouldShowSubjectSection = false;
+        newConstraints.allowedSubjectAttributeTypes = [];
         setValue("subjectAttributes", undefined);
       }
 
@@ -185,6 +220,10 @@ export const useCertificatePolicy = (
 
       setValue("keyUsages", initialKeyUsages);
       setValue("extendedKeyUsages", initialExtendedKeyUsages);
+
+      if (templateRequiresCA) {
+        setValue("basicConstraints.isCA", true);
+      }
     }
   }, [templateData, selectedProfile, setValue, watch, isModalOpen]);
 

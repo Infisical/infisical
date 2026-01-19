@@ -11,6 +11,11 @@ export type TIssueCertificateFromProfileDTO = {
   profileId: string;
   certificateRequest: {
     commonName?: string;
+    organization?: string;
+    organizationalUnit?: string;
+    country?: string;
+    state?: string;
+    locality?: string;
     keyUsages?: CertKeyUsageType[];
     extendedKeyUsages?: CertExtendedKeyUsageType[];
     altNames?: Array<{
@@ -24,6 +29,10 @@ export type TIssueCertificateFromProfileDTO = {
     notAfter?: Date;
     signatureAlgorithm?: string;
     keyAlgorithm?: string;
+    basicConstraints?: {
+      isCA: boolean;
+      pathLength?: number;
+    };
   };
   removeRootsFromChain?: boolean;
 } & Omit<TProjectPermission, "projectId">;
@@ -38,6 +47,10 @@ export type TSignCertificateFromProfileDTO = {
   notAfter?: Date;
   enrollmentType: EnrollmentType;
   removeRootsFromChain?: boolean;
+  basicConstraints?: {
+    isCA: boolean;
+    pathLength?: number;
+  };
 } & Omit<TProjectPermission, "projectId">;
 
 export type TOrderCertificateFromProfileDTO = {
