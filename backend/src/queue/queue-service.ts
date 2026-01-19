@@ -1,6 +1,7 @@
 import { Job, JobsOptions, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from "bullmq";
 import PgBoss, { WorkOptions } from "pg-boss";
 
+import { parseSslConfig } from "@app/db/instance";
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import {
@@ -529,18 +530,15 @@ export const queueServiceFactory = (
     Queue<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>
   >;
 
+  const { modifiedDbConnectionUri, sslConfig } = parseSslConfig(dbConnectionUrl, dbRootCert);
+
   const pgBoss = new PgBoss({
-    connectionString: dbConnectionUrl,
+    connectionString: modifiedDbConnectionUri,
     archiveCompletedAfterSeconds: 60,
     cronMonitorIntervalSeconds: 5,
     archiveFailedAfterSeconds: 1000, // we want to keep failed jobs for a longer time so that it can be retried
     deleteAfterSeconds: 30,
-    ssl: dbRootCert
-      ? {
-          rejectUnauthorized: true,
-          ca: Buffer.from(dbRootCert, "base64").toString("ascii")
-        }
-      : false
+    ssl: sslConfig
   });
 
   const queueContainerPg = {} as Record<QueueJobs, boolean>;

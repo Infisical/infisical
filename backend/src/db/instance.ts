@@ -1,6 +1,6 @@
 import knex, { Knex } from "knex";
 
-const parseSslConfig = (dbConnectionUri: string, dbRootCert?: string) => {
+export const parseSslConfig = (dbConnectionUri: string, dbRootCert?: string) => {
   let modifiedDbConnectionUri = dbConnectionUri;
   let sslConfig: { rejectUnauthorized: boolean; ca: string } | boolean = dbRootCert
     ? { rejectUnauthorized: true, ca: Buffer.from(dbRootCert, "base64").toString("ascii") }
