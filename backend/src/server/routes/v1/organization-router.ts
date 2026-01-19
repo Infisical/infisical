@@ -479,17 +479,17 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          groups: GroupsSchema.merge(
-            z.object({
-              customRole: OrgRolesSchema.pick({
-                id: true,
-                name: true,
-                slug: true,
-                permissions: true,
-                description: true
-              }).optional()
-            })
-          ).array()
+          groups: GroupsSchema.extend({
+            role: z.string(),
+            roleId: z.string().nullish(),
+            customRole: OrgRolesSchema.pick({
+              id: true,
+              name: true,
+              slug: true,
+              permissions: true,
+              description: true
+            }).optional()
+          }).array()
         })
       }
     },
