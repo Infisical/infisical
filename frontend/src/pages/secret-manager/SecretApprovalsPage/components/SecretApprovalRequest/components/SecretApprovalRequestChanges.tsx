@@ -392,13 +392,18 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
                           {isMergableUponApprove && (
                             <Button
                               onClick={async () => {
-                                setWillMerge(true);
-                                await handleSubmit(handleSubmitReview)();
-                                await performSecretApprovalMerge({
-                                  projectId,
-                                  id: secretApprovalRequestDetails.id
-                                });
-                                setWillMerge(false);
+                                try {
+                                  setWillMerge(true);
+                                  await handleSubmit(handleSubmitReview)();
+                                  await performSecretApprovalMerge({
+                                    projectId,
+                                    id: secretApprovalRequestDetails.id
+                                  });
+                                } catch {
+                                  // Approval or merge failed, error already shown via mutation
+                                } finally {
+                                  setWillMerge(false);
+                                }
                               }}
                               variant="solid"
                               className="mt-auto ml-2 h-min"
