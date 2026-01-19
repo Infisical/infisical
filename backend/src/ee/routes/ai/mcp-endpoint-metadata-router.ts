@@ -104,8 +104,11 @@ export const registerMcpEndpointAuthServerMetadataRouter = async (server: Fastif
 };
 
 // RFC 9728 compliant: Protected Resource metadata at path-appended URL
-// MCP Inspector uses this pattern: /.well-known/oauth-protected-resource + resource path
-// GET /.well-known/oauth-protected-resource/api/v1/ai/mcp/endpoints/:endpointId/connect
+// The MCP Inspector's OAuth discovery process makes a call to `/.well-known/oauth-protected-resource/api/v1/ai/mcp/endpoints/:endpointId/connect`
+// Then falls back to `/.well-known/oauth-protected-resource`, which is simpler but loses the `endpointId` info
+//
+// Therefore, we need to make sure that we respond to its call made to `/.well-known/oauth-protected-resource/api/v1/ai/mcp/endpoints/:endpointId/connect`
+// This constrains our API to have `.well-known/oauth-protected-resource` as the prefix and the path from the connect URL as the suffix.
 export const registerRfc9728ProtectedResourceMetadataRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
   const siteUrl = removeTrailingSlash(appCfg.SITE_URL || "");
