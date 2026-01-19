@@ -12,7 +12,9 @@ export const AiMcpEndpointsSchema = z.object({
   name: z.string(),
   description: z.string().nullable().optional(),
   status: z.string().nullable().optional(),
-  piiFiltering: z.boolean().default(false),
+  piiRequestFiltering: z.boolean().default(false),
+  piiResponseFiltering: z.boolean().default(false),
+  piiEntityTypes: z.array(z.string()).nullable().optional(),
   projectId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date()

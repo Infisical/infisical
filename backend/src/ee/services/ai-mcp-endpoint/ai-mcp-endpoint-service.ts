@@ -15,6 +15,7 @@ import { crypto as cryptoModule } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
+import { PiiEntityType, redactPiiFromObject } from "@app/lib/pii";
 import { ActorType, AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -299,23 +300,34 @@ export const aiMcpEndpointServiceFactory = ({
         throw new Error(`Unknown tool: ${name}`);
       }
 
+      // Apply PII redaction to request if enabled
+      const piiEntityTypes = (endpoint.piiEntityTypes as PiiEntityType[]) || [];
+      const sanitizedArgs =
+        endpoint.piiRequestFiltering && piiEntityTypes.length > 0 ? redactPiiFromObject(args, piiEntityTypes) : args;
+
       try {
         const result = await selectedMcpClient.client.callTool({
           name,
-          arguments: args
+          arguments: sanitizedArgs
         });
+
+        // Apply PII redaction to response if enabled
+        const sanitizedResult =
+          endpoint.piiResponseFiltering && piiEntityTypes.length > 0
+            ? redactPiiFromObject(result, piiEntityTypes)
+            : result;
 
         await aiMcpActivityLogService.createActivityLog({
           endpointName: endpoint.name,
           serverName: selectedMcpClient.server.name,
           toolName: name,
           actor: user.email || "",
-          request: args,
-          response: result,
+          request: sanitizedArgs,
+          response: sanitizedResult,
           projectId: endpoint.projectId
         });
 
-        return result as Record<string, unknown>;
+        return sanitizedResult as Record<string, unknown>;
       } catch (error) {
         // Log the full error internally for system administrators
         logger.error(
@@ -337,7 +349,7 @@ export const aiMcpEndpointServiceFactory = ({
           serverName: selectedMcpClient.server.name,
           toolName: name,
           actor: user.email || "",
-          request: args,
+          request: sanitizedArgs,
           response: { error: errorMessage },
           projectId: endpoint.projectId
         });
@@ -509,7 +521,9 @@ export const aiMcpEndpointServiceFactory = ({
     name,
     description,
     serverIds,
-    piiFiltering,
+    piiRequestFiltering,
+    piiResponseFiltering,
+    piiEntityTypes,
     actor,
     actorId,
     actorAuthMethod,
@@ -534,10 +548,18 @@ export const aiMcpEndpointServiceFactory = ({
       ProjectPermissionSub.McpEndpoints
     );
 
-    const updateData: { name?: string; description?: string; piiFiltering?: boolean } = {};
+    const updateData: {
+      name?: string;
+      description?: string;
+      piiRequestFiltering?: boolean;
+      piiResponseFiltering?: boolean;
+      piiEntityTypes?: string[];
+    } = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
-    if (piiFiltering !== undefined) updateData.piiFiltering = piiFiltering;
+    if (piiRequestFiltering !== undefined) updateData.piiRequestFiltering = piiRequestFiltering;
+    if (piiResponseFiltering !== undefined) updateData.piiResponseFiltering = piiResponseFiltering;
+    if (piiEntityTypes !== undefined) updateData.piiEntityTypes = piiEntityTypes;
 
     let updatedEndpoint = endpoint;
     if (Object.keys(updateData).length > 0) {
