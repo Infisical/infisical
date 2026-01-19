@@ -761,7 +761,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
               id: metadataId,
               key: metadataKey,
               value: metadataValue,
-              encryptedvalue: metadataEncryptedValue
+              encryptedValue: metadataEncryptedValue
             })
           }
         ]
