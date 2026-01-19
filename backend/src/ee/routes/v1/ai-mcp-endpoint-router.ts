@@ -581,7 +581,8 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         grant_types: z.array(z.string()),
         response_types: z.array(z.string()),
         client_name: z.string(),
-        client_uri: z.string().optional()
+        client_uri: z.string().optional(),
+        scope: z.string().optional()
       }),
       response: {
         200: z.object({
@@ -738,7 +739,8 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         code: z.string(),
         redirect_uri: z.string().url(),
         code_verifier: z.string(),
-        client_id: z.string()
+        client_id: z.string(),
+        resource: z.string().optional()
       }),
       response: {
         200: z.object({
