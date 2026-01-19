@@ -1166,7 +1166,7 @@ export const RAW_SECRETS = {
     includeImports: "Weather to include imported secrets or not.",
     tagSlugs: "The comma separated tag slugs to filter secrets.",
     metadataFilter:
-      "The secret metadata key-value pairs to filter secrets by. When querying for multiple metadata pairs, the query is treated as an AND operation. Secret metadata format is key=value1,value=value2|key=value3,value=value4."
+      "Unencrypted secret metadata key–value pairs used to filter secrets. Only metadata with unencrypted values is supported. When querying for multiple metadata pairs, the query is treated as an AND operation. Secret metadata format is key=value1,value=value2|key=value3,value=value4."
   },
   CREATE: {
     secretName: "The name of the secret to create.",
