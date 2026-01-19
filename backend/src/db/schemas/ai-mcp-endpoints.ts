@@ -12,12 +12,12 @@ export const AiMcpEndpointsSchema = z.object({
   name: z.string(),
   description: z.string().nullable().optional(),
   status: z.string().nullable().optional(),
-  piiRequestFiltering: z.boolean().default(false),
-  piiResponseFiltering: z.boolean().default(false),
-  piiEntityTypes: z.array(z.string()).nullable().optional(),
   projectId: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  piiRequestFiltering: z.boolean().default(false),
+  piiResponseFiltering: z.boolean().default(false),
+  piiEntityTypes: z.string().array().nullable().optional()
 });
 
 export type TAiMcpEndpoints = z.infer<typeof AiMcpEndpointsSchema>;

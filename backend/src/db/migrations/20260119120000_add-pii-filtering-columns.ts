@@ -12,7 +12,7 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable(TableName.AiMcpEndpoint, (t) => {
     t.boolean("piiRequestFiltering").defaultTo(false).notNullable();
     t.boolean("piiResponseFiltering").defaultTo(false).notNullable();
-    t.specificType("piiEntityTypes", "text[]").defaultTo("{}");
+    t.specificType("piiEntityTypes", "text[]");
   });
 
   // Migrate existing data: if piiFiltering was true, enable both request and response filtering
