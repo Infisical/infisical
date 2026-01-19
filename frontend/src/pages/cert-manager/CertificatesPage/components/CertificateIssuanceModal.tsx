@@ -603,7 +603,6 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                               name="basicConstraints.pathLength"
                               render={({ field, fieldState: { error } }) => {
                                 const isPathLengthRequired =
-                                  constraints.templateRequiresCA &&
                                   typeof constraints.maxPathLength === "number" &&
                                   constraints.maxPathLength !== -1;
                                 return (
