@@ -1,6 +1,6 @@
 import { TImmutableDBKeys, TSecretApprovalPolicies, TSecretApprovalRequestsSecrets } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
-import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-metadata-schema";
+import { ResourceMetadataWithEncryptionDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretOperations } from "@app/services/secret/secret-types";
 
 export enum RequestState {
@@ -36,7 +36,7 @@ export type TApprovalCreateSecretV2Bridge = {
   secretReminderRecipients?: string[] | null;
   skipMultilineEncoding?: boolean;
   metadata?: Record<string, string>;
-  secretMetadata?: ResourceMetadataDTO;
+  secretMetadata?: ResourceMetadataWithEncryptionDTO;
   tagIds?: string[];
 };
 

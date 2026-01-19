@@ -355,7 +355,12 @@ export const secretV2BridgeServiceFactory = ({
             tagIds: inputSecret.tagIds,
             references: nestedReferences,
             metadata: secretMetadata ? JSON.stringify(secretMetadata) : [],
-            secretMetadata
+            secretMetadata: secretMetadata?.map(({ key, value, isEncrypted }) => ({
+              key,
+              ...(isEncrypted
+                ? { encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob }
+                : { value })
+            }))
           }
         ],
         resourceMetadataDAL,
@@ -416,7 +421,8 @@ export const secretV2BridgeServiceFactory = ({
       {
         ...secret,
         value: inputSecret.secretValue,
-        comment: inputSecret.secretComment || ""
+        comment: inputSecret.secretComment || "",
+        secretMetadata: undefined
       },
       false
     );
@@ -605,7 +611,12 @@ export const secretV2BridgeServiceFactory = ({
               key: inputSecret.newSecretName || secretName,
               tags: inputSecret.tagIds,
               metadata: secretMetadata ? JSON.stringify(secretMetadata) : [],
-              secretMetadata,
+              secretMetadata: secretMetadata?.map(({ key, value, isEncrypted }) => ({
+                key,
+                ...(isEncrypted
+                  ? { encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob }
+                  : { value })
+              })),
               ...encryptedValue
             }
           }
@@ -679,7 +690,8 @@ export const secretV2BridgeServiceFactory = ({
       {
         ...updatedSecret[0],
         value: inputSecret.secretValue || "",
-        comment: inputSecret.secretComment || ""
+        comment: inputSecret.secretComment || "",
+        secretMetadata: undefined
       },
       secretValueHidden
     );
@@ -961,6 +973,13 @@ export const secretV2BridgeServiceFactory = ({
           groupedFolderMappings[secret.folderId][0].path,
           {
             ...secret,
+            secretMetadata: secret.secretMetadata?.map((el) => ({
+              isEncrypted: Boolean(el.encryptedValue),
+              key: el.key,
+              value: el.encryptedValue
+                ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+                : el.value || ""
+            })),
             value: secret.encryptedValue
               ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
               : "",
@@ -1204,6 +1223,13 @@ export const secretV2BridgeServiceFactory = ({
           groupedPaths[secret.folderId][0].path,
           {
             ...secret,
+            secretMetadata: secret.secretMetadata?.map((el) => ({
+              isEncrypted: Boolean(el.encryptedValue),
+              key: el.key,
+              value: el.encryptedValue
+                ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+                : el.value || ""
+            })),
             value: secret.encryptedValue
               ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
               : "",
@@ -1400,6 +1426,13 @@ export const secretV2BridgeServiceFactory = ({
       folderWithPath.path,
       {
         ...secret,
+        secretMetadata: secret.secretMetadata?.map((el) => ({
+          isEncrypted: Boolean(el.encryptedValue),
+          key: el.key,
+          value: el.encryptedValue
+            ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+            : el.value || ""
+        })),
         value: secretValue,
         comment: secretComment
       },
@@ -1622,6 +1655,16 @@ export const secretV2BridgeServiceFactory = ({
       path,
       {
         ...secret,
+        secretMetadata:
+          "secretMetadata" in secret
+            ? secret.secretMetadata?.map((el) => ({
+                isEncrypted: Boolean(el.encryptedValue),
+                key: el.key,
+                value: el.encryptedValue
+                  ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+                  : el.value || ""
+              }))
+            : undefined,
         value: secretValue,
         comment: secret.encryptedComment
           ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
@@ -1730,6 +1773,7 @@ export const secretV2BridgeServiceFactory = ({
       await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
     const executeBulkInsert = async (tx: Knex) => {
+      console.log(JSON.stringify(inputSecrets, null, 2));
       const modifiedSecretsInDB = await fnSecretBulkInsert({
         inputSecrets: inputSecrets.map((el) => {
           const references = secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences;
@@ -1747,7 +1791,12 @@ export const secretV2BridgeServiceFactory = ({
             key: el.secretKey,
             tagIds: el.tagIds,
             references,
-            secretMetadata: el.secretMetadata,
+            secretMetadata: el.secretMetadata?.map((meta) => ({
+              key: meta.key,
+              [meta.isEncrypted ? "encryptedValue" : "value"]: meta.isEncrypted
+                ? secretManagerEncryptor({ plainText: Buffer.from(meta.value) }).cipherTextBlob
+                : meta.value
+            })),
             type: SecretType.Shared
           };
         }),
@@ -1810,6 +1859,7 @@ export const secretV2BridgeServiceFactory = ({
         secretPath,
         {
           ...el,
+          secretMetadata: undefined,
           value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",
           comment: el.encryptedComment ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString() : ""
         },
@@ -2089,7 +2139,12 @@ export const secretV2BridgeServiceFactory = ({
                 skipMultilineEncoding: el.skipMultilineEncoding,
                 key: shouldUpdateName ? el.newSecretName : el.secretKey,
                 tags: el.tagIds,
-                secretMetadata: el.secretMetadata,
+                secretMetadata: el?.secretMetadata?.map((meta) => ({
+                  key: meta.key,
+                  [meta.isEncrypted ? "encryptedValue" : "value"]: meta.isEncrypted
+                    ? secretManagerEncryptor({ plainText: Buffer.from(meta.value) }).cipherTextBlob
+                    : meta.value
+                })),
                 ...encryptedValue
               }
             };
@@ -2124,7 +2179,12 @@ export const secretV2BridgeServiceFactory = ({
                 key: el.secretKey,
                 tagIds: el.tagIds,
                 references,
-                secretMetadata: el.secretMetadata,
+                secretMetadata: el?.secretMetadata?.map((meta) => ({
+                  key: meta.key,
+                  [meta.isEncrypted ? "encryptedValue" : "value"]: meta.isEncrypted
+                    ? secretManagerEncryptor({ plainText: Buffer.from(meta.value) }).cipherTextBlob
+                    : meta.value
+                })),
                 type: SecretType.Shared
               };
             }),
@@ -2739,7 +2799,11 @@ export const secretV2BridgeServiceFactory = ({
                 skipMultilineEncoding: doc.skipMultilineEncoding,
                 reminderNote: doc.reminderNote,
                 reminderRepeatDays: doc.reminderRepeatDays,
-                secretMetadata: doc.secretMetadata,
+                secretMetadata: doc.secretMetadata?.map(({ key, value, encryptedValue }) => ({
+                  key,
+                  value: value || undefined,
+                  encryptedValue: encryptedValue || undefined
+                })) as { key: string; value?: string; encryptedValue?: Buffer }[] | undefined,
                 references: doc.value ? getAllSecretReferences(doc.value).nestedReferences : []
               };
             })
@@ -2771,7 +2835,11 @@ export const secretV2BridgeServiceFactory = ({
                   key: doc.key,
                   encryptedComment: doc.encryptedComment,
                   skipMultilineEncoding: doc.skipMultilineEncoding,
-                  secretMetadata: doc.secretMetadata,
+                  secretMetadata: doc.secretMetadata?.map(({ key, value, encryptedValue }) => ({
+                    key,
+                    value,
+                    encryptedValue
+                  })) as { key: string; value?: string; encryptedValue?: Buffer }[] | undefined,
                   ...(doc.encryptedValue
                     ? {
                         encryptedValue: doc.encryptedValue,
@@ -3091,6 +3159,13 @@ export const secretV2BridgeServiceFactory = ({
           paths[secret.folderId],
           {
             ...secret,
+            secretMetadata: secret.secretMetadata?.map((el) => ({
+              isEncrypted: Boolean(el.encryptedValue),
+              key: el.key,
+              value: el.encryptedValue
+                ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+                : el.value || ""
+            })),
             value: secret.encryptedValue
               ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
               : "",

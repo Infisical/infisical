@@ -10,7 +10,7 @@ import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
 import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
-import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
+import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "./secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "./secret-version-tag-dal";
@@ -81,7 +81,7 @@ export type TCreateSecretDTO = TProjectPermission & {
   skipMultilineEncoding?: boolean;
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
-  secretMetadata?: ResourceMetadataDTO;
+  secretMetadata?: ResourceMetadataWithEncryptionDTO;
 };
 
 export type TUpdateSecretDTO = TProjectPermission & {
@@ -100,7 +100,7 @@ export type TUpdateSecretDTO = TProjectPermission & {
   metadata?: {
     source?: string;
   };
-  secretMetadata?: ResourceMetadataDTO;
+  secretMetadata?: ResourceMetadataWithEncryptionDTO;
 };
 
 export type TDeleteSecretDTO = TProjectPermission & {
@@ -120,7 +120,7 @@ export type TCreateManySecretDTO = Omit<TProjectPermission, "projectId"> & {
     secretComment?: string;
     skipMultilineEncoding?: boolean;
     tagIds?: string[];
-    secretMetadata?: ResourceMetadataDTO;
+    secretMetadata?: ResourceMetadataWithEncryptionDTO;
     metadata?: {
       source?: string;
     };
@@ -141,7 +141,7 @@ export type TUpdateManySecretDTO = Omit<TProjectPermission, "projectId"> & {
     tagIds?: string[];
     secretReminderRepeatDays?: number | null;
     secretReminderNote?: string | null;
-    secretMetadata?: ResourceMetadataDTO;
+    secretMetadata?: ResourceMetadataWithEncryptionDTO;
     secretPath?: string;
   }[];
 };
@@ -174,7 +174,7 @@ export type TFnSecretBulkInsert = {
     Omit<TSecretsV2Insert, "folderId"> & {
       tagIds?: string[];
       references: TSecretReference[];
-      secretMetadata?: ResourceMetadataDTO;
+      secretMetadata?: { key: string; value?: string | null; encryptedValue?: Buffer | null }[];
     }
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
@@ -204,7 +204,10 @@ export type TFnSecretBulkUpdate = {
   orgId: string;
   inputSecrets: {
     filter: Partial<TSecretsV2>;
-    data: TRequireReferenceIfValue & { tags?: string[]; secretMetadata?: ResourceMetadataDTO };
+    data: TRequireReferenceIfValue & {
+      tags?: string[];
+      secretMetadata?: { key: string; value?: string | null; encryptedValue?: Buffer | null }[];
+    };
   }[];
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   secretDAL: Pick<TSecretV2BridgeDALFactory, "bulkUpdate" | "upsertSecretReferences" | "find">;

@@ -317,7 +317,15 @@ export const secretApprovalRequestServiceFactory = ({
         secretKey: el.key,
         id: el.id,
         version: el.version,
-        secretMetadata: el.secretMetadata as ResourceMetadataDTO,
+        secretMetadata: (
+          el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[]
+        ).map((meta) => ({
+          key: meta.key,
+          isEncrypted: Boolean(meta.encryptedValue),
+          value: meta.encryptedValue
+            ? secretManagerDecryptor({ cipherTextBlob: Buffer.from(meta.encryptedValue, "hex") }).toString()
+            : meta.value || ""
+        })),
         isRotatedSecret: el.secret?.isRotatedSecret ?? false,
         secretValueHidden: !getHasSecretReadAccess(secretApprovalRequest.environment, el.tags, secretPath?.[0]?.path),
         secretValue: !getHasSecretReadAccess(secretApprovalRequest.environment, el.tags, secretPath?.[0]?.path)
@@ -374,7 +382,13 @@ export const secretApprovalRequestServiceFactory = ({
                 ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedComment }).toString()
                 : "",
               tags: el.secretVersion.tags,
-              secretMetadata: el.oldSecretMetadata as ResourceMetadataDTO,
+              secretMetadata: el.oldSecretMetadata.map((meta) => ({
+                key: meta.key,
+                isEncrypted: Boolean(meta.encryptedValue),
+                value: meta.encryptedValue
+                  ? secretManagerDecryptor({ cipherTextBlob: Buffer.from(meta.encryptedValue) }).toString()
+                  : meta.value || ""
+              })),
               skipMultilineEncoding: el.secretVersion.skipMultilineEncoding
             }
           : undefined
@@ -680,7 +694,14 @@ export const secretApprovalRequestServiceFactory = ({
                 encryptedValue: el.encryptedValue,
                 skipMultilineEncoding: el.skipMultilineEncoding,
                 key: el.key,
-                secretMetadata: el.secretMetadata as ResourceMetadataDTO,
+                secretMetadata: (
+                  el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[]
+                ).map((meta) => ({
+                  key: meta.key,
+                  [meta.encryptedValue ? "encryptedValue" : "value"]: meta.encryptedValue
+                    ? Buffer.from(meta.encryptedValue, "hex")
+                    : meta.value || ""
+                })),
                 references: el.encryptedValue
                   ? getAllSecretReferencesV2Bridge(
                       secretManagerDecryptor({
@@ -730,7 +751,14 @@ export const secretApprovalRequestServiceFactory = ({
                     skipMultilineEncoding: el.skipMultilineEncoding !== null ? el.skipMultilineEncoding : undefined,
                     key: el.key,
                     tags: el?.tags.map(({ id }) => id),
-                    secretMetadata: el.secretMetadata as ResourceMetadataDTO,
+                    secretMetadata: (
+                      el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[]
+                    ).map((meta) => ({
+                      key: meta.key,
+                      [meta.encryptedValue ? "encryptedValue" : "value"]: meta.encryptedValue
+                        ? Buffer.from(meta.encryptedValue, "hex")
+                        : meta.value || ""
+                    })),
                     ...encryptedValue
                   }
                 };
@@ -1060,7 +1088,7 @@ export const secretApprovalRequestServiceFactory = ({
               // @ts-expect-error not present on v1 secrets
               secretKey: secret.key as string,
               // @ts-expect-error not present on v1 secrets
-              secretMetadata: secret.secretMetadata as ResourceMetadataDTO,
+              secretMetadata: (secret.secretMetadata as ResourceMetadataDTO).filter((el) => !el.isEncrypted),
               // @ts-expect-error not present on v1 secrets
               secretTags: (secret.tags as { name: string }[])?.map((tag) => tag.name)
             }))
@@ -1078,7 +1106,7 @@ export const secretApprovalRequestServiceFactory = ({
             // @ts-expect-error not present on v1 secrets
             secretKey: secret.key as string,
             // @ts-expect-error not present on v1 secrets
-            secretMetadata: secret.secretMetadata as ResourceMetadataDTO,
+            secretMetadata: (secret.secretMetadata as ResourceMetadataDTO).filter((el) => !el.isEncrypted),
             // @ts-expect-error not present on v1 secrets
             secretTags: (secret.tags as { name: string }[])?.map((tag) => tag.name)
           }
@@ -1099,7 +1127,7 @@ export const secretApprovalRequestServiceFactory = ({
               // @ts-expect-error not present on v1 secrets
               secretKey: secret.key as string,
               // @ts-expect-error not present on v1 secrets
-              secretMetadata: secret.secretMetadata as ResourceMetadataDTO,
+              secretMetadata: (secret.secretMetadata as ResourceMetadataDTO).filter((el) => !el.isEncrypted),
               // @ts-expect-error not present on v1 secrets
               secretTags: (secret.tags as { name: string }[])?.map((tag) => tag.name)
             }))
@@ -1117,7 +1145,7 @@ export const secretApprovalRequestServiceFactory = ({
             // @ts-expect-error not present on v1 secrets
             secretKey: secret.key as string,
             // @ts-expect-error not present on v1 secrets
-            secretMetadata: secret.secretMetadata as ResourceMetadataDTO,
+            secretMetadata: (secret.secretMetadata as ResourceMetadataDTO).filter((el) => !el.isEncrypted),
             // @ts-expect-error not present on v1 secrets
             secretTags: (secret.tags as { name: string }[])?.map((tag) => tag.name)
           }
@@ -1539,7 +1567,14 @@ export const secretApprovalRequestServiceFactory = ({
           ),
           skipMultilineEncoding: createdSecret.skipMultilineEncoding,
           key: createdSecret.secretKey,
-          secretMetadata: createdSecret.secretMetadata,
+          secretMetadata: JSON.stringify(
+            (createdSecret.secretMetadata || [])?.map((meta) => ({
+              key: meta.key,
+              [meta.isEncrypted ? "encryptedValue" : "value"]: meta.isEncrypted
+                ? secretManagerEncryptor({ plainText: Buffer.from(meta.value) }).cipherTextBlob.toString("hex")
+                : meta.value
+            }))
+          ),
           type: SecretType.Shared
         }))
       );
@@ -1611,7 +1646,14 @@ export const secretApprovalRequestServiceFactory = ({
 
             return {
               ...latestSecretVersions[secretId],
-              secretMetadata,
+              secretMetadata: JSON.stringify(
+                (secretMetadata || [])?.map((meta) => ({
+                  key: meta.key,
+                  [meta.isEncrypted ? "encryptedValue" : "value"]: meta.isEncrypted
+                    ? secretManagerEncryptor({ plainText: Buffer.from(meta.value) }).cipherTextBlob.toString("hex")
+                    : meta.value
+                }))
+              ),
               key: newSecretName || secretKey,
               encryptedComment: setKnexStringValue(
                 secretComment,
@@ -1761,7 +1803,7 @@ export const secretApprovalRequestServiceFactory = ({
             reminderNote,
             encryptedComment,
             key,
-            secretMetadata: JSON.stringify(secretMetadata)
+            secretMetadata
           })
         ),
         tx

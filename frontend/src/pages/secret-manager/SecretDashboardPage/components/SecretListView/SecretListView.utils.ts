@@ -52,7 +52,8 @@ export const formSchema = z.object({
   secretMetadata: z
     .object({
       key: z.string().trim().min(1),
-      value: z.string().trim().default("")
+      value: z.string().trim().default(""),
+      isEncrypted: z.boolean().optional()
     })
     .array()
     .optional(),

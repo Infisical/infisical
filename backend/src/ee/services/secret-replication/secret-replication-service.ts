@@ -15,7 +15,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
-import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-metadata-schema";
+import { ResourceMetadataWithEncryptionDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import { fnSecretBulkInsert, fnSecretBulkUpdate } from "@app/services/secret/secret-fns";
 import { TSecretQueueFactory, uniqueSecretQueueKey } from "@app/services/secret/secret-queue";
@@ -167,9 +167,18 @@ export const secretReplicationServiceFactory = ({
   };
 
   const $getReplicatedSecretsV2 = (
-    localSecrets: (TSecretsV2 & { secretKey: string; secretValue?: string; secretMetadata?: ResourceMetadataDTO })[],
+    localSecrets: (TSecretsV2 & {
+      secretKey: string;
+      secretValue?: string;
+      secretMetadata?: ResourceMetadataWithEncryptionDTO;
+      rawSecretMetadata?: { key: string; value?: string | null; encryptedValue?: Buffer | null }[];
+    })[],
     importedSecrets: {
-      secrets: (TSecretsV2 & { secretKey: string; secretValue?: string; secretMetadata?: ResourceMetadataDTO })[];
+      secrets: (TSecretsV2 & {
+        secretKey: string;
+        secretValue?: string;
+        secretMetadata?: ResourceMetadataWithEncryptionDTO;
+      })[];
     }[]
   ) => {
     const deDupe = new Set<string>();
@@ -283,6 +292,14 @@ export const secretReplicationServiceFactory = ({
       // secrets that gets replicated across imports
       const sourceDecryptedLocalSecrets = sourceLocalSecrets.map((el) => ({
         ...el,
+        rawSecretMetadata: el.secretMetadata,
+        secretMetadata: el.secretMetadata?.map((metadata) => ({
+          isEncrypted: Boolean(metadata.encryptedValue),
+          key: metadata.key,
+          value: metadata.encryptedValue
+            ? secretManagerDecryptor({ cipherTextBlob: metadata.encryptedValue }).toString()
+            : metadata.value || ""
+        })),
         secretKey: el.key,
         secretValue: el.encryptedValue
           ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
@@ -342,6 +359,14 @@ export const secretReplicationServiceFactory = ({
             });
             const destinationLocalSecrets = destinationLocalSecretsFromDB.map((el) => ({
               ...el,
+              rawSecretMetadata: el.secretMetadata,
+              secretMetadata: el.secretMetadata?.map((metadata) => ({
+                isEncrypted: Boolean(metadata.encryptedValue),
+                key: metadata.key,
+                value: metadata.encryptedValue
+                  ? secretManagerDecryptor({ cipherTextBlob: metadata.encryptedValue }).toString()
+                  : metadata.value || ""
+              })),
               secretKey: el.key,
               secretValue: el.encryptedValue
                 ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
@@ -359,14 +384,16 @@ export const secretReplicationServiceFactory = ({
                 const sourceSecretMetadataJson = JSON.stringify(
                   (secretMetadata ?? []).map((entry) => ({
                     key: entry.key,
-                    value: entry.value
+                    value: entry.value,
+                    encryptedValue: entry.isEncrypted
                   }))
                 );
 
                 const destinationSecretMetadataJson = JSON.stringify(
                   (destinationLocalSecretsGroupedByKey[key]?.[0]?.secretMetadata ?? []).map((entry) => ({
                     key: entry.key,
-                    value: entry.value
+                    value: entry.value,
+                    encryptedValue: entry.isEncrypted
                   }))
                 );
 
@@ -425,7 +452,13 @@ export const secretReplicationServiceFactory = ({
                       op: operation,
                       requestId: approvalRequestDoc.id,
                       metadata: doc.metadata ? JSON.stringify(doc.metadata) : [],
-                      secretMetadata: JSON.stringify(doc.secretMetadata),
+                      secretMetadata: JSON.stringify(
+                        (doc.rawSecretMetadata || [])?.map((meta) => ({
+                          key: meta.key,
+                          value: meta.value || undefined,
+                          encryptedValue: meta.encryptedValue?.toString("hex") || undefined
+                        }))
+                      ),
                       key: doc.key,
                       encryptedValue: doc.encryptedValue,
                       encryptedComment: doc.encryptedComment,
@@ -461,7 +494,7 @@ export const secretReplicationServiceFactory = ({
                         encryptedValue: doc.encryptedValue,
                         encryptedComment: doc.encryptedComment,
                         skipMultilineEncoding: doc.skipMultilineEncoding,
-                        secretMetadata: doc.secretMetadata,
+                        secretMetadata: doc.rawSecretMetadata,
                         references: doc.secretValue ? getAllSecretReferences(doc.secretValue).nestedReferences : []
                       };
                     })
@@ -491,7 +524,7 @@ export const secretReplicationServiceFactory = ({
                           encryptedValue: doc.encryptedValue as Buffer,
                           encryptedComment: doc.encryptedComment,
                           skipMultilineEncoding: doc.skipMultilineEncoding,
-                          secretMetadata: doc.secretMetadata,
+                          secretMetadata: doc.rawSecretMetadata,
                           references: doc.secretValue ? getAllSecretReferences(doc.secretValue).nestedReferences : []
                         }
                       };

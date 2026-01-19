@@ -27,7 +27,7 @@ export interface PendingSecretCreate extends BasePendingChange {
   secretComment?: string;
   skipMultilineEncoding?: boolean;
   tags?: { id: string; slug: string }[];
-  secretMetadata?: { key: string; value: string }[];
+  secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
   originalKey?: string;
 }
 
@@ -45,7 +45,7 @@ export interface PendingSecretUpdate extends BasePendingChange {
   originalTags?: { id: string; slug: string }[];
   tags?: { id: string; slug: string }[];
   originalSecretMetadata?: { key: string; value: string }[];
-  secretMetadata?: { key: string; value: string }[];
+  secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
   existingSecret: SecretV3RawSanitized;
 }
 

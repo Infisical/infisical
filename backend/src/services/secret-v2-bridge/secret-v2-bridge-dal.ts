@@ -165,6 +165,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .select(
           db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
           db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
+          db.ref("encryptedValue").withSchema(TableName.ResourceMetadata).as("metadataEncryptedValue"),
           db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
         )
         .select(selectAllTableCols(TableName.SecretV2))
@@ -202,10 +203,11 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           {
             key: "metadataId",
             label: "secretMetadata" as const,
-            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+            mapper: ({ metadataKey, metadataValue, metadataEncryptedValue, metadataId }) => ({
               id: metadataId,
               key: metadataKey,
-              value: metadataValue
+              value: metadataValue,
+              encryptedValue: metadataEncryptedValue
             })
           }
         ]
@@ -350,7 +352,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .select(
           db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
           db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
-          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
+          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue"),
+          db.ref("encryptedValue").withSchema(TableName.ResourceMetadata).as("metadataEncryptedValue")
         )
         .orderBy("id", "asc");
 
@@ -372,10 +375,11 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           {
             key: "metadataId",
             label: "secretMetadata" as const,
-            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+            mapper: ({ metadataKey, metadataValue, metadataEncryptedValue, metadataId }) => ({
               id: metadataId,
               key: metadataKey,
-              value: metadataValue
+              value: metadataValue,
+              encryptedValue: metadataEncryptedValue
             })
           }
         ]
@@ -563,7 +567,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
                   .from(TableName.ResourceMetadata)
                   .whereRaw(`"${TableName.ResourceMetadata}"."secretId" = "${TableName.SecretV2}"."id"`)
                   .where(`${TableName.ResourceMetadata}.key`, meta.key)
-                  .where(`${TableName.ResourceMetadata}.value`, meta.value);
+                  .where(`${TableName.ResourceMetadata}.value`, meta.value)
+                  .whereNotNull(`${TableName.ResourceMetadata}.value`);
               });
             });
           }
@@ -590,7 +595,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .select(
           db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
           db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
-          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
+          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue"),
+          db.ref("encryptedValue").withSchema(TableName.ResourceMetadata).as("metadataEncryptedValue")
         )
         .select(db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping))
         .where((bd) => {
@@ -663,10 +669,11 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           {
             key: "metadataId",
             label: "secretMetadata" as const,
-            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+            mapper: ({ metadataKey, metadataValue, metadataId, metadataEncryptedValue }) => ({
               id: metadataId,
               key: metadataKey,
-              value: metadataValue
+              value: metadataValue,
+              encryptedValue: metadataEncryptedValue
             })
           }
         ]
@@ -723,7 +730,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .select(
           db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
           db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
-          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
+          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue"),
+          db.ref("encryptedValue").withSchema(TableName.ResourceMetadata).as("metadataEncryptedValue")
         )
         .select(selectAllTableCols(TableName.SecretV2))
         .select(db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping));
@@ -749,10 +757,11 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           {
             key: "metadataId",
             label: "secretMetadata" as const,
-            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+            mapper: ({ metadataKey, metadataValue, metadataId, metadataEncryptedValue }) => ({
               id: metadataId,
               key: metadataKey,
-              value: metadataValue
+              value: metadataValue,
+              encryptedvalue: metadataEncryptedValue
             })
           }
         ]
@@ -859,7 +868,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .select(
           db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
           db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
-          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
+          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue"),
+          db.ref("encryptedValue").withSchema(TableName.ResourceMetadata).as("metadataEncryptedValue")
         )
         .select(db.ref("projectId").withSchema(TableName.Environment).as("projectId"));
 
@@ -881,10 +891,11 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           {
             key: "metadataId",
             label: "secretMetadata" as const,
-            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+            mapper: ({ metadataKey, metadataValue, metadataEncryptedValue, metadataId }) => ({
               id: metadataId,
               key: metadataKey,
-              value: metadataValue
+              value: metadataValue,
+              encryptedValue: metadataEncryptedValue
             })
           }
         ]

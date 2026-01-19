@@ -354,7 +354,7 @@ export const SecretDetailSidebar = ({
       >
         <DrawerContent
           title={`Secret – ${secret?.key}`}
-          className="h-full thin-scrollbar"
+          className="h-full thin-scrollbar w-md"
           cardBodyClassName="pb-0"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
@@ -654,6 +654,30 @@ export const SecretDetailSidebar = ({
                                 className="mb-0"
                               >
                                 <Input {...field} className="max-h-8" />
+                              </FormControl>
+                            )}
+                          />
+                        </div>
+                        <div>
+                          {i === 0 && (
+                            <FormLabel label="Encrypt" className="text-xs text-mineshaft-400" />
+                          )}
+                          <Controller
+                            control={control}
+                            name={`secretMetadata.${i}.isEncrypted`}
+                            render={({ field, fieldState: { error } }) => (
+                              <FormControl
+                                isError={Boolean(error?.message)}
+                                errorText={error?.message}
+                                className="mb-0"
+                              >
+                                <Switch
+                                  id="metadata-is-encrypted-checkbox"
+                                  isChecked={field.value}
+                                  defaultChecked={field.value}
+                                  onCheckedChange={field.onChange}
+                                  className="mt-1.5 mb-2 ml-1"
+                                />
                               </FormControl>
                             )}
                           />

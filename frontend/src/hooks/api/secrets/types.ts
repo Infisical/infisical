@@ -39,7 +39,7 @@ export type SecretV3RawSanitized = {
   overrideAction?: string;
   folderId?: string;
   skipMultilineEncoding?: boolean;
-  secretMetadata?: { key: string; value: string }[];
+  secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
   isReminderEvent?: boolean;
   isRotatedSecret?: boolean;
   secretReminderRecipients?: SecretReminderRecipient[];

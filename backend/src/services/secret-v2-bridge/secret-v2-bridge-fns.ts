@@ -10,7 +10,7 @@ import { logger } from "@app/lib/logger";
 import { ActorType } from "../auth/auth-type";
 import { CommitType } from "../folder-commit/folder-commit-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
-import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
+import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretReminderRecipient } from "../secret-reminder-recipients/secret-reminder-recipients-types";
@@ -174,9 +174,10 @@ export const fnSecretBulkInsert = async ({
   await resourceMetadataDAL.insertMany(
     inputSecrets.flatMap(({ key: secretKey, secretMetadata }) => {
       if (secretMetadata) {
-        return secretMetadata.map(({ key, value }) => ({
+        return secretMetadata.map(({ key, value, encryptedValue }) => ({
           key,
           value,
+          encryptedValue,
           secretId: newSecretGroupedByKeyName[secretKey][0].id,
           orgId
         }));
@@ -328,9 +329,10 @@ export const fnSecretBulkUpdate = async ({
   await resourceMetadataDAL.insertMany(
     inputSecrets.flatMap(({ filter: { id }, data: { secretMetadata } }) => {
       if (secretMetadata) {
-        return secretMetadata.map(({ key, value }) => ({
+        return secretMetadata.map(({ key, value, encryptedValue }) => ({
           key,
           value,
+          encryptedValue,
           secretId: id,
           orgId
         }));
@@ -802,7 +804,7 @@ export const reshapeBridgeSecret = (
       color?: string | null;
       name: string;
     }[];
-    secretMetadata?: ResourceMetadataDTO;
+    secretMetadata?: ResourceMetadataWithEncryptionDTO;
     isRotatedSecret?: boolean;
     rotationId?: string;
     secretReminderRecipients?: TSecretReminderRecipient[];

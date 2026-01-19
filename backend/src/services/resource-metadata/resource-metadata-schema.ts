@@ -1,10 +1,19 @@
 import z from "zod";
 
-export const ResourceMetadataSchema = z
+export const ResourceMetadataNonEncryptionSchema = z
   .object({
     key: z.string().trim().min(1),
     value: z.string().trim().default("")
   })
   .array();
 
-export type ResourceMetadataDTO = z.infer<typeof ResourceMetadataSchema>;
+export const ResourceMetadataWithEncryptionSchema = z
+  .object({
+    key: z.string().trim().min(1),
+    value: z.string().trim(),
+    isEncrypted: z.boolean().optional().default(false)
+  })
+  .array();
+
+export type ResourceMetadataDTO = z.infer<typeof ResourceMetadataNonEncryptionSchema>;
+export type ResourceMetadataWithEncryptionDTO = z.infer<typeof ResourceMetadataWithEncryptionSchema>;
