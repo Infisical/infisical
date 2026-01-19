@@ -1,5 +1,5 @@
 /* eslint-disable no-nested-ternary */
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   faAngleDown,
@@ -38,6 +38,7 @@ import { usePopUp } from "@app/hooks";
 import {
   useGetSecretApprovalRequestDetails,
   useGetSecretImports,
+  usePerformSecretApprovalRequestMerge,
   useUpdateSecretApprovalReviewStatus
 } from "@app/hooks/api";
 import { ApprovalStatus, CommitType } from "@app/hooks/api/types";
@@ -134,12 +135,18 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
     variables
   } = useUpdateSecretApprovalReviewStatus();
 
+  const { mutateAsync: performSecretApprovalMerge, isPending: isMerging } =
+    usePerformSecretApprovalRequestMerge();
+
+  const [willMerge, setWillMerge] = useState(false);
+
   const { popUp, handlePopUpToggle } = usePopUp(["reviewChanges"] as const);
   const {
     control,
     handleSubmit,
     reset,
-    formState: { isSubmitting }
+    formState: { isSubmitting },
+    watch
   } = useForm<TReviewFormSchema>({
     resolver: zodResolver(reviewFormSchema)
   });
@@ -195,8 +202,8 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
     });
   };
 
-  const handleSubmitReview = (data: TReviewFormSchema) => {
-    handleSecretApprovalStatusUpdate(data.status, data.comment);
+  const handleSubmitReview = async (data: TReviewFormSchema) => {
+    await handleSecretApprovalStatusUpdate(data.status, data.comment);
   };
 
   if (isSecretApprovalRequestLoading) {
@@ -220,6 +227,14 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
       ({ userId }) => reviewedUsers?.[userId]?.status === ApprovalStatus.APPROVED
     ).length;
   const hasMerged = secretApprovalRequestDetails?.hasMerged;
+  const isMergableUponApprove =
+    secretApprovalRequestDetails?.policy?.approvals <=
+      secretApprovalRequestDetails?.policy?.approvers?.filter(
+        ({ userId }) =>
+          userId === userSession.id || reviewedUsers?.[userId]?.status === ApprovalStatus.APPROVED
+      ).length && watch("status") !== ApprovalStatus.REJECTED;
+
+  const isPending = isApproving || isRejecting || isSubmitting || isMerging;
 
   return (
     <div className="flex flex-col space-x-6 lg:flex-row">
@@ -364,14 +379,36 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
                             </FormControl>
                           )}
                         />
-                        <Button
-                          type="submit"
-                          isLoading={isApproving || isRejecting || isSubmitting}
-                          variant="outline_bg"
-                          className="mt-auto h-min"
-                        >
-                          Submit Review
-                        </Button>
+                        <div className="flex">
+                          <Button
+                            type="submit"
+                            isLoading={isPending && !willMerge}
+                            isDisabled={isPending}
+                            variant="outline_bg"
+                            className="mt-auto h-min"
+                          >
+                            Submit Review
+                          </Button>
+                          {isMergableUponApprove && (
+                            <Button
+                              onClick={async () => {
+                                setWillMerge(true);
+                                await handleSubmit(handleSubmitReview)();
+                                await performSecretApprovalMerge({
+                                  projectId,
+                                  id: secretApprovalRequestDetails.id
+                                });
+                                setWillMerge(false);
+                              }}
+                              variant="solid"
+                              className="mt-auto ml-2 h-min"
+                              isLoading={isPending && willMerge}
+                              isDisabled={isPending}
+                            >
+                              Approve and Merge
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </form>
