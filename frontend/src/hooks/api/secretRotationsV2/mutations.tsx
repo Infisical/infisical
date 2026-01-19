@@ -2,9 +2,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
+import { SecretRotation } from "@app/hooks/api/secretRotationsV2/enums";
 import {
   TCreateSecretRotationV2DTO,
   TDeleteSecretRotationV2DTO,
+  TReconcileUnixLinuxLocalAccountRotationDTO,
+  TReconcileUnixLinuxLocalAccountRotationResponse,
   TRotateSecretRotationV2DTO,
   TSecretRotationV2Response,
   TUpdateSecretRotationV2DTO
@@ -84,6 +87,27 @@ export const useDeleteSecretRotationV2 = () => {
       return data.secretRotation;
     },
     onSuccess: (_, { projectId, secretPath }) =>
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
+      })
+  });
+};
+
+export const useReconcileUnixLinuxLocalAccountRotation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ rotationId }: TReconcileUnixLinuxLocalAccountRotationDTO) => {
+      const { data } = await apiRequest.post<TReconcileUnixLinuxLocalAccountRotationResponse>(
+        `/api/v2/secret-rotations/${SecretRotation.UnixLinuxLocalAccount}/${rotationId}/reconcile`
+      );
+
+      return data;
+    },
+    onSuccess: (_, { projectId, secretPath }) =>
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
+      }),
+    onError: (_, { projectId, secretPath }) =>
       queryClient.invalidateQueries({
         queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
       })

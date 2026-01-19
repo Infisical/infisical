@@ -41,6 +41,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listSharedSecrets",
       querystring: z.object({
         offset: z.coerce.number().min(0).max(100).default(0),
         limit: z.coerce.number().min(1).max(100).default(25)
@@ -77,6 +78,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       rateLimit: publicEndpointLimit
     },
     schema: {
+      operationId: "getPublicSharedSecret",
       params: z.object({
         id: z.string()
       }),
@@ -163,6 +165,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "createPublicSharedSecret",
       body: z.object({
         secretValue: z.string().max(10_000),
         password: z.string().optional(),
@@ -191,6 +194,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       rateLimit: publicSecretShareCreationLimit
     },
     schema: {
+      operationId: "createSharedSecret",
       body: z.object({
         name: z.string().max(50).optional(),
         password: z.string().optional(),
@@ -250,6 +254,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteSharedSecret",
       params: z.object({
         sharedSecretId: z.string()
       }),

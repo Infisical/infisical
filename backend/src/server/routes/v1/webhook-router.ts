@@ -36,6 +36,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      operationId: "createWebhook",
       body: z
         .object({
           type: z.nativeEnum(WebhookType).default(WebhookType.GENERAL),
@@ -96,6 +97,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      operationId: "updateWebhook",
       params: z.object({
         webhookId: z.string().trim()
       }),
@@ -145,6 +147,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      operationId: "deleteWebhook",
       params: z.object({
         webhookId: z.string().trim()
       })
@@ -184,6 +187,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      operationId: "testWebhook",
       params: z.object({
         webhookId: z.string().trim()
       }),
@@ -214,6 +218,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      operationId: "listWebhooks",
       querystring: z.object({
         projectId: z.string().trim(),
         environment: z.string().trim().optional(),

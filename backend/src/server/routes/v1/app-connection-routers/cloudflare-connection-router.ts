@@ -29,6 +29,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listCloudflarePagesProjects",
       params: z.object({
         connectionId: z.string().uuid()
       }),
@@ -57,6 +58,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listCloudflareWorkersScripts",
       params: z.object({
         connectionId: z.string().uuid()
       }),
@@ -84,6 +86,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listCloudflareZones",
       params: z.object({
         connectionId: z.string().uuid()
       }),

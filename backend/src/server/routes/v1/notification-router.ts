@@ -16,6 +16,7 @@ export const registerNotificationRouter = async (server: FastifyZodProvider) => 
     },
     method: "GET",
     schema: {
+      operationId: "listUserNotifications",
       response: {
         200: z.object({
           notifications: UserNotificationsSchema.array()
@@ -44,6 +45,7 @@ export const registerNotificationRouter = async (server: FastifyZodProvider) => 
     },
     method: "DELETE",
     schema: {
+      operationId: "deleteUserNotification",
       params: z.object({
         notificationId: z.string()
       }),
@@ -75,6 +77,7 @@ export const registerNotificationRouter = async (server: FastifyZodProvider) => 
     },
     method: "PATCH",
     schema: {
+      operationId: "updateUserNotification",
       params: z.object({
         notificationId: z.string()
       }),
@@ -120,6 +123,9 @@ export const registerNotificationRouter = async (server: FastifyZodProvider) => 
       rateLimit: writeLimit
     },
     method: "POST",
+    schema: {
+      operationId: "markUserNotificationsAsRead"
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       if (req.auth.authMode !== AuthMode.JWT) {

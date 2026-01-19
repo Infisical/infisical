@@ -28,7 +28,7 @@ const SCOPE_BADGE: Record<NonNullable<Props["scope"]>, { icon: LucideIcon; class
 };
 
 export const PageHeader = ({ title, description, children, className, scope }: Props) => (
-  <div className={twMerge("mb-10 w-full border-b border-border pb-8", className)}>
+  <div className={twMerge("mb-10 w-full", className)}>
     <div className="flex w-full justify-between">
       <div className="mr-4 flex min-w-0 flex-1 items-center">
         <h1

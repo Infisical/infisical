@@ -132,6 +132,7 @@
                       "integrations/app-connections/humanitec",
                       "integrations/app-connections/laravel-forge",
                       "integrations/app-connections/ldap",
+                      "integrations/app-connections/ssh",
                       "integrations/app-connections/mssql",
                       "integrations/app-connections/mongodb",
                       "integrations/app-connections/mysql",
@@ -450,6 +451,7 @@
                       "documentation/platform/secret-rotation/azure-client-secret",
                       "documentation/platform/secret-rotation/databricks-service-principal-secret",
                       "documentation/platform/secret-rotation/ldap-password",
+                      "documentation/platform/secret-rotation/unix-linux-local-account",
                       "documentation/platform/secret-rotation/mongodb-credentials",
                       "documentation/platform/secret-rotation/mssql-credentials",
                       "documentation/platform/secret-rotation/mysql-credentials",
@@ -2010,6 +2012,20 @@
                       "api-reference/endpoints/secret-rotations/ldap-password/list",
                       "api-reference/endpoints/secret-rotations/ldap-password/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/ldap-password/update"
+                    ]
+                  },
+                  {
+                    "group": "Unix/Linux Local Account",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/create",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/delete",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-by-id",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-by-name",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/list",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/update",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/reconcile"
                     ]
                   },
                   {

@@ -63,6 +63,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "getPkiCollection",
       tags: [ApiDocsTags.PkiCertificateCollections],
       description: "Get PKI collection",
       params: z.object({
@@ -105,6 +106,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "updatePkiCollection",
       tags: [ApiDocsTags.PkiCertificateCollections],
       description: "Update PKI collection",
       params: z.object({
@@ -153,6 +155,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "deletePkiCollection",
       tags: [ApiDocsTags.PkiCertificateCollections],
       description: "Delete PKI collection",
       params: z.object({
@@ -195,6 +198,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "listPkiCollectionItems",
       tags: [ApiDocsTags.PkiCertificateCollections],
       description: "Get items in PKI collection",
       params: z.object({
@@ -258,6 +262,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "addItemToPkiCollection",
       tags: [ApiDocsTags.PkiCertificateCollections],
       description: "Add item to PKI collection",
       params: z.object({
@@ -311,6 +316,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "removeItemFromPkiCollection",
       tags: [ApiDocsTags.PkiCertificateCollections],
       description: "Remove item from PKI collection",
       params: z.object({

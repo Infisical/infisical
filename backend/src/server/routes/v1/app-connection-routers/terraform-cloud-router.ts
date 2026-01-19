@@ -30,6 +30,7 @@ export const registerTerraformCloudConnectionRouter = async (server: FastifyZodP
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listTerraformCloudWorkspaces",
       params: z.object({
         connectionId: z.string().uuid()
       }),

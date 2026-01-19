@@ -19,6 +19,7 @@ export const registerWorkflowIntegrationRouter = async (server: FastifyZodProvid
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listWorkflowIntegrations",
       security: [
         {
           bearerAuth: []

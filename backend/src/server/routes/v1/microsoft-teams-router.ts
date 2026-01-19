@@ -29,6 +29,7 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getMicrosoftTeamsClientId",
       response: {
         200: z.object({
           clientId: z.string()
@@ -57,6 +58,7 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
       rateLimit: readLimit
     },
     schema: {
+      operationId: "completeMicrosoftTeamsIntegration",
       body: z.object({
         redirectUri: z.string(),
         tenantId: z.string().uuid(),
@@ -102,6 +104,7 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listMicrosoftTeamsIntegrations",
       security: [
         {
           bearerAuth: []
@@ -140,6 +143,7 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
       rateLimit: readLimit
     },
     schema: {
+      operationId: "checkMicrosoftTeamsInstallationStatus",
       params: z.object({
         id: z.string()
       })
@@ -175,6 +179,7 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteMicrosoftTeamsIntegration",
       security: [
         {
           bearerAuth: []
@@ -221,6 +226,7 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getMicrosoftTeamsIntegration",
       security: [
         {
           bearerAuth: []
@@ -267,6 +273,7 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "updateMicrosoftTeamsIntegration",
       security: [
         {
           bearerAuth: []
@@ -320,6 +327,7 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listMicrosoftTeamsIntegrationTeams",
       params: z.object({
         workflowIntegrationId: z.string()
       }),
@@ -369,6 +377,7 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
     method: "POST",
     url: "/message-endpoint",
     schema: {
+      operationId: "handleMicrosoftTeamsMessageEndpoint",
       body: z.any(),
       response: {
         200: z.any()

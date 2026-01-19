@@ -22,6 +22,7 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "subscribeToProjectEvents",
       tags: [ApiDocsTags.Events],
       description: "Subscribe to project events",
       body: z.object({

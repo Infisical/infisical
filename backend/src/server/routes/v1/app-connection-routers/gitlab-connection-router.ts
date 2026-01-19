@@ -31,6 +31,7 @@ export const registerGitLabConnectionRouter = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listGitLabProjects",
       params: z.object({
         connectionId: z.string().uuid()
       }),
@@ -63,6 +64,7 @@ export const registerGitLabConnectionRouter = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listGitLabGroups",
       params: z.object({
         connectionId: z.string().uuid()
       }),

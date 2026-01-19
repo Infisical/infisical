@@ -248,6 +248,7 @@ export const registerAppConnectionRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      operationId: "listAppConnectionOptions",
       tags: [ApiDocsTags.AppConnections],
       description: "List the available App Connection Options.",
       querystring: z.object({
@@ -274,6 +275,7 @@ export const registerAppConnectionRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      operationId: "listAppConnections",
       tags: [ApiDocsTags.AppConnections],
       description: "List all the App Connections for the current organization or project.",
       querystring: z.object({

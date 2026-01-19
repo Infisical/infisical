@@ -30,6 +30,7 @@ export const registerAuth0ConnectionRouter = async (server: FastifyZodProvider) 
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listAuth0Clients",
       params: z.object({
         connectionId: z.string().uuid()
       }),

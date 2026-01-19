@@ -35,6 +35,10 @@ export const registerCertificateAuthorityEndpoints = <
   }>;
   responseSchema: z.ZodTypeAny;
 }) => {
+  const caTypeNameForOpId = caType
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("");
   server.route({
     method: "GET",
     url: `/`,
@@ -43,6 +47,7 @@ export const registerCertificateAuthorityEndpoints = <
     },
     schema: {
       hide: false,
+      operationId: `list${caTypeNameForOpId}CertificateAuthoritiesV1`,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       querystring: z.object({
         projectId: z.string().trim().min(1, "Project ID required")
@@ -85,6 +90,7 @@ export const registerCertificateAuthorityEndpoints = <
     },
     schema: {
       hide: false,
+      operationId: `get${caTypeNameForOpId}CertificateAuthorityV1`,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       params: z.object({
         id: z.string()
@@ -126,6 +132,7 @@ export const registerCertificateAuthorityEndpoints = <
     },
     schema: {
       hide: false,
+      operationId: `create${caTypeNameForOpId}CertificateAuthorityV1`,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       body: createSchema,
       response: {
@@ -163,6 +170,7 @@ export const registerCertificateAuthorityEndpoints = <
     },
     schema: {
       hide: false,
+      operationId: `update${caTypeNameForOpId}CertificateAuthorityV1`,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       params: z.object({
         id: z.string()
@@ -210,6 +218,7 @@ export const registerCertificateAuthorityEndpoints = <
     },
     schema: {
       hide: false,
+      operationId: `delete${caTypeNameForOpId}CertificateAuthorityV1`,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       params: z.object({
         id: z.string()

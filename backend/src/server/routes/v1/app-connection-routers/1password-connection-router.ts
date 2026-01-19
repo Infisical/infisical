@@ -29,6 +29,7 @@ export const registerOnePassConnectionRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listOnePasswordVaults",
       params: z.object({
         connectionId: z.string().uuid()
       }),

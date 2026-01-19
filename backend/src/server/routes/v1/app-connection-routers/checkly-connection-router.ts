@@ -29,6 +29,7 @@ export const registerChecklyConnectionRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listChecklyAccounts",
       params: z.object({
         connectionId: z.string().uuid()
       }),
@@ -61,6 +62,7 @@ export const registerChecklyConnectionRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listChecklyGroups",
       params: z.object({
         connectionId: z.string().uuid(),
         accountId: z.string()

@@ -34,6 +34,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getAdminConfig",
       response: {
         200: z.object({
           config: SuperAdminSchema.omit({
@@ -91,6 +92,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "updateAdminConfig",
       body: z.object({
         allowSignUp: z.boolean().optional(),
         allowedSignUpDomain: z.string().optional().nullable(),
@@ -159,6 +161,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listAdminUsers",
       querystring: z.object({
         searchTerm: z.string().default(""),
         offset: z.coerce.number().default(0),
@@ -204,6 +207,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listAdminOrganizations",
       querystring: z.object({
         searchTerm: z.string().default(""),
         offset: z.coerce.number().default(0),
@@ -261,6 +265,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteAdminOrganizationMembership",
       params: z.object({
         organizationId: z.string(),
         membershipId: z.string()
@@ -300,6 +305,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteAdminOrganization",
       params: z.object({
         organizationId: z.string()
       }),
@@ -330,6 +336,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listAdminIdentities",
       querystring: z.object({
         searchTerm: z.string().default(""),
         offset: z.coerce.number().default(0),
@@ -370,6 +377,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getAdminIntegrations",
       response: {
         200: z.object({
           slack: z.object({
@@ -410,6 +418,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getAdminEnvOverrides",
       response: {
         200: z.record(
           z.string(),
@@ -445,6 +454,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteAdminUser",
       params: z.object({
         userId: z.string()
       }),
@@ -481,6 +491,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteAdminUsers",
       body: z.object({
         userIds: z.string().array()
       }),
@@ -517,6 +528,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "grantAdminAccessToUser",
       params: z.object({
         userId: z.string()
       })
@@ -538,6 +550,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getAdminEncryptionStrategies",
       response: {
         200: z.object({
           strategies: z
@@ -568,6 +581,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "updateAdminEncryptionStrategy",
       body: z.object({
         strategy: z.nativeEnum(RootKeyEncryptionStrategy)
       })
@@ -589,6 +603,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "adminSignUp",
       body: z.object({
         email: z.string().email().trim(),
         password: z.string().trim(),
@@ -652,6 +667,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "revokeIdentitySuperAdminAccess",
       params: z.object({
         identityId: z.string()
       }),

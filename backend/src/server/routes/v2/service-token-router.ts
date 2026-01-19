@@ -27,6 +27,7 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
     onRequest: verifyAuth([AuthMode.SERVICE_TOKEN]),
     schema: {
       hide: false,
+      operationId: "getServiceToken",
       tags: [ApiDocsTags.ServiceTokens],
       description: "Return Infisical Token data",
       security: [
@@ -83,6 +84,7 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      operationId: "createServiceToken",
       body: z.object({
         name: z.string().trim(),
         workspaceId: z.string().trim(),
@@ -139,6 +141,7 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      operationId: "deleteServiceToken",
       params: z.object({
         serviceTokenId: z.string().trim()
       }),

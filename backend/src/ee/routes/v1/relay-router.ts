@@ -19,6 +19,7 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "registerInstanceRelay",
       body: z.object({
         host: z.string(),
         name: slugSchema({ min: 1, max: 32, field: "name" })
@@ -69,6 +70,7 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "registerOrgRelay",
       body: z.object({
         host: z.string(),
         name: slugSchema({ min: 1, max: 32, field: "name" })
@@ -103,6 +105,8 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/",
     schema: {
+      hide: false,
+      operationId: "getRelays",
       response: {
         200: RelaysSchema.array()
       }
@@ -128,6 +132,7 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteRelay",
       params: z.object({
         id: z.string()
       }),
@@ -154,6 +159,7 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "heartbeatInstanceRelay",
       body: z.object({
         name: slugSchema({ min: 1, max: 32, field: "name" })
       }),
@@ -206,6 +212,7 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "heartbeatOrgRelay",
       body: z.object({
         name: slugSchema({ min: 1, max: 32, field: "name" })
       }),

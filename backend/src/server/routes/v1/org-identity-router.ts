@@ -34,6 +34,7 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      operationId: "createOrganizationMachineIdentity",
       tags: [ApiDocsTags.Identities],
       description: "Create an identity",
       security: [
@@ -92,6 +93,7 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      operationId: "updateOrganizationMachineIdentity",
       tags: [ApiDocsTags.Identities],
       description: "Update an identity",
       security: [
@@ -156,6 +158,7 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      operationId: "deleteOrganizationMachineIdentity",
       tags: [ApiDocsTags.Identities],
       description: "Delete an identity",
       security: [
@@ -207,6 +210,7 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      operationId: "getOrganizationMachineIdentityById",
       tags: [ApiDocsTags.Identities],
       description: "Get an identity by ID",
       security: [
@@ -247,6 +251,7 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      operationId: "listOrganizationMachineIdentities",
       tags: [ApiDocsTags.Identities],
       description: "List identities",
       security: [

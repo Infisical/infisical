@@ -18,6 +18,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       })
     },
     schema: {
+      operationId: "sendPasswordResetEmail",
       body: z.object({
         email: z.string().email().trim()
       }),
@@ -45,6 +46,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       })
     },
     schema: {
+      operationId: "verifyPasswordResetEmail",
       body: z.object({
         email: z.string().email().trim(),
         code: z.string().trim()
@@ -71,6 +73,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       rateLimit: authRateLimit
     },
     schema: {
+      operationId: "getBackupPrivateKey",
       response: {
         200: z.object({
           message: z.string(),
@@ -94,6 +97,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       rateLimit: authRateLimit
     },
     schema: {
+      operationId: "resetPasswordByBackupKey",
       body: z.object({
         protectedKey: z.string().trim(),
         protectedKeyIV: z.string().trim(),
@@ -131,6 +135,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       })
     },
     schema: {
+      operationId: "sendPasswordSetupEmail",
       response: {
         200: z.object({
           message: z.string()
@@ -154,6 +159,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       rateLimit: authRateLimit
     },
     schema: {
+      operationId: "setupPassword",
       body: z.object({
         password: z.string().trim(),
         token: z.string().trim()

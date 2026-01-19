@@ -48,6 +48,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listSecretsV4",
       tags: [ApiDocsTags.Secrets],
       description: "List secrets",
       security: [
@@ -231,6 +232,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "getSecretByIdV4",
       tags: [ApiDocsTags.Secrets],
       params: z.object({
         secretId: z.string()
@@ -268,6 +270,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "getSecretByNameV4",
       tags: [ApiDocsTags.Secrets],
       description: "Get a secret by name",
       security: [
@@ -376,6 +379,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "createSecretV4",
       tags: [ApiDocsTags.Secrets],
       description: "Create secret",
       security: [
@@ -510,6 +514,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "updateSecretV4",
       tags: [ApiDocsTags.Secrets],
       description: "Update secret",
       security: [
@@ -653,6 +658,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "deleteSecretV4",
       tags: [ApiDocsTags.Secrets],
       description: "Delete secret",
       security: [
@@ -762,6 +768,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "moveSecretsV4",
       tags: [ApiDocsTags.Secrets],
       body: z.object({
         projectId: z.string().trim(),
@@ -819,6 +826,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "createManySecretsV4",
       tags: [ApiDocsTags.Secrets],
       description: "Create many secrets",
       security: [
@@ -945,6 +953,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "updateManySecretsV4",
       tags: [ApiDocsTags.Secrets],
       description: "Update many secrets",
       security: [
@@ -1119,6 +1128,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "deleteManySecretsV4",
       tags: [ApiDocsTags.Secrets],
       description: "Delete many secrets",
       security: [
@@ -1235,6 +1245,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "getSecretReferenceTreeV4",
       tags: [ApiDocsTags.Secrets],
       description: "Get secret reference tree",
       security: [
@@ -1303,6 +1314,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       rateLimit: secretsLimit
     },
     schema: {
+      operationId: "backfillSecretReferencesV4",
       description: "Backfill secret references",
       security: [
         {

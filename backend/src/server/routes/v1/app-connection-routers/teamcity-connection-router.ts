@@ -29,6 +29,7 @@ export const registerTeamCityConnectionRouter = async (server: FastifyZodProvide
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listTeamCityProjects",
       params: z.object({
         connectionId: z.string().uuid()
       }),

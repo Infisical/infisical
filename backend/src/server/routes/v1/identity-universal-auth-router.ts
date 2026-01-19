@@ -32,6 +32,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "loginWithUniversalAuth",
       tags: [ApiDocsTags.UniversalAuth],
       description: "Login with Universal Auth for machine identity",
       body: z.object({
@@ -94,6 +95,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "attachUniversalAuth",
       tags: [ApiDocsTags.UniversalAuth],
       description: "Attach Universal Auth configuration onto machine identity",
       security: [
@@ -212,6 +214,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "updateUniversalAuth",
       tags: [ApiDocsTags.UniversalAuth],
       description: "Update Universal Auth configuration on machine identity",
       security: [
@@ -335,6 +338,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "getUniversalAuth",
       tags: [ApiDocsTags.UniversalAuth],
       description: "Retrieve Universal Auth configuration on machine identity",
       security: [
@@ -384,6 +388,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "deleteUniversalAuth",
       tags: [ApiDocsTags.UniversalAuth],
       description: "Delete Universal Auth configuration on machine identity",
       security: [
@@ -433,6 +438,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "createUniversalAuthClientSecret",
       tags: [ApiDocsTags.UniversalAuth],
       description: "Create Universal Auth Client Secret for machine identity",
       security: [
@@ -491,6 +497,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "listUniversalAuthClientSecrets",
       tags: [ApiDocsTags.UniversalAuth],
       description: "List Universal Auth Client Secrets for machine identity",
       security: [
@@ -541,6 +548,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "getUniversalAuthClientSecret",
       tags: [ApiDocsTags.UniversalAuth],
       description: "Get Universal Auth Client Secret for machine identity",
       security: [
@@ -593,6 +601,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "revokeUniversalAuthClientSecret",
       tags: [ApiDocsTags.UniversalAuth],
       description: "Revoke Universal Auth Client Secrets for machine identity",
       security: [
@@ -645,6 +654,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "clearUniversalAuthLockouts",
       tags: [ApiDocsTags.UniversalAuth],
       description: "Clear Universal Auth Lockouts for machine identity",
       security: [

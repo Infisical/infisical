@@ -23,6 +23,9 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     config: {
       rateLimit: writeLimit
     },
+    schema: {
+      operationId: "importEnvKeyDataV3"
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const data = await req.file({
@@ -66,6 +69,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "importVaultDataV3",
       body: z.object({
         vaultAccessToken: z.string(),
         vaultNamespace: z.string().trim().optional(),
@@ -93,6 +97,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getCustomMigrationEnabledV3",
       params: z.object({
         provider: z.nativeEnum(ExternalMigrationProviders)
       }),
@@ -122,6 +127,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getVaultExternalMigrationConfigsV3",
       response: {
         200: z.object({
           configs: z
@@ -154,6 +160,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "createVaultExternalMigrationV3",
       body: z.object({
         connectionId: z.string(),
         namespace: z.string()
@@ -189,6 +196,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "updateVaultExternalMigrationV3",
       params: z.object({
         id: z.string()
       }),
@@ -228,6 +236,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteVaultExternalMigrationV3",
       params: z.object({
         id: z.string()
       }),
@@ -262,6 +271,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getVaultNamespacesV3",
       response: {
         200: z.object({
           namespaces: z.array(z.object({ id: z.string(), name: z.string() }))
@@ -285,6 +295,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getVaultPoliciesV3",
       querystring: z.object({
         namespace: z.string()
       }),
@@ -312,6 +323,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getVaultMountsV3",
       querystring: z.object({
         namespace: z.string()
       }),
@@ -339,6 +351,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getVaultAuthMountsV3",
       querystring: z.object({
         namespace: z.string(),
         authType: z.string().optional()
@@ -368,6 +381,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "importVaultSecretsV3",
       body: z.object({
         projectId: z.string(),
         environment: z.string(),
@@ -400,6 +414,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getVaultKubernetesRolesV3",
       querystring: z.object({
         namespace: z.string(),
         mountPath: z.string()
@@ -450,6 +465,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getVaultDatabaseRolesV3",
       querystring: z.object({
         namespace: z.string(),
         mountPath: z.string()
@@ -499,6 +515,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getVaultSecretPathsV3",
       querystring: z.object({
         namespace: z.string(),
         mountPath: z.string()
@@ -528,6 +545,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getVaultKubernetesAuthRolesV3",
       querystring: z.object({
         namespace: z.string(),
         mountPath: z.string()
@@ -583,6 +601,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getVaultLdapRolesV3",
       querystring: z.object({
         namespace: z.string(),
         mountPath: z.string()

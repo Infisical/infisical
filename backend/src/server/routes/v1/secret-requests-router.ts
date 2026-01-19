@@ -19,6 +19,7 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getSecretRequest",
       params: z.object({
         id: z.string()
       }),
@@ -120,6 +121,7 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "setSecretRequestValue",
       params: z.object({
         id: z.string()
       }),
@@ -158,6 +160,7 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "revealSecretRequestValue",
       params: z.object({
         id: z.string()
       }),
@@ -196,6 +199,7 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteSecretRequest",
       params: z.object({
         id: z.string()
       }),
@@ -243,6 +247,7 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listSecretRequests",
       querystring: z.object({
         offset: z.coerce.number().min(0).max(100).default(0),
         limit: z.coerce.number().min(1).max(100).default(25)
@@ -279,6 +284,7 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "createSecretRequest",
       body: z.object({
         name: z.string().max(50).optional(),
         expiresAt: z.string(),

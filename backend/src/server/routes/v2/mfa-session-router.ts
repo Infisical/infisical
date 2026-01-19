@@ -13,6 +13,7 @@ export const registerMfaSessionRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "verifyMfaSession",
       description: "Verify MFA session",
       params: z.object({
         mfaSessionId: z.string().trim()
@@ -48,6 +49,7 @@ export const registerMfaSessionRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getMfaSessionStatus",
       description: "Get MFA session status",
       params: z.object({
         mfaSessionId: z.string().trim()
