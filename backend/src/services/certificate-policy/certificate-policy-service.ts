@@ -624,7 +624,7 @@ export const certificatePolicyServiceFactory = ({
       if (maxPathLength !== undefined && maxPathLength !== null && maxPathLength !== -1) {
         if (request.basicConstraints?.pathLength === undefined || request.basicConstraints?.pathLength === null) {
           errors.push(
-            `Path length is required when issuing CA certificates. Policy allows maximum path length of ${maxPathLength}.`
+            `Path length is required when issuing CA certificates because the policy only allows a maximum path length of ${maxPathLength}.`
           );
         } else if (request.basicConstraints.pathLength > maxPathLength) {
           errors.push(

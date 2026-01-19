@@ -168,7 +168,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     if (policyMaxPathLength !== undefined && policyMaxPathLength !== null && policyMaxPathLength !== -1) {
       if (pathLength === undefined || pathLength === null) {
         throw new BadRequestError({
-          message: `Path length is required when issuing CA certificates. Policy allows maximum path length of ${policyMaxPathLength}.`
+          message: `Path length is required when issuing CA certificates because the policy only allows a maximum path length of ${policyMaxPathLength}.`
         });
       }
       if (pathLength > policyMaxPathLength) {
