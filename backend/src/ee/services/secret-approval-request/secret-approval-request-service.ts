@@ -1501,7 +1501,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (actor === ActorType.SERVICE || actor === ActorType.IDENTITY)
       throw new BadRequestError({ message: "Cannot use service token or machine token over protected branches" });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -1516,6 +1516,22 @@ export const secretApprovalRequestServiceFactory = ({
         name: "GenSecretApproval"
       });
     const folderId = folder.id;
+
+    if (hasProjectEnforcement("enforceEncryptedSecretManagerSecretMetadata")) {
+      const hasMissingEncryptedMetadataInCreate = data[SecretOperations.Create]?.some((secret) =>
+        secret.secretMetadata?.some((meta) => !meta.isEncrypted)
+      );
+      const hasMissingEncryptedMetadataInUpdate = data[SecretOperations.Update]?.some((secret) =>
+        secret.secretMetadata?.some((meta) => !meta.isEncrypted)
+      );
+
+      if (hasMissingEncryptedMetadataInCreate || hasMissingEncryptedMetadataInUpdate) {
+        throw new BadRequestError({
+          message:
+            "One or more secrets are missing encrypted metadata values. Please provide values for all encrypted metadata."
+        });
+      }
+    }
 
     const commits: Omit<TSecretApprovalRequestsSecretsV2Insert, "requestId">[] = [];
     const commitTagIds: Record<string, string[]> = {};

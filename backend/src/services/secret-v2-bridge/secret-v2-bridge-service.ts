@@ -256,7 +256,7 @@ export const secretV2BridgeServiceFactory = ({
     secretMetadata,
     ...inputSecret
   }: TCreateSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -264,6 +264,15 @@ export const secretV2BridgeServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
+
+    if (
+      hasProjectEnforcement("enforceEncryptedSecretManagerSecretMetadata") &&
+      secretMetadata?.some((meta) => !meta.isEncrypted)
+    ) {
+      throw new BadRequestError({
+        message: "Encrypted secret metadata is enforced for this project. Cannot create unencrypted secret metadata."
+      });
+    }
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
@@ -439,7 +448,7 @@ export const secretV2BridgeServiceFactory = ({
     secretMetadata,
     ...inputSecret
   }: TUpdateSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -447,6 +456,15 @@ export const secretV2BridgeServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
+
+    if (
+      hasProjectEnforcement("enforceEncryptedSecretManagerSecretMetadata") &&
+      secretMetadata?.some((meta) => !meta.isEncrypted)
+    ) {
+      throw new BadRequestError({
+        message: "Encrypted secret metadata is enforced for this project. Cannot create unencrypted secret metadata."
+      });
+    }
 
     if (inputSecret.newSecretName === "") {
       throw new BadRequestError({ message: "New secret name cannot be empty" });
@@ -1686,7 +1704,7 @@ export const secretV2BridgeServiceFactory = ({
     tx: providedTx,
     commitChanges
   }: TCreateManySecretDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[] }) => {
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -1694,6 +1712,15 @@ export const secretV2BridgeServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
+
+    if (
+      hasProjectEnforcement("enforceEncryptedSecretManagerSecretMetadata") &&
+      inputSecrets.some((secret) => secret.secretMetadata?.some((meta) => !meta.isEncrypted))
+    ) {
+      throw new BadRequestError({
+        message: "Encrypted secret metadata is enforced for this project. Cannot create unencrypted secret metadata."
+      });
+    }
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
@@ -1773,7 +1800,6 @@ export const secretV2BridgeServiceFactory = ({
       await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
     const executeBulkInsert = async (tx: Knex) => {
-      console.log(JSON.stringify(inputSecrets, null, 2));
       const modifiedSecretsInDB = await fnSecretBulkInsert({
         inputSecrets: inputSecrets.map((el) => {
           const references = secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences;
@@ -1881,7 +1907,7 @@ export const secretV2BridgeServiceFactory = ({
     tx: providedTx,
     commitChanges
   }: TUpdateManySecretDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[] }) => {
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -1889,6 +1915,15 @@ export const secretV2BridgeServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
+
+    if (
+      hasProjectEnforcement("enforceEncryptedSecretManagerSecretMetadata") &&
+      inputSecrets.some((secret) => secret.secretMetadata?.some((meta) => !meta.isEncrypted))
+    ) {
+      throw new BadRequestError({
+        message: "Encrypted secret metadata is enforced for this project. Cannot create unencrypted secret metadata."
+      });
+    }
 
     const secretsToUpdateGroupByPath = groupBy(inputSecrets, (el) => el.secretPath || defaultSecretPath);
     const projectEnvironment = await projectEnvDAL.findOne({ projectId, slug: environment });

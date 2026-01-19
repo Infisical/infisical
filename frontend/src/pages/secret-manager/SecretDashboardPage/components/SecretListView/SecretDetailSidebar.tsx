@@ -664,6 +664,9 @@ export const SecretDetailSidebar = ({
                           )}
                           <Controller
                             control={control}
+                            defaultValue={
+                              currentProject.enforceEncryptedSecretManagerSecretMetadata
+                            }
                             name={`secretMetadata.${i}.isEncrypted`}
                             render={({ field, fieldState: { error } }) => (
                               <FormControl
