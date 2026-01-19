@@ -346,7 +346,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secretId: secret.id,
             secretKey: req.params.secretName,
             secretVersion: secret.version,
-            secretMetadata: secret.secretMetadata.filter((meta) => !meta.isEncrypted)
+            secretMetadata: secret.secretMetadata?.filter((meta) => !meta.isEncrypted)
           }
         }
       });
@@ -481,7 +481,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secretId: secret.id,
             secretKey: req.params.secretName,
             secretVersion: secret.version,
-            secretMetadata: req.body.secretMetadata.filter((meta) => !meta.isEncrypted),
+            secretMetadata: req.body.secretMetadata?.filter((meta) => !meta.isEncrypted),
             secretTags: secret.tags?.map((tag) => tag.name)
           }
         }
