@@ -110,7 +110,7 @@ export const fnSecretBulkInsert = async ({
   const actorType = actor?.type || ActorType.PLATFORM;
 
   const newSecrets = await secretDAL.insertMany(
-    sanitizedInputSecrets.map((el) => ({ ...el, folderId })),
+    sanitizedInputSecrets.map(({ metadata, ...el }) => ({ ...el, folderId })),
     tx
   );
 
