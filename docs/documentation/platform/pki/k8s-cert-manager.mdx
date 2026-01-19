@@ -106,6 +106,8 @@ The following steps show how to install cert-manager (using `kubectl`) and obtai
             # Email address for ACME account
             # (any valid email works; currently ignored by Infisical)
             email: <your_email>
+            # Required to honor the duration field in Certificate resources
+            enableDurationFeature: true
             externalAccountBinding:
                 # EAB Key ID from Step 1
                 keyID: <acme_eab_kid>
@@ -178,6 +180,10 @@ The following steps show how to install cert-manager (using `kubectl`) and obtai
     The certificate is issued by the issuer `issuer-infisical` created in the previous step and the resulting certificate and private key will be stored in a secret named `certificate-by-issuer`.
 
     Note that the full list of the fields supported on the `Certificate` resource can be found in the API reference documentation [here](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1.CertificateSpec).
+
+    <Note>
+      The `enableDurationFeature: true` flag in the Issuer configuration (Step 4) is required for cert-manager to honor the `duration` field. Without it, certificates default to 47 days regardless of what you specify. This flag is disabled by default in cert-manager because public ACME servers like Let's Encrypt don't support custom durations.
+    </Note>
 
     You can check that the certificate was created successfully by running the following command:
 
@@ -371,6 +377,12 @@ type: Opaque
     <Note>
         Currently, not all fields are supported by the Infisical PKI ACME server.
     </Note>
+
+</Accordion>
+<Accordion title="Why is my certificate duration different from what I specified?">
+    Make sure your Issuer or ClusterIssuer has `enableDurationFeature: true` set under the `acme` block (see Step 4). Without this flag, cert-manager defaults to 47 days regardless of the `duration` field in your Certificate resource.
+
+    This flag is disabled by default in cert-manager because public ACME servers like Let's Encrypt don't support custom durations. For more details, see the [cert-manager v1.1 release notes](https://cert-manager.io/docs/releases/release-notes/release-notes-1.1/).
 
 </Accordion>
 <Accordion title="Can certificates be renewed automatically?">
