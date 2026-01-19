@@ -1163,21 +1163,21 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
                           }
                           isError={Boolean(error)}
                           errorText={error?.message}
-                          helperText="Defines the pathLen constraint applied to issued certificates."
+                          helperText="Defines the pathLen constraint applied to issued certificates. Path length limits how many intermediate CA certificates can exist downstream from this certificate in the certificate chain, helping to control the depth and complexity of your PKI hierarchy."
                         >
                           <Input
                             {...field}
                             type="number"
                             placeholder="Leave empty to omit the constraint"
                             className="w-full"
+                            min={-1}
                             value={field.value ?? ""}
                             onChange={(e) => {
-                              const val = e.target.value;
-                              if (val === "") {
-                                field.onChange(undefined);
+                              const { value } = e.target;
+                              if (!value || value === "" || !Number.isInteger(Number(value))) {
+                                field.onChange(value);
                               } else {
-                                const numVal = parseInt(val, 10);
-                                field.onChange(Number.isNaN(numVal) ? undefined : numVal);
+                                field.onChange(Number(value));
                               }
                             }}
                           />

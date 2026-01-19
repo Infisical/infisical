@@ -149,7 +149,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
               basicConstraints: z
                 .object({
                   isCA: z.boolean(),
-                  pathLength: z.number().int().min(-1).optional()
+                  pathLength: z.number().int().min(0).optional()
                 })
                 .optional()
             })
