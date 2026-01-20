@@ -151,7 +151,8 @@ export const authLoginServiceFactory = ({
       subOrganizationId,
       authMethod,
       isMfaVerified,
-      mfaMethod
+      mfaMethod,
+      skipDeviceSessionUpdate
     }: {
       user: TUsers;
       ip: string;
@@ -161,11 +162,16 @@ export const authLoginServiceFactory = ({
       authMethod: AuthMethod;
       isMfaVerified?: boolean;
       mfaMethod?: MfaMethod;
+      skipDeviceSessionUpdate?: boolean;
     },
     tx?: Knex
   ) => {
     const cfg = getConfig();
-    await updateUserDeviceSession(user, ip, userAgent, tx);
+    // Only update device session (and send new device email) when not skipped
+    // This is skipped during initial login when MFA might be required
+    if (!skipDeviceSessionUpdate) {
+      await updateUserDeviceSession(user, ip, userAgent, tx);
+    }
     const tokenSession = await tokenService.getUserTokenSession(
       {
         userAgent,
@@ -375,7 +381,10 @@ export const authLoginServiceFactory = ({
       ip,
       userAgent,
       authMethod,
-      organizationId
+      organizationId,
+      // Skip device session update here as user may need to complete MFA
+      // Device session will be updated in selectOrganization (if no MFA) or verifyMfaToken (after MFA)
+      skipDeviceSessionUpdate: true
     });
 
     return { token, user: userEnc } as const;
@@ -449,7 +458,10 @@ export const authLoginServiceFactory = ({
         ip,
         userAgent,
         authMethod,
-        organizationId
+        organizationId,
+        // Skip device session update here as user may need to complete MFA
+        // Device session will be updated in selectOrganization (if no MFA) or verifyMfaToken (after MFA)
+        skipDeviceSessionUpdate: true
       });
 
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
