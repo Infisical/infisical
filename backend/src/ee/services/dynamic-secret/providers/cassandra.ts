@@ -25,7 +25,7 @@ export const CassandraProvider = (): TDynamicProviderFns => {
       providerInputs.host
         .split(",")
         .filter(Boolean)
-        .map((el) => verifyHostInputValidity({ host: el }).then((ip) => ip[0]))
+        .map((el) => verifyHostInputValidity({ host: el, isDynamicSecret: true }).then((ip) => ip[0]))
     );
     validateHandlebarTemplate("Cassandra creation", providerInputs.creationStatement, {
       allowedExpressions: (val) => ["username", "password", "expiration", "keyspace"].includes(val)

@@ -125,7 +125,8 @@ export const SqlDatabaseProvider = ({
 
     const [hostIp] = await verifyHostInputValidity({
       host: providerInputs.host,
-      isGateway: Boolean(providerInputs.gatewayId)
+      isGateway: Boolean(providerInputs.gatewayId),
+      isDynamicSecret: true
     });
     validateHandlebarTemplate("SQL creation", providerInputs.creationStatement, {
       allowedExpressions: (val) => ["username", "password", "expiration", "database"].includes(val)

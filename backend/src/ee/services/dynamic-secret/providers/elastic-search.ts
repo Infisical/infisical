@@ -19,7 +19,7 @@ const generatePassword = () => {
 export const ElasticSearchProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretElasticSearchSchema.parseAsync(inputs);
-    await verifyHostInputValidity({ host: providerInputs.host });
+    await verifyHostInputValidity({ host: providerInputs.host, isDynamicSecret: true });
     return { ...providerInputs };
   };
 

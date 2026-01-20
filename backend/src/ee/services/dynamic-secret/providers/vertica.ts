@@ -140,7 +140,8 @@ export const VerticaProvider = ({ gatewayService }: TVerticaProviderDTO): TDynam
 
     const [hostIp] = await verifyHostInputValidity({
       host: providerInputs.host,
-      isGateway: Boolean(providerInputs.gatewayId)
+      isGateway: Boolean(providerInputs.gatewayId),
+      isDynamicSecret: true
     });
     validateHandlebarTemplate("Vertica creation", providerInputs.creationStatement, {
       allowedExpressions: (val) => ["username", "password"].includes(val)

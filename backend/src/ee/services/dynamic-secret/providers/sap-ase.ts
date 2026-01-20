@@ -27,7 +27,7 @@ export const SapAseProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSapAseSchema.parseAsync(inputs);
 
-    await verifyHostInputValidity({ host: providerInputs.host });
+    await verifyHostInputValidity({ host: providerInputs.host, isDynamicSecret: true });
     validateHandlebarTemplate("SAP ASE creation", providerInputs.creationStatement, {
       allowedExpressions: (val) => ["username", "password"].includes(val)
     });

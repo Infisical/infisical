@@ -8,12 +8,12 @@ import { getDbConnectionHost } from "@app/lib/knex";
 
 export const verifyHostInputValidity = async ({
   host,
-  isGateway,
-  isDynamicSecret = true
+  isDynamicSecret,
+  isGateway
 }: {
   host: string;
+  isDynamicSecret: boolean;
   isGateway?: boolean;
-  isDynamicSecret?: boolean;
 }) => {
   const appCfg = getConfig();
 

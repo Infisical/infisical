@@ -78,7 +78,7 @@ async function deleteRabbitMqUser({ axiosInstance, usernameToDelete }: TDeleteRa
 export const RabbitMqProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretRabbitMqSchema.parseAsync(inputs);
-    await verifyHostInputValidity({ host: providerInputs.host });
+    await verifyHostInputValidity({ host: providerInputs.host, isDynamicSecret: true });
     return { ...providerInputs };
   };
 
