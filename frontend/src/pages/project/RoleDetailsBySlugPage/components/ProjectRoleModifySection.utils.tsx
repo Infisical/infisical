@@ -516,7 +516,12 @@ export const projectRoleFormSchema = z.object({
         .array()
         .default([]),
       [ProjectPermissionSub.PamSessions]: PamSessionPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.McpEndpoints]: McpEndpointPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.McpEndpoints]: McpEndpointPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
       [ProjectPermissionSub.McpServers]: McpServerPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.McpActivityLogs]: McpActivityLogPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.ApprovalRequests]: ApprovalRequestPolicyActionSchema.array().default(
@@ -549,7 +554,8 @@ type TConditionalFields =
   | ProjectPermissionSub.PkiSyncs
   | ProjectPermissionSub.SecretEvents
   | ProjectPermissionSub.AppConnections
-  | ProjectPermissionSub.PamAccounts;
+  | ProjectPermissionSub.PamAccounts
+  | ProjectPermissionSub.McpEndpoints;
 
 export const isConditionalSubjects = (
   subject: ProjectPermissionSub
@@ -571,7 +577,8 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.PkiSyncs ||
   subject === ProjectPermissionSub.SecretEvents ||
   subject === ProjectPermissionSub.AppConnections ||
-  subject === ProjectPermissionSub.PamAccounts;
+  subject === ProjectPermissionSub.PamAccounts ||
+  subject === ProjectPermissionSub.McpEndpoints;
 
 const convertCaslConditionToFormOperator = (caslConditions: TPermissionCondition) => {
   const formConditions: z.infer<typeof ConditionSchema> = [];
@@ -1383,13 +1390,17 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       const canDelete = action.includes(ProjectPermissionMcpEndpointActions.Delete);
       const canConnect = action.includes(ProjectPermissionMcpEndpointActions.Connect);
 
-      if (!formVal[subject]) formVal[subject] = [{}];
+      if (!formVal[subject]) formVal[subject] = [];
 
-      if (canRead) formVal[subject]![0][ProjectPermissionMcpEndpointActions.Read] = true;
-      if (canCreate) formVal[subject]![0][ProjectPermissionMcpEndpointActions.Create] = true;
-      if (canEdit) formVal[subject]![0][ProjectPermissionMcpEndpointActions.Edit] = true;
-      if (canDelete) formVal[subject]![0][ProjectPermissionMcpEndpointActions.Delete] = true;
-      if (canConnect) formVal[subject]![0][ProjectPermissionMcpEndpointActions.Connect] = true;
+      formVal[subject]!.push({
+        [ProjectPermissionMcpEndpointActions.Read]: canRead,
+        [ProjectPermissionMcpEndpointActions.Create]: canCreate,
+        [ProjectPermissionMcpEndpointActions.Edit]: canEdit,
+        [ProjectPermissionMcpEndpointActions.Delete]: canDelete,
+        [ProjectPermissionMcpEndpointActions.Connect]: canConnect,
+        conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+        inverted
+      });
     }
 
     if (subject === ProjectPermissionSub.McpServers) {
