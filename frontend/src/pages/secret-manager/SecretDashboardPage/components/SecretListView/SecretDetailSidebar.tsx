@@ -701,7 +701,9 @@ export const SecretDetailSidebar = ({
                         variant="outline_bg"
                         size="xs"
                         className="rounded-md"
-                        onClick={() => metadataFormFields.append({ key: "", value: "" })}
+                        onClick={() =>
+                          metadataFormFields.append({ key: "", value: "", isEncrypted: false })
+                        }
                       >
                         <FontAwesomeIcon icon={faPlus} />
                       </IconButton>
