@@ -98,8 +98,17 @@ export const identityAliCloudAuthServiceFactory = ({
       });
 
       if (identityAliCloudAuth.allowedArns) {
-        // In the future we could do partial checks for role ARNs
-        const isAccountAllowed = identityAliCloudAuth.allowedArns.split(",").some((arn) => arn.trim() === data.Arn);
+        const isAccountAllowed = identityAliCloudAuth.allowedArns
+          .split(",")
+          .some((arn) => {
+            const trimmedArn = arn.trim();
+            if (trimmedArn.endsWith("*")) {
+              const prefix = trimmedArn.slice(0, -1);
+              if (prefix === "") return false; // Reject bare "*"
+              return data.Arn.startsWith(prefix);
+            }
+            return arn === data.Arn;
+          });
 
         if (!isAccountAllowed)
           throw new UnauthorizedError({

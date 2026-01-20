@@ -7,6 +7,7 @@ export type TLoginAliCloudAuthDTO = {
   Version: string;
   AccessKeyId: string;
   SignatureMethod: string;
+  SecurityToken?: string;
   Timestamp: string;
   SignatureVersion: string;
   SignatureNonce: string;
