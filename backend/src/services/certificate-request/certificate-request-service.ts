@@ -49,7 +49,13 @@ const certificateRequestDataSchema = z
     keyAlgorithm: z.string().max(100).optional(),
     signatureAlgorithm: z.string().max(100).optional(),
     metadata: z.string().max(2000).optional(),
-    certificateId: z.string().optional()
+    certificateId: z.string().optional(),
+    basicConstraints: z
+      .object({
+        isCA: z.boolean(),
+        pathLength: z.number().int().min(-1).optional()
+      })
+      .optional()
   })
   .refine(
     (data) => {
@@ -70,6 +76,18 @@ const certificateRequestDataSchema = z
     },
     {
       message: "notAfter must be after notBefore"
+    }
+  )
+  .refine(
+    (data) => {
+      // pathLength should only be set when isCA is true
+      if (data.basicConstraints?.pathLength !== undefined && !data.basicConstraints?.isCA) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "pathLength can only be set when isCA is true"
     }
   );
 

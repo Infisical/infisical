@@ -78,41 +78,6 @@ vi.mock("@app/services/certificate-authority/certificate-authority-validators", 
   })
 }));
 
-vi.mock("@app/services/certificate-common/certificate-constants", () => ({
-  mapLegacyKeyUsageToStandard: vi.fn((usage: string) => {
-    const mapping: Record<string, string> = {
-      digitalSignature: "digital_signature",
-      keyEncipherment: "key_encipherment",
-      keyCertSign: "key_cert_sign"
-    };
-    return mapping[usage] || usage;
-  }),
-  mapLegacyExtendedKeyUsageToStandard: vi.fn((usage: string) => {
-    const mapping: Record<string, string> = {
-      clientAuth: "client_auth",
-      serverAuth: "server_auth",
-      codeSigning: "code_signing"
-    };
-    return mapping[usage] || usage;
-  }),
-  CertKeyUsageType: {
-    DIGITAL_SIGNATURE: "digital_signature",
-    KEY_ENCIPHERMENT: "key_encipherment",
-    KEY_CERT_SIGN: "key_cert_sign"
-  },
-  CertExtendedKeyUsageType: {
-    CLIENT_AUTH: "client_auth",
-    SERVER_AUTH: "server_auth",
-    CODE_SIGNING: "code_signing"
-  },
-  CertSubjectAlternativeNameType: {
-    DNS_NAME: "dns_name",
-    IP_ADDRESS: "ip_address",
-    RFC822_NAME: "rfc822_name",
-    UNIFORM_RESOURCE_IDENTIFIER: "uniform_resource_identifier"
-  }
-}));
-
 vi.mock("@app/services/certificate/certificate-types", () => ({
   mapLegacyAltNameType: vi.fn((type: string) => {
     const mapping: Record<string, string> = {
@@ -169,6 +134,15 @@ describe("CertificateEstV3Service Security Fix", () => {
 
   const mockCertificatePolicyService = {
     validateCertificateRequest: vi.fn()
+  };
+
+  const mockCertificatePolicyDAL = {
+    findById: vi.fn().mockResolvedValue({
+      id: "policy-123",
+      basicConstraints: null,
+      subject: [],
+      sans: []
+    })
   };
 
   const mockCertificateAuthorityDAL = {
@@ -237,6 +211,7 @@ describe("CertificateEstV3Service Security Fix", () => {
     service = certificateEstV3ServiceFactory({
       internalCertificateAuthorityService: mockInternalCertificateAuthorityService,
       certificatePolicyService: mockCertificatePolicyService,
+      certificatePolicyDAL: mockCertificatePolicyDAL,
       certificateAuthorityDAL: mockCertificateAuthorityDAL,
       certificateAuthorityCertDAL: mockCertificateAuthorityCertDAL,
       projectDAL: mockProjectDAL,
@@ -529,7 +504,8 @@ describe("CertificateEstV3Service Security Fix", () => {
         isInternal: true,
         caId: "ca-123",
         csr: basicCSR,
-        isFromProfile: true
+        isFromProfile: true,
+        basicConstraints: undefined
       });
     });
 
@@ -708,7 +684,8 @@ describe("CertificateEstV3Service Security Fix", () => {
         isInternal: true,
         caId: "ca-123",
         isFromProfile: true,
-        csr: basicCSR
+        csr: basicCSR,
+        basicConstraints: undefined
       });
     });
 

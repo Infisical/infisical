@@ -61,7 +61,10 @@ export const buildCertificateSubjectFromTemplate = (
   const attributeMap: Record<string, string> = {
     common_name: "commonName",
     organization: "organization",
-    country: "country"
+    country: "country",
+    state: "state",
+    locality: "locality",
+    organizational_unit: "organizationalUnit"
   };
 
   if (!templateAttributes || templateAttributes.length === 0) {

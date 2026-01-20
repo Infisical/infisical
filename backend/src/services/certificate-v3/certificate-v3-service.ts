@@ -48,6 +48,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
+  CertPolicyState,
   CertSubjectAlternativeNameType,
   mapLegacyExtendedKeyUsageToStandard,
   mapLegacyKeyUsageToStandard
@@ -1051,6 +1052,19 @@ export const certificateV3ServiceFactory = ({
     validateCaSupport(ca, "direct certificate issuance");
     validateAlgorithmCompatibility(ca, policy);
 
+    const shouldIssueAsCA = certificateRequest.basicConstraints?.isCA === true;
+    const policyIsCAState: CertPolicyState =
+      (policy.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
+
+    if (shouldIssueAsCA && policyIsCAState === CertPolicyState.DENIED) {
+      throw new BadRequestError({
+        message:
+          "CA certificate issuance is not allowed by this policy. The policy's CA:true basicConstraints must be set to 'allowed' or 'required'."
+      });
+    }
+
+    const caBasicConstraints = shouldIssueAsCA ? { maxPathLength: policy.basicConstraints?.maxPathLength } : undefined;
+
     const {
       certificate,
       certificateChain,
@@ -1065,6 +1079,8 @@ export const certificateV3ServiceFactory = ({
         friendlyName: certificateSubject.common_name || "Certificate",
         commonName: certificateSubject.common_name || "",
         altNames: subjectAlternativeNames,
+        basicConstraints: caBasicConstraints,
+        pathLength: certificateRequest.basicConstraints?.pathLength,
         ttl: certificateRequest.validity.ttl,
         keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || [],
         extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || [],
@@ -1115,7 +1131,8 @@ export const certificateV3ServiceFactory = ({
         keyAlgorithm: effectiveKeyAlgorithm,
         signatureAlgorithm: effectiveSignatureAlgorithm,
         status: CertificateRequestStatus.ISSUED,
-        certificateId: certResult.certificateId
+        certificateId: certResult.certificateId,
+        basicConstraints: certificateRequest.basicConstraints
       });
 
       return { ...certResult, cert: certificateRecord, certificateRequestId: certRequestResult.id };
@@ -1168,7 +1185,8 @@ export const certificateV3ServiceFactory = ({
     actorAuthMethod,
     actorOrgId,
     enrollmentType,
-    removeRootsFromChain
+    removeRootsFromChain,
+    basicConstraints
   }: TSignCertificateFromProfileDTO): Promise<Omit<TCertificateFromProfileResponse, "privateKey">> => {
     const profile = await validateProfileAndPermissions(
       profileId,
@@ -1234,12 +1252,28 @@ export const certificateV3ServiceFactory = ({
     const effectiveSignatureAlgorithm = extractedSignatureAlgorithm;
     const effectiveKeyAlgorithm = extractedKeyAlgorithm;
 
+    const shouldIssueAsCA = basicConstraints?.isCA === true;
+    const policyIsCAState: CertPolicyState =
+      (policy.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
+
+    if (shouldIssueAsCA && policyIsCAState === CertPolicyState.DENIED) {
+      throw new BadRequestError({
+        message:
+          "CA certificate issuance is not allowed by this policy. The policy's CA:true basicConstraints must be set to 'allowed' or 'required'."
+      });
+    }
+
+    // Transform policy basicConstraints to the format expected by the CA service
+    const caBasicConstraints = shouldIssueAsCA ? { maxPathLength: policy.basicConstraints?.maxPathLength } : undefined;
+
     const { certificate, certificateChain, issuingCaCertificate, serialNumber, cert, certificateRequestId } =
       await certificateDAL.transaction(async (tx) => {
         const certResult = await internalCaService.signCertFromCa({
           isInternal: true,
           caId: ca.id,
           csr,
+          basicConstraints: caBasicConstraints,
+          pathLength: basicConstraints?.pathLength,
           ttl: validity.ttl,
           altNames: undefined,
           notBefore: normalizeDateForApi(notBefore),
@@ -1286,7 +1320,8 @@ export const certificateV3ServiceFactory = ({
           keyAlgorithm: effectiveKeyAlgorithm,
           signatureAlgorithm: effectiveSignatureAlgorithm,
           status: CertificateRequestStatus.ISSUED,
-          certificateId: certResult.certificateId
+          certificateId: certResult.certificateId,
+          basicConstraints
         });
 
         return { ...certResult, cert: signedCertRecord, certificateRequestId: certRequestResult.id };
@@ -1357,6 +1392,12 @@ export const certificateV3ServiceFactory = ({
         signatureAlgorithm: certificateOrder.signatureAlgorithm,
         keyAlgorithm: certificateOrder.keyAlgorithm
       };
+    }
+
+    if (certificateRequest.basicConstraints?.isCA) {
+      throw new BadRequestError({
+        message: "CA certificate issuance is not supported for external certificate authorities."
+      });
     }
 
     const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);

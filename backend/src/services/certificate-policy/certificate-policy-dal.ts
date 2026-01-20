@@ -23,7 +23,15 @@ export const certificatePolicyDALFactory = (db: TDbClient) => {
   const serializeJsonFields = (data: TCertificatePolicyInsert | TCertificatePolicyUpdate) => {
     const serialized = { ...data } as Record<string, unknown>;
 
-    const jsonFields = ["subject", "sans", "keyUsages", "extendedKeyUsages", "algorithms", "validity"];
+    const jsonFields = [
+      "subject",
+      "sans",
+      "keyUsages",
+      "extendedKeyUsages",
+      "algorithms",
+      "validity",
+      "basicConstraints"
+    ];
 
     jsonFields.forEach((field) => {
       const value = serialized[field];
@@ -36,7 +44,15 @@ export const certificatePolicyDALFactory = (db: TDbClient) => {
   };
 
   const parseJsonFields = (raw: Record<string, unknown>): TCertificatePolicy => {
-    const jsonFields = ["subject", "sans", "keyUsages", "extendedKeyUsages", "algorithms", "validity"];
+    const jsonFields = [
+      "subject",
+      "sans",
+      "keyUsages",
+      "extendedKeyUsages",
+      "algorithms",
+      "validity",
+      "basicConstraints"
+    ];
     const parsed = { ...raw } as Record<string, unknown>;
 
     jsonFields.forEach((field) => {

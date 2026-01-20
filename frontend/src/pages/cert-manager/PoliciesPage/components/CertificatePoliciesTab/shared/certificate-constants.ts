@@ -38,6 +38,12 @@ export enum CertSanEffect {
   REQUIRE = "require"
 }
 
+export enum CertPolicyState {
+  ALLOWED = "allowed",
+  REQUIRED = "required",
+  DENIED = "denied"
+}
+
 export enum CertDurationUnit {
   DAYS = "days",
   MONTHS = "months",
@@ -45,7 +51,12 @@ export enum CertDurationUnit {
 }
 
 export enum CertSubjectAttributeType {
-  COMMON_NAME = "common_name"
+  COMMON_NAME = "common_name",
+  ORGANIZATION = "organization",
+  ORGANIZATIONAL_UNIT = "organizational_unit",
+  COUNTRY = "country",
+  STATE = "state",
+  LOCALITY = "locality"
 }
 
 export const formatSANType = (type: CertSubjectAlternativeNameType): string => {
@@ -111,6 +122,16 @@ export const formatSubjectAttributeType = (type: CertSubjectAttributeType): stri
   switch (type) {
     case CertSubjectAttributeType.COMMON_NAME:
       return "Common Name (CN)";
+    case CertSubjectAttributeType.ORGANIZATION:
+      return "Organization (O)";
+    case CertSubjectAttributeType.ORGANIZATIONAL_UNIT:
+      return "Organizational Unit (OU)";
+    case CertSubjectAttributeType.COUNTRY:
+      return "Country (C)";
+    case CertSubjectAttributeType.STATE:
+      return "State/Province (ST)";
+    case CertSubjectAttributeType.LOCALITY:
+      return "Locality (L)";
     default:
       return type;
   }
@@ -149,6 +170,7 @@ export const DURATION_UNIT_OPTIONS = Object.values(CertDurationUnit);
 export const SUBJECT_ATTRIBUTE_TYPE_OPTIONS = Object.values(CertSubjectAttributeType);
 export const ATTRIBUTE_RULE_OPTIONS = Object.values(CertAttributeRule);
 export const SAN_EFFECT_OPTIONS = Object.values(CertSanEffect);
+export const POLICY_STATE_OPTIONS = Object.values(CertPolicyState);
 
 export enum CertSubjectAttributeInclude {
   OPTIONAL = "optional",
@@ -258,7 +280,8 @@ export const POLICY_PRESET_IDS = {
   DEVICE: "device",
   USER: "user",
   EMAIL_PROTECTION: "email-protection",
-  DUAL_PURPOSE_SERVER: "dual-purpose-server"
+  DUAL_PURPOSE_SERVER: "dual-purpose-server",
+  INTERMEDIATE_CA: "intermediate-ca"
 } as const;
 
 export type PolicyPresetId = (typeof POLICY_PRESET_IDS)[keyof typeof POLICY_PRESET_IDS];

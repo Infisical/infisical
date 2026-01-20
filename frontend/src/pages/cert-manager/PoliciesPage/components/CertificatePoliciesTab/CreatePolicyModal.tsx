@@ -1,7 +1,7 @@
 /* eslint-disable no-nested-ternary */
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faQuestionCircle, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -20,7 +20,8 @@ import {
   ModalContent,
   Select,
   SelectItem,
-  TextArea
+  TextArea,
+  Tooltip
 } from "@app/components/v2";
 import { useProject } from "@app/context";
 import {
@@ -34,6 +35,7 @@ import {
   CertDurationUnit,
   CertExtendedKeyUsageType,
   CertKeyUsageType,
+  CertPolicyState,
   CertSanInclude,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeInclude,
@@ -65,7 +67,12 @@ interface Props {
 }
 
 const ATTRIBUTE_TYPE_LABELS: Record<(typeof SUBJECT_ATTRIBUTE_TYPE_OPTIONS)[number], string> = {
-  common_name: "Common Name (CN)"
+  common_name: "Common Name (CN)",
+  organization: "Organization (O)",
+  organizational_unit: "Organizational Unit (OU)",
+  country: "Country (C)",
+  state: "State/Province (ST)",
+  locality: "Locality (L)"
 };
 
 const SAN_TYPE_LABELS: Record<(typeof SAN_TYPE_OPTIONS)[number], string> = {
@@ -220,6 +227,11 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
       defaultKeyType: ""
     };
 
+    const basicConstraints: FormData["basicConstraints"] = {
+      isCA: (policyData.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED,
+      maxPathLength: policyData.basicConstraints?.maxPathLength ?? undefined
+    };
+
     return {
       preset: POLICY_PRESET_IDS.CUSTOM,
       name: policyData.name || "",
@@ -230,7 +242,8 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
       extendedKeyUsages,
       validity,
       signatureAlgorithm,
-      keyAlgorithm
+      keyAlgorithm,
+      basicConstraints
     };
   };
 
@@ -239,6 +252,10 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
       preset: POLICY_PRESET_IDS.CUSTOM,
       name: "",
       description: "",
+      basicConstraints: {
+        isCA: CertPolicyState.DENIED,
+        maxPathLength: undefined
+      },
       attributes: [],
       keyUsages: { requiredUsages: [], optionalUsages: [] },
       extendedKeyUsages: { requiredUsages: [], optionalUsages: [] },
@@ -282,6 +299,7 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
     optionalUsages: []
   };
   const watchedPreset = watch("preset") || POLICY_PRESET_IDS.CUSTOM;
+  const watchedIsCAPolicy = watch("basicConstraints.isCA") || CertPolicyState.DENIED;
 
   const handlePresetChange = async (presetId: PolicyPresetId) => {
     setValue("preset", presetId);
@@ -310,6 +328,12 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
       }
       if (selectedPreset.formData.keyAlgorithm) {
         setValue("keyAlgorithm", selectedPreset.formData.keyAlgorithm);
+      }
+      if (selectedPreset.formData.basicConstraints) {
+        setValue("basicConstraints", selectedPreset.formData.basicConstraints);
+      }
+      if (selectedPreset.formData.validity) {
+        setValue("validity", selectedPreset.formData.validity);
       }
 
       await trigger();
@@ -447,6 +471,14 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
       validity.max = `${data.validity.maxDuration.value}${unit}`;
     }
 
+    const basicConstraints =
+      data.basicConstraints?.isCA && data.basicConstraints.isCA !== CertPolicyState.DENIED
+        ? {
+            isCA: data.basicConstraints.isCA,
+            maxPathLength: data.basicConstraints.maxPathLength ?? undefined
+          }
+        : null;
+
     return {
       name: data.name,
       description: data.description,
@@ -455,7 +487,8 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
       keyUsages,
       extendedKeyUsages,
       algorithms,
-      validity
+      validity,
+      basicConstraints
     };
   };
 
@@ -657,6 +690,7 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
                 )}
               />
             </div>
+
             <AccordionItem value="attributes">
               <AccordionTrigger>Subject Attributes</AccordionTrigger>
               <AccordionContent>
@@ -1050,6 +1084,109 @@ export const CreatePolicyModal = ({ isOpen, onClose, policy, mode = "create" }: 
                       )}
                     />
                   </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="basicConstraints" className="mt-4">
+              <AccordionTrigger>Basic Constraints</AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-4">
+                  <Controller
+                    control={control}
+                    name="basicConstraints.isCA"
+                    render={({ field: { value, onChange }, fieldState: { error } }) => (
+                      <FormControl isError={Boolean(error)} errorText={error?.message}>
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <span className="text-sm font-medium text-mineshaft-100">
+                              CA Certificate Property
+                            </span>
+                            <p className="text-xs text-bunker-300">
+                              Controls whether certificates issued under this policy can have the
+                              CA:TRUE property.
+                            </p>
+                          </div>
+                          <Select
+                            value={value || CertPolicyState.DENIED}
+                            onValueChange={(newValue) => {
+                              onChange(newValue);
+                              if (newValue === CertPolicyState.DENIED) {
+                                setValue("basicConstraints.maxPathLength", undefined);
+                              }
+                            }}
+                            className="w-32"
+                          >
+                            <SelectItem value={CertPolicyState.DENIED}>Deny</SelectItem>
+                            <SelectItem value={CertPolicyState.ALLOWED}>Allow</SelectItem>
+                            <SelectItem value={CertPolicyState.REQUIRED}>Require</SelectItem>
+                          </Select>
+                        </div>
+                      </FormControl>
+                    )}
+                  />
+
+                  {watchedIsCAPolicy !== CertPolicyState.DENIED && (
+                    <Controller
+                      control={control}
+                      name="basicConstraints.maxPathLength"
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label={
+                            <div className="flex items-center gap-1">
+                              <span className="mb-1">Maximum allowed path length</span>
+                              <Tooltip
+                                content={
+                                  <div className="max-w-xs">
+                                    <p className="font-medium">Values:</p>
+                                    <ul className="mt-1 list-disc pl-4 text-xs">
+                                      <li>
+                                        <strong>-1</strong> = Unlimited (no restriction)
+                                      </li>
+                                      <li>
+                                        <strong>0</strong> = Can only sign end-entity certificates
+                                      </li>
+                                      <li>
+                                        <strong>1+</strong> = Number of CA levels allowed beneath
+                                      </li>
+                                    </ul>
+                                  </div>
+                                }
+                              >
+                                <FontAwesomeIcon
+                                  icon={faQuestionCircle}
+                                  size="sm"
+                                  className="ml-1 text-mineshaft-400"
+                                />
+                              </Tooltip>
+                            </div>
+                          }
+                          isError={Boolean(error)}
+                          errorText={error?.message}
+                          helperText="Defines the pathLen constraint applied to issued certificates. Path length limits how many intermediate CA certificates can exist downstream from the issued certificate in the certificate chain."
+                        >
+                          <Input
+                            {...field}
+                            type="number"
+                            placeholder="Leave empty to omit the constraint"
+                            className="w-full"
+                            min={-1}
+                            value={field.value ?? ""}
+                            onChange={(e) => {
+                              const { value } = e.target;
+                              if (!value || value === "") {
+                                field.onChange(null);
+                              } else if (!Number.isInteger(Number(value))) {
+                                field.onChange(value);
+                              } else {
+                                field.onChange(Number(value));
+                              }
+                            }}
+                          />
+                        </FormControl>
+                      )}
+                    />
+                  )}
                 </div>
               </AccordionContent>
             </AccordionItem>

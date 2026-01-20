@@ -138,6 +138,35 @@ When a user connects to an endpoint with servers requiring personal credentials:
 
 ![mcp endpoints finalize personal complete](/images/platform/ai/mcp/mcp-endpoints-finalize-personal-complete.png)
 
+## Access Control with Permission Conditions
+
+MCP endpoints support granular role-based access control through permission conditions. This allows you to restrict access to specific endpoints based on their name.
+
+### Example Use Cases
+
+- **Team-specific endpoints**: Create a role that only allows access to endpoints matching `engineering-*`
+- **Environment separation**: Restrict production endpoints (`prod-*`) to senior team members
+
+### Configuring Permission Conditions
+
+When creating or editing a project role, you can add conditions to MCP endpoint permissions:
+
+1. Navigate to **Access Control** > **Roles**
+2. Edit or create a role
+3. Under **MCP Endpoints** permissions, click **Add Condition**
+4. Select the **Endpoint Name** property
+5. Choose an operator (`equal`, `not equal`, `glob match`, or `in`)
+6. Enter the value(s) to match
+
+### Supported Operators
+
+| Operator     | Description         | Example                        |
+| ------------ | ------------------- | ------------------------------ |
+| `equal`      | Exact match         | `engineering-tools`            |
+| `not equal`  | Does not match      | `prod-endpoint`                |
+| `glob match` | Pattern matching    | `prod-*`, `*-internal`         |
+| `in`         | Matches any in list | `["endpoint-1", "endpoint-2"]` |
+
 ## PII Filtering
 
 MCP Endpoints support automatic PII (Personally Identifiable Information) filtering to redact sensitive data from requests sent to MCP servers and responses returned to AI clients. This helps maintain compliance and prevent accidental exposure of sensitive information through AI tool interactions.
@@ -155,30 +184,30 @@ MCP Endpoints support automatic PII (Personally Identifiable Information) filter
 ### Configuring PII Filters
 
 <Tabs>
-  <Tab title="Infisical UI">
-    <Steps>
-      <Step title="Navigate to Endpoint Details">
-        Open your MCP endpoint and locate the **Filters** section in the left column.
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Navigate to Endpoint Details">
+                Open your MCP endpoint and locate the **Filters** section in the left column.
 
-        ![pii filters section](/images/platform/ai/mcp/mcp-pii-filters-section.png)
-      </Step>
-      <Step title="Open Filter Configuration">
-        Click the edit icon to open the PII filter configuration modal.
+                ![pii filters section](/images/platform/ai/mcp/mcp-pii-filters-section.png)
+            </Step>
+            <Step title="Open Filter Configuration">
+                Click the edit icon to open the PII filter configuration modal.
 
-        ![pii filter config modal](/images/platform/ai/mcp/mcp-pii-filters-config.png)
-      </Step>
-      <Step title="Configure Filtering Options">
-        Configure the following options:
+                ![pii filter config modal](/images/platform/ai/mcp/mcp-pii-filters-config.png)
+            </Step>
+            <Step title="Configure Filtering Options">
+                Configure the following options:
 
-        - **Filter Requests**: Enable to redact PII from requests sent to MCP servers
-        - **Filter Responses**: Enable to redact PII from responses returned to AI clients
-        - **PII Detection**: Select which types of PII to detect and redact
-      </Step>
-      <Step title="Save Configuration">
-        Click **Save** to apply your PII filter settings. Changes take effect immediately for new tool invocations.
-      </Step>
-    </Steps>
-  </Tab>
+                - **Filter Requests**: Enable to redact PII from requests sent to MCP servers
+                - **Filter Responses**: Enable to redact PII from responses returned to AI clients
+                - **PII Detection**: Select which types of PII to detect and redact
+            </Step>
+            <Step title="Save Configuration">
+                Click **Save** to apply your PII filter settings. Changes take effect immediately for new tool invocations.
+            </Step>
+        </Steps>
+    </Tab>
 </Tabs>
 
 ## FAQ

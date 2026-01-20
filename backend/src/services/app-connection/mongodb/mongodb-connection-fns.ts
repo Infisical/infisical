@@ -50,7 +50,7 @@ export const createMongoClient = async (
     normalizedHost = protocolRegex.replace(normalizedHost, "");
   }
 
-  const [hostIp] = await verifyHostInputValidity(normalizedHost);
+  const [hostIp] = await verifyHostInputValidity({ host: normalizedHost, isDynamicSecret: false });
 
   const isSrv = !credentials.port || isSrvFromHost;
   const uri = isSrv ? `mongodb+srv://${hostIp}` : `mongodb://${hostIp}:${credentials.port}`;
