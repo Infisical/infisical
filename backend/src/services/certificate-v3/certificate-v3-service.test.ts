@@ -202,6 +202,34 @@ describe("CertificateV3Service", () => {
       },
       certificateRequestService: {
         createCertificateRequest: vi.fn().mockResolvedValue({ id: "cert-req-123" })
+      },
+      approvalPolicyDAL: {
+        findByProjectId: vi.fn().mockResolvedValue([]),
+        findStepsByPolicyId: vi.fn().mockResolvedValue([])
+      },
+      certificateRequestDAL: {
+        updateById: vi.fn().mockResolvedValue({ id: "cert-req-123" }),
+        findById: vi.fn().mockResolvedValue({ id: "cert-req-123" }),
+        create: vi.fn().mockResolvedValue({ id: "cert-req-123" })
+      },
+      userDAL: {
+        findById: vi.fn().mockResolvedValue({ id: "user-123" })
+      },
+      identityDAL: {
+        findById: vi.fn().mockResolvedValue({ id: "identity-123", name: "test-identity" })
+      },
+      approvalRequestDAL: {
+        create: vi.fn().mockResolvedValue({ id: "approval-req-123" }),
+        transaction: vi.fn().mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
+          const mockTx = {};
+          return callback(mockTx);
+        })
+      },
+      approvalRequestStepsDAL: {
+        create: vi.fn().mockResolvedValue({ id: "approval-step-123" })
+      },
+      approvalRequestStepEligibleApproversDAL: {
+        create: vi.fn().mockResolvedValue({ id: "approver-123" })
       }
     });
   });

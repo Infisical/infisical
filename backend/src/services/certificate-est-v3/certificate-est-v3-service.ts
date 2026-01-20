@@ -168,7 +168,9 @@ export const certificateEstV3ServiceFactory = ({
       });
     }
 
-    const caBasicConstraints = csrRequestsCA ? { maxPathLength: policy?.basicConstraints?.maxPathLength } : undefined;
+    const caBasicConstraints = csrRequestsCA
+      ? { isCA: true, pathLength: policy?.basicConstraints?.maxPathLength }
+      : undefined;
 
     const { certificate } = await internalCertificateAuthorityService.signCertFromCa({
       isInternal: true,
@@ -321,7 +323,9 @@ export const certificateEstV3ServiceFactory = ({
       });
     }
 
-    const caBasicConstraints = csrRequestsCA ? { maxPathLength: policy?.basicConstraints?.maxPathLength } : undefined;
+    const caBasicConstraints = csrRequestsCA
+      ? { isCA: true, pathLength: policy?.basicConstraints?.maxPathLength }
+      : undefined;
 
     const { certificate } = await internalCertificateAuthorityService.signCertFromCa({
       isInternal: true,

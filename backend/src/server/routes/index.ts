@@ -1161,6 +1161,8 @@ export const registerRoutes = async (
   const relayDAL = relayDalFactory(db);
   const gatewayV2DAL = gatewayV2DalFactory(db);
 
+  const approvalPolicyDAL = approvalPolicyDALFactory(db);
+
   const orgGatewayConfigV2DAL = orgGatewayConfigV2DalFactory(db);
 
   const sshCertificateAuthorityService = sshCertificateAuthorityServiceFactory({
@@ -1963,6 +1965,8 @@ export const registerRoutes = async (
 
   const approvalRequestDAL = approvalRequestDALFactory(db);
   const approvalRequestGrantsDAL = approvalRequestGrantsDALFactory(db);
+  const approvalRequestStepsDAL = approvalRequestStepsDALFactory(db);
+  const approvalRequestStepEligibleApproversDAL = approvalRequestStepEligibleApproversDALFactory(db);
 
   // DAILY
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
@@ -2311,7 +2315,14 @@ export const registerRoutes = async (
     projectDAL,
     certificateBodyDAL,
     certificateIssuanceQueue,
-    certificateRequestService
+    certificateRequestService,
+    approvalPolicyDAL,
+    certificateRequestDAL,
+    userDAL,
+    identityDAL,
+    approvalRequestDAL,
+    approvalRequestStepsDAL,
+    approvalRequestStepEligibleApproversDAL
   });
 
   const certificateV3Queue = certificateV3QueueServiceFactory({
@@ -2474,7 +2485,6 @@ export const registerRoutes = async (
     totpService
   });
 
-  const approvalPolicyDAL = approvalPolicyDALFactory(db);
   const pamSessionExpirationService = pamSessionExpirationServiceFactory({
     queueService,
     pamSessionDAL
@@ -2556,8 +2566,6 @@ export const registerRoutes = async (
 
   const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
   const approvalPolicyStepApproversDAL = approvalPolicyStepApproversDALFactory(db);
-  const approvalRequestStepsDAL = approvalRequestStepsDALFactory(db);
-  const approvalRequestStepEligibleApproversDAL = approvalRequestStepEligibleApproversDALFactory(db);
   const approvalRequestApprovalsDAL = approvalRequestApprovalsDALFactory(db);
 
   const approvalPolicyService = approvalPolicyServiceFactory({
@@ -2572,7 +2580,9 @@ export const registerRoutes = async (
     approvalRequestApprovalsDAL,
     userGroupMembershipDAL,
     notificationService,
-    approvalRequestGrantsDAL
+    approvalRequestGrantsDAL,
+    certificateV3Service,
+    certificateRequestDAL
   });
 
   // setup the communication with license key server

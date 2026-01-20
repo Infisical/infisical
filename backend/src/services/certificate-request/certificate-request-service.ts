@@ -55,7 +55,16 @@ const certificateRequestDataSchema = z
         isCA: z.boolean(),
         pathLength: z.number().int().min(-1).optional()
       })
-      .optional()
+      .optional(),
+    ttl: z.string().max(50).optional(),
+    issuanceType: z.string().max(50).optional(),
+    enrollmentType: z.string().max(50).optional(),
+    altNamesJson: z.string().optional(),
+    organization: z.string().max(255).optional(),
+    organizationalUnit: z.string().max(255).optional(),
+    country: z.string().max(100).optional(),
+    state: z.string().max(255).optional(),
+    locality: z.string().max(255).optional()
   })
   .refine(
     (data) => {
@@ -213,6 +222,18 @@ export const certificateRequestServiceFactory = ({
       ProjectPermissionSub.Certificates
     );
 
+    let parsedBasicConstraints: { isCA: boolean; pathLength?: number } | null = null;
+    if (certificateRequest.basicConstraints) {
+      try {
+        parsedBasicConstraints =
+          typeof certificateRequest.basicConstraints === "string"
+            ? (JSON.parse(certificateRequest.basicConstraints) as { isCA: boolean; pathLength?: number })
+            : (certificateRequest.basicConstraints as { isCA: boolean; pathLength?: number });
+      } catch {
+        parsedBasicConstraints = null;
+      }
+    }
+
     // If no certificate is attached, return basic info
     if (!certificateRequest.certificate) {
       return {
@@ -223,6 +244,13 @@ export const certificateRequestServiceFactory = ({
           privateKey: null,
           serialNumber: null,
           errorMessage: certificateRequest.errorMessage || null,
+          commonName: certificateRequest.commonName || null,
+          organization: certificateRequest.organization || null,
+          organizationalUnit: certificateRequest.organizationalUnit || null,
+          country: certificateRequest.country || null,
+          state: certificateRequest.state || null,
+          locality: certificateRequest.locality || null,
+          basicConstraints: parsedBasicConstraints,
           createdAt: certificateRequest.createdAt,
           updatedAt: certificateRequest.updatedAt
         },
@@ -268,6 +296,13 @@ export const certificateRequestServiceFactory = ({
         privateKey,
         serialNumber: certificateRequest.certificate.serialNumber,
         errorMessage: certificateRequest.errorMessage || null,
+        commonName: certificateRequest.commonName || null,
+        organization: certificateRequest.organization || null,
+        organizationalUnit: certificateRequest.organizationalUnit || null,
+        country: certificateRequest.country || null,
+        state: certificateRequest.state || null,
+        locality: certificateRequest.locality || null,
+        basicConstraints: parsedBasicConstraints,
         createdAt: certificateRequest.createdAt,
         updatedAt: certificateRequest.updatedAt
       },

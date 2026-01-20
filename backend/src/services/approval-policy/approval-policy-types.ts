@@ -3,6 +3,14 @@ import { TApprovalRequestGrantsDALFactory } from "@app/services/approval-policy/
 
 import { ApprovalPolicyType, ApproverType } from "./approval-policy-enums";
 import {
+  TCertRequestPolicy,
+  TCertRequestPolicyConditions,
+  TCertRequestPolicyConstraints,
+  TCertRequestPolicyInputs,
+  TCertRequestRequest,
+  TCertRequestRequestData
+} from "./cert-request/cert-request-policy-types";
+import {
   TPamAccessPolicy,
   TPamAccessPolicyConditions,
   TPamAccessPolicyConstraints,
@@ -11,13 +19,13 @@ import {
   TPamAccessRequestData
 } from "./pam-access/pam-access-policy-types";
 
-export type TApprovalPolicy = TPamAccessPolicy;
-export type TApprovalPolicyInputs = TPamAccessPolicyInputs;
-export type TApprovalPolicyConditions = TPamAccessPolicyConditions;
-export type TApprovalPolicyConstraints = TPamAccessPolicyConstraints;
+export type TApprovalPolicy = TPamAccessPolicy | TCertRequestPolicy;
+export type TApprovalPolicyInputs = TPamAccessPolicyInputs | TCertRequestPolicyInputs;
+export type TApprovalPolicyConditions = TPamAccessPolicyConditions | TCertRequestPolicyConditions;
+export type TApprovalPolicyConstraints = TPamAccessPolicyConstraints | TCertRequestPolicyConstraints;
 
-export type TApprovalRequest = TPamAccessRequest;
-export type TApprovalRequestData = TPamAccessRequestData;
+export type TApprovalRequest = TPamAccessRequest | TCertRequestRequest;
+export type TApprovalRequestData = TPamAccessRequestData | TCertRequestRequestData;
 
 export interface ApprovalPolicyStep {
   name?: string | null;
@@ -37,6 +45,7 @@ export interface TCreatePolicyDTO {
   conditions: TApprovalPolicy["conditions"]["conditions"];
   constraints: TApprovalPolicy["constraints"]["constraints"];
   steps: ApprovalPolicyStep[];
+  bypassForMachineIdentities?: boolean;
 }
 
 export interface TUpdatePolicyDTO {
@@ -45,6 +54,7 @@ export interface TUpdatePolicyDTO {
   conditions?: TApprovalPolicy["conditions"]["conditions"];
   constraints?: TApprovalPolicy["constraints"]["constraints"];
   steps?: ApprovalPolicyStep[];
+  bypassForMachineIdentities?: boolean;
 }
 
 // Request DTOs

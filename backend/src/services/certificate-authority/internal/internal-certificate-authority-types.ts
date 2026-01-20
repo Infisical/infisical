@@ -122,7 +122,8 @@ export type TImportCertToCaDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 export type TBasicConstraints = {
-  maxPathLength?: number;
+  isCA: boolean;
+  pathLength?: number;
 } | null;
 
 export type TIssueCertFromCaDTO = {

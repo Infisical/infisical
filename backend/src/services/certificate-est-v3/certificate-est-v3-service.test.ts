@@ -341,7 +341,7 @@ describe("CertificateEstV3Service Security Fix", () => {
         expect.objectContaining({
           commonName: "test.example.com",
           organization: "Test Organization",
-          organizationUnit: "IT Department",
+          organizationalUnit: "IT Department",
           locality: "San Francisco",
           state: "California",
           country: "US"

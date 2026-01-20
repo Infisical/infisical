@@ -13,6 +13,7 @@ export const ApprovalRequestsSchema = z.object({
   organizationId: z.string().uuid(),
   policyId: z.string().uuid().nullable().optional(),
   requesterId: z.string().uuid().nullable().optional(),
+  machineIdentityId: z.string().uuid().nullable().optional(),
   requesterName: z.string(),
   requesterEmail: z.string(),
   type: z.string(),

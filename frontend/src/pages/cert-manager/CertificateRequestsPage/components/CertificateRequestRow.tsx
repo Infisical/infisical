@@ -1,6 +1,8 @@
 import { faEllipsis } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
+import { ExternalLinkIcon } from "lucide-react";
 
 import { getCertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
 import { truncateSerialNumber } from "@app/components/utilities/serialNumberUtils";
@@ -15,6 +17,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
+import { useOrganization, useProject } from "@app/context";
 import { TCertificateRequestListItem } from "@app/hooks/api/certificates";
 
 type Props = {
@@ -23,14 +26,37 @@ type Props = {
 };
 
 export const CertificateRequestRow = ({ request, onViewCertificates }: Props) => {
-  const getStatusBadge = (status: string) => {
+  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
+
+  const getStatusBadge = (status: string, approvalRequestId: string | null) => {
     switch (status.toLowerCase()) {
-      case "pending":
-        return <Badge variant="warning">Pending</Badge>;
       case "issued":
         return <Badge variant="success">Issued</Badge>;
       case "failed":
+      case "rejected":
         return <Badge variant="danger">Failed</Badge>;
+      case "pending":
+        return <Badge variant="info">Pending Issuance</Badge>;
+      case "pending_approval":
+        if (approvalRequestId && currentOrg?.id && currentProject?.id) {
+          return (
+            <Badge variant="warning" asChild>
+              <Link
+                to="/organizations/$orgId/projects/cert-manager/$projectId/approval-requests/$approvalRequestId"
+                params={{
+                  orgId: currentOrg.id,
+                  projectId: currentProject.id,
+                  approvalRequestId
+                }}
+              >
+                Pending Approval
+                <ExternalLinkIcon />
+              </Link>
+            </Badge>
+          );
+        }
+        return <Badge variant="project">Pending Approval</Badge>;
       default:
         return <Badge variant="outline">{status.charAt(0).toUpperCase() + status.slice(1)}</Badge>;
     }
@@ -57,7 +83,7 @@ export const CertificateRequestRow = ({ request, onViewCertificates }: Props) =>
           {truncateSerialNumber(request.certificate?.serialNumber)}
         </div>
       </Td>
-      <Td>{getStatusBadge(request.status)}</Td>
+      <Td>{getStatusBadge(request.status, request.approvalRequestId)}</Td>
       <Td>
         <div className="max-w-xs truncate">{request.profileName || "N/A"}</div>
       </Td>
@@ -65,13 +91,6 @@ export const CertificateRequestRow = ({ request, onViewCertificates }: Props) =>
         <Tooltip content={format(new Date(request.createdAt), "MMM dd, yyyy HH:mm:ss")}>
           <time dateTime={request.createdAt}>
             {format(new Date(request.createdAt), "yyyy-MM-dd")}
-          </time>
-        </Tooltip>
-      </Td>
-      <Td>
-        <Tooltip content={format(new Date(request.updatedAt), "MMM dd, yyyy HH:mm:ss")}>
-          <time dateTime={request.updatedAt}>
-            {format(new Date(request.updatedAt), "yyyy-MM-dd")}
           </time>
         </Tooltip>
       </Td>

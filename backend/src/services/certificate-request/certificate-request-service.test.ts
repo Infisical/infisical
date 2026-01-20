@@ -284,6 +284,13 @@ describe("CertificateRequestService", () => {
         privateKey: "-----BEGIN PRIVATE KEY-----\nMOCK_KEY_PEM\n-----END PRIVATE KEY-----",
         serialNumber: "123456",
         errorMessage: null,
+        commonName: null,
+        organization: null,
+        organizationalUnit: null,
+        country: null,
+        state: null,
+        locality: null,
+        basicConstraints: null,
         createdAt: mockRequestWithCert.createdAt,
         updatedAt: mockRequestWithCert.updatedAt
       });
@@ -321,6 +328,13 @@ describe("CertificateRequestService", () => {
         privateKey: null,
         serialNumber: null,
         errorMessage: null,
+        commonName: null,
+        organization: null,
+        organizationalUnit: null,
+        country: null,
+        state: null,
+        locality: null,
+        basicConstraints: null,
         createdAt: mockRequestWithoutCert.createdAt,
         updatedAt: mockRequestWithoutCert.updatedAt
       });
@@ -378,6 +392,13 @@ describe("CertificateRequestService", () => {
         privateKey: null,
         serialNumber: "123456",
         errorMessage: null,
+        commonName: null,
+        organization: null,
+        organizationalUnit: null,
+        country: null,
+        state: null,
+        locality: null,
+        basicConstraints: null,
         createdAt: mockRequestWithCert.createdAt,
         updatedAt: mockRequestWithCert.updatedAt
       });
@@ -446,6 +467,13 @@ describe("CertificateRequestService", () => {
         privateKey: null,
         serialNumber: "123456",
         errorMessage: null,
+        commonName: null,
+        organization: null,
+        organizationalUnit: null,
+        country: null,
+        state: null,
+        locality: null,
+        basicConstraints: null,
         createdAt: mockRequestWithCert.createdAt,
         updatedAt: mockRequestWithCert.updatedAt
       });
@@ -483,6 +511,13 @@ describe("CertificateRequestService", () => {
         privateKey: null,
         serialNumber: null,
         errorMessage: "Certificate issuance failed",
+        commonName: null,
+        organization: null,
+        organizationalUnit: null,
+        country: null,
+        state: null,
+        locality: null,
+        basicConstraints: null,
         createdAt: mockFailedRequest.createdAt,
         updatedAt: mockFailedRequest.updatedAt
       });

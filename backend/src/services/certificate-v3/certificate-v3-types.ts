@@ -2,10 +2,14 @@ import { TProjectPermission } from "@app/lib/types";
 
 import {
   CertExtendedKeyUsageType,
+  CertificateIssuanceType,
+  CertificateRequestStatus,
   CertKeyUsageType,
   CertSubjectAlternativeNameType
 } from "../certificate-common/certificate-constants";
 import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
+
+export { CertificateIssuanceType };
 
 export type TIssueCertificateFromProfileDTO = {
   profileId: string;
@@ -76,24 +80,32 @@ export type TOrderCertificateFromProfileDTO = {
   removeRootsFromChain?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
-export type TCertificateFromProfileResponse = {
+export type TCertificateIssuanceResponse = {
+  status: CertificateRequestStatus;
+  certificateRequestId: string;
+  projectId: string;
+  profileName: string;
+  commonName?: string;
+  certificate?: string;
+  issuingCaCertificate?: string;
+  certificateChain?: string;
+  privateKey?: string;
+  serialNumber?: string;
+  certificateId?: string;
+  message?: string;
+};
+
+export type TCertificateIssuedResponse = TCertificateIssuanceResponse & {
+  status: CertificateRequestStatus.ISSUED;
   certificate: string;
   issuingCaCertificate: string;
   certificateChain: string;
-  privateKey?: string;
   serialNumber: string;
   certificateId: string;
-  certificateRequestId: string;
-  projectId: string;
-  profileName: string;
-  commonName: string;
 };
 
-export type TCertificateOrderResponse = {
-  certificateRequestId: string;
-  certificate?: string;
-  projectId: string;
-  profileName: string;
+export type TCertificatePendingApprovalResponse = TCertificateIssuanceResponse & {
+  status: CertificateRequestStatus.PENDING_APPROVAL;
 };
 
 export type TRenewCertificateDTO = {
@@ -120,4 +132,19 @@ export type TRenewalConfigResponse = {
 export type TDisableRenewalResponse = {
   projectId: string;
   commonName: string;
+};
+
+export const isPendingApprovalResponse = (
+  response: TCertificateIssuanceResponse
+): response is TCertificatePendingApprovalResponse => {
+  return response.status === CertificateRequestStatus.PENDING_APPROVAL;
+};
+
+export const isIssuedResponse = (response: TCertificateIssuanceResponse): response is TCertificateIssuedResponse => {
+  return response.status === CertificateRequestStatus.ISSUED;
+};
+
+export type TAltNameEntry = {
+  type: CertSubjectAlternativeNameType;
+  value: string;
 };

@@ -2,8 +2,12 @@ export { useRevokeApprovalGrant } from "./mutations";
 export { approvalGrantQuery } from "./queries";
 export {
   ApprovalGrantStatus,
+  type CertRequestGrantAttributes,
+  isCertRequestGrant,
+  isPamAccessGrant,
   type PamAccessGrantAttributes,
   type TApprovalGrant,
+  type TApprovalGrantAttributes,
   type TGetApprovalGrantByIdDTO,
   type TListApprovalGrantsDTO,
   type TRevokeApprovalGrantDTO

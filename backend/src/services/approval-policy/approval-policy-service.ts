@@ -9,8 +9,12 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { OrgServiceActor } from "@app/lib/types";
+import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
+import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
+import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 
@@ -44,6 +48,7 @@ import {
   TApprovalRequestStepEligibleApproversDALFactory,
   TApprovalRequestStepsDALFactory
 } from "./approval-request-dal";
+import { TCertRequestRequestData } from "./cert-request/cert-request-policy-types";
 
 type TApprovalPolicyServiceFactoryDep = {
   approvalPolicyDAL: TApprovalPolicyDALFactory;
@@ -58,6 +63,8 @@ type TApprovalPolicyServiceFactoryDep = {
   notificationService: TNotificationServiceFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserIds">;
+  certificateV3Service: Pick<TCertificateV3ServiceFactory, "issueCertificateFromApprovedRequest">;
+  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById">;
 };
 export type TApprovalPolicyServiceFactory = ReturnType<typeof approvalPolicyServiceFactory>;
 
@@ -73,7 +80,9 @@ export const approvalPolicyServiceFactory = ({
   userGroupMembershipDAL,
   notificationService,
   permissionService,
-  projectMembershipDAL
+  projectMembershipDAL,
+  certificateV3Service,
+  certificateRequestDAL
 }: TApprovalPolicyServiceFactoryDep) => {
   const $notifyApproversForStep = async (step: ApprovalPolicyStep, request: TApprovalRequests) => {
     if (!step.notifyApprovers) return;
@@ -121,7 +130,7 @@ export const approvalPolicyServiceFactory = ({
 
   const create = async (
     policyType: ApprovalPolicyType,
-    { projectId, name, maxRequestTtl, conditions, constraints, steps }: TCreatePolicyDTO,
+    { projectId, name, maxRequestTtl, conditions, constraints, steps, bypassForMachineIdentities }: TCreatePolicyDTO,
     actor: OrgServiceActor
   ) => {
     const { hasRole } = await permissionService.getProjectPermission({
@@ -153,7 +162,8 @@ export const approvalPolicyServiceFactory = ({
           maxRequestTtl,
           conditions: { version: 1, conditions },
           constraints: { version: 1, constraints },
-          type: policyType
+          type: policyType,
+          bypassForMachineIdentities: bypassForMachineIdentities ?? false
         },
         tx
       );
@@ -242,7 +252,7 @@ export const approvalPolicyServiceFactory = ({
 
   const updateById = async (
     policyId: string,
-    { name, maxRequestTtl, conditions, constraints, steps }: TUpdatePolicyDTO,
+    { name, maxRequestTtl, conditions, constraints, steps, bypassForMachineIdentities }: TUpdatePolicyDTO,
     actor: OrgServiceActor
   ) => {
     const policy = await approvalPolicyDAL.findById(policyId);
@@ -289,6 +299,10 @@ export const approvalPolicyServiceFactory = ({
 
       if (constraints !== undefined) {
         updateDoc.constraints = { version: 1, constraints };
+      }
+
+      if (bypassForMachineIdentities !== undefined) {
+        updateDoc.bypassForMachineIdentities = bypassForMachineIdentities;
       }
 
       const updated = await approvalPolicyDAL.updateById(policyId, updateDoc, tx);
@@ -657,11 +671,50 @@ export const approvalPolicyServiceFactory = ({
 
     const newRequest = { ...finalRequest, steps: finalSteps };
 
-    if (updatedRequest.status === ApprovalRequestStatus.Approved) {
+    if (finalRequest.status === ApprovalRequestStatus.Approved) {
       const fac = APPROVAL_POLICY_FACTORY_MAP[updatedRequest.type as ApprovalPolicyType](
         updatedRequest.type as ApprovalPolicyType
       );
       await fac.postApprovalRoutine(approvalRequestGrantsDAL, newRequest as TApprovalRequest);
+
+      if (finalRequest.type === ApprovalPolicyType.CertRequest) {
+        const certRequestData = (newRequest as TApprovalRequest).requestData.requestData as TCertRequestRequestData;
+        const certReqId = certRequestData.certificateRequestId;
+
+        await certificateRequestDAL.updateById(certReqId, {
+          status: CertificateRequestStatus.PENDING,
+          approvalRequestId: finalRequest.id
+        });
+
+        try {
+          await certificateV3Service.issueCertificateFromApprovedRequest(certReqId, {
+            actor: actor.type,
+            actorId: actor.id,
+            actorAuthMethod: actor.authMethod,
+            actorOrgId: actor.orgId
+          });
+          logger.info(
+            { certificateRequestId: certReqId, approvalRequestId: finalRequest.id },
+            "Certificate issued after approval"
+          );
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          await certificateRequestDAL.updateById(certReqId, {
+            status: CertificateRequestStatus.FAILED,
+            errorMessage
+          });
+          logger.error(
+            {
+              error,
+              errorMessage,
+              errorStack: error instanceof Error ? error.stack : undefined,
+              certificateRequestId: certReqId,
+              approvalRequestId: finalRequest.id
+            },
+            "Failed to issue certificate after approval"
+          );
+        }
+      }
     }
 
     return { request: newRequest };
@@ -724,6 +777,14 @@ export const approvalPolicyServiceFactory = ({
 
     const finalSteps = await approvalRequestDAL.findStepsByRequestId(requestId);
     const finalRequest = await approvalRequestDAL.findById(requestId);
+
+    if (finalRequest && finalRequest.type === ApprovalPolicyType.CertRequest) {
+      const certRequestData = (finalRequest.requestData as { requestData: TCertRequestRequestData }).requestData;
+      await certificateRequestDAL.updateById(certRequestData.certificateRequestId, {
+        status: CertificateRequestStatus.REJECTED,
+        approvalRequestId: requestId
+      });
+    }
 
     return { request: { ...finalRequest, steps: finalSteps } };
   };

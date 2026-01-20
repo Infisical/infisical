@@ -3,6 +3,7 @@ import { TableName, TApprovalRequestApprovals } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
+import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import {
   ApprovalPolicyType,
   ApprovalRequestGrantStatus,
@@ -138,11 +139,26 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
 
   const markExpiredRequests = async () => {
     try {
-      const result = await db(TableName.ApprovalRequests)
+      const expiredRequestIds = await db(TableName.ApprovalRequests)
         .where("status", ApprovalRequestStatus.Pending)
         .whereNotNull("expiresAt")
         .where("expiresAt", "<", new Date())
+        .select("id");
+
+      if (expiredRequestIds.length === 0) {
+        return 0;
+      }
+
+      const ids = expiredRequestIds.map((r) => r.id);
+
+      const result = await db(TableName.ApprovalRequests)
+        .whereIn("id", ids)
         .update({ status: ApprovalRequestStatus.Expired });
+
+      await db(TableName.CertificateRequests)
+        .whereIn("approvalRequestId", ids)
+        .where("status", CertificateRequestStatus.PENDING_APPROVAL)
+        .update({ status: CertificateRequestStatus.REJECTED, errorMessage: "Approval request expired" });
 
       return result;
     } catch (error) {

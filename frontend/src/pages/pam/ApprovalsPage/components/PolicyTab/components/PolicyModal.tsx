@@ -8,6 +8,7 @@ import { Button, Modal, ModalContent } from "@app/components/v2";
 import { useProject } from "@app/context";
 import {
   ApprovalPolicyType,
+  PamAccessPolicyConditions,
   TApprovalPolicy,
   useCreateApprovalPolicy,
   useUpdateApprovalPolicy
@@ -76,7 +77,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
       reset({
         name: policyData.policy.name,
         maxRequestTtl: policyData.policy.maxRequestTtl,
-        conditions: policyData.policy.conditions.conditions,
+        conditions: policyData.policy.conditions.conditions as PamAccessPolicyConditions,
         constraints: policyData.policy.constraints.constraints,
         steps: policyData.policy.steps.map((step) => ({
           ...step,

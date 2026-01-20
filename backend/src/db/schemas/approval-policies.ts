@@ -17,6 +17,7 @@ export const ApprovalPoliciesSchema = z.object({
   maxRequestTtl: z.string().nullable().optional(),
   conditions: z.unknown(),
   constraints: z.unknown(),
+  bypassForMachineIdentities: z.boolean().default(false).nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

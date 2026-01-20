@@ -1,10 +1,9 @@
 import { TProjectPermission } from "@app/lib/types";
 
-export enum CertificateRequestStatus {
-  PENDING = "pending",
-  ISSUED = "issued",
-  FAILED = "failed"
-}
+import { CertificateIssuanceType, CertificateRequestStatus } from "../certificate-common/certificate-constants";
+import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
+
+export { CertificateRequestStatus };
 
 export type TCreateCertificateRequestDTO = TProjectPermission & {
   profileId?: string;
@@ -26,6 +25,15 @@ export type TCreateCertificateRequestDTO = TProjectPermission & {
     isCA: boolean;
     pathLength?: number;
   };
+  ttl?: string;
+  issuanceType?: CertificateIssuanceType;
+  enrollmentType?: EnrollmentType;
+  altNamesJson?: string;
+  organization?: string;
+  organizationalUnit?: string;
+  country?: string;
+  state?: string;
+  locality?: string;
 };
 
 export type TGetCertificateRequestDTO = TProjectPermission & {

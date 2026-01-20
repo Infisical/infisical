@@ -1,4 +1,5 @@
 import { ApprovalPolicyType } from "../approvalPolicies";
+import { CertRequestRequestData } from "../approvalRequests";
 
 export enum ApprovalGrantStatus {
   Active = "active",
@@ -12,6 +13,10 @@ export type PamAccessGrantAttributes = {
   accessDuration: string;
 };
 
+export type CertRequestGrantAttributes = CertRequestRequestData;
+
+export type TApprovalGrantAttributes = PamAccessGrantAttributes | CertRequestGrantAttributes;
+
 // Base Grant Type
 export type TApprovalGrant = {
   id: string;
@@ -22,10 +27,22 @@ export type TApprovalGrant = {
   revocationReason: string | null;
   status: ApprovalGrantStatus;
   type: ApprovalPolicyType;
-  attributes: PamAccessGrantAttributes;
+  attributes: TApprovalGrantAttributes;
   createdAt: string;
   expiresAt: string | null;
   revokedAt: string | null;
+};
+
+export const isCertRequestGrant = (
+  grant: TApprovalGrant
+): grant is TApprovalGrant & { attributes: CertRequestGrantAttributes } => {
+  return grant.type === ApprovalPolicyType.CertRequest;
+};
+
+export const isPamAccessGrant = (
+  grant: TApprovalGrant
+): grant is TApprovalGrant & { attributes: PamAccessGrantAttributes } => {
+  return grant.type === ApprovalPolicyType.PamAccess;
 };
 
 // DTOs
