@@ -4,7 +4,7 @@ import { faGithub, faGitlab, faGoogle } from "@fortawesome/free-brands-svg-icons
 import { faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 
 import Error from "@app/components/basic/Error";
 import { RegionSelect } from "@app/components/navigation/RegionSelect";
@@ -38,12 +38,12 @@ export const InitialStep = ({
   isAdmin
 }: Props) => {
   const navigate = useNavigate();
+  const queryParams = useSearch({ from: "/_restrict-login-signup" });
 
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState(false);
   const { config } = useServerConfig();
-  const queryParams = new URLSearchParams(window.location.search);
   const [captchaToken, setCaptchaToken] = useState("");
   const [shouldShowCaptcha, setShouldShowCaptcha] = useState(false);
   const captchaRef = useRef<HCaptcha>(null);
@@ -52,21 +52,27 @@ export const InitialStep = ({
   const { navigateToSelectOrganization } = useNavigateToSelectOrganization();
 
   const redirectToSaml = (orgSlug: string) => {
-    const callbackPort = queryParams.get("callback_port");
+    const callbackPort = queryParams.callback_port?.toString();
     const redirectUrl = `/api/v1/sso/redirect/saml2/organizations/${orgSlug}${
       callbackPort ? `?callback_port=${callbackPort}` : ""
     }`;
 
-    window.location.assign(redirectUrl);
+    navigate({
+      href: redirectUrl,
+      reloadDocument: true
+    });
   };
 
   const redirectToOidc = (orgSlug: string) => {
-    const callbackPort = queryParams.get("callback_port");
+    const callbackPort = queryParams.callback_port?.toString();
     const redirectUrl = `/api/v1/sso/oidc/login?orgSlug=${orgSlug}${
       callbackPort ? `&callbackPort=${callbackPort}` : ""
     }`;
 
-    window.location.assign(redirectUrl);
+    navigate({
+      href: redirectUrl,
+      reloadDocument: true
+    });
   };
 
   useEffect(() => {
@@ -91,6 +97,25 @@ export const InitialStep = ({
     }
   };
 
+  const handleOauth = (provider: string) => {
+    const params = new URLSearchParams();
+
+    if (queryParams.callback_port != null) {
+      params.set("callback_port", String(queryParams.callback_port));
+    }
+
+    if (isAdmin) {
+      params.append("is_admin_login", "true");
+    }
+
+    const queryString = params.toString();
+
+    navigate({
+      href: `/api/v1/sso/redirect/${provider}${queryString ? `?${queryString}` : ""}`,
+      reloadDocument: true
+    });
+  };
+
   const shouldDisplayLoginMethod = (method: LoginMethod) =>
     isAdmin || !config.enabledLoginMethods || config.enabledLoginMethods.includes(method);
 
@@ -102,8 +127,8 @@ export const InitialStep = ({
       }
 
       setIsLoading(true);
-      if (queryParams && queryParams.get("callback_port")) {
-        const callbackPort = queryParams.get("callback_port");
+      if (queryParams.callback_port) {
+        const callbackPort = queryParams.callback_port.toString();
 
         // attemptCliLogin
         const isCliLoginSuccessful = await attemptCliLogin({
@@ -267,23 +292,7 @@ export const InitialStep = ({
               ariaLabel={t("login.continue-with-google")}
               colorSchema="primary"
               variant="outline_bg"
-              onClick={() => {
-                const callbackPort = queryParams.get("callback_port");
-                const searchParams = new URLSearchParams();
-
-                if (callbackPort) {
-                  searchParams.append("callback_port", callbackPort);
-                }
-
-                if (isAdmin) {
-                  searchParams.append("is_admin_login", "true");
-                }
-
-                const queryString = searchParams.toString();
-
-                window.open(`/api/v1/sso/redirect/google${queryString ? `?${queryString}` : ""}`);
-                window.close();
-              }}
+              onClick={() => handleOauth("google")}
               className="h-10 w-full bg-mineshaft-600"
             >
               <FontAwesomeIcon icon={faGoogle} />
@@ -296,23 +305,7 @@ export const InitialStep = ({
               ariaLabel="Login continue with GitHub"
               colorSchema="primary"
               variant="outline_bg"
-              onClick={() => {
-                const callbackPort = queryParams.get("callback_port");
-                const searchParams = new URLSearchParams();
-
-                if (callbackPort) {
-                  searchParams.append("callback_port", callbackPort);
-                }
-
-                if (isAdmin) {
-                  searchParams.append("is_admin_login", "true");
-                }
-
-                const queryString = searchParams.toString();
-
-                window.open(`/api/v1/sso/redirect/github${queryString ? `?${queryString}` : ""}`);
-                window.close();
-              }}
+              onClick={() => handleOauth("github")}
               className="h-10 w-full bg-mineshaft-600"
             >
               <FontAwesomeIcon icon={faGithub} />
@@ -325,23 +318,7 @@ export const InitialStep = ({
               ariaLabel="Login continue with GitLab"
               colorSchema="primary"
               variant="outline_bg"
-              onClick={() => {
-                const callbackPort = queryParams.get("callback_port");
-                const searchParams = new URLSearchParams();
-
-                if (callbackPort) {
-                  searchParams.append("callback_port", callbackPort);
-                }
-
-                if (isAdmin) {
-                  searchParams.append("is_admin_login", "true");
-                }
-
-                const queryString = searchParams.toString();
-
-                window.open(`/api/v1/sso/redirect/gitlab${queryString ? `?${queryString}` : ""}`);
-                window.close();
-              }}
+              onClick={() => handleOauth("gitlab")}
               className="h-10 w-full bg-mineshaft-600"
             >
               <FontAwesomeIcon icon={faGitlab} />
