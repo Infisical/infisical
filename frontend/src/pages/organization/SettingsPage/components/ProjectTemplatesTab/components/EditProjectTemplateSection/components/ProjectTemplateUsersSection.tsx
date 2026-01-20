@@ -287,33 +287,46 @@ export const ProjectTemplateUsersSection = ({ projectTemplate, isInfisicalTempla
                             <Controller
                               control={control}
                               name={`users.${pos}.roles`}
-                              render={({ field, fieldState: { error } }) => (
-                                <FormControl
-                                  isError={Boolean(error?.message)}
-                                  errorText={error?.message}
-                                  className="mb-0"
-                                >
-                                  <FilterableSelect
-                                    isMulti
-                                    isDisabled={!isAllowed}
-                                    options={availableRoles}
-                                    value={availableRoles.filter((role) =>
-                                      field.value.includes(role.slug)
-                                    )}
-                                    onChange={(selected) => {
-                                      field.onChange(
-                                        (selected as { slug: string; name: string }[]).map(
-                                          (s) => s.slug
-                                        )
-                                      );
-                                    }}
-                                    getOptionValue={(option) => option.slug}
-                                    getOptionLabel={(option) => option.name}
-                                    placeholder="Select roles..."
-                                    menuPosition="fixed"
-                                  />
-                                </FormControl>
-                              )}
+                              render={({ field, fieldState: { error } }) => {
+                                // Include orphaned roles
+                                const availableRoleSlugs = new Set(
+                                  availableRoles.map((r) => r.slug)
+                                );
+                                const orphanedRoles = field.value
+                                  .filter((slug) => !availableRoleSlugs.has(slug))
+                                  .map((slug) => ({ slug, name: slug }));
+                                const allOptions = [...availableRoles, ...orphanedRoles];
+
+                                const selectedValues = allOptions.filter((role) =>
+                                  field.value.includes(role.slug)
+                                );
+
+                                return (
+                                  <FormControl
+                                    isError={Boolean(error?.message)}
+                                    errorText={error?.message}
+                                    className="mb-0"
+                                  >
+                                    <FilterableSelect
+                                      isMulti
+                                      isDisabled={!isAllowed}
+                                      options={allOptions}
+                                      value={selectedValues}
+                                      onChange={(selected) => {
+                                        field.onChange(
+                                          (selected as { slug: string; name: string }[]).map(
+                                            (s) => s.slug
+                                          )
+                                        );
+                                      }}
+                                      getOptionValue={(option) => option.slug}
+                                      getOptionLabel={(option) => option.name}
+                                      placeholder="Select roles..."
+                                      menuPosition="fixed"
+                                    />
+                                  </FormControl>
+                                );
+                              }}
                             />
                           )}
                         </OrgPermissionCan>
