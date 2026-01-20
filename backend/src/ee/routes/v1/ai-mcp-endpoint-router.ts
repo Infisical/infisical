@@ -201,7 +201,9 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
             AiMcpEndpointsSchema.extend({
               connectedServers: z.number(),
               activeTools: z.number(),
-              piiFiltering: z.boolean().optional()
+              piiRequestFiltering: z.boolean().optional(),
+              piiResponseFiltering: z.boolean().optional(),
+              piiEntityTypes: z.array(z.string()).nullable().optional()
             })
           ),
           totalCount: z.number()
@@ -252,7 +254,9 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
             connectedServers: z.number(),
             activeTools: z.number(),
             serverIds: z.array(z.string()),
-            piiFiltering: z.boolean().optional()
+            piiRequestFiltering: z.boolean().optional(),
+            piiResponseFiltering: z.boolean().optional(),
+            piiEntityTypes: z.array(z.string()).nullable().optional()
           })
         })
       }
@@ -297,7 +301,9 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         name: z.string().trim().min(1).max(64).optional(),
         description: z.string().trim().max(256).optional(),
         serverIds: z.array(z.string().uuid()).optional(),
-        piiFiltering: z.boolean().optional()
+        piiRequestFiltering: z.boolean().optional(),
+        piiResponseFiltering: z.boolean().optional(),
+        piiEntityTypes: z.array(z.string()).optional()
       }),
       response: {
         200: z.object({
@@ -326,7 +332,9 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
             name: req.body.name,
             description: req.body.description,
             serverIds: req.body.serverIds,
-            piiFiltering: req.body.piiFiltering
+            piiRequestFiltering: req.body.piiRequestFiltering,
+            piiResponseFiltering: req.body.piiResponseFiltering,
+            piiEntityTypes: req.body.piiEntityTypes?.join(",")
           }
         }
       });
