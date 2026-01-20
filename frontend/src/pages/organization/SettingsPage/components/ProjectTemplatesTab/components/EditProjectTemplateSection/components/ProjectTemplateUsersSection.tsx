@@ -258,11 +258,15 @@ export const ProjectTemplateUsersSection = ({ projectTemplate, isInfisicalTempla
               {users.length > 0 ? (
                 users.map(({ id }, pos) => (
                   <Tr key={id}>
-                    <Td>
+                    <Td className="w-1/4 max-w-0">
                       <Controller
                         control={control}
                         name={`users.${pos}.username`}
-                        render={({ field }) => <span className="text-sm">{field.value}</span>}
+                        render={({ field }) => (
+                          <p className="truncate">
+                            <span className="text-sm">{field.value}</span>
+                          </p>
+                        )}
                       />
                     </Td>
                     <Td>
