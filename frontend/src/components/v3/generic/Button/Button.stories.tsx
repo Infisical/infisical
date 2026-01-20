@@ -1,27 +1,26 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Link } from "@tanstack/react-router";
 import {
-  AsteriskIcon,
-  BanIcon,
+  ArrowLeftIcon,
   CheckIcon,
   CircleXIcon,
   ExternalLinkIcon,
   InfoIcon,
-  RadarIcon,
-  TriangleAlertIcon,
-  UserIcon
+  LogInIcon,
+  TriangleAlertIcon
 } from "lucide-react";
 
 import { OrgIcon, ProjectIcon, SubOrgIcon } from "../../platform";
-import { UnstableButton } from "./Button";
+import { Button } from "./Button";
 
 /**
- * Buttons act as an indicator that can optionally be made interactable.
- * You can place text and icons inside a Button.
- * Buttons are often used for the indication of a status, state or scope.
+ * Buttons trigger actions or events when clicked or pressed.
+ * You can place text and icons inside a button.
+ * Buttons are often used for submitting forms, navigating between pages, or triggering specific actions.
  */
 const meta = {
   title: "Generic/Button",
-  component: UnstableButton,
+  component: Button,
   parameters: {
     layout: "centered"
   },
@@ -55,7 +54,7 @@ const meta = {
     isDisabled: {
       control: "boolean"
     },
-    as: {
+    asChild: {
       table: {
         disable: true
       }
@@ -67,26 +66,10 @@ const meta = {
     }
   },
   args: { children: "Button", isPending: false, isDisabled: false, isFullWidth: false, size: "md" }
-} satisfies Meta<typeof UnstableButton>;
+} satisfies Meta<typeof Button>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
-
-export const Default: Story = {
-  name: "Variant: Default",
-  args: {
-    variant: "default",
-    children: <>Default</>
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Use this variant when other Button variants are not applicable or as the key when displaying key-value pairs with ButtonGroup."
-      }
-    }
-  }
-};
 
 export const Outline: Story = {
   name: "Variant: Outline",
@@ -97,8 +80,7 @@ export const Outline: Story = {
   parameters: {
     docs: {
       description: {
-        story:
-          "Use this variant when other Button variants are not applicable or as the value when displaying key-value pairs with ButtonGroup."
+        story: "Use this variant for general page actions."
       }
     }
   }
@@ -110,15 +92,15 @@ export const Neutral: Story = {
     variant: "neutral",
     children: (
       <>
-        <BanIcon />
-        Disabled
+        <ArrowLeftIcon />
+        Back
       </>
     )
   },
   parameters: {
     docs: {
       description: {
-        story: "Use this variant when indicating neutral or disabled states."
+        story: "Use this variant for general actions. [TBD]"
       }
     }
   }
@@ -128,18 +110,12 @@ export const Ghost: Story = {
   name: "Variant: Ghost",
   args: {
     variant: "ghost",
-    children: (
-      <>
-        <UserIcon />
-        User
-      </>
-    )
+    children: <>Cancel</>
   },
   parameters: {
     docs: {
       description: {
-        story:
-          "Use this variant when indicating a configuration or property value. Avoid using this variant as an interactive element as it is not intuitive to interact with."
+        story: "Use this variant for optional / non-primary actions."
       }
     }
   }
@@ -159,7 +135,7 @@ export const Success: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Use this variant when indicating successful or healthy states."
+        story: "Use this variant for generic positive / productive call-to-action functionality."
       }
     }
   }
@@ -179,8 +155,7 @@ export const Info: Story = {
   parameters: {
     docs: {
       description: {
-        story:
-          "Use this variant when indicating informational states or when linking to external documentation."
+        story: "Use this variant for generic informational call-to-action functionality."
       }
     }
   }
@@ -200,7 +175,7 @@ export const Warning: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Use this variant when indicating activity or attention warranting states."
+        story: "Use this variant for buttons with disruptive actions."
       }
     }
   }
@@ -220,7 +195,7 @@ export const Danger: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Use this variant when indicating destructive or error states."
+        story: "Use this variant for buttons with destructive action."
       }
     }
   }
@@ -240,7 +215,7 @@ export const Organization: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Use this variant when indicating organization scope or links."
+        story: "Use this variant for organization scope call-to-action buttons."
       }
     }
   }
@@ -260,7 +235,7 @@ export const SubOrganization: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Use this variant when indicating sub-organization scope or links."
+        story: "Use this variant for sub-organization scope call-to-action buttons."
       }
     }
   }
@@ -280,7 +255,7 @@ export const Project: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Use this variant when indicating project scope or links."
+        story: "Use this variant for project scope call-to-action buttons."
       }
     }
   }
@@ -290,18 +265,17 @@ export const AsExternalLink: Story = {
   name: "Example: As External Link",
   args: {
     variant: "info",
-    as: "a",
-    href: "https://www.infisical.com",
+    asChild: true,
     children: (
-      <>
+      <a target="_blank" rel="noopener noreferrer" href="https://infisical.com/">
         Link <ExternalLinkIcon />
-      </>
+      </a>
     )
   },
   parameters: {
     docs: {
       description: {
-        story: 'Use the `as="a"` prop to use a Button as an external `a` tag component.'
+        story: "Use the `asChild` prop with an `a` tag to use a button as an external link."
       }
     }
   }
@@ -311,18 +285,18 @@ export const AsRouterLink: Story = {
   name: "Example: As Router Link",
   args: {
     variant: "project",
-    as: "link",
+    asChild: true,
     children: (
-      <>
-        <RadarIcon />
-        Secret Scanning
-      </>
+      <Link to=".">
+        <ProjectIcon />
+        View Project
+      </Link>
     )
   },
   parameters: {
     docs: {
       description: {
-        story: 'Use the `as="link"` prop to use a Button as an internal `Link` component.'
+        story: "Use the `asChild` prop with a `Link` component to use a button as an internal link."
       }
     }
   }
@@ -333,11 +307,36 @@ export const IsFullWidth: Story = {
   args: {
     variant: "neutral",
     isFullWidth: true,
-
     children: (
       <>
-        <AsteriskIcon />
-        Secret Value
+        Login
+        <LogInIcon />
+      </>
+    )
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: "Use the `isFullWidth` prop to expand button width to fill it's parent container."
+      }
+    }
+  },
+  decorators: (Story) => (
+    <div className="w-64">
+      <Story />
+    </div>
+  )
+};
+
+export const IsPending: Story = {
+  name: "Example: isPending",
+  args: {
+    variant: "neutral",
+    isPending: true,
+    children: (
+      <>
+        Login
+        <LogInIcon />
       </>
     )
   },
@@ -345,13 +344,8 @@ export const IsFullWidth: Story = {
     docs: {
       description: {
         story:
-          "Use the `isFullWidth` prop to expand the Buttons width to fill it's parent container."
+          "Use the `isPending` prop to indicate loading states and disable button functionality."
       }
     }
-  },
-  decorators: (Story) => (
-    <div className="w-32">
-      <Story />
-    </div>
-  )
+  }
 };

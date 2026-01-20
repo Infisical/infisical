@@ -6,7 +6,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, Lottie, Modal, ModalContent, Tooltip } from "@app/components/v2";
 import {
   Badge,
-  UnstableButton,
+  Button,
   UnstableCard,
   UnstableCardAction,
   UnstableCardContent,
@@ -92,7 +92,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                 a={ProjectPermissionSub.Member}
               >
                 {(isAllowed) => (
-                  <UnstableButton
+                  <Button
                     variant="outline"
                     size="xs"
                     onClick={() => {
@@ -102,7 +102,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                   >
                     <PlusIcon />
                     Add Additional Privileges
-                  </UnstableButton>
+                  </Button>
                 )}
               </ProjectPermissionCan>
             </UnstableCardAction>
@@ -250,7 +250,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                     a={ProjectPermissionSub.Member}
                   >
                     {(isAllowed) => (
-                      <UnstableButton
+                      <Button
                         variant="project"
                         size="xs"
                         onClick={() => {
@@ -260,7 +260,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                       >
                         <PlusIcon />
                         Add Additional Privileges
-                      </UnstableButton>
+                      </Button>
                     )}
                   </ProjectPermissionCan>
                 </UnstableEmptyContent>

@@ -2,7 +2,7 @@ import { PlusIcon } from "lucide-react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  UnstableButton,
+  Button,
   UnstableCard,
   UnstableCardAction,
   UnstableCardContent,
@@ -51,7 +51,7 @@ export const IdentityAuthenticationSection = ({ identityId, handlePopUpOpen }: P
                 a={OrgPermissionSubjects.Identity}
               >
                 {(isAllowed) => (
-                  <UnstableButton
+                  <Button
                     variant="outline"
                     isFullWidth
                     size="xs"
@@ -66,7 +66,7 @@ export const IdentityAuthenticationSection = ({ identityId, handlePopUpOpen }: P
                   >
                     <PlusIcon />
                     Add Auth Method
-                  </UnstableButton>
+                  </Button>
                 )}
               </OrgPermissionCan>
             </UnstableCardAction>
@@ -96,7 +96,7 @@ export const IdentityAuthenticationSection = ({ identityId, handlePopUpOpen }: P
                 a={OrgPermissionSubjects.Identity}
               >
                 {(isAllowed) => (
-                  <UnstableButton
+                  <Button
                     variant={isSubOrganization ? "sub-org" : "org"}
                     size="xs"
                     isDisabled={!isAllowed}
@@ -110,7 +110,7 @@ export const IdentityAuthenticationSection = ({ identityId, handlePopUpOpen }: P
                   >
                     <PlusIcon />
                     Add Auth Method
-                  </UnstableButton>
+                  </Button>
                 )}
               </OrgPermissionCan>
             </UnstableEmptyContent>
