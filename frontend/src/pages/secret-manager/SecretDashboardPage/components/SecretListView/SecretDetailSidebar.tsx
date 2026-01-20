@@ -672,7 +672,7 @@ export const SecretDetailSidebar = ({
                               <FormControl
                                 isError={Boolean(error?.message)}
                                 errorText={error?.message}
-                                className="mb-0"
+                                className="mb-0 w-12"
                               >
                                 <Switch
                                   id="metadata-is-encrypted-checkbox"
