@@ -96,7 +96,7 @@ export const PiiFilterConfigModal = ({ isOpen, onOpenChange, endpoint }: Props) 
               <div>
                 <p className="text-sm font-medium text-mineshaft-200">Filter Responses</p>
                 <p className="text-xs text-bunker-400">
-                  Redact PII from responses returned to users
+                  Redact PII from responses returned to clients
                 </p>
               </div>
               <Switch

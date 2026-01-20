@@ -150,7 +150,7 @@ MCP Endpoints support automatic PII (Personally Identifiable Information) filter
 | Phone | Phone numbers (US format) | `[REDACTED_PHONE]` |
 | SSN | Social Security Numbers | `[REDACTED_SSN]` |
 | Credit Card | Credit card numbers | `[REDACTED_CREDIT_CARD]` |
-| IP Address | IPv4 addresses | `[REDACTED_IP]` |
+| IP Address | IPv4 and IPv6 addresses | `[REDACTED_IP]` |
 
 ### Configuring PII Filters
 
@@ -191,10 +191,10 @@ MCP Endpoints support automatic PII (Personally Identifiable Information) filter
     Yes, you can enable PII filtering independently for requests (data sent to MCP servers) and responses (data returned to AI clients). This gives you granular control over where redaction is applied.
   </Accordion>
   <Accordion title="What PII types are supported?">
-    Infisical currently supports detection and redaction of: email addresses, phone numbers (US format), Social Security Numbers, credit card numbers, and IPv4 addresses.
+    Infisical currently supports detection and redaction of: email addresses, phone numbers (US format), Social Security Numbers, credit card numbers, and IP addresses (both IPv4 and IPv6).
   </Accordion>
   <Accordion title="Can I select different PII types for requests and responses?">
-    Not currently. The selected PII types apply to both request and response filtering. If you need different filtering rules, consider creating separate endpoints.
+    No. The selected PII types apply to both request and response filtering. If you need different filtering rules, consider creating separate endpoints.
   </Accordion>
   <Accordion title="Can I connect the same MCP server to multiple endpoints?">
     Yes, you can connect an MCP server to as many endpoints as needed. Each endpoint can have different tools enabled, allowing you to create different access profiles.
