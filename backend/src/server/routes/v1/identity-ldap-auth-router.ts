@@ -18,7 +18,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { isValidLdapFilter } from "@app/ee/services/ldap-config/ldap-fns";
 import { ApiDocsTags, LDAP_AUTH } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -36,13 +36,10 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
   await server.register(passport.secureSession());
 
   const getLdapPassportOpts = (req: FastifyRequest, done: any) => {
-    // ldapConfig is already loaded by preValidation hook
-    // This allows proper error handling since passport doesn't propagate errors well
     const { ldapConfig } = req;
 
     if (!ldapConfig) {
-      // This should never happen since preValidation already validated it
-      return done(new BadRequestError({ message: "LDAP configuration not found" }));
+      return done(new UnauthorizedError({ message: "LDAP configuration not found" }));
     }
 
     const opts = {
@@ -64,6 +61,29 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     };
 
     return done(null, opts);
+  };
+
+  // Promise-based wrapper for passport authentication
+  type TPassportUser = { identityId: string; user: { uid: string; mail?: string } };
+  const authenticateWithPassport = (req: FastifyRequest, res: FastifyReply): Promise<TPassportUser> => {
+    return new Promise((resolve, reject) => {
+      const authMiddleware = passport.authenticate(
+        "ldapauth",
+        { session: false },
+        // @fastify/passport callback signature: (req, res, err, user)
+        ((_req: FastifyRequest, _res: FastifyReply, err: Error | null, user: TPassportUser | false) => {
+          if (err) {
+            return reject(err);
+          }
+          if (!user) {
+            return reject(new UnauthorizedError({ message: "LDAP authentication failed" }));
+          }
+          return resolve(user);
+        }) as any
+      );
+
+      (authMiddleware as any)(req, res);
+    });
   };
 
   passport.use(
@@ -131,9 +151,9 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
       tags: [ApiDocsTags.LdapAuth],
       description: "Login with LDAP Auth for machine identity",
       body: z.object({
-        identityId: z.string().trim().min(1, "Identity ID is required").describe(LDAP_AUTH.LOGIN.identityId),
-        username: z.string().min(1, "Username is required").describe(LDAP_AUTH.LOGIN.username),
-        password: z.string().min(1, "Password is required").describe(LDAP_AUTH.LOGIN.password),
+        identityId: z.string().trim().uuid("Identity ID must be a valid UUID").describe(LDAP_AUTH.LOGIN.identityId),
+        username: z.string().trim().nonempty("Username is required").describe(LDAP_AUTH.LOGIN.username),
+        password: z.string().trim().nonempty("Password is required").describe(LDAP_AUTH.LOGIN.password),
         subOrganizationName: slugSchema().optional().describe(LDAP_AUTH.LOGIN.subOrganizationName)
       }),
       response: {
@@ -145,72 +165,27 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    preValidation: [
-      async (req, res) => {
-        // Validate required fields before passport authentication
-        // This is needed because preValidation runs before Fastify's schema validation
-        const body = req.body as { identityId?: string; username?: string; password?: string } | undefined;
+    handler: async (req, res) => {
+      const { identityId, username } = req.body;
 
-        if (!body || typeof body !== "object") {
-          throw new BadRequestError({ message: "Request body is required" });
-        }
+      // Load LDAP config and attach to request for passport strategy
+      const { ldapConfig } = await server.services.identityLdapAuth.getLdapConfig(identityId);
+      req.ldapConfig = {
+        ...ldapConfig,
+        isActive: true,
+        groupSearchBase: "",
+        uniqueUserAttribute: "",
+        groupSearchFilter: ""
+      };
 
-        if (!body.identityId || typeof body.identityId !== "string" || body.identityId.trim() === "") {
-          throw new BadRequestError({ message: "Identity ID is required" });
-        }
-
-        // Validate UUID format to prevent database errors
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-        if (!uuidRegex.test(body.identityId)) {
-          throw new BadRequestError({ message: "Identity ID must be a valid UUID" });
-        }
-
-        if (!body.username || typeof body.username !== "string" || body.username.trim() === "") {
-          throw new BadRequestError({ message: "Username is required" });
-        }
-
-        if (!body.password || typeof body.password !== "string" || body.password.trim() === "") {
-          throw new BadRequestError({ message: "Password is required" });
-        }
-
-        // Pre-validate that the LDAP config exists before calling passport
-        // This allows proper error handling since passport doesn't propagate errors well
-        const { ldapConfig } = await server.services.identityLdapAuth.getLdapConfig(body.identityId);
-        req.ldapConfig = {
-          ...ldapConfig,
-          isActive: true,
-          groupSearchBase: "",
-          uniqueUserAttribute: "",
-          groupSearchFilter: ""
-        };
-
-        const passportAuth = (request: FastifyRequest, reply: FastifyReply) =>
-          (
-            passport.authenticate("ldapauth", {
-              failWithError: true,
-              session: false
-            }) as any
-          )(request, reply);
-
-        const { identityId, username } = body;
-        return server.services.identityLdapAuth.withLdapLockout(
-          {
-            identityId,
-            username
-          },
-          () => passportAuth(req, res)
-        );
-      }
-    ],
-    handler: async (req) => {
-      if (!req.passportMachineIdentity?.identityId) {
-        throw new UnauthorizedError({ message: "Invalid request. Missing identity ID or LDAP entry details." });
-      }
-
-      const { identityId, user } = req.passportMachineIdentity;
+      // Authenticate with passport, wrapped in lockout protection
+      const { identityId: authIdentityId, user } = await server.services.identityLdapAuth.withLdapLockout(
+        { identityId, username },
+        () => authenticateWithPassport(req, res)
+      );
 
       const { accessToken, identityLdapAuth, identity } = await server.services.identityLdapAuth.login({
-        identityId,
+        identityId: authIdentityId,
         subOrganizationName: req.body.subOrganizationName
       });
 
@@ -220,7 +195,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         event: {
           type: EventType.LOGIN_IDENTITY_LDAP_AUTH,
           metadata: {
-            identityId,
+            identityId: authIdentityId,
             ldapEmail: user.mail,
             ldapUsername: user.uid
           }
