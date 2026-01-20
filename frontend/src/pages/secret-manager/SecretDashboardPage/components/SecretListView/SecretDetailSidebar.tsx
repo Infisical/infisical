@@ -484,7 +484,7 @@ export const SecretDetailSidebar = ({
                         <Switch
                           id="skipmultiencoding-option"
                           onCheckedChange={(isChecked) => onChange(isChecked)}
-                          isChecked={value}
+                          isChecked={value ?? false}
                           onBlur={onBlur}
                           isDisabled={!isAllowed}
                           className="items-center justify-between"
