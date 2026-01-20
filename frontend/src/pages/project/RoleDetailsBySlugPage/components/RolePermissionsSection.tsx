@@ -29,6 +29,7 @@ import { DynamicSecretPermissionConditions } from "./DynamicSecretPermissionCond
 import { GeneralPermissionConditions } from "./GeneralPermissionConditions";
 import { GeneralPermissionPolicies } from "./GeneralPermissionPolicies";
 import { IdentityManagementPermissionConditions } from "./IdentityManagementPermissionConditions";
+import { McpEndpointPermissionConditions } from "./McpEndpointPermissionConditions";
 import { PamAccountPermissionConditions } from "./PamAccountPermissionConditions";
 import { PermissionEmptyState } from "./PermissionEmptyState";
 import { PkiSubscriberPermissionConditions } from "./PkiSubscriberPermissionConditions";
@@ -114,6 +115,10 @@ export const renderConditionalComponents = (
 
     if (subject === ProjectPermissionSub.CertificatePolicies) {
       return <CertificatePolicyPermissionConditions isDisabled={isDisabled} />;
+    }
+
+    if (subject === ProjectPermissionSub.McpEndpoints) {
+      return <McpEndpointPermissionConditions isDisabled={isDisabled} />;
     }
 
     return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;

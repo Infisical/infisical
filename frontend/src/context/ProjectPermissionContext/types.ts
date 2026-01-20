@@ -280,7 +280,8 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.SecretRotation
   | ProjectPermissionSub.SecretEvents
   | ProjectPermissionSub.AppConnections
-  | ProjectPermissionSub.PamAccounts;
+  | ProjectPermissionSub.PamAccounts
+  | ProjectPermissionSub.McpEndpoints;
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
   [PermissionConditionOperators.$EQ]: "equal to",
@@ -458,6 +459,10 @@ export type PamAccountSubjectFields = {
   accountPath: string;
 };
 
+export type McpEndpointSubjectFields = {
+  name: string;
+};
+
 export type ProjectPermissionSet =
   | [
       ProjectPermissionSecretActions,
@@ -624,7 +629,13 @@ export type ProjectPermissionSet =
   | [ProjectPermissionPamSessionActions, ProjectPermissionSub.PamSessions]
   | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
-  | [ProjectPermissionMcpEndpointActions, ProjectPermissionSub.McpEndpoints]
+  | [
+      ProjectPermissionMcpEndpointActions,
+      (
+        | ProjectPermissionSub.McpEndpoints
+        | (ForcedSubject<ProjectPermissionSub.McpEndpoints> & McpEndpointSubjectFields)
+      )
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.McpServers]
   | [ProjectPermissionActions, ProjectPermissionSub.McpActivityLogs];
 
