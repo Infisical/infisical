@@ -16,6 +16,7 @@ import {
 } from "@app/ee/services/project-template/project-template-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
+import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { getPredefinedRoles } from "@app/services/project-role/project-role-fns";
 
 import { TProjectTemplateDALFactory } from "./project-template-dal";
@@ -24,6 +25,7 @@ type TProjectTemplatesServiceFactoryDep = {
   licenseService: TLicenseServiceFactory;
   permissionService: TPermissionServiceFactory;
   projectTemplateDAL: TProjectTemplateDALFactory;
+  orgMembershipDAL: TOrgMembershipDALFactory;
 };
 
 const $unpackProjectTemplate = ({ roles, environments, users, ...rest }: TProjectTemplates & { users?: unknown }) => ({
@@ -48,6 +50,7 @@ const $unpackProjectTemplate = ({ roles, environments, users, ...rest }: TProjec
 export const projectTemplateServiceFactory = ({
   licenseService,
   permissionService,
+  orgMembershipDAL,
   projectTemplateDAL
 }: TProjectTemplatesServiceFactoryDep): TProjectTemplateServiceFactory => {
   const listProjectTemplatesByOrg: TProjectTemplateServiceFactory["listProjectTemplatesByOrg"] = async (
@@ -196,6 +199,19 @@ export const projectTemplateServiceFactory = ({
         message: `A project template with the name "${params.name}" already exists.`
       });
 
+    // Validate that users exist and are members of the organization
+    if (users?.length) {
+      const orgMembers = await orgMembershipDAL.findOrgMembershipsWithUsersByOrgId(actor.orgId);
+      const orgMemberUsernames = new Set(orgMembers.map((m) => m.user.username?.toLowerCase()).filter(Boolean));
+
+      const invalidUsers = users.filter((u) => !orgMemberUsernames.has(u.username.toLowerCase()));
+      if (invalidUsers.length) {
+        throw new BadRequestError({
+          message: `The following users are not members of this organization: ${invalidUsers.map((u) => u.username).join(", ")}`
+        });
+      }
+    }
+
     const projectTemplateEnvironments =
       type === ProjectType.SecretManager && environments === undefined
         ? ProjectTemplateDefaultEnvironments
@@ -253,6 +269,17 @@ export const projectTemplateServiceFactory = ({
     }
 
     if (users) {
+      // Validate that users exist and are members of the organization
+      const orgMembers = await orgMembershipDAL.findOrgMembershipsWithUsersByOrgId(projectTemplate.orgId);
+      const orgMemberUsernames = new Set(orgMembers.map((m) => m.user.username?.toLowerCase()).filter(Boolean));
+
+      const invalidUsers = users.filter((u) => !orgMemberUsernames.has(u.username.toLowerCase()));
+      if (invalidUsers.length) {
+        throw new BadRequestError({
+          message: `The following users are not members of this organization: ${invalidUsers.map((u) => u.username).join(", ")}`
+        });
+      }
+
       const templateRoles = roles ?? (projectTemplate.roles as TProjectTemplateRole[]);
 
       const availableRoleSlugs = new Set([

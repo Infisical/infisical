@@ -1265,7 +1265,8 @@ export const registerRoutes = async (
   const projectTemplateService = projectTemplateServiceFactory({
     licenseService,
     permissionService,
-    projectTemplateDAL
+    projectTemplateDAL,
+    orgMembershipDAL
   });
 
   const integrationAuthService = integrationAuthServiceFactory({
