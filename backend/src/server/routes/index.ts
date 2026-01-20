@@ -2577,6 +2577,8 @@ export const registerRoutes = async (
 
   // setup the communication with license key server
   await licenseService.init();
+  await secretReplicationService.init();
+  await secretQueueService.init();
 
   // If FIPS is enabled, we check to ensure that the users license includes FIPS mode.
   crypto.verifyFipsLicense(licenseService);

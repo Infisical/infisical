@@ -8,7 +8,7 @@ import { NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { QueueName, TQueueServiceFactory } from "@app/queue";
+import { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -18,8 +18,8 @@ import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/res
 import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import { fnSecretBulkInsert, fnSecretBulkUpdate } from "@app/services/secret/secret-fns";
-import { TSecretQueueFactory, uniqueSecretQueueKey } from "@app/services/secret/secret-queue";
-import { SecretOperations } from "@app/services/secret/secret-types";
+import { uniqueSecretQueueKey } from "@app/services/secret/secret-queue";
+import { SecretOperations, TSecretQueueFactory } from "@app/services/secret/secret-types";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
 import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -37,6 +37,7 @@ import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secre
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 
 import { MAX_REPLICATION_DEPTH } from "./secret-replication-constants";
+import { TSecretReplicationServiceFactory } from "./secret-replication-types";
 
 type TSecretReplicationServiceFactoryDep = {
   secretDAL: Pick<
@@ -68,7 +69,7 @@ type TSecretReplicationServiceFactoryDep = {
   secretVersionV2TagBridgeDAL: Pick<TSecretVersionV2TagDALFactory, "find" | "insertMany">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
-  queueService: Pick<TQueueServiceFactory, "start" | "listen" | "queue" | "stopJobById">;
+  queueService: Pick<TQueueServiceFactory, "start" | "listen" | "queue" | "stopJobById" | "startPg">;
   secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   secretTagDAL: Pick<
@@ -91,7 +92,6 @@ type TSecretReplicationServiceFactoryDep = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
 };
 
-export type TSecretReplicationServiceFactory = ReturnType<typeof secretReplicationServiceFactory>;
 const SECRET_IMPORT_SUCCESS_LOCK = 10;
 
 const keystoreReplicationSuccessKey = (jobId: string, secretImportId: string) => `${jobId}-${secretImportId}`;
@@ -138,7 +138,7 @@ export const secretReplicationServiceFactory = ({
   kmsService,
   folderCommitService,
   resourceMetadataDAL
-}: TSecretReplicationServiceFactoryDep) => {
+}: TSecretReplicationServiceFactoryDep): TSecretReplicationServiceFactory => {
   const $getReplicatedSecrets = (
     botKey: string,
     localSecrets: TSecrets[],
@@ -187,11 +187,11 @@ export const secretReplicationServiceFactory = ({
     return secrets;
   };
 
-  // IMPORTANT NOTE BEFORE READING THE FUNCTION
-  // SOURCE - Where secrets are copied from
-  // DESTINATION - Where the replicated imports that points to SOURCE from Destination
-  queueService.start(QueueName.SecretReplication, async (job) => {
-    logger.info(job.data, "Replication started");
+  const $secretReplicationQueueTask = async (
+    jobId: string,
+    jobData: TQueueJobTypes[QueueName.SecretReplication]["payload"]
+  ) => {
+    logger.info(jobData, "Replication started");
     const {
       secretPath,
       environmentSlug,
@@ -203,7 +203,7 @@ export const secretReplicationServiceFactory = ({
       _deDupeReplicationQueue: deDupeReplicationQueue,
       _deDupeQueue: deDupeQueue,
       _depth: depth = 0
-    } = job.data;
+    } = jobData;
     if (depth > MAX_REPLICATION_DEPTH) return;
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, secretPath);
@@ -302,12 +302,12 @@ export const secretReplicationServiceFactory = ({
         for (const destinationSecretImport of destinationReplicatedSecretImports) {
           try {
             const hasJobCompleted = await keyStore.getItem(
-              keystoreReplicationSuccessKey(job.id as string, destinationSecretImport.id),
+              keystoreReplicationSuccessKey(jobId, destinationSecretImport.id),
               KeyStorePrefixes.SecretReplication
             );
             if (hasJobCompleted) {
               logger.info(
-                { jobId: job.id, importId: destinationSecretImport.id },
+                { jobId, importId: destinationSecretImport.id },
                 "Skipping this job as this has been successfully replicated."
               );
               // eslint-disable-next-line
@@ -527,7 +527,7 @@ export const secretReplicationServiceFactory = ({
 
             // this is used to avoid multiple times generating secret approval by failed one
             await keyStore.setItemWithExpiry(
-              keystoreReplicationSuccessKey(job.id as string, destinationSecretImport.id),
+              keystoreReplicationSuccessKey(jobId, destinationSecretImport.id),
               SECRET_IMPORT_SUCCESS_LOCK,
               1,
               KeyStorePrefixes.SecretReplication
@@ -553,7 +553,7 @@ export const secretReplicationServiceFactory = ({
         /*  eslint-enable no-await-in-loop */
       } finally {
         await lock.release();
-        logger.info(job.data, "Replication finished");
+        logger.info(jobData, "Replication finished");
       }
       return;
     }
@@ -582,12 +582,12 @@ export const secretReplicationServiceFactory = ({
       for (const destinationSecretImport of destinationReplicatedSecretImports) {
         try {
           const hasJobCompleted = await keyStore.getItem(
-            keystoreReplicationSuccessKey(job.id as string, destinationSecretImport.id),
+            keystoreReplicationSuccessKey(jobId, destinationSecretImport.id),
             KeyStorePrefixes.SecretReplication
           );
           if (hasJobCompleted) {
             logger.info(
-              { jobId: job.id, importId: destinationSecretImport.id },
+              { jobId, importId: destinationSecretImport.id },
               "Skipping this job as this has been successfully replicated."
             );
             // eslint-disable-next-line
@@ -813,7 +813,7 @@ export const secretReplicationServiceFactory = ({
 
           // this is used to avoid multiple times generating secret approval by failed one
           await keyStore.setItemWithExpiry(
-            keystoreReplicationSuccessKey(job.id as string, destinationSecretImport.id),
+            keystoreReplicationSuccessKey(jobId, destinationSecretImport.id),
             SECRET_IMPORT_SUCCESS_LOCK,
             1,
             KeyStorePrefixes.SecretReplication
@@ -839,11 +839,34 @@ export const secretReplicationServiceFactory = ({
       /*  eslint-enable no-await-in-loop */
     } finally {
       await lock.release();
-      logger.info(job.data, "Replication finished");
+      logger.info(jobData, "Replication finished");
     }
+  };
+
+  const init = async () => {
+    await queueService.startPg<QueueName.SecretReplication>(
+      QueueJobs.SecretReplication,
+      async ([job]) => {
+        await $secretReplicationQueueTask(job.id, job.data);
+      },
+      {
+        batchSize: 1,
+        workerCount: 1,
+        pollingIntervalSeconds: 1
+      }
+    );
+  };
+
+  // IMPORTANT NOTE BEFORE READING THE FUNCTION
+  // SOURCE - Where secrets are copied from
+  // DESTINATION - Where the replicated imports that points to SOURCE from Destination
+  queueService.start(QueueName.SecretReplication, async (job) => {
+    await $secretReplicationQueueTask(job.id as string, job.data);
   });
 
   queueService.listen(QueueName.SecretReplication, "failed", (job, err) => {
     logger.error(err, "Failed to replicate secret", job?.data);
   });
+
+  return { init };
 };

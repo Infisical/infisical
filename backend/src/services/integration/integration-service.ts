@@ -18,7 +18,7 @@ import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TSecretDALFactory } from "../secret/secret-dal";
-import { TSecretQueueFactory } from "../secret/secret-queue";
+import { TSecretQueueFactory } from "../secret/secret-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";

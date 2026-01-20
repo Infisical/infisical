@@ -125,7 +125,7 @@ import { TSecretServiceFactory } from "@app/services/secret/secret-service";
 import { TSecretBlindIndexServiceFactory } from "@app/services/secret-blind-index/secret-blind-index-service";
 import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
 import { TSecretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
-import { TSecretReplicationServiceFactory } from "@app/services/secret-replication/secret-replication-service";
+import { TSecretReplicationServiceFactory } from "@app/services/secret-replication/secret-replication-types";
 import { TSecretSharingServiceFactory } from "@app/services/secret-sharing/secret-sharing-service";
 import { TSecretSyncServiceFactory } from "@app/services/secret-sync/secret-sync-service";
 import { TSecretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";

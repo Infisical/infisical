@@ -582,3 +582,21 @@ export type TProcessNewCommitRawDTO = {
     delete?: { folderName: string; id: string }[];
   };
 };
+
+export type TSecretQueueFactory = {
+  syncSecrets: <T extends boolean = false>(dto: TSyncSecretsDTO<T>) => Promise<void>;
+  startSecretV2Migration: (projectId: string) => Promise<void>;
+  syncIntegrations: (dto: {
+    secretPath: string;
+    projectId: string;
+    environment: string;
+    isManual?: boolean;
+    actorId?: string;
+    deDupeQueue?: Record<string, boolean>;
+  }) => Promise<void>;
+  addSecretReminder: (dto: TCreateSecretReminderDTO) => Promise<void>;
+  removeSecretReminder: (dto: TRemoveSecretReminderDTO, tx?: Knex) => Promise<void>;
+  handleSecretReminder: (dto: THandleReminderDTO) => Promise<void>;
+  replicateSecrets: (dto: Omit<TSyncSecretsDTO, "deDupeQueue">) => Promise<void>;
+  init: () => Promise<void>;
+};
