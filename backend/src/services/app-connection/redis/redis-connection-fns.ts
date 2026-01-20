@@ -17,7 +17,7 @@ export const getRedisConnectionListItem = () => {
 };
 
 export const validateRedisConnectionCredentials = async (config: TRedisConnectionConfig) => {
-  const [hostIp] = await verifyHostInputValidity(config.credentials.host);
+  const [hostIp] = await verifyHostInputValidity({ host: config.credentials.host, isDynamicSecret: false });
 
   let connection: Redis | null = null;
   try {
