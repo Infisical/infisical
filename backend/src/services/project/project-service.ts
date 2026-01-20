@@ -345,6 +345,8 @@ export const projectServiceFactory = ({
 
       // set default environments and root folder for provided environments
       let envs: TProjectEnvironments[] = [];
+      let creatorAddedViaTemplate = false;
+
       if (projectTemplate) {
         if (projectTemplate.environments) {
           envs = await projectEnvDAL.insertMany(
@@ -366,15 +368,17 @@ export const projectServiceFactory = ({
         );
 
         // Add template users to the project
+        const templateHasAdmin = projectTemplate.users?.some((u) => u.roles.includes(ProjectMembershipRole.Admin));
+
         if (projectTemplate.users?.length) {
           const templateUsernames = projectTemplate.users.map((u) => u.username.toLowerCase());
           const users = await userDAL.find({
             $in: { username: templateUsernames }
           });
 
-          // Filter out the project creator and get org memberships for remaining users
-          const usersExcludingCreator = users.filter((u) => u.id !== actorId);
-          const userIds = usersExcludingCreator.map((u) => u.id);
+          // If template has an admin, include the creator in template users, otherwise exclude them
+          const usersToProcess = templateHasAdmin ? users : users.filter((u) => u.id !== actorId);
+          const userIds = usersToProcess.map((u) => u.id);
 
           if (userIds.length) {
             const orgMemberships = await membershipUserDAL.find(
@@ -387,7 +391,11 @@ export const projectServiceFactory = ({
             );
 
             const userIdToOrgMembership = new Map(orgMemberships.map((m) => [m.actorUserId, m]));
-            const usersToAdd = usersExcludingCreator.filter((u) => userIdToOrgMembership.has(u.id));
+            const usersToAdd = usersToProcess.filter((u) => userIdToOrgMembership.has(u.id));
+
+            if (templateHasAdmin && usersToAdd.some((u) => u.id === actorId)) {
+              creatorAddedViaTemplate = true;
+            }
 
             if (usersToAdd.length) {
               const usernameToRoles = new Map(projectTemplate.users.map((u) => [u.username.toLowerCase(), u.roles]));
@@ -451,7 +459,8 @@ export const projectServiceFactory = ({
       }
 
       // If the project is being created by a user, add the user to the project as an admin
-      if (actor === ActorType.USER) {
+      // Skip this if the creator was already added via template with their configured roles
+      if (actor === ActorType.USER && !creatorAddedViaTemplate) {
         // Find public key of user
         const user = await userDAL.findUserEncKeyByUserId(actorId);
 
