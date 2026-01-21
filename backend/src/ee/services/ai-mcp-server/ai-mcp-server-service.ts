@@ -787,6 +787,11 @@ export const aiMcpServerServiceFactory = ({
       );
     }
 
+    const urlObj = new URL(url);
+    if (!gatewayId) {
+      await verifyHostInputValidity({ host: urlObj.hostname, isGateway: false, isDynamicSecret: false });
+    }
+
     const encryptedCredentials = await encryptCredentials({
       projectId,
       credentials,
