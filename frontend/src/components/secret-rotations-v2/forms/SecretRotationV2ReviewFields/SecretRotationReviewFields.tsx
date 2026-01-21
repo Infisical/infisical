@@ -15,6 +15,7 @@ import { OktaClientSecretRotationReviewFields } from "./OktaClientSecretRotation
 import { RedisCredentialsRotationReviewFields } from "./RedisCredentialsRotationReviewFields";
 import { SqlCredentialsRotationReviewFields } from "./shared";
 import { UnixLinuxLocalAccountRotationReviewFields } from "./UnixLinuxLocalAccountRotationReviewFields";
+import { WindowsLocalAccountRotationReviewFields } from "./WindowsLocalAccountRotationReviewFields";
 
 const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.PostgresCredentials]: SqlCredentialsRotationReviewFields,
@@ -30,7 +31,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.MongoDBCredentials]: SqlCredentialsRotationReviewFields,
   [SecretRotation.DatabricksServicePrincipalSecret]:
     DatabricksServicePrincipalSecretRotationReviewFields,
-  [SecretRotation.UnixLinuxLocalAccount]: UnixLinuxLocalAccountRotationReviewFields
+  [SecretRotation.UnixLinuxLocalAccount]: UnixLinuxLocalAccountRotationReviewFields,
+  [SecretRotation.WindowsLocalAccount]: WindowsLocalAccountRotationReviewFields
 };
 
 export const SecretRotationV2ReviewFields = () => {

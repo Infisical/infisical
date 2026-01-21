@@ -1,0 +1,244 @@
+---
+title: "Windows Local Account Rotation"
+description: "Learn how to automatically rotate Windows local account passwords using OpenSSH."
+---
+
+<Note>
+    Due to how Windows local account passwords are rotated, retired credentials will not be able to
+    authenticate with the SSH provider during their [inactive period](./overview#how-rotation-works).
+
+    This is a limitation of the SSH provider and cannot be
+    rectified by Infisical.
+</Note>
+
+## Prerequisites
+
+- **OpenSSH Server installed and enabled** on your Windows Server (Windows Server 2019+ includes OpenSSH by default)
+- Create an [SSH Connection](/integrations/app-connections/ssh) with the **Secret Rotation** requirements
+- Ensure your network security policies allow incoming requests from Infisical to this rotation provider, if network restrictions apply.
+
+### Enable OpenSSH on Windows
+
+For Windows Server 2019 and later (and Windows 10/11), OpenSSH Server is included as an optional feature. To enable it, run these PowerShell commands as Administrator:
+
+```powershell
+# Install OpenSSH Server (if not already installed)
+$ssh = Get-WindowsCapability -Online | Where-Object Name -like 'OpenSSH.Server*'
+if ($ssh.State -ne "Installed") {
+    Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+}
+
+# Start and enable the service
+Start-Service sshd
+Set-Service -Name sshd -StartupType Automatic
+```
+
+### Firewall Configuration (Optional)
+
+If you need to allow SSH connections through Windows Firewall, you can use:
+
+```powershell
+New-NetFirewallRule -Name "OpenSSH-Server-In-TCP" -DisplayName "OpenSSH Server" `
+    -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
+```
+
+**Note**: Consult your security team if you have existing firewall policies, use Group Policy, or have third-party firewall software.
+
+### For Older Windows Versions
+
+For Windows Server versions prior to 2019, download and install OpenSSH from the [official repository](https://github.com/PowerShell/Win32-OpenSSH).
+
+## Create a Windows Local Account Rotation in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. Navigate to your Secret Manager Project's Dashboard and select **Add Secret Rotation** from the actions dropdown.
+        ![Secret Manager Dashboard](/images/secret-rotations-v2/generic/add-secret-rotation.png)
+
+        2. Select the **Windows Local Account** option.
+        ![Select Windows Local Account](/images/secret-rotations-v2/windows-local-account/select-windows-local-account-option.png)
+
+        3. Select the **SSH Connection** to use and configure the rotation behavior. Then click **Next**.
+        ![Rotation Configuration](/images/secret-rotations-v2/windows-local-account/windows-local-account-configuration.png)
+
+            - **SSH Connection** - the connection that will perform the rotation of the configured user's password.
+            - **Rotation Interval** - the interval, in days, that once elapsed will trigger a rotation.
+            - **Rotate At** - the local time of day when rotation should occur once the interval has elapsed.
+            - **Auto-Rotation Enabled** - whether secrets should automatically be rotated once the rotation interval has elapsed. Disable this option to manually rotate secrets or pause secret rotation.
+            <Note>
+                Due to Windows Local Account Rotations rotating a single credential set, auto-rotation may result in service interruptions. If you need to ensure service continuity, we recommend disabling this option.
+            </Note>
+
+
+        4. Configure the required Parameters for your rotation. Then click **Next**.
+        ![Rotation Parameters](/images/secret-rotations-v2/windows-local-account/windows-local-account-parameters.png)
+
+        - **Rotation Method** - The method to use when rotating the target user's password.
+            - **Login as Target** - Infisical will use the provided SSH username and password to log in and rotate its own password.
+            - **Login as Root** - Infisical will use the SSH Connection's credentials to log in and rotate the provided user's password.
+        - **Username** - The target Windows username whose password will be rotated.
+        - **Current Password** - The current password of the target user (required when **Rotation Method** is set to **Login as Target**).
+        - **Password Requirements** - The constraints to apply when generating new passwords.
+
+        5. Specify the secret names that the Windows credentials should be mapped to. Then click **Next**.
+        ![Rotation Secrets Mapping](/images/secret-rotations-v2/windows-local-account/windows-local-account-secrets-mapping.png)
+
+            - **Username** - the name of the secret that the Windows username will be stored in.
+            - **Password** - the name of the secret that the rotated password will be stored in.
+
+        6. Give your rotation a name and description (optional). Then click **Next**.
+        ![Rotation Details](/images/secret-rotations-v2/windows-local-account/windows-local-account-details.png)
+
+            - **Name** - the name of the secret rotation configuration. Must be slug-friendly.
+            - **Description** (optional) - a description of this rotation configuration.
+
+        7. Review your configuration, then click **Create Secret Rotation**.
+        ![Rotation Review](/images/secret-rotations-v2/windows-local-account/windows-local-account-confirm.png)
+
+        8. Your **Windows Local Account** credentials are now available for use via the mapped secrets.
+        ![Rotation Created](/images/secret-rotations-v2/windows-local-account/windows-local-account-created.png)
+
+        ### Reconcile Windows Local Account
+
+        If you suspect the credentials are out of sync (for example, after a manual password change on the server), you can regain access by using **Reconcile**. This will use the configured SSH App Connection's administrator account to reset the target user's password and sync it with Infisical.
+
+        ![Reconcile Option](/images/secret-rotations-v2/windows-local-account/windows-local-account-reconcile.png)
+        ![Reconcile Confirmation](/images/secret-rotations-v2/windows-local-account/windows-local-account-reconcile-confirm.png)
+    </Tab>
+    <Tab title="API">
+        To create a Windows Local Account Rotation, make an API request to the [Create Windows
+        Local Account Rotation](/api-reference/endpoints/secret-rotations/windows-local-account/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl --request POST \
+        --url https://us.infisical.com/api/v2/secret-rotations/windows-local-account \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-windows-rotation",
+            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "description": "my windows local account rotation",
+            "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "environment": "dev",
+            "secretPath": "/",
+            "isAutoRotationEnabled": false,
+            "rotationInterval": 30,
+            "rotateAtUtc": {
+                "hours": 0,
+                "minutes": 0
+            },
+            "parameters": {
+                "rotationMethod": "login-as-root",
+                "username": "appuser",
+                "passwordRequirements": {
+                    "length": 48,
+                    "required": {
+                        "digits": 2,
+                        "lowercase": 2,
+                        "uppercase": 2,
+                        "symbols": 2
+                    },
+                    "allowedSymbols": "-_.~!*"
+                }
+            },
+            "secretsMapping": {
+                "username": "WINDOWS_USERNAME",
+                "password": "WINDOWS_PASSWORD"
+            }
+        }'
+        ```
+
+        <Note>
+            Due to Windows Local Account Rotations rotating a single credential set, auto-rotation may result in service interruptions. If you need to ensure service continuity, we recommend disabling this option.
+        </Note>
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "secretRotation": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-windows-rotation",
+                "description": "my windows local account rotation",
+                "secretsMapping": {
+                    "username": "WINDOWS_USERNAME",
+                    "password": "WINDOWS_PASSWORD"
+                },
+                "isAutoRotationEnabled": false,
+                "activeIndex": 0,
+                "folderId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2023-11-07T05:31:56Z",
+                "updatedAt": "2023-11-07T05:31:56Z",
+                "rotationInterval": 30,
+                "rotationStatus": "success",
+                "lastRotationAttemptedAt": "2023-11-07T05:31:56Z",
+                "lastRotatedAt": "2023-11-07T05:31:56Z",
+                "lastRotationJobId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "nextRotationAt": "2023-11-07T05:31:56Z",
+                "connection": {
+                    "app": "ssh",
+                    "name": "my-ssh-connection",
+                    "description": "Windows SSH connection",
+                    "credentials": {}
+                },
+                "folder": {
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "name": "dev",
+                    "path": "/"
+                },
+                "environment": {
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "name": "Development",
+                    "slug": "dev"
+                },
+                "parameters": {
+                    "username": "appuser",
+                    "rotationMethod": "login-as-root",
+                    "passwordRequirements": {
+                        "length": 48,
+                        "required": {
+                            "digits": 2,
+                            "lowercase": 2,
+                            "uppercase": 2,
+                            "symbols": 2
+                        },
+                        "allowedSymbols": "-_.~!*"
+                    }
+                },
+                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "rotateAtUtc": {
+                    "hours": 0,
+                    "minutes": 0
+                },
+                "secrets": [],
+                "type": "windows-local-account"
+            }
+        }
+        ```
+    </Tab>
+</Tabs>
+
+## Troubleshooting
+
+### Common Issues
+
+**OpenSSH service not starting**
+- Verify the service is installed: `Get-Service sshd`
+- Check Windows Event Viewer for SSH-related errors
+- Ensure port 22 is not already in use by another service
+
+**Connection refused**
+- Verify the firewall allows SSH connections on port 22
+- Check that the OpenSSH service is running: `Get-Service sshd`
+- Test SSH connectivity locally: `ssh localhost`
+
+**Permission denied errors**
+- Ensure the SSH connection credentials have administrator privileges
+- For "Login as Root" method, the SSH connection user must have rights to change other users' passwords
+- Verify the target user account exists and is not locked
+
+**Password policy violations**
+- Adjust the Password Requirements in Infisical to meet your Windows Server password policy
+- Check Windows Server password policy using: `net accounts`

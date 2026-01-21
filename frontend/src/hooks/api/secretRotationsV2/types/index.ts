@@ -64,6 +64,11 @@ import {
   TUnixLinuxLocalAccountRotationGeneratedCredentialsResponse,
   TUnixLinuxLocalAccountRotationOption
 } from "./unix-linux-local-account-rotation";
+import {
+  TWindowsLocalAccountRotation,
+  TWindowsLocalAccountRotationGeneratedCredentialsResponse,
+  TWindowsLocalAccountRotationOption
+} from "./windows-local-account-rotation";
 
 export type TSecretRotationV2 = (
   | TPostgresCredentialsRotation
@@ -79,6 +84,7 @@ export type TSecretRotationV2 = (
   | TMongoDBCredentialsRotation
   | TDatabricksServicePrincipalSecretRotation
   | TUnixLinuxLocalAccountRotation
+  | TWindowsLocalAccountRotation
 ) & {
   secrets: (SecretV3RawSanitized | null)[];
 };
@@ -93,7 +99,8 @@ export type TSecretRotationV2Option =
   | TRedisCredentialsRotationOption
   | TMongoDBCredentialsRotationOption
   | TDatabricksServicePrincipalSecretRotationOption
-  | TUnixLinuxLocalAccountRotationOption;
+  | TUnixLinuxLocalAccountRotationOption
+  | TWindowsLocalAccountRotationOption;
 
 export type TListSecretRotationV2Options = { secretRotationOptions: TSecretRotationV2Option[] };
 
@@ -112,7 +119,8 @@ export type TViewSecretRotationGeneratedCredentialsResponse =
   | TRedisCredentialsRotationGeneratedCredentialsResponse
   | TMongoDBCredentialsRotationGeneratedCredentialsResponse
   | TDatabricksServicePrincipalSecretRotationGeneratedCredentialsResponse
-  | TUnixLinuxLocalAccountRotationGeneratedCredentialsResponse;
+  | TUnixLinuxLocalAccountRotationGeneratedCredentialsResponse
+  | TWindowsLocalAccountRotationGeneratedCredentialsResponse;
 
 export type TCreateSecretRotationV2DTO = DiscriminativePick<
   TSecretRotationV2,
@@ -169,6 +177,7 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.MongoDBCredentials]: TMongoDBCredentialsRotationOption;
   [SecretRotation.DatabricksServicePrincipalSecret]: TDatabricksServicePrincipalSecretRotationOption;
   [SecretRotation.UnixLinuxLocalAccount]: TUnixLinuxLocalAccountRotationOption;
+  [SecretRotation.WindowsLocalAccount]: TWindowsLocalAccountRotationOption;
 };
 
 export type TSecretRotationGeneratedCredentialsResponseMap = {
@@ -185,17 +194,20 @@ export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.MongoDBCredentials]: TMongoDBCredentialsRotationGeneratedCredentialsResponse;
   [SecretRotation.DatabricksServicePrincipalSecret]: TDatabricksServicePrincipalSecretRotationGeneratedCredentialsResponse;
   [SecretRotation.UnixLinuxLocalAccount]: TUnixLinuxLocalAccountRotationGeneratedCredentialsResponse;
+  [SecretRotation.WindowsLocalAccount]: TWindowsLocalAccountRotationGeneratedCredentialsResponse;
 };
 
-export type TReconcileUnixLinuxLocalAccountRotationDTO = {
+// Unified type for local account reconciliation (Unix/Linux and Windows)
+export type TReconcileLocalAccountRotationDTO = {
   rotationId: string;
+  type: SecretRotation.UnixLinuxLocalAccount | SecretRotation.WindowsLocalAccount;
   // required for query invalidation
   secretPath: string;
   projectId: string;
 };
 
-export type TReconcileUnixLinuxLocalAccountRotationResponse = {
+export type TReconcileLocalAccountRotationResponse = {
   message: string;
   reconciled: boolean;
-  secretRotation: TUnixLinuxLocalAccountRotation;
+  secretRotation: TUnixLinuxLocalAccountRotation | TWindowsLocalAccountRotation;
 };

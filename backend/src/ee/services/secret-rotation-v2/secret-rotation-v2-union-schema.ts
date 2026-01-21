@@ -13,6 +13,7 @@ import { OracleDBCredentialsRotationSchema } from "@app/ee/services/secret-rotat
 import { PostgresCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/postgres-credentials";
 import { RedisCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/redis-credentials";
 import { UnixLinuxLocalAccountRotationSchema } from "@app/ee/services/secret-rotation-v2/unix-linux-local-account-rotation";
+import { WindowsLocalAccountRotationSchema } from "@app/ee/services/secret-rotation-v2/windows-local-account-rotation";
 
 export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   PostgresCredentialsRotationSchema,
@@ -27,5 +28,6 @@ export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   RedisCredentialsRotationSchema,
   MongoDBCredentialsRotationSchema,
   DatabricksServicePrincipalSecretRotationSchema,
-  UnixLinuxLocalAccountRotationSchema
+  UnixLinuxLocalAccountRotationSchema,
+  WindowsLocalAccountRotationSchema
 ]);

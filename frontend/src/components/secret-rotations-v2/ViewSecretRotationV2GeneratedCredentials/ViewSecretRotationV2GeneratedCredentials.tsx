@@ -26,6 +26,7 @@ import { ViewAwsIamUserSecretRotationGeneratedCredentials } from "./ViewAwsIamUs
 import { ViewOktaClientSecretRotationGeneratedCredentials } from "./ViewOktaClientSecretRotationGeneratedCredentials";
 import { ViewRedisCredentialsRotationGeneratedCredentials } from "./ViewRedisCredentialsRotationGeneratedCredentials";
 import { ViewUnixLinuxLocalAccountRotationGeneratedCredentials } from "./ViewUnixLinuxLocalAccountRotationGeneratedCredentials";
+import { ViewWindowsLocalAccountRotationGeneratedCredentials } from "./ViewWindowsLocalAccountRotationGeneratedCredentials";
 
 type Props = {
   secretRotation?: TSecretRotationV2;
@@ -128,6 +129,13 @@ const Content = ({ secretRotation }: ContentProps) => {
     case SecretRotation.UnixLinuxLocalAccount:
       Component = (
         <ViewUnixLinuxLocalAccountRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
+    case SecretRotation.WindowsLocalAccount:
+      Component = (
+        <ViewWindowsLocalAccountRotationGeneratedCredentials
           generatedCredentialsResponse={generatedCredentialsResponse}
         />
       );
