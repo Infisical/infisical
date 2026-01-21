@@ -349,6 +349,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secretVersion: secret.version,
             secretMetadata: secret.secretMetadata?.map((meta) => ({
               key: meta.key,
+              isEncrypted: meta.isEncrypted,
               value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value
             }))
           }
@@ -487,6 +488,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secretVersion: secret.version,
             secretMetadata: req.body.secretMetadata?.map((meta) => ({
               key: meta.key,
+              isEncrypted: meta.isEncrypted,
               value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value
             })),
             secretTags: secret.tags?.map((tag) => tag.name)
@@ -635,6 +637,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secretVersion: secret.version,
             secretMetadata: req.body.secretMetadata?.map((meta) => ({
               key: meta.key,
+              isEncrypted: meta.isEncrypted,
               value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value
             })),
             secretTags: secret.tags?.map((tag) => tag.name)
@@ -932,6 +935,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               secretVersion: secret.version,
               secretMetadata: secretMetadataMap.get(secret.secretKey)?.map((meta) => ({
                 key: meta.key,
+                isEncrypted: meta.isEncrypted,
                 value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value
               })),
               secretTags: secret.tags?.map((tag) => tag.name)
@@ -1089,6 +1093,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
                 secretVersion: secret.version,
                 secretMetadata: secretMetadataMap.get(secret.secretKey)?.map((meta) => ({
                   key: meta.key,
+                  isEncrypted: meta.isEncrypted,
                   value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value
                 })),
                 secretTags: secret.tags?.map((tag) => tag.name)

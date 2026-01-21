@@ -1110,8 +1110,9 @@ export const secretApprovalRequestServiceFactory = ({
             // @ts-expect-error not present on v1 secrets
             secretKey: secret.key as string,
             // @ts-expect-error not present on v1 secrets
-            secretMetadata: (secret.secretMetadata as ResourceMetadataWithEncryptionDTO).map((meta) => ({
+            secretMetadata: (secret.secretMetadata as ResourceMetadataWithEncryptionDTO)?.map((meta) => ({
               key: meta.key,
+              isEncrypted: meta.isEncrypted,
               value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value || ""
             })),
             // @ts-expect-error not present on v1 secrets
@@ -1134,8 +1135,9 @@ export const secretApprovalRequestServiceFactory = ({
               // @ts-expect-error not present on v1 secrets
               secretKey: secret.key as string,
               // @ts-expect-error not present on v1 secrets
-              secretMetadata: (secret.secretMetadata as ResourceMetadataWithEncryptionDTO).map((meta) => ({
+              secretMetadata: (secret.secretMetadata as ResourceMetadataWithEncryptionDTO)?.map((meta) => ({
                 key: meta.key,
+                isEncrypted: meta.isEncrypted,
                 value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value || ""
               })),
               // @ts-expect-error not present on v1 secrets
@@ -1155,8 +1157,9 @@ export const secretApprovalRequestServiceFactory = ({
             // @ts-expect-error not present on v1 secrets
             secretKey: secret.key as string,
             // @ts-expect-error not present on v1 secrets
-            secretMetadata: (secret.secretMetadata as ResourceMetadataWithEncryptionDTO).map((meta) => ({
+            secretMetadata: (secret.secretMetadata as ResourceMetadataWithEncryptionDTO)?.map((meta) => ({
               key: meta.key,
+              isEncrypted: meta.isEncrypted,
               value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value || ""
             })),
             // @ts-expect-error not present on v1 secrets

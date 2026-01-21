@@ -484,10 +484,12 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
             secretId: secret.id,
             secretKey: req.params.secretName,
             secretVersion: secret.version,
-            secretMetadata: secret.secretMetadata?.map((item) => ({
-              key: item.key,
-              value: item.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : item.value
-            }))
+            secretMetadata:
+              secret.secretMetadata?.map((item) => ({
+                key: item.key,
+                isEncrypted: item.isEncrypted,
+                value: item.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : item.value
+              })) || []
           }
         }
       });
@@ -633,6 +635,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
             secretVersion: secret.version,
             secretMetadata: req.body.secretMetadata?.map((meta) => ({
               key: meta.key,
+              isEncrypted: meta.isEncrypted,
               value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value
             })),
             secretTags: secret.tags?.map((tag) => tag.name)
@@ -790,6 +793,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
             secretVersion: secret.version,
             secretMetadata: req.body.secretMetadata?.map((meta) => ({
               key: meta.key,
+              isEncrypted: meta.isEncrypted,
               value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value
             })),
             secretTags: secret.tags?.map((tag) => tag.name)
@@ -2168,6 +2172,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
               secretVersion: secret.version,
               secretMetadata: secretMetadataMap.get(secret.secretKey)?.map((item) => ({
                 key: item.key,
+                isEncrypted: item.isEncrypted,
                 value: item.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : item.value
               })),
               secretTags: secret.tags?.map((tag) => tag.name)
@@ -2325,6 +2330,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
                 secretVersion: secret.version,
                 secretMetadata: secretMetadataMap.get(secret.secretKey)?.map((item) => ({
                   key: item.key,
+                  isEncrypted: item.isEncrypted,
                   value: item.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : item.value
                 })),
                 secretTags: secret.tags?.map((tag) => tag.name)
@@ -2349,6 +2355,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
                 secretVersion: secret.version,
                 secretMetadata: secretMetadataMap.get(secret.secretKey)?.map((item) => ({
                   key: item.key,
+                  isEncrypted: item.isEncrypted,
                   value: item.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : item.value
                 })),
                 secretTags: secret.tags?.map((tag) => tag.name)
