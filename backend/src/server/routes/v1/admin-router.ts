@@ -42,6 +42,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             updatedAt: true,
             encryptedSlackClientId: true,
             encryptedSlackClientSecret: true,
+            encryptedGovSlackClientId: true,
+            encryptedGovSlackClientSecret: true,
             encryptedMicrosoftTeamsAppId: true,
             encryptedMicrosoftTeamsClientSecret: true,
             encryptedMicrosoftTeamsBotId: true,
@@ -109,6 +111,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           }),
         slackClientId: z.string().optional(),
         slackClientSecret: z.string().optional(),
+        govSlackClientId: z.string().optional(),
+        govSlackClientSecret: z.string().optional(),
         microsoftTeamsAppId: z.string().optional(),
         microsoftTeamsClientSecret: z.string().optional(),
         microsoftTeamsBotId: z.string().optional(),
@@ -381,6 +385,10 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           slack: z.object({
+            clientId: z.string(),
+            clientSecret: z.string()
+          }),
+          govSlack: z.object({
             clientId: z.string(),
             clientSecret: z.string()
           }),

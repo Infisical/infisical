@@ -1,4 +1,4 @@
-import { WebClient } from "@slack/web-api";
+import { WebClient, WebClientOptions } from "@slack/web-api";
 
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
@@ -6,18 +6,25 @@ import { logger } from "@app/lib/logger";
 import { TNotification, TriggerFeature } from "@app/lib/workflow-integrations/types";
 
 import { KmsDataKey } from "../kms/kms-types";
+import { SLACK_GOV_BASE_URL } from "./slack-constants";
 import { TSendSlackNotificationDTO } from "./slack-types";
 
 const COMPANY_BRAND_COLOR = "#e0ed34";
 const ERROR_COLOR = "#e74c3c";
 
-export const fetchSlackChannels = async (botKey: string) => {
+export const fetchSlackChannels = async (botKey: string, isGovSlack = false) => {
   const slackChannels: {
     name: string;
     id: string;
   }[] = [];
 
-  const slackWebClient = new WebClient(botKey);
+  const webClientOptions: WebClientOptions = {};
+
+  if (isGovSlack) {
+    webClientOptions.slackApiUrl = `${SLACK_GOV_BASE_URL}/api`;
+  }
+
+  const slackWebClient = new WebClient(botKey, webClientOptions);
   let cursor;
 
   do {
@@ -276,7 +283,14 @@ export const sendSlackNotification = async ({
   const botKey = orgDataKeyDecryptor({
     cipherTextBlob: slackIntegration.encryptedBotAccessToken
   }).toString("utf8");
-  const slackWebClient = new WebClient(botKey);
+
+  const webClientOptions: WebClientOptions = {};
+
+  if (slackIntegration.isGovSlack) {
+    webClientOptions.slackApiUrl = `${SLACK_GOV_BASE_URL}/api`;
+  }
+
+  const slackWebClient = new WebClient(botKey, webClientOptions);
 
   const { payloadMessage, payloadBlocks, color, headerBlocks } = buildSlackPayload(notification);
 
