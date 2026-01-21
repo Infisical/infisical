@@ -107,7 +107,7 @@ If you require stronger isolation and stricter access controls, a namespace-scop
      helm install operator-1 infisical-helm-charts/secrets-operator \
       --namespace ns1 \
       --set scopedNamespaces=ns1 \
-      --set scopedRBAC=true
+      --set scopedRBAC=true \
       --set installCRDs=true # Only install CRDs once in the cluster (default is true)
 
     helm install operator-namespace2 infisical-helm-charts/secrets-operator \
