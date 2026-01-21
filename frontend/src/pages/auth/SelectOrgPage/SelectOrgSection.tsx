@@ -201,9 +201,11 @@ export const SelectOrganizationSection = () => {
           );
         });
         navigate({ to: "/cli-redirect" });
+        isSelectingOrgRef.current = false;
         // cli page
       } else {
         navigateUserToOrg({ navigate, organizationId: organization.id });
+        isSelectingOrgRef.current = false;
       }
     },
     [selectOrg]
