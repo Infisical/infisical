@@ -7,7 +7,6 @@ import { KubernetesAuthMethod, PamResourceType, TKubernetesAccount } from "@app/
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
 import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
-import { rotateAccountFieldsSchema } from "./RotateAccountFields";
 
 type Props = {
   account?: TKubernetesAccount;
@@ -21,8 +20,11 @@ const KubernetesServiceAccountTokenCredentialsSchema = z.object({
   serviceAccountToken: z.string().trim().min(1, "Service account token is required")
 });
 
-const formSchema = genericAccountFieldsSchema.extend(rotateAccountFieldsSchema.shape).extend({
-  credentials: KubernetesServiceAccountTokenCredentialsSchema
+const formSchema = genericAccountFieldsSchema.extend({
+  credentials: KubernetesServiceAccountTokenCredentialsSchema,
+  // We don't support rotation for now, just feed a false value to
+  // make the schema happy
+  rotationEnabled: z.boolean().default(false)
 });
 
 type FormData = z.infer<typeof formSchema>;

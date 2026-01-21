@@ -7,7 +7,7 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal, FormControl, Input } from "@app/components/v2";
-import { Badge, UnstableButton } from "@app/components/v3";
+import { Badge, Button as ButtonV3 } from "@app/components/v3";
 import { apiRequest } from "@app/config/request";
 import {
   OrgPermissionActions,
@@ -165,7 +165,7 @@ const AssetUploadCard = ({
           disabled={!isAllowed || isPending}
         />
         <div className="flex gap-2">
-          <UnstableButton
+          <ButtonV3
             variant="neutral"
             size="xs"
             onClick={() => inputRef.current?.click()}
@@ -173,9 +173,9 @@ const AssetUploadCard = ({
           >
             <UploadIcon />
             Upload {title}
-          </UnstableButton>
+          </ButtonV3>
           {previewUrl && (
-            <UnstableButton
+            <ButtonV3
               variant="danger"
               size="xs"
               onClick={() => setIsDeleteModalOpen(true)}
@@ -183,7 +183,7 @@ const AssetUploadCard = ({
             >
               <TrashIcon />
               Delete
-            </UnstableButton>
+            </ButtonV3>
           )}
           <DeleteActionModal
             isOpen={isDeleteModalOpen}
@@ -295,15 +295,11 @@ export const SecretSharingBrandingSection = () => {
           <p className="text-sm text-mineshaft-300">
             Custom branding for secret sharing pages is available on Enterprise plans.
           </p>
-          <UnstableButton
-            size="xs"
-            variant="org"
-            as="a"
-            href="https://infisical.com/schedule-demo"
-            target="_blank"
-          >
-            Talk to Us
-          </UnstableButton>
+          <ButtonV3 size="xs" variant="org" asChild>
+            <a href="https://infisical.com/schedule-demo" target="_blank" rel="noreferrer">
+              Talk to Us
+            </a>
+          </ButtonV3>
         </div>
       ) : (
         <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>

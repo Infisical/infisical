@@ -8,11 +8,11 @@ import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, Modal, ModalContent, PageHeader } from "@app/components/v2";
 import {
+  Button,
   OrgIcon,
   UnstableAlert,
   UnstableAlertDescription,
   UnstableAlertTitle,
-  UnstableButton,
   UnstableCard,
   UnstableCardContent,
   UnstableCardDescription,
@@ -107,10 +107,10 @@ const Page = () => {
           >
             <UnstableDropdownMenu>
               <UnstableDropdownMenuTrigger asChild>
-                <UnstableButton variant="outline">
+                <Button variant="outline">
                   Options
                   <EllipsisIcon />
-                </UnstableButton>
+                </Button>
               </UnstableDropdownMenuTrigger>
               <UnstableDropdownMenuContent align="end">
                 <UnstableDropdownMenuItem

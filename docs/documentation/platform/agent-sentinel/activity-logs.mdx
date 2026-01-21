@@ -76,7 +76,15 @@ Every tool invocation through an MCP endpoint creates a log entry containing:
     Yes, activity logs can be exported for external analysis or long-term storage. Enterprise plans include log streaming to external SIEM systems.
   </Accordion>
   <Accordion title="Are sensitive data in requests/responses masked?">
-    Infisical supports PII filtering to automatically detect and mask sensitive data in request and response payloads, helping you maintain compliance while preserving audit trail integrity.
+    Infisical supports PII filtering to automatically detect and mask sensitive data in request and response payloads. When enabled on an MCP endpoint, the following PII types can be redacted:
+
+    - **Email addresses** → `[REDACTED_EMAIL]`
+    - **Phone numbers** → `[REDACTED_PHONE]`
+    - **Social Security Numbers** → `[REDACTED_SSN]`
+    - **Credit card numbers** → `[REDACTED_CREDIT_CARD]`
+    - **IP addresses (IPv4 and IPv6)** → `[REDACTED_IP]`
+
+    You can configure PII filtering separately for requests and responses, and select which PII types to detect. See [MCP Endpoints - PII Filtering](/documentation/platform/agent-sentinel/mcp-endpoints#pii-filtering) for configuration details.
   </Accordion>
   <Accordion title="Do failed tool invocations get logged?">
     Yes, all tool invocations are logged regardless of success or failure. Failed invocations include error details in the response payload.

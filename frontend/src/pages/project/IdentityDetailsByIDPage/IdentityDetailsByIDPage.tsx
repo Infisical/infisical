@@ -15,12 +15,12 @@ import {
   Tooltip
 } from "@app/components/v2";
 import {
+  Button,
   OrgIcon,
   SubOrgIcon,
   UnstableAlert,
   UnstableAlertDescription,
   UnstableAlertTitle,
-  UnstableButton,
   UnstableCard,
   UnstableCardContent,
   UnstableCardDescription,
@@ -196,10 +196,10 @@ const Page = () => {
           >
             <UnstableDropdownMenu>
               <UnstableDropdownMenuTrigger asChild>
-                <UnstableButton variant="outline">
+                <Button variant="outline">
                   Options
                   <EllipsisIcon />
-                </UnstableButton>
+                </Button>
               </UnstableDropdownMenuTrigger>
               <UnstableDropdownMenuContent align="end">
                 <UnstableDropdownMenuItem

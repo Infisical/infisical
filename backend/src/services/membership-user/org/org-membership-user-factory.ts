@@ -13,6 +13,8 @@ import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
+import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TMembershipUserDALFactory } from "../membership-user-dal";
@@ -121,6 +123,10 @@ export const newOrgMembershipUserFactory = ({
 
     const signUpTokens: { email: string; link: string }[] = [];
     const orgDetails = await orgDAL.findById(dto.permission.orgId);
+    const serverCfg = await getServerCfg();
+    const isEmailLoginEnabled =
+      !serverCfg.enabledLoginMethods || serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL);
+
     if (orgDetails.rootOrgId) {
       // checking if the users have accepted the invitation in the root organization to send the email
       const orgMembershipAccepted = await membershipUserDAL.find({
@@ -149,7 +155,7 @@ export const newOrgMembershipUserFactory = ({
           }
         });
       }
-    } else {
+    } else if (isEmailLoginEnabled) {
       await Promise.allSettled(
         newUsers.map(async (el) => {
           const token = await tokenService.createTokenForUser({

@@ -4580,7 +4580,9 @@ interface McpEndpointUpdateEvent {
     name?: string;
     description?: string;
     serverIds?: string[];
-    piiFiltering?: boolean;
+    piiRequestFiltering?: boolean;
+    piiResponseFiltering?: boolean;
+    piiEntityTypes?: string;
   };
 }
 
