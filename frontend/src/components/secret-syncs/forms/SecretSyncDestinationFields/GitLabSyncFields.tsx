@@ -153,12 +153,12 @@ export const GitLabSyncFields = () => {
                   onChange((option as SingleValue<TGitLabGroup>)?.id ?? "");
                   setValue(
                     "destinationConfig.groupName",
-                    (option as SingleValue<TGitLabGroup>)?.name ?? ""
+                    (option as SingleValue<TGitLabGroup>)?.fullName ?? ""
                   );
                 }}
                 options={groups}
                 placeholder="Select a group..."
-                getOptionLabel={(option) => option.name}
+                getOptionLabel={(option) => option.fullName}
                 getOptionValue={(option) => option.id}
               />
             </FormControl>
