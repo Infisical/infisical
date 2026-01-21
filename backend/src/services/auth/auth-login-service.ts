@@ -1185,7 +1185,10 @@ export const authLoginServiceFactory = ({
       ip,
       userAgent,
       authMethod,
-      organizationId
+      organizationId,
+      // Skip device session update here as user still needs to go through selectOrganization
+      // Device session will be updated in selectOrganization (if no MFA) or verifyMfaToken (after MFA)
+      skipDeviceSessionUpdate: true
     });
 
     if (organizationId) {
