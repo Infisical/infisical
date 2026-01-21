@@ -1,0 +1,1 @@
+export { EnforceEncryptedMetadataSection } from "./EnforceEncryptedMetadataSection";

@@ -100,6 +100,7 @@ export type TUpdateProjectDTO = {
     secretSharing?: boolean;
     showSnapshotsLegacy?: boolean;
     secretDetectionIgnoreValues?: string[];
+    enforceEncryptedSecretManagerSecretMetadata?: boolean;
   };
 } & Omit<TProjectPermission, "projectId">;
 
