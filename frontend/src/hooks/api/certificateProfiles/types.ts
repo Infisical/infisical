@@ -63,6 +63,7 @@ export type TCertificateProfileWithDetails = TCertificateProfile & {
     id: string;
     directoryUrl: string;
     skipDnsOwnershipVerification?: boolean;
+    skipEabBinding?: boolean;
   };
 };
 
@@ -83,7 +84,10 @@ export type TCreateCertificateProfileDTO = {
     autoRenew?: boolean;
     renewBeforeDays?: number;
   };
-  acmeConfig?: unknown;
+  acmeConfig?: {
+    skipDnsOwnershipVerification?: boolean;
+    skipEabBinding?: boolean;
+  };
   externalConfigs?: Record<string, unknown> | null;
 };
 
@@ -102,7 +106,10 @@ export type TUpdateCertificateProfileDTO = {
     autoRenew?: boolean;
     renewBeforeDays?: number;
   };
-  acmeConfig?: unknown;
+  acmeConfig?: {
+    skipDnsOwnershipVerification?: boolean;
+    skipEabBinding?: boolean;
+  };
   externalConfigs?: Record<string, unknown> | null;
 };
 

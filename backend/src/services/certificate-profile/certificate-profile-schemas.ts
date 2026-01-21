@@ -32,7 +32,8 @@ export const createCertificateProfileSchema = z
       .optional(),
     acmeConfig: z
       .object({
-        skipDnsOwnershipVerification: z.boolean().optional()
+        skipDnsOwnershipVerification: z.boolean().optional(),
+        skipEabBinding: z.boolean().optional()
       })
       .optional()
   })
@@ -162,7 +163,8 @@ export const updateCertificateProfileSchema = z
       .optional(),
     acmeConfig: z
       .object({
-        skipDnsOwnershipVerification: z.boolean().optional()
+        skipDnsOwnershipVerification: z.boolean().optional(),
+        skipEabBinding: z.boolean().optional()
       })
       .optional()
   })

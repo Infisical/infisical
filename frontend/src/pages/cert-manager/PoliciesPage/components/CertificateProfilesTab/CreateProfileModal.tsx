@@ -80,7 +80,8 @@ const createSchema = z
       .optional(),
     acmeConfig: z
       .object({
-        skipDnsOwnershipVerification: z.boolean().optional()
+        skipDnsOwnershipVerification: z.boolean().optional(),
+        skipEabBinding: z.boolean().optional()
       })
       .optional(),
     externalConfigs: z
@@ -157,6 +158,17 @@ const createSchema = z
   )
   .refine(
     (data) => {
+      if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
+        return !(data.acmeConfig.skipEabBinding && data.acmeConfig.skipDnsOwnershipVerification);
+      }
+      return true;
+    },
+    {
+      message: "Cannot skip both EAB and DNS ownership validation."
+    }
+  )
+  .refine(
+    (data) => {
       if (data.issuerType === IssuerType.CA) {
         return !!data.certificateAuthorityId;
       }
@@ -224,7 +236,8 @@ const editSchema = z
       .optional(),
     acmeConfig: z
       .object({
-        skipDnsOwnershipVerification: z.boolean().optional()
+        skipDnsOwnershipVerification: z.boolean().optional(),
+        skipEabBinding: z.boolean().optional()
       })
       .optional(),
     externalConfigs: z
@@ -297,6 +310,17 @@ const editSchema = z
     },
     {
       message: "ACME enrollment type cannot have EST or API configuration"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
+        return !(data.acmeConfig.skipEabBinding && data.acmeConfig.skipDnsOwnershipVerification);
+      }
+      return true;
+    },
+    {
+      message: "Cannot skip both EAB and DNS ownership validation."
     }
   )
   .refine(
@@ -404,7 +428,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
             profile.enrollmentType === EnrollmentType.ACME
               ? {
                   skipDnsOwnershipVerification:
-                    profile.acmeConfig?.skipDnsOwnershipVerification || false
+                    profile.acmeConfig?.skipDnsOwnershipVerification || false,
+                  skipEabBinding: profile.acmeConfig?.skipEabBinding || false
                 }
               : undefined,
           externalConfigs: profile.externalConfigs
@@ -430,7 +455,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
             renewBeforeDays: 30
           },
           acmeConfig: {
-            skipDnsOwnershipVerification: false
+            skipDnsOwnershipVerification: false,
+            skipEabBinding: false
           },
           externalConfigs: undefined
         }
@@ -441,6 +467,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
   const watchedCertificateAuthorityId = watch("certificateAuthorityId");
   const watchedDisableBootstrapValidation = watch("estConfig.disableBootstrapCaValidation");
   const watchedAutoRenew = watch("apiConfig.autoRenew");
+  const watchedSkipDnsOwnershipVerification = watch("acmeConfig.skipDnsOwnershipVerification");
+  const watchedSkipEabBinding = watch("acmeConfig.skipEabBinding");
 
   // Get the selected CA to check if it's Azure ADCS
   const selectedCa = certificateAuthorities.find((ca) => ca.id === watchedCertificateAuthorityId);
@@ -482,7 +510,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
           profile.enrollmentType === EnrollmentType.ACME
             ? {
                 skipDnsOwnershipVerification:
-                  profile.acmeConfig?.skipDnsOwnershipVerification || false
+                  profile.acmeConfig?.skipDnsOwnershipVerification || false,
+                skipEabBinding: profile.acmeConfig?.skipEabBinding || false
               }
             : undefined,
         externalConfigs: profile.externalConfigs
@@ -667,7 +696,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                       });
                       setValue("estConfig", undefined);
                       setValue("acmeConfig", {
-                        skipDnsOwnershipVerification: false
+                        skipDnsOwnershipVerification: false,
+                        skipEabBinding: false
                       });
                     }
                     onChange(value);
@@ -799,7 +829,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                       setValue("estConfig", undefined);
                       setValue("apiConfig", undefined);
                       setValue("acmeConfig", {
-                        skipDnsOwnershipVerification: false
+                        skipDnsOwnershipVerification: false,
+                        skipEabBinding: false
                       });
                     }
                     onChange(value);
@@ -850,7 +881,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                       setValue("apiConfig", undefined);
                       setValue("estConfig", undefined);
                       setValue("acmeConfig", {
-                        skipDnsOwnershipVerification: false
+                        skipDnsOwnershipVerification: false,
+                        skipEabBinding: false
                       });
                     }
                     onChange(value);
@@ -980,14 +1012,56 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
             <div className="mb-4 space-y-4">
               <Controller
                 control={control}
+                name="acmeConfig.skipEabBinding"
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl isError={Boolean(error)} errorText={error?.message}>
+                    <div
+                      className={`flex items-center gap-3 rounded-md border bg-mineshaft-900 p-4 ${
+                        watchedSkipDnsOwnershipVerification
+                          ? "border-mineshaft-700 opacity-50"
+                          : "border-mineshaft-600"
+                      }`}
+                    >
+                      <Checkbox
+                        id="skipEabBinding"
+                        isChecked={value || false}
+                        onCheckedChange={onChange}
+                        isDisabled={watchedSkipDnsOwnershipVerification}
+                      />
+                      <div className="space-y-1">
+                        <span className="text-sm font-medium text-mineshaft-100">
+                          Skip External Account Binding (EAB)
+                        </span>
+                        <p className="text-xs text-bunker-300">
+                          Skip EAB authentication when clients create ACME accounts.
+                        </p>
+                        {watchedSkipDnsOwnershipVerification && (
+                          <p className="text-xs text-yellow-500">
+                            Cannot be enabled while DNS ownership validation is skipped.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
                 name="acmeConfig.skipDnsOwnershipVerification"
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <FormControl isError={Boolean(error)} errorText={error?.message}>
-                    <div className="flex items-center gap-3 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4">
+                    <div
+                      className={`flex items-center gap-3 rounded-md border bg-mineshaft-900 p-4 ${
+                        watchedSkipEabBinding
+                          ? "border-mineshaft-700 opacity-50"
+                          : "border-mineshaft-600"
+                      }`}
+                    >
                       <Checkbox
                         id="skipDnsOwnershipVerification"
                         isChecked={value || false}
                         onCheckedChange={onChange}
+                        isDisabled={watchedSkipEabBinding}
                       />
                       <div className="space-y-1">
                         <span className="text-sm font-medium text-mineshaft-100">
@@ -996,6 +1070,11 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                         <p className="text-xs text-bunker-300">
                           Skip DNS ownership verification during ACME certificate issuance.
                         </p>
+                        {watchedSkipEabBinding && (
+                          <p className="text-xs text-yellow-500">
+                            Cannot be enabled while EAB is skipped.
+                          </p>
+                        )}
                       </div>
                     </div>
                   </FormControl>

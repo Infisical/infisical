@@ -53,7 +53,8 @@ export const registerCertificateProfilesRouter = async (
             .optional(),
           acmeConfig: z
             .object({
-              skipDnsOwnershipVerification: z.boolean().optional()
+              skipDnsOwnershipVerification: z.boolean().optional(),
+              skipEabBinding: z.boolean().optional()
             })
             .optional(),
           externalConfigs: ExternalConfigUnionSchema
@@ -89,6 +90,17 @@ export const registerCertificateProfilesRouter = async (
           },
           {
             message: "ACME enrollment type requires ACME configuration"
+          }
+        )
+        .refine(
+          (data) => {
+            if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
+              return !(data.acmeConfig.skipEabBinding && data.acmeConfig.skipDnsOwnershipVerification);
+            }
+            return true;
+          },
+          {
+            message: "Cannot skip both External Account Binding (EAB) and DNS ownership verification at the same time."
           }
         )
         .refine(
@@ -255,7 +267,8 @@ export const registerCertificateProfilesRouter = async (
               .object({
                 id: z.string(),
                 directoryUrl: z.string(),
-                skipDnsOwnershipVerification: z.boolean().optional()
+                skipDnsOwnershipVerification: z.boolean().optional(),
+                skipEabBinding: z.boolean().optional()
               })
               .optional(),
             externalConfigs: ExternalConfigUnionSchema
@@ -338,6 +351,14 @@ export const registerCertificateProfilesRouter = async (
                 id: z.string(),
                 autoRenew: z.boolean(),
                 renewBeforeDays: z.number().optional()
+              })
+              .optional(),
+            acmeConfig: z
+              .object({
+                id: z.string(),
+                directoryUrl: z.string(),
+                skipDnsOwnershipVerification: z.boolean().optional(),
+                skipEabBinding: z.boolean().optional()
               })
               .optional(),
             externalConfigs: ExternalConfigUnionSchema
@@ -449,7 +470,8 @@ export const registerCertificateProfilesRouter = async (
             .optional(),
           acmeConfig: z
             .object({
-              skipDnsOwnershipVerification: z.boolean().optional()
+              skipDnsOwnershipVerification: z.boolean().optional(),
+              skipEabBinding: z.boolean().optional()
             })
             .optional(),
           externalConfigs: ExternalConfigUnionSchema
