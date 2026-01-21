@@ -1,6 +1,11 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { useQuery } from "@tanstack/react-query";
 
-import { FormControl, Input, Select, SelectItem, TextArea } from "@app/components/v2";
+import { OrgPermissionCan } from "@app/components/permissions";
+import { FormControl, Input, Select, SelectItem, TextArea, Tooltip } from "@app/components/v2";
+import { OrgPermissionSubjects } from "@app/context/OrgPermissionContext";
+import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
+import { gatewaysQueryKeys } from "@app/hooks/api";
 
 import { MCPServerCredentialMode, TAddMCPServerForm } from "./AddMCPServerForm.schema";
 
@@ -26,6 +31,8 @@ export const BasicInfoStep = () => {
   const selectedModeOption = CREDENTIAL_MODE_OPTIONS.find(
     (option) => option.value === credentialMode
   );
+
+  const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
 
   return (
     <>
@@ -77,6 +84,51 @@ export const BasicInfoStep = () => {
           </FormControl>
         )}
       />
+
+      <OrgPermissionCan
+        I={OrgGatewayPermissionActions.AttachGateways}
+        a={OrgPermissionSubjects.Gateway}
+      >
+        {(isAllowed) => (
+          <Controller
+            control={control}
+            name="gatewayId"
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <FormControl
+                isError={Boolean(error?.message)}
+                errorText={error?.message}
+                label="Gateway"
+                helperText="Select a gateway to route connections through a private network"
+              >
+                <Tooltip
+                  isDisabled={isAllowed}
+                  content="Restricted access. You don't have permission to attach gateways to resources."
+                >
+                  <div>
+                    <Select
+                      isDisabled={!isAllowed}
+                      value={value ?? "__none__"}
+                      onValueChange={(val) => onChange(val === "__none__" ? null : val)}
+                      className="w-full border border-mineshaft-500"
+                      dropdownContainerClassName="max-w-none"
+                      isLoading={isGatewaysLoading}
+                      placeholder="Default: Internet Gateway"
+                      position="popper"
+                    >
+                      <SelectItem value="__none__">Internet Gateway</SelectItem>
+                      {gateways?.map((el) => (
+                        <SelectItem value={el.id} key={el.id}>
+                          {el.name}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </div>
+                </Tooltip>
+              </FormControl>
+            )}
+          />
+        )}
+      </OrgPermissionCan>
 
       <Controller
         control={control}

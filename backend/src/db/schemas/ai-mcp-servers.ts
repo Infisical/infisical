@@ -21,7 +21,8 @@ export const AiMcpServersSchema = z.object({
   encryptedOauthConfig: zodBuffer.nullable().optional(),
   projectId: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  gatewayId: z.string().uuid().nullable().optional()
 });
 
 export type TAiMcpServers = z.infer<typeof AiMcpServersSchema>;

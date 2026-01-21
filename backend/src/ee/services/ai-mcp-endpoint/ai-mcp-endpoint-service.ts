@@ -14,6 +14,8 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto as cryptoModule } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { GatewayProxyProtocol } from "@app/lib/gateway";
+import { setupRelayServer } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { PiiEntityType, redactPiiFromObject } from "@app/lib/pii";
@@ -29,6 +31,7 @@ import { AiMcpServerCredentialMode } from "../ai-mcp-server/ai-mcp-server-enum";
 import { TAiMcpServerServiceFactory } from "../ai-mcp-server/ai-mcp-server-service";
 import { TAiMcpServerToolDALFactory } from "../ai-mcp-server/ai-mcp-server-tool-dal";
 import { TAiMcpServerUserCredentialDALFactory } from "../ai-mcp-server/ai-mcp-server-user-credential-dal";
+import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionMcpEndpointActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TAiMcpEndpointDALFactory } from "./ai-mcp-endpoint-dal";
@@ -75,6 +78,7 @@ type TAiMcpEndpointServiceFactoryDep = {
   authTokenService: Pick<TAuthTokenServiceFactory, "getUserTokenSessionById">;
   userDAL: TUserDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
 };
 
 // OAuth schemas for parsing cached data
@@ -131,8 +135,75 @@ export const aiMcpEndpointServiceFactory = ({
   keyStore,
   authTokenService,
   userDAL,
-  permissionService
+  permissionService,
+  gatewayV2Service
 }: TAiMcpEndpointServiceFactoryDep) => {
+  /**
+   * Opens a long-lived gateway proxy for MCP sessions.
+   *
+   * This creates a local TCP server that tunnels connections through a V2 gateway
+   * to reach MCP servers on private networks. The proxy remains open until the
+   * cleanup function is called.
+   *
+   * @returns Port to connect to and cleanup function, or null if gateway not found
+   */
+  const $openGatewayProxy = async (inputs: {
+    gatewayId: string;
+    targetHost: string;
+    targetPort: number;
+  }): Promise<{ port: number; cleanup: () => Promise<void> } | null> => {
+    const gatewayV2ConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+      gatewayId: inputs.gatewayId,
+      targetHost: inputs.targetHost,
+      targetPort: inputs.targetPort
+    });
+
+    if (!gatewayV2ConnectionDetails) {
+      return null;
+    }
+
+    const relayServer = await setupRelayServer({
+      protocol: GatewayProxyProtocol.Http,
+      relayHost: gatewayV2ConnectionDetails.relayHost,
+      gateway: gatewayV2ConnectionDetails.gateway,
+      relay: gatewayV2ConnectionDetails.relay
+    });
+
+    return {
+      port: relayServer.port,
+      cleanup: relayServer.cleanup
+    };
+  };
+
+  /**
+   * Wraps an HTTP request to route it through a V2 gateway proxy.
+   *
+   * Used for short-lived operations like OAuth discovery and tool fetching
+   * where the connection doesn't need to persist.
+   *
+   * @throws NotFoundError if the gateway doesn't exist
+   */
+  const $gatewayHttpProxyWrapper = async <T>(
+    inputs: {
+      gatewayId: string;
+      targetHost: string;
+      targetPort: number;
+    },
+    gatewayCallback: (host: string, port: number) => Promise<T>
+  ): Promise<T> => {
+    const proxyResult = await $openGatewayProxy(inputs);
+
+    if (!proxyResult) {
+      throw new NotFoundError({ message: `Gateway with ID ${inputs.gatewayId} not found or not available` });
+    }
+
+    try {
+      return await gatewayCallback("http://localhost", proxyResult.port);
+    } finally {
+      await proxyResult.cleanup();
+    }
+  };
+
   const interactWithMcp = async ({
     endpointId,
     userId,
@@ -202,8 +273,14 @@ export const aiMcpEndpointServiceFactory = ({
         enableJsonResponse: true
       });
 
-      return { server: emptyServer, transport };
+      // No-op cleanup since there are no gateway connections
+      const cleanup = async () => {};
+
+      return { server: emptyServer, transport, cleanup };
     }
+
+    // Track gateway proxy cleanup functions for long-lived MCP sessions
+    const gatewayCleanups: Array<() => Promise<void>> = [];
 
     // Connect to each server and get their tools
     const mcpClientTools = await Promise.all(
@@ -232,13 +309,19 @@ export const aiMcpEndpointServiceFactory = ({
           headers.Authorization = `Bearer ${credentialsResult.accessToken}`;
         }
 
-        try {
+        // Helper function to connect to MCP server and get tools
+        const connectAndGetTools = async (
+          serverUrl: string
+        ): Promise<{
+          client: Client;
+          tools: Array<{ name: string; description?: string; inputSchema?: Record<string, unknown> }>;
+        }> => {
           const client = new Client({
             name: `infisical-mcp-client-${mcpServer.name}`,
             version: "1.0.0"
           });
 
-          const clientTransport = new StreamableHTTPClientTransport(new URL(mcpServer.url), {
+          const clientTransport = new StreamableHTTPClientTransport(new URL(serverUrl), {
             requestInit: { headers }
           });
 
@@ -249,8 +332,58 @@ export const aiMcpEndpointServiceFactory = ({
 
           return {
             client,
+            tools: tools as Array<{ name: string; description?: string; inputSchema?: Record<string, unknown> }>
+          };
+        };
+
+        try {
+          let clientResult: {
+            client: Client;
+            tools: Array<{ name: string; description?: string; inputSchema?: Record<string, unknown> }>;
+          };
+
+          if (mcpServer.gatewayId) {
+            // Route through gateway proxy - use long-lived proxy for V2 gateways
+            const urlObj = new URL(mcpServer.url);
+            const targetHost = urlObj.hostname;
+            let targetPort = 80;
+            if (urlObj.port) {
+              targetPort = Number(urlObj.port);
+            } else if (urlObj.protocol === "https:") {
+              targetPort = 443;
+            }
+
+            // Try to open a long-lived V2 gateway proxy
+            const proxyResult = await $openGatewayProxy({
+              gatewayId: mcpServer.gatewayId,
+              targetHost,
+              targetPort
+            });
+
+            if (proxyResult) {
+              // V2 gateway - use long-lived proxy, preserving the path from the original URL
+              gatewayCleanups.push(proxyResult.cleanup);
+              const proxyUrl = `http://localhost:${proxyResult.port}${urlObj.pathname}${urlObj.search}`;
+              clientResult = await connectAndGetTools(proxyUrl);
+            } else {
+              // Fall back to V1 gateway (short-lived, may not work for all MCP operations)
+              clientResult = await $gatewayHttpProxyWrapper(
+                { gatewayId: mcpServer.gatewayId, targetHost, targetPort },
+                async (host, port) => {
+                  const proxyUrl = `${host}:${port}${urlObj.pathname}${urlObj.search}`;
+                  return connectAndGetTools(proxyUrl);
+                }
+              );
+            }
+          } else {
+            // Direct connection (no gateway)
+            clientResult = await connectAndGetTools(mcpServer.url);
+          }
+
+          return {
+            client: clientResult.client,
             server: mcpServer,
-            tools: tools as Array<{ name: string; description?: string; inputSchema?: Record<string, unknown> }>,
+            tools: clientResult.tools,
             toolNameToDbId
           };
         } catch (error) {
@@ -373,7 +506,18 @@ export const aiMcpEndpointServiceFactory = ({
       enableJsonResponse: true
     });
 
-    return { server, transport, projectId: endpoint.projectId, endpointName: endpoint.name };
+    // Create cleanup function that closes all gateway proxies
+    const cleanup = async () => {
+      await Promise.all(
+        gatewayCleanups.map((fn) =>
+          fn().catch((err) => {
+            logger.error(err, "Failed to cleanup gateway proxy");
+          })
+        )
+      );
+    };
+
+    return { server, transport, projectId: endpoint.projectId, endpointName: endpoint.name, cleanup };
   };
 
   const createMcpEndpoint = async ({
@@ -1206,48 +1350,70 @@ export const aiMcpEndpointServiceFactory = ({
       throw new BadRequestError({ message: "This MCP server is not linked to the specified endpoint" });
     }
 
-    // Verify the token by connecting to the MCP server
-    let client: Client | undefined;
-    try {
-      client = new Client({
-        name: "infisical-mcp-client",
-        version: "1.0.0"
-      });
+    // Helper function to verify token by connecting to the MCP server
+    const verifyWithUrl = async (targetUrl: string): Promise<{ valid: boolean; message?: string }> => {
+      let client: Client | undefined;
+      try {
+        client = new Client({
+          name: "infisical-mcp-client",
+          version: "1.0.0"
+        });
 
-      const transport = new StreamableHTTPClientTransport(new URL(server.url), {
-        requestInit: {
-          headers: {
-            Authorization: `Bearer ${accessToken}`
+        const transport = new StreamableHTTPClientTransport(new URL(targetUrl), {
+          requestInit: {
+            headers: {
+              Authorization: `Bearer ${accessToken}`
+            }
+          }
+        });
+
+        await client.connect(transport);
+        await client.listTools();
+        await client.close();
+
+        return { valid: true };
+      } catch (error) {
+        const err = error as { code?: string | number; cause?: { code?: string } };
+        const errCode = err?.code || err?.cause?.code;
+
+        let message = "An unknown error occurred";
+        if (errCode === 401 || errCode === 403) {
+          message = "Invalid token";
+        } else if (errCode === "ECONNREFUSED" || errCode === "ENOTFOUND" || errCode === "ETIMEDOUT") {
+          message = "Server unreachable";
+        }
+
+        return { valid: false, message };
+      } finally {
+        if (client) {
+          try {
+            await client.close();
+          } catch {
+            // Ignore close errors
           }
         }
+      }
+    };
+
+    // Route through gateway if configured
+    if (server.gatewayId) {
+      const urlObj = new URL(server.url);
+      const targetHost = urlObj.hostname;
+      let targetPort = 80;
+      if (urlObj.port) {
+        targetPort = Number(urlObj.port);
+      } else if (urlObj.protocol === "https:") {
+        targetPort = 443;
+      }
+
+      return $gatewayHttpProxyWrapper({ gatewayId: server.gatewayId, targetHost, targetPort }, async (host, port) => {
+        const proxyUrl = `${host}:${port}${urlObj.pathname}${urlObj.search}`;
+        return verifyWithUrl(proxyUrl);
       });
-
-      await client.connect(transport);
-      await client.listTools();
-      await client.close();
-
-      return { valid: true };
-    } catch (error) {
-      const err = error as { code?: string | number; cause?: { code?: string } };
-      const errCode = err?.code || err?.cause?.code;
-
-      let message = "An unknown error occurred";
-      if (errCode === 401 || errCode === 403) {
-        message = "Invalid token";
-      } else if (errCode === "ECONNREFUSED" || errCode === "ENOTFOUND" || errCode === "ETIMEDOUT") {
-        message = "Server unreachable";
-      }
-
-      return { valid: false, message };
-    } finally {
-      if (client) {
-        try {
-          await client.close();
-        } catch {
-          // Ignore close errors
-        }
-      }
     }
+
+    // Direct connection (no gateway)
+    return verifyWithUrl(server.url);
   };
 
   // Save user credentials after OAuth completes

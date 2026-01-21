@@ -12,7 +12,7 @@ import { BadRequestError } from "../errors";
 import { GatewayProxyProtocol } from "../gateway/types";
 import { logger } from "../logger";
 
-interface IGatewayRelayServer {
+export interface IGatewayRelayServer {
   server: net.Server;
   port: number;
   cleanup: () => Promise<void>;
@@ -132,7 +132,7 @@ const createGatewayConnection = async (
   });
 };
 
-const setupRelayServer = async ({
+export const setupRelayServer = async ({
   protocol,
   relayHost,
   gateway,
