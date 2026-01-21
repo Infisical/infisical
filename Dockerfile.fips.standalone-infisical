@@ -110,7 +110,7 @@ RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-li
 
 COPY --from=backend-build /app .
 RUN rm -rf ./node_modules
-RUN npm ci --omit=de
+RUN npm ci --omit=dev
 
 RUN mkdir frontend-build
 
