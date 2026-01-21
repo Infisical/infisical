@@ -1,0 +1,96 @@
+---
+title: "Certificate Approvals"
+sidebarTitle: "Approvals"
+---
+
+## Concept
+
+A certificate approval policy defines a workflow requiring human review before certificates are issued from specific [certificate profiles](/documentation/platform/pki/certificates/profiles). When a certificate request is made against a profile with an approval policy, the request is placed in a pending state until the required approvers review and approve it.
+
+Approval workflows help enforce separation of duties, add oversight for sensitive certificate issuance, and meet compliance requirements that mandate review before certificate issuance.
+
+Key features of approval policies include:
+
+- **Multi-step workflows**: Configure sequential approval steps where each step must be completed before the next begins.
+- **Flexible approvers**: Assign individual users or groups as eligible approvers for each step.
+- **Required approval count**: Specify how many approvals are needed per step (e.g., require 2 out of 5 eligible approvers).
+- **Approver notifications**: Optionally notify approvers when their approval is required.
+- **Machine identity bypass**: Allow machine identities to issue certificates without approval for automated workloads.
+- **Request expiration**: Set a maximum time-to-live (TTL) for pending requests.
+
+## Guide to Creating an Approval Policy
+
+To create an approval policy, head to your Certificate Management Project > Certificate Manager > Approvals > Policies and press **Create Policy**.
+
+### Step 1: Configuration
+
+Configure the basic policy settings:
+
+- **Policy Name**: A descriptive name for the policy such as `production-cert-approval`.
+- **Max. Request TTL**: The maximum time a request can remain pending before it expires (optional). Use duration format like `7d` for 7 days or `24h` for 24 hours.
+- **Certificate Profiles**: Select one or more certificate profiles that this policy applies to. Any certificate request made against these profiles will require approval.
+- **Bypass approval for machine identities**: When enabled, machine identities can issue certificates from the selected profiles without requiring approval. This is useful for automated workloads that need certificates without human intervention.
+
+### Step 2: Approval Sequence
+
+Configure the approval steps. Each step defines who can approve and how many approvals are required:
+
+- **Step Name**: An optional name for the step such as `Security Team Review`.
+- **Approvers**: Select individual users or groups who are eligible to approve this step. Multiple approvers can be selected.
+- **Required Approvals**: The number of approvals needed to complete this step. For example, if you select 5 approvers and require 2 approvals, any 2 of the 5 can approve to complete the step.
+- **Notify Approvers**: When enabled, eligible approvers receive a notification when their approval is required.
+
+You can add multiple steps to create a sequential approval workflow. For example:
+1. **Team Lead Review**: Requires 1 approval from the team leads group
+2. **Security Review**: Requires 2 approvals from the security team
+
+Each step must be completed in order before the certificate is issued.
+
+### Step 3: Review
+
+Review your policy configuration and click **Create** to save the policy.
+
+## Guide to Managing Approval Requests
+
+When a certificate request requires approval, it appears in the Approvals page under the Requests tab.
+
+### Viewing Requests
+
+Navigate to your Certificate Management Project > Certificate Manager > Approvals > Requests to view all approval requests. You can filter requests by status:
+
+- **Open Requests**: Requests currently pending approval
+- **Approved**: Requests that have been approved and certificates issued
+- **Rejected**: Requests that were rejected by an approver
+- **Cancelled**: Requests cancelled by the requester
+- **Expired**: Requests that exceeded their maximum TTL
+
+### Approving a Request
+
+To approve a request:
+
+1. Click on a pending request to view its details
+2. Review the certificate request information including:
+   - Requester name and email
+   - Certificate profile
+   - Common name and subject alternative names (SANs)
+   - Key usages and extended key usages
+   - Validity period
+3. If you are an eligible approver for the current step, click **Approve** to approve the request
+4. Optionally add a comment explaining your approval
+
+Once all required approvals for all steps are obtained, the certificate is automatically issued.
+
+### Rejecting a Request
+
+To reject a request:
+
+1. Click on a pending request to view its details
+2. Review the certificate request information
+3. If you are an eligible approver for the current step, click **Reject** to reject the request
+4. Optionally add a comment explaining the rejection
+
+When a request is rejected, the workflow ends and no certificate is issued.
+
+<Note>
+For automated workloads using Certbot or that cannot wait for human approval, consider enabling the **Bypass approval for machine identities** option on the approval policy.
+</Note>
