@@ -25,6 +25,8 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TSmtpService } from "../smtp/smtp-service";
+import { getServerCfg } from "../super-admin/super-admin-service";
+import { LoginMethod } from "../super-admin/super-admin-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TMembershipUserDALFactory } from "./membership-user-dal";
@@ -216,12 +218,16 @@ export const membershipUserServiceFactory = ({
     if (existingMemberships.length === users.length) return { memberships: [] };
     const isSubOrganization = Boolean(orgDetails.rootOrgId);
 
+    const serverCfg = await getServerCfg();
+    const isEmailLoginEnabled =
+      !serverCfg.enabledLoginMethods || serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL);
+
     const newMembershipUsers = users.filter((user) => !existingMemberships?.find((el) => el.actorUserId === user.id));
     await factory.onCreateMembershipUserGuard(dto, newMembershipUsers);
     const newMemberships = newMembershipUsers.map((user) => {
       let status: OrgMembershipStatus | undefined;
       if (scopeData.scope === AccessScope.Organization) {
-        if (isSubOrganization) {
+        if (isSubOrganization || !isEmailLoginEnabled) {
           status = OrgMembershipStatus.Accepted;
         } else {
           status = OrgMembershipStatus.Invited;
