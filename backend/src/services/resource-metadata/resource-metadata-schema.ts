@@ -10,7 +10,7 @@ export const ResourceMetadataNonEncryptionSchema = z
 export const ResourceMetadataWithEncryptionSchema = z
   .object({
     key: z.string().trim().min(1),
-    value: z.string().trim(),
+    value: z.string().trim().default(""),
     isEncrypted: z.boolean().optional().default(false)
   })
   .array();

@@ -385,7 +385,7 @@ export const secretReplicationServiceFactory = ({
                   (secretMetadata ?? []).map((entry) => ({
                     key: entry.key,
                     value: entry.value,
-                    encryptedValue: entry.isEncrypted
+                    isEncrypted: entry.isEncrypted
                   }))
                 );
 
@@ -393,7 +393,7 @@ export const secretReplicationServiceFactory = ({
                   (destinationLocalSecretsGroupedByKey[key]?.[0]?.secretMetadata ?? []).map((entry) => ({
                     key: entry.key,
                     value: entry.value,
-                    encryptedValue: entry.isEncrypted
+                    isEncrypted: entry.isEncrypted
                   }))
                 );
 
@@ -456,7 +456,7 @@ export const secretReplicationServiceFactory = ({
                         (doc.rawSecretMetadata || [])?.map((meta) => ({
                           key: meta.key,
                           value: meta.value || undefined,
-                          encryptedValue: meta.encryptedValue?.toString("hex") || undefined
+                          encryptedValue: meta.encryptedValue?.toString("base64") || undefined
                         }))
                       ),
                       key: doc.key,

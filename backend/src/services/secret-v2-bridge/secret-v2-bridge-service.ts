@@ -363,7 +363,6 @@ export const secretV2BridgeServiceFactory = ({
             userId: inputSecret.type === SecretType.Personal ? actorId : null,
             tagIds: inputSecret.tagIds,
             references: nestedReferences,
-            metadata: secretMetadata ? JSON.stringify(secretMetadata) : [],
             secretMetadata: secretMetadata?.map(({ key, value, isEncrypted }) => ({
               key,
               ...(isEncrypted
@@ -628,7 +627,7 @@ export const secretV2BridgeServiceFactory = ({
               skipMultilineEncoding: inputSecret.skipMultilineEncoding,
               key: inputSecret.newSecretName || secretName,
               tags: inputSecret.tagIds,
-              metadata: secretMetadata ? JSON.stringify(secretMetadata) : [],
+              // metadata: secretMetadata ? JSON.stringify(secretMetadata) : [],
               secretMetadata: secretMetadata?.map(({ key, value, isEncrypted }) => ({
                 key,
                 ...(isEncrypted
@@ -3279,6 +3278,13 @@ export const secretV2BridgeServiceFactory = ({
         secretPath,
         {
           ...el,
+          secretMetadata: (el.metadata as { key: string; value?: string; encryptedValue: string }[])?.map((meta) => ({
+            isEncrypted: Boolean(meta.encryptedValue),
+            key: meta.key,
+            value: meta.encryptedValue
+              ? secretManagerDecryptor({ cipherTextBlob: Buffer.from(meta.encryptedValue, "base64") }).toString()
+              : meta.value || ""
+          })),
           value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",
           comment: el.encryptedComment ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString() : ""
         },

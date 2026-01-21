@@ -13,6 +13,7 @@ import {
   TSecretApprovalRequestsSecretsV2Insert
 } from "@app/db/schemas";
 import { Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -34,7 +35,10 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
-import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-metadata-schema";
+import {
+  ResourceMetadataDTO,
+  ResourceMetadataWithEncryptionDTO
+} from "@app/services/resource-metadata/resource-metadata-schema";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import {
   decryptSecretWithBot,
@@ -323,7 +327,7 @@ export const secretApprovalRequestServiceFactory = ({
           key: meta.key,
           isEncrypted: Boolean(meta.encryptedValue),
           value: meta.encryptedValue
-            ? secretManagerDecryptor({ cipherTextBlob: Buffer.from(meta.encryptedValue, "hex") }).toString()
+            ? secretManagerDecryptor({ cipherTextBlob: Buffer.from(meta.encryptedValue, "base64") }).toString()
             : meta.value || ""
         })),
         isRotatedSecret: el.secret?.isRotatedSecret ?? false,
@@ -699,7 +703,7 @@ export const secretApprovalRequestServiceFactory = ({
                 ).map((meta) => ({
                   key: meta.key,
                   [meta.encryptedValue ? "encryptedValue" : "value"]: meta.encryptedValue
-                    ? Buffer.from(meta.encryptedValue, "hex")
+                    ? Buffer.from(meta.encryptedValue, "base64")
                     : meta.value || ""
                 })),
                 references: el.encryptedValue
@@ -756,7 +760,7 @@ export const secretApprovalRequestServiceFactory = ({
                     ).map((meta) => ({
                       key: meta.key,
                       [meta.encryptedValue ? "encryptedValue" : "value"]: meta.encryptedValue
-                        ? Buffer.from(meta.encryptedValue, "hex")
+                        ? Buffer.from(meta.encryptedValue, "base64")
                         : meta.value || ""
                     })),
                     ...encryptedValue
@@ -1106,7 +1110,10 @@ export const secretApprovalRequestServiceFactory = ({
             // @ts-expect-error not present on v1 secrets
             secretKey: secret.key as string,
             // @ts-expect-error not present on v1 secrets
-            secretMetadata: (secret.secretMetadata as ResourceMetadataDTO).filter((el) => !el.isEncrypted),
+            secretMetadata: (secret.secretMetadata as ResourceMetadataWithEncryptionDTO).map((meta) => ({
+              key: meta.key,
+              value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value || ""
+            })),
             // @ts-expect-error not present on v1 secrets
             secretTags: (secret.tags as { name: string }[])?.map((tag) => tag.name)
           }
@@ -1127,7 +1134,10 @@ export const secretApprovalRequestServiceFactory = ({
               // @ts-expect-error not present on v1 secrets
               secretKey: secret.key as string,
               // @ts-expect-error not present on v1 secrets
-              secretMetadata: (secret.secretMetadata as ResourceMetadataDTO).filter((el) => !el.isEncrypted),
+              secretMetadata: (secret.secretMetadata as ResourceMetadataWithEncryptionDTO).map((meta) => ({
+                key: meta.key,
+                value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value || ""
+              })),
               // @ts-expect-error not present on v1 secrets
               secretTags: (secret.tags as { name: string }[])?.map((tag) => tag.name)
             }))
@@ -1145,7 +1155,10 @@ export const secretApprovalRequestServiceFactory = ({
             // @ts-expect-error not present on v1 secrets
             secretKey: secret.key as string,
             // @ts-expect-error not present on v1 secrets
-            secretMetadata: (secret.secretMetadata as ResourceMetadataDTO).filter((el) => !el.isEncrypted),
+            secretMetadata: (secret.secretMetadata as ResourceMetadataWithEncryptionDTO).map((meta) => ({
+              key: meta.key,
+              value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value || ""
+            })),
             // @ts-expect-error not present on v1 secrets
             secretTags: (secret.tags as { name: string }[])?.map((tag) => tag.name)
           }
@@ -1528,7 +1541,7 @@ export const secretApprovalRequestServiceFactory = ({
       if (hasMissingEncryptedMetadataInCreate || hasMissingEncryptedMetadataInUpdate) {
         throw new BadRequestError({
           message:
-            "One or more secrets are missing encrypted metadata values. Please provide values for all encrypted metadata."
+            "One or more secrets has non-encrypted metadata values. Project requires all metadata to be encrypted."
         });
       }
     }
@@ -1587,7 +1600,7 @@ export const secretApprovalRequestServiceFactory = ({
             (createdSecret.secretMetadata || [])?.map((meta) => ({
               key: meta.key,
               [meta.isEncrypted ? "encryptedValue" : "value"]: meta.isEncrypted
-                ? secretManagerEncryptor({ plainText: Buffer.from(meta.value) }).cipherTextBlob.toString("hex")
+                ? secretManagerEncryptor({ plainText: Buffer.from(meta.value) }).cipherTextBlob.toString("base64")
                 : meta.value
             }))
           ),
@@ -1666,7 +1679,7 @@ export const secretApprovalRequestServiceFactory = ({
                 (secretMetadata || [])?.map((meta) => ({
                   key: meta.key,
                   [meta.isEncrypted ? "encryptedValue" : "value"]: meta.isEncrypted
-                    ? secretManagerEncryptor({ plainText: Buffer.from(meta.value) }).cipherTextBlob.toString("hex")
+                    ? secretManagerEncryptor({ plainText: Buffer.from(meta.value) }).cipherTextBlob.toString("base64")
                     : meta.value
                 }))
               ),

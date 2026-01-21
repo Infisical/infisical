@@ -4,6 +4,7 @@ import { z } from "zod";
 import { SecretApprovalRequestsSchema, SecretType, ServiceTokenScopes } from "@app/db/schemas";
 import { EventType, SecretApprovalEvent, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, RAW_SECRETS } from "@app/lib/api-docs";
+import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { secretsLimit } from "@app/server/config/rateLimiter";
@@ -346,7 +347,10 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secretId: secret.id,
             secretKey: req.params.secretName,
             secretVersion: secret.version,
-            secretMetadata: secret.secretMetadata?.filter((meta) => !meta.isEncrypted)
+            secretMetadata: secret.secretMetadata?.map((meta) => ({
+              key: meta.key,
+              value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value
+            }))
           }
         }
       });
@@ -481,7 +485,10 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secretId: secret.id,
             secretKey: req.params.secretName,
             secretVersion: secret.version,
-            secretMetadata: req.body.secretMetadata?.filter((meta) => !meta.isEncrypted),
+            secretMetadata: req.body.secretMetadata?.map((meta) => ({
+              key: meta.key,
+              value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value
+            })),
             secretTags: secret.tags?.map((tag) => tag.name)
           }
         }
@@ -626,7 +633,10 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secretId: secret.id,
             secretKey: req.params.secretName,
             secretVersion: secret.version,
-            secretMetadata: req.body.secretMetadata?.filter((meta) => !meta.isEncrypted),
+            secretMetadata: req.body.secretMetadata?.map((meta) => ({
+              key: meta.key,
+              value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value
+            })),
             secretTags: secret.tags?.map((tag) => tag.name)
           }
         }
@@ -920,7 +930,10 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               secretId: secret.id,
               secretKey: secret.secretKey,
               secretVersion: secret.version,
-              secretMetadata: secretMetadataMap.get(secret.secretKey)?.filter((meta) => !meta.isEncrypted),
+              secretMetadata: secretMetadataMap.get(secret.secretKey)?.map((meta) => ({
+                key: meta.key,
+                value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value
+              })),
               secretTags: secret.tags?.map((tag) => tag.name)
             }))
           }
@@ -1074,7 +1087,10 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
                 secretPath: secret.secretPath,
                 secretKey: secret.secretKey,
                 secretVersion: secret.version,
-                secretMetadata: secretMetadataMap.get(secret.secretKey)?.filter((meta) => !meta.isEncrypted),
+                secretMetadata: secretMetadataMap.get(secret.secretKey)?.map((meta) => ({
+                  key: meta.key,
+                  value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value
+                })),
                 secretTags: secret.tags?.map((tag) => tag.name)
               }))
           }

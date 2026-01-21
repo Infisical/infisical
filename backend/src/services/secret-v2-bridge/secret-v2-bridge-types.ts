@@ -171,7 +171,7 @@ export type TFnSecretBulkInsert = {
   tx?: Knex;
   commitChanges?: TCommitResourceChangeDTO[];
   inputSecrets: Array<
-    Omit<TSecretsV2Insert, "folderId"> & {
+    Omit<TSecretsV2Insert, "folderId" | "metadata"> & {
       tagIds?: string[];
       references: TSecretReference[];
       secretMetadata?: { key: string; value?: string | null; encryptedValue?: Buffer | null }[];
@@ -190,11 +190,11 @@ export type TFnSecretBulkInsert = {
 };
 
 type TRequireReferenceIfValue =
-  | (Omit<TSecretsV2Update, "encryptedValue"> & {
+  | (Omit<TSecretsV2Update, "encryptedValue" | "metadata"> & {
       encryptedValue: Buffer | null;
       references: TSecretReference[];
     })
-  | (Omit<TSecretsV2Update, "encryptedValue"> & {
+  | (Omit<TSecretsV2Update, "encryptedValue" | "metadata"> & {
       encryptedValue?: never;
       references?: never;
     });
