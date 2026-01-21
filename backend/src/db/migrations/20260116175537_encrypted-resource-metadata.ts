@@ -12,11 +12,14 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.alterTable(TableName.ResourceMetadata, (t) => {
       if (!hasEncryptedValueColumn) t.binary("encryptedValue").nullable();
       if (hasValueColumn) t.string("value", 1020).nullable().alter();
-      t.check(
-        `(value IS NOT NULL AND "encryptedValue" IS NULL) OR (value IS NULL AND "encryptedValue" IS NOT NULL)`,
-        [],
-        "chk_value_or_encrypted_value"
-      );
+      // if no encryptedValue column, means the column is created now, so we need to add the check constraint
+      if (!hasEncryptedValueColumn) {
+        t.check(
+          `(value IS NOT NULL AND "encryptedValue" IS NULL) OR (value IS NULL AND "encryptedValue" IS NOT NULL)`,
+          [],
+          "chk_value_or_encrypted_value"
+        );
+      }
     });
   }
 
