@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
@@ -42,6 +42,9 @@ export const SelectOrganizationSection = () => {
 
   const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
 
+  // Ref to prevent duplicate org selection calls (e.g., from multiple useEffect triggers)
+  const isSelectingOrgRef = useRef(false);
+
   const router = useRouter();
   const queryParams = new URLSearchParams(window.location.search);
   const orgId = queryParams.get("org_id");
@@ -63,6 +66,12 @@ export const SelectOrganizationSection = () => {
 
   const handleSelectOrganization = useCallback(
     async (organization: Organization) => {
+      // Prevent duplicate calls from multiple useEffect triggers or re-renders
+      if (isSelectingOrgRef.current) {
+        return;
+      }
+      isSelectingOrgRef.current = true;
+
       const isUserOrgAdmin = organization.userRole === OrgMembershipRole.Admin;
       const canBypassOrgAuth = organization.bypassOrgAuthEnabled && isUserOrgAdmin && isAdminLogin;
 
@@ -72,6 +81,7 @@ export const SelectOrganizationSection = () => {
             text: "This organization does not have bypass org auth enabled",
             type: "error"
           });
+          isSelectingOrgRef.current = false;
           return;
         }
         if (!isUserOrgAdmin) {
@@ -79,6 +89,7 @@ export const SelectOrganizationSection = () => {
             text: "Only organization admins can bypass org auth",
             type: "error"
           });
+          isSelectingOrgRef.current = false;
           return;
         }
       }
@@ -132,6 +143,7 @@ export const SelectOrganizationSection = () => {
         mfaMethod = result.mfaMethod;
       } catch (error: any) {
         setIsInitialOrgCheckLoading(false);
+        isSelectingOrgRef.current = false;
         if (error?.response?.status === 403) {
           await handleLogout();
           return;
