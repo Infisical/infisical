@@ -1,6 +1,8 @@
 /* eslint-disable no-param-reassign */
 import fp from "fastify-plugin";
 
+import { getConfig } from "@app/lib/config/env";
+
 import { DefaultResponseErrorsSchema } from "../routes/sanitizedSchemas";
 
 const isScimRoutes = (pathname: string) =>
@@ -8,8 +10,14 @@ const isScimRoutes = (pathname: string) =>
 
 const isAcmeRoutes = (pathname: string) => pathname.startsWith("/api/v1/cert-manager/acme/");
 
-export const addErrorsToResponseSchemas = fp(async (server) => {
+export const registerResponseSchemaHooks = fp(async (server) => {
+  const appCfg = getConfig();
+
   server.addHook("onRoute", (routeOptions) => {
+    if (appCfg.isDevelopmentMode) {
+      routeOptions.schema.hide = false;
+    }
+
     if (
       routeOptions.schema &&
       routeOptions.schema.response &&
