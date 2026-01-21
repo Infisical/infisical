@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 
-import { OrganizationActionScope, ProjectType, TProjectTemplates } from "@app/db/schemas";
+import { OrganizationActionScope, ProjectMembershipRole, ProjectType, TProjectTemplates } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -11,10 +11,12 @@ import {
   TProjectTemplateEnvironment,
   TProjectTemplateRole,
   TProjectTemplateServiceFactory,
+  TProjectTemplateUser,
   TUnpackedPermission
 } from "@app/ee/services/project-template/project-template-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
+import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { getPredefinedRoles } from "@app/services/project-role/project-role-fns";
 
 import { TProjectTemplateDALFactory } from "./project-template-dal";
@@ -23,9 +25,10 @@ type TProjectTemplatesServiceFactoryDep = {
   licenseService: TLicenseServiceFactory;
   permissionService: TPermissionServiceFactory;
   projectTemplateDAL: TProjectTemplateDALFactory;
+  orgMembershipDAL: TOrgMembershipDALFactory;
 };
 
-const $unpackProjectTemplate = ({ roles, environments, ...rest }: TProjectTemplates) => ({
+const $unpackProjectTemplate = ({ roles, environments, users, ...rest }: TProjectTemplates & { users?: unknown }) => ({
   ...rest,
   environments: environments as TProjectTemplateEnvironment[],
   roles: [
@@ -40,12 +43,14 @@ const $unpackProjectTemplate = ({ roles, environments, ...rest }: TProjectTempla
       ...role,
       permissions: unpackPermissions(role.permissions)
     }))
-  ]
+  ],
+  users: (users as TProjectTemplateUser[]) ?? null
 });
 
 export const projectTemplateServiceFactory = ({
   licenseService,
   permissionService,
+  orgMembershipDAL,
   projectTemplateDAL
 }: TProjectTemplatesServiceFactoryDep): TProjectTemplateServiceFactory => {
   const listProjectTemplatesByOrg: TProjectTemplateServiceFactory["listProjectTemplatesByOrg"] = async (
@@ -114,7 +119,8 @@ export const projectTemplateServiceFactory = ({
 
     return {
       ...$unpackProjectTemplate(projectTemplate),
-      packedRoles: projectTemplate.roles as TProjectTemplateRole[] // preserve packed for when applying template
+      packedRoles: projectTemplate.roles as TProjectTemplateRole[], // preserve packed for when applying template
+      users: (projectTemplate.users as TProjectTemplateUser[]) ?? null
     };
   };
 
@@ -143,12 +149,13 @@ export const projectTemplateServiceFactory = ({
 
     return {
       ...$unpackProjectTemplate(projectTemplate),
-      packedRoles: projectTemplate.roles as TProjectTemplateRole[] // preserve packed for when applying template
+      packedRoles: projectTemplate.roles as TProjectTemplateRole[], // preserve packed for when applying template
+      users: (projectTemplate.users as TProjectTemplateUser[]) ?? null
     };
   };
 
   const createProjectTemplate: TProjectTemplateServiceFactory["createProjectTemplate"] = async (
-    { roles, environments, type, ...params },
+    { roles, environments, users, type, ...params },
     actor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
@@ -192,6 +199,19 @@ export const projectTemplateServiceFactory = ({
         message: `A project template with the name "${params.name}" already exists.`
       });
 
+    // Validate that users exist and are members of the organization
+    if (users?.length) {
+      const orgMembers = await orgMembershipDAL.findOrgMembershipsWithUsersByOrgId(actor.orgId);
+      const orgMemberUsernames = new Set(orgMembers.map((m) => m.user.username?.toLowerCase()).filter(Boolean));
+
+      const invalidUsers = users.filter((u) => !orgMemberUsernames.has(u.username.toLowerCase()));
+      if (invalidUsers.length) {
+        throw new BadRequestError({
+          message: `The following users are not members of this organization: ${invalidUsers.map((u) => u.username).join(", ")}`
+        });
+      }
+    }
+
     const projectTemplateEnvironments =
       type === ProjectType.SecretManager && environments === undefined
         ? ProjectTemplateDefaultEnvironments
@@ -201,6 +221,7 @@ export const projectTemplateServiceFactory = ({
       ...params,
       roles: JSON.stringify(roles.map((role) => ({ ...role, permissions: packRules(role.permissions) }))),
       environments: JSON.stringify(projectTemplateEnvironments),
+      users: users?.length ? JSON.stringify(users) : undefined,
       orgId: actor.orgId,
       type
     });
@@ -210,7 +231,7 @@ export const projectTemplateServiceFactory = ({
 
   const updateProjectTemplateById: TProjectTemplateServiceFactory["updateProjectTemplateById"] = async (
     id,
-    { roles, environments, ...params },
+    { roles, environments, users, ...params },
     actor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
@@ -247,6 +268,36 @@ export const projectTemplateServiceFactory = ({
       });
     }
 
+    if (users) {
+      // Validate that users exist and are members of the organization
+      const orgMembers = await orgMembershipDAL.findOrgMembershipsWithUsersByOrgId(projectTemplate.orgId);
+      const orgMemberUsernames = new Set(orgMembers.map((m) => m.user.username?.toLowerCase()).filter(Boolean));
+
+      const invalidUsers = users.filter((u) => !orgMemberUsernames.has(u.username.toLowerCase()));
+      if (invalidUsers.length) {
+        throw new BadRequestError({
+          message: `The following users are not members of this organization: ${invalidUsers.map((u) => u.username).join(", ")}`
+        });
+      }
+
+      const templateRoles = roles ?? (projectTemplate.roles as TProjectTemplateRole[]);
+
+      const availableRoleSlugs = new Set([
+        ...Object.values(ProjectMembershipRole),
+        ...templateRoles.map((r) => r.slug)
+      ]);
+
+      users.forEach((user) => {
+        user.roles.forEach((roleSlug) => {
+          if (!availableRoleSlugs.has(roleSlug)) {
+            throw new BadRequestError({
+              message: `User "${user.username}" references invalid role slug "${roleSlug}". Role must be a predefined role or defined in the template roles.`
+            });
+          }
+        });
+      });
+    }
+
     if (params.name && projectTemplate.name !== params.name) {
       const isConflictingName = Boolean(
         await projectTemplateDAL.findOne({
@@ -266,7 +317,8 @@ export const projectTemplateServiceFactory = ({
       roles: roles
         ? JSON.stringify(roles.map((role) => ({ ...role, permissions: packRules(role.permissions) })))
         : undefined,
-      environments: environments ? JSON.stringify(environments) : undefined
+      environments: environments ? JSON.stringify(environments) : undefined,
+      users: users ? JSON.stringify(users) : undefined
     });
 
     return $unpackProjectTemplate(updatedProjectTemplate);

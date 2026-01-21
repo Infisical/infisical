@@ -13,15 +13,23 @@ export type TProjectTemplateRole = {
   permissions: TProjectPermissionV2Schema[];
 };
 
+export type TProjectTemplateUser = {
+  username: string;
+  roles: string[]; // role slugs
+};
+
 export type TCreateProjectTemplateDTO = {
   name: string;
   type: ProjectType;
   description?: string;
   roles: TProjectTemplateRole[];
   environments?: TProjectTemplateEnvironment[] | null;
+  users?: TProjectTemplateUser[];
 };
 
-export type TUpdateProjectTemplateDTO = Partial<TCreateProjectTemplateDTO>;
+export type TUpdateProjectTemplateDTO = Partial<Omit<TCreateProjectTemplateDTO, "users">> & {
+  users?: TProjectTemplateUser[] | null;
+};
 
 export type TUnpackedPermission = z.infer<typeof UnpackedPermissionSchema>;
 
@@ -59,6 +67,7 @@ export type TProjectTemplateServiceFactory = {
               inverted?: boolean | undefined;
             }[];
           }[];
+          users: TProjectTemplateUser[] | null;
           orgId: string;
         }
       | {
@@ -74,6 +83,7 @@ export type TProjectTemplateServiceFactory = {
             slug: string;
             name: string;
           }[];
+          users: TProjectTemplateUser[] | null;
           name: string;
           orgId: string;
           id: string;
@@ -98,6 +108,7 @@ export type TProjectTemplateServiceFactory = {
       slug: string;
       name: string;
     }[];
+    users: TProjectTemplateUser[] | null;
     name: string;
     orgId: string;
     type: string;
@@ -122,6 +133,7 @@ export type TProjectTemplateServiceFactory = {
       slug: string;
       name: string;
     }[];
+    users: TProjectTemplateUser[] | null;
     name: string;
     orgId: string;
     id: string;
@@ -145,6 +157,7 @@ export type TProjectTemplateServiceFactory = {
       slug: string;
       name: string;
     }[];
+    users: TProjectTemplateUser[] | null;
     name: string;
     orgId: string;
     id: string;
@@ -169,6 +182,7 @@ export type TProjectTemplateServiceFactory = {
       slug: string;
       name: string;
     }[];
+    users: TProjectTemplateUser[] | null;
     name: string;
     orgId: string;
     type: string;
@@ -193,6 +207,7 @@ export type TProjectTemplateServiceFactory = {
       slug: string;
       name: string;
     }[];
+    users: TProjectTemplateUser[] | null;
     name: string;
     type: string;
     orgId: string;

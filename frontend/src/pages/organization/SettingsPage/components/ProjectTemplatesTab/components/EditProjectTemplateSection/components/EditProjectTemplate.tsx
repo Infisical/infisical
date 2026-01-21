@@ -13,6 +13,7 @@ import { TProjectTemplate, useDeleteProjectTemplate } from "@app/hooks/api/proje
 import { ProjectTemplateDetailsModal } from "../../ProjectTemplateDetailsModal";
 import { ProjectTemplateEnvironmentsForm } from "./ProjectTemplateEnvironmentsForm";
 import { ProjectTemplateRolesSection } from "./ProjectTemplateRolesSection";
+import { ProjectTemplateUsersSection } from "./ProjectTemplateUsersSection";
 
 type Props = {
   projectTemplate: TProjectTemplate;
@@ -98,6 +99,10 @@ export const EditProjectTemplate = ({ isInfisicalTemplate, projectTemplate, onBa
         />
       )}
       <ProjectTemplateRolesSection
+        isInfisicalTemplate={isInfisicalTemplate}
+        projectTemplate={projectTemplate}
+      />
+      <ProjectTemplateUsersSection
         isInfisicalTemplate={isInfisicalTemplate}
         projectTemplate={projectTemplate}
       />
