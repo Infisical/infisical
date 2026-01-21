@@ -38,7 +38,7 @@ export const redisCredentialsRotationFactory: TRotationFactory<
   const { connection, secretsMapping, parameters } = secretRotation;
 
   const $getClient = async () => {
-    const [hostIp] = await verifyHostInputValidity(connection.credentials.host);
+    const [hostIp] = await verifyHostInputValidity({ host: connection.credentials.host, isDynamicSecret: false });
 
     let conn: Redis | null = null;
     try {

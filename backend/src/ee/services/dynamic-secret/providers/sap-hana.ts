@@ -28,7 +28,7 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSapHanaSchema.parseAsync(inputs);
 
-    await verifyHostInputValidity(providerInputs.host);
+    await verifyHostInputValidity({ host: providerInputs.host, isDynamicSecret: true });
     validateHandlebarTemplate("SAP Hana creation", providerInputs.creationStatement, {
       allowedExpressions: (val) => ["username", "password", "expiration"].includes(val)
     });

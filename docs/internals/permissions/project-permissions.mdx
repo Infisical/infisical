@@ -358,3 +358,20 @@ Supports conditions and permission inversion
 | ---------------- | -------------------------------------------- |
 | `read-configs`   | View Secret Scanning Project Configuration   |
 | `update-configs` | Update Secret Scanning Project Configuration |
+
+### Agent Sentinel
+
+#### Subject: `mcp-endpoints`
+
+Supports conditions and permission inversion.
+
+| Action    | Description                         |
+| --------- | ----------------------------------- |
+| `read`    | View MCP endpoints                  |
+| `create`  | Create new MCP endpoints            |
+| `edit`    | Modify MCP endpoint configurations  |
+| `delete`  | Remove MCP endpoints                |
+| `connect` | Connect AI clients to MCP endpoints |
+
+**Condition Properties:**
+- `name`: Control access based on endpoint name

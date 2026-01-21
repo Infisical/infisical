@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { Server as RawMcpServer } from "@modelcontextprotocol/sdk/server/index.js";
@@ -8,13 +8,15 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, TAiMcpEndpoints } from "@app/db/schemas";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto as cryptoModule } from "@app/lib/crypto";
-import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { BadRequestError, DatabaseError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
+import { PiiEntityType, redactPiiFromObject } from "@app/lib/pii";
 import { ActorType, AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -157,7 +159,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Connect,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
     const user = await userDAL.findById(userId);
@@ -299,23 +301,34 @@ export const aiMcpEndpointServiceFactory = ({
         throw new Error(`Unknown tool: ${name}`);
       }
 
+      // Apply PII redaction to request if enabled
+      const piiEntityTypes = (endpoint.piiEntityTypes as PiiEntityType[]) || [];
+      const sanitizedArgs =
+        endpoint.piiRequestFiltering && piiEntityTypes.length > 0 ? redactPiiFromObject(args, piiEntityTypes) : args;
+
       try {
         const result = await selectedMcpClient.client.callTool({
           name,
-          arguments: args
+          arguments: sanitizedArgs
         });
+
+        // Apply PII redaction to response if enabled
+        const sanitizedResult =
+          endpoint.piiResponseFiltering && piiEntityTypes.length > 0
+            ? redactPiiFromObject(result, piiEntityTypes)
+            : result;
 
         await aiMcpActivityLogService.createActivityLog({
           endpointName: endpoint.name,
           serverName: selectedMcpClient.server.name,
           toolName: name,
           actor: user.email || "",
-          request: args,
-          response: result,
+          request: sanitizedArgs,
+          response: sanitizedResult,
           projectId: endpoint.projectId
         });
 
-        return result as Record<string, unknown>;
+        return sanitizedResult as Record<string, unknown>;
       } catch (error) {
         // Log the full error internally for system administrators
         logger.error(
@@ -337,7 +350,7 @@ export const aiMcpEndpointServiceFactory = ({
           serverName: selectedMcpClient.server.name,
           toolName: name,
           actor: user.email || "",
-          request: args,
+          request: sanitizedArgs,
           response: { error: errorMessage },
           projectId: endpoint.projectId
         });
@@ -384,7 +397,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Create,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name })
     );
 
     // Validate that all serverIds belong to the same project
@@ -403,12 +416,22 @@ export const aiMcpEndpointServiceFactory = ({
       }
     }
 
-    const endpoint = await aiMcpEndpointDAL.create({
-      projectId,
-      name,
-      description,
-      status: AiMcpEndpointStatus.ACTIVE
-    });
+    let endpoint: TAiMcpEndpoints;
+    try {
+      endpoint = await aiMcpEndpointDAL.create({
+        projectId,
+        name,
+        description,
+        status: AiMcpEndpointStatus.ACTIVE
+      });
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+        throw new BadRequestError({
+          message: `An MCP endpoint with the name "${name}" already exists in this project`
+        });
+      }
+      throw err;
+    }
 
     // Connect servers if provided
     if (serverIds && serverIds.length > 0) {
@@ -439,16 +462,19 @@ export const aiMcpEndpointServiceFactory = ({
       actionProjectType: ActionProjectType.AI
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionMcpEndpointActions.Read,
-      ProjectPermissionSub.McpEndpoints
-    );
-
     const endpoints = await aiMcpEndpointDAL.find({ projectId });
+
+    // Filter endpoints based on read permission with conditions
+    const filteredEndpoints = endpoints.filter((ep) =>
+      permission.can(
+        ProjectPermissionMcpEndpointActions.Read,
+        subject(ProjectPermissionSub.McpEndpoints, { name: ep.name })
+      )
+    );
 
     // Get connected servers count and tools count for each endpoint
     const endpointsWithStats = await Promise.all(
-      endpoints.map(async (endpoint) => {
+      filteredEndpoints.map(async (endpoint) => {
         const [connectedServersCount, activeToolsCount] = await Promise.all([
           aiMcpEndpointServerDAL.countByEndpointId(endpoint.id),
           aiMcpEndpointServerToolDAL.countByEndpointId(endpoint.id)
@@ -488,7 +514,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Read,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
     const [connectedServers, activeToolsCount] = await Promise.all([
@@ -509,7 +535,9 @@ export const aiMcpEndpointServiceFactory = ({
     name,
     description,
     serverIds,
-    piiFiltering,
+    piiRequestFiltering,
+    piiResponseFiltering,
+    piiEntityTypes,
     actor,
     actorId,
     actorAuthMethod,
@@ -531,17 +559,37 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Edit,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
-    const updateData: { name?: string; description?: string; piiFiltering?: boolean } = {};
+    const updateData: {
+      name?: string;
+      description?: string;
+      piiRequestFiltering?: boolean;
+      piiResponseFiltering?: boolean;
+      piiEntityTypes?: string[];
+    } = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
-    if (piiFiltering !== undefined) updateData.piiFiltering = piiFiltering;
+    if (piiRequestFiltering !== undefined) updateData.piiRequestFiltering = piiRequestFiltering;
+    if (piiResponseFiltering !== undefined) updateData.piiResponseFiltering = piiResponseFiltering;
+    if (piiEntityTypes !== undefined) updateData.piiEntityTypes = piiEntityTypes;
 
     let updatedEndpoint = endpoint;
     if (Object.keys(updateData).length > 0) {
-      updatedEndpoint = await aiMcpEndpointDAL.updateById(endpointId, updateData);
+      try {
+        updatedEndpoint = await aiMcpEndpointDAL.updateById(endpointId, updateData);
+      } catch (err) {
+        if (
+          err instanceof DatabaseError &&
+          (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation
+        ) {
+          throw new BadRequestError({
+            message: `An MCP endpoint with the name "${updateData.name}" already exists in this project`
+          });
+        }
+        throw err;
+      }
     }
 
     // Update server connections if provided
@@ -602,7 +650,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Delete,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
     await aiMcpEndpointDAL.deleteById(endpointId);
@@ -633,7 +681,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Read,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
     const toolConfigs = await aiMcpEndpointServerToolDAL.find({ aiMcpEndpointId: endpointId });
@@ -664,7 +712,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Edit,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
     // Get the tool name for audit logging
@@ -712,7 +760,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Edit,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
     // Get the tool name for audit logging
@@ -755,7 +803,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Edit,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
     // Separate tools to enable and disable
@@ -893,7 +941,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(projectPermission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Connect,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
     const code = crypto.randomBytes(32).toString("hex");
@@ -1014,7 +1062,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Read,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
     // Get connected servers
@@ -1079,7 +1127,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Connect,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
     const server = await aiMcpServerDAL.findById(serverId);
@@ -1140,7 +1188,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Connect,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
     const server = await aiMcpServerDAL.findById(serverId);
@@ -1231,7 +1279,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Connect,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
     const server = await aiMcpServerDAL.findById(serverId);

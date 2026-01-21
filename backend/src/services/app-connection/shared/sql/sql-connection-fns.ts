@@ -122,7 +122,7 @@ export const getSqlConnectionClient = async (appConnection: Pick<TSqlConnection,
     return getOracleWalletKnexClient({ username, password, database });
   }
 
-  const [host] = await verifyHostInputValidity(baseHost);
+  const [host] = await verifyHostInputValidity({ host: baseHost, isDynamicSecret: false });
 
   const client = knex({
     client: SQL_CONNECTION_CLIENT_MAP[app],
@@ -149,7 +149,11 @@ export const executeWithPotentialGateway = async <T>(
   const { credentials, app, gatewayId } = config;
 
   if (gatewayId && gatewayService && gatewayV2Service) {
-    const [targetHost] = await verifyHostInputValidity(credentials.host, true);
+    const [targetHost] = await verifyHostInputValidity({
+      host: credentials.host,
+      isGateway: true,
+      isDynamicSecret: false
+    });
     const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
       gatewayId,
       targetHost,

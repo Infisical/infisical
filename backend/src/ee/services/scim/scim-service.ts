@@ -994,8 +994,7 @@ export const scimServiceFactory = ({
         {
           name: displayName,
           slug: slugify(`${displayName}-${alphaNumericNanoId(4)}`),
-          orgId,
-          role: OrgMembershipRole.NoAccess
+          orgId
         },
         tx
       );

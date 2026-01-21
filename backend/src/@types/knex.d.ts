@@ -164,12 +164,6 @@ import {
   TGithubOrgSyncConfigs,
   TGithubOrgSyncConfigsInsert,
   TGithubOrgSyncConfigsUpdate,
-  TGroupProjectMembershipRoles,
-  TGroupProjectMembershipRolesInsert,
-  TGroupProjectMembershipRolesUpdate,
-  TGroupProjectMemberships,
-  TGroupProjectMembershipsInsert,
-  TGroupProjectMembershipsUpdate,
   TGroups,
   TGroupsInsert,
   TGroupsUpdate,
@@ -209,18 +203,6 @@ import {
   TIdentityOidcAuths,
   TIdentityOidcAuthsInsert,
   TIdentityOidcAuthsUpdate,
-  TIdentityOrgMemberships,
-  TIdentityOrgMembershipsInsert,
-  TIdentityOrgMembershipsUpdate,
-  TIdentityProjectAdditionalPrivilege,
-  TIdentityProjectAdditionalPrivilegeInsert,
-  TIdentityProjectAdditionalPrivilegeUpdate,
-  TIdentityProjectMembershipRole,
-  TIdentityProjectMembershipRoleInsert,
-  TIdentityProjectMembershipRoleUpdate,
-  TIdentityProjectMemberships,
-  TIdentityProjectMembershipsInsert,
-  TIdentityProjectMembershipsUpdate,
   TIdentityTlsCertAuths,
   TIdentityTlsCertAuthsInsert,
   TIdentityTlsCertAuthsUpdate,
@@ -308,15 +290,9 @@ import {
   TOrgGatewayConfigV2,
   TOrgGatewayConfigV2Insert,
   TOrgGatewayConfigV2Update,
-  TOrgMemberships,
-  TOrgMembershipsInsert,
-  TOrgMembershipsUpdate,
   TOrgRelayConfig,
   TOrgRelayConfigInsert,
   TOrgRelayConfigUpdate,
-  TOrgRoles,
-  TOrgRolesInsert,
-  TOrgRolesUpdate,
   TPkiAcmeAccounts,
   TPkiAcmeAccountsInsert,
   TPkiAcmeAccountsUpdate,
@@ -389,12 +365,6 @@ import {
   TProjectKeys,
   TProjectKeysInsert,
   TProjectKeysUpdate,
-  TProjectMemberships,
-  TProjectMembershipsInsert,
-  TProjectMembershipsUpdate,
-  TProjectRoles,
-  TProjectRolesInsert,
-  TProjectRolesUpdate,
   TProjects,
   TProjectsInsert,
   TProjectSlackConfigs,
@@ -410,12 +380,6 @@ import {
   TProjectTemplates,
   TProjectTemplatesInsert,
   TProjectTemplatesUpdate,
-  TProjectUserAdditionalPrivilege,
-  TProjectUserAdditionalPrivilegeInsert,
-  TProjectUserAdditionalPrivilegeUpdate,
-  TProjectUserMembershipRoles,
-  TProjectUserMembershipRolesInsert,
-  TProjectUserMembershipRolesUpdate,
   TRateLimit,
   TRateLimitInsert,
   TRateLimitUpdate,
@@ -898,16 +862,6 @@ declare module "knex/types/tables" {
       TIdentityGroupMembershipInsert,
       TIdentityGroupMembershipUpdate
     >;
-    [TableName.GroupProjectMembership]: KnexOriginal.CompositeTableType<
-      TGroupProjectMemberships,
-      TGroupProjectMembershipsInsert,
-      TGroupProjectMembershipsUpdate
-    >;
-    [TableName.GroupProjectMembershipRole]: KnexOriginal.CompositeTableType<
-      TGroupProjectMembershipRoles,
-      TGroupProjectMembershipRolesInsert,
-      TGroupProjectMembershipRolesUpdate
-    >;
     [TableName.UserAliases]: KnexOriginal.CompositeTableType<TUserAliases, TUserAliasesInsert, TUserAliasesUpdate>;
     [TableName.UserEncryptionKey]: KnexOriginal.CompositeTableType<
       TUserEncryptionKeys,
@@ -930,12 +884,6 @@ declare module "knex/types/tables" {
       TOrganizationsInsert,
       TOrganizationsUpdate
     >;
-    [TableName.OrgMembership]: KnexOriginal.CompositeTableType<
-      TOrgMemberships,
-      TOrgMembershipsInsert,
-      TOrgMembershipsUpdate
-    >;
-    [TableName.OrgRoles]: KnexOriginal.CompositeTableType<TOrgRoles, TOrgRolesInsert, TOrgRolesUpdate>;
     [TableName.IncidentContact]: KnexOriginal.CompositeTableType<
       TIncidentContacts,
       TIncidentContactsInsert,
@@ -950,28 +898,12 @@ declare module "knex/types/tables" {
       TProjectSshConfigsInsert,
       TProjectSshConfigsUpdate
     >;
-    [TableName.ProjectMembership]: KnexOriginal.CompositeTableType<
-      TProjectMemberships,
-      TProjectMembershipsInsert,
-      TProjectMembershipsUpdate
-    >;
     [TableName.Environment]: KnexOriginal.CompositeTableType<
       TProjectEnvironments,
       TProjectEnvironmentsInsert,
       TProjectEnvironmentsUpdate
     >;
     [TableName.ProjectBot]: KnexOriginal.CompositeTableType<TProjectBots, TProjectBotsInsert, TProjectBotsUpdate>;
-    [TableName.ProjectUserMembershipRole]: KnexOriginal.CompositeTableType<
-      TProjectUserMembershipRoles,
-      TProjectUserMembershipRolesInsert,
-      TProjectUserMembershipRolesUpdate
-    >;
-    [TableName.ProjectRoles]: KnexOriginal.CompositeTableType<TProjectRoles, TProjectRolesInsert, TProjectRolesUpdate>;
-    [TableName.ProjectUserAdditionalPrivilege]: KnexOriginal.CompositeTableType<
-      TProjectUserAdditionalPrivilege,
-      TProjectUserAdditionalPrivilegeInsert,
-      TProjectUserAdditionalPrivilegeUpdate
-    >;
     [TableName.ProjectKeys]: KnexOriginal.CompositeTableType<TProjectKeys, TProjectKeysInsert, TProjectKeysUpdate>;
     [TableName.Secret]: KnexOriginal.CompositeTableType<TSecrets, TSecretsInsert, TSecretsUpdate>;
     [TableName.SecretReference]: KnexOriginal.CompositeTableType<
@@ -1098,26 +1030,6 @@ declare module "knex/types/tables" {
       TIdentityAccessTokens,
       TIdentityAccessTokensInsert,
       TIdentityAccessTokensUpdate
-    >;
-    [TableName.IdentityOrgMembership]: KnexOriginal.CompositeTableType<
-      TIdentityOrgMemberships,
-      TIdentityOrgMembershipsInsert,
-      TIdentityOrgMembershipsUpdate
-    >;
-    [TableName.IdentityProjectMembership]: KnexOriginal.CompositeTableType<
-      TIdentityProjectMemberships,
-      TIdentityProjectMembershipsInsert,
-      TIdentityProjectMembershipsUpdate
-    >;
-    [TableName.IdentityProjectMembershipRole]: KnexOriginal.CompositeTableType<
-      TIdentityProjectMembershipRole,
-      TIdentityProjectMembershipRoleInsert,
-      TIdentityProjectMembershipRoleUpdate
-    >;
-    [TableName.IdentityProjectAdditionalPrivilege]: KnexOriginal.CompositeTableType<
-      TIdentityProjectAdditionalPrivilege,
-      TIdentityProjectAdditionalPrivilegeInsert,
-      TIdentityProjectAdditionalPrivilegeUpdate
     >;
     [TableName.IdentityAuthTemplate]: KnexOriginal.CompositeTableType<
       TIdentityAuthTemplates,
