@@ -35,10 +35,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
-import {
-  ResourceMetadataDTO,
-  ResourceMetadataWithEncryptionDTO
-} from "@app/services/resource-metadata/resource-metadata-schema";
+import { ResourceMetadataWithEncryptionDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import {
   decryptSecretWithBot,
@@ -1092,7 +1089,11 @@ export const secretApprovalRequestServiceFactory = ({
               // @ts-expect-error not present on v1 secrets
               secretKey: secret.key as string,
               // @ts-expect-error not present on v1 secrets
-              secretMetadata: (secret.secretMetadata as ResourceMetadataDTO).filter((el) => !el.isEncrypted),
+              secretMetadata: (secret.secretMetadata as ResourceMetadataWithEncryptionDTO).map((meta) => ({
+                key: meta.key,
+                isEncrypted: meta.isEncrypted,
+                value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value || ""
+              })),
               // @ts-expect-error not present on v1 secrets
               secretTags: (secret.tags as { name: string }[])?.map((tag) => tag.name)
             }))
