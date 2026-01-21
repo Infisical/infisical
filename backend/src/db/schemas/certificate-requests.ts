@@ -30,15 +30,15 @@ export const CertificateRequestsSchema = z.object({
   acmeOrderId: z.string().uuid().nullable().optional(),
   basicConstraints: z.unknown().nullable().optional(),
   approvalRequestId: z.string().uuid().nullable().optional(),
-  altNamesJson: z.unknown().nullable().optional(),
-  enrollmentType: z.string().nullable().optional(),
+  ttl: z.string().nullable().optional(),
   issuanceType: z.string().nullable().optional(),
+  enrollmentType: z.string().nullable().optional(),
+  altNamesJson: z.unknown().nullable().optional(),
   organization: z.string().nullable().optional(),
   organizationalUnit: z.string().nullable().optional(),
   country: z.string().nullable().optional(),
   state: z.string().nullable().optional(),
-  locality: z.string().nullable().optional(),
-  ttl: z.string().nullable().optional()
+  locality: z.string().nullable().optional()
 });
 
 export type TCertificateRequests = z.infer<typeof CertificateRequestsSchema>;
