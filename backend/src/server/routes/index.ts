@@ -101,6 +101,7 @@ import { pkiAcmeQueueServiceFactory } from "@app/ee/services/pki-acme/pki-acme-q
 import { pkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-service";
 import { projectTemplateDALFactory } from "@app/ee/services/project-template/project-template-dal";
 import { projectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
+import { projectTemplateUserMembershipDALFactory } from "@app/ee/services/project-template/project-template-user-membership-dal";
 import { rateLimitDALFactory } from "@app/ee/services/rate-limit/rate-limit-dal";
 import { rateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-service";
 import { instanceRelayConfigDalFactory } from "@app/ee/services/relay/instance-relay-config-dal";
@@ -583,6 +584,7 @@ export const registerRoutes = async (
   const externalGroupOrgRoleMappingDAL = externalGroupOrgRoleMappingDALFactory(db);
 
   const projectTemplateDAL = projectTemplateDALFactory(db);
+  const projectTemplateUserMembershipDAL = projectTemplateUserMembershipDALFactory(db);
   const resourceMetadataDAL = resourceMetadataDALFactory(db);
   const kmipClientDAL = kmipClientDALFactory(db);
   const kmipClientCertificateDAL = kmipClientCertificateDALFactory(db);
@@ -1267,6 +1269,7 @@ export const registerRoutes = async (
     licenseService,
     permissionService,
     projectTemplateDAL,
+    projectTemplateUserMembershipDAL,
     orgMembershipDAL
   });
 

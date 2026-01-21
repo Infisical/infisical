@@ -20,15 +20,20 @@ import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membe
 import { getPredefinedRoles } from "@app/services/project-role/project-role-fns";
 
 import { TProjectTemplateDALFactory } from "./project-template-dal";
+import { TProjectTemplateUserMembershipDALFactory } from "./project-template-user-membership-dal";
 
 type TProjectTemplatesServiceFactoryDep = {
   licenseService: TLicenseServiceFactory;
   permissionService: TPermissionServiceFactory;
   projectTemplateDAL: TProjectTemplateDALFactory;
+  projectTemplateUserMembershipDAL: TProjectTemplateUserMembershipDALFactory;
   orgMembershipDAL: TOrgMembershipDALFactory;
 };
 
-const $unpackProjectTemplate = ({ roles, environments, users, ...rest }: TProjectTemplates & { users?: unknown }) => ({
+const $unpackProjectTemplate = (
+  { roles, environments, ...rest }: TProjectTemplates,
+  users: TProjectTemplateUser[]
+) => ({
   ...rest,
   environments: environments as TProjectTemplateEnvironment[],
   roles: [
@@ -44,15 +49,26 @@ const $unpackProjectTemplate = ({ roles, environments, users, ...rest }: TProjec
       permissions: unpackPermissions(role.permissions)
     }))
   ],
-  users: (users as TProjectTemplateUser[]) ?? null
+  users
 });
 
 export const projectTemplateServiceFactory = ({
   licenseService,
   permissionService,
   orgMembershipDAL,
-  projectTemplateDAL
+  projectTemplateDAL,
+  projectTemplateUserMembershipDAL
 }: TProjectTemplatesServiceFactoryDep): TProjectTemplateServiceFactory => {
+  // Helper to convert membership records to TProjectTemplateUser format
+  const $membershipToUsers = (
+    memberships: Awaited<ReturnType<typeof projectTemplateUserMembershipDAL.findByTemplateId>>
+  ): TProjectTemplateUser[] => {
+    return memberships.map((m) => ({
+      username: m.username,
+      roles: m.roles
+    }));
+  };
+
   const listProjectTemplatesByOrg: TProjectTemplateServiceFactory["listProjectTemplatesByOrg"] = async (
     actor,
     type
@@ -80,6 +96,13 @@ export const projectTemplateServiceFactory = ({
       ...(type ? { type } : {})
     });
 
+    const templatesWithUsers = await Promise.all(
+      projectTemplates.map(async (template) => {
+        const memberships = await projectTemplateUserMembershipDAL.findByTemplateId(template.id);
+        return $unpackProjectTemplate(template, $membershipToUsers(memberships));
+      })
+    );
+
     return [
       ...(type && type !== ProjectType.SSH
         ? [getDefaultProjectTemplate(actor.orgId, type)]
@@ -87,7 +110,7 @@ export const projectTemplateServiceFactory = ({
             // Filter out SSH since we're deprecating
             .filter((projectType) => projectType !== ProjectType.SSH)
             .map((projectType) => getDefaultProjectTemplate(actor.orgId, projectType))),
-      ...projectTemplates.map((template) => $unpackProjectTemplate(template))
+      ...templatesWithUsers
     ];
   };
 
@@ -117,10 +140,12 @@ export const projectTemplateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
 
+    const memberships = await projectTemplateUserMembershipDAL.findByTemplateId(projectTemplate.id);
+    const users = $membershipToUsers(memberships);
+
     return {
-      ...$unpackProjectTemplate(projectTemplate),
-      packedRoles: projectTemplate.roles as TProjectTemplateRole[], // preserve packed for when applying template
-      users: (projectTemplate.users as TProjectTemplateUser[]) ?? null
+      ...$unpackProjectTemplate(projectTemplate, users),
+      packedRoles: projectTemplate.roles as TProjectTemplateRole[] // preserve packed for when applying template
     };
   };
 
@@ -147,10 +172,12 @@ export const projectTemplateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
 
+    const memberships = await projectTemplateUserMembershipDAL.findByTemplateId(projectTemplate.id);
+    const users = $membershipToUsers(memberships);
+
     return {
-      ...$unpackProjectTemplate(projectTemplate),
-      packedRoles: projectTemplate.roles as TProjectTemplateRole[], // preserve packed for when applying template
-      users: (projectTemplate.users as TProjectTemplateUser[]) ?? null
+      ...$unpackProjectTemplate(projectTemplate, users),
+      packedRoles: projectTemplate.roles as TProjectTemplateRole[] // preserve packed for when applying template
     };
   };
 
@@ -200,9 +227,10 @@ export const projectTemplateServiceFactory = ({
       });
 
     // Validate that users exist and are members of the organization
+    let validatedUsers: { membershipId: string; roles: string[] }[] = [];
     if (users?.length) {
       const orgMembers = await orgMembershipDAL.findOrgMembershipsWithUsersByOrgId(actor.orgId);
-      const orgMemberUsernames = new Set(orgMembers.map((m) => m.user.username?.toLowerCase()).filter(Boolean));
+      const orgMemberUsernames = new Map(orgMembers.map((m) => [m.user.username.toLowerCase(), m] as const));
 
       const invalidUsers = users.filter((u) => !orgMemberUsernames.has(u.username.toLowerCase()));
       if (invalidUsers.length) {
@@ -210,6 +238,11 @@ export const projectTemplateServiceFactory = ({
           message: `The following users are not members of this organization: ${invalidUsers.map((u) => u.username).join(", ")}`
         });
       }
+
+      validatedUsers = users.map((u) => {
+        const member = orgMemberUsernames.get(u.username.toLowerCase());
+        return { membershipId: member!.id, roles: u.roles };
+      });
     }
 
     const projectTemplateEnvironments =
@@ -217,16 +250,34 @@ export const projectTemplateServiceFactory = ({
         ? ProjectTemplateDefaultEnvironments
         : environments;
 
-    const projectTemplate = await projectTemplateDAL.create({
-      ...params,
-      roles: JSON.stringify(roles.map((role) => ({ ...role, permissions: packRules(role.permissions) }))),
-      environments: JSON.stringify(projectTemplateEnvironments),
-      users: users?.length ? JSON.stringify(users) : undefined,
-      orgId: actor.orgId,
-      type
+    const projectTemplate = await projectTemplateDAL.transaction(async (tx) => {
+      const template = await projectTemplateDAL.create(
+        {
+          ...params,
+          roles: JSON.stringify(roles.map((role) => ({ ...role, permissions: packRules(role.permissions) }))),
+          environments: JSON.stringify(projectTemplateEnvironments),
+          orgId: actor.orgId,
+          type
+        },
+        tx
+      );
+
+      if (validatedUsers.length) {
+        await projectTemplateUserMembershipDAL.insertMany(
+          validatedUsers.map((user) => ({
+            projectTemplateId: template.id,
+            membershipId: user.membershipId,
+            roles: user.roles
+          })),
+          tx
+        );
+      }
+
+      return template;
     });
 
-    return $unpackProjectTemplate(projectTemplate);
+    const memberships = await projectTemplateUserMembershipDAL.findByTemplateId(projectTemplate.id);
+    return $unpackProjectTemplate(projectTemplate, $membershipToUsers(memberships));
   };
 
   const updateProjectTemplateById: TProjectTemplateServiceFactory["updateProjectTemplateById"] = async (
@@ -268,10 +319,11 @@ export const projectTemplateServiceFactory = ({
       });
     }
 
+    // Validate that users exist and are members of the organization
+    let validatedUsers: { membershipId: string; roles: string[] }[] | undefined;
     if (users) {
-      // Validate that users exist and are members of the organization
       const orgMembers = await orgMembershipDAL.findOrgMembershipsWithUsersByOrgId(projectTemplate.orgId);
-      const orgMemberUsernames = new Set(orgMembers.map((m) => m.user.username?.toLowerCase()).filter(Boolean));
+      const orgMemberUsernames = new Map(orgMembers.map((m) => [m.user.username.toLowerCase(), m] as const));
 
       const invalidUsers = users.filter((u) => !orgMemberUsernames.has(u.username.toLowerCase()));
       if (invalidUsers.length) {
@@ -296,6 +348,11 @@ export const projectTemplateServiceFactory = ({
           }
         });
       });
+
+      validatedUsers = users.map((u) => {
+        const member = orgMemberUsernames.get(u.username.toLowerCase());
+        return { membershipId: member!.id, roles: u.roles };
+      });
     }
 
     if (params.name && projectTemplate.name !== params.name) {
@@ -312,16 +369,44 @@ export const projectTemplateServiceFactory = ({
         });
     }
 
-    const updatedProjectTemplate = await projectTemplateDAL.updateById(id, {
-      ...params,
-      roles: roles
-        ? JSON.stringify(roles.map((role) => ({ ...role, permissions: packRules(role.permissions) })))
-        : undefined,
-      environments: environments ? JSON.stringify(environments) : undefined,
-      users: users ? JSON.stringify(users) : undefined
+    const updatedProjectTemplate = await projectTemplateDAL.transaction(async (tx) => {
+      const hasTemplateUpdates = Object.keys(params).length > 0 || roles !== undefined || environments !== undefined;
+
+      let template = projectTemplate;
+      if (hasTemplateUpdates) {
+        template = await projectTemplateDAL.updateById(
+          id,
+          {
+            ...params,
+            roles: roles
+              ? JSON.stringify(roles.map((role) => ({ ...role, permissions: packRules(role.permissions) })))
+              : undefined,
+            environments: environments ? JSON.stringify(environments) : undefined
+          },
+          tx
+        );
+      }
+
+      if (validatedUsers !== undefined) {
+        await projectTemplateUserMembershipDAL.delete({ projectTemplateId: id }, tx);
+
+        if (validatedUsers.length) {
+          await projectTemplateUserMembershipDAL.insertMany(
+            validatedUsers.map((user) => ({
+              projectTemplateId: id,
+              membershipId: user.membershipId,
+              roles: user.roles
+            })),
+            tx
+          );
+        }
+      }
+
+      return template;
     });
 
-    return $unpackProjectTemplate(updatedProjectTemplate);
+    const memberships = await projectTemplateUserMembershipDAL.findByTemplateId(updatedProjectTemplate.id);
+    return $unpackProjectTemplate(updatedProjectTemplate, $membershipToUsers(memberships));
   };
 
   const deleteProjectTemplateById: TProjectTemplateServiceFactory["deleteProjectTemplateById"] = async (id, actor) => {
@@ -347,9 +432,12 @@ export const projectTemplateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.ProjectTemplates);
 
+    const memberships = await projectTemplateUserMembershipDAL.findByTemplateId(id);
+    const users = $membershipToUsers(memberships);
+
     const deletedProjectTemplate = await projectTemplateDAL.deleteById(id);
 
-    return $unpackProjectTemplate(deletedProjectTemplate);
+    return $unpackProjectTemplate(deletedProjectTemplate, users);
   };
 
   return {
