@@ -493,6 +493,17 @@ export const registerCertificateProfilesRouter = async (
           {
             message: "Cannot have EST config with API enrollment type or API config with EST enrollment type."
           }
+        )
+        .refine(
+          (data) => {
+            if (data.acmeConfig) {
+              return !(data.acmeConfig.skipEabBinding && data.acmeConfig.skipDnsOwnershipVerification);
+            }
+            return true;
+          },
+          {
+            message: "Cannot skip both External Account Binding (EAB) and DNS ownership verification at the same time."
+          }
         ),
       response: {
         200: z.object({
