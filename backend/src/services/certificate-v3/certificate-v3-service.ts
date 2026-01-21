@@ -187,6 +187,10 @@ const validateProfileAndPermissions = async (
     return profile;
   }
 
+  if (actor === ActorType.PLATFORM && requiredEnrollmentType === EnrollmentType.EST) {
+    return profile;
+  }
+
   const { permission } = await permissionService.getProjectPermission({
     actor,
     actorId,
@@ -914,7 +918,8 @@ export const certificateV3ServiceFactory = ({
    */
   const resolveRequesterInfo = async (
     actor: ActorType,
-    actorId: string
+    actorId: string,
+    enrollmentType: EnrollmentType
   ): Promise<{ requesterName: string; requesterEmail: string }> => {
     if (actor === ActorType.USER) {
       const user = await userDAL.findById(actorId);
@@ -933,8 +938,12 @@ export const certificateV3ServiceFactory = ({
         };
       }
       return { requesterName: "Machine Identity", requesterEmail: "" };
+    } else if (actor === ActorType.ACME_ACCOUNT || actor === ActorType.ACME_PROFILE) {
+      return { requesterName: "ACME Client", requesterEmail: "" };
+    } else if (enrollmentType === EnrollmentType.EST) {
+      return { requesterName: "EST Client", requesterEmail: "" };
     }
-    return { requesterName: "Unknown Requester", requesterEmail: "" };
+    return { requesterName: "Unknown Client", requesterEmail: "" };
   };
 
   /**
@@ -1066,7 +1075,7 @@ export const certificateV3ServiceFactory = ({
       const approvalPolicy = matchedApprovalPolicy;
 
       const policySteps = await approvalPolicyDAL.findStepsByPolicyId(approvalPolicy.id);
-      const { requesterName, requesterEmail } = await resolveRequesterInfo(actor, actorId);
+      const { requesterName, requesterEmail } = await resolveRequesterInfo(actor, actorId, EnrollmentType.API);
 
       const certRequest = await certificateRequestDAL.create({
         projectId: profile.projectId,
@@ -1545,7 +1554,7 @@ export const certificateV3ServiceFactory = ({
       const approvalPolicy = csrMatchedApprovalPolicy;
 
       const policySteps = await approvalPolicyDAL.findStepsByPolicyId(approvalPolicy.id);
-      const { requesterName, requesterEmail } = await resolveRequesterInfo(actor, actorId);
+      const { requesterName, requesterEmail } = await resolveRequesterInfo(actor, actorId, enrollmentType);
 
       const certRequest = await certificateRequestDAL.create({
         projectId: profile.projectId,
@@ -1826,7 +1835,7 @@ export const certificateV3ServiceFactory = ({
       const approvalPolicy = orderMatchedApprovalPolicy;
 
       const policySteps = await approvalPolicyDAL.findStepsByPolicyId(approvalPolicy.id);
-      const { requesterName, requesterEmail } = await resolveRequesterInfo(actor, actorId);
+      const { requesterName, requesterEmail } = await resolveRequesterInfo(actor, actorId, EnrollmentType.API);
 
       const certRequest = await certificateRequestDAL.create({
         projectId: profile.projectId,

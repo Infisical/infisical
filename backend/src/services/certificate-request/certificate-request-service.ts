@@ -130,7 +130,7 @@ export const certificateRequestServiceFactory = ({
     status,
     ...requestData
   }: TCreateCertificateRequestDTO & { tx?: Knex }) => {
-    if (actor !== ActorType.ACME_ACCOUNT) {
+    if (actor !== ActorType.ACME_ACCOUNT && actor !== ActorType.PLATFORM) {
       const { permission } = await permissionService.getProjectPermission({
         actor,
         actorId,

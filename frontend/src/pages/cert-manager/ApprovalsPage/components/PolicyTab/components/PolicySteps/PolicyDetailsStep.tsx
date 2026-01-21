@@ -77,7 +77,7 @@ export const PolicyDetailsStep = () => {
             errorText={error?.message}
             helperText="Policy applies to certificates issued from these profiles"
           >
-            <FilterableSelect<ProfileOption>
+            <FilterableSelect
               isMulti
               isLoading={isProfilesLoading}
               options={profileOptions}
@@ -88,6 +88,7 @@ export const PolicyDetailsStep = () => {
               }}
               placeholder="Select certificate profiles..."
               noOptionsMessage={() => "No profiles found"}
+              maxMenuHeight={150}
             />
           </FormControl>
         )}

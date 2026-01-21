@@ -168,7 +168,7 @@ export const CertificateDetailsSection = ({ request }: Props) => {
             )}
           </div>
           <div>
-            <p className="text-xs text-mineshaft-400">Profile</p>
+            <p className="text-xs text-mineshaft-400">Certificate Profile</p>
             <p className="mt-0.5 text-sm text-mineshaft-100">{requestData.profileName}</p>
           </div>
         </div>

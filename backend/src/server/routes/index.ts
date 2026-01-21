@@ -2333,16 +2333,15 @@ export const registerRoutes = async (
   });
 
   const certificateEstV3Service = certificateEstV3ServiceFactory({
-    internalCertificateAuthorityService,
-    certificatePolicyService,
-    certificatePolicyDAL,
+    certificateV3Service,
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
     projectDAL,
     kmsService,
     licenseService,
     certificateProfileDAL,
-    estEnrollmentConfigDAL
+    estEnrollmentConfigDAL,
+    certificatePolicyDAL
   });
 
   const acmeChallengeService = pkiAcmeChallengeServiceFactory({
