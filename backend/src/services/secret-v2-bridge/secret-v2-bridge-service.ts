@@ -44,6 +44,7 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
+import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TGetASecretByIdDTO } from "../secret/secret-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -1949,6 +1950,7 @@ export const secretV2BridgeServiceFactory = ({
       const updatedSecrets: Array<
         TSecretsV2 & {
           secretPath: string;
+          secretMetadata?: ResourceMetadataWithEncryptionDTO;
           tags: {
             id: string;
             slug: string;
@@ -2194,7 +2196,13 @@ export const secretV2BridgeServiceFactory = ({
           resourceMetadataDAL
         });
 
-        updatedSecrets.push(...bulkUpdatedSecrets.map((el) => ({ ...el, secretPath: folder.path })));
+        updatedSecrets.push(
+          ...bulkUpdatedSecrets.map((el, i) => ({
+            ...el,
+            secretPath: folder.path,
+            secretMetadata: secretsToUpdate?.[i].secretMetadata
+          }))
+        );
         if (updateMode === SecretUpdateMode.Upsert) {
           const bulkInsertedSecrets = await fnSecretBulkInsert({
             inputSecrets: secretsToCreate.map((el) => {
@@ -2237,7 +2245,13 @@ export const secretV2BridgeServiceFactory = ({
             tx
           });
 
-          updatedSecrets.push(...bulkInsertedSecrets.map((el) => ({ ...el, secretPath: folder.path })));
+          updatedSecrets.push(
+            ...bulkInsertedSecrets.map((el, i) => ({
+              ...el,
+              secretPath: folder.path,
+              secretMetadata: secretsToCreate?.[i]?.secretMetadata
+            }))
+          );
         }
       }
 
