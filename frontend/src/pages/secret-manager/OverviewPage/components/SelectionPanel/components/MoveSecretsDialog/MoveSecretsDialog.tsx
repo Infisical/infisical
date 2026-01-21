@@ -85,7 +85,7 @@ const Content = ({
 
   const { data, isPending, isLoading, isFetching } = useGetProjectSecretsQuickSearch({
     secretPath: "/",
-    environments: [destinationEnvironmentSlug],
+    environments: environments.map((env) => env.slug),
     projectId,
     search: debouncedSearch,
     tags: {}
@@ -95,36 +95,85 @@ const Content = ({
 
   const folderEnvironments = value && folders[value.secretPath]?.map((folder) => folder.envId);
 
+  // Check destination environment permissions (CREATE permission required)
+  const hasDestinationPermission = useMemo(() => {
+    return permission.can(
+      ProjectPermissionSecretActions.Create,
+      subject(ProjectPermissionSub.Secrets, {
+        environment: destinationEnvironmentSlug,
+        secretPath: value?.secretPath ?? "/",
+        secretName: "*",
+        secretTags: ["*"]
+      })
+    );
+  }, [permission, destinationEnvironmentSlug, value?.secretPath]);
+
   const moveSecretsEligibility = useMemo(() => {
     return Object.fromEntries(
-      environments.map((env) => [
-        env.slug,
-        {
-          missingPermissions: permission.cannot(
-            ProjectPermissionSecretActions.Delete,
-            subject(ProjectPermissionSub.Secrets, {
-              environment: env.slug,
-              secretPath: sourceSecretPath,
-              secretName: "*",
-              secretTags: ["*"]
-            })
-          ),
-          missingPath: folderEnvironments && !folderEnvironments?.includes(env.id)
-        }
-      ])
+      environments.map((env) => {
+        // For cross-environment moves, check if destination path exists in destination environment
+        // For same-environment moves, check if destination path exists in that environment
+        const targetEnvId =
+          env.slug === destinationEnvironmentSlug
+            ? env.id
+            : environments.find((e) => e.slug === destinationEnvironmentSlug)?.id;
+
+        return [
+          env.slug,
+          {
+            missingPermissions: permission.cannot(
+              ProjectPermissionSecretActions.Delete,
+              subject(ProjectPermissionSub.Secrets, {
+                environment: env.slug,
+                secretPath: sourceSecretPath,
+                secretName: "*",
+                secretTags: ["*"]
+              })
+            ),
+            missingPath:
+              folderEnvironments && targetEnvId && !folderEnvironments?.includes(targetEnvId)
+          }
+        ];
+      })
     );
-  }, [permission, folderEnvironments]);
+  }, [permission, folderEnvironments, destinationEnvironmentSlug, environments]);
+
+  // Check if we're moving to a different path or to a different environment
+  // We need to check if ANY selected secret is in an environment different from destination
+  const sourceEnvironmentsWithSecrets = useMemo(() => {
+    const envSet = new Set<string>();
+    Object.values(secrets).forEach((secretRecord) => {
+      Object.keys(secretRecord).forEach((envSlug) => {
+        envSet.add(envSlug);
+      });
+    });
+    return envSet;
+  }, [secrets]);
+
+  const hasEnvironmentChange = Array.from(sourceEnvironmentsWithSecrets).some(
+    (envSlug) => envSlug !== destinationEnvironmentSlug
+  );
 
   const destinationSelected =
-    Boolean(value?.secretPath) &&
-    (sourceSecretPath !== value?.secretPath ||
-      environments.some((env) => env.slug !== destinationEnvironmentSlug));
+    Boolean(value?.secretPath) && (sourceSecretPath !== value?.secretPath || hasEnvironmentChange);
 
   const environmentsToBeSkipped = useMemo(() => {
     if (!destinationSelected) return [];
 
     const environmentWarnings: { type: "permission" | "missing"; message: string; id: string }[] =
       [];
+
+    // Check destination permissions first
+    if (!hasDestinationPermission) {
+      const destEnv = environments.find((env) => env.slug === destinationEnvironmentSlug);
+      if (destEnv) {
+        environmentWarnings.push({
+          id: `dest-${destEnv.id}`,
+          type: "permission",
+          message: `${destEnv.name} (destination): You do not have permission to create secrets in this environment`
+        });
+      }
+    }
 
     environments.forEach((env) => {
       if (moveSecretsEligibility[env.slug].missingPermissions) {
@@ -146,7 +195,7 @@ const Content = ({
     });
 
     return environmentWarnings;
-  }, [moveSecretsEligibility]);
+  }, [moveSecretsEligibility, hasDestinationPermission, destinationEnvironmentSlug, environments]);
 
   const handleMoveSecrets = async () => {
     if (!value) {
