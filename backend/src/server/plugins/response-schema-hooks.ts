@@ -14,7 +14,7 @@ export const registerResponseSchemaHooks = fp(async (server) => {
   const appCfg = getConfig();
 
   server.addHook("onRoute", (routeOptions) => {
-    if (appCfg.isDevelopmentMode) {
+    if (appCfg.isDevelopmentMode && routeOptions.schema) {
       routeOptions.schema.hide = false;
     }
 
