@@ -228,7 +228,9 @@ export const SelectOrganizationSection = () => {
       if (callbackPort) {
         handleCliRedirect();
         setIsInitialOrgCheckLoading(false);
-      } else {
+      } else if (!orgId) {
+        // Only auto-select if there's no orgId query param
+        // If orgId is provided, the other useEffect will handle it via defaultSelectedOrg
         handleSelectOrganization(organizations.data[0]);
       }
     } else {
