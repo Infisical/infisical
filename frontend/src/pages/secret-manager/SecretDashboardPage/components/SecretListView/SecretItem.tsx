@@ -289,6 +289,15 @@ export const SecretItem = memo(
       };
     }, [formValues, isDirty, isSubmitting, autoSaveChanges, isPending]);
 
+    // Save on unmount if dirty (for virtualized list unmounting)
+    useEffect(() => {
+      return () => {
+        if (isDirty && !isSubmitting && !isAutoSavingRef.current) {
+          autoSaveChanges(formValues);
+        }
+      };
+    }, [isDirty, isSubmitting, formValues, autoSaveChanges]);
+
     const isReadOnly =
       hasSecretReadValueOrDescribePermission(
         permission,

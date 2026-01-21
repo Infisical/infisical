@@ -19,6 +19,7 @@ import "nprogress/nprogress.css";
 import "react-toastify/dist/ReactToastify.css";
 import "@fortawesome/fontawesome-svg-core/styles.css";
 import "react-day-picker/dist/style.css";
+import "react-virtualized/styles.css";
 import "./index.css";
 
 import "./translation";

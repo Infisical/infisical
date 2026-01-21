@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQueryClient } from "@tanstack/react-query";
+import { AutoSizer, List, ListRowProps } from "react-virtualized";
 
 import { createNotification } from "@app/components/notifications";
 import { CreateTagModal } from "@app/components/tags/CreateTagModal";
@@ -68,6 +69,8 @@ export const SecretListView = ({
   colWidth,
   excludePendingCreates = false
 }: Props) => {
+  const ROW_HEIGHT = 44; // matches h-11 from SecretItem
+
   const queryClient = useQueryClient();
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "deleteSecret",
@@ -577,17 +580,21 @@ export const SecretListView = ({
     []
   );
 
-  return (
-    <>
-      {FontAwesomeSpriteSymbols.map(({ icon, symbol }) => (
-        <FontAwesomeIcon icon={icon} symbol={symbol} key={`font-awesome-svg-spritie-${symbol}`} />
-      ))}
-      {secrets
-        .filter((secret) => {
-          if (!excludePendingCreates) return true;
-          return !secret.isPending || secret.pendingAction !== PendingAction.Create;
-        })
-        .map((secret) => (
+  const filteredSecrets = useMemo(
+    () =>
+      secrets.filter((secret) => {
+        if (!excludePendingCreates) return true;
+        return !secret.isPending || secret.pendingAction !== PendingAction.Create;
+      }),
+    [secrets, excludePendingCreates]
+  );
+
+  const rowRenderer = useCallback(
+    ({ index, key, style, isVisible: isRowVisible }: ListRowProps) => {
+      const secret = filteredSecrets[index];
+      console.log("secret", secret);
+      return (
+        <div key={key} style={style}>
           <SecretItem
             colWidth={colWidth}
             environment={environment}
@@ -595,9 +602,8 @@ export const SecretListView = ({
             tags={wsTags}
             isSelected={Boolean(selectedSecrets?.[secret.id])}
             onToggleSecretSelect={toggleSelectedSecret}
-            isVisible={isVisible}
+            isVisible={isVisible && isRowVisible}
             secret={secret}
-            key={secret.id}
             onSaveSecret={handleSaveSecret}
             onDeleteSecret={onDeleteSecret}
             onDetailViewSecret={onDetailViewSecret}
@@ -607,7 +613,50 @@ export const SecretListView = ({
             isPending={secret.isPending}
             pendingAction={secret.pendingAction}
           />
-        ))}
+        </div>
+      );
+    },
+    [
+      filteredSecrets,
+      colWidth,
+      environment,
+      secretPath,
+      wsTags,
+      selectedSecrets,
+      toggleSelectedSecret,
+      isVisible,
+      handleSaveSecret,
+      onDeleteSecret,
+      onDetailViewSecret,
+      importedBy,
+      onCreateTag,
+      onShareSecret
+    ]
+  );
+
+  const listHeight = filteredSecrets.length * ROW_HEIGHT;
+
+  return (
+    <>
+      {FontAwesomeSpriteSymbols.map(({ icon, symbol }) => (
+        <FontAwesomeIcon icon={icon} symbol={symbol} key={`font-awesome-svg-spritie-${symbol}`} />
+      ))}
+      {filteredSecrets.length > 0 && (
+        <div style={{ height: listHeight, minHeight: ROW_HEIGHT }}>
+          <AutoSizer disableHeight>
+            {({ width }) => (
+              <List
+                width={width}
+                height={listHeight}
+                rowCount={filteredSecrets.length}
+                rowHeight={ROW_HEIGHT}
+                rowRenderer={rowRenderer}
+                overscanRowCount={10}
+              />
+            )}
+          </AutoSizer>
+        </div>
+      )}
       <DeleteActionModal
         isOpen={popUp.deleteSecret.isOpen}
         deleteKey={(popUp.deleteSecret?.data as SecretV3RawSanitized)?.key}
