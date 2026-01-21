@@ -290,7 +290,8 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
         .select(
           db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
           db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
-          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
+          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue"),
+          db.ref("encryptedValue").withSchema(TableName.ResourceMetadata).as("metadataEncryptedValue")
         )
         .select(db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping));
       const formatedDoc = sqlNestRelationships({
@@ -365,10 +366,11 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
           {
             key: "metadataId",
             label: "oldSecretMetadata" as const,
-            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+            mapper: ({ metadataKey, metadataEncryptedValue, metadataValue, metadataId }) => ({
               id: metadataId,
               key: metadataKey,
-              value: metadataValue
+              value: metadataValue,
+              encryptedValue: metadataEncryptedValue
             })
           }
         ]

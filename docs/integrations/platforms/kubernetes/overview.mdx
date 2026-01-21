@@ -61,32 +61,16 @@ If you require stronger isolation and stricter access controls, a namespace-scop
 
 <Tabs>
   <Tab title="Cluster Wide Installation">
+    When installing the operator cluster-wide, the operator will watch and manage CRDs across all namespaces in the cluster.
+    This is the default installation method and the quickest way to get started with using the operator. Cluster-wide installations are useful for:
+    - **Simplified Management**: A single operator instance manages secrets across all namespaces
+    - **Centralized Operations**: One deployment to monitor, update, and maintain
+    - **Cross-Namespace Flexibility**: Easily manage secrets for applications spanning multiple namespaces
+    - **Quick Setup**: Works out of the box with no additional RBAC configuration required
+
     ```bash
     helm install --generate-name infisical-helm-charts/secrets-operator
     ```
-
-    <Accordion title="Using your own service account">
-      By default a service account is created for the operator based on the operator release name.
-      You can bring your own service account by setting `controllerManager.serviceAccount.create` to `false` and setting `controllerManager.serviceAccount.name` to the name of the service account you want to use in your values.yaml file.
-
-      Example values.yaml file:
-
-      ```yaml values.yaml
-      controllerManager:
-        serviceAccount:
-          create: false
-          name: my-service-account
-      # other values...
-      ```
-
-      <Note>
-        Please note that if you set `controllerManager.serviceAccount.create` to `false`, the service account needs to already exist in the namespace you are installing the operator in.
-      </Note>
-
-      <Tip>
-        Custom service accounts are supported in chart version `0.10.11` and above. Please upgrade your helm chart to `0.10.11` or above before attempting to use custom service accounts.
-      </Tip>
-    </Accordion>
   </Tab>
   <Tab title="Namespace Scoped Installation">
     The operator can be configured to watch and manage secrets in a specific namespace instead of having cluster-wide access. This is useful for:
@@ -96,66 +80,100 @@ If you require stronger isolation and stricter access controls, a namespace-scop
     - **Resource Isolation**: Ensure operators in different namespaces don't interfere with each other
     - **Development & Testing**: Run development and production operators side by side in isolated namespaces
 
-    **Note**: For multiple namespace-scoped installations, only the first installation should install CRDs. Subsequent installations should set `installCRDs: false` to avoid conflicts.
+    <Note>
+      For multiple namespace-scoped installations, only the first installation should install CRDs. Subsequent installations should set `installCRDs: false` to avoid conflicts as CRDs are cluster-wide resources.
+    </Note>
 
+    ### Single Namespace
     ```bash
     # First namespace installation (with CRDs)
-    helm install operator-namespace1 infisical-helm-charts/secrets-operator \
-      --namespace first-namespace \
-      --set scopedNamespace=first-namespace \
+    helm install operator-namespaced infisical-helm-charts/secrets-operator \
+      --namespace single-namespace \
+      --set scopedNamespaces=single-namespace \
       --set scopedRBAC=true
-
-    # Subsequent namespace installations
-    helm install operator-namespace2 infisical-helm-charts/secrets-operator \
-      --namespace another-namespace \
-      --set scopedNamespace=another-namespace \
-      --set scopedRBAC=true \
-      --set installCRDs=false
     ```
 
-    <Accordion title="Using your own service account">
-      By default a service account is created for the operator based on the operator release name.
-      You can bring your own service account by setting `controllerManager.serviceAccount.create` to `false` and setting `controllerManager.serviceAccount.name` to the name of the service account you want to use in your values.yaml file.
-
-      Example values.yaml file:
-
-      ```yaml values.yaml
-      controllerManager:
-        serviceAccount:
-          create: false
-          name: my-service-account
-      # other values...
-      ```
-
-      <Note>
-        Please note that if you set `controllerManager.serviceAccount.create` to `false`, the service account needs to already exist in the namespace you are installing the operator in.
-      </Note>
-
-      <Tip>
-        Custom service accounts are supported in chart version `0.10.11` and above. Please upgrade your helm chart to `0.10.11` or above before attempting to use custom service accounts.
-      </Tip>
+    <Accordion title="Using values.yaml file">
+    ```yaml values-operator1.yaml
+      scopedNamespaces: single-namespace
+      scopedRBAC: true
+      installCRDs: true
+    ```
     </Accordion>
 
-    When scoped to a namespace, the operator will:
 
-    - Only watch InfisicalSecrets in the specified namespace
-    - Only create/update Kubernetes secrets in that namespace
-    - Only access deployments in that namespace
+    ### Multiple Namespaces
+    ```bash
+     helm install operator-1 infisical-helm-charts/secrets-operator \
+      --namespace ns1 \
+      --set scopedNamespaces=ns1 \
+      --set scopedRBAC=true
+      --set installCRDs=true # Only install CRDs once in the cluster (default is true)
 
-    The default configuration gives cluster-wide access:
-
-    ```yaml
-    installCRDs: true # Install CRDs (set to false for additional namespace installations)
-    scopedNamespace: "" # Empty for cluster-wide access
-    scopedRBAC: false # Cluster-wide permissions
+    helm install operator-namespace2 infisical-helm-charts/secrets-operator \
+      --namespace ns2 \
+      --set scopedNamespaces=ns2 \
+      --set scopedRBAC=true \
+      --set installCRDs=false # Do not install CRDs in subsequent namespace installations
     ```
 
-    If you want to install operators in multiple namespaces simultaneously:
-    - Make sure to set `installCRDs: false` for all but one of the installations to avoid conflicts, as CRDs are cluster-wide resources.
-    - Use unique release names for each installation (e.g., operator-namespace1, operator-namespace2).
+    <Accordion title="Using values.yaml file">
+    ```yaml values-operator1.yaml
+      scopedNamespaces: ns1
+      scopedRBAC: true
+      installCRDs: false
+    ```
+
+    ```yaml values-operator2.yaml
+      scopedNamespaces: ns2
+      scopedRBAC: true
+      installCRDs: false
+    ```
+    </Accordion>
+
+
+    ### Multiple namespaces with one operator installation
+    ```bash
+      helm install operator infisical-helm-charts/secrets-operator \
+      --namespace operator-namespace \
+      --set "scopedNamespaces={ns1,ns2,ns3}" \
+      --set scopedRBAC=true
+    ```
+    <Accordion title="Using values.yaml file">
+    ```yaml values.yaml
+      scopedNamespaces:
+        - ns1
+        - ns2
+        - ns3
+      scopedRBAC: true
+    ```
+
+    </Accordion>
 
   </Tab>
 </Tabs>
+
+### Using your own service account
+By default a service account is created for the operator based on the operator release name.
+You can bring your own service account by setting `controllerManager.serviceAccount.create` to `false` and setting `controllerManager.serviceAccount.name` to the name of the service account you want to use in your values.yaml file.
+
+Example values.yaml file:
+
+```yaml values.yaml
+controllerManager:
+  serviceAccount:
+    create: false
+    name: my-service-account
+# other values...
+```
+
+<Note>
+  Please note that if you set `controllerManager.serviceAccount.create` to `false`, the service account needs to already exist in the namespace you are installing the operator in.
+</Note>
+
+<Tip>
+  Custom service accounts are supported in chart version `0.10.11` and above. Please upgrade your helm chart to `0.10.11` or above before attempting to use custom service accounts.
+</Tip>
 
 ## Custom Resource Definitions
 

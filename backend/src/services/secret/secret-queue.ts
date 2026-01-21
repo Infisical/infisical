@@ -383,7 +383,11 @@ export const secretQueueFactory = ({
         }
 
         content[secretKey].skipMultilineEncoding = Boolean(secret.skipMultilineEncoding);
-        content[secretKey].secretMetadata = secret.secretMetadata;
+        content[secretKey].secretMetadata = secret.secretMetadata.map((el) => ({
+          isEncrypted: Boolean(el.encryptedValue),
+          key: el.key,
+          value: el.encryptedValue ? dto.decryptor(el.encryptedValue) : el.value || ""
+        }));
       })
     );
 

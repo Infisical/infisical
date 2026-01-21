@@ -87,7 +87,7 @@ export const requestWithGitHubGateway = async <T>(
 
   await blockLocalAndPrivateIpAddresses(url.toString());
 
-  const [targetHost] = await verifyHostInputValidity(url.host, true);
+  const [targetHost] = await verifyHostInputValidity({ host: url.host, isGateway: true, isDynamicSecret: false });
 
   const connectionDetails = gatewayConnectionDetails;
 

@@ -142,7 +142,7 @@ export const requestWithHCVaultGateway = async <T>(
 
   await blockLocalAndPrivateIpAddresses(url.toString());
 
-  const [targetHost] = await verifyHostInputValidity(url.hostname, true);
+  const [targetHost] = await verifyHostInputValidity({ host: url.hostname, isGateway: true, isDynamicSecret: false });
   const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(gatewayId);
   const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
 

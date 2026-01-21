@@ -3500,7 +3500,7 @@ export const secretServiceFactory = ({
       secretComment: v.secretComment,
       skipMultilineEncoding: v.skipMultilineEncoding,
       tags: v.tags?.map((tag) => tag.slug),
-      metadata: v.metadata,
+      metadata: v.secretMetadata,
       secretValue: v.secretValue
     }));
   };

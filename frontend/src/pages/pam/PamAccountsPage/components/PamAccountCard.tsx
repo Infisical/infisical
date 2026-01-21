@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@app/components/v2";
-import { Badge, UnstableButton, UnstableIconButton } from "@app/components/v3";
+import { Badge, Button, UnstableIconButton } from "@app/components/v3";
 import {
   ProjectPermissionPamAccountActions,
   ProjectPermissionSub
@@ -64,10 +64,10 @@ export const PamAccountCard = ({ account, onAccess, accountPath, onUpdate, onDel
           <div className="flex items-center justify-between gap-2">
             <p className="truncate text-lg font-medium text-mineshaft-100">{name}</p>
             <div className="flex items-center gap-2">
-              <UnstableButton onClick={() => onAccess(account)} size="xs" variant="outline">
+              <Button onClick={() => onAccess(account)} size="xs" variant="outline">
                 <LogInIcon />
                 Connect
-              </UnstableButton>
+              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <UnstableIconButton size="xs" variant="ghost">

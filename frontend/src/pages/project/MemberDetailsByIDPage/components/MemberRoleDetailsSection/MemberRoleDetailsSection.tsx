@@ -6,7 +6,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, Lottie, Modal, ModalContent, Tooltip } from "@app/components/v2";
 import {
   Badge,
-  UnstableButton,
+  Button,
   UnstableCard,
   UnstableCardAction,
   UnstableCardContent,
@@ -111,7 +111,7 @@ export const MemberRoleDetailsSection = ({
                 a={ProjectPermissionSub.Member}
               >
                 {(isAllowed) => (
-                  <UnstableButton
+                  <Button
                     size="xs"
                     variant="outline"
                     onClick={() => {
@@ -121,7 +121,7 @@ export const MemberRoleDetailsSection = ({
                   >
                     <PencilIcon />
                     Edit Roles
-                  </UnstableButton>
+                  </Button>
                 )}
               </ProjectPermissionCan>
             </UnstableCardAction>
@@ -246,7 +246,7 @@ export const MemberRoleDetailsSection = ({
                     a={ProjectPermissionSub.Member}
                   >
                     {(isAllowed) => (
-                      <UnstableButton
+                      <Button
                         variant="project"
                         size="xs"
                         onClick={() => {
@@ -256,7 +256,7 @@ export const MemberRoleDetailsSection = ({
                       >
                         <PencilIcon />
                         Edit Roles
-                      </UnstableButton>
+                      </Button>
                     )}
                   </ProjectPermissionCan>
                 </UnstableEmptyContent>

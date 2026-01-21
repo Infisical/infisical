@@ -56,14 +56,9 @@ export default {
     await redis.flushdb("SYNC");
 
     try {
-      await db.migrate.rollback(
-        {
-          directory: path.join(__dirname, "../src/db/migrations"),
-          extension: "ts",
-          tableName: "infisical_migrations"
-        },
-        true
-      );
+      // called after all tests with this env have been run
+      await db.raw("DROP SCHEMA IF EXISTS public CASCADE");
+      await db.schema.createSchemaIfNotExists("public");
 
       await db.migrate.latest({
         directory: path.join(__dirname, "../src/db/migrations"),
@@ -143,15 +138,6 @@ export default {
         delete globalThis.jwtAuthToken;
         // @ts-expect-error type
         delete globalThis.testQueue;
-        // called after all tests with this env have been run
-        await db.migrate.rollback(
-          {
-            directory: path.join(__dirname, "../src/db/migrations"),
-            extension: "ts",
-            tableName: "infisical_migrations"
-          },
-          true
-        );
 
         await redis.flushdb("ASYNC");
         redis.disconnect();

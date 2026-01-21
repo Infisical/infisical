@@ -76,6 +76,14 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
     }));
   }
 
+  const basicConstraintsExtension = csrObj.getExtension("2.5.29.19") as x509.BasicConstraintsExtension;
+  if (basicConstraintsExtension) {
+    certificateRequest.basicConstraints = {
+      isCA: basicConstraintsExtension.ca,
+      pathLength: basicConstraintsExtension.pathLength
+    };
+  }
+
   return certificateRequest;
 };
 

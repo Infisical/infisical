@@ -11,7 +11,6 @@ export const AccessApprovalRequestsSchema = z.object({
   id: z.string().uuid(),
   policyId: z.string().uuid(),
   privilegeId: z.string().uuid().nullable().optional(),
-  requestedBy: z.string().uuid().nullable().optional(),
   isTemporary: z.boolean(),
   temporaryRange: z.string().nullable().optional(),
   permissions: z.unknown(),

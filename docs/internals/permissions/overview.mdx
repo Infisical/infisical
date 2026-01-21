@@ -34,6 +34,7 @@ Permission inversion allows you to explicitly deny actions instead of allowing t
 - secret-folders
 - secret-imports
 - dynamic-secrets
+- mcp-endpoints
 
 When a permission is inverted, it changes from an "allow" rule to a "deny" rule. For example:
 
@@ -64,6 +65,7 @@ Conditions allow you to create more granular permissions by specifying criteria 
 - secret-folders
 - secret-imports
 - dynamic-secrets
+- mcp-endpoints
 
 ### Properties
 
@@ -73,6 +75,12 @@ Conditions can be applied to the following properties:
 - `secretPath`: Control access based on secret paths
 - `secretName`: Control access based on secret names
 - `secretTags`: Control access based on tags (only supports $in operator)
+
+### MCP Endpoint Properties
+
+For `mcp-endpoints`, conditions can be applied to:
+
+- `name`: Control access based on endpoint name (supports `$eq`, `$ne`, `$glob`, `$in`)
 
 ### Operators
 

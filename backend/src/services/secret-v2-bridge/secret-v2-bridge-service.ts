@@ -44,6 +44,7 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
+import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TGetASecretByIdDTO } from "../secret/secret-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -256,7 +257,7 @@ export const secretV2BridgeServiceFactory = ({
     secretMetadata,
     ...inputSecret
   }: TCreateSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -264,6 +265,15 @@ export const secretV2BridgeServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
+
+    if (
+      hasProjectEnforcement("enforceEncryptedSecretManagerSecretMetadata") &&
+      secretMetadata?.some((meta) => !meta.isEncrypted)
+    ) {
+      throw new BadRequestError({
+        message: "Encrypted secret metadata is enforced for this project. Cannot create unencrypted secret metadata."
+      });
+    }
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
@@ -354,8 +364,12 @@ export const secretV2BridgeServiceFactory = ({
             userId: inputSecret.type === SecretType.Personal ? actorId : null,
             tagIds: inputSecret.tagIds,
             references: nestedReferences,
-            metadata: secretMetadata ? JSON.stringify(secretMetadata) : [],
-            secretMetadata
+            secretMetadata: secretMetadata?.map(({ key, value, isEncrypted }) => ({
+              key,
+              ...(isEncrypted
+                ? { encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob }
+                : { value })
+            }))
           }
         ],
         resourceMetadataDAL,
@@ -416,7 +430,8 @@ export const secretV2BridgeServiceFactory = ({
       {
         ...secret,
         value: inputSecret.secretValue,
-        comment: inputSecret.secretComment || ""
+        comment: inputSecret.secretComment || "",
+        secretMetadata: undefined
       },
       false
     );
@@ -433,7 +448,7 @@ export const secretV2BridgeServiceFactory = ({
     secretMetadata,
     ...inputSecret
   }: TUpdateSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -441,6 +456,15 @@ export const secretV2BridgeServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
+
+    if (
+      hasProjectEnforcement("enforceEncryptedSecretManagerSecretMetadata") &&
+      secretMetadata?.some((meta) => !meta.isEncrypted)
+    ) {
+      throw new BadRequestError({
+        message: "Encrypted secret metadata is enforced for this project. Cannot create unencrypted secret metadata."
+      });
+    }
 
     if (inputSecret.newSecretName === "") {
       throw new BadRequestError({ message: "New secret name cannot be empty" });
@@ -604,8 +628,13 @@ export const secretV2BridgeServiceFactory = ({
               skipMultilineEncoding: inputSecret.skipMultilineEncoding,
               key: inputSecret.newSecretName || secretName,
               tags: inputSecret.tagIds,
-              metadata: secretMetadata ? JSON.stringify(secretMetadata) : [],
-              secretMetadata,
+              // metadata: secretMetadata ? JSON.stringify(secretMetadata) : [],
+              secretMetadata: secretMetadata?.map(({ key, value, isEncrypted }) => ({
+                key,
+                ...(isEncrypted
+                  ? { encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob }
+                  : { value })
+              })),
               ...encryptedValue
             }
           }
@@ -679,7 +708,8 @@ export const secretV2BridgeServiceFactory = ({
       {
         ...updatedSecret[0],
         value: inputSecret.secretValue || "",
-        comment: inputSecret.secretComment || ""
+        comment: inputSecret.secretComment || "",
+        secretMetadata: undefined
       },
       secretValueHidden
     );
@@ -961,6 +991,13 @@ export const secretV2BridgeServiceFactory = ({
           groupedFolderMappings[secret.folderId][0].path,
           {
             ...secret,
+            secretMetadata: secret.secretMetadata?.map((el) => ({
+              isEncrypted: Boolean(el.encryptedValue),
+              key: el.key,
+              value: el.encryptedValue
+                ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+                : el.value || ""
+            })),
             value: secret.encryptedValue
               ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
               : "",
@@ -1204,6 +1241,13 @@ export const secretV2BridgeServiceFactory = ({
           groupedPaths[secret.folderId][0].path,
           {
             ...secret,
+            secretMetadata: secret.secretMetadata?.map((el) => ({
+              isEncrypted: Boolean(el.encryptedValue),
+              key: el.key,
+              value: el.encryptedValue
+                ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+                : el.value || ""
+            })),
             value: secret.encryptedValue
               ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
               : "",
@@ -1400,6 +1444,13 @@ export const secretV2BridgeServiceFactory = ({
       folderWithPath.path,
       {
         ...secret,
+        secretMetadata: secret.secretMetadata?.map((el) => ({
+          isEncrypted: Boolean(el.encryptedValue),
+          key: el.key,
+          value: el.encryptedValue
+            ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+            : el.value || ""
+        })),
         value: secretValue,
         comment: secretComment
       },
@@ -1622,6 +1673,16 @@ export const secretV2BridgeServiceFactory = ({
       path,
       {
         ...secret,
+        secretMetadata:
+          "secretMetadata" in secret
+            ? secret.secretMetadata?.map((el) => ({
+                isEncrypted: Boolean(el.encryptedValue),
+                key: el.key,
+                value: el.encryptedValue
+                  ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+                  : el.value || ""
+              }))
+            : undefined,
         value: secretValue,
         comment: secret.encryptedComment
           ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
@@ -1643,7 +1704,7 @@ export const secretV2BridgeServiceFactory = ({
     tx: providedTx,
     commitChanges
   }: TCreateManySecretDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[] }) => {
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -1651,6 +1712,15 @@ export const secretV2BridgeServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
+
+    if (
+      hasProjectEnforcement("enforceEncryptedSecretManagerSecretMetadata") &&
+      inputSecrets.some((secret) => secret.secretMetadata?.some((meta) => !meta.isEncrypted))
+    ) {
+      throw new BadRequestError({
+        message: "Encrypted secret metadata is enforced for this project. Cannot create unencrypted secret metadata."
+      });
+    }
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
@@ -1747,7 +1817,12 @@ export const secretV2BridgeServiceFactory = ({
             key: el.secretKey,
             tagIds: el.tagIds,
             references,
-            secretMetadata: el.secretMetadata,
+            secretMetadata: el.secretMetadata?.map((meta) => ({
+              key: meta.key,
+              [meta.isEncrypted ? "encryptedValue" : "value"]: meta.isEncrypted
+                ? secretManagerEncryptor({ plainText: Buffer.from(meta.value) }).cipherTextBlob
+                : meta.value
+            })),
             type: SecretType.Shared
           };
         }),
@@ -1810,6 +1885,7 @@ export const secretV2BridgeServiceFactory = ({
         secretPath,
         {
           ...el,
+          secretMetadata: undefined,
           value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",
           comment: el.encryptedComment ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString() : ""
         },
@@ -1831,7 +1907,7 @@ export const secretV2BridgeServiceFactory = ({
     tx: providedTx,
     commitChanges
   }: TUpdateManySecretDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[] }) => {
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -1839,6 +1915,15 @@ export const secretV2BridgeServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
+
+    if (
+      hasProjectEnforcement("enforceEncryptedSecretManagerSecretMetadata") &&
+      inputSecrets.some((secret) => secret.secretMetadata?.some((meta) => !meta.isEncrypted))
+    ) {
+      throw new BadRequestError({
+        message: "Encrypted secret metadata is enforced for this project. Cannot create unencrypted secret metadata."
+      });
+    }
 
     const secretsToUpdateGroupByPath = groupBy(inputSecrets, (el) => el.secretPath || defaultSecretPath);
     const projectEnvironment = await projectEnvDAL.findOne({ projectId, slug: environment });
@@ -1865,6 +1950,7 @@ export const secretV2BridgeServiceFactory = ({
       const updatedSecrets: Array<
         TSecretsV2 & {
           secretPath: string;
+          secretMetadata?: ResourceMetadataWithEncryptionDTO;
           tags: {
             id: string;
             slug: string;
@@ -2089,7 +2175,12 @@ export const secretV2BridgeServiceFactory = ({
                 skipMultilineEncoding: el.skipMultilineEncoding,
                 key: shouldUpdateName ? el.newSecretName : el.secretKey,
                 tags: el.tagIds,
-                secretMetadata: el.secretMetadata,
+                secretMetadata: el?.secretMetadata?.map((meta) => ({
+                  key: meta.key,
+                  [meta.isEncrypted ? "encryptedValue" : "value"]: meta.isEncrypted
+                    ? secretManagerEncryptor({ plainText: Buffer.from(meta.value) }).cipherTextBlob
+                    : meta.value
+                })),
                 ...encryptedValue
               }
             };
@@ -2105,7 +2196,13 @@ export const secretV2BridgeServiceFactory = ({
           resourceMetadataDAL
         });
 
-        updatedSecrets.push(...bulkUpdatedSecrets.map((el) => ({ ...el, secretPath: folder.path })));
+        updatedSecrets.push(
+          ...bulkUpdatedSecrets.map((el, i) => ({
+            ...el,
+            secretPath: folder.path,
+            secretMetadata: secretsToUpdate?.[i].secretMetadata
+          }))
+        );
         if (updateMode === SecretUpdateMode.Upsert) {
           const bulkInsertedSecrets = await fnSecretBulkInsert({
             inputSecrets: secretsToCreate.map((el) => {
@@ -2124,7 +2221,12 @@ export const secretV2BridgeServiceFactory = ({
                 key: el.secretKey,
                 tagIds: el.tagIds,
                 references,
-                secretMetadata: el.secretMetadata,
+                secretMetadata: el?.secretMetadata?.map((meta) => ({
+                  key: meta.key,
+                  [meta.isEncrypted ? "encryptedValue" : "value"]: meta.isEncrypted
+                    ? secretManagerEncryptor({ plainText: Buffer.from(meta.value) }).cipherTextBlob
+                    : meta.value
+                })),
                 type: SecretType.Shared
               };
             }),
@@ -2143,7 +2245,13 @@ export const secretV2BridgeServiceFactory = ({
             tx
           });
 
-          updatedSecrets.push(...bulkInsertedSecrets.map((el) => ({ ...el, secretPath: folder.path })));
+          updatedSecrets.push(
+            ...bulkInsertedSecrets.map((el, i) => ({
+              ...el,
+              secretPath: folder.path,
+              secretMetadata: secretsToCreate?.[i]?.secretMetadata
+            }))
+          );
         }
       }
 
@@ -2739,7 +2847,11 @@ export const secretV2BridgeServiceFactory = ({
                 skipMultilineEncoding: doc.skipMultilineEncoding,
                 reminderNote: doc.reminderNote,
                 reminderRepeatDays: doc.reminderRepeatDays,
-                secretMetadata: doc.secretMetadata,
+                secretMetadata: doc.secretMetadata?.map(({ key, value, encryptedValue }) => ({
+                  key,
+                  value: value || undefined,
+                  encryptedValue: encryptedValue || undefined
+                })) as { key: string; value?: string; encryptedValue?: Buffer }[] | undefined,
                 references: doc.value ? getAllSecretReferences(doc.value).nestedReferences : []
               };
             })
@@ -2771,7 +2883,11 @@ export const secretV2BridgeServiceFactory = ({
                   key: doc.key,
                   encryptedComment: doc.encryptedComment,
                   skipMultilineEncoding: doc.skipMultilineEncoding,
-                  secretMetadata: doc.secretMetadata,
+                  secretMetadata: doc.secretMetadata?.map(({ key, value, encryptedValue }) => ({
+                    key,
+                    value,
+                    encryptedValue
+                  })) as { key: string; value?: string; encryptedValue?: Buffer }[] | undefined,
                   ...(doc.encryptedValue
                     ? {
                         encryptedValue: doc.encryptedValue,
@@ -3091,6 +3207,13 @@ export const secretV2BridgeServiceFactory = ({
           paths[secret.folderId],
           {
             ...secret,
+            secretMetadata: secret.secretMetadata?.map((el) => ({
+              isEncrypted: Boolean(el.encryptedValue),
+              key: el.key,
+              value: el.encryptedValue
+                ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+                : el.value || ""
+            })),
             value: secret.encryptedValue
               ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
               : "",
@@ -3169,6 +3292,13 @@ export const secretV2BridgeServiceFactory = ({
         secretPath,
         {
           ...el,
+          secretMetadata: (el.metadata as { key: string; value?: string; encryptedValue: string }[])?.map((meta) => ({
+            isEncrypted: Boolean(meta.encryptedValue),
+            key: meta.key,
+            value: meta.encryptedValue
+              ? secretManagerDecryptor({ cipherTextBlob: Buffer.from(meta.encryptedValue, "base64") }).toString()
+              : meta.value || ""
+          })),
           value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",
           comment: el.encryptedComment ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString() : ""
         },

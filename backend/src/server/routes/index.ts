@@ -6,7 +6,8 @@ import { z } from "zod";
 
 import {
   registerMcpEndpointAuthServerMetadataRouter,
-  registerMcpEndpointMetadataRouter
+  registerMcpEndpointMetadataRouter,
+  registerRfc9728ProtectedResourceMetadataRouter
 } from "@app/ee/routes/ai/mcp-endpoint-metadata-router";
 import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est-router";
 import { registerV1EERoutes } from "@app/ee/routes/v1";
@@ -2324,6 +2325,7 @@ export const registerRoutes = async (
   const certificateEstV3Service = certificateEstV3ServiceFactory({
     internalCertificateAuthorityService,
     certificatePolicyService,
+    certificatePolicyDAL,
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
     projectDAL,
@@ -2866,6 +2868,9 @@ export const registerRoutes = async (
   await server.register(registerMcpEndpointMetadataRouter, { prefix: "/mcp-endpoints" });
   await server.register(registerMcpEndpointAuthServerMetadataRouter, {
     prefix: "/.well-known/oauth-authorization-server"
+  });
+  await server.register(registerRfc9728ProtectedResourceMetadataRouter, {
+    prefix: "/.well-known/oauth-protected-resource"
   });
 
   // register routes for v1

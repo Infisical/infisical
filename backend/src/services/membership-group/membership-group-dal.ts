@@ -85,7 +85,8 @@ export const membershipGroupDALFactory = (db: TDbClient) => {
             group: {
               id: groupId,
               name: groupName,
-              slug: groupSlug
+              slug: groupSlug,
+              orgId: scopeData.orgId
             }
           };
         },

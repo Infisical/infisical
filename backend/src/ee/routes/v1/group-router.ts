@@ -22,6 +22,11 @@ const GroupIdentityResponseSchema = IdentitiesSchema.pick({
   name: true
 });
 
+const GroupWithRoleSchema = GroupsSchema.extend({
+  role: z.string(),
+  roleId: z.string().nullish()
+});
+
 export const registerGroupRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/",
@@ -71,7 +76,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         id: z.string().trim().describe(GROUPS.GET_BY_ID.id)
       }),
       response: {
-        200: GroupsSchema.extend({
+        200: GroupWithRoleSchema.extend({
           customRoleSlug: z.string().nullable()
         })
       }
@@ -101,7 +106,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       operationId: "listGroups",
       tags: [ApiDocsTags.Groups],
       response: {
-        200: GroupsSchema.array()
+        200: GroupWithRoleSchema.array()
       }
     },
     handler: async (req) => {

@@ -102,3 +102,43 @@ export const registerMcpEndpointAuthServerMetadataRouter = async (server: Fastif
     }
   });
 };
+
+// RFC 9728 compliant: Protected Resource metadata at path-appended URL
+// The MCP Inspector's OAuth discovery process makes a call to `/.well-known/oauth-protected-resource/api/v1/ai/mcp/endpoints/:endpointId/connect`
+// Then falls back to `/.well-known/oauth-protected-resource`, which is simpler but loses the `endpointId` info
+//
+// Therefore, we need to make sure that we respond to its call made to `/.well-known/oauth-protected-resource/api/v1/ai/mcp/endpoints/:endpointId/connect`
+// This constrains our API to have `.well-known/oauth-protected-resource` as the prefix and the path from the connect URL as the suffix.
+export const registerRfc9728ProtectedResourceMetadataRouter = async (server: FastifyZodProvider) => {
+  const appCfg = getConfig();
+  const siteUrl = removeTrailingSlash(appCfg.SITE_URL || "");
+  if (!siteUrl) {
+    return;
+  }
+
+  const siteHost = new URL(siteUrl).host;
+  const scopeAccess = `https://${siteHost}/mcp:access`;
+
+  server.route({
+    method: "GET",
+    url: "/api/v1/ai/mcp/endpoints/:endpointId/connect",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        endpointId: z.string().trim().min(1)
+      })
+    },
+    handler: async (req) => {
+      const { resourceUrl, authServerIssuer } = getMcpUrls(siteUrl, req.params.endpointId);
+      // Return endpoint-specific auth server so MCP Inspector uses endpoint-specific OAuth endpoints
+      return {
+        resource: resourceUrl,
+        authorization_servers: [authServerIssuer],
+        scopes_supported: ["openid", scopeAccess],
+        bearer_methods_supported: ["header"]
+      };
+    }
+  });
+};

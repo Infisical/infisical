@@ -30,7 +30,7 @@ export const createRelayConnection = async ({
   clientPrivateKey: string;
   serverCertificateChain: string;
 }): Promise<net.Socket> => {
-  const [targetHost] = await verifyHostInputValidity(relayHost);
+  const [targetHost] = await verifyHostInputValidity({ host: relayHost, isDynamicSecret: false });
   const [, portStr] = relayHost.split(":");
   const port = parseInt(portStr, 10) || 8443;
 

@@ -42,6 +42,11 @@ const extractCertificateData = (data: CertificateServiceResponse) => ({
 
 interface CertificateRequestForService {
   commonName?: string;
+  organization?: string;
+  organizationalUnit?: string;
+  country?: string;
+  state?: string;
+  locality?: string;
   keyUsages?: CertKeyUsageType[];
   extendedKeyUsages?: CertExtendedKeyUsageType[];
   altNames?: Array<{
@@ -55,6 +60,10 @@ interface CertificateRequestForService {
   notAfter?: Date;
   signatureAlgorithm?: string;
   keyAlgorithm?: string;
+  basicConstraints?: {
+    isCA: boolean;
+    pathLength?: number;
+  };
 }
 
 const validateTtlAndDateFields = (data: {
@@ -114,6 +123,11 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           attributes: z
             .object({
               commonName: validateTemplateRegexField.optional(),
+              organization: validateTemplateRegexField.optional(),
+              organizationalUnit: validateTemplateRegexField.optional(),
+              country: validateTemplateRegexField.optional(),
+              state: validateTemplateRegexField.optional(),
+              locality: validateTemplateRegexField.optional(),
               keyUsages: z.nativeEnum(CertKeyUsageType).array().optional(),
               extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsageType).array().optional(),
               altNames: z
@@ -132,7 +146,13 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
                 .min(1, "TTL cannot be empty")
                 .refine((val) => ms(val) > 0, "TTL must be a positive number"),
               notBefore: validateCaDateField.optional(),
-              notAfter: validateCaDateField.optional()
+              notAfter: validateCaDateField.optional(),
+              basicConstraints: z
+                .object({
+                  isCA: z.boolean(),
+                  pathLength: z.number().int().min(0).optional()
+                })
+                .optional()
             })
             .optional(),
           removeRootsFromChain: booleanSchema.default(false).optional()
@@ -196,7 +216,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           notAfter: attributes?.notAfter ? new Date(attributes.notAfter) : undefined,
           signatureAlgorithm: attributes?.signatureAlgorithm,
           keyAlgorithm: attributes?.keyAlgorithm,
-          csr
+          csr,
+          basicConstraints: attributes?.basicConstraints
         };
 
         const data = await server.services.certificateV3.orderCertificateFromProfile({
@@ -241,7 +262,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           notBefore: attributes?.notBefore ? new Date(attributes.notBefore) : undefined,
           notAfter: attributes?.notAfter ? new Date(attributes.notAfter) : undefined,
           enrollmentType: EnrollmentType.API,
-          removeRootsFromChain: requestBody.removeRootsFromChain
+          removeRootsFromChain: requestBody.removeRootsFromChain,
+          basicConstraints: attributes?.basicConstraints
         });
 
         await server.services.auditLog.createAuditLog({
@@ -265,6 +287,11 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
 
       const certificateRequestForService: CertificateRequestForService = {
         commonName: attributes?.commonName,
+        organization: attributes?.organization,
+        organizationalUnit: attributes?.organizationalUnit,
+        country: attributes?.country,
+        state: attributes?.state,
+        locality: attributes?.locality,
         keyUsages: attributes?.keyUsages,
         extendedKeyUsages: attributes?.extendedKeyUsages,
         altNames: attributes?.altNames,
@@ -272,7 +299,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         notBefore: attributes?.notBefore ? new Date(attributes.notBefore) : undefined,
         notAfter: attributes?.notAfter ? new Date(attributes.notAfter) : undefined,
         signatureAlgorithm: attributes?.signatureAlgorithm,
-        keyAlgorithm: attributes?.keyAlgorithm
+        keyAlgorithm: attributes?.keyAlgorithm,
+        basicConstraints: attributes?.basicConstraints
       };
 
       const mappedCertificateRequest = mapEnumsForValidation(certificateRequestForService);
