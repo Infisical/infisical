@@ -12,6 +12,8 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { OrgServiceActor } from "@app/lib/types";
+import { ActorType } from "@app/services/auth/auth-type";
+import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
@@ -64,7 +66,7 @@ type TApprovalPolicyServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserIds">;
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "issueCertificateFromApprovedRequest">;
-  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById">;
+  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findById">;
 };
 export type TApprovalPolicyServiceFactory = ReturnType<typeof approvalPolicyServiceFactory>;
 
@@ -687,12 +689,44 @@ export const approvalPolicyServiceFactory = ({
         });
 
         try {
-          await certificateV3Service.issueCertificateFromApprovedRequest(certReqId, {
-            actor: actor.type,
-            actorId: actor.id,
-            actorAuthMethod: actor.authMethod,
-            actorOrgId: actor.orgId
-          });
+          const certRequest = await certificateRequestDAL.findById(certReqId);
+
+          // For ACME/EST enrollment types, use the approver's context
+          const isAutomatedEnrollment =
+            certRequest?.enrollmentType === EnrollmentType.ACME || certRequest?.enrollmentType === EnrollmentType.EST;
+
+          let actorContext: {
+            actor: ActorType;
+            actorId: string;
+            actorAuthMethod: typeof actor.authMethod;
+            actorOrgId: string;
+          };
+
+          if (isAutomatedEnrollment) {
+            actorContext = {
+              actor: actor.type,
+              actorId: actor.id,
+              actorAuthMethod: actor.authMethod,
+              actorOrgId: actor.orgId
+            };
+          } else {
+            // Use original requester's identity (stored in approval request) for API enrollment
+            const originalRequesterActor = finalRequest.machineIdentityId ? ActorType.IDENTITY : ActorType.USER;
+            const originalRequesterId = finalRequest.machineIdentityId || finalRequest.requesterId;
+
+            if (!originalRequesterId) {
+              throw new BadRequestError({ message: "Approval request is missing requester information" });
+            }
+
+            actorContext = {
+              actor: originalRequesterActor,
+              actorId: originalRequesterId,
+              actorAuthMethod: actor.authMethod,
+              actorOrgId: actor.orgId
+            };
+          }
+
+          await certificateV3Service.issueCertificateFromApprovedRequest(certReqId, actorContext);
           logger.info(
             { certificateRequestId: certReqId, approvalRequestId: finalRequest.id },
             "Certificate issued after approval"
