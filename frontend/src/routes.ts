@@ -444,7 +444,7 @@ export const routes = rootRoute("root.tsx", [
     route("/password-reset", "auth/PasswordResetPage/route.tsx"),
     route("/requestnewinvite", "auth/RequestNewInvitePage/route.tsx"),
     route("/signupinvite", "auth/SignUpInvitePage/route.tsx"),
-    route("/verify-email", "auth/VerifyEmailPage/route.tsx")
+    route("/account-recovery", "auth/AccountRecoveryPage/route.tsx")
   ]),
   middleware("authenticate.tsx", [
     route("/password-setup", "auth/PasswordSetupPage/route.tsx"),

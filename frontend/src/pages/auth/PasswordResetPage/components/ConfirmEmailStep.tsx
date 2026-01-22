@@ -2,7 +2,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { Button } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useVerifyPasswordResetCode } from "@app/hooks/api";
+import { useVerifyAccountRecoveryEmail } from "@app/hooks/api";
 import { UserEncryptionVersion } from "@app/hooks/api/auth/types";
 
 type Props = {
@@ -17,7 +17,7 @@ export const ConfirmEmailStep = ({ onComplete }: Props) => {
   const {
     mutateAsync: verifyPasswordResetCodeMutateAsync,
     isPending: isVerifyPasswordResetLoading
-  } = useVerifyPasswordResetCode();
+  } = useVerifyAccountRecoveryEmail();
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">
       <h1 className="mb-2 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
