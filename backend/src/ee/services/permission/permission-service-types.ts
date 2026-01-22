@@ -58,6 +58,7 @@ export type TPermissionServiceFactory = {
     permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
     memberships: Array<TMemberships & { roles: { role: string; customRoleSlug?: string | null }[] }>;
     hasRole: (role: string) => boolean;
+    hasProjectEnforcement: (check: "enforceEncryptedSecretManagerSecretMetadata") => boolean;
   }>;
   getProjectPermissions: (
     projectId: string,

@@ -60,7 +60,7 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
   const roleToDelete = popUp?.removeRole?.data as TProjectRole;
 
   return (
-    <div className="relative">
+    <div className="relative mb-6">
       {popUp?.editRole.isOpen ? (
         <ProjectTemplateEditRoleForm
           onGoBack={() => handlePopUpClose("editRole")}

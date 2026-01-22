@@ -131,10 +131,10 @@ type TProjectServiceFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "insertMany" | "findByProjectId">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "insertMany" | "find">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectGhostUser" | "findAllProjectMembers">;
-  membershipUserDAL: Pick<TMembershipUserDALFactory, "create" | "findOne" | "delete">;
+  membershipUserDAL: Pick<TMembershipUserDALFactory, "create" | "findOne" | "delete" | "find" | "insertMany">;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "delete">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "create" | "findOne">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "insertMany">;
   projectSlackConfigDAL: Pick<
     TProjectSlackConfigDALFactory,
     "findOne" | "transaction" | "updateById" | "create" | "delete"
@@ -345,6 +345,8 @@ export const projectServiceFactory = ({
 
       // set default environments and root folder for provided environments
       let envs: TProjectEnvironments[] = [];
+      let creatorAddedViaTemplate = false;
+
       if (projectTemplate) {
         if (projectTemplate.environments) {
           envs = await projectEnvDAL.insertMany(
@@ -364,6 +366,87 @@ export const projectServiceFactory = ({
           })),
           tx
         );
+
+        // Add template users to the project
+        const templateHasAdmin = projectTemplate.users?.some((u) => u.roles.includes(ProjectMembershipRole.Admin));
+
+        if (projectTemplate.users?.length) {
+          const templateUsernames = projectTemplate.users.map((u) => u.username.toLowerCase());
+          const users = await userDAL.find({
+            $in: { username: templateUsernames }
+          });
+
+          // If template has an admin, include the creator in template users, otherwise exclude them
+          const usersToProcess = templateHasAdmin ? users : users.filter((u) => u.id !== actorId);
+          const userIds = usersToProcess.map((u) => u.id);
+
+          if (userIds.length) {
+            const orgMemberships = await membershipUserDAL.find(
+              {
+                scopeOrgId: project.orgId,
+                scope: AccessScope.Organization,
+                $in: { actorUserId: userIds }
+              },
+              { tx }
+            );
+
+            const userIdToOrgMembership = new Map(orgMemberships.map((m) => [m.actorUserId, m]));
+            const usersToAdd = usersToProcess.filter((u) => userIdToOrgMembership.has(u.id));
+
+            if (templateHasAdmin && usersToAdd.some((u) => u.id === actorId)) {
+              creatorAddedViaTemplate = true;
+            }
+
+            if (usersToAdd.length) {
+              const usernameToRoles = new Map(projectTemplate.users.map((u) => [u.username.toLowerCase(), u.roles]));
+
+              // Create project memberships
+              const projectMemberships = await membershipUserDAL.insertMany(
+                usersToAdd.map((user) => ({
+                  scopeProjectId: project.id,
+                  actorUserId: user.id,
+                  scope: AccessScope.Project,
+                  scopeOrgId: project.orgId
+                })),
+                tx
+              );
+
+              const projectRoles = await roleDAL.find({ projectId: project.id }, { tx });
+              const roleSlugToId = new Map(projectRoles.map((r) => [r.slug, r.id]));
+
+              // Create role assignments for each membership
+              const roleAssignments: { membershipId: string; role: string; customRoleId?: string }[] = [];
+              for (const membership of projectMemberships) {
+                const user = usersToAdd.find((u) => u.id === membership.actorUserId);
+                if (user) {
+                  const roles = usernameToRoles.get(user.username.toLowerCase()) ?? [];
+
+                  for (const roleSlug of roles) {
+                    if (Object.values(ProjectMembershipRole).includes(roleSlug as ProjectMembershipRole)) {
+                      roleAssignments.push({
+                        membershipId: membership.id,
+                        role: roleSlug
+                      });
+                    } else {
+                      const customRoleId = roleSlugToId.get(roleSlug);
+                      if (customRoleId) {
+                        roleAssignments.push({
+                          membershipId: membership.id,
+                          role: ProjectMembershipRole.Custom,
+                          customRoleId
+                        });
+                      }
+                    }
+                  }
+                }
+              }
+
+              if (roleAssignments.length) {
+                await membershipRoleDAL.insertMany(roleAssignments, tx);
+              }
+            }
+          }
+        }
       } else if (createDefaultEnvs) {
         envs = await projectEnvDAL.insertMany(
           DEFAULT_PROJECT_ENVS.map((el, i) => ({ ...el, projectId: project.id, position: i + 1 })),
@@ -376,7 +459,8 @@ export const projectServiceFactory = ({
       }
 
       // If the project is being created by a user, add the user to the project as an admin
-      if (actor === ActorType.USER) {
+      // Skip this if the creator was already added via template with their configured roles
+      if (actor === ActorType.USER && !creatorAddedViaTemplate) {
         // Find public key of user
         const user = await userDAL.findUserEncKeyByUserId(actorId);
 
@@ -605,7 +689,8 @@ export const projectServiceFactory = ({
         defaultProduct: update.defaultProduct,
         showSnapshotsLegacy: update.showSnapshotsLegacy,
         secretDetectionIgnoreValues: update.secretDetectionIgnoreValues,
-        pitVersionLimit: update.pitVersionLimit
+        pitVersionLimit: update.pitVersionLimit,
+        enforceEncryptedSecretManagerSecretMetadata: update.enforceEncryptedSecretManagerSecretMetadata
       });
 
       return updatedProject;

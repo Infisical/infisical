@@ -3,7 +3,7 @@ import { PlusIcon } from "lucide-react";
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
 import {
-  UnstableButton,
+  Button,
   UnstableCard,
   UnstableCardAction,
   UnstableCardContent,
@@ -66,7 +66,7 @@ export const UserProjectsSection = ({ membershipId }: Props) => {
           <UnstableCardDescription>Manage user project memberships</UnstableCardDescription>
           {canAddToProject && Boolean(projectMemberships?.length) && (
             <UnstableCardAction>
-              <UnstableButton
+              <Button
                 onClick={() => {
                   handlePopUpOpen("addUserToProject", {
                     username: membership.user.username
@@ -77,7 +77,7 @@ export const UserProjectsSection = ({ membershipId }: Props) => {
               >
                 <PlusIcon />
                 Add to Project
-              </UnstableButton>
+              </Button>
             </UnstableCardAction>
           )}
         </UnstableCardHeader>

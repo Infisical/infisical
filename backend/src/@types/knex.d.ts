@@ -380,6 +380,9 @@ import {
   TProjectTemplates,
   TProjectTemplatesInsert,
   TProjectTemplatesUpdate,
+  TProjectTemplateUserMemberships,
+  TProjectTemplateUserMembershipsInsert,
+  TProjectTemplateUserMembershipsUpdate,
   TRateLimit,
   TRateLimitInsert,
   TRateLimitUpdate,
@@ -1267,6 +1270,11 @@ declare module "knex/types/tables" {
       TProjectTemplates,
       TProjectTemplatesInsert,
       TProjectTemplatesUpdate
+    >;
+    [TableName.ProjectTemplateUserMembership]: KnexOriginal.CompositeTableType<
+      TProjectTemplateUserMemberships,
+      TProjectTemplateUserMembershipsInsert,
+      TProjectTemplateUserMembershipsUpdate
     >;
     [TableName.TotpConfig]: KnexOriginal.CompositeTableType<TTotpConfigs, TTotpConfigsInsert, TTotpConfigsUpdate>;
     [TableName.ProjectSplitBackfillIds]: KnexOriginal.CompositeTableType<
