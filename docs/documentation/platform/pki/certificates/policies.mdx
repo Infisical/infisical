@@ -28,3 +28,9 @@ Here's some guidance on each field:
 - Key Usages: The cryptographic purposes of the certificate such as Digital Signature, Key Encipherment, etc.
 - Extended Key Usages: The higher-level intended uses of the certificate such as Server Authentication, Client Authentication, etc.
 - Certificate Validity: The maximum lifetime of certificates that can be requested for certificates validated against this policy. You can specify both a duration and unit (days, months, or years).
+- Basic Constraints: Controls whether certificates issued under this policy can act as Certificate Authorities (CAs).
+  - **CA Certificate Property**: Determines whether issued certificates can have the `CA:TRUE` flag, allowing them to sign other certificates. Options are:
+    - **Forbid**: Certificates cannot be CAs. Use for standard TLS certificates (servers, clients).
+    - **Allow**: Certificates can optionally be CAs, depending on the request.
+    - **Require**: Certificates must be CAs. Use when the policy only allow to issue intermediate CA certificates.
+  - **Maximum Allowed Path Length**: Limits how many levels of intermediate CAs can exist below the issued certificate. For example, `0` means the CA can only sign end-entity certificates, `1` allows one level of intermediate CAs, and so on. Leave empty for no restriction.
