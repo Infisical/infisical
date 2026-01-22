@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { UsersSchema } from "@app/db/schemas";
-import { smtpRateLimit } from "@app/server/config/rateLimiter";
+import { authRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { UserEncryption } from "@app/services/user/user-types";
 
 export const registerAccountRecoveryRouter = async (server: FastifyZodProvider) => {
@@ -59,6 +59,29 @@ export const registerAccountRecoveryRouter = async (server: FastifyZodProvider) 
       const recoveryResult = await server.services.accountRecovery.verifyRecoveryEmail(req.body.email, req.body.code);
 
       return recoveryResult;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/enable-email-auth",
+    config: {
+      rateLimit: authRateLimit
+    },
+    schema: {
+      headers: z.object({
+        authorization: z.string()
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      },
+      operationId: "enableEmailAuthForUser"
+    },
+    handler: async (req) => {
+      await server.services.accountRecovery.enableEmailAuthForUser(req.headers.authorization);
+      return { message: "Email authentication enabled successfully" };
     }
   });
 };

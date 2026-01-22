@@ -173,6 +173,7 @@ import { TQueueServiceFactory } from "@app/queue";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { registerSecretScanningV2Webhooks } from "@app/server/plugins/secret-scanner-v2";
 import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue/access-token-queue";
+import { accountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { additionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
 import { apiKeyDALFactory } from "@app/services/api-key/api-key-dal";
@@ -192,7 +193,6 @@ import {
   approvalRequestStepEligibleApproversDALFactory,
   approvalRequestStepsDALFactory
 } from "@app/services/approval-policy/approval-request-dal";
-import { accountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { authDALFactory } from "@app/services/auth/auth-dal";
 import { authLoginServiceFactory } from "@app/services/auth/auth-login-service";
 import { authPaswordServiceFactory } from "@app/services/auth/auth-password-service";

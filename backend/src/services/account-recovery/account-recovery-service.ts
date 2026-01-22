@@ -11,6 +11,8 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { UserEncryption } from "@app/services/user/user-types";
 
+import { validatePasswordResetAuthorization } from "../auth/auth-fns";
+
 type TAccountRecoveryServiceFactoryDep = {
   userDAL: TUserDALFactory;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find">;
@@ -44,7 +46,8 @@ export const accountRecoveryServiceFactory = ({
           email,
           isCloud: cfg.isCloud,
           siteUrl: cfg.SITE_URL || "",
-          hasEmailAuth
+          hasEmailAuth,
+          callback_url: cfg.SITE_URL ? `${cfg.SITE_URL}/account-recovery-reset` : ""
         };
 
         if (!hasEmailAuth) {
@@ -116,8 +119,24 @@ export const accountRecoveryServiceFactory = ({
     return { token, user, userEncryptionVersion: userEnc.encryptionVersion as UserEncryption };
   };
 
+  const enableEmailAuthForUser = async (token: string) => {
+    const validatedToken = validatePasswordResetAuthorization(token);
+    const user = await userDAL.findById(validatedToken.userId);
+    if (!user) {
+      throw new BadRequestError({ message: "Failed to find user" });
+    }
+
+    if (!user.authMethods?.includes(AuthMethod.EMAIL)) {
+      const updatedAuthMethods = user.authMethods ? [...user.authMethods, AuthMethod.EMAIL] : [AuthMethod.EMAIL];
+      await userDAL.updateById(user.id, {
+        authMethods: updatedAuthMethods
+      });
+    }
+  };
+
   return {
     sendRecoveryEmail,
-    verifyRecoveryEmail
+    verifyRecoveryEmail,
+    enableEmailAuthForUser
   };
 };
