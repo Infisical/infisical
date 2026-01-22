@@ -23,6 +23,7 @@ export const getDefaultProjectTemplate = (orgId: string, type: ProjectType) => (
     })
   ),
   users: null,
+  groups: null,
   orgId
 });
 
