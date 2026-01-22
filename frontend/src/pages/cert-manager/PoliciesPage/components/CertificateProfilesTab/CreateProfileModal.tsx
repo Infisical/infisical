@@ -1015,51 +1015,51 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
             </div>
 
             {watch("defaultTtl")?.unit !== undefined && (
-            <div className="ml-3 border-l-2 border-mineshaft-500 pl-4">
-              <div className="grid grid-cols-2 gap-4">
-                <Controller
-                  control={control}
-                  name="defaultTtl.value"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="Duration"
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Input
-                        {...field}
-                        type="number"
-                        placeholder="365"
-                        value={field.value == null ? "" : field.value}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          field.onChange(val === "" ? null : Number(val));
-                        }}
-                      />
-                    </FormControl>
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="defaultTtl.unit"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl label="Unit" isError={Boolean(error)} errorText={error?.message}>
-                      <Select
-                        {...field}
-                        value={field.value ?? "days"}
-                        onValueChange={field.onChange}
-                        className="w-full"
-                        position="popper"
+              <div className="ml-3 border-l-2 border-mineshaft-500 pl-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <Controller
+                    control={control}
+                    name="defaultTtl.value"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="Duration"
+                        isError={Boolean(error)}
+                        errorText={error?.message}
                       >
-                        <SelectItem value="days">Days</SelectItem>
-                        <SelectItem value="months">Months</SelectItem>
-                        <SelectItem value="years">Years</SelectItem>
-                      </Select>
-                    </FormControl>
-                  )}
-                />
+                        <Input
+                          {...field}
+                          type="number"
+                          placeholder="365"
+                          value={field.value == null ? "" : field.value}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            field.onChange(val === "" ? null : Number(val));
+                          }}
+                        />
+                      </FormControl>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="defaultTtl.unit"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl label="Unit" isError={Boolean(error)} errorText={error?.message}>
+                        <Select
+                          {...field}
+                          value={field.value ?? "days"}
+                          onValueChange={field.onChange}
+                          className="w-full"
+                          position="popper"
+                        >
+                          <SelectItem value="days">Days</SelectItem>
+                          <SelectItem value="months">Months</SelectItem>
+                          <SelectItem value="years">Years</SelectItem>
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
+                </div>
               </div>
-            </div>
             )}
           </div>
 
