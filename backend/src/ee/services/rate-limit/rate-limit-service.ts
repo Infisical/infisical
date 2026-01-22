@@ -13,7 +13,8 @@ let rateLimitMaxConfiguration: RateLimitConfiguration = {
   secretsLimit: 60,
   authRateLimit: 60,
   inviteUserRateLimit: 30,
-  mfaRateLimit: 20
+  mfaRateLimit: 20,
+  identityCreationLimit: 20
 };
 
 Object.freeze(rateLimitMaxConfiguration);

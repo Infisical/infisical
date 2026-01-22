@@ -122,3 +122,10 @@ export const smtpRateLimit = ({
   max: 2,
   keyGenerator
 });
+
+export const identityCreationLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: (req) => req.rateLimits.identityCreationLimit,
+  keyGenerator: (req) => req.realIp
+};
