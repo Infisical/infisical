@@ -15,15 +15,9 @@ export async function up(knex: Knex): Promise<void> {
       for (let i = 0; i < rows.length; i += BATCH_SIZE) {
         const batch = rows.slice(i, i + BATCH_SIZE);
         const ids = batch.map((row) => row.id);
+        // @ts-expect-error because this field got removed later
         // eslint-disable-next-line no-await-in-loop
-        await knex.raw(
-          `
-          UPDATE ??
-          SET ?? = true
-          WHERE ?? IN (${ids.map(() => "?").join(",")})
-          `,
-          [TableName.SecretApprovalPolicy, "shouldCheckSecretPermission", "id", ids]
-        );
+        await knex(TableName.SecretApprovalPolicy).whereIn("id", ids).update({ shouldCheckSecretPermission: true });
       }
     }
   }
