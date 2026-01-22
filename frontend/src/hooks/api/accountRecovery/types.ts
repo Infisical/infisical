@@ -12,4 +12,5 @@ export type TVerifyAccountRecoveryEmailDTO = {
 export type TVerifyAccountRecoveryEmailResponse = {
   token: string;
   userEncryptionVersion: UserEncryptionVersion;
+  user: { id: string; authMethods: string[] };
 };

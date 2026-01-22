@@ -35,3 +35,21 @@ export const useVerifyAccountRecoveryEmail = () => {
     }
   });
 };
+
+export const useEnableEmailAuthAccountRecovery = () => {
+  return useMutation({
+    mutationFn: async (token: string) => {
+      const { data } = await apiRequest.post<TVerifyAccountRecoveryEmailResponse>(
+        "/api/v1/account-recovery/enable-email-auth",
+        undefined,
+        {
+          headers: {
+            authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      return data;
+    }
+  });
+};

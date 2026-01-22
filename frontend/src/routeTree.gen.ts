@@ -22,9 +22,9 @@ import { Route as indexImport } from './pages/index'
 import { Route as middlewaresInjectOrgDetailsImport } from './pages/middlewares/inject-org-details'
 import { Route as authSignUpInvitePageRouteImport } from './pages/auth/SignUpInvitePage/route'
 import { Route as authRequestNewInvitePageRouteImport } from './pages/auth/RequestNewInvitePage/route'
-import { Route as authPasswordResetPageRouteImport } from './pages/auth/PasswordResetPage/route'
 import { Route as authEmailNotVerifiedPageRouteImport } from './pages/auth/EmailNotVerifiedPage/route'
-import { Route as authAccountRecoveryPageRouteImport } from './pages/auth/AccountRecoveryPage/route'
+import { Route as authAccountRecoveryResetPageRouteImport } from './pages/auth/AccountRecoveryResetPage/route'
+import { Route as authAccountRecoveryEmailPageRouteImport } from './pages/auth/AccountRecoveryEmailPage/route'
 import { Route as authPasswordSetupPageRouteImport } from './pages/auth/PasswordSetupPage/route'
 import { Route as userLayoutImport } from './pages/user/layout'
 import { Route as organizationLayoutImport } from './pages/organization/layout'
@@ -441,14 +441,6 @@ const authRequestNewInvitePageRouteRoute =
     getParentRoute: () => middlewaresRestrictLoginSignupRoute,
   } as any)
 
-const authPasswordResetPageRouteRoute = authPasswordResetPageRouteImport.update(
-  {
-    id: '/password-reset',
-    path: '/password-reset',
-    getParentRoute: () => middlewaresRestrictLoginSignupRoute,
-  } as any,
-)
-
 const authEmailNotVerifiedPageRouteRoute =
   authEmailNotVerifiedPageRouteImport.update({
     id: '/email-not-verified',
@@ -456,8 +448,15 @@ const authEmailNotVerifiedPageRouteRoute =
     getParentRoute: () => middlewaresRestrictLoginSignupRoute,
   } as any)
 
-const authAccountRecoveryPageRouteRoute =
-  authAccountRecoveryPageRouteImport.update({
+const authAccountRecoveryResetPageRouteRoute =
+  authAccountRecoveryResetPageRouteImport.update({
+    id: '/account-recovery-reset',
+    path: '/account-recovery-reset',
+    getParentRoute: () => middlewaresRestrictLoginSignupRoute,
+  } as any)
+
+const authAccountRecoveryEmailPageRouteRoute =
+  authAccountRecoveryEmailPageRouteImport.update({
     id: '/account-recovery',
     path: '/account-recovery',
     getParentRoute: () => middlewaresRestrictLoginSignupRoute,
@@ -2429,7 +2428,14 @@ declare module '@tanstack/react-router' {
       id: '/_restrict-login-signup/account-recovery'
       path: '/account-recovery'
       fullPath: '/account-recovery'
-      preLoaderRoute: typeof authAccountRecoveryPageRouteImport
+      preLoaderRoute: typeof authAccountRecoveryEmailPageRouteImport
+      parentRoute: typeof middlewaresRestrictLoginSignupImport
+    }
+    '/_restrict-login-signup/account-recovery-reset': {
+      id: '/_restrict-login-signup/account-recovery-reset'
+      path: '/account-recovery-reset'
+      fullPath: '/account-recovery-reset'
+      preLoaderRoute: typeof authAccountRecoveryResetPageRouteImport
       parentRoute: typeof middlewaresRestrictLoginSignupImport
     }
     '/_restrict-login-signup/email-not-verified': {
@@ -2437,13 +2443,6 @@ declare module '@tanstack/react-router' {
       path: '/email-not-verified'
       fullPath: '/email-not-verified'
       preLoaderRoute: typeof authEmailNotVerifiedPageRouteImport
-      parentRoute: typeof middlewaresRestrictLoginSignupImport
-    }
-    '/_restrict-login-signup/password-reset': {
-      id: '/_restrict-login-signup/password-reset'
-      path: '/password-reset'
-      fullPath: '/password-reset'
-      preLoaderRoute: typeof authPasswordResetPageRouteImport
       parentRoute: typeof middlewaresRestrictLoginSignupImport
     }
     '/_restrict-login-signup/requestnewinvite': {
@@ -5384,9 +5383,9 @@ const RestrictLoginSignupSignupRouteWithChildren =
   )
 
 interface middlewaresRestrictLoginSignupRouteChildren {
-  authAccountRecoveryPageRouteRoute: typeof authAccountRecoveryPageRouteRoute
+  authAccountRecoveryEmailPageRouteRoute: typeof authAccountRecoveryEmailPageRouteRoute
+  authAccountRecoveryResetPageRouteRoute: typeof authAccountRecoveryResetPageRouteRoute
   authEmailNotVerifiedPageRouteRoute: typeof authEmailNotVerifiedPageRouteRoute
-  authPasswordResetPageRouteRoute: typeof authPasswordResetPageRouteRoute
   authRequestNewInvitePageRouteRoute: typeof authRequestNewInvitePageRouteRoute
   authSignUpInvitePageRouteRoute: typeof authSignUpInvitePageRouteRoute
   RestrictLoginSignupLoginRoute: typeof RestrictLoginSignupLoginRouteWithChildren
@@ -5396,9 +5395,11 @@ interface middlewaresRestrictLoginSignupRouteChildren {
 
 const middlewaresRestrictLoginSignupRouteChildren: middlewaresRestrictLoginSignupRouteChildren =
   {
-    authAccountRecoveryPageRouteRoute: authAccountRecoveryPageRouteRoute,
+    authAccountRecoveryEmailPageRouteRoute:
+      authAccountRecoveryEmailPageRouteRoute,
+    authAccountRecoveryResetPageRouteRoute:
+      authAccountRecoveryResetPageRouteRoute,
     authEmailNotVerifiedPageRouteRoute: authEmailNotVerifiedPageRouteRoute,
-    authPasswordResetPageRouteRoute: authPasswordResetPageRouteRoute,
     authRequestNewInvitePageRouteRoute: authRequestNewInvitePageRouteRoute,
     authSignUpInvitePageRouteRoute: authSignUpInvitePageRouteRoute,
     RestrictLoginSignupLoginRoute: RestrictLoginSignupLoginRouteWithChildren,
@@ -5418,9 +5419,9 @@ export interface FileRoutesByFullPath {
   '/upgrade-path': typeof publicUpgradePathPageRouteRoute
   '': typeof organizationLayoutRouteWithChildren
   '/password-setup': typeof authPasswordSetupPageRouteRoute
-  '/account-recovery': typeof authAccountRecoveryPageRouteRoute
+  '/account-recovery': typeof authAccountRecoveryEmailPageRouteRoute
+  '/account-recovery-reset': typeof authAccountRecoveryResetPageRouteRoute
   '/email-not-verified': typeof authEmailNotVerifiedPageRouteRoute
-  '/password-reset': typeof authPasswordResetPageRouteRoute
   '/requestnewinvite': typeof authRequestNewInvitePageRouteRoute
   '/signupinvite': typeof authSignUpInvitePageRouteRoute
   '/personal-settings': typeof userLayoutRouteWithChildren
@@ -5678,9 +5679,9 @@ export interface FileRoutesByTo {
   '/upgrade-path': typeof publicUpgradePathPageRouteRoute
   '': typeof organizationLayoutRouteWithChildren
   '/password-setup': typeof authPasswordSetupPageRouteRoute
-  '/account-recovery': typeof authAccountRecoveryPageRouteRoute
+  '/account-recovery': typeof authAccountRecoveryEmailPageRouteRoute
+  '/account-recovery-reset': typeof authAccountRecoveryResetPageRouteRoute
   '/email-not-verified': typeof authEmailNotVerifiedPageRouteRoute
-  '/password-reset': typeof authPasswordResetPageRouteRoute
   '/requestnewinvite': typeof authRequestNewInvitePageRouteRoute
   '/signupinvite': typeof authSignUpInvitePageRouteRoute
   '/personal-settings': typeof userPersonalSettingsPageRouteRoute
@@ -5925,9 +5926,9 @@ export interface FileRoutesById {
   '/_authenticate': typeof middlewaresAuthenticateRouteWithChildren
   '/_restrict-login-signup': typeof middlewaresRestrictLoginSignupRouteWithChildren
   '/_authenticate/password-setup': typeof authPasswordSetupPageRouteRoute
-  '/_restrict-login-signup/account-recovery': typeof authAccountRecoveryPageRouteRoute
+  '/_restrict-login-signup/account-recovery': typeof authAccountRecoveryEmailPageRouteRoute
+  '/_restrict-login-signup/account-recovery-reset': typeof authAccountRecoveryResetPageRouteRoute
   '/_restrict-login-signup/email-not-verified': typeof authEmailNotVerifiedPageRouteRoute
-  '/_restrict-login-signup/password-reset': typeof authPasswordResetPageRouteRoute
   '/_restrict-login-signup/requestnewinvite': typeof authRequestNewInvitePageRouteRoute
   '/_restrict-login-signup/signupinvite': typeof authSignUpInvitePageRouteRoute
   '/_authenticate/_inject-org-details': typeof middlewaresInjectOrgDetailsRouteWithChildren
@@ -6199,8 +6200,8 @@ export interface FileRouteTypes {
     | ''
     | '/password-setup'
     | '/account-recovery'
+    | '/account-recovery-reset'
     | '/email-not-verified'
-    | '/password-reset'
     | '/requestnewinvite'
     | '/signupinvite'
     | '/personal-settings'
@@ -6458,8 +6459,8 @@ export interface FileRouteTypes {
     | ''
     | '/password-setup'
     | '/account-recovery'
+    | '/account-recovery-reset'
     | '/email-not-verified'
-    | '/password-reset'
     | '/requestnewinvite'
     | '/signupinvite'
     | '/personal-settings'
@@ -6703,8 +6704,8 @@ export interface FileRouteTypes {
     | '/_restrict-login-signup'
     | '/_authenticate/password-setup'
     | '/_restrict-login-signup/account-recovery'
+    | '/_restrict-login-signup/account-recovery-reset'
     | '/_restrict-login-signup/email-not-verified'
-    | '/_restrict-login-signup/password-reset'
     | '/_restrict-login-signup/requestnewinvite'
     | '/_restrict-login-signup/signupinvite'
     | '/_authenticate/_inject-org-details'
@@ -7039,8 +7040,8 @@ export const routeTree = rootRoute
       "filePath": "middlewares/restrict-login-signup.tsx",
       "children": [
         "/_restrict-login-signup/account-recovery",
+        "/_restrict-login-signup/account-recovery-reset",
         "/_restrict-login-signup/email-not-verified",
-        "/_restrict-login-signup/password-reset",
         "/_restrict-login-signup/requestnewinvite",
         "/_restrict-login-signup/signupinvite",
         "/_restrict-login-signup/login",
@@ -7053,15 +7054,15 @@ export const routeTree = rootRoute
       "parent": "/_authenticate"
     },
     "/_restrict-login-signup/account-recovery": {
-      "filePath": "auth/AccountRecoveryPage/route.tsx",
+      "filePath": "auth/AccountRecoveryEmailPage/route.tsx",
+      "parent": "/_restrict-login-signup"
+    },
+    "/_restrict-login-signup/account-recovery-reset": {
+      "filePath": "auth/AccountRecoveryResetPage/route.tsx",
       "parent": "/_restrict-login-signup"
     },
     "/_restrict-login-signup/email-not-verified": {
       "filePath": "auth/EmailNotVerifiedPage/route.tsx",
-      "parent": "/_restrict-login-signup"
-    },
-    "/_restrict-login-signup/password-reset": {
-      "filePath": "auth/PasswordResetPage/route.tsx",
       "parent": "/_restrict-login-signup"
     },
     "/_restrict-login-signup/requestnewinvite": {

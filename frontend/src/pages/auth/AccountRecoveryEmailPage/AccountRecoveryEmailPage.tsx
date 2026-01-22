@@ -7,7 +7,7 @@ import { usePopUp } from "@app/hooks";
 import { useSendAccountRecoveryEmail } from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 
-export const AccountRecoveryPage = () => {
+export const AccountRecoveryEmailPage = () => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [step, setStep] = useState(1);

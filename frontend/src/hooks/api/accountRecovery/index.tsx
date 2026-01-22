@@ -1,1 +1,5 @@
-export { useSendAccountRecoveryEmail, useVerifyAccountRecoveryEmail } from "./mutation";
+export {
+  useEnableEmailAuthAccountRecovery,
+  useSendAccountRecoveryEmail,
+  useVerifyAccountRecoveryEmail
+} from "./mutation";
