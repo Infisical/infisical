@@ -2340,8 +2340,10 @@ export const ProjectTemplates = {
     description: "The updated description of the project template.",
     roles: "The updated roles to be created when the template is applied to a project.",
     environments: "The updated environments to be created when the template is applied to a project.",
-    users: "The updated users to be automatically added to projects created from this template.",
-    groups: "The updated groups to be added to projects created from this template."
+    users:
+      "The updated users to be automatically added to projects created from this template. Each user is identified by username and assigned one or more roles.",
+    groups:
+      "The updated groups to be automatically added to projects created from this template. Each group is identified by slug and assigned one or more roles."
   },
   DELETE: {
     templateId: "The ID of the project template to be deleted."

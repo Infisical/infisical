@@ -52,7 +52,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
     [search, projectTemplates]
   );
 
-  const colSpan = 5;
+  const colSpan = 6;
 
   return (
     <div>
