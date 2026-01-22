@@ -2331,7 +2331,8 @@ export const ProjectTemplates = {
     environments: "The environments to be created when the template is applied to a project.",
     users:
       "The users to be automatically added to projects created from this template. Each user is identified by username and assigned one or more roles.",
-    groups: "The groups to be added to projects created from this template."
+    groups:
+      "The groups to be automatically added to projects created from this template. Each group is identified by slug and assigned one or more roles."
   },
   UPDATE: {
     templateId: "The ID of the project template to be updated.",

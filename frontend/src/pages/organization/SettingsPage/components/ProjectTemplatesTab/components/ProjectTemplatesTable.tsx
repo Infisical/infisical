@@ -52,7 +52,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
     [search, projectTemplates]
   );
 
-  const colSpan = 4;
+  const colSpan = 5;
 
   return (
     <div>
@@ -125,7 +125,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
                   </Td>
                   <Td className="pl-8">
                     {users?.length || 0}
-                    {users?.length && (
+                    {users && Boolean(users.length) && (
                       <Tooltip
                         content={
                           <ul className="ml-2 list-disc">
@@ -145,7 +145,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
                   </Td>
                   <Td className="pl-8">
                     {groups?.length || 0}
-                    {groups?.length && (
+                    {groups && Boolean(groups.length) && (
                       <Tooltip
                         content={
                           <ul className="ml-2 list-disc">

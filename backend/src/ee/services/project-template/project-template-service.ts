@@ -424,6 +424,8 @@ export const projectTemplateServiceFactory = ({
         const member = orgMemberUsernames.get(u.username.toLowerCase());
         return { membershipId: member!.id, roles: u.roles };
       });
+    } else if (users === null) {
+      validatedUsers = [];
     }
 
     // Validate that groups exist in the organization
@@ -460,6 +462,8 @@ export const projectTemplateServiceFactory = ({
         const group = orgGroupBySlug.get(g.groupSlug.toLowerCase());
         return { groupId: group!.id, roles: g.roles };
       });
+    } else if (groups === null) {
+      validatedGroups = [];
     }
 
     if (params.name && projectTemplate.name !== params.name) {
