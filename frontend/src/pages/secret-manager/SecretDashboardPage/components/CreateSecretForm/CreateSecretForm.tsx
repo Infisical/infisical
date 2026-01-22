@@ -1,4 +1,4 @@
-import { ClipboardEvent, useRef } from "react";
+import { ClipboardEvent, JSX, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faTriangleExclamation, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -21,6 +21,7 @@ import {
   useBatchModeActions,
   usePopUpAction
 } from "../../SecretMainPage.store";
+import { VALID_KEY_REGEX } from "@app/components/utilities/parseSecrets";
 
 const typeSchema = z.object({
   key: z.string().trim().min(1, { message: "Secret key is required" }),
@@ -148,6 +149,58 @@ export const CreateSecretForm = ({
     }
   };
 
+  const getWarningTooltip = (secretKey: string): JSX.Element | undefined => {
+    if (secretKey?.includes(" ")) {
+      return (
+        <Tooltip
+          className="w-full max-w-72"
+          content={
+            <div>
+              Secret key contains whitespaces.
+              <br />
+              <br /> If this is the desired format, you need to provide it as{" "}
+              <code className="rounded-md bg-mineshaft-500 px-1 py-0.5">
+                {encodeURIComponent(secretKey.trim())}
+              </code>{" "}
+              when making API requests.
+            </div>
+          }
+        >
+          <FontAwesomeIcon
+            icon={faWarning}
+            className="absolute right-0 mr-3 text-yellow-600"
+          />
+        </Tooltip>
+      )
+    }
+
+    if (secretKey && !VALID_KEY_REGEX.test(secretKey)) {
+      return (
+        <Tooltip
+          className="w-full max-w-72"
+          content={
+            <div>
+              Secret key contains invalid characters.
+              <br />
+              <br />
+              Allowed characters:
+              <code className="rounded-md bg-mineshaft-500 px-1 py-0.5 ml-1">
+                A–Z a–z 0–9 . _ -
+              </code>
+              <br />
+            </div>
+          }>
+          <FontAwesomeIcon
+            icon={faWarning}
+            className="absolute right-0 mr-3 text-yellow-600"
+          />
+        </Tooltip>
+      )
+    }
+
+    return undefined;
+  }
+
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} noValidate>
       <FormControl
@@ -163,29 +216,7 @@ export const CreateSecretForm = ({
             // @ts-expect-error this is for multiple ref single component
             secretKeyInputRef.current = e;
           }}
-          warning={
-            secretKey?.includes(" ") ? (
-              <Tooltip
-                className="w-full max-w-72"
-                content={
-                  <div>
-                    Secret key contains whitespaces.
-                    <br />
-                    <br /> If this is the desired format, you need to provide it as{" "}
-                    <code className="rounded-md bg-mineshaft-500 px-1 py-0.5">
-                      {encodeURIComponent(secretKey.trim())}
-                    </code>{" "}
-                    when making API requests.
-                  </div>
-                }
-              >
-                <FontAwesomeIcon
-                  icon={faWarning}
-                  className="absolute right-0 mr-3 text-yellow-600"
-                />
-              </Tooltip>
-            ) : undefined
-          }
+          warning={getWarningTooltip(secretKey)}
           placeholder="Type your secret name"
           onPaste={handlePaste}
           autoCapitalization={autoCapitalize}
