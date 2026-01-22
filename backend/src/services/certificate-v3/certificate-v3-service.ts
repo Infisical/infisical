@@ -1081,7 +1081,7 @@ export const certificateV3ServiceFactory = ({
         altNames: subjectAlternativeNames,
         basicConstraints: caBasicConstraints,
         pathLength: certificateRequest.basicConstraints?.pathLength,
-        ttl: certificateRequest.validity.ttl,
+        ttl: certificateRequest.validity.ttl || (profile.defaultTtlDays ? `${profile.defaultTtlDays}d` : ""),
         keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || [],
         extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || [],
         notBefore: normalizeDateForApi(certificateRequest.notBefore),
@@ -1100,10 +1100,12 @@ export const certificateV3ServiceFactory = ({
       if (!certificateRecord) {
         throw new NotFoundError({ message: "Certificate was issued but could not be found in database" });
       }
+      const effectiveTtl =
+        certificateRequest.validity.ttl || (profile.defaultTtlDays ? `${profile.defaultTtlDays}d` : "");
 
       const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
         profile,
-        certificateRequest.validity.ttl,
+        effectiveTtl,
         new Date(certificateRecord.notAfter)
       );
 
@@ -1266,6 +1268,8 @@ export const certificateV3ServiceFactory = ({
     // Transform policy basicConstraints to the format expected by the CA service
     const caBasicConstraints = shouldIssueAsCA ? { maxPathLength: policy.basicConstraints?.maxPathLength } : undefined;
 
+    const effectiveTtl = validity.ttl || (profile.defaultTtlDays ? `${profile.defaultTtlDays}d` : "");
+
     const { certificate, certificateChain, issuingCaCertificate, serialNumber, cert, certificateRequestId } =
       await certificateDAL.transaction(async (tx) => {
         const certResult = await internalCaService.signCertFromCa({
@@ -1274,7 +1278,7 @@ export const certificateV3ServiceFactory = ({
           csr,
           basicConstraints: caBasicConstraints,
           pathLength: basicConstraints?.pathLength,
-          ttl: validity.ttl,
+          ttl: effectiveTtl,
           altNames: undefined,
           notBefore: normalizeDateForApi(notBefore),
           notAfter: normalizeDateForApi(notAfter),
@@ -1291,7 +1295,7 @@ export const certificateV3ServiceFactory = ({
 
         const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
           profile,
-          validity.ttl,
+          effectiveTtl,
           new Date(signedCertRecord.notAfter)
         );
 

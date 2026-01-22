@@ -822,9 +822,7 @@ export const pkiAcmeServiceFactory = ({
         notAfter: finalizingOrder.notAfter ? new Date(finalizingOrder.notAfter) : undefined,
         validity: !finalizingOrder.notAfter
           ? {
-              // 47 days, the default TTL comes with Let's Encrypt
-              // TODO: read config from the profile to get the expiration time instead
-              ttl: `${47}d`
+              ttl: profile.defaultTtlDays ? `${profile.defaultTtlDays}d` : "47d"
             }
           : // ttl is not used if notAfter is provided
             ({ ttl: "0d" } as const),
