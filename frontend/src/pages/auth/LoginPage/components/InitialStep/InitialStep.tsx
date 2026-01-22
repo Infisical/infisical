@@ -386,6 +386,7 @@ export const InitialStep = ({
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
                   className="cursor-pointer text-gray-400"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   <FontAwesomeIcon size="sm" icon={showPassword ? faEyeSlash : faEye} />
                 </button>
