@@ -114,7 +114,7 @@ export const ProjectTemplateUsersSection = ({ projectTemplate, isInfisicalTempla
   const availableRoles = useMemo(() => {
     const predefinedRoles = [
       { slug: "admin", name: "Admin" },
-      { slug: "member", name: "Member" },
+      { slug: "member", name: "Developer" },
       { slug: "viewer", name: "Viewer" },
       { slug: "no-access", name: "No Access" }
     ];
