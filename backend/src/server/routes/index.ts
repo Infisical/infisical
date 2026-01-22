@@ -192,6 +192,7 @@ import {
   approvalRequestStepEligibleApproversDALFactory,
   approvalRequestStepsDALFactory
 } from "@app/services/approval-policy/approval-request-dal";
+import { accountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { authDALFactory } from "@app/services/auth/auth-dal";
 import { authLoginServiceFactory } from "@app/services/auth/auth-login-service";
 import { authPaswordServiceFactory } from "@app/services/auth/auth-password-service";
@@ -955,7 +956,13 @@ export const registerRoutes = async (
     smtpService,
     authDAL,
     userDAL,
-    totpConfigDAL,
+    totpConfigDAL
+  });
+
+  const accountRecoveryService = accountRecoveryServiceFactory({
+    tokenService,
+    smtpService,
+    userDAL,
     membershipUserDAL
   });
 
@@ -2677,6 +2684,7 @@ export const registerRoutes = async (
   server.decorate<FastifyZodProvider["services"]>("services", {
     login: loginService,
     password: passwordService,
+    accountRecovery: accountRecoveryService,
     signup: signupService,
     user: userService,
     group: groupService,
