@@ -129,13 +129,11 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
           for (let i = 0; i < reminderScheduleDays.length; i += 1) {
             const currentSlotDays = reminderScheduleDays[i];
             const nextSlotDays = reminderScheduleDays[i + 1];
-            const previousSlotDays = i > 0 ? reminderScheduleDays[i - 1] : 0;
 
             const slotStartDate = new Date(now.getTime() - currentSlotDays * 24 * 60 * 60 * 1000);
             const slotEndDate = nextSlotDays
               ? new Date(now.getTime() - nextSlotDays * 24 * 60 * 60 * 1000)
-              : new Date(0);
-            const previousSlotDate = new Date(now.getTime() - previousSlotDays * 24 * 60 * 60 * 1000);
+              : slotStartDate;
 
             void qb.orWhere((qbInner) => {
               void qbInner.where(`${TableName.Membership}.createdAt`, "<=", slotStartDate);
@@ -143,9 +141,7 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
 
               void qbInner.andWhere((qbLastInvited) => {
                 void qbLastInvited.whereNull(`${TableName.Membership}.lastInvitedAt`);
-                if (previousSlotDays > 0) {
-                  void qbLastInvited.orWhere(`${TableName.Membership}.lastInvitedAt`, "<", previousSlotDate);
-                }
+                void qbLastInvited.orWhere(`${TableName.Membership}.lastInvitedAt`, "<", slotStartDate);
               });
             });
           }
