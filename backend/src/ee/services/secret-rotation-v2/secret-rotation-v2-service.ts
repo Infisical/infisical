@@ -1311,13 +1311,21 @@ export const secretRotationV2ServiceFactory = ({
               secretTags: (secret.tags as { slug: string; name: string; color: string }[]).map((i) => i.slug)
             }
           );
-
           return reshapeBridgeSecret(
             projectId,
             rotation.environment.slug,
             rotation.folder.path,
             {
               ...secret,
+              secretMetadata: (
+                secret as { secretMetadata: { key: string; value?: string; encryptedValue?: Buffer }[] }
+              ).secretMetadata?.map((el) => ({
+                isEncrypted: Boolean(el.encryptedValue),
+                key: el.key,
+                value: el.encryptedValue
+                  ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+                  : el.value || ""
+              })),
               value: secret.encryptedValue
                 ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
                 : "",

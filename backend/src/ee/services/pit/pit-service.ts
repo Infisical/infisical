@@ -4,6 +4,7 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType } from "@app/db/schemas";
 import { Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
@@ -755,7 +756,12 @@ export const pitServiceFactory = ({
               secretId: secret.id,
               secretKey: secret.secretKey,
               secretVersion: secret.version,
-              secretTags: secret.tags?.map((tag) => tag.name)
+              secretTags: secret.tags?.map((tag) => tag.name),
+              secretMetadata: secret.secretMetadata?.map((meta) => ({
+                key: meta.key,
+                isEncrypted: meta.isEncrypted,
+                value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value
+              }))
             }))
           }
         });
@@ -783,7 +789,12 @@ export const pitServiceFactory = ({
               secretId: secret.id,
               secretKey: secret.secretKey,
               secretVersion: secret.version,
-              secretTags: secret.tags?.map((tag) => tag.name)
+              secretTags: secret.tags?.map((tag) => tag.name),
+              secretMetadata: secret.secretMetadata?.map((meta) => ({
+                key: meta.key,
+                isEncrypted: meta.isEncrypted,
+                value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value
+              }))
             }))
           }
         });

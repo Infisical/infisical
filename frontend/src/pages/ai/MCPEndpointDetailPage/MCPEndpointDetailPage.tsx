@@ -29,6 +29,7 @@ import {
   MCPEndpointConnectedServersSection,
   MCPEndpointConnectionSection,
   MCPEndpointDetailsSection,
+  MCPEndpointFiltersSection,
   MCPEndpointToolSelectionSection
 } from "./components";
 
@@ -157,12 +158,13 @@ const PageContent = () => {
       </div>
 
       <div className="flex gap-6">
-        {/* Left Column - Details, Connection, Connected Servers */}
+        {/* Left Column - Details, Filters, Connection, Connected Servers */}
         <div className="flex w-96 flex-col gap-4">
           <MCPEndpointDetailsSection
             endpoint={mcpEndpoint}
             onEdit={() => setIsEditModalOpen(true)}
           />
+          <MCPEndpointFiltersSection endpoint={mcpEndpoint} />
           <MCPEndpointConnectionSection endpoint={mcpEndpoint} />
           <MCPEndpointConnectedServersSection
             endpointId={mcpEndpoint.id}

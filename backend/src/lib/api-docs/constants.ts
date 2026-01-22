@@ -866,7 +866,9 @@ export const PROJECTS = {
     secretSharing: "Enable or disable secret sharing for the project.",
     showSnapshotsLegacy: "Enable or disable legacy snapshots for the project.",
     defaultProduct: "The default product in which the project will open",
-    secretDetectionIgnoreValues: "The list of secret values to ignore for secret detection."
+    secretDetectionIgnoreValues: "The list of secret values to ignore for secret detection.",
+    enforceEncryptedSecretManagerSecretMetadata:
+      "Enable or disable enforcement of encrypted secret metadata for the project."
   },
   GET_KEY: {
     projectId: "The ID of the project to get the key from."
@@ -1164,7 +1166,7 @@ export const RAW_SECRETS = {
     includeImports: "Weather to include imported secrets or not.",
     tagSlugs: "The comma separated tag slugs to filter secrets.",
     metadataFilter:
-      "The secret metadata key-value pairs to filter secrets by. When querying for multiple metadata pairs, the query is treated as an AND operation. Secret metadata format is key=value1,value=value2|key=value3,value=value4."
+      "Unencrypted secret metadata key–value pairs used to filter secrets. Only metadata with unencrypted values is supported. When querying for multiple metadata pairs, the query is treated as an AND operation. Secret metadata format is key=value1,value=value2|key=value3,value=value4."
   },
   CREATE: {
     secretName: "The name of the secret to create.",
@@ -2326,14 +2328,17 @@ export const ProjectTemplates = {
     type: "The type of project template to be created.",
     description: "An optional description of the project template.",
     roles: "The roles to be created when the template is applied to a project.",
-    environments: "The environments to be created when the template is applied to a project."
+    environments: "The environments to be created when the template is applied to a project.",
+    users:
+      "The users to be automatically added to projects created from this template. Each user is identified by username and assigned one or more roles."
   },
   UPDATE: {
     templateId: "The ID of the project template to be updated.",
     name: "The updated name of the project template. Must be slug-friendly.",
     description: "The updated description of the project template.",
     roles: "The updated roles to be created when the template is applied to a project.",
-    environments: "The updated environments to be created when the template is applied to a project."
+    environments: "The updated environments to be created when the template is applied to a project.",
+    users: "The updated users to be automatically added to projects created from this template."
   },
   DELETE: {
     templateId: "The ID of the project template to be deleted."

@@ -11,7 +11,9 @@ export type TUpdateAiMcpEndpointDTO = {
   name?: string;
   description?: string;
   serverIds?: string[];
-  piiFiltering?: boolean;
+  piiRequestFiltering?: boolean;
+  piiResponseFiltering?: boolean;
+  piiEntityTypes?: string[];
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteAiMcpEndpointDTO = {
@@ -34,7 +36,9 @@ export type TAiMcpEndpointWithServers = {
   name: string;
   description?: string | null;
   status?: string | null;
-  piiFiltering?: boolean;
+  piiRequestFiltering?: boolean;
+  piiResponseFiltering?: boolean;
+  piiEntityTypes?: string[] | null;
   projectId: string;
   createdAt: Date;
   updatedAt: Date;

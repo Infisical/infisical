@@ -51,7 +51,7 @@ const executeTransactions = async (connection: Redis, commands: string[]): Promi
 export const RedisDatabaseProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretRedisDBSchema.parseAsync(inputs);
-    const [hostIp] = await verifyHostInputValidity(providerInputs.host);
+    const [hostIp] = await verifyHostInputValidity({ host: providerInputs.host, isDynamicSecret: true });
     validateHandlebarTemplate("Redis creation", providerInputs.creationStatement, {
       allowedExpressions: (val) => ["username", "password", "expiration"].includes(val)
     });

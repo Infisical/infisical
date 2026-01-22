@@ -433,6 +433,10 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .describe(PROJECTS.UPDATE.projectDescription),
         autoCapitalization: z.boolean().optional().describe(PROJECTS.UPDATE.autoCapitalization),
         hasDeleteProtection: z.boolean().optional().describe(PROJECTS.UPDATE.hasDeleteProtection),
+        enforceEncryptedSecretManagerSecretMetadata: z
+          .boolean()
+          .optional()
+          .describe(PROJECTS.UPDATE.enforceEncryptedSecretManagerSecretMetadata),
         slug: z
           .string()
           .trim()
@@ -473,7 +477,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           secretSharing: req.body.secretSharing,
           showSnapshotsLegacy: req.body.showSnapshotsLegacy,
           secretDetectionIgnoreValues: req.body.secretDetectionIgnoreValues,
-          pitVersionLimit: req.body.pitVersionLimit
+          pitVersionLimit: req.body.pitVersionLimit,
+          enforceEncryptedSecretManagerSecretMetadata: req.body.enforceEncryptedSecretManagerSecretMetadata
         },
         actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,

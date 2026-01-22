@@ -13,6 +13,7 @@ import {
   TSecretApprovalRequestsSecretsV2Insert
 } from "@app/db/schemas";
 import { Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -34,7 +35,6 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
-import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import {
   decryptSecretWithBot,
@@ -317,7 +317,15 @@ export const secretApprovalRequestServiceFactory = ({
         secretKey: el.key,
         id: el.id,
         version: el.version,
-        secretMetadata: el.secretMetadata as ResourceMetadataDTO,
+        secretMetadata: (
+          el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[]
+        ).map((meta) => ({
+          key: meta.key,
+          isEncrypted: Boolean(meta.encryptedValue),
+          value: meta.encryptedValue
+            ? secretManagerDecryptor({ cipherTextBlob: Buffer.from(meta.encryptedValue, "base64") }).toString()
+            : meta.value || ""
+        })),
         isRotatedSecret: el.secret?.isRotatedSecret ?? false,
         secretValueHidden: !getHasSecretReadAccess(secretApprovalRequest.environment, el.tags, secretPath?.[0]?.path),
         secretValue: !getHasSecretReadAccess(secretApprovalRequest.environment, el.tags, secretPath?.[0]?.path)
@@ -374,7 +382,13 @@ export const secretApprovalRequestServiceFactory = ({
                 ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedComment }).toString()
                 : "",
               tags: el.secretVersion.tags,
-              secretMetadata: el.oldSecretMetadata as ResourceMetadataDTO,
+              secretMetadata: el.oldSecretMetadata.map((meta) => ({
+                key: meta.key,
+                isEncrypted: Boolean(meta.encryptedValue),
+                value: meta.encryptedValue
+                  ? secretManagerDecryptor({ cipherTextBlob: Buffer.from(meta.encryptedValue) }).toString()
+                  : meta.value || ""
+              })),
               skipMultilineEncoding: el.secretVersion.skipMultilineEncoding
             }
           : undefined
@@ -680,7 +694,14 @@ export const secretApprovalRequestServiceFactory = ({
                 encryptedValue: el.encryptedValue,
                 skipMultilineEncoding: el.skipMultilineEncoding,
                 key: el.key,
-                secretMetadata: el.secretMetadata as ResourceMetadataDTO,
+                secretMetadata: (
+                  el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[]
+                ).map((meta) => ({
+                  key: meta.key,
+                  [meta.encryptedValue ? "encryptedValue" : "value"]: meta.encryptedValue
+                    ? Buffer.from(meta.encryptedValue, "base64")
+                    : meta.value || ""
+                })),
                 references: el.encryptedValue
                   ? getAllSecretReferencesV2Bridge(
                       secretManagerDecryptor({
@@ -730,7 +751,14 @@ export const secretApprovalRequestServiceFactory = ({
                     skipMultilineEncoding: el.skipMultilineEncoding !== null ? el.skipMultilineEncoding : undefined,
                     key: el.key,
                     tags: el?.tags.map(({ id }) => id),
-                    secretMetadata: el.secretMetadata as ResourceMetadataDTO,
+                    secretMetadata: (
+                      el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[]
+                    ).map((meta) => ({
+                      key: meta.key,
+                      [meta.encryptedValue ? "encryptedValue" : "value"]: meta.encryptedValue
+                        ? Buffer.from(meta.encryptedValue, "base64")
+                        : meta.value || ""
+                    })),
                     ...encryptedValue
                   }
                 };
@@ -1060,7 +1088,13 @@ export const secretApprovalRequestServiceFactory = ({
               // @ts-expect-error not present on v1 secrets
               secretKey: secret.key as string,
               // @ts-expect-error not present on v1 secrets
-              secretMetadata: secret.secretMetadata as ResourceMetadataDTO,
+              secretMetadata: (secret.secretMetadata as { key: string; encryptedValue: string; value: string }[])?.map(
+                (meta) => ({
+                  key: meta.key,
+                  isEncrypted: Boolean(meta.encryptedValue),
+                  value: meta.encryptedValue ? AUDIT_LOG_SENSITIVE_VALUE : meta.value || ""
+                })
+              ),
               // @ts-expect-error not present on v1 secrets
               secretTags: (secret.tags as { name: string }[])?.map((tag) => tag.name)
             }))
@@ -1078,7 +1112,13 @@ export const secretApprovalRequestServiceFactory = ({
             // @ts-expect-error not present on v1 secrets
             secretKey: secret.key as string,
             // @ts-expect-error not present on v1 secrets
-            secretMetadata: secret.secretMetadata as ResourceMetadataDTO,
+            secretMetadata: (secret.secretMetadata as { key: string; encryptedValue: string; value: string }[])?.map(
+              (meta) => ({
+                key: meta.key,
+                isEncrypted: Boolean(meta.encryptedValue),
+                value: meta.encryptedValue ? AUDIT_LOG_SENSITIVE_VALUE : meta.value || ""
+              })
+            ),
             // @ts-expect-error not present on v1 secrets
             secretTags: (secret.tags as { name: string }[])?.map((tag) => tag.name)
           }
@@ -1099,7 +1139,13 @@ export const secretApprovalRequestServiceFactory = ({
               // @ts-expect-error not present on v1 secrets
               secretKey: secret.key as string,
               // @ts-expect-error not present on v1 secrets
-              secretMetadata: secret.secretMetadata as ResourceMetadataDTO,
+              secretMetadata: (secret.secretMetadata as { key: string; encryptedValue: string; value: string }[])?.map(
+                (meta) => ({
+                  key: meta.key,
+                  isEncrypted: Boolean(meta.encryptedValue),
+                  value: meta.encryptedValue ? AUDIT_LOG_SENSITIVE_VALUE : meta.value || ""
+                })
+              ),
               // @ts-expect-error not present on v1 secrets
               secretTags: (secret.tags as { name: string }[])?.map((tag) => tag.name)
             }))
@@ -1117,7 +1163,13 @@ export const secretApprovalRequestServiceFactory = ({
             // @ts-expect-error not present on v1 secrets
             secretKey: secret.key as string,
             // @ts-expect-error not present on v1 secrets
-            secretMetadata: secret.secretMetadata as ResourceMetadataDTO,
+            secretMetadata: (secret.secretMetadata as { key: string; encryptedValue: string; value: string }[])?.map(
+              (meta) => ({
+                key: meta.key,
+                isEncrypted: Boolean(meta.encryptedValue),
+                value: meta.encryptedValue ? AUDIT_LOG_SENSITIVE_VALUE : meta.value || ""
+              })
+            ),
             // @ts-expect-error not present on v1 secrets
             secretTags: (secret.tags as { name: string }[])?.map((tag) => tag.name)
           }
@@ -1473,7 +1525,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (actor === ActorType.SERVICE || actor === ActorType.IDENTITY)
       throw new BadRequestError({ message: "Cannot use service token or machine token over protected branches" });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -1488,6 +1540,22 @@ export const secretApprovalRequestServiceFactory = ({
         name: "GenSecretApproval"
       });
     const folderId = folder.id;
+
+    if (hasProjectEnforcement("enforceEncryptedSecretManagerSecretMetadata")) {
+      const hasMissingEncryptedMetadataInCreate = data[SecretOperations.Create]?.some((secret) =>
+        secret.secretMetadata?.some((meta) => !meta.isEncrypted)
+      );
+      const hasMissingEncryptedMetadataInUpdate = data[SecretOperations.Update]?.some((secret) =>
+        secret.secretMetadata?.some((meta) => !meta.isEncrypted)
+      );
+
+      if (hasMissingEncryptedMetadataInCreate || hasMissingEncryptedMetadataInUpdate) {
+        throw new BadRequestError({
+          message:
+            "One or more secrets has non-encrypted metadata values. Project requires all metadata to be encrypted."
+        });
+      }
+    }
 
     const commits: Omit<TSecretApprovalRequestsSecretsV2Insert, "requestId">[] = [];
     const commitTagIds: Record<string, string[]> = {};
@@ -1539,7 +1607,14 @@ export const secretApprovalRequestServiceFactory = ({
           ),
           skipMultilineEncoding: createdSecret.skipMultilineEncoding,
           key: createdSecret.secretKey,
-          secretMetadata: createdSecret.secretMetadata,
+          secretMetadata: JSON.stringify(
+            (createdSecret.secretMetadata || [])?.map((meta) => ({
+              key: meta.key,
+              [meta.isEncrypted ? "encryptedValue" : "value"]: meta.isEncrypted
+                ? secretManagerEncryptor({ plainText: Buffer.from(meta.value) }).cipherTextBlob.toString("base64")
+                : meta.value
+            }))
+          ),
           type: SecretType.Shared
         }))
       );
@@ -1611,7 +1686,14 @@ export const secretApprovalRequestServiceFactory = ({
 
             return {
               ...latestSecretVersions[secretId],
-              secretMetadata,
+              secretMetadata: JSON.stringify(
+                (secretMetadata || [])?.map((meta) => ({
+                  key: meta.key,
+                  [meta.isEncrypted ? "encryptedValue" : "value"]: meta.isEncrypted
+                    ? secretManagerEncryptor({ plainText: Buffer.from(meta.value) }).cipherTextBlob.toString("base64")
+                    : meta.value
+                }))
+              ),
               key: newSecretName || secretKey,
               encryptedComment: setKnexStringValue(
                 secretComment,
@@ -1761,7 +1843,7 @@ export const secretApprovalRequestServiceFactory = ({
             reminderNote,
             encryptedComment,
             key,
-            secretMetadata: JSON.stringify(secretMetadata)
+            secretMetadata
           })
         ),
         tx

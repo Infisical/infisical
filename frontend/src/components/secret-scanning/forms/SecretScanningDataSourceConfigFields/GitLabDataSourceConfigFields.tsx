@@ -190,13 +190,13 @@ export const GitLabDataSourceConfigFields = () => {
                     const group = newValue as SingleValue<TGitLabGroup>;
 
                     onChange(group ? Number.parseInt(group.id, 10) : null);
-                    setValue("config.groupName", group?.name ?? "");
+                    setValue("config.groupName", group?.fullName ?? "");
                     setValue("config.includeProjects", ["*"]);
                   }}
                   options={groups}
                   placeholder="Select group..."
-                  getOptionLabel={(option) => option.name}
-                  getOptionValue={(option) => option.name}
+                  getOptionLabel={(option) => option.fullName}
+                  getOptionValue={(option) => option.id}
                 />
               </FormControl>
             )}

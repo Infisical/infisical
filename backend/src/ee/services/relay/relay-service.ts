@@ -901,7 +901,10 @@ export const relayServiceFactory = ({
       });
     }
 
-    await verifyHostInputValidity(relay.host);
+    await verifyHostInputValidity({
+      host: relay.host,
+      isDynamicSecret: false
+    });
 
     if (relay.orgId === null) {
       const instanceCAs = await $getInstanceCAs();
@@ -958,7 +961,10 @@ export const relayServiceFactory = ({
     let relay: TRelays;
     const isOrgRelay = identityId && orgId;
 
-    await verifyHostInputValidity(host);
+    await verifyHostInputValidity({
+      host,
+      isDynamicSecret: false
+    });
 
     if (isOrgRelay) {
       const { permission } = await permissionService.getOrgPermission({

@@ -26,12 +26,12 @@ import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { globalRateLimiterCfg } from "./config/rateLimiter";
-import { addErrorsToResponseSchemas } from "./plugins/add-errors-to-response-schemas";
 import { apiMetrics } from "./plugins/api-metrics";
 import { fastifyErrHandler } from "./plugins/error-handler";
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "./plugins/fastify-zod";
 import { fastifyIp } from "./plugins/ip";
 import { maintenanceMode } from "./plugins/maintenanceMode";
+import { registerResponseSchemaHooks } from "./plugins/response-schema-hooks";
 import { registerServeUI } from "./plugins/serve-ui";
 import { fastifySwagger } from "./plugins/swagger";
 import { registerRoutes } from "./routes";
@@ -135,7 +135,7 @@ export const main = async ({
         }
     );
 
-    await server.register(addErrorsToResponseSchemas);
+    await server.register(registerResponseSchemaHooks);
     // pull ip based on various proxy headers
     await server.register(fastifyIp);
 

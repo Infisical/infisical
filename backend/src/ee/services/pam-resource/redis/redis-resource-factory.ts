@@ -151,7 +151,11 @@ export const executeWithGateway = async <T>(
   operation: (connection: RedisResourceConnection) => Promise<T>
 ): Promise<T> => {
   const { connectionDetails, gatewayId } = config;
-  const [targetHost] = await verifyHostInputValidity(connectionDetails.host, true);
+  const [targetHost] = await verifyHostInputValidity({
+    host: connectionDetails.host,
+    isGateway: true,
+    isDynamicSecret: false
+  });
   const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
     gatewayId,
     targetHost,

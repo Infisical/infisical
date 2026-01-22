@@ -22,6 +22,7 @@ export const getDefaultProjectTemplate = (orgId: string, type: ProjectType) => (
       permissions: permissions as TUnpackedPermission[]
     })
   ),
+  users: null,
   orgId
 });
 

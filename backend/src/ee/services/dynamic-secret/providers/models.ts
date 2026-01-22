@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { TDynamicSecrets } from "@app/db/schemas";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
-import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
+import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 import {
   ActorIdentityAttributes,
@@ -221,7 +221,7 @@ export const DynamicSecretAwsIamSchema = z.preprocess(
       policyDocument: z.string().trim().optional(),
       userGroups: z.string().trim().optional(),
       policyArns: z.string().trim().optional(),
-      tags: ResourceMetadataSchema.optional()
+      tags: ResourceMetadataNonEncryptionSchema.optional()
     }),
     z.object({
       method: z.literal(AwsIamAuthType.AssumeRole),
@@ -233,7 +233,7 @@ export const DynamicSecretAwsIamSchema = z.preprocess(
       policyDocument: z.string().trim().optional(),
       userGroups: z.string().trim().optional(),
       policyArns: z.string().trim().optional(),
-      tags: ResourceMetadataSchema.optional()
+      tags: ResourceMetadataNonEncryptionSchema.optional()
     }),
     z.object({
       method: z.literal(AwsIamAuthType.IRSA),
@@ -244,7 +244,7 @@ export const DynamicSecretAwsIamSchema = z.preprocess(
       policyDocument: z.string().trim().optional(),
       userGroups: z.string().trim().optional(),
       policyArns: z.string().trim().optional(),
-      tags: ResourceMetadataSchema.optional()
+      tags: ResourceMetadataNonEncryptionSchema.optional()
     })
   ])
 );

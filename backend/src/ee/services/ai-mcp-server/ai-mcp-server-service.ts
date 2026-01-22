@@ -214,7 +214,7 @@ export const aiMcpServerServiceFactory = ({
     let resourceMetadataUrl: string | null = null;
 
     const url = new URL(mcpUrl);
-    await verifyHostInputValidity(url.hostname, true);
+    await verifyHostInputValidity({ host: url.hostname, isGateway: true, isDynamicSecret: false });
 
     // 1. Try to access the MCP server to get WWW-Authenticate header
     try {
@@ -355,7 +355,7 @@ export const aiMcpServerServiceFactory = ({
     }
 
     const urlObj = new URL(url);
-    await verifyHostInputValidity(urlObj.hostname, true);
+    await verifyHostInputValidity({ host: urlObj.hostname, isGateway: true, isDynamicSecret: false });
 
     // 1. Discover OAuth metadata following RFC 9728 flow
     const { protectedResource, authServer } = await discoverOAuthMetadata(url);
