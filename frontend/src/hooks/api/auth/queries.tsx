@@ -29,7 +29,6 @@ import {
   SetupPasswordDTO,
   TOauthTokenExchangeDTO,
   UserAgentType,
-  UserEncryptionVersion,
   VerifyMfaTokenDTO,
   VerifyMfaTokenRes,
   VerifySignupInviteDTO
@@ -214,34 +213,6 @@ export const useVerifySignupEmailVerificationCode = () => {
   return useMutation({
     mutationFn: async ({ email, code }: { email: string; code: string }) => {
       const { data } = await apiRequest.post("/api/v3/signup/email/verify", {
-        email,
-        code
-      });
-
-      return data;
-    }
-  });
-};
-
-export const useSendPasswordResetEmail = () => {
-  return useMutation({
-    mutationFn: async ({ email }: { email: string }) => {
-      const { data } = await apiRequest.post("/api/v1/password/email/password-reset", {
-        email
-      });
-
-      return data;
-    }
-  });
-};
-
-export const useVerifyPasswordResetCode = () => {
-  return useMutation({
-    mutationFn: async ({ email, code }: { email: string; code: string }) => {
-      const { data } = await apiRequest.post<{
-        token: string;
-        userEncryptionVersion: UserEncryptionVersion;
-      }>("/api/v1/password/email/password-reset-verify", {
         email,
         code
       });

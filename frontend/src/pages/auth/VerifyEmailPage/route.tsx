@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { VerifyEmailPage } from "./VerifyEmailPage";
+import { AccountRecoveryPage } from "./AccountRecoveryPage";
 
 export const Route = createFileRoute("/_restrict-login-signup/verify-email")({
-  component: VerifyEmailPage
+  component: AccountRecoveryPage
 });
