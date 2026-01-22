@@ -117,9 +117,8 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
   const findRecentInvitedMemberships = async () => {
     try {
       const now = new Date();
-      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      const twelveMonthsAgo = new Date(now.getTime() - 360 * 24 * 60 * 60 * 1000);
+
+      const reminderScheduleDays = [1, 3, 7, 14, 21, 30];
 
       const memberships = await db
         .replicaNode()(TableName.Membership)
@@ -127,16 +126,29 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
         .whereNotNull(`${TableName.Membership}.actorUserId`)
         .where("status", "invited")
         .where((qb) => {
-          // lastInvitedAt is null AND createdAt is between 1 week and 12 months ago
-          void qb
-            .whereNull(`${TableName.Membership}.lastInvitedAt`)
-            .whereBetween(`${TableName.Membership}.createdAt`, [twelveMonthsAgo, oneWeekAgo]);
-          // lastInvitedAt is older than 1 week ago AND createdAt is younger than 1 month ago
-          void qb.orWhere((qbInner) => {
-            void qbInner
-              .where(`${TableName.Membership}.lastInvitedAt`, "<", oneWeekAgo)
-              .where(`${TableName.Membership}.createdAt`, ">", oneMonthAgo);
-          });
+          for (let i = 0; i < reminderScheduleDays.length; i += 1) {
+            const currentSlotDays = reminderScheduleDays[i];
+            const nextSlotDays = reminderScheduleDays[i + 1];
+            const previousSlotDays = i > 0 ? reminderScheduleDays[i - 1] : 0;
+
+            const slotStartDate = new Date(now.getTime() - currentSlotDays * 24 * 60 * 60 * 1000);
+            const slotEndDate = nextSlotDays
+              ? new Date(now.getTime() - nextSlotDays * 24 * 60 * 60 * 1000)
+              : new Date(0);
+            const previousSlotDate = new Date(now.getTime() - previousSlotDays * 24 * 60 * 60 * 1000);
+
+            void qb.orWhere((qbInner) => {
+              void qbInner.where(`${TableName.Membership}.createdAt`, "<=", slotStartDate);
+              void qbInner.where(`${TableName.Membership}.createdAt`, ">", slotEndDate);
+
+              void qbInner.andWhere((qbLastInvited) => {
+                void qbLastInvited.whereNull(`${TableName.Membership}.lastInvitedAt`);
+                if (previousSlotDays > 0) {
+                  void qbLastInvited.orWhere(`${TableName.Membership}.lastInvitedAt`, "<", previousSlotDate);
+                }
+              });
+            });
+          }
         });
 
       return memberships;
