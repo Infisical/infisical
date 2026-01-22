@@ -1015,7 +1015,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
             </div>
 
             {watch("defaultTtl")?.unit !== undefined && (
-              <div className="grid grid-cols-2 gap-4 pl-6">
+            <div className="ml-3 border-l-2 border-mineshaft-500 pl-4">
+              <div className="grid grid-cols-2 gap-4">
                 <Controller
                   control={control}
                   name="defaultTtl.value"
@@ -1058,6 +1059,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                   )}
                 />
               </div>
+            </div>
             )}
           </div>
 
