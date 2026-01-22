@@ -930,8 +930,10 @@ export const authLoginServiceFactory = ({
               // Mark that an unlock email was sent, expires after 5 minutes
               await keyStore.setItemWithExpiry(KeyStorePrefixes.UserMfaUnlockEmailSent(userId), 300, "1");
             }
-          } catch {
-            // This is expected when another request is handling the email. The acquireLock will fail.
+          } catch (lockErr) {
+            if (lock) {
+              logger.error(lockErr, "Failed to send unlock email");
+            }
           } finally {
             if (lock) {
               await lock.release();
