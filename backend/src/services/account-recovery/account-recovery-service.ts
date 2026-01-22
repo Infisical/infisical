@@ -40,6 +40,12 @@ export const accountRecoveryServiceFactory = ({
         const cfg = getConfig();
 
         const hasEmailAuth = user.authMethods?.includes(AuthMethod.EMAIL);
+        const substitutions: Record<string, unknown> = {
+          email,
+          isCloud: cfg.isCloud,
+          siteUrl: cfg.SITE_URL || "",
+          hasEmailAuth
+        };
 
         if (!hasEmailAuth) {
           const orgMemberships = await membershipUserDAL.find({
@@ -51,41 +57,26 @@ export const accountRecoveryServiceFactory = ({
               .filter((membership) => membership.lastLoginAuthMethod)
               .sort((a, b) => (b.updatedAt || new Date(0)).getTime() - (a.updatedAt || new Date(0)).getTime())[0]
               ?.lastLoginAuthMethod || null;
-          const substitutions = {
-            email,
-            lastLoginMethod,
-            isCloud: cfg.isCloud,
-            siteUrl: cfg.SITE_URL || ""
-          };
-
-          await smtpService.sendMail({
-            template: SmtpTemplates.OAuthPasswordReset,
-            recipients: [email],
-            subjectLine: "Password reset not available",
-            substitutions
-          });
-        } else {
-          const token = await tokenService.createTokenForUser({
-            type: TokenType.TOKEN_EMAIL_PASSWORD_RESET,
-            userId: user.id
-          });
-
-          await smtpService.sendMail({
-            template: SmtpTemplates.ResetPassword,
-            recipients: [email],
-            subjectLine: "Infisical password reset",
-            substitutions: {
-              email,
-              token,
-              callback_url: cfg.SITE_URL ? `${cfg.SITE_URL}/password-reset` : ""
-            }
-          });
+          substitutions.lastLoginMethod = lastLoginMethod;
         }
+
+        const token = await tokenService.createTokenForUser({
+          type: TokenType.TOKEN_EMAIL_PASSWORD_RESET,
+          userId: user.id
+        });
+
+        substitutions.token = token;
+        await smtpService.sendMail({
+          template: SmtpTemplates.ResetPassword,
+          recipients: [email],
+          subjectLine: "Infisical account recovery",
+          substitutions
+        });
       }
     };
 
     // note(daniel): run in background to prevent timing attacks
-    void sendEmail().catch((err) => logger.error(err, "Failed to send password reset email"));
+    void sendEmail().catch((err) => logger.error(err, "Failed to send account recovery email"));
   };
 
   /*

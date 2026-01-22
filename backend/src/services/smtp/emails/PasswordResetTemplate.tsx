@@ -10,20 +10,58 @@ interface PasswordResetTemplateProps extends Omit<BaseEmailWrapperProps, "title"
   callback_url: string;
   token: string;
   isCloud: boolean;
+  lastLoginMethod?: string | null;
+  hasEmailAuth?: boolean;
 }
 
-export const PasswordResetTemplate = ({ email, isCloud, siteUrl, callback_url, token }: PasswordResetTemplateProps) => {
+export const PasswordResetTemplate = ({
+  email,
+  isCloud,
+  siteUrl,
+  callback_url,
+  token,
+  lastLoginMethod,
+  hasEmailAuth
+}: PasswordResetTemplateProps) => {
+  const getAuthMethodDisplayName = (method: string) => {
+    return method
+      .split("-")
+      .map((word) => {
+        const upperWord = word.toUpperCase();
+        if (["SAML", "LDAP", "OIDC", "SSO"].includes(upperWord)) {
+          return upperWord;
+        }
+        return word.charAt(0).toUpperCase() + word.slice(1);
+      })
+      .join(" ");
+  };
+
+  const getAuthMethodMessage = () => {
+    if (hasEmailAuth) {
+      return "";
+    }
+
+    if (lastLoginMethod) {
+      const displayName = getAuthMethodDisplayName(lastLoginMethod);
+      return `Our records indicate your last login was via ${displayName}. If you have lost access to this authentication method, you may proceed with account recovery below.`;
+    }
+    return "Our records indicate your last login was via a non-email authentication method (e.g., SSO, SAML, OIDC, or LDAP). If you have lost access to this authentication method, you may proceed with account recovery below.";
+  };
+
+  const authMethodMessage = getAuthMethodMessage();
+
   return (
     <BaseEmailWrapper
       title="Account Recovery"
-      preview="A password reset was requested for your Infisical account."
+      preview="A request was made to recover access to your Infisical account."
       siteUrl={siteUrl}
     >
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
         <strong>Account Recovery</strong>
       </Heading>
       <Section className="px-[24px] mb-[28px] mt-[36px] pt-[12px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
-        <Text className="text-[14px]">A password reset was requested for your Infisical account.</Text>
+        <Text className="text-[14px]">A request was made to recover access to your Infisical account.</Text>
+        {authMethodMessage && <Text className="text-[14px]">{authMethodMessage}</Text>}
         <Text className="text-[14px]">
           If you did not initiate this request, please contact{" "}
           {isCloud ? (
@@ -37,7 +75,7 @@ export const PasswordResetTemplate = ({ email, isCloud, siteUrl, callback_url, t
         </Text>
       </Section>
       <Section className="text-center">
-        <BaseButton href={`${callback_url}?token=${token}&to=${encodeURIComponent(email)}`}>Reset Password</BaseButton>
+        <BaseButton href={`${callback_url}?token=${token}&to=${encodeURIComponent(email)}`}>Restore Access</BaseButton>
       </Section>
     </BaseEmailWrapper>
   );
@@ -50,5 +88,7 @@ PasswordResetTemplate.PreviewProps = {
   callback_url: "https://app.infisical.com",
   isCloud: true,
   token: "preview-token",
-  siteUrl: "https://infisical.com"
+  siteUrl: "https://infisical.com",
+  lastLoginMethod: "",
+  hasEmailAuth: true
 } as PasswordResetTemplateProps;
