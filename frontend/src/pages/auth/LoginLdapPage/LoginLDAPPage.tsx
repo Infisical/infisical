@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
@@ -21,6 +23,7 @@ export const LoginLdapPage = () => {
   );
   const [username, setUsername] = useState(passedUsername || "");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmission = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,12 +126,28 @@ export const LoginLdapPage = () => {
               <Input
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="Enter your LDAP password..."
                 isRequired
                 autoComplete="current-password"
                 id="current-password"
                 className="select:-webkit-autofill:focus h-10"
+                rightIcon={
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowPassword((prev) => !prev);
+                    }}
+                    className="cursor-pointer self-end text-gray-400"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? (
+                      <FontAwesomeIcon size="sm" icon={faEyeSlash} />
+                    ) : (
+                      <FontAwesomeIcon size="sm" icon={faEye} />
+                    )}
+                  </button>
+                }
               />
             </div>
           </div>

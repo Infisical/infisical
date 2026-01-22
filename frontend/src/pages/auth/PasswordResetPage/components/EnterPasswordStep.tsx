@@ -1,7 +1,8 @@
 import crypto from "crypto";
 
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faEye, faEyeSlash, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearch } from "@tanstack/react-router";
@@ -44,6 +45,7 @@ export const EnterPasswordStep = ({
 }: Props) => {
   const search = useSearch({ from: ROUTE_PATHS.Auth.PasswordResetPage.id });
   const { to: email } = search;
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     control,
@@ -194,7 +196,23 @@ export const EnterPasswordStep = ({
                   field.onChange(e);
                   handlePasswordCheck(e.target.value);
                 }}
-                type="password"
+                type={showPassword ? "text" : "password"}
+                rightIcon={
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowPassword((prev) => !prev);
+                    }}
+                    className="cursor-pointer self-end text-gray-400"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? (
+                      <FontAwesomeIcon size="sm" icon={faEyeSlash} />
+                    ) : (
+                      <FontAwesomeIcon size="sm" icon={faEye} />
+                    )}
+                  </button>
+                }
               />
             </FormControl>
           )}
