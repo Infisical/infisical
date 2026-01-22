@@ -14,3 +14,13 @@ With the Public API, you can create, read, update, and delete secrets, as well a
 The API is versioned on a per-resource basis. A resource's version is only incremented for breaking changes, so different endpoints may have different version numbers (e.g., `/api/v4/secrets` vs. `/api/v1/secret-syncs`).
 
 As a best practice, always use the latest available version for each endpoint to ensure access to the most recent features and improvements.
+
+## Rate Limits
+
+Infisical enforces three different types of rate limits:
+
+- **Read**: For GET and LIST operations.
+- **Write**: For CREATE, UPDATE, and DELETE operations.
+- **Secret**: Specifically for secret management operations such as getting and creating secrets.
+
+By default, the rate limits are 300 for read and secret operations, and 200 for write operations. Enterprise users get custom rate limits.
