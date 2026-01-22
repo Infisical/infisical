@@ -43,6 +43,7 @@ export type Project = {
   secretSharing: boolean;
   showSnapshotsLegacy: boolean;
   secretDetectionIgnoreValues: string[];
+  enforceEncryptedSecretManagerSecretMetadata: boolean;
 };
 
 export type ProjectEnv = {
@@ -88,6 +89,7 @@ export type UpdateProjectDTO = {
   pitVersionLimit?: number;
   autoCapitalization?: boolean;
   hasDeleteProtection?: boolean;
+  enforceEncryptedSecretManagerSecretMetadata?: boolean;
 };
 
 export type UpdatePitVersionLimitDTO = { projectSlug: string; pitVersionLimit: number };

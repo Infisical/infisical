@@ -5,19 +5,22 @@
 
 import { z } from "zod";
 
+import { zodBuffer } from "@app/lib/zod";
+
 import { TImmutableDBKeys } from "./models";
 
 export const ResourceMetadataSchema = z.object({
   id: z.string().uuid(),
   key: z.string(),
-  value: z.string(),
+  value: z.string().nullable().optional(),
   orgId: z.string().uuid(),
   userId: z.string().uuid().nullable().optional(),
   identityId: z.string().uuid().nullable().optional(),
   secretId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  dynamicSecretId: z.string().uuid().nullable().optional()
+  dynamicSecretId: z.string().uuid().nullable().optional(),
+  encryptedValue: zodBuffer.nullable().optional()
 });
 
 export type TResourceMetadata = z.infer<typeof ResourceMetadataSchema>;

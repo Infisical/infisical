@@ -689,7 +689,8 @@ export const projectServiceFactory = ({
         defaultProduct: update.defaultProduct,
         showSnapshotsLegacy: update.showSnapshotsLegacy,
         secretDetectionIgnoreValues: update.secretDetectionIgnoreValues,
-        pitVersionLimit: update.pitVersionLimit
+        pitVersionLimit: update.pitVersionLimit,
+        enforceEncryptedSecretManagerSecretMetadata: update.enforceEncryptedSecretManagerSecretMetadata
       });
 
       return updatedProject;

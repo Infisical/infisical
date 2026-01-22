@@ -38,8 +38,8 @@ export type SecretV3RawSanitized = {
   idOverride?: string;
   overrideAction?: string;
   folderId?: string;
-  skipMultilineEncoding?: boolean;
-  secretMetadata?: { key: string; value: string }[];
+  skipMultilineEncoding?: boolean | null;
+  secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
   isReminderEvent?: boolean;
   isRotatedSecret?: boolean;
   secretReminderRecipients?: SecretReminderRecipient[];
@@ -160,7 +160,7 @@ export type TCreateSecretsV3DTO = {
   secretKey: string;
   secretValue: string;
   secretComment: string;
-  skipMultilineEncoding?: boolean;
+  skipMultilineEncoding?: boolean | null;
   secretPath: string;
   projectId: string;
   environment: string;
@@ -173,7 +173,7 @@ export type TUpdateSecretsV3DTO = {
   environment: string;
   secretPath: string;
   type: SecretType;
-  skipMultilineEncoding?: boolean;
+  skipMultilineEncoding?: boolean | null;
   newSecretName?: string;
   secretKey: string;
   secretValue?: string;
