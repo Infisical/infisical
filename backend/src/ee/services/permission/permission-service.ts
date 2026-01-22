@@ -587,15 +587,18 @@ export const permissionServiceFactory = ({
         })
       : [];
     if (customRoles.length !== customRoleDetails.length) {
-      const missingRoles = customRoles.filter((role) => !customRoleDetails.find((el) => el.slug === role));
+      const customRoleDetailsSlugs = new Set(customRoleDetails.map((el) => el.slug));
+      const missingRoles = customRoles.filter((role) => !customRoleDetailsSlugs.has(role));
       throw new NotFoundError({
         message: `Specified roles '${missingRoles.join(",")}' was not found in the organization with ID '${orgId}'`
       });
     }
 
+    const customRoleDetailsBySlug = new Map(customRoleDetails.map((el) => [el.slug, el]));
+
     return formattedRoles.map((el) => {
       if (el.isCustom) {
-        const roleDetails = customRoleDetails.find((role) => role.slug === el.name);
+        const roleDetails = customRoleDetailsBySlug.get(el.name);
         return {
           permission: createMongoAbility<OrgPermissionSet>(
             buildOrgPermissionRules([{ role: OrgMembershipRole.Custom, permissions: roleDetails?.permissions || [] }]),
@@ -637,15 +640,18 @@ export const permissionServiceFactory = ({
         })
       : [];
     if (customRoles.length !== customRoleDetails.length) {
-      const missingRoles = customRoles.filter((role) => !customRoleDetails.find((el) => el.slug === role));
+      const customRoleDetailsSlugs = new Set(customRoleDetails.map((el) => el.slug));
+      const missingRoles = customRoles.filter((role) => !customRoleDetailsSlugs.has(role));
       throw new NotFoundError({
         message: `Specified roles '${missingRoles.join(",")}' was not found in the project with ID '${projectId}'`
       });
     }
 
+    const customRoleDetailsBySlug = new Map(customRoleDetails.map((el) => [el.slug, el]));
+
     return formattedRoles.map((el) => {
       if (el.isCustom) {
-        const roleDetails = customRoleDetails.find((role) => role.slug === el.name);
+        const roleDetails = customRoleDetailsBySlug.get(el.name);
         return {
           permission: createMongoAbility<ProjectPermissionSet>(
             buildProjectPermissionRules([
