@@ -129,3 +129,10 @@ export const identityCreationLimit: RateLimitOptions = {
   max: (req) => req.rateLimits.identityCreationLimit,
   keyGenerator: (req) => req.realIp
 };
+
+export const projectCreationLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: (req) => req.rateLimits.projectCreationLimit,
+  keyGenerator: (req) => req.realIp
+};

@@ -25,6 +25,7 @@ export type RateLimitConfiguration = {
   inviteUserRateLimit: number;
   mfaRateLimit: number;
   identityCreationLimit: number;
+  projectCreationLimit: number;
 };
 
 export type TRateLimitServiceFactory = {
