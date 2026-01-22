@@ -201,6 +201,8 @@ const createAdditionalPrivilegeTable = async (knex: Knex) => {
 };
 
 const migrateMembershipData = async (knex: Knex) => {
+  await knex(TableName.OrgMembership).whereNull("userId").del();
+
   await knex
     .insert(
       knex(TableName.OrgMembership).select(
