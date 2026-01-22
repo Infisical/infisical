@@ -62,7 +62,9 @@ export const SecretSyncDetailsSection = ({ secretSync, onEditDetails }: Props) =
       </div>
       <div>
         <div className="space-y-3">
-          <GenericFieldLabel label="Name">{name}</GenericFieldLabel>
+          <GenericFieldLabel label="Name" truncate>
+            {name}
+          </GenericFieldLabel>
           <GenericFieldLabel label="Description">{description}</GenericFieldLabel>
           {syncStatus && (
             <GenericFieldLabel label="Status">
