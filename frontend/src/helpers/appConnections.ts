@@ -53,6 +53,7 @@ import { ChefConnectionMethod } from "@app/hooks/api/appConnections/types/chef-c
 import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
 import { DNSMadeEasyConnectionMethod } from "@app/hooks/api/appConnections/types/dns-made-easy-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
+import { CircleCIConnectionMethod } from "@app/hooks/api/appConnections/types/circleci-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
 import { NorthflankConnectionMethod } from "@app/hooks/api/appConnections/types/northflank-connection";
@@ -140,7 +141,8 @@ export const APP_CONNECTION_MAP: Record<
   },
   [AppConnection.Chef]: { name: "Chef", image: "Chef.png", enterprise: true },
   [AppConnection.OctopusDeploy]: { name: "Octopus Deploy", image: "Octopus Deploy.png" },
-  [AppConnection.SSH]: { name: "SSH", image: "SSH.png" }
+  [AppConnection.SSH]: { name: "SSH", image: "SSH.png" },
+  [AppConnection.CircleCI]: { name: "CircleCI", image: "CircleCI.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -181,6 +183,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case OktaConnectionMethod.ApiToken:
     case LaravelForgeConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
+    case CircleCIConnectionMethod.PersonalAccessToken:
+      return { name: "Personal Access Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
     case MySqlConnectionMethod.UsernameAndPassword:

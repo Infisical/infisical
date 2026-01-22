@@ -10,6 +10,7 @@ import { TAzureDevOpsConnection } from "./azure-devops-connection";
 import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
 import { TBitbucketConnection } from "./bitbucket-connection";
 import { TCamundaConnection } from "./camunda-connection";
+import { TCircleCIConnection } from "./circleci-connection";
 import { TChecklyConnection } from "./checkly-connection";
 import { TChefConnection } from "./chef-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
@@ -57,6 +58,7 @@ export * from "./azure-devops-connection";
 export * from "./azure-key-vault-connection";
 export * from "./bitbucket-connection";
 export * from "./camunda-connection";
+export * from "./circleci-connection";
 export * from "./checkly-connection";
 export * from "./chef-connection";
 export * from "./cloudflare-connection";
@@ -139,7 +141,8 @@ export type TAppConnection =
   | TMongoDBConnection
   | TChefConnection
   | TDNSMadeEasyConnection
-  | TSshConnection;
+  | TSshConnection
+  | TCircleCIConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

@@ -83,6 +83,12 @@ import {
   TValidateCamundaConnectionCredentialsSchema
 } from "./camunda";
 import {
+  TCircleCIConnection,
+  TCircleCIConnectionConfig,
+  TCircleCIConnectionInput,
+  TValidateCircleCIConnectionCredentialsSchema
+} from "./circleci";
+import {
   TChecklyConnection,
   TChecklyConnectionConfig,
   TChecklyConnectionInput,
@@ -317,6 +323,7 @@ export type TAppConnection = { id: string } & (
   | TChefConnection
   | TOctopusDeployConnection
   | TSshConnection
+  | TCircleCIConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -370,6 +377,7 @@ export type TAppConnectionInput = { id: string } & (
   | TChefConnectionInput
   | TOctopusDeployConnectionInput
   | TSshConnectionInput
+  | TCircleCIConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -440,7 +448,8 @@ export type TAppConnectionConfig =
   | TMongoDBConnectionConfig
   | TChefConnectionConfig
   | TOctopusDeployConnectionConfig
-  | TSshConnectionConfig;
+  | TSshConnectionConfig
+  | TCircleCIConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -488,7 +497,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateMongoDBConnectionCredentialsSchema
   | TValidateChefConnectionCredentialsSchema
   | TValidateOctopusDeployConnectionCredentialsSchema
-  | TValidateSshConnectionCredentialsSchema;
+  | TValidateSshConnectionCredentialsSchema
+  | TValidateCircleCIConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;
