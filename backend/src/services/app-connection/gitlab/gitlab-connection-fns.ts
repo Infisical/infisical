@@ -367,7 +367,7 @@ export const listGitLabGroups = async ({
 
     return groups.map((group) => ({
       id: group.id.toString(),
-      name: group.name
+      fullName: group.fullName
     }));
   } catch (error: unknown) {
     if (error instanceof GitbeakerRequestError) {
