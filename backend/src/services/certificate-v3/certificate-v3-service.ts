@@ -418,6 +418,19 @@ const parseTtlToDays = (ttl: string): number => {
   }
 };
 
+const calculateEffectiveTtl = (
+  requestTtl: string | undefined,
+  profileDefaultTtlDays: number | undefined | null
+): string => {
+  if (requestTtl) {
+    return requestTtl;
+  }
+  if (profileDefaultTtlDays) {
+    return `${profileDefaultTtlDays}d`;
+  }
+  return "";
+};
+
 const generateSelfSignedCertificate = async ({
   certificateRequest,
   policy,
@@ -1081,7 +1094,7 @@ export const certificateV3ServiceFactory = ({
         altNames: subjectAlternativeNames,
         basicConstraints: caBasicConstraints,
         pathLength: certificateRequest.basicConstraints?.pathLength,
-        ttl: certificateRequest.validity.ttl || (profile.defaultTtlDays ? `${profile.defaultTtlDays}d` : ""),
+        ttl: calculateEffectiveTtl(certificateRequest.validity.ttl, profile.defaultTtlDays),
         keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || [],
         extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || [],
         notBefore: normalizeDateForApi(certificateRequest.notBefore),
@@ -1100,8 +1113,7 @@ export const certificateV3ServiceFactory = ({
       if (!certificateRecord) {
         throw new NotFoundError({ message: "Certificate was issued but could not be found in database" });
       }
-      const effectiveTtl =
-        certificateRequest.validity.ttl || (profile.defaultTtlDays ? `${profile.defaultTtlDays}d` : "");
+      const effectiveTtl = calculateEffectiveTtl(certificateRequest.validity.ttl, profile.defaultTtlDays);
 
       const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
         profile,
@@ -1268,7 +1280,7 @@ export const certificateV3ServiceFactory = ({
     // Transform policy basicConstraints to the format expected by the CA service
     const caBasicConstraints = shouldIssueAsCA ? { maxPathLength: policy.basicConstraints?.maxPathLength } : undefined;
 
-    const effectiveTtl = validity.ttl || (profile.defaultTtlDays ? `${profile.defaultTtlDays}d` : "");
+    const effectiveTtl = calculateEffectiveTtl(validity.ttl, profile.defaultTtlDays);
 
     const { certificate, certificateChain, issuingCaCertificate, serialNumber, cert, certificateRequestId } =
       await certificateDAL.transaction(async (tx) => {

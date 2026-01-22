@@ -90,17 +90,19 @@ const createSchema = z
       .optional(),
     defaultTtl: z
       .object({
-        value: z.number().min(1, "Duration must be at least 1").optional(),
+        value: z.number().min(1, "Duration must be at least 1").nullable().optional(),
         unit: z.enum(["days", "months", "years"]).optional()
       })
       .optional()
       .refine(
         (data) => {
           // If value is provided, unit must also be provided
-          if (data?.value !== undefined && !data?.unit) return false;
+          if (data?.value != null && !data?.unit) return false;
+          // If unit is provided (checkbox checked), value must also be provided
+          if (data?.unit && data?.value == null) return false;
           return true;
         },
-        { message: "Please select a unit for the TTL" }
+        { message: "Please enter a valid TTL duration" }
       )
   })
   .refine(
@@ -248,7 +250,7 @@ const editSchema = z
       .optional(),
     defaultTtl: z
       .object({
-        value: z.number().min(1, "Duration must be at least 1").optional(),
+        value: z.number().min(1, "Duration must be at least 1").nullable().optional(),
         unit: z.enum(["days", "months", "years"]).optional()
       })
       .nullable()
@@ -256,10 +258,12 @@ const editSchema = z
       .refine(
         (data) => {
           // If value is provided, unit must also be provided
-          if (data?.value !== undefined && !data?.unit) return false;
+          if (data?.value != null && !data?.unit) return false;
+          // If unit is provided (checkbox checked), value must also be provided
+          if (data?.unit && data?.value == null) return false;
           return true;
         },
-        { message: "Please select a unit for the TTL" }
+        { message: "Please enter a valid TTL duration" }
       )
   })
   .refine(
@@ -374,7 +378,7 @@ const parseDaysToTtl = (
 
 // Convert form object to days (number) for storage
 const convertTtlToDays = (
-  ttl: { value?: number; unit?: "days" | "months" | "years" } | null | undefined
+  ttl: { value?: number | null; unit?: "days" | "months" | "years" } | null | undefined
 ): number | undefined => {
   if (!ttl?.value || !ttl?.unit) return undefined;
   switch (ttl.unit) {
@@ -601,14 +605,6 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
       setValue("externalConfigs.template", profile.externalConfigs.template);
     }
   }, [isEdit, profile, isAzureAdcsCa, azureAdcsTemplatesData, setValue]);
-
-  // Additional effect to ensure defaultTtl is properly set when editing
-  useEffect(() => {
-    if (isEdit && profile?.defaultTtlDays) {
-      setValue("defaultTtl.value", profile.defaultTtlDays);
-      setValue("defaultTtl.unit", "days");
-    }
-  }, [isEdit, profile?.defaultTtlDays, setValue]);
 
   const onFormSubmit = async (data: FormData) => {
     if (!currentProject?.id && !isEdit) return;
@@ -1003,8 +999,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                     setValue("defaultTtl.value", 365);
                     setValue("defaultTtl.unit", "days");
                   } else {
-                    setValue("defaultTtl.value", undefined);
-                    setValue("defaultTtl.unit", undefined);
+                    setValue("defaultTtl", undefined, { shouldValidate: true });
                   }
                 }}
               >
@@ -1034,10 +1029,10 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                         {...field}
                         type="number"
                         placeholder="365"
-                        value={field.value === undefined ? "" : field.value}
+                        value={field.value == null ? "" : field.value}
                         onChange={(e) => {
                           const val = e.target.value;
-                          field.onChange(val === "" ? "" : Number(val));
+                          field.onChange(val === "" ? null : Number(val));
                         }}
                       />
                     </FormControl>
