@@ -69,6 +69,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
               <Th>Name</Th>
               <Th>Type</Th>
               <Th>Roles</Th>
+              <Th>Users</Th>
               <Th />
             </Tr>
           </THead>
@@ -81,7 +82,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
               />
             )}
             {filteredTemplates.map((template) => {
-              const { id, name, roles, description, type } = template;
+              const { id, name, roles, description, type, users } = template;
               return (
                 <Tr
                   onClick={() => onEdit(template)}
@@ -109,6 +110,26 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
                           <ul className="ml-2 list-disc">
                             {roles.map((role) => (
                               <li key={role.name}>{role.name}</li>
+                            ))}
+                          </ul>
+                        }
+                      >
+                        <FontAwesomeIcon
+                          size="sm"
+                          className="ml-2 text-mineshaft-400"
+                          icon={faCircleInfo}
+                        />
+                      </Tooltip>
+                    )}
+                  </Td>
+                  <Td className="pl-8">
+                    {users?.length || 0}
+                    {users?.length && (
+                      <Tooltip
+                        content={
+                          <ul className="ml-2 list-disc">
+                            {users.map((user) => (
+                              <li key={user.username}>{user.username}</li>
                             ))}
                           </ul>
                         }
