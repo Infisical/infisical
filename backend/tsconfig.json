@@ -30,8 +30,5 @@
     "jsx": "react-jsx"
   },
     "include": ["src/**/*", "scripts/**/*", "e2e-test/**/*", "./.eslintrc.js", "./tsup.config.js"],
-    "exclude": ["node_modules", "src/db/schemas/dist", "src/db/schemas/**/*"],
-  "references": [
-    { "path": "./src/db/schemas" }
-  ]
+  "exclude": ["node_modules"]
 }
