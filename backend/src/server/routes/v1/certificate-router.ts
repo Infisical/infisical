@@ -525,7 +525,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           certificateId: certReq.certificateId ?? null,
           approvalRequestId: certReq.approvalRequestId ?? null,
           commonName: certReq.commonName ?? null,
-          altNames: certReq.altNames ?? null,
+          altNames:
+            (certReq.altNames as Array<{ type: string; value: string }> | null)?.map((san) => san.value).join(",") ??
+            null,
           errorMessage: certReq.errorMessage ?? null,
           profileName: certReq.profileName ?? null
         })),

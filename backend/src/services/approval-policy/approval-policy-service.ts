@@ -9,16 +9,11 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { OrgServiceActor } from "@app/lib/types";
-import { ActorType } from "@app/services/auth/auth-type";
-import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
-import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
-import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
+import { TCertificateApprovalService } from "@app/services/certificate-v3/certificate-approval-fns";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
-import { NotificationType } from "@app/services/notification/notification-types";
 
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import {
@@ -41,6 +36,8 @@ import {
   TApprovalRequest,
   TCreatePolicyDTO,
   TCreateRequestDTO,
+  TCreateRequestFromPolicyDTO,
+  TPostApprovalContext,
   TUpdatePolicyDTO
 } from "./approval-policy-types";
 import {
@@ -50,7 +47,7 @@ import {
   TApprovalRequestStepEligibleApproversDALFactory,
   TApprovalRequestStepsDALFactory
 } from "./approval-request-dal";
-import { TCertRequestRequestData } from "./cert-request/cert-request-policy-types";
+import { createApprovalRequestWithSteps, notifyApproversForStep } from "./approval-request-fns";
 
 type TApprovalPolicyServiceFactoryDep = {
   approvalPolicyDAL: TApprovalPolicyDALFactory;
@@ -65,7 +62,7 @@ type TApprovalPolicyServiceFactoryDep = {
   notificationService: TNotificationServiceFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserIds">;
-  certificateV3Service: Pick<TCertificateV3ServiceFactory, "issueCertificateFromApprovedRequest">;
+  certificateApprovalService: TCertificateApprovalService;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findById">;
 };
 export type TApprovalPolicyServiceFactory = ReturnType<typeof approvalPolicyServiceFactory>;
@@ -83,36 +80,11 @@ export const approvalPolicyServiceFactory = ({
   notificationService,
   permissionService,
   projectMembershipDAL,
-  certificateV3Service,
+  certificateApprovalService,
   certificateRequestDAL
 }: TApprovalPolicyServiceFactoryDep) => {
-  const $notifyApproversForStep = async (step: ApprovalPolicyStep, request: TApprovalRequests) => {
-    if (!step.notifyApprovers) return;
-
-    const userIdsToNotify = new Set<string>();
-
-    for await (const approver of step.approvers) {
-      if (approver.type === ApproverType.User) {
-        userIdsToNotify.add(approver.id);
-      } else if (approver.type === ApproverType.Group) {
-        const members = await userGroupMembershipDAL.find({ groupId: approver.id });
-        members.forEach((member) => userIdsToNotify.add(member.userId));
-      }
-    }
-
-    if (userIdsToNotify.size === 0) return;
-
-    // TODO: Potentially link to requests in the future to support click redirects
-    await notificationService.createUserNotifications(
-      Array.from(userIdsToNotify).map((userId) => ({
-        userId,
-        orgId: request.organizationId,
-        type: NotificationType.APPROVAL_REQUIRED,
-        title: "Approval Required",
-        body: `You have a new approval request for ${request.type} from ${request.requesterName}.`
-      }))
-    );
-  };
+  const $notifyApprovers = (step: ApprovalPolicyStep, request: TApprovalRequests) =>
+    notifyApproversForStep(step, request, { userGroupMembershipDAL, notificationService });
 
   const $verifyProjectUserMembership = async (userIds: string[], orgId: string, projectId: string) => {
     const uniqueUserIds = [...new Set(userIds)];
@@ -379,6 +351,51 @@ export const approvalPolicyServiceFactory = ({
     };
   };
 
+  const createRequestFromPolicy = async ({
+    projectId,
+    organizationId,
+    policy,
+    requestData,
+    justification,
+    expiresAt,
+    requesterUserId,
+    machineIdentityId,
+    requesterName,
+    requesterEmail,
+    tx
+  }: TCreateRequestFromPolicyDTO) => {
+    const requestWithSteps = await createApprovalRequestWithSteps(
+      {
+        projectId,
+        organizationId,
+        policyId: policy.id,
+        policyType: policy.type as ApprovalPolicyType,
+        policySteps: policy.steps,
+        requestData,
+        justification,
+        expiresAt,
+        requesterUserId,
+        machineIdentityId,
+        requesterName,
+        requesterEmail
+      },
+      {
+        approvalRequestDAL,
+        approvalRequestStepsDAL,
+        approvalRequestStepEligibleApproversDAL
+      },
+      tx
+    );
+
+    if (requestWithSteps.steps.length > 0) {
+      await $notifyApprovers(requestWithSteps.steps[0], requestWithSteps);
+    }
+
+    return {
+      request: requestWithSteps
+    };
+  };
+
   const createRequest = async (
     policyType: ApprovalPolicyType,
     {
@@ -443,72 +460,17 @@ export const approvalPolicyServiceFactory = ({
       }
     }
 
-    const { request, steps } = await approvalRequestDAL.transaction(async (tx) => {
-      const newRequest = await approvalRequestDAL.create(
-        {
-          projectId,
-          organizationId: actor.orgId,
-          policyId: policy.id,
-          requesterId: actor.id,
-          requesterName,
-          requesterEmail,
-          type: policyType,
-          status: ApprovalRequestStatus.Pending,
-          justification,
-          currentStep: 1,
-          requestData: { version: 1, requestData },
-          expiresAt
-        },
-        tx
-      );
-
-      const newSteps = await Promise.all(
-        policy.steps.map(async (step, i) => {
-          const stepNum = i + 1;
-          const newStep = await approvalRequestStepsDAL.create(
-            {
-              requestId: newRequest.id,
-              stepNumber: stepNum,
-              name: step.name,
-              status: stepNum === 1 ? ApprovalRequestStepStatus.InProgress : ApprovalRequestStepStatus.Pending,
-              requiredApprovals: step.requiredApprovals,
-              notifyApprovers: step.notifyApprovers,
-              startedAt: stepNum === 1 ? new Date() : null
-            },
-            tx
-          );
-
-          await Promise.all(
-            step.approvers.map((approver) =>
-              approvalRequestStepEligibleApproversDAL.create(
-                {
-                  stepId: newStep.id,
-                  userId: approver.type === ApproverType.User ? approver.id : null,
-                  groupId: approver.type === ApproverType.Group ? approver.id : null
-                },
-                tx
-              )
-            )
-          );
-
-          return {
-            ...newStep,
-            approvers: step.approvers,
-            approvals: []
-          };
-        })
-      );
-
-      return { request: newRequest, steps: newSteps };
+    return createRequestFromPolicy({
+      projectId,
+      organizationId: actor.orgId,
+      policy,
+      requestData,
+      justification,
+      expiresAt,
+      requesterUserId: actor.id,
+      requesterName,
+      requesterEmail
     });
-
-    if (steps.length > 0) {
-      await $notifyApproversForStep(steps[0], request);
-    }
-
-    return {
-      request: { ...request, steps }
-    };
   };
 
   const getRequestById = async (requestId: string, actor: OrgServiceActor) => {
@@ -664,7 +626,7 @@ export const approvalPolicyServiceFactory = ({
     });
 
     if (nextStepToNotify) {
-      await $notifyApproversForStep(nextStepToNotify, updatedRequest);
+      await $notifyApprovers(nextStepToNotify, updatedRequest);
     }
 
     // Fetch fresh state
@@ -677,78 +639,19 @@ export const approvalPolicyServiceFactory = ({
       const fac = APPROVAL_POLICY_FACTORY_MAP[updatedRequest.type as ApprovalPolicyType](
         updatedRequest.type as ApprovalPolicyType
       );
-      await fac.postApprovalRoutine(approvalRequestGrantsDAL, newRequest as TApprovalRequest);
 
-      if (finalRequest.type === ApprovalPolicyType.CertRequest) {
-        const certRequestData = (newRequest as TApprovalRequest).requestData.requestData as TCertRequestRequestData;
-        const certReqId = certRequestData.certificateRequestId;
+      const postApprovalContext: TPostApprovalContext = {
+        actor: {
+          type: actor.type,
+          id: actor.id,
+          authMethod: actor.authMethod,
+          orgId: actor.orgId
+        },
+        certificateApprovalService,
+        certificateRequestDAL
+      };
 
-        await certificateRequestDAL.updateById(certReqId, {
-          status: CertificateRequestStatus.PENDING,
-          approvalRequestId: finalRequest.id
-        });
-
-        try {
-          const certRequest = await certificateRequestDAL.findById(certReqId);
-
-          // For ACME/EST enrollment types, use the approver's context
-          const isAutomatedEnrollment =
-            certRequest?.enrollmentType === EnrollmentType.ACME || certRequest?.enrollmentType === EnrollmentType.EST;
-
-          let actorContext: {
-            actor: ActorType;
-            actorId: string;
-            actorAuthMethod: typeof actor.authMethod;
-            actorOrgId: string;
-          };
-
-          if (isAutomatedEnrollment) {
-            actorContext = {
-              actor: actor.type,
-              actorId: actor.id,
-              actorAuthMethod: actor.authMethod,
-              actorOrgId: actor.orgId
-            };
-          } else {
-            // Use original requester's identity (stored in approval request) for API enrollment
-            const originalRequesterActor = finalRequest.machineIdentityId ? ActorType.IDENTITY : ActorType.USER;
-            const originalRequesterId = finalRequest.machineIdentityId || finalRequest.requesterId;
-
-            if (!originalRequesterId) {
-              throw new BadRequestError({ message: "Approval request is missing requester information" });
-            }
-
-            actorContext = {
-              actor: originalRequesterActor,
-              actorId: originalRequesterId,
-              actorAuthMethod: actor.authMethod,
-              actorOrgId: actor.orgId
-            };
-          }
-
-          await certificateV3Service.issueCertificateFromApprovedRequest(certReqId, actorContext);
-          logger.info(
-            { certificateRequestId: certReqId, approvalRequestId: finalRequest.id },
-            "Certificate issued after approval"
-          );
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          await certificateRequestDAL.updateById(certReqId, {
-            status: CertificateRequestStatus.FAILED,
-            errorMessage
-          });
-          logger.error(
-            {
-              error,
-              errorMessage,
-              errorStack: error instanceof Error ? error.stack : undefined,
-              certificateRequestId: certReqId,
-              approvalRequestId: finalRequest.id
-            },
-            "Failed to issue certificate after approval"
-          );
-        }
-      }
+      await fac.postApprovalRoutine(approvalRequestGrantsDAL, newRequest as TApprovalRequest, postApprovalContext);
     }
 
     return { request: newRequest };
@@ -812,12 +715,17 @@ export const approvalPolicyServiceFactory = ({
     const finalSteps = await approvalRequestDAL.findStepsByRequestId(requestId);
     const finalRequest = await approvalRequestDAL.findById(requestId);
 
-    if (finalRequest && finalRequest.type === ApprovalPolicyType.CertRequest) {
-      const certRequestData = (finalRequest.requestData as { requestData: TCertRequestRequestData }).requestData;
-      await certificateRequestDAL.updateById(certRequestData.certificateRequestId, {
-        status: CertificateRequestStatus.REJECTED,
-        approvalRequestId: requestId
-      });
+    if (finalRequest) {
+      const fac = APPROVAL_POLICY_FACTORY_MAP[finalRequest.type as ApprovalPolicyType](
+        finalRequest.type as ApprovalPolicyType
+      );
+
+      const postRejectionContext: TPostApprovalContext = {
+        certificateApprovalService,
+        certificateRequestDAL
+      };
+
+      await fac.postRejectionRoutine(finalRequest as TApprovalRequest, postRejectionContext);
     }
 
     return { request: { ...finalRequest, steps: finalSteps } };
@@ -1035,6 +943,7 @@ export const approvalPolicyServiceFactory = ({
     updateById,
     deleteById,
     createRequest,
+    createRequestFromPolicy,
     listRequests,
     getRequestById,
     approveRequest,

@@ -15,10 +15,8 @@ import {
 } from "@app/hooks/api/approvalPolicies";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import { PolicyApprovalSteps } from "./PolicySteps/PolicyApprovalSteps";
-import { PolicyDetailsStep } from "./PolicySteps/PolicyDetailsStep";
-import { PolicyReviewStep } from "./PolicySteps/PolicyReviewStep";
 import { PolicyFormSchema, TPolicyForm } from "./PolicySchema";
+import { PolicyApprovalSteps, PolicyDetailsStep, PolicyReviewStep } from "./PolicySteps";
 
 type Props = {
   popUp: UsePopUpState<["policy"]>;

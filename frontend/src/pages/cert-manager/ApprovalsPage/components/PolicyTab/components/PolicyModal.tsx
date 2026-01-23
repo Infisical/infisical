@@ -3,6 +3,7 @@ import { FormProvider, useForm } from "react-hook-form";
 import { Tab } from "@headlessui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 
+import { PolicyApprovalSteps } from "@app/components/approvals";
 import { createNotification } from "@app/components/notifications";
 import { Button, Modal, ModalContent } from "@app/components/v2";
 import { useProject } from "@app/context";
@@ -15,7 +16,6 @@ import {
 } from "@app/hooks/api/approvalPolicies";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import { PolicyApprovalSteps } from "./PolicySteps/PolicyApprovalSteps";
 import { PolicyDetailsStep } from "./PolicySteps/PolicyDetailsStep";
 import { PolicyReviewStep } from "./PolicySteps/PolicyReviewStep";
 import { PolicyFormSchema, TPolicyForm } from "./PolicySchema";

@@ -18,7 +18,7 @@ import {
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
-import { TCertificateRequestListItem } from "@app/hooks/api/certificates";
+import { CertificateRequestStatus, TCertificateRequestListItem } from "@app/hooks/api/certificates";
 
 type Props = {
   request: TCertificateRequestListItem;
@@ -30,15 +30,15 @@ export const CertificateRequestRow = ({ request, onViewCertificates }: Props) =>
   const { currentProject } = useProject();
 
   const getStatusBadge = (status: string, approvalRequestId: string | null) => {
-    switch (status.toLowerCase()) {
-      case "issued":
+    switch (status) {
+      case CertificateRequestStatus.ISSUED:
         return <Badge variant="success">Issued</Badge>;
-      case "failed":
-      case "rejected":
+      case CertificateRequestStatus.FAILED:
+      case CertificateRequestStatus.REJECTED:
         return <Badge variant="danger">Failed</Badge>;
-      case "pending":
+      case CertificateRequestStatus.PENDING:
         return <Badge variant="info">Pending Issuance</Badge>;
-      case "pending_approval":
+      case CertificateRequestStatus.PENDING_APPROVAL:
         if (approvalRequestId && currentOrg?.id && currentProject?.id) {
           return (
             <Badge variant="warning" asChild>

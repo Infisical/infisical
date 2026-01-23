@@ -1311,6 +1311,9 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     if (!internal) {
+      if (!actor || !actorId || !actorAuthMethod || !actorOrgId) {
+        throw new BadRequestError({ message: "Actor is required" });
+      }
       const { permission } = await permissionService.getProjectPermission({
         actor,
         actorId,

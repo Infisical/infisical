@@ -42,13 +42,15 @@ export const BaseCreateApprovalPolicySchema = z.object({
   projectId: z.string().uuid(),
   name: z.string().min(1).max(128),
   maxRequestTtl: MaxRequestTtlSchema.nullable().optional(),
-  steps: ApprovalPolicyStepSchema.array()
+  steps: ApprovalPolicyStepSchema.array(),
+  bypassForMachineIdentities: z.boolean().optional().default(false)
 });
 
 export const BaseUpdateApprovalPolicySchema = z.object({
   name: z.string().min(1).max(128).optional(),
   maxRequestTtl: MaxRequestTtlSchema.nullable().optional(),
-  steps: ApprovalPolicyStepSchema.array().optional()
+  steps: ApprovalPolicyStepSchema.array().optional(),
+  bypassForMachineIdentities: z.boolean().optional()
 });
 
 // Request

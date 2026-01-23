@@ -35,7 +35,7 @@ const formatValidity = (ttl: string): string => {
   const unitMap: Record<string, string> = {
     d: value === 1 ? "day" : "days",
     h: value === 1 ? "hour" : "hours",
-    m: value === 1 ? "month" : "months",
+    m: value === 1 ? "minute" : "minutes",
     y: value === 1 ? "year" : "years"
   };
 

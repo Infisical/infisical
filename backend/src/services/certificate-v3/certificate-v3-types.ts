@@ -2,14 +2,11 @@ import { TProjectPermission } from "@app/lib/types";
 
 import {
   CertExtendedKeyUsageType,
-  CertificateIssuanceType,
   CertificateRequestStatus,
   CertKeyUsageType,
   CertSubjectAlternativeNameType
 } from "../certificate-common/certificate-constants";
 import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
-
-export { CertificateIssuanceType };
 
 export type TIssueCertificateFromProfileDTO = {
   profileId: string;
@@ -132,16 +129,6 @@ export type TRenewalConfigResponse = {
 export type TDisableRenewalResponse = {
   projectId: string;
   commonName: string;
-};
-
-export const isPendingApprovalResponse = (
-  response: TCertificateIssuanceResponse
-): response is TCertificatePendingApprovalResponse => {
-  return response.status === CertificateRequestStatus.PENDING_APPROVAL;
-};
-
-export const isIssuedResponse = (response: TCertificateIssuanceResponse): response is TCertificateIssuedResponse => {
-  return response.status === CertificateRequestStatus.ISSUED;
 };
 
 export type TAltNameEntry = {

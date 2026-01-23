@@ -35,13 +35,18 @@ type TCertificateRequestServiceFactoryDep = {
 
 export type TCertificateRequestServiceFactory = ReturnType<typeof certificateRequestServiceFactory>;
 
+const subjectAlternativeNameSchema = z.object({
+  type: z.string().max(50),
+  value: z.string().max(500)
+});
+
 const certificateRequestDataSchema = z
   .object({
     profileId: z.string().uuid().optional(),
     caId: z.string().uuid().optional(),
     csr: z.string().min(1).optional(),
     commonName: z.string().max(255).optional(),
-    altNames: z.string().max(1000).optional(),
+    altNames: z.array(subjectAlternativeNameSchema).max(100).optional(),
     keyUsages: z.array(z.string()).max(20).optional(),
     extendedKeyUsages: z.array(z.string()).max(20).optional(),
     notBefore: z.date().optional(),
@@ -57,9 +62,7 @@ const certificateRequestDataSchema = z
       })
       .optional(),
     ttl: z.string().max(50).optional(),
-    issuanceType: z.string().max(50).optional(),
     enrollmentType: z.string().max(50).optional(),
-    altNamesJson: z.string().optional(),
     organization: z.string().max(255).optional(),
     organizationalUnit: z.string().max(255).optional(),
     country: z.string().max(100).optional(),
@@ -130,7 +133,7 @@ export const certificateRequestServiceFactory = ({
     status,
     ...requestData
   }: TCreateCertificateRequestDTO & { tx?: Knex }) => {
-    if (actor !== ActorType.ACME_ACCOUNT && actor !== ActorType.PLATFORM) {
+    if (actor !== ActorType.ACME_ACCOUNT && actor !== ActorType.PLATFORM && actor !== ActorType.EST_ACCOUNT) {
       const { permission } = await permissionService.getProjectPermission({
         actor,
         actorId,
@@ -149,12 +152,15 @@ export const certificateRequestServiceFactory = ({
     // Validate input data before creating the request
     const validatedData = validateCertificateRequestData(requestData);
 
+    const { altNames: altNamesInput, ...restValidatedData } = validatedData;
+
     const certificateRequest = await certificateRequestDAL.create(
       {
         status,
         projectId,
         acmeOrderId,
-        ...validatedData
+        ...restValidatedData,
+        altNames: altNamesInput ? JSON.stringify(altNamesInput) : null
       },
       tx
     );
@@ -222,17 +228,10 @@ export const certificateRequestServiceFactory = ({
       ProjectPermissionSub.Certificates
     );
 
-    let parsedBasicConstraints: { isCA: boolean; pathLength?: number } | null = null;
-    if (certificateRequest.basicConstraints) {
-      try {
-        parsedBasicConstraints =
-          typeof certificateRequest.basicConstraints === "string"
-            ? (JSON.parse(certificateRequest.basicConstraints) as { isCA: boolean; pathLength?: number })
-            : (certificateRequest.basicConstraints as { isCA: boolean; pathLength?: number });
-      } catch {
-        parsedBasicConstraints = null;
-      }
-    }
+    const parsedBasicConstraints = certificateRequest.basicConstraints as {
+      isCA: boolean;
+      pathLength?: number;
+    } | null;
 
     // If no certificate is attached, return basic info
     if (!certificateRequest.certificate) {

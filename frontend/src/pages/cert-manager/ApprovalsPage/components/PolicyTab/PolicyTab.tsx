@@ -2,16 +2,23 @@ import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
+import { PermissionDeniedBanner } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { ApprovalPolicyType, useDeleteApprovalPolicy } from "@app/hooks/api/approvalPolicies";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { PoliciesTable } from "./components/PoliciesTable";
 import { PolicyModal } from "./components/PolicyModal";
 
 export const PolicyTab = () => {
   const { currentProject } = useProject();
+  const { memberships } = useProjectPermission();
+
+  const isAdmin = memberships.some((m) =>
+    m.roles.some((r) => r.role === ProjectMembershipRole.Admin)
+  );
 
   const { mutateAsync: deleteApprovalPolicy } = useDeleteApprovalPolicy();
 
@@ -19,6 +26,10 @@ export const PolicyTab = () => {
     "policy",
     "deletePolicy"
   ] as const);
+
+  if (!isAdmin) {
+    return <PermissionDeniedBanner />;
+  }
 
   const handleDeletePolicy = async () => {
     const policyId = (popUp?.deletePolicy?.data as { policyId: string })?.policyId;

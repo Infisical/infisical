@@ -6,12 +6,6 @@ export enum CertificateRequestStatus {
   REJECTED = "rejected"
 }
 
-export enum CertificateIssuanceType {
-  ISSUE = "issue",
-  CSR = "csr",
-  ORDER = "order"
-}
-
 export enum CertSubjectAlternativeNameType {
   DNS_NAME = "dns_name",
   IP_ADDRESS = "ip_address",

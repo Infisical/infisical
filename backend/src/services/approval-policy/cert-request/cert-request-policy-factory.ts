@@ -1,8 +1,12 @@
-import { ApprovalRequestGrantStatus } from "../approval-policy-enums";
+import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
+import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
+
 import {
   TApprovalRequestFactoryCanAccess,
   TApprovalRequestFactoryMatchPolicy,
   TApprovalRequestFactoryPostApprovalRoutine,
+  TApprovalRequestFactoryPostRejectionRoutine,
   TApprovalRequestFactoryValidateConstraints,
   TApprovalResourceFactory
 } from "../approval-policy-types";
@@ -45,15 +49,65 @@ export const certRequestPolicyFactory: TApprovalResourceFactory<
     return { valid: true };
   };
 
-  const postApprovalRoutine: TApprovalRequestFactoryPostApprovalRoutine = async (approvalRequestGrantsDAL, request) => {
-    await approvalRequestGrantsDAL.create({
-      projectId: request.projectId,
-      requestId: request.id,
-      granteeUserId: request.requesterId,
-      status: ApprovalRequestGrantStatus.Active,
-      type: request.type,
-      attributes: request.requestData.requestData,
-      expiresAt: null
+  const postApprovalRoutine: TApprovalRequestFactoryPostApprovalRoutine = async (
+    _approvalRequestGrantsDAL,
+    request,
+    context
+  ) => {
+    if (!context.certificateApprovalService || !context.certificateRequestDAL) {
+      throw new BadRequestError({
+        message: "Certificate services not available in context, please contact support"
+      });
+    }
+
+    const certApprovalService = context.certificateApprovalService;
+    const certReqDAL = context.certificateRequestDAL;
+
+    const certRequestData = request.requestData.requestData as TCertRequestRequestData;
+    const certReqId = certRequestData.certificateRequestId;
+
+    await certReqDAL.updateById(certReqId, {
+      status: CertificateRequestStatus.PENDING,
+      approvalRequestId: request.id
+    });
+
+    try {
+      await certApprovalService.issueCertificate(certReqId);
+      logger.info(
+        { certificateRequestId: certReqId, approvalRequestId: request.id },
+        "Certificate issued after approval"
+      );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      await certReqDAL.updateById(certReqId, {
+        status: CertificateRequestStatus.FAILED,
+        errorMessage
+      });
+      logger.error(
+        {
+          error,
+          errorMessage,
+          errorStack: error instanceof Error ? error.stack : undefined,
+          certificateRequestId: certReqId,
+          approvalRequestId: request.id
+        },
+        "Failed to issue certificate after approval"
+      );
+    }
+  };
+
+  const postRejectionRoutine: TApprovalRequestFactoryPostRejectionRoutine = async (request, context) => {
+    if (!context.certificateRequestDAL) {
+      throw new BadRequestError({
+        message: "Certificate request DAL not available in context, please contact support"
+      });
+    }
+
+    const certReqDAL = context.certificateRequestDAL;
+    const certRequestData = request.requestData.requestData as TCertRequestRequestData;
+    await certReqDAL.updateById(certRequestData.certificateRequestId, {
+      status: CertificateRequestStatus.REJECTED,
+      approvalRequestId: request.id
     });
   };
 
@@ -61,6 +115,7 @@ export const certRequestPolicyFactory: TApprovalResourceFactory<
     matchPolicy,
     canAccess,
     validateConstraints,
-    postApprovalRoutine
+    postApprovalRoutine,
+    postRejectionRoutine
   };
 };

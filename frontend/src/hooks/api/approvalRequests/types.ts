@@ -11,7 +11,8 @@ export enum ApprovalRequestStatus {
 export enum ApprovalRequestStepStatus {
   Pending = "pending",
   InProgress = "in-progress",
-  Completed = "completed"
+  Completed = "completed",
+  Rejected = "rejected"
 }
 
 export enum ApprovalRequestApprovalDecision {

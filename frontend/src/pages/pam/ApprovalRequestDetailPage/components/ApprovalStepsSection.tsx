@@ -65,6 +65,8 @@ export const ApprovalStepsSection = ({ request }: Props) => {
         return <FontAwesomeIcon icon={faClock} className="text-yellow-500" />;
       case ApprovalRequestStepStatus.Pending:
         return <div className="h-4 w-4 rounded-full border-2 border-mineshaft-400" />;
+      case ApprovalRequestStepStatus.Rejected:
+        return <FontAwesomeIcon icon={faXmark} className="text-red-500" />;
       default:
         return null;
     }

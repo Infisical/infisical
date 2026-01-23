@@ -42,7 +42,6 @@ import {
 import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
-import { CertificateIssuanceType } from "@app/services/certificate-v3/certificate-v3-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
@@ -881,17 +880,13 @@ export const pkiAcmeServiceFactory = ({
       extendedKeyUsages: updatedCertificateRequest.extendedKeyUsages?.map((usage) => usage.toString()) ?? [],
       keyAlgorithm: updatedCertificateRequest.keyAlgorithm || "",
       signatureAlgorithm: updatedCertificateRequest.signatureAlgorithm || "",
-      altNames: updatedCertificateRequest.subjectAlternativeNames?.map((san) => san.value).join(","),
-      altNamesJson: updatedCertificateRequest.subjectAlternativeNames
-        ? JSON.stringify(updatedCertificateRequest.subjectAlternativeNames)
-        : undefined,
+      altNames: updatedCertificateRequest.subjectAlternativeNames,
       notBefore: updatedCertificateRequest.notBefore,
       notAfter: updatedCertificateRequest.notAfter,
       status: CertificateRequestStatus.PENDING,
       acmeOrderId: orderId,
       csr,
       ttl: updatedCertificateRequest.validity?.ttl,
-      issuanceType: CertificateIssuanceType.CSR,
       enrollmentType: EnrollmentType.ACME,
       tx
     });

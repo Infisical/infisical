@@ -108,6 +108,8 @@ describe("CertificateRequestService", () => {
       });
       expect(mockCertificateRequestDAL.create).toHaveBeenCalledWith(
         {
+          acmeOrderId: undefined,
+          altNames: null,
           status: CertificateRequestStatus.PENDING,
           projectId: "550e8400-e29b-41d4-a716-446655440003",
           profileId: "550e8400-e29b-41d4-a716-446655440004",
@@ -290,7 +292,7 @@ describe("CertificateRequestService", () => {
         country: null,
         state: null,
         locality: null,
-        basicConstraints: null,
+        basicConstraints: undefined,
         createdAt: mockRequestWithCert.createdAt,
         updatedAt: mockRequestWithCert.updatedAt
       });
@@ -334,7 +336,7 @@ describe("CertificateRequestService", () => {
         country: null,
         state: null,
         locality: null,
-        basicConstraints: null,
+        basicConstraints: undefined,
         createdAt: mockRequestWithoutCert.createdAt,
         updatedAt: mockRequestWithoutCert.updatedAt
       });
@@ -398,7 +400,7 @@ describe("CertificateRequestService", () => {
         country: null,
         state: null,
         locality: null,
-        basicConstraints: null,
+        basicConstraints: undefined,
         createdAt: mockRequestWithCert.createdAt,
         updatedAt: mockRequestWithCert.updatedAt
       });
@@ -473,7 +475,7 @@ describe("CertificateRequestService", () => {
         country: null,
         state: null,
         locality: null,
-        basicConstraints: null,
+        basicConstraints: undefined,
         createdAt: mockRequestWithCert.createdAt,
         updatedAt: mockRequestWithCert.updatedAt
       });
@@ -517,7 +519,7 @@ describe("CertificateRequestService", () => {
         country: null,
         state: null,
         locality: null,
-        basicConstraints: null,
+        basicConstraints: undefined,
         createdAt: mockFailedRequest.createdAt,
         updatedAt: mockFailedRequest.updatedAt
       });

@@ -7,6 +7,7 @@ import {
   TApprovalRequestFactoryCanAccess,
   TApprovalRequestFactoryMatchPolicy,
   TApprovalRequestFactoryPostApprovalRoutine,
+  TApprovalRequestFactoryPostRejectionRoutine,
   TApprovalRequestFactoryValidateConstraints,
   TApprovalResourceFactory
 } from "../approval-policy-types";
@@ -127,10 +128,13 @@ export const pamAccessPolicyFactory: TApprovalResourceFactory<
     });
   };
 
+  const postRejectionRoutine: TApprovalRequestFactoryPostRejectionRoutine = async () => {};
+
   return {
     matchPolicy,
     canAccess,
     validateConstraints,
-    postApprovalRoutine
+    postApprovalRoutine,
+    postRejectionRoutine
   };
 };

@@ -1,7 +1,7 @@
 import ms from "ms";
 import { z } from "zod";
 
-import { ApproverType } from "@app/hooks/api/approvalPolicies";
+import { ApprovalStepsSchema } from "@app/components/approvals";
 
 const DurationSchema = (
   min = 3600,
@@ -27,26 +27,7 @@ export const PolicyFormSchema = z.object({
     .min(1, "At least one condition is required"),
   constraints: z.object({}).optional().default({}),
   bypassForMachineIdentities: z.boolean().optional().default(false),
-  steps: z
-    .object({
-      name: z
-        .string()
-        .max(128)
-        .nullable()
-        .optional()
-        .transform((name) => name || null),
-      requiredApprovals: z.number().min(1).max(100),
-      notifyApprovers: z.boolean().optional(),
-      approvers: z
-        .object({
-          type: z.nativeEnum(ApproverType),
-          id: z.string().uuid()
-        })
-        .array()
-        .min(1, "At least one approver is required")
-    })
-    .array()
-    .min(1, "At least one approval step is required")
+  steps: ApprovalStepsSchema
 });
 
 export type TPolicyForm = z.infer<typeof PolicyFormSchema>;

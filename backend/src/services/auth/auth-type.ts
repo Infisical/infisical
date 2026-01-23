@@ -43,6 +43,7 @@ export enum ActorType { // would extend to AWS, Azure, ...
   SCIM_CLIENT = "scimClient",
   ACME_PROFILE = "acmeProfile",
   ACME_ACCOUNT = "acmeAccount",
+  EST_ACCOUNT = "estAccount",
   UNKNOWN_USER = "unknownUser"
 }
 

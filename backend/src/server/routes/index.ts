@@ -220,6 +220,7 @@ import { certificateSyncDALFactory } from "@app/services/certificate-sync/certif
 import { certificateTemplateDALFactory } from "@app/services/certificate-template/certificate-template-dal";
 import { certificateTemplateEstConfigDALFactory } from "@app/services/certificate-template/certificate-template-est-config-dal";
 import { certificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
+import { certificateApprovalServiceFactory } from "@app/services/certificate-v3/certificate-approval-fns";
 import { certificateV3QueueServiceFactory } from "@app/services/certificate-v3/certificate-v3-queue";
 import { certificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { cmekServiceFactory } from "@app/services/cmek/cmek-service";
@@ -1985,7 +1986,8 @@ export const registerRoutes = async (
     userNotificationDAL,
     keyValueStoreDAL,
     approvalRequestDAL,
-    approvalRequestGrantsDAL
+    approvalRequestGrantsDAL,
+    certificateRequestDAL
   });
 
   const healthAlert = healthAlertServiceFactory({
@@ -2299,6 +2301,43 @@ export const registerRoutes = async (
     certificateRequestService
   });
 
+  const certificateApprovalService = certificateApprovalServiceFactory({
+    certificateRequestDAL,
+    certificateProfileDAL,
+    acmeAccountDAL,
+    permissionService,
+    certificateAuthorityDAL,
+    internalCaService: internalCertificateAuthorityService,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    projectDAL,
+    certificatePolicyService,
+    certificateIssuanceQueue
+  });
+
+  const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
+  const approvalPolicyStepApproversDAL = approvalPolicyStepApproversDALFactory(db);
+  const approvalRequestApprovalsDAL = approvalRequestApprovalsDALFactory(db);
+
+  const approvalPolicyService = approvalPolicyServiceFactory({
+    approvalPolicyDAL,
+    approvalPolicyStepsDAL,
+    approvalPolicyStepApproversDAL,
+    permissionService,
+    projectMembershipDAL,
+    approvalRequestDAL,
+    approvalRequestStepsDAL,
+    approvalRequestStepEligibleApproversDAL,
+    approvalRequestApprovalsDAL,
+    userGroupMembershipDAL,
+    notificationService,
+    approvalRequestGrantsDAL,
+    certificateApprovalService,
+    certificateRequestDAL
+  });
+
   const certificateV3Service = certificateV3ServiceFactory({
     certificateDAL,
     certificateSecretDAL,
@@ -2320,9 +2359,7 @@ export const registerRoutes = async (
     certificateRequestDAL,
     userDAL,
     identityDAL,
-    approvalRequestDAL,
-    approvalRequestStepsDAL,
-    approvalRequestStepEligibleApproversDAL
+    approvalPolicyService
   });
 
   const certificateV3Queue = certificateV3QueueServiceFactory({
@@ -2561,27 +2598,6 @@ export const registerRoutes = async (
     vaultExternalMigrationConfigDAL,
     secretService,
     auditLogService
-  });
-
-  const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
-  const approvalPolicyStepApproversDAL = approvalPolicyStepApproversDALFactory(db);
-  const approvalRequestApprovalsDAL = approvalRequestApprovalsDALFactory(db);
-
-  const approvalPolicyService = approvalPolicyServiceFactory({
-    approvalPolicyDAL,
-    approvalPolicyStepsDAL,
-    approvalPolicyStepApproversDAL,
-    permissionService,
-    projectMembershipDAL,
-    approvalRequestDAL,
-    approvalRequestStepsDAL,
-    approvalRequestStepEligibleApproversDAL,
-    approvalRequestApprovalsDAL,
-    userGroupMembershipDAL,
-    notificationService,
-    approvalRequestGrantsDAL,
-    certificateV3Service,
-    certificateRequestDAL
   });
 
   // setup the communication with license key server

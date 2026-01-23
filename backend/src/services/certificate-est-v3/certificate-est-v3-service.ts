@@ -143,7 +143,7 @@ export const certificateEstV3ServiceFactory = ({
     const ttl = policy?.validity?.max || "90d";
 
     const result = await certificateV3Service.signCertificateFromProfile({
-      actor: ActorType.PLATFORM,
+      actor: ActorType.EST_ACCOUNT,
       actorId: profileId,
       actorAuthMethod: null,
       actorOrgId: project.orgId,
@@ -155,7 +155,7 @@ export const certificateEstV3ServiceFactory = ({
 
     if (result.status === CertificateRequestStatus.PENDING_APPROVAL) {
       throw new BadRequestError({
-        message: `Certificate request requires approval. Request ID: ${result.certificateRequestId}. Please complete the approval workflow in the Infisical UI.`
+        message: `Certificate request requires approval. Certificate Request ID: ${result.certificateRequestId}. Manage the approval request in the Infisical UI.`
       });
     }
 
@@ -274,7 +274,7 @@ export const certificateEstV3ServiceFactory = ({
     const ttl = policy?.validity?.max || "90d";
 
     const result = await certificateV3Service.signCertificateFromProfile({
-      actor: ActorType.PLATFORM,
+      actor: ActorType.EST_ACCOUNT,
       actorId: profileId,
       actorAuthMethod: null,
       actorOrgId: project.orgId,
@@ -286,7 +286,7 @@ export const certificateEstV3ServiceFactory = ({
 
     if (result.status === CertificateRequestStatus.PENDING_APPROVAL) {
       throw new BadRequestError({
-        message: `Certificate re-enrollment request requires approval. Request ID: ${result.certificateRequestId}. Please complete the approval workflow in the Infisical UI.`
+        message: `Certificate re-enrollment request requires approval. Certificate Request ID: ${result.certificateRequestId}. Manage the approval request in the Infisical UI.`
       });
     }
 
