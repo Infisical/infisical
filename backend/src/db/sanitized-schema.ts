@@ -1,0 +1,63 @@
+import path from "path";
+
+import { Knex } from "knex";
+import { Logger } from "pino";
+
+import { PgSqlLock } from "@app/keystore/keystore";
+
+const SANITIZED_SCHEMA = "infisical-sanitized";
+
+type TArgs = {
+  db: Knex;
+  logger: Logger;
+};
+
+export const acquireSanitizedSchemaLock = async ({ db, logger }: TArgs): Promise<void> => {
+  await db.raw("SELECT pg_advisory_lock(?)", [PgSqlLock.SanitizedSchemaGeneration]);
+  logger.info("Acquired sanitized schema generation lock");
+};
+
+export const releaseSanitizedSchemaLock = async ({ db, logger }: TArgs): Promise<void> => {
+  await db.raw("SELECT pg_advisory_unlock(?)", [PgSqlLock.SanitizedSchemaGeneration]);
+  logger.info("Released sanitized schema generation lock");
+};
+
+export const dropSanitizedSchema = async ({ db, logger }: TArgs): Promise<void> => {
+  await db.raw(`DROP SCHEMA IF EXISTS "${SANITIZED_SCHEMA}" CASCADE`);
+  logger.info("Dropped existing sanitized schema");
+};
+
+/* Validate the generated SQL to ensure it only contains CREATE SCHEMA IF NOT EXISTS and CREATE VIEW statements.
+ * This is to prevent SQL injection and other security vulnerabilities as we'll be doing raw SQL execution.
+ */
+const validateGeneratedSQL = (sql: string): void => {
+  const statements = sql
+    .split(";")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0 && !s.startsWith("--"));
+
+  for (const statement of statements) {
+    const upper = statement.toUpperCase();
+    const isAllowed = upper.startsWith("CREATE SCHEMA IF NOT EXISTS") || upper.startsWith("CREATE VIEW");
+
+    if (!isAllowed) {
+      throw new Error(
+        `SANITIZED_SCHEMA_SECURITY_VIOLATION: Only CREATE SCHEMA IF NOT EXISTS and CREATE VIEW allowed. ` +
+          `Got: ${statement.substring(0, 100)}`
+      );
+    }
+  }
+};
+
+export const createSanitizedSchema = async ({ db, logger }: TArgs): Promise<void> => {
+      // eslint-disable-next-line import/no-extraneous-dependencies
+  const { loadConfig, generateSQL } = await import("@infisical/pg-view-generator");
+
+  const config = await loadConfig(path.join(__dirname, "sanitized-schema.yaml"));
+  const sql = generateSQL(config, { targetSchema: SANITIZED_SCHEMA });
+
+  validateGeneratedSQL(sql);
+
+  await db.raw(sql);
+  logger.info("Created sanitized schema and views");
+};

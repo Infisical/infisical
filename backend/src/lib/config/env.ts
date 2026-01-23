@@ -86,6 +86,9 @@ const envSchema = z
       z.string().describe("Postgres database base64-encoded CA cert for Audit logs").optional()
     ),
     DISABLE_AUDIT_LOG_STORAGE: zodStrBool.default("false").optional().describe("Disable audit log storage"),
+    GENERATE_SANITIZED_SCHEMA: zodStrBool
+      .default("false")
+      .describe("Generate sanitized schema with views after migrations"),
     MAX_LEASE_LIMIT: z.coerce.number().default(10000),
     DB_ROOT_CERT: zpStr(z.string().describe("Postgres database base64-encoded CA cert").optional()),
     DB_HOST: zpStr(z.string().describe("Postgres database host").optional()),
