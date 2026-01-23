@@ -17,8 +17,8 @@ export const ProjectSlackConfigsSchema = z.object({
   secretRequestChannels: z.string().default(""),
   createdAt: z.date(),
   updatedAt: z.date(),
-  secretSyncErrorChannels: z.string().default(""),
-  isSecretSyncErrorNotificationEnabled: z.boolean().default(false)
+  isSecretSyncErrorNotificationEnabled: z.boolean().default(false),
+  secretSyncErrorChannels: z.string().default("")
 });
 
 export type TProjectSlackConfigs = z.infer<typeof ProjectSlackConfigsSchema>;
