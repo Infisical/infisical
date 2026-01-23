@@ -31,12 +31,12 @@ export const CertificateRequestsSchema = z.object({
   approvalRequestId: z.string().uuid().nullable().optional(),
   ttl: z.string().nullable().optional(),
   enrollmentType: z.string().nullable().optional(),
+  altNames: z.unknown().nullable().optional(),
   organization: z.string().nullable().optional(),
   organizationalUnit: z.string().nullable().optional(),
   country: z.string().nullable().optional(),
   state: z.string().nullable().optional(),
-  locality: z.string().nullable().optional(),
-  altNames: z.unknown().nullable().optional()
+  locality: z.string().nullable().optional()
 });
 
 export type TCertificateRequests = z.infer<typeof CertificateRequestsSchema>;
