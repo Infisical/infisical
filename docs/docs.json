@@ -680,7 +680,8 @@
                     "pages": [
                       "documentation/platform/pki/guides/request-cert-agent",
                       "documentation/platform/pki/guides/request-cert-api",
-                      "documentation/platform/pki/guides/request-cert-acme"
+                      "documentation/platform/pki/guides/request-cert-acme",
+                      "documentation/platform/pki/guides/certificate-approvals"
                     ]
                   }
                 ]
@@ -702,6 +703,7 @@
                       "documentation/platform/pki/certificates/overview",
                       "documentation/platform/pki/certificates/profiles",
                       "documentation/platform/pki/certificates/policies",
+                      "documentation/platform/pki/certificates/approvals",
                       "documentation/platform/pki/certificates/certificates"
                     ]
                   },
