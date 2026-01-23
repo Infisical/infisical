@@ -157,7 +157,7 @@ const main = async () => {
 
 import { z } from "zod";
 
-${zodImports.length ? `import { ${zodImports.join(",")} } from \"@app/lib/zod\";` : ""}
+${zodImports.length ? `import { ${zodImports.join(",")} } from \"./utils/zod\";` : ""}
 
 import { TImmutableDBKeys } from "./models";
 
