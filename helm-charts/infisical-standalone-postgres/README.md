@@ -46,7 +46,7 @@ A helm chart to deploy Infisical
 | ingress.ingressClassName | string | `"nginx"` | Specifies the ingress class, useful for multi-ingress setups |
 | ingress.nginx.enabled | bool | `true` | Enable NGINX-specific settings, if using NGINX ingress controller |
 | ingress.tls | list | `[]` | TLS settings for HTTPS access |
-| gateway.enabled | bool | `true` | Enable or disable gateway configuration |
+| gateway.enabled | bool | `false` | Enable or disable gateway configuration |
 | gateway.hostName | string | `""` | Hostname for gateway access, e.g., app.example.com |
 | gateway.gatewayClassName | string | `"nginx"` | Specifies the gateway class, useful for multi-gateway setups |
 | gateway.gatewayAnnotations | object | `{}` | Custom annotations for gateway resource |

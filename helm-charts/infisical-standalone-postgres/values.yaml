@@ -128,7 +128,7 @@ gateway:
 
   # -- Hostname for gateway access (required for routing)
   #    Example: app.example.com
-  hostname: ""
+  hostName: ""
 
   # -- GatewayClass to use for this Gateway
   #    Useful when multiple Gateway implementations exist (e.g., nginx, istio)
