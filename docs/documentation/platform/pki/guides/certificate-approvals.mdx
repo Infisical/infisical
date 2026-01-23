@@ -15,35 +15,31 @@ sequenceDiagram
   participant Client as Client
   participant Infis as Infisical
   participant Approver as Approver(s)
-  participant CA as CA<br/>(Internal or External)
+  participant CA as CA (Internal or External)
 
-  Client->>Infis: POST /certificate<br/>(profileId, subject, SANs, etc.)
+  Client->>Infis: Request Certificate<br/>(Subject, SANs, Duration)
 
-  Infis->>Infis: Look up certificate profile<br/>(by profileId)
-  Infis->>Infis: Check for approval policy<br/>matching profile
+  Infis->>Infis: Validate Profile & Policy
 
   alt Approval Policy Found
-    Infis->>Infis: Create certificate request<br/>in PENDING_APPROVAL status
-    Infis-->>Client: Return certificate request ID<br/>with PENDING_APPROVAL status
+    Infis-->>Client: Return Request ID<br/>(Status: PENDING_APPROVAL)
 
-    Infis->>Approver: Notify eligible approvers<br/>(if notifications enabled)
+    Infis->>Approver: Notify Approvers
 
     loop For Each Approval Step
-      Approver->>Infis: Review and approve request
-      Infis->>Infis: Check if step complete<br/>(required approvals met)
+      Approver->>Infis: Review and Approve
+      Infis->>Infis: Check if step complete
     end
 
     Infis->>Infis: All steps approved
   end
 
-  alt Issuer Type = Self-Signed
-    Infis->>Infis: Generate keypair<br/>and self-sign certificate
-  else Issuer Type = CA
-    Infis->>CA: Request certificate issuance<br/>(CSR)
-    CA-->>Infis: Signed certificate<br/>(+ chain)
-  end
+  Note over Infis, CA: Issuance Phase
 
-  Infis-->>Client: Certificate available<br/>(poll or webhook)
+  Infis->>CA: Submit Certificate Signing Request (CSR)
+  CA-->>Infis: Return Signed Certificate<br/>(+ Chain)
+
+  Infis-->>Client: Certificate Available<br/>(Poll ID or Webhook)
 ```
 
 ## Guide

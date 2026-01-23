@@ -668,6 +668,34 @@ export const certificateV3ServiceFactory = ({
     if (matchedApprovalPolicy && !shouldBypassApproval(actor, matchedApprovalPolicy)) {
       const approvalPolicy = matchedApprovalPolicy;
 
+      const mappedCertificateRequestForValidation = mapEnumsForValidation({
+        ...certificateRequest,
+        subjectAlternativeNames: certificateRequest.altNames
+      });
+
+      const policy = await certificatePolicyService.getPolicyById({
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId,
+        policyId: profile.certificatePolicyId,
+        internal: true
+      });
+      if (!policy) {
+        throw new NotFoundError({ message: "Certificate policy not found for this profile" });
+      }
+
+      const validationResult = await certificatePolicyService.validateCertificateRequest(
+        profile.certificatePolicyId,
+        mappedCertificateRequestForValidation
+      );
+
+      if (!validationResult.isValid) {
+        throw new BadRequestError({
+          message: `Certificate request validation failed: ${validationResult.errors.join(", ")}`
+        });
+      }
+
       const policySteps = await approvalPolicyDAL.findStepsByPolicyId(approvalPolicy.id);
       const { requesterName, requesterEmail } = await resolveRequesterInfo(actor, actorId, EnrollmentType.API);
 

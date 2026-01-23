@@ -60,7 +60,18 @@ export const PolicyDetailsStep = () => {
               errorText={error?.message}
               helperText="Maximum time a request can be pending (optional)"
             >
-              <Input {...field} value={field.value || ""} placeholder="e.g., 7d" />
+              <Input
+                {...field}
+                value={field.value || ""}
+                placeholder="e.g., 7d"
+                onChange={(e) => {
+                  if (!e.target.value || e.target.value === "") {
+                    field.onChange(null);
+                    return;
+                  }
+                  field.onChange(e.target.value);
+                }}
+              />
             </FormControl>
           )}
         />

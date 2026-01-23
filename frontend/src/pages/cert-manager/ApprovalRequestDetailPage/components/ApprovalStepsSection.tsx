@@ -1,6 +1,7 @@
 import { useMemo } from "react";
-import { User } from "lucide-react";
+import { Eye, User } from "lucide-react";
 
+import { Tooltip } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api";
@@ -106,15 +107,23 @@ export const ApprovalStepsSection = ({ request }: Props) => {
                       approval?.decision === ApprovalRequestApprovalDecision.Approved;
                     const isRejected =
                       approval?.decision === ApprovalRequestApprovalDecision.Rejected;
+                    const hasComment = approval?.comment;
                     return (
                       <div
                         key={approver.id}
                         className="flex items-center gap-2 rounded-md bg-mineshaft-700 px-3 py-1.5 text-sm text-mineshaft-300"
                       >
                         <User className="h-3.5 w-3.5" />
-                        <span>{getApproverLabel(approver.id, approver.type)}</span>
+                        <span className="flex-1">
+                          {getApproverLabel(approver.id, approver.type)}
+                        </span>
                         {isApproved && <span className="text-xs text-green-500">Approved</span>}
                         {isRejected && <span className="text-xs text-red-500">Rejected</span>}
+                        {hasComment && (
+                          <Tooltip content={approval.comment}>
+                            <Eye className="h-3.5 w-3.5 cursor-pointer text-mineshaft-400 hover:text-mineshaft-200" />
+                          </Tooltip>
+                        )}
                       </div>
                     );
                   })}

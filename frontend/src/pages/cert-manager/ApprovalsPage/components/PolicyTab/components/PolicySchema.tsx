@@ -4,12 +4,13 @@ import { z } from "zod";
 import { ApprovalStepsSchema } from "@app/components/approvals";
 
 const DurationSchema = (
-  min = 3600,
+  min = 86400,
   max = 2592000,
-  msg = "Duration must be between 1 hour and 30 days"
+  msg = "Duration must be between 1 day and 30 days"
 ) =>
   z.string().refine(
     (val) => {
+      if (!val || val === "") return true;
       const duration = ms(val) / 1000;
       return duration >= min && duration <= max;
     },

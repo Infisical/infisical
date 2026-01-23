@@ -108,14 +108,14 @@ export const certificateApprovalServiceFactory = (
       throw new NotFoundError({ message: "Certificate profile not found" });
     }
 
+    if (isInternal) {
+      return profile;
+    }
+
     if (profile.enrollmentType !== requiredEnrollmentType) {
       throw new ForbiddenRequestError({
         message: `Profile is not configured for ${requiredEnrollmentType} enrollment`
       });
-    }
-
-    if (isInternal) {
-      return profile;
     }
 
     if (
@@ -698,15 +698,9 @@ export const certificateApprovalServiceFactory = (
     });
 
     try {
-      // Handle CSR signing requests
-      if (certRequest.csr) {
-        return await $processCSRSigningRequest(certRequest, certificateRequestId, profileId, ttl);
-      }
-
-      // Check for external CA orders
       const targetProfile = await $validateProfileAndPermissions({
         profileId,
-        requiredEnrollmentType: EnrollmentType.API,
+        requiredEnrollmentType: (certRequest.enrollmentType as EnrollmentType) || EnrollmentType.API,
         isInternal: true
       });
 
@@ -719,6 +713,10 @@ export const certificateApprovalServiceFactory = (
       );
       if (externalCaResult) {
         return externalCaResult;
+      }
+
+      if (certRequest.csr) {
+        return await $processCSRSigningRequest(certRequest, certificateRequestId, profileId, ttl);
       }
 
       const basicConstraints = certRequest.basicConstraints as { isCA: boolean; pathLength?: number } | null;

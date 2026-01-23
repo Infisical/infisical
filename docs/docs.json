@@ -703,7 +703,6 @@
                       "documentation/platform/pki/certificates/overview",
                       "documentation/platform/pki/certificates/profiles",
                       "documentation/platform/pki/certificates/policies",
-                      "documentation/platform/pki/certificates/approvals",
                       "documentation/platform/pki/certificates/certificates"
                     ]
                   },
@@ -716,7 +715,8 @@
                       "documentation/platform/pki/enrollment-methods/est"
                     ]
                   },
-                  "documentation/platform/pki/alerting"
+                  "documentation/platform/pki/alerting",
+                  "documentation/platform/pki/approvals"
                 ]
               },
               {
