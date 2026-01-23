@@ -116,9 +116,9 @@ In the following steps, we explore how to configure GitHub Actions to authentica
     By default, the identity will be configured with [Universal Auth](/documentation/platform/identities/universal-auth). For CI/CD workflows, we want to avoid long-lived credentials, so we'll switch to OIDC authentication.
   </Step>
   <Step title="Configure OIDC authentication">
-    1. On the machine identity page, click **Edit** in the **Authentication** section
+    1. Click on your machine identity 
     2. Remove the default Universal Auth configuration
-    3. Click **Add authentication method** and select **OIDC Auth**
+    3. Click **Add auth method** and select **OIDC Auth**
 
     Configure the following fields:
 
@@ -230,18 +230,18 @@ jobs:
 - `env-slug` - The environment to fetch secrets from (e.g., `dev`, `staging`, `prod`)
 
 <Note>
-  What you **don't** see in this workflow: no GitHub Secrets configured, no API keys, no long-lived credentials stored anywhere in the repository. Authentication is based purely on identity.
+This workflow uses OIDC authentication with short-lived tokens. The `identity-id` is a public identifier that can be safely committed to your repository. 
+Authentication occurs at runtime using GitHub's OIDC token, eliminating the need to store long-lived credentials.
 </Note>
+
 
 ### Using Secrets in Workflows
 
-Once the Infisical Secrets Action completes, secrets are automatically available as environment variables. You can reference them just like any other environment variable:
+After the Infisical Secrets Action completes, secrets are available as environment variables for subsequent steps in the job. Reference them using standard environment variable syntax:
 
 ```yaml
-- name: Use secrets
+- name: Run tests with database connection
   run: |
-    echo "Database URL is configured"
-    # $DATABASE_URL is available here
     npm run test -- --database-url="$DATABASE_URL"
 ```
 
@@ -249,99 +249,6 @@ Once the Infisical Secrets Action completes, secrets are automatically available
   Never print full secret values in workflow logs. GitHub Actions will mask secrets automatically, but avoid using `echo $SECRET` or similar commands that expose values.
 </Warning>
 
-## Advanced Configuration
-
-### Fetching Secrets from Multiple Paths
-
-If your secrets are organized in different folder paths, you can fetch from multiple locations:
-
-```yaml
-- name: Fetch secrets from Infisical
-  uses: Infisical/secrets-action@v1.0.9
-  with:
-    method: "oidc"
-    identity-id: "your-identity-id-here"
-    project-slug: "your-project-slug"
-    env-slug: "dev"
-    secret-path: "/api"  # Optional: specific folder path
-```
-
-### Using Different Environments
-
-You can parameterize the environment based on workflow context:
-
-```yaml
-- name: Fetch secrets from Infisical
-  uses: Infisical/secrets-action@v1.0.9
-  with:
-    method: "oidc"
-    identity-id: "your-identity-id-here"
-    project-slug: "your-project-slug"
-    env-slug: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
-```
-
-### Self-Hosted Infisical
-
-If you're using a self-hosted Infisical instance, specify the host URL:
-
-```yaml
-- name: Fetch secrets from Infisical
-  uses: Infisical/secrets-action@v1.0.9
-  with:
-    method: "oidc"
-    host: "https://infisical.yourcompany.com"
-    identity-id: "your-identity-id-here"
-    project-slug: "your-project-slug"
-    env-slug: "dev"
-```
-
-## How Authentication Works
-
-Understanding the authentication flow helps with troubleshooting and security:
-
-1. **Workflow Starts**: GitHub generates a short-lived OIDC token containing claims about:
-   - Repository (`repository`)
-   - Workflow (`workflow`)
-   - Organization (`organization`)
-   - Branch or environment context
-
-2. **Token Sent to Infisical**: The [Infisical Secrets Action](https://github.com/Infisical/secrets-action) sends the OIDC token to Infisical's authentication endpoint.
-
-3. **Identity Verification**: Infisical:
-   - Fetches the public key from GitHub's OIDC provider using OIDC Discovery
-   - Validates the JWT signature
-   - Checks the Subject, Audience, and Claims against the machine identity configuration
-
-4. **Access Token Issued**: If verification succeeds, Infisical issues a short-lived access token (default TTL: 7200 seconds).
-
-5. **Secrets Fetched**: The action uses the access token to fetch secrets for the requested project and environment.
-
-6. **Secrets Injected**: Secrets are injected as environment variables, available only for the duration of the job.
-
-<Note>
-  If identity permissions don't match, Infisical intentionally returns a 404 instead of a 403 to avoid leaking project existence information.
-</Note>
-
-## Best Practices
-
-### Security
-
-- **Scope Subjects Narrowly**: Use specific repository and context patterns in the Subject field rather than wildcards when possible.
-- **Use Environment-Specific Identities**: Create separate machine identities for different environments (dev, staging, prod) with appropriate access scopes.
-- **Never Commit Secrets**: The Identity ID is safe to commit, but never commit actual secret values or access tokens.
-- **Rotate Regularly**: While OIDC eliminates long-lived credentials, review and rotate machine identity configurations periodically.
-
-### Organization
-
-- **Centralize Secret Management**: Store all secrets in Infisical rather than duplicating them across repositories.
-- **Use Environment Scoping**: Leverage Infisical's environment feature to separate dev, staging, and production secrets.
-- **Document Dependencies**: Clearly document which secrets each workflow requires.
-
-### Workflow Design
-
-- **Minimize Secret Exposure**: Only fetch secrets that are actually needed for each workflow.
-- **Use Folder Paths**: Organize secrets in Infisical using folder paths and fetch only what's needed.
-- **Test in Non-Production First**: Always test OIDC configuration in development environments before deploying to production.
 
 ## Troubleshooting
 
@@ -353,27 +260,12 @@ If authentication fails, check:
 2. **Subject Match**: Verify the Subject in your machine identity matches the repository and context
 3. **Audience Match**: Confirm the Audience matches your GitHub organization
 4. **Identity Scope**: Ensure the identity has access to the project and environment you're requesting
-
-### Secrets Not Found
-
-If secrets aren't appearing:
-
-1. **Environment Slug**: Verify the `env-slug` matches your Infisical environment
-2. **Project Slug**: Confirm the `project-slug` is correct
-3. **Identity Permissions**: Check that the identity has read access to the secrets
-4. **Secret Path**: If using folder paths, verify the path is correct
+5. **Project Slug**: Verify the `project-slug` matches your Infisical project slug exactly. You can find this in your project settings.
+6. **Environment Slug**: Confirm the `env-slug` matches the exact environment name in Infisical (e.g., `dev`, `staging`, `prod`). Environment slugs are case-sensitive and must match exactly.
 
 ### Debugging OIDC Tokens
 
-To inspect the OIDC token claims from your workflow:
-
-```yaml
-- name: Debug OIDC token
-  run: |
-    TOKEN=$(curl -s -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-      "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/YOUR_ORG" | jq -r '.value')
-    echo "$TOKEN" | cut -d'.' -f2 | base64 -d | jq
-```
+To inspect OIDC token claims from your workflow, use GitHub's [actions-oidc-debugger](https://github.com/github/actions-oidc-debugger) tool. This tool helps you verify that the token claims match your machine identity configuration.
 
 <Info>
   For more detailed OIDC configuration options and troubleshooting, see [OIDC Auth for GitHub Actions](/documentation/platform/identities/oidc-auth/github).
@@ -388,14 +280,6 @@ If you prefer to **push secrets from Infisical to GitHub** (one-way sync), use [
 <Note>
   Secret Syncs push secrets **to** GitHub, while this guide shows how to fetch secrets **from** Infisical at runtime. Choose the approach that best fits your security and operational requirements.
 </Note>
-
-### Other Authentication Methods
-
-Infisical supports additional authentication methods for different use cases:
-
-- **[Universal Auth](/documentation/platform/identities/universal-auth)**: Client ID and secret-based authentication (requires storing credentials)
-- **[AWS IAM Auth](/documentation/platform/identities/aws-iam-auth)**: For workflows running on AWS infrastructure
-- **[GCP Auth](/documentation/platform/identities/gcp-auth)**: For workflows running on Google Cloud Platform
 
 ## Related Documentation
 
