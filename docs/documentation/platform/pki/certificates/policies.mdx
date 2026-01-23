@@ -28,9 +28,12 @@ Here's some guidance on each field:
 - Key Usages: The cryptographic purposes of the certificate such as Digital Signature, Key Encipherment, etc.
 - Extended Key Usages: The higher-level intended uses of the certificate such as Server Authentication, Client Authentication, etc.
 - Certificate Validity: The maximum lifetime of certificates that can be requested for certificates validated against this policy. You can specify both a duration and unit (days, months, or years).
-- Basic Constraints: Controls whether certificates issued under this policy can act as Certificate Authorities (CAs).
-  - **CA Certificate Property**: Determines whether issued certificates can have the `CA:TRUE` flag, allowing them to sign other certificates. Options are:
-    - **Forbid**: Certificates cannot be CAs. Use for standard TLS certificates (servers, clients).
-    - **Allow**: Certificates can optionally be CAs, depending on the request.
-    - **Require**: Certificates must be CAs. Use when the policy only allows to issue intermediate CA certificates.
-  - **Maximum Allowed Path Length**: Limits how many levels of intermediate CAs can exist below the issued certificate. For example, `0` means the CA can only sign end-entity certificates, `1` allows one level of intermediate CAs, and so on. Leave empty for no restriction.
+- Basic Constraints: Defines the role of a certificate within a trust hierarchy.
+  - **CA Certificate Property**: Determines if a certificate is permitted to sign and issue other certificates if `CA:TRUE` property is set. Options are:
+    - **Forbid**: Issued certificates are restricted to "End-Entity" use. They cannot sign other certificates.
+    - **Allow**: Certificates may be issued as either a CA or an End-Entity based on the specific signing request.
+    - **Require**: Mandates that all issued certificates act as CAs. This is typically used for Root or Intermediate CA policies.
+  - **Maximum Allowed Path Length**: Specifies the maximum number of non-self-issued intermediate certificates that may follow this certificate in a valid chain.
+    - A value of 0 means the CA can only sign final end-entity certificates.
+    - A value of 1 allows for one more level of CAs below it.
+    - Leaving this empty imposes no limit on the chain depth.
