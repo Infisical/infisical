@@ -127,6 +127,10 @@ describe("CertificateV3Service", () => {
   beforeEach(() => {
     // Reset all mocks before each test
     vi.resetAllMocks();
+    vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
+      const mockTx = {};
+      return callback(mockTx);
+    });
 
     // Mock ForbiddenError.from static method
     vi.spyOn(ForbiddenError, "from").mockReturnValue({
@@ -202,6 +206,30 @@ describe("CertificateV3Service", () => {
       },
       certificateRequestService: {
         createCertificateRequest: vi.fn().mockResolvedValue({ id: "cert-req-123" })
+      },
+      approvalPolicyDAL: {
+        findByProjectId: vi.fn().mockResolvedValue([]),
+        findStepsByPolicyId: vi.fn().mockResolvedValue([])
+      },
+      certificateRequestDAL: {
+        updateById: vi.fn().mockResolvedValue({ id: "cert-req-123" }),
+        findById: vi.fn().mockResolvedValue({ id: "cert-req-123" }),
+        create: vi.fn().mockResolvedValue({ id: "cert-req-123" }),
+        transaction: vi.fn()
+      },
+      userDAL: {
+        findById: vi.fn().mockResolvedValue({ id: "user-123" })
+      },
+      identityDAL: {
+        findById: vi.fn().mockResolvedValue({ id: "identity-123", name: "test-identity" })
+      },
+      approvalPolicyService: {
+        createRequestFromPolicy: vi.fn().mockResolvedValue({
+          request: {
+            id: "approval-req-123",
+            steps: [{ id: "step-1", stepNumber: 1, approvers: [] }]
+          }
+        })
       }
     });
   });
@@ -1778,9 +1806,13 @@ describe("CertificateV3Service", () => {
       ).rejects.toThrow("Certificate renewal failed. Errors: Subject alternative name not allowed");
 
       // Should store policy validation error
-      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", {
-        renewalError: "Policy validation failed: Subject alternative name not allowed"
-      });
+      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith(
+        "cert-123",
+        {
+          renewalError: "Policy validation failed: Subject alternative name not allowed"
+        },
+        expect.anything()
+      );
     });
 
     it("should reject renewal if certificate has no profile and no CA", async () => {
@@ -2084,9 +2116,13 @@ describe("CertificateV3Service", () => {
         commonName: ""
       });
 
-      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", {
-        renewBeforeDays: 7
-      });
+      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith(
+        "cert-123",
+        {
+          renewBeforeDays: 7
+        },
+        expect.anything()
+      );
     });
 
     it("should reject update if certificate is not from profile", async () => {
@@ -2248,9 +2284,13 @@ describe("CertificateV3Service", () => {
         commonName: ""
       });
 
-      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", {
-        renewBeforeDays: null
-      });
+      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith(
+        "cert-123",
+        {
+          renewBeforeDays: null
+        },
+        expect.anything()
+      );
     });
 
     it("should reject disable if certificate is not from profile", async () => {

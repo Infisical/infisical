@@ -314,7 +314,6 @@ export const CertificateRequestsSection = ({ onViewCertificateFromRequest }: Pro
                 <Th className="text-xs font-medium text-bunker-300 uppercase">STATUS</Th>
                 <Th className="text-xs font-medium text-bunker-300 uppercase">PROFILE</Th>
                 <Th className="text-xs font-medium text-bunker-300 uppercase">CREATED AT</Th>
-                <Th className="text-xs font-medium text-bunker-300 uppercase">UPDATED AT</Th>
                 <Th className="text-xs font-medium text-bunker-300 uppercase" />
               </Tr>
             </THead>

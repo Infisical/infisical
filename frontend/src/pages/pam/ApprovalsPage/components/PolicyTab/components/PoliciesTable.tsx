@@ -36,7 +36,9 @@ import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api";
 import {
   approvalPolicyQuery,
   ApprovalPolicyType,
-  ApproverType
+  ApproverType,
+  PamAccessPolicyConditions,
+  PamAccessPolicyConstraints
 } from "@app/hooks/api/approvalPolicies";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -141,7 +143,12 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
                         </IconButton>
                       </Td>
                       <Td>{policy.name}</Td>
-                      <Td>{policy.constraints.constraints.accessDuration.max}</Td>
+                      <Td>
+                        {
+                          (policy.constraints.constraints as PamAccessPolicyConstraints)
+                            .accessDuration.max
+                        }
+                      </Td>
                       <Td>
                         {conditionsCount} condition{conditionsCount !== 1 ? "s" : ""}
                       </Td>
@@ -202,37 +209,39 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
                               <div className="mb-2 text-sm font-medium text-mineshaft-300">
                                 Approval Conditions
                               </div>
-                              {policy.conditions.conditions.map((step, index) => (
-                                <Fragment key={`${policy.id}--${index + 1}`}>
-                                  <div
-                                    className={twMerge(
-                                      "rounded border border-mineshaft-600 bg-mineshaft-900 p-3"
+                              {(policy.conditions.conditions as PamAccessPolicyConditions).map(
+                                (step, index) => (
+                                  <Fragment key={`${policy.id}--${index + 1}`}>
+                                    <div
+                                      className={twMerge(
+                                        "rounded border border-mineshaft-600 bg-mineshaft-900 p-3"
+                                      )}
+                                    >
+                                      <div className="space-y-2">
+                                        <div>
+                                          <span className="text-sm font-medium text-mineshaft-300">
+                                            Account Paths:
+                                          </span>
+                                          <p className="text-sm text-mineshaft-100">
+                                            {step.accountPaths.join(", ")}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    {index < policy.conditions.conditions.length - 1 && (
+                                      <div className="flex items-center">
+                                        <div className="flex flex-col items-center">
+                                          <div className="h-3 w-px bg-mineshaft-500" />
+                                          <span className="px-2 text-xs font-medium text-mineshaft-400">
+                                            OR
+                                          </span>
+                                          <div className="h-3 w-px bg-mineshaft-500" />
+                                        </div>
+                                      </div>
                                     )}
-                                  >
-                                    <div className="space-y-2">
-                                      <div>
-                                        <span className="text-sm font-medium text-mineshaft-300">
-                                          Account Paths:
-                                        </span>
-                                        <p className="text-sm text-mineshaft-100">
-                                          {step.accountPaths.join(", ")}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  {index < policy.conditions.conditions.length - 1 && (
-                                    <div className="flex items-center">
-                                      <div className="flex flex-col items-center">
-                                        <div className="h-3 w-px bg-mineshaft-500" />
-                                        <span className="px-2 text-xs font-medium text-mineshaft-400">
-                                          OR
-                                        </span>
-                                        <div className="h-3 w-px bg-mineshaft-500" />
-                                      </div>
-                                    </div>
-                                  )}
-                                </Fragment>
-                              ))}
+                                  </Fragment>
+                                )
+                              )}
                             </div>
                             <div className="flex-2">
                               <div className="mb-2 text-sm font-medium text-mineshaft-300">

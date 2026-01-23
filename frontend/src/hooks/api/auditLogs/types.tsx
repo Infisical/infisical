@@ -45,6 +45,9 @@ interface AcmeAccountActorMetadata {
 interface AcmeProfileActorMetadata {
   profileId: string;
 }
+interface EstAccountActorMetadata {
+  profileId: string;
+}
 interface UserActor {
   type: ActorType.USER;
   metadata: UserActorMetadata;
@@ -84,6 +87,11 @@ export interface AcmeAccountActor {
   metadata: AcmeAccountActorMetadata;
 }
 
+export interface EstAccountActor {
+  type: ActorType.EST_ACCOUNT;
+  metadata: EstAccountActorMetadata;
+}
+
 export type Actor =
   | UserActor
   | ServiceActor
@@ -92,7 +100,8 @@ export type Actor =
   | UnknownUserActor
   | KmipClientActor
   | AcmeProfileActor
-  | AcmeAccountActor;
+  | AcmeAccountActor
+  | EstAccountActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;

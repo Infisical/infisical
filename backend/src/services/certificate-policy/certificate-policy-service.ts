@@ -9,7 +9,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
-import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
@@ -799,10 +799,10 @@ export const certificatePolicyServiceFactory = ({
     policyId,
     internal = false
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor?: ActorType;
+    actorId?: string;
+    actorAuthMethod?: ActorAuthMethod;
+    actorOrgId?: string;
     policyId: string;
     internal?: boolean;
   }): Promise<TCertificatePolicy> => {
@@ -812,11 +812,14 @@ export const certificatePolicyServiceFactory = ({
     }
 
     if (!internal) {
+      if (!actor || !actorId || !actorOrgId) {
+        throw new BadRequestError({ message: "Actor is required" });
+      }
       const { permission } = await permissionService.getProjectPermission({
         actor,
         actorId,
         projectId: template.projectId,
-        actorAuthMethod,
+        actorAuthMethod: actorAuthMethod || null,
         actorOrgId,
         actionProjectType: ActionProjectType.CertificateManager
       });

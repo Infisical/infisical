@@ -108,6 +108,8 @@ describe("CertificateRequestService", () => {
       });
       expect(mockCertificateRequestDAL.create).toHaveBeenCalledWith(
         {
+          acmeOrderId: undefined,
+          altNames: null,
           status: CertificateRequestStatus.PENDING,
           projectId: "550e8400-e29b-41d4-a716-446655440003",
           profileId: "550e8400-e29b-41d4-a716-446655440004",
@@ -284,6 +286,13 @@ describe("CertificateRequestService", () => {
         privateKey: "-----BEGIN PRIVATE KEY-----\nMOCK_KEY_PEM\n-----END PRIVATE KEY-----",
         serialNumber: "123456",
         errorMessage: null,
+        commonName: null,
+        organization: null,
+        organizationalUnit: null,
+        country: null,
+        state: null,
+        locality: null,
+        basicConstraints: undefined,
         createdAt: mockRequestWithCert.createdAt,
         updatedAt: mockRequestWithCert.updatedAt
       });
@@ -321,6 +330,13 @@ describe("CertificateRequestService", () => {
         privateKey: null,
         serialNumber: null,
         errorMessage: null,
+        commonName: null,
+        organization: null,
+        organizationalUnit: null,
+        country: null,
+        state: null,
+        locality: null,
+        basicConstraints: undefined,
         createdAt: mockRequestWithoutCert.createdAt,
         updatedAt: mockRequestWithoutCert.updatedAt
       });
@@ -378,6 +394,13 @@ describe("CertificateRequestService", () => {
         privateKey: null,
         serialNumber: "123456",
         errorMessage: null,
+        commonName: null,
+        organization: null,
+        organizationalUnit: null,
+        country: null,
+        state: null,
+        locality: null,
+        basicConstraints: undefined,
         createdAt: mockRequestWithCert.createdAt,
         updatedAt: mockRequestWithCert.updatedAt
       });
@@ -446,6 +469,13 @@ describe("CertificateRequestService", () => {
         privateKey: null,
         serialNumber: "123456",
         errorMessage: null,
+        commonName: null,
+        organization: null,
+        organizationalUnit: null,
+        country: null,
+        state: null,
+        locality: null,
+        basicConstraints: undefined,
         createdAt: mockRequestWithCert.createdAt,
         updatedAt: mockRequestWithCert.updatedAt
       });
@@ -483,6 +513,13 @@ describe("CertificateRequestService", () => {
         privateKey: null,
         serialNumber: null,
         errorMessage: "Certificate issuance failed",
+        commonName: null,
+        organization: null,
+        organizationalUnit: null,
+        country: null,
+        state: null,
+        locality: null,
+        basicConstraints: undefined,
         createdAt: mockFailedRequest.createdAt,
         updatedAt: mockFailedRequest.updatedAt
       });

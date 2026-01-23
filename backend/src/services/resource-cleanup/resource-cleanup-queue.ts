@@ -8,6 +8,7 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TUserNotificationDALFactory } from "@app/services/notification/user-notification-dal";
 
 import { TApprovalRequestDALFactory, TApprovalRequestGrantsDALFactory } from "../approval-policy/approval-request-dal";
+import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityUaClientSecretDALFactory } from "../identity-ua/identity-ua-client-secret-dal";
 import { TOrgServiceFactory } from "../org/org-service";
@@ -34,6 +35,7 @@ type TDailyResourceCleanUpQueueServiceFactoryDep = {
   scimService: Pick<TScimServiceFactory, "notifyExpiringTokens">;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "markExpiredRequests">;
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "markExpiredGrants">;
+  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "markExpiredApprovalRequests">;
 };
 
 export type TDailyResourceCleanUpQueueServiceFactory = ReturnType<typeof dailyResourceCleanUpQueueServiceFactory>;
@@ -54,7 +56,8 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
   userNotificationDAL,
   keyValueStoreDAL,
   approvalRequestDAL,
-  approvalRequestGrantsDAL
+  approvalRequestGrantsDAL,
+  certificateRequestDAL
 }: TDailyResourceCleanUpQueueServiceFactoryDep) => {
   const appCfg = getConfig();
 
@@ -98,7 +101,10 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
           await auditLogDAL.pruneAuditLog();
           await userNotificationDAL.pruneNotifications();
           await keyValueStoreDAL.pruneExpiredKeys();
-          await approvalRequestDAL.markExpiredRequests();
+          const expiredApprovalRequestIds = await approvalRequestDAL.markExpiredRequests();
+          if (expiredApprovalRequestIds.length > 0) {
+            await certificateRequestDAL.markExpiredApprovalRequests(expiredApprovalRequestIds);
+          }
           await approvalRequestGrantsDAL.markExpiredGrants();
           logger.info(`${QueueName.DailyResourceCleanUp}: queue task completed`);
         } catch (error) {
