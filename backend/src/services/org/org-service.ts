@@ -63,6 +63,7 @@ import { deleteOrgMembershipsFn } from "./org-fns";
 import {
   TDeleteOrgMembershipDTO,
   TDeleteOrgMembershipsDTO,
+  TFindAllOrgMembersDTO,
   TFindAllWorkspacesDTO,
   TFindOrgMembersByEmailDTO,
   TGetOrgGroupsDTO,
@@ -210,22 +211,18 @@ export const orgServiceFactory = ({
     return org;
   };
   /*
-   * Get all workspace members
+   * Get all organization members
    * */
-  const findAllOrgMembers = async (
-    userId: string,
-    orgId: string,
-    actorAuthMethod: ActorAuthMethod,
-    actorOrgId: string
-  ) => {
+  const findAllOrgMembers = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TFindAllOrgMembersDTO) => {
     const { permission } = await permissionService.getOrgPermission({
-      actor: ActorType.USER,
-      actorId: userId,
+      actor,
+      actorId,
       orgId,
       actorAuthMethod,
       actorOrgId,
       scope: OrganizationActionScope.Any
     });
+
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
 
     const members = await orgDAL.findAllOrgMembers(orgId);
