@@ -319,7 +319,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
             (attr) => attr.type === CertSubjectAttributeType.ORGANIZATIONAL_UNIT
           );
           if (ouAttr?.value) {
-            request.attributes.organizationalUnit = ouAttr.value;
+            request.attributes.organizationUnit = ouAttr.value;
           }
 
           const countryAttr = subjectAttributes.find(
@@ -381,6 +381,12 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
             text: "Successfully created certificate",
             type: "success"
           });
+        } else if ("status" in response && response.status === "pending_approval") {
+          createNotification({
+            text: "Certificate request submitted successfully. Approval is required before the certificate can be issued.",
+            type: "success"
+          });
+          handlePopUpToggle("issueCertificate", false);
         } else {
           // Certificate request - async processing
           createNotification({

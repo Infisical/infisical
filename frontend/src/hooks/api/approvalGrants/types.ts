@@ -12,6 +12,8 @@ export type PamAccessGrantAttributes = {
   accessDuration: string;
 };
 
+export type TApprovalGrantAttributes = PamAccessGrantAttributes;
+
 // Base Grant Type
 export type TApprovalGrant = {
   id: string;
@@ -22,7 +24,7 @@ export type TApprovalGrant = {
   revocationReason: string | null;
   status: ApprovalGrantStatus;
   type: ApprovalPolicyType;
-  attributes: PamAccessGrantAttributes;
+  attributes: TApprovalGrantAttributes;
   createdAt: string;
   expiresAt: string | null;
   revokedAt: string | null;

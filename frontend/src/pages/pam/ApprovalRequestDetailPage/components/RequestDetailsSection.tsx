@@ -2,7 +2,11 @@ import { format } from "date-fns";
 
 import { GenericFieldLabel } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { ApprovalRequestStatus, TApprovalRequest } from "@app/hooks/api/approvalRequests";
+import {
+  ApprovalRequestStatus,
+  PamAccessRequestData,
+  TApprovalRequest
+} from "@app/hooks/api/approvalRequests";
 
 type Props = {
   request: TApprovalRequest;
@@ -24,7 +28,7 @@ const getStatusBadgeColor = (status: ApprovalRequestStatus) => {
 };
 
 export const RequestDetailsSection = ({ request }: Props) => {
-  const { accountPath, accessDuration } = request.requestData.requestData;
+  const { accountPath, accessDuration } = request.requestData.requestData as PamAccessRequestData;
 
   return (
     <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">

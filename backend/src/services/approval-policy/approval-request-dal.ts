@@ -136,15 +136,23 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  const markExpiredRequests = async () => {
+  const markExpiredRequests = async (): Promise<string[]> => {
     try {
-      const result = await db(TableName.ApprovalRequests)
+      const expiredRequestIds = await db(TableName.ApprovalRequests)
         .where("status", ApprovalRequestStatus.Pending)
         .whereNotNull("expiresAt")
         .where("expiresAt", "<", new Date())
-        .update({ status: ApprovalRequestStatus.Expired });
+        .select("id");
 
-      return result;
+      if (expiredRequestIds.length === 0) {
+        return [];
+      }
+
+      const ids = expiredRequestIds.map((r) => r.id);
+
+      await db(TableName.ApprovalRequests).whereIn("id", ids).update({ status: ApprovalRequestStatus.Expired });
+
+      return ids;
     } catch (error) {
       throw new DatabaseError({ error, name: "Mark expired approval requests" });
     }

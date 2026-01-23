@@ -74,6 +74,15 @@ export const PkiManagerLayout = () => {
                   {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Alerting</Tab>}
                 </Link>
                 <Link
+                  to="/organizations/$orgId/projects/cert-manager/$projectId/approvals"
+                  params={{
+                    orgId: currentOrg.id,
+                    projectId: currentProject.id
+                  }}
+                >
+                  {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Approvals</Tab>}
+                </Link>
+                <Link
                   to="/organizations/$orgId/projects/cert-manager/$projectId/integrations"
                   params={{
                     orgId: currentOrg.id,

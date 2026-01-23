@@ -1,3 +1,11 @@
+export enum CertificateRequestStatus {
+  PENDING_APPROVAL = "pending_approval",
+  PENDING = "pending",
+  ISSUED = "issued",
+  FAILED = "failed",
+  REJECTED = "rejected"
+}
+
 export enum CertSubjectAlternativeNameType {
   DNS_NAME = "dns_name",
   IP_ADDRESS = "ip_address",

@@ -9,6 +9,7 @@ export {
   type ApprovalPolicyStep,
   ApprovalPolicyType,
   ApproverType,
+  type CertRequestPolicyConditions,
   type PamAccessPolicyConditions,
   type PamAccessPolicyConstraints,
   type TApprovalPolicy,
