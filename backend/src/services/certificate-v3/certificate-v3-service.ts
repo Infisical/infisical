@@ -177,8 +177,6 @@ const validateProfileAndPermissions = async ({
     return profile;
   }
 
-  console.log({ actor, actorId, actorOrgId });
-
   if (!actor || !actorId || !actorOrgId) {
     throw new BadRequestError({ message: "Actor is required" });
   }
@@ -203,7 +201,7 @@ const validateProfileAndPermissions = async ({
     actor,
     actorId,
     projectId: profile.projectId,
-    actorAuthMethod,
+    actorAuthMethod: actorAuthMethod || null,
     actorOrgId,
     actionProjectType: ActionProjectType.CertificateManager
   });

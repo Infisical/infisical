@@ -812,14 +812,14 @@ export const certificatePolicyServiceFactory = ({
     }
 
     if (!internal) {
-      if (!actor || !actorId || !actorAuthMethod || !actorOrgId) {
+      if (!actor || !actorId || !actorOrgId) {
         throw new BadRequestError({ message: "Actor is required" });
       }
       const { permission } = await permissionService.getProjectPermission({
         actor,
         actorId,
         projectId: template.projectId,
-        actorAuthMethod,
+        actorAuthMethod: actorAuthMethod || null,
         actorOrgId,
         actionProjectType: ActionProjectType.CertificateManager
       });
