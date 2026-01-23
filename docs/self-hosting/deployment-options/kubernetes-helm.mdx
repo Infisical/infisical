@@ -90,8 +90,20 @@ description: "Learn how to use Helm chart to install Infisical on your Kubernete
 
     ```yaml values.yaml 
     ingress:
+      enabled: true
       nginx:
         enabled: true 
+    ```
+
+    As an alternative, this chart also supports the Kubernetes Gateway API with HTTPRoute. NGINX is the default Gateway API implementation used to route traffic to Infisical services.
+
+    ```yaml values.yaml
+    ingress:
+      enabled: false
+
+    gateway:
+      enabled: true
+      gatewayClassName: nginx
     ```
   </Step>
 
@@ -293,7 +305,7 @@ description: "Learn how to use Helm chart to install Infisical on your Kubernete
 
   <Step title="Access Infisical">
     After deployment, please wait for 2-5 minutes for all pods to reach a running state. Once a significant number of pods are operational, access the IP address revealed through Ingress by your load balancer. 
-    You can find the IP address/hostname by executing the command `kubectl get ingress`.
+    You can find the IP address/hostname by executing the command `kubectl get ingress` or `kubectl get gateway` depending on your configuration.
     ![infisical-selfhost](/images/self-hosting/applicable-to-all/selfhost-signup.png)
   </Step>
   <Step title="Upgrade your instance">
