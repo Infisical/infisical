@@ -104,18 +104,13 @@ export const EditProjectTemplate = ({ isInfisicalTemplate, projectTemplate, onBa
         isInfisicalTemplate={isInfisicalTemplate}
         projectTemplate={projectTemplate}
       />
-      <ProjectTemplateUsersSection
-        isInfisicalTemplate={isInfisicalTemplate}
-        projectTemplate={projectTemplate}
-      />
-      <ProjectTemplateGroupsSection
-        isInfisicalTemplate={isInfisicalTemplate}
-        projectTemplate={projectTemplate}
-      />
-      <ProjectTemplateIdentitiesSection
-        isInfisicalTemplate={isInfisicalTemplate}
-        projectTemplate={projectTemplate}
-      />
+      {!isInfisicalTemplate && (
+        <>
+          <ProjectTemplateUsersSection projectTemplate={projectTemplate} />
+          <ProjectTemplateGroupsSection projectTemplate={projectTemplate} />
+          <ProjectTemplateIdentitiesSection projectTemplate={projectTemplate} />
+        </>
+      )}
       <ProjectTemplateDetailsModal
         isOpen={popUp.editDetails.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("editDetails", isOpen)}
