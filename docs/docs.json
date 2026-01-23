@@ -680,7 +680,8 @@
                     "pages": [
                       "documentation/platform/pki/guides/request-cert-agent",
                       "documentation/platform/pki/guides/request-cert-api",
-                      "documentation/platform/pki/guides/request-cert-acme"
+                      "documentation/platform/pki/guides/request-cert-acme",
+                      "documentation/platform/pki/guides/certificate-approvals"
                     ]
                   }
                 ]
@@ -714,7 +715,8 @@
                       "documentation/platform/pki/enrollment-methods/est"
                     ]
                   },
-                  "documentation/platform/pki/alerting"
+                  "documentation/platform/pki/alerting",
+                  "documentation/platform/pki/approvals"
                 ]
               },
               {

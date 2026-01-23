@@ -1,5 +1,14 @@
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import {
+  CertRequestPolicyInputsSchema,
+  CertRequestPolicySchema,
+  CertRequestRequestGrantSchema,
+  CertRequestRequestSchema,
+  CreateCertRequestPolicySchema,
+  CreateCertRequestRequestSchema,
+  UpdateCertRequestPolicySchema
+} from "@app/services/approval-policy/cert-request/cert-request-policy-schemas";
+import {
   CreatePamAccessPolicySchema,
   CreatePamAccessRequestSchema,
   PamAccessPolicyInputsSchema,
@@ -26,6 +35,19 @@ export const APPROVAL_POLICY_REGISTER_ROUTER_MAP: Record<
       requestResponseSchema: PamAccessRequestSchema,
       grantResponseSchema: PamAccessRequestGrantSchema,
       inputsSchema: PamAccessPolicyInputsSchema
+    });
+  },
+  [ApprovalPolicyType.CertRequest]: async (server: FastifyZodProvider) => {
+    registerApprovalPolicyEndpoints({
+      server,
+      policyType: ApprovalPolicyType.CertRequest,
+      createPolicySchema: CreateCertRequestPolicySchema,
+      updatePolicySchema: UpdateCertRequestPolicySchema,
+      policyResponseSchema: CertRequestPolicySchema,
+      createRequestSchema: CreateCertRequestRequestSchema,
+      requestResponseSchema: CertRequestRequestSchema,
+      grantResponseSchema: CertRequestRequestGrantSchema,
+      inputsSchema: CertRequestPolicyInputsSchema
     });
   }
 };

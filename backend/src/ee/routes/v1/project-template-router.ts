@@ -41,6 +41,13 @@ const SanitizedProjectTemplateSchema = ProjectTemplatesSchema.extend({
       roles: z.string().array()
     })
     .array()
+    .nullable(),
+  groups: z
+    .object({
+      groupSlug: z.string(),
+      roles: z.string().array()
+    })
+    .array()
     .nullable()
 });
 
@@ -115,6 +122,20 @@ const ProjectTemplateUsersSchema = z
 
     if (new Set(users.map((v) => v.username)).size !== users.length)
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Usernames must be unique" });
+  });
+
+const ProjectTemplateGroupsSchema = z
+  .object({
+    groupSlug: z.string().trim().min(1).toLowerCase(),
+    roles: z.string().trim().min(1).array().min(1)
+  })
+  .array()
+  .superRefine((groups, ctx) => {
+    if (Buffer.byteLength(JSON.stringify(groups)) > MAX_JSON_SIZE_LIMIT_IN_BYTES)
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Size limit exceeded" });
+
+    if (new Set(groups.map((v) => v.groupSlug.toLowerCase())).size !== groups.length)
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Group slugs must be unique" });
   });
 
 // Helper to validate user roles against available template roles
@@ -246,7 +267,8 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
           roles: ProjectTemplateRolesSchema.default([]).describe(ProjectTemplates.CREATE.roles),
           type: z.nativeEnum(ProjectType).describe(ProjectTemplates.CREATE.type),
           environments: ProjectTemplateEnvironmentsSchema.nullish().describe(ProjectTemplates.CREATE.environments),
-          users: ProjectTemplateUsersSchema.default([]).describe(ProjectTemplates.CREATE.users)
+          users: ProjectTemplateUsersSchema.default([]).describe(ProjectTemplates.CREATE.users),
+          groups: ProjectTemplateGroupsSchema.default([]).describe(ProjectTemplates.CREATE.groups)
         })
         .superRefine((data, ctx) => {
           validateUserRoles(data.users, data.roles, ctx);
@@ -296,7 +318,8 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
           description: z.string().max(256).trim().optional().describe(ProjectTemplates.UPDATE.description),
           roles: ProjectTemplateRolesSchema.optional().describe(ProjectTemplates.UPDATE.roles),
           environments: ProjectTemplateEnvironmentsSchema.nullish().describe(ProjectTemplates.UPDATE.environments),
-          users: ProjectTemplateUsersSchema.nullish().describe(ProjectTemplates.UPDATE.users)
+          users: ProjectTemplateUsersSchema.nullish().describe(ProjectTemplates.UPDATE.users),
+          groups: ProjectTemplateGroupsSchema.nullish().describe(ProjectTemplates.UPDATE.groups)
         })
         .superRefine((data, ctx) => {
           // Note: For updates, if users are provided but roles are not, validation against existing template roles

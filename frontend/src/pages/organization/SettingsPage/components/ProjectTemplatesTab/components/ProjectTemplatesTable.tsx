@@ -52,7 +52,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
     [search, projectTemplates]
   );
 
-  const colSpan = 4;
+  const colSpan = 6;
 
   return (
     <div>
@@ -70,6 +70,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
               <Th>Type</Th>
               <Th>Roles</Th>
               <Th>Users</Th>
+              <Th>Groups</Th>
               <Th />
             </Tr>
           </THead>
@@ -82,7 +83,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
               />
             )}
             {filteredTemplates.map((template) => {
-              const { id, name, roles, description, type, users } = template;
+              const { id, name, roles, description, type, users, groups } = template;
               return (
                 <Tr
                   onClick={() => onEdit(template)}
@@ -124,12 +125,32 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
                   </Td>
                   <Td className="pl-8">
                     {users?.length || 0}
-                    {users?.length && (
+                    {users && Boolean(users.length) && (
                       <Tooltip
                         content={
                           <ul className="ml-2 list-disc">
                             {users.map((user) => (
                               <li key={user.username}>{user.username}</li>
+                            ))}
+                          </ul>
+                        }
+                      >
+                        <FontAwesomeIcon
+                          size="sm"
+                          className="ml-2 text-mineshaft-400"
+                          icon={faCircleInfo}
+                        />
+                      </Tooltip>
+                    )}
+                  </Td>
+                  <Td className="pl-8">
+                    {groups?.length || 0}
+                    {groups && Boolean(groups.length) && (
+                      <Tooltip
+                        content={
+                          <ul className="ml-2 list-disc">
+                            {groups.map((group) => (
+                              <li key={group.groupSlug}>{group.groupSlug}</li>
                             ))}
                           </ul>
                         }

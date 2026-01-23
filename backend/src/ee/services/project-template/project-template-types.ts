@@ -18,13 +18,19 @@ export type TProjectTemplateUser = {
   roles: string[]; // role slugs
 };
 
+export type TProjectTemplateGroup = {
+  groupSlug: string;
+  roles: string[]; // role slugs
+};
+
 export type TCreateProjectTemplateDTO = {
   name: string;
   type: ProjectType;
   description?: string;
   roles: TProjectTemplateRole[];
   environments?: TProjectTemplateEnvironment[] | null;
-  users?: TProjectTemplateUser[];
+  users?: TProjectTemplateUser[] | null;
+  groups?: TProjectTemplateGroup[] | null;
 };
 
 export type TUpdateProjectTemplateDTO = Partial<Omit<TCreateProjectTemplateDTO, "users">> & {
@@ -68,6 +74,7 @@ export type TProjectTemplateServiceFactory = {
             }[];
           }[];
           users: TProjectTemplateUser[] | null;
+          groups: TProjectTemplateGroup[] | null;
           orgId: string;
         }
       | {
@@ -84,6 +91,7 @@ export type TProjectTemplateServiceFactory = {
             name: string;
           }[];
           users: TProjectTemplateUser[] | null;
+          groups: TProjectTemplateGroup[] | null;
           name: string;
           orgId: string;
           id: string;
@@ -109,6 +117,7 @@ export type TProjectTemplateServiceFactory = {
       name: string;
     }[];
     users: TProjectTemplateUser[] | null;
+    groups: TProjectTemplateGroup[] | null;
     name: string;
     orgId: string;
     type: string;
@@ -134,6 +143,7 @@ export type TProjectTemplateServiceFactory = {
       name: string;
     }[];
     users: TProjectTemplateUser[] | null;
+    groups: TProjectTemplateGroup[] | null;
     name: string;
     orgId: string;
     id: string;
@@ -158,6 +168,7 @@ export type TProjectTemplateServiceFactory = {
       name: string;
     }[];
     users: TProjectTemplateUser[] | null;
+    groups: TProjectTemplateGroup[] | null;
     name: string;
     orgId: string;
     id: string;
@@ -183,6 +194,7 @@ export type TProjectTemplateServiceFactory = {
       name: string;
     }[];
     users: TProjectTemplateUser[] | null;
+    groups: TProjectTemplateGroup[] | null;
     name: string;
     orgId: string;
     type: string;
@@ -208,6 +220,7 @@ export type TProjectTemplateServiceFactory = {
       name: string;
     }[];
     users: TProjectTemplateUser[] | null;
+    groups: TProjectTemplateGroup[] | null;
     name: string;
     type: string;
     orgId: string;

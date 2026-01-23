@@ -282,6 +282,11 @@ const certManagerRoutes = route("/organizations/$orgId/projects/cert-manager/$pr
     route("/certificate-templates", [index("cert-manager/PkiTemplateListPage/route.tsx")]),
     route("/certificate-authorities", "cert-manager/CertificateAuthoritiesPage/route.tsx"),
     route("/alerting", "cert-manager/AlertingPage/route.tsx"),
+    route("/approvals", "cert-manager/ApprovalsPage/route.tsx"),
+    route(
+      "/approval-requests/$approvalRequestId",
+      "cert-manager/ApprovalRequestDetailPage/route.tsx"
+    ),
     route("/ca/$caId", "cert-manager/CertAuthDetailsByIDPage/route.tsx"),
     route("/pki-collections/$collectionId", "cert-manager/PkiCollectionDetailsByIDPage/routes.tsx"),
     route("/integrations", [
