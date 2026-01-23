@@ -225,8 +225,7 @@ tables:
       - appConnectionId
       - dnsAppConnectionId
       - caId
-      - credentials
-      - configuration
+      # credentials and configuration columns excluded for security
 
   - name: external_kms
     source: public.external_kms
