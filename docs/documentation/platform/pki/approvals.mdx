@@ -1,0 +1,159 @@
+---
+title: "Approval Policies & Requests"
+sidebarTitle: "Approvals"
+description: "Learn how to configure approval workflows for certificate issuance."
+---
+
+Certificate approval workflows add a human review step before certificates are issued, helping organizations enforce security controls and compliance requirements.
+
+## When to Use Approval Workflows
+
+Approval workflows are recommended when:
+
+- **Separation of duties is required**: Your organization requires different people to request and approve certificate issuance.
+- **Sensitive certificate issuance needs oversight**: Certificates for production environments, customer-facing services, or internal PKI require additional review.
+- **Compliance mandates review**: Regulatory frameworks or internal policies require documented approval before certificate issuance.
+- **Preventing unauthorized issuance**: You want to ensure certificates are only issued after proper validation of the request.
+
+If your use case involves fully automated certificate management for workloads (e.g., using [Infisical Agent](/documentation/platform/pki/guides/request-cert-agent)), you may want to enable the machine identity bypass option instead of requiring approval.
+
+## Approval Policies
+
+An approval policy defines the workflow that must be completed before certificates can be issued from specific [certificate profiles](/documentation/platform/pki/certificates/profiles). When a certificate request is made against a profile with an approval policy, the request is placed in a pending state until the required approvers review and approve it.
+
+Key features of approval policies include:
+
+- **Multi-step workflows**: Configure sequential approval steps where each step must be completed before the next begins.
+- **Flexible approvers**: Assign individual users or groups as eligible approvers for each step.
+- **Required approval count**: Specify how many approvals are needed per step (e.g., require 2 out of 5 eligible approvers).
+- **Machine identity bypass**: Allow [machine identities](/documentation/platform/identities/machine-identities) to issue certificates without approval for automated workloads.
+- **Request expiration**: Set a maximum time-to-live (TTL) for pending requests.
+
+### Guide to Creating an Approval Policy
+
+To create an approval policy, head to your Certificate Management Project > Certificate Manager > Approvals > Policies and press **Create Policy**.
+
+![pki approval policies](/images/platform/pki/approvals/approval-policies.png)
+
+<Steps>
+  <Step title="Configuration">
+    Configure the basic policy settings:
+
+    - **Policy Name**: A descriptive name for the policy such as `production-cert-approval`.
+    - **Max. Request TTL**: The maximum time a request can remain pending before it expires (optional).
+    - **Certificate Profiles**: Select one or more certificate profiles that this policy applies to. Any certificate request made against these profiles will require approval.
+    - **Bypass approval for machine identities**: When enabled, machine identities can issue certificates from the selected profiles without requiring approval. This is useful for automated workloads that need certificates without human intervention.
+
+    ![pki approval policy configuration](/images/platform/pki/approvals/approval-policy-configuration.png)
+  </Step>
+  <Step title="Approval Sequence">
+    Configure the approval steps. Each step defines who can approve and how many approvals are required:
+
+    - **Step Name**: An optional name for the step such as `Security Team Review`.
+    - **Approvers**: Select individual users or groups who are eligible to approve this step. Multiple approvers can be selected.
+    - **Required Approvals**: The number of approvals needed to complete this step. For example, if you select 5 approvers and require 2 approvals, any 2 of the 5 can approve to complete the step.
+    - **Notify Approvers**: When enabled, eligible approvers receive a notification when their approval is required.
+
+    You can add multiple steps to create a sequential approval workflow. For example:
+    1. **Team Lead Review**: Requires 1 approval from the team leads group
+    2. **Security Review**: Requires 2 approvals from the security team
+
+    Each step must be completed in order before the certificate is issued.
+
+    ![pki approval policy sequence](/images/platform/pki/approvals/approval-policy-sequence.png)
+  </Step>
+  <Step title="Review">
+    Review your policy configuration and click **Create** to save the policy.
+
+    ![pki approval policy review](/images/platform/pki/approvals/approval-policy-review.png)
+
+    ![pki approval policy created](/images/platform/pki/approvals/approval-policy-created.png)
+  </Step>
+</Steps>
+
+## Approval Requests
+
+When a certificate request is made against a profile with an approval policy, an approval request is created. Approvers can then review and approve or reject the request.
+
+### Viewing Requests
+
+Navigate to your Certificate Management Project > Certificate Manager > Approvals > Requests to view all approval requests. You can filter requests by status:
+
+![pki approval requests](/images/platform/pki/approvals/approval-requests.png)
+
+- **Open Requests**: Requests currently pending approval
+- **Approved**: Requests that have been approved and certificates issued
+- **Rejected**: Requests that were rejected by an approver
+- **Cancelled**: Requests cancelled by the requester
+- **Expired**: Requests that exceeded their maximum TTL
+
+### Approving a Request
+
+<Steps>
+  <Step title="Open the request">
+    Click on a pending request to view its details.
+
+    ![pki approval request open](/images/platform/pki/approvals/approval-request-open.png)
+  </Step>
+  <Step title="Review the certificate details">
+    Review the certificate request information including:
+    - Requester name and email
+    - Certificate profile
+    - Common name and subject alternative names (SANs)
+    - Key usages and extended key usages
+    - Validity period
+    - Basic Constraints
+
+    ![pki approval request detail](/images/platform/pki/approvals/approval-request-detail.png)
+  </Step>
+  <Step title="Approve or add comments">
+    If you are an eligible approver for the current step, click **Approve** to approve the request.
+    ![pki approval request approve modal](/images/platform/pki/approvals/approval-request-approve-modal.png)
+    ![pki approval request approved](/images/platform/pki/approvals/approval-request-approved.png)
+  </Step>
+</Steps>
+
+Once all required approvals for all steps are obtained, the certificate is automatically issued.
+
+### Rejecting a Request
+
+<Steps>
+  <Step title="Open the request">
+    Click on a pending request to view its details.
+    ![pki approval request open](/images/platform/pki/approvals/approval-request-open.png)
+  </Step>
+  <Step title="Review the certificate details">
+    Review the certificate request information.
+    ![pki approval request detail](/images/platform/pki/approvals/approval-request-detail.png)
+  </Step>
+  <Step title="Reject with reason">
+    If you are an eligible approver for the current step, click **Reject** to reject the request. Optionally add a comment explaining the rejection.
+
+    ![pki approval request rejected](/images/platform/pki/approvals/approval-request-rejected.png)
+  </Step>
+</Steps>
+
+When a request is rejected, the workflow ends and no certificate is issued.
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="I approved a certificate request but the certificate wasn't issued">
+    If the approval policy has multiple steps, your approval may have completed only one step. The certificate is issued only after all approval steps are completed. Check the request details to see which step is currently pending and ensure all required approvers have approved.
+  </Accordion>
+  <Accordion title="I don't see the Approve button on a request">
+    The Approve button only appears if you are an eligible approver for the current step. Verify that:
+    - You are listed as an approver (either directly or through a group) for the current approval step
+    - The request is still in a pending state and hasn't expired
+    - A previous step hasn't already been rejected
+  </Accordion>
+  <Accordion title="Can I use approval workflows with ACME or EST enrollment?">
+    Approval policies can be configured on profiles using any enrollment method, including [API](/documentation/platform/pki/enrollment-methods/api), [ACME](/documentation/platform/pki/enrollment-methods/acme), and [EST](/documentation/platform/pki/enrollment-methods/est). However, automated clients like Certbot typically cannot wait for human approval.
+  </Accordion>
+  <Accordion title="What happens when a request expires?">
+    When a pending request exceeds the maximum TTL configured in the approval policy, it automatically moves to an **Expired** status. No certificate is issued for expired requests. The requester will need to submit a new certificate request.
+  </Accordion>
+  <Accordion title="Can an approver also be the requester?">
+    By default, an approver can approve their own requests if they are listed as an eligible approver. If your organization requires separation of duties where requesters cannot approve their own requests, configure the approval policy with approver groups that exclude potential requesters.
+  </Accordion>
+</AccordionGroup>

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import ReactCodeInput from "react-code-input";
 import { useTranslation } from "react-i18next";
+import { Link } from "@tanstack/react-router";
 
 import { useSendVerificationEmail } from "@app/hooks/api";
 
@@ -146,6 +147,14 @@ export default function CodeInputStep({
           </div>
         </div>
         <p className="pb-2 text-sm text-bunker-400">{t("signup.step2-spam-alert")}</p>
+        <p className="text-sm text-bunker-400">
+          <Link
+            to="/login"
+            className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4"
+          >
+            Have an account? Log in
+          </Link>
+        </p>
       </div>
     </div>
   );

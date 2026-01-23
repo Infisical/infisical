@@ -27,6 +27,35 @@ import { CaType } from "./certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "./certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "./external-certificate-authority-dal";
 
+const base64UrlToBase64 = (base64url: string): string => {
+  let base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
+
+  const padding = base64.length % 4;
+  if (padding === 2) {
+    base64 += "==";
+  } else if (padding === 3) {
+    base64 += "=";
+  }
+
+  return base64;
+};
+
+const ensureCsrPemFormat = (csr: string): string => {
+  const trimmedCsr = csr.trim();
+
+  if (
+    trimmedCsr.includes("-----BEGIN CERTIFICATE REQUEST-----") ||
+    trimmedCsr.includes("-----BEGIN NEW CERTIFICATE REQUEST-----")
+  ) {
+    return trimmedCsr;
+  }
+
+  const standardBase64 = base64UrlToBase64(trimmedCsr);
+
+  const base64Lines = standardBase64.match(/.{1,64}/g) || [standardBase64];
+  return `-----BEGIN CERTIFICATE REQUEST-----\n${base64Lines.join("\n")}\n-----END CERTIFICATE REQUEST-----`;
+};
+
 export type TIssueCertificateFromProfileJobData = {
   certificateId: string;
   profileId: string;
@@ -199,7 +228,8 @@ export const certificateIssuanceQueueFactory = ({
         let skLeaf: string = "";
 
         if (csr) {
-          certificateCsr = csr;
+          // Ensure CSR is in proper PEM format (handles raw base64 DER content)
+          certificateCsr = ensureCsrPemFormat(csr);
         } else {
           const keyAlg = keyAlgorithmToAlgCfg(keyAlgorithm as CertKeyAlgorithm);
           const leafKeys = await crypto.nativeCrypto.subtle.generateKey(keyAlg, true, ["sign", "verify"]);

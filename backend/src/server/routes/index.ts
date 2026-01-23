@@ -223,6 +223,7 @@ import { certificateSyncDALFactory } from "@app/services/certificate-sync/certif
 import { certificateTemplateDALFactory } from "@app/services/certificate-template/certificate-template-dal";
 import { certificateTemplateEstConfigDALFactory } from "@app/services/certificate-template/certificate-template-est-config-dal";
 import { certificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
+import { certificateApprovalServiceFactory } from "@app/services/certificate-v3/certificate-approval-fns";
 import { certificateV3QueueServiceFactory } from "@app/services/certificate-v3/certificate-v3-queue";
 import { certificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { cmekServiceFactory } from "@app/services/cmek/cmek-service";
@@ -946,7 +947,8 @@ export const registerRoutes = async (
     auditLogService,
     notificationService,
     membershipRoleDAL,
-    membershipUserDAL
+    membershipUserDAL,
+    keyStore
   });
   const passwordService = authPaswordServiceFactory({
     tokenService,
@@ -1166,6 +1168,8 @@ export const registerRoutes = async (
   const orgRelayConfigDAL = orgRelayConfigDalFactory(db);
   const relayDAL = relayDalFactory(db);
   const gatewayV2DAL = gatewayV2DalFactory(db);
+
+  const approvalPolicyDAL = approvalPolicyDALFactory(db);
 
   const orgGatewayConfigV2DAL = orgGatewayConfigV2DalFactory(db);
 
@@ -1977,6 +1981,8 @@ export const registerRoutes = async (
 
   const approvalRequestDAL = approvalRequestDALFactory(db);
   const approvalRequestGrantsDAL = approvalRequestGrantsDALFactory(db);
+  const approvalRequestStepsDAL = approvalRequestStepsDALFactory(db);
+  const approvalRequestStepEligibleApproversDAL = approvalRequestStepEligibleApproversDALFactory(db);
 
   // DAILY
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
@@ -1995,7 +2001,8 @@ export const registerRoutes = async (
     userNotificationDAL,
     keyValueStoreDAL,
     approvalRequestDAL,
-    approvalRequestGrantsDAL
+    approvalRequestGrantsDAL,
+    certificateRequestDAL
   });
 
   const healthAlert = healthAlertServiceFactory({
@@ -2309,6 +2316,43 @@ export const registerRoutes = async (
     certificateRequestService
   });
 
+  const certificateApprovalService = certificateApprovalServiceFactory({
+    certificateRequestDAL,
+    certificateProfileDAL,
+    acmeAccountDAL,
+    permissionService,
+    certificateAuthorityDAL,
+    internalCaService: internalCertificateAuthorityService,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    projectDAL,
+    certificatePolicyService,
+    certificateIssuanceQueue
+  });
+
+  const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
+  const approvalPolicyStepApproversDAL = approvalPolicyStepApproversDALFactory(db);
+  const approvalRequestApprovalsDAL = approvalRequestApprovalsDALFactory(db);
+
+  const approvalPolicyService = approvalPolicyServiceFactory({
+    approvalPolicyDAL,
+    approvalPolicyStepsDAL,
+    approvalPolicyStepApproversDAL,
+    permissionService,
+    projectMembershipDAL,
+    approvalRequestDAL,
+    approvalRequestStepsDAL,
+    approvalRequestStepEligibleApproversDAL,
+    approvalRequestApprovalsDAL,
+    userGroupMembershipDAL,
+    notificationService,
+    approvalRequestGrantsDAL,
+    certificateApprovalService,
+    certificateRequestDAL
+  });
+
   const certificateV3Service = certificateV3ServiceFactory({
     certificateDAL,
     certificateSecretDAL,
@@ -2325,7 +2369,12 @@ export const registerRoutes = async (
     projectDAL,
     certificateBodyDAL,
     certificateIssuanceQueue,
-    certificateRequestService
+    certificateRequestService,
+    approvalPolicyDAL,
+    certificateRequestDAL,
+    userDAL,
+    identityDAL,
+    approvalPolicyService
   });
 
   const certificateV3Queue = certificateV3QueueServiceFactory({
@@ -2336,16 +2385,15 @@ export const registerRoutes = async (
   });
 
   const certificateEstV3Service = certificateEstV3ServiceFactory({
-    internalCertificateAuthorityService,
-    certificatePolicyService,
-    certificatePolicyDAL,
+    certificateV3Service,
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
     projectDAL,
     kmsService,
     licenseService,
     certificateProfileDAL,
-    estEnrollmentConfigDAL
+    estEnrollmentConfigDAL,
+    certificatePolicyDAL
   });
 
   const acmeChallengeService = pkiAcmeChallengeServiceFactory({
@@ -2377,7 +2425,10 @@ export const registerRoutes = async (
     certificateIssuanceQueue,
     acmeChallengeService,
     pkiAcmeQueueService,
-    auditLogService
+    auditLogService,
+    approvalPolicyDAL,
+    approvalPolicyService,
+    certificateRequestDAL
   });
 
   const pkiSubscriberService = pkiSubscriberServiceFactory({
@@ -2488,7 +2539,6 @@ export const registerRoutes = async (
     totpService
   });
 
-  const approvalPolicyDAL = approvalPolicyDALFactory(db);
   const pamSessionExpirationService = pamSessionExpirationServiceFactory({
     queueService,
     pamSessionDAL
@@ -2566,27 +2616,6 @@ export const registerRoutes = async (
     vaultExternalMigrationConfigDAL,
     secretService,
     auditLogService
-  });
-
-  const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
-  const approvalPolicyStepApproversDAL = approvalPolicyStepApproversDALFactory(db);
-  const approvalRequestStepsDAL = approvalRequestStepsDALFactory(db);
-  const approvalRequestStepEligibleApproversDAL = approvalRequestStepEligibleApproversDALFactory(db);
-  const approvalRequestApprovalsDAL = approvalRequestApprovalsDALFactory(db);
-
-  const approvalPolicyService = approvalPolicyServiceFactory({
-    approvalPolicyDAL,
-    approvalPolicyStepsDAL,
-    approvalPolicyStepApproversDAL,
-    permissionService,
-    projectMembershipDAL,
-    approvalRequestDAL,
-    approvalRequestStepsDAL,
-    approvalRequestStepEligibleApproversDAL,
-    approvalRequestApprovalsDAL,
-    userGroupMembershipDAL,
-    notificationService,
-    approvalRequestGrantsDAL
   });
 
   // setup the communication with license key server

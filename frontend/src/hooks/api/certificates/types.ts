@@ -121,7 +121,7 @@ export type TUnifiedCertificateResponse = {
 
 export type TCertificateRequestResponse = {
   certificateRequestId: string;
-  status: "pending" | "issued" | "failed";
+  status: "pending_approval" | "pending" | "issued" | "failed" | "rejected";
   projectId: string;
 };
 
@@ -130,22 +130,36 @@ export type TUnifiedCertificateIssuanceResponse =
   | TCertificateRequestResponse;
 
 export type TCertificateRequestDetails = {
-  status: "pending" | "issued" | "failed";
-  certificate: TCertificate | null;
+  status: "pending" | "issued" | "failed" | "pending_approval" | "rejected";
+  certificate: string | null;
+  certificateId: string | null;
+  privateKey: string | null;
+  serialNumber: string | null;
   errorMessage: string | null;
+  commonName: string | null;
+  organization: string | null;
+  organizationalUnit: string | null;
+  country: string | null;
+  state: string | null;
+  locality: string | null;
+  basicConstraints: {
+    isCA: boolean;
+    pathLength?: number;
+  } | null;
   createdAt: string;
   updatedAt: string;
 };
 
 export type TCertificateRequestListItem = {
   id: string;
-  status: "pending" | "issued" | "failed";
+  status: "pending_approval" | "pending" | "issued" | "failed" | "rejected";
   commonName: string | null;
   altNames: string | null;
   profileId: string | null;
   profileName: string | null;
   caId: string | null;
   certificateId: string | null;
+  approvalRequestId: string | null;
   errorMessage: string | null;
   createdAt: string;
   updatedAt: string;
