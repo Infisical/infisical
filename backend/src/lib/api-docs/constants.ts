@@ -2332,7 +2332,11 @@ export const ProjectTemplates = {
     users:
       "The users to be automatically added to projects created from this template. Each user is identified by username and assigned one or more roles.",
     groups:
-      "The groups to be automatically added to projects created from this template. Each group is identified by slug and assigned one or more roles."
+      "The groups to be automatically added to projects created from this template. Each group is identified by slug and assigned one or more roles.",
+    identities:
+      "The organization-owned identities to be automatically added to projects created from this template. Each identity is identified by ID and assigned one or more roles.",
+    projectManagedIdentities:
+      "The project-owned identities to be automatically created for projects created from this template. Each identity is identified by name and assigned one or more roles."
   },
   UPDATE: {
     templateId: "The ID of the project template to be updated.",
@@ -2343,7 +2347,11 @@ export const ProjectTemplates = {
     users:
       "The updated users to be automatically added to projects created from this template. Each user is identified by username and assigned one or more roles.",
     groups:
-      "The updated groups to be automatically added to projects created from this template. Each group is identified by slug and assigned one or more roles."
+      "The updated groups to be automatically added to projects created from this template. Each group is identified by slug and assigned one or more roles.",
+    identities:
+      "The updated organization-owned identities to be automatically added to projects created from this template. Each identity is identified by ID and assigned one or more roles.",
+    projectManagedIdentities:
+      "The updated project-owned identities to be automatically created for projects created from this template. Each identity is identified by name and assigned one or more roles."
   },
   DELETE: {
     templateId: "The ID of the project template to be deleted."

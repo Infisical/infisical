@@ -342,7 +342,7 @@ export const ProjectTemplateIdentitiesSection = ({
                     isDisabled={!isAllowed}
                     type="button"
                   >
-                    Add Identity
+                    Add Machine Identity
                   </Button>
                 </div>
               )}

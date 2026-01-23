@@ -6,6 +6,7 @@ import {
   AccessScope,
   ActionProjectType,
   OrganizationActionScope,
+  OrgMembershipRole,
   ProjectMembershipRole,
   ProjectType,
   ProjectVersion,
@@ -609,7 +610,7 @@ export const projectServiceFactory = ({
 
             roleAssignments.push({
               membershipId: orgMembership.id,
-              role: ProjectMembershipRole.NoAccess
+              role: OrgMembershipRole.NoAccess
             });
 
             for (const roleSlug of templateIdentity.roles) {

@@ -311,8 +311,10 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
           environments: ProjectTemplateEnvironmentsSchema.nullish().describe(ProjectTemplates.CREATE.environments),
           users: ProjectTemplateUsersSchema.default([]).describe(ProjectTemplates.CREATE.users),
           groups: ProjectTemplateGroupsSchema.default([]).describe(ProjectTemplates.CREATE.groups),
-          identities: ProjectTemplateIdentitiesSchema.default([]),
-          projectManagedIdentities: ProjectTemplateProjectManagedIdentitiesSchema.default([])
+          identities: ProjectTemplateIdentitiesSchema.default([]).describe(ProjectTemplates.CREATE.identities),
+          projectManagedIdentities: ProjectTemplateProjectManagedIdentitiesSchema.default([]).describe(
+            ProjectTemplates.CREATE.projectManagedIdentities
+          )
         })
         .superRefine((data, ctx) => {
           validateUserRoles(data.users, data.roles, ctx);
@@ -364,8 +366,10 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
           environments: ProjectTemplateEnvironmentsSchema.nullish().describe(ProjectTemplates.UPDATE.environments),
           users: ProjectTemplateUsersSchema.nullish().describe(ProjectTemplates.UPDATE.users),
           groups: ProjectTemplateGroupsSchema.nullish().describe(ProjectTemplates.UPDATE.groups),
-          identities: ProjectTemplateIdentitiesSchema.nullish(),
-          projectManagedIdentities: ProjectTemplateProjectManagedIdentitiesSchema.nullish()
+          identities: ProjectTemplateIdentitiesSchema.nullish().describe(ProjectTemplates.UPDATE.identities),
+          projectManagedIdentities: ProjectTemplateProjectManagedIdentitiesSchema.nullish().describe(
+            ProjectTemplates.UPDATE.projectManagedIdentities
+          )
         })
         .superRefine((data, ctx) => {
           // Note: For updates, if users are provided but roles are not, validation against existing template roles

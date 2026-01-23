@@ -71,7 +71,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
               <Th>Roles</Th>
               <Th>Users</Th>
               <Th>Groups</Th>
-              <Th>Identities</Th>
+              <Th>Machine Identities</Th>
               <Th />
             </Tr>
           </THead>
@@ -178,7 +178,32 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
                       </Tooltip>
                     )}
                   </Td>
-                  <Td className="pl-8">{totalIdentities}</Td>
+                  <Td className="pl-8">
+                    {totalIdentities}
+                    {Boolean(totalIdentities) && (
+                      <Tooltip
+                        content={
+                          <ul className="ml-2 list-disc">
+                            {(projectManagedIdentities || []).map((identity) => (
+                              <li key={identity.name}>{identity.name}</li>
+                            ))}
+                            {identities && Boolean(identities?.length) && (
+                              <li key="org">
+                                {identities.length} Organization Identit
+                                {identities.length === 1 ? "y" : "ies"}
+                              </li>
+                            )}
+                          </ul>
+                        }
+                      >
+                        <FontAwesomeIcon
+                          size="sm"
+                          className="ml-2 text-mineshaft-400"
+                          icon={faCircleInfo}
+                        />
+                      </Tooltip>
+                    )}
+                  </Td>
                   <Td className="w-5">
                     {name !== "default" && (
                       <OrgPermissionCan
