@@ -8,12 +8,7 @@ import { Logger } from "pino";
 
 import { applyJitter, delay } from "@app/lib/delay";
 
-import {
-  acquireSanitizedSchemaLock,
-  createSanitizedSchema,
-  dropSanitizedSchema,
-  releaseSanitizedSchemaLock
-} from "./db/sanitized-schema";
+import { acquireSanitizedSchemaLock, createSanitizedSchema, dropSanitizedSchema } from "./db/sanitized-schema";
 import { PgSqlLock } from "./keystore/keystore";
 
 const SANITIZED_SCHEMA_ERROR = "SANITIZED_SCHEMA_ERROR";
@@ -293,23 +288,8 @@ const withStartupLock = async (db: Knex, logger: Logger, doMigrations: () => Pro
 
 export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs) => {
   const generateSanitizedSchema = process.env.GENERATE_SANITIZED_SCHEMA === "true";
-  let sanitizedLockAcquired = false;
 
   try {
-    // we drop the sanitized schema before migrations to avoid conflicts with the migrations
-    if (generateSanitizedSchema) {
-      try {
-        await acquireSanitizedSchemaLock({ db: applicationDb, logger });
-        sanitizedLockAcquired = true;
-        await dropSanitizedSchema({ db: applicationDb, logger });
-      } catch (err) {
-        logger.error(
-          { err, errorId: SANITIZED_SCHEMA_ERROR, phase: "drop" },
-          `${SANITIZED_SCHEMA_ERROR}: Failed to drop sanitized schema before migrations`
-        );
-      }
-    }
-
     // akhilmhdh(Feb 10 2025): 2 years  from now remove this
     if (isProduction) {
       const migrationTable = migrationConfig.tableName;
@@ -343,12 +323,18 @@ export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs
 
       if (generateSanitizedSchema) {
         try {
-          await createSanitizedSchema({ db: applicationDb, logger });
-          logger.info("Finished sanitized schema generation.");
+          await applicationDb.transaction(async (tx) => {
+            const isLocked = await acquireSanitizedSchemaLock({ db: tx, logger });
+            if (isLocked) {
+              await dropSanitizedSchema({ db: tx, logger });
+              await createSanitizedSchema({ db: tx, logger });
+              logger.info("Finished sanitized schema generation.");
+            }
+          });
         } catch (err) {
           logger.error(
-            { err, errorId: SANITIZED_SCHEMA_ERROR, phase: "create" },
-            `${SANITIZED_SCHEMA_ERROR}: Failed to create sanitized schema`
+            { err, errorId: SANITIZED_SCHEMA_ERROR, phase: "drop" },
+            `${SANITIZED_SCHEMA_ERROR}: Failed to drop and recreate sanitized schema`
           );
         }
       }
@@ -385,6 +371,7 @@ export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs
 
     // Use startup lock to ensure only one instance runs migrations at a time
     await withStartupLock(applicationDb, logger, async () => {
+      if (generateSanitizedSchema) await dropSanitizedSchema({ db: applicationDb, logger });
       await applicationDb.migrate.latest(migrationConfig);
     });
     logger.info("Finished application migrations.");
@@ -404,16 +391,5 @@ export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs
   } catch (err) {
     logger.error(err, "Boot up migration failed");
     process.exit(1);
-  } finally {
-    if (sanitizedLockAcquired) {
-      try {
-        await releaseSanitizedSchemaLock({ db: applicationDb, logger });
-      } catch (err) {
-        logger.error(
-          { err, errorId: SANITIZED_SCHEMA_ERROR, phase: "unlock" },
-          `${SANITIZED_SCHEMA_ERROR}: Failed to release sanitized schema lock`
-        );
-      }
-    }
   }
 };

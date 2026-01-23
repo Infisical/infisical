@@ -1,6 +1,5 @@
-import path from "path";
-
 import { Knex } from "knex";
+import path from "path";
 import { Logger } from "pino";
 
 import { PgSqlLock } from "@app/keystore/keystore";
@@ -12,14 +11,15 @@ type TArgs = {
   logger: Logger;
 };
 
-export const acquireSanitizedSchemaLock = async ({ db, logger }: TArgs): Promise<void> => {
-  await db.raw("SELECT pg_advisory_lock(?)", [PgSqlLock.SanitizedSchemaGeneration]);
-  logger.info("Acquired sanitized schema generation lock");
-};
-
-export const releaseSanitizedSchemaLock = async ({ db, logger }: TArgs): Promise<void> => {
-  await db.raw("SELECT pg_advisory_unlock(?)", [PgSqlLock.SanitizedSchemaGeneration]);
-  logger.info("Released sanitized schema generation lock");
+export const acquireSanitizedSchemaLock = async ({ db, logger }: TArgs): Promise<boolean> => {
+  const res = await db.raw<{ rows: { lock_acquired: boolean }[] }>(
+    "SELECT pg_try_advisory_xact_lock(?) as lock_acquired",
+    [PgSqlLock.SanitizedSchemaGeneration]
+  );
+  if (res?.rows[0]?.lock_acquired) {
+    logger.info("Acquired sanitized schema generation lock");
+  }
+  return res?.rows[0]?.lock_acquired;
 };
 
 export const dropSanitizedSchema = async ({ db, logger }: TArgs): Promise<void> => {
