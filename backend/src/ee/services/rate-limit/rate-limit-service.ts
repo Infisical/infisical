@@ -70,8 +70,8 @@ export const rateLimitServiceFactory = ({
           authRateLimit: rateLimit.authRateLimit,
           inviteUserRateLimit: rateLimit.inviteUserRateLimit,
           mfaRateLimit: rateLimit.mfaRateLimit,
-          identityCreationLimit: rateLimitMaxConfiguration.identityCreationLimit,
-          projectCreationLimit: rateLimitMaxConfiguration.projectCreationLimit
+          identityCreationLimit: rateLimit.identityCreationLimit,
+          projectCreationLimit: rateLimit.projectCreationLimit
         };
 
         logger.info(newRateLimitMaxConfiguration, "syncRateLimitConfiguration: rate limit configuration");
