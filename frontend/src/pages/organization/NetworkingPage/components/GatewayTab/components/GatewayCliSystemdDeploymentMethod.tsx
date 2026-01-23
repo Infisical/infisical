@@ -30,7 +30,7 @@ import {
   useGetIdentityTokenAuth,
   useGetRelays
 } from "@app/hooks/api";
-import { slugSchema } from "@app/lib/schemas";
+import { safeJWTSchema, slugSchema } from "@app/lib/schemas";
 
 import { RelayOption } from "./RelayOption";
 
@@ -62,7 +62,7 @@ const formSchemaWithIdentity = baseFormSchema.extend({
 });
 
 const formSchemaWithToken = baseFormSchema.extend({
-  identityToken: z.string().min(1, "Token is required")
+  identityToken: safeJWTSchema
 });
 
 export const GatewayCliSystemdDeploymentMethod = () => {
