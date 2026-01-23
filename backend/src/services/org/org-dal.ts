@@ -2,12 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TMemberships, TMembershipsInsert, TMembershipsUpdate } from "@app/db/schemas/memberships";
-import {
-  AccessScope,
-  OrgMembershipRole,
-  OrgMembershipStatus,
-  TableName
-} from "@app/db/schemas/models";
+import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TableName } from "@app/db/schemas/models";
 import { OrganizationsSchema, TOrganizations, TOrganizationsInsert } from "@app/db/schemas/organizations";
 import { TUserEncryptionKeys } from "@app/db/schemas/user-encryption-keys";
 import { DatabaseError } from "@app/lib/errors";

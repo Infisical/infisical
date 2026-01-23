@@ -1,11 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import {
-  AccessScope,
-  OrgMembershipRole,
-  OrgMembershipStatus,
-  OrganizationActionScope
-} from "@app/db/schemas/models";
+import { AccessScope, OrgMembershipRole, OrgMembershipStatus, OrganizationActionScope } from "@app/db/schemas/models";
 import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";

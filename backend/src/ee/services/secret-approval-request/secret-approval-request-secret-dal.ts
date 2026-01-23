@@ -2,7 +2,10 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas/models";
-import { SecretApprovalRequestsSecretsSchema, TSecretApprovalRequestsSecrets } from "@app/db/schemas/secret-approval-requests-secrets";
+import {
+  SecretApprovalRequestsSecretsSchema,
+  TSecretApprovalRequestsSecrets
+} from "@app/db/schemas/secret-approval-requests-secrets";
 import { SecretApprovalRequestsSecretsV2Schema } from "@app/db/schemas/secret-approval-requests-secrets-v2";
 import { TSecretTags } from "@app/db/schemas/secret-tags";
 import { DatabaseError, NotFoundError } from "@app/lib/errors";

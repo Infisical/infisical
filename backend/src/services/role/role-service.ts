@@ -1,12 +1,7 @@
 import { packRules } from "@casl/ability/extra";
 import { requestContext } from "@fastify/request-context";
 
-import {
-  AccessScope,
-  ActionProjectType,
-  OrganizationActionScope,
-  TableName
-} from "@app/db/schemas/models";
+import { AccessScope, ActionProjectType, OrganizationActionScope, TableName } from "@app/db/schemas/models";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";

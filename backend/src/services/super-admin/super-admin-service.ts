@@ -1,11 +1,6 @@
 import { CronJob } from "cron";
 
-import {
-  AccessScope,
-  IdentityAuthMethod,
-  OrgMembershipRole,
-  OrgMembershipStatus
-} from "@app/db/schemas/models";
+import { AccessScope, IdentityAuthMethod, OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas/models";
 import { TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas/super-admin";
 import { TUsers } from "@app/db/schemas/users";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";

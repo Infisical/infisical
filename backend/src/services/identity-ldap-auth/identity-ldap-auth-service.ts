@@ -3,12 +3,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 import slugify from "@sindresorhus/slugify";
 
-import {
-  AccessScope,
-  ActionProjectType,
-  IdentityAuthMethod,
-  OrganizationActionScope
-} from "@app/db/schemas/models";
+import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas/models";
 import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template";
 import { testLDAPConfig } from "@app/ee/services/ldap-config/ldap-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";

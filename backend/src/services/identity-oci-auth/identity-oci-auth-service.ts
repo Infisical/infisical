@@ -4,12 +4,7 @@ import { requestContext } from "@fastify/request-context";
 import { AxiosError } from "axios";
 import RE2 from "re2";
 
-import {
-  AccessScope,
-  ActionProjectType,
-  IdentityAuthMethod,
-  OrganizationActionScope
-} from "@app/db/schemas/models";
+import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas/models";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {

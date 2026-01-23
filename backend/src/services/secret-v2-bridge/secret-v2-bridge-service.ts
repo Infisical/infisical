@@ -2,12 +2,7 @@ import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 import { Knex } from "knex";
 import { z } from "zod";
 
-import {
-  ActionProjectType,
-  ProjectMembershipRole,
-  SecretType,
-  TableName
-} from "@app/db/schemas/models";
+import { ActionProjectType, ProjectMembershipRole, SecretType, TableName } from "@app/db/schemas/models";
 import { SecretsV2Schema, TSecretsV2 } from "@app/db/schemas/secrets-v2";
 import {
   hasSecretReadValueOrDescribePermission,

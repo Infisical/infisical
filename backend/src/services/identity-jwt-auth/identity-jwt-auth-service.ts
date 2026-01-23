@@ -5,12 +5,7 @@ import jwt from "jsonwebtoken";
 import { JwksClient } from "jwks-rsa";
 
 import { TIdentityJwtAuthsUpdate } from "@app/db/schemas/identity-jwt-auths";
-import {
-  AccessScope,
-  ActionProjectType,
-  IdentityAuthMethod,
-  OrganizationActionScope
-} from "@app/db/schemas/models";
+import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas/models";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {

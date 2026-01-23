@@ -1,10 +1,5 @@
 import { TMembershipRolesInsert } from "@app/db/schemas/membership-roles";
-import {
-  AccessScope,
-  ProjectMembershipRole,
-  TableName,
-  TemporaryPermissionMode
-} from "@app/db/schemas/models";
+import { AccessScope, ProjectMembershipRole, TableName, TemporaryPermissionMode } from "@app/db/schemas/models";
 import { TAccessApprovalPolicyApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";

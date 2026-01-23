@@ -1,11 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import {
-  AccessScope,
-  OrganizationActionScope,
-  ProjectMembershipRole,
-  ProjectVersion
-} from "@app/db/schemas/models";
+import { AccessScope, OrganizationActionScope, ProjectMembershipRole, ProjectVersion } from "@app/db/schemas/models";
 import { OrgPermissionAdminConsoleAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";

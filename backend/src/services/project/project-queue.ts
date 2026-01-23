@@ -8,7 +8,10 @@ import {
   SecretKeyEncoding,
   TableName
 } from "@app/db/schemas/models";
-import { SecretApprovalRequestsSecretsSchema, TSecretApprovalRequestsSecrets } from "@app/db/schemas/secret-approval-requests-secrets";
+import {
+  SecretApprovalRequestsSecretsSchema,
+  TSecretApprovalRequestsSecrets
+} from "@app/db/schemas/secret-approval-requests-secrets";
 import { SecretVersionsSchema, TSecretVersions } from "@app/db/schemas/secret-versions";
 import { SecretsSchema, TSecrets } from "@app/db/schemas/secrets";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";

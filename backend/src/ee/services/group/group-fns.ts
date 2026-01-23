@@ -1,11 +1,6 @@
 import { Knex } from "knex";
 
-import {
-  AccessScope,
-  ProjectVersion,
-  SecretKeyEncoding,
-  TableName
-} from "@app/db/schemas/models";
+import { AccessScope, ProjectVersion, SecretKeyEncoding, TableName } from "@app/db/schemas/models";
 import { TUsers } from "@app/db/schemas/users";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, ScimRequestError } from "@app/lib/errors";
