@@ -50,7 +50,7 @@ const validateGeneratedSQL = (sql: string): void => {
 };
 
 export const createSanitizedSchema = async ({ db, logger }: TArgs): Promise<void> => {
-      // eslint-disable-next-line import/no-extraneous-dependencies
+  // eslint-disable-next-line import/no-extraneous-dependencies
   const { loadConfig, generateSQL } = await import("@infisical/pg-view-generator");
 
   const config = await loadConfig(path.join(__dirname, "sanitized-schema.yaml"));
