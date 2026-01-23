@@ -360,21 +360,13 @@ export const aiMcpEndpointServiceFactory = ({
               targetPort
             });
 
-            if (proxyResult) {
-              // V2 gateway - use long-lived proxy, preserving the path from the original URL
-              gatewayCleanups.push(proxyResult.cleanup);
-              const proxyUrl = `http://localhost:${proxyResult.port}${urlObj.pathname}${urlObj.search}`;
-              clientResult = await connectAndGetTools(proxyUrl);
-            } else {
-              // Fall back to V1 gateway (short-lived, may not work for all MCP operations)
-              clientResult = await $gatewayHttpProxyWrapper(
-                { gatewayId: mcpServer.gatewayId, targetHost, targetPort },
-                async (host, port) => {
-                  const proxyUrl = `${host}:${port}${urlObj.pathname}${urlObj.search}`;
-                  return connectAndGetTools(proxyUrl);
-                }
-              );
+            if (!proxyResult) {
+              throw new NotFoundError({ message: "Gateway not found or not available" });
             }
+
+            gatewayCleanups.push(proxyResult.cleanup);
+            const proxyUrl = `http://localhost:${proxyResult.port}${urlObj.pathname}${urlObj.search}`;
+            clientResult = await connectAndGetTools(proxyUrl);
           } else {
             // Direct connection (no gateway)
             clientResult = await connectAndGetTools(mcpServer.url);
