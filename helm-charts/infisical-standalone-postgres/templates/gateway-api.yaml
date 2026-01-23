@@ -24,7 +24,7 @@ spec:
     - name: {{ . | lower }}
       protocol: {{ upper . }}   # HTTP or HTTPS
       port: {{ if eq . "https" }}443{{ else }}80{{ end }}
-      hostname: {{ $gateway.hostname }}
+      hostname: {{ $gateway.hostName }}
       {{- if eq . "https" }}
       tls:
         mode: {{ $gateway.tls.mode | default "Terminate" }}
@@ -47,7 +47,7 @@ spec:
   parentRefs:
   - name: infisical-gateway
   hostnames:
-  - {{ $gateway.hostname}}
+  - {{ $gateway.hostName}}
   rules:
   - matches:
       - path:

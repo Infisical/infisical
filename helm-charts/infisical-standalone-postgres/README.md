@@ -46,6 +46,15 @@ A helm chart to deploy Infisical
 | ingress.ingressClassName | string | `"nginx"` | Specifies the ingress class, useful for multi-ingress setups |
 | ingress.nginx.enabled | bool | `true` | Enable NGINX-specific settings, if using NGINX ingress controller |
 | ingress.tls | list | `[]` | TLS settings for HTTPS access |
+| gateway.enabled | bool | `true` | Enable or disable gateway configuration |
+| gateway.hostName | string | `""` | Hostname for gateway access, e.g., app.example.com |
+| gateway.gatewayClassName | string | `"nginx"` | Specifies the gateway class, useful for multi-gateway setups |
+| gateway.gatewayAnnotations | object | `{}` | Custom annotations for gateway resource |
+| gateway.routeAnnotations | object | `{}` | Custom annotations for httproute resource |
+| gateway.listeners | list | `[]`    | Listeners |
+| gateway.tls.enabled | bool | `false` | Enable TLS on HTTPS listeners |
+| gateway.tls.mode | string | `"Terminate"` | TLS mode (`Terminate` or `Passthrough`) |
+| gateway.tls.secretName | string | `""` | Kubernetes Secret name containing TLS cert |
 | nameOverride | string | `""` | Overrides the default release name |
 | postgresql.auth.database | string | `"infisicalDB"` | Database name for Infisical |
 | postgresql.auth.password | string | `"root"` | Password for PostgreSQL database access |
