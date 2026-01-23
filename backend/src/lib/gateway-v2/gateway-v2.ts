@@ -12,7 +12,7 @@ import { BadRequestError } from "../errors";
 import { GatewayProxyProtocol } from "../gateway/types";
 import { logger } from "../logger";
 
-export interface IGatewayRelayServer {
+interface IGatewayRelayServer {
   server: net.Server;
   port: number;
   cleanup: () => Promise<void>;
