@@ -321,14 +321,21 @@ export const projectTemplateServiceFactory = ({
     // Validate groups exist in the organization
     let validatedGroups: { groupId: string; roles: string[] }[] = [];
     if (groups?.length) {
-      const orgGroups = await groupDAL.find({ orgId: actor.orgId });
-      const orgGroupBySlug = new Map(orgGroups.map((g) => [g.slug.toLowerCase(), g] as const));
+      const groupSlugs = groups.map((g) => g.groupSlug.toLowerCase());
+      const foundGroups = await groupDAL.find({
+        orgId: actor.orgId,
+        $in: { slug: groupSlugs }
+      });
 
-      const invalidGroups = groups.filter((g) => !orgGroupBySlug.has(g.groupSlug.toLowerCase()));
-      if (invalidGroups.length) {
-        throw new BadRequestError({
-          message: `The following groups do not exist in this organization: ${invalidGroups.map((g) => g.groupSlug).join(", ")}`
-        });
+      if (foundGroups.length !== groups.length) {
+        const foundGroupSlugs = new Set(foundGroups.map((g) => g.slug.toLowerCase()));
+        const invalidGroups = groups.filter((g) => !foundGroupSlugs.has(g.groupSlug.toLowerCase()));
+
+        if (invalidGroups.length) {
+          throw new BadRequestError({
+            message: `The following groups do not exist in this organization: ${invalidGroups.map((g) => g.groupSlug).join(", ")}`
+          });
+        }
       }
 
       const availableRoleSlugs = new Set([...Object.values(ProjectMembershipRole), ...roles.map((r) => r.slug)]);
@@ -343,23 +350,31 @@ export const projectTemplateServiceFactory = ({
         });
       });
 
-      validatedGroups = groups.map((g) => {
-        const group = orgGroupBySlug.get(g.groupSlug.toLowerCase());
-        return { groupId: group!.id, roles: g.roles };
-      });
+      const groupSlugToId = new Map(foundGroups.map((g) => [g.slug.toLowerCase(), g.id]));
+      validatedGroups = groups.map((g) => ({
+        groupId: groupSlugToId.get(g.groupSlug.toLowerCase())!,
+        roles: g.roles
+      }));
     }
 
     // Validate org-managed identities exist in the organization
     let validatedIdentities: { identityId: string; roles: string[] }[] = [];
     if (identities?.length) {
-      const orgIdentities = await identityDAL.find({ orgId: actor.orgId });
-      const orgIdentityById = new Map(orgIdentities.map((i) => [i.id, i] as const));
+      const identityIds = identities.map((i) => i.identityId);
+      const foundIdentities = await identityDAL.find({
+        orgId: actor.orgId,
+        $in: { id: identityIds }
+      });
 
-      const invalidIdentities = identities.filter((i) => !orgIdentityById.has(i.identityId));
-      if (invalidIdentities.length) {
-        throw new BadRequestError({
-          message: `The following identities do not exist in this organization: ${invalidIdentities.map((i) => i.identityId).join(", ")}`
-        });
+      if (foundIdentities.length !== identities.length) {
+        const foundIdentityIds = new Set(foundIdentities.map((i) => i.id));
+        const invalidIdentities = identities.filter((i) => !foundIdentityIds.has(i.identityId));
+
+        if (invalidIdentities.length) {
+          throw new BadRequestError({
+            message: `The following identities do not exist in this organization: ${invalidIdentities.map((i) => i.identityId).join(", ")}`
+          });
+        }
       }
 
       const availableRoleSlugs = new Set([...Object.values(ProjectMembershipRole), ...roles.map((r) => r.slug)]);
@@ -538,14 +553,21 @@ export const projectTemplateServiceFactory = ({
     // Validate that groups exist in the organization
     let validatedGroups: { groupId: string; roles: string[] }[] | undefined;
     if (groups) {
-      const orgGroups = await groupDAL.find({ orgId: projectTemplate.orgId });
-      const orgGroupBySlug = new Map(orgGroups.map((g) => [g.slug.toLowerCase(), g] as const));
+      const groupSlugs = groups.map((g) => g.groupSlug.toLowerCase());
+      const foundGroups = await groupDAL.find({
+        orgId: projectTemplate.orgId,
+        $in: { slug: groupSlugs }
+      });
 
-      const invalidGroups = groups.filter((g) => !orgGroupBySlug.has(g.groupSlug.toLowerCase()));
-      if (invalidGroups.length) {
-        throw new BadRequestError({
-          message: `The following groups do not exist in this organization: ${invalidGroups.map((g) => g.groupSlug).join(", ")}`
-        });
+      if (foundGroups.length !== groups.length) {
+        const foundGroupSlugs = new Set(foundGroups.map((g) => g.slug.toLowerCase()));
+        const invalidGroups = groups.filter((g) => !foundGroupSlugs.has(g.groupSlug.toLowerCase()));
+
+        if (invalidGroups.length) {
+          throw new BadRequestError({
+            message: `The following groups do not exist in this organization: ${invalidGroups.map((g) => g.groupSlug).join(", ")}`
+          });
+        }
       }
 
       const templateRoles = roles ?? (projectTemplate.roles as TProjectTemplateRole[]);
@@ -564,10 +586,11 @@ export const projectTemplateServiceFactory = ({
         });
       });
 
-      validatedGroups = groups.map((g) => {
-        const group = orgGroupBySlug.get(g.groupSlug.toLowerCase());
-        return { groupId: group!.id, roles: g.roles };
-      });
+      const groupSlugToId = new Map(foundGroups.map((g) => [g.slug.toLowerCase(), g.id]));
+      validatedGroups = groups.map((g) => ({
+        groupId: groupSlugToId.get(g.groupSlug.toLowerCase())!,
+        roles: g.roles
+      }));
     } else if (groups === null) {
       validatedGroups = [];
     }
@@ -575,14 +598,21 @@ export const projectTemplateServiceFactory = ({
     // Validate org-managed identities exist in the organization
     let validatedIdentities: { identityId: string; roles: string[] }[] | undefined = [];
     if (identities) {
-      const orgIdentities = await identityDAL.find({ orgId: projectTemplate.orgId });
-      const orgIdentityById = new Map(orgIdentities.map((i) => [i.id, i] as const));
+      const identityIds = identities.map((i) => i.identityId);
+      const foundIdentities = await identityDAL.find({
+        orgId: projectTemplate.orgId,
+        $in: { id: identityIds }
+      });
 
-      const invalidIdentities = identities.filter((i) => !orgIdentityById.has(i.identityId));
-      if (invalidIdentities.length) {
-        throw new BadRequestError({
-          message: `The following identities do not exist in this organization: ${invalidIdentities.map((i) => i.identityId).join(", ")}`
-        });
+      if (foundIdentities.length !== identities.length) {
+        const foundIdentityIds = new Set(foundIdentities.map((i) => i.id));
+        const invalidIdentities = identities.filter((i) => !foundIdentityIds.has(i.identityId));
+
+        if (invalidIdentities.length) {
+          throw new BadRequestError({
+            message: `The following identities do not exist in this organization: ${invalidIdentities.map((i) => i.identityId).join(", ")}`
+          });
+        }
       }
 
       const templateRoles = roles ?? (projectTemplate.roles as TProjectTemplateRole[]);
