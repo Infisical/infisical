@@ -944,7 +944,8 @@ export const registerRoutes = async (
     auditLogService,
     notificationService,
     membershipRoleDAL,
-    membershipUserDAL
+    membershipUserDAL,
+    keyStore
   });
   const passwordService = authPaswordServiceFactory({
     tokenService,
