@@ -122,3 +122,10 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- $serviceName := include "infisical.redisServiceName" . -}}
 {{- printf "redis://default:%s@%s:6379" $password "redis-master" -}}
 {{- end -}}
+
+
+{{- define "check.ingressOrGateway" -}}
+{{- if not (or .Values.ingress.enabled .Values.gateway.enabled) -}}
+{{- fail "You must enable at least one of ingress.enabled or gateway.enabled" -}}
+{{- end -}}
+{{- end -}}
