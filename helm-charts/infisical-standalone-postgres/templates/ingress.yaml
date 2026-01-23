@@ -38,13 +38,6 @@ spec:
               name: {{ include "infisical.fullname" . }}
               port:
                 number: 8080
-        - path: /ss-webhook
-          pathType: Exact
-          backend:
-            service:
-              name: {{ include "infisical.fullname" . }}
-              port:
-                number: 8080
       {{- if $ingress.hostName }}
       host: {{ $ingress.hostName }}
       {{- end }}
