@@ -52,7 +52,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
     [search, projectTemplates]
   );
 
-  const colSpan = 6;
+  const colSpan = 7;
 
   return (
     <div>
@@ -71,6 +71,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
               <Th>Roles</Th>
               <Th>Users</Th>
               <Th>Groups</Th>
+              <Th>Identities</Th>
               <Th />
             </Tr>
           </THead>
@@ -83,7 +84,21 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
               />
             )}
             {filteredTemplates.map((template) => {
-              const { id, name, roles, description, type, users, groups } = template;
+              const {
+                id,
+                name,
+                roles,
+                description,
+                type,
+                users,
+                groups,
+                identities,
+                projectManagedIdentities
+              } = template;
+
+              const totalIdentities =
+                (identities?.length || 0) + (projectManagedIdentities?.length || 0);
+
               return (
                 <Tr
                   onClick={() => onEdit(template)}
@@ -163,6 +178,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
                       </Tooltip>
                     )}
                   </Td>
+                  <Td className="pl-8">{totalIdentities}</Td>
                   <Td className="w-5">
                     {name !== "default" && (
                       <OrgPermissionCan
