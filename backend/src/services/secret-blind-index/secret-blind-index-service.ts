@@ -1,4 +1,4 @@
-import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas/models";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 

@@ -1,7 +1,8 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TKmipClients } from "@app/db/schemas";
+import { TKmipClients } from "@app/db/schemas/kmip-clients";
+import { TableName } from "@app/db/schemas/models";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";

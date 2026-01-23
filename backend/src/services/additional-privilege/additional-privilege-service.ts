@@ -2,7 +2,7 @@
 import { RawRule } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 
-import { AccessScope, TemporaryPermissionMode } from "@app/db/schemas";
+import { AccessScope, TemporaryPermissionMode } from "@app/db/schemas/models";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";

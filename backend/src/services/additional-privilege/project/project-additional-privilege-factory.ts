@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, ActionProjectType } from "@app/db/schemas";
+import { AccessScope, ActionProjectType } from "@app/db/schemas/models";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation

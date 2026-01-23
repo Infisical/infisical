@@ -1,17 +1,15 @@
 import { z } from "zod";
 
-import {
-  CertificateAuthoritiesSchema,
-  DynamicSecretsSchema,
-  IdentityProjectAdditionalPrivilegeSchema,
-  IntegrationAuthsSchema,
-  InternalCertificateAuthoritiesSchema,
-  ProjectRolesSchema,
-  ProjectsSchema,
-  SecretApprovalPoliciesSchema,
-  SecretTagsSchema,
-  UsersSchema
-} from "@app/db/schemas";
+import { CertificateAuthoritiesSchema } from "@app/db/schemas/certificate-authorities";
+import { DynamicSecretsSchema } from "@app/db/schemas/dynamic-secrets";
+import { IdentityProjectAdditionalPrivilegeSchema } from "@app/db/schemas/identity-project-additional-privilege";
+import { IntegrationAuthsSchema } from "@app/db/schemas/integration-auths";
+import { InternalCertificateAuthoritiesSchema } from "@app/db/schemas/internal-certificate-authorities";
+import { ProjectRolesSchema } from "@app/db/schemas/project-roles";
+import { ProjectsSchema } from "@app/db/schemas/projects";
+import { SecretApprovalPoliciesSchema } from "@app/db/schemas/secret-approval-policies";
+import { SecretTagsSchema } from "@app/db/schemas/secret-tags";
+import { UsersSchema } from "@app/db/schemas/users";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 

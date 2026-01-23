@@ -1,7 +1,8 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TPkiSyncs } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
+import { TPkiSyncs } from "@app/db/schemas/pki-syncs";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, prependTableNameToFindFilter, selectAllTableCols } from "@app/lib/knex";
 import {

@@ -1,17 +1,10 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import {
-  AccessScope,
-  TableName,
-  TUserActionsInsert,
-  TUserActionsUpdate,
-  TUserEncryptionKeys,
-  TUserEncryptionKeysInsert,
-  TUserEncryptionKeysUpdate,
-  TUsers,
-  UsersSchema
-} from "@app/db/schemas";
+import { AccessScope, TableName } from "@app/db/schemas/models";
+import { TUserActionsInsert, TUserActionsUpdate } from "@app/db/schemas/user-actions";
+import { TUserEncryptionKeys, TUserEncryptionKeysInsert, TUserEncryptionKeysUpdate } from "@app/db/schemas/user-encryption-keys";
+import { TUsers, UsersSchema } from "@app/db/schemas/users";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 

@@ -1,4 +1,4 @@
-import { SshCertificateAuthoritiesSchema } from "@app/db/schemas";
+import { SshCertificateAuthoritiesSchema } from "@app/db/schemas/ssh-certificate-authorities";
 
 export const sanitizedSshCa = SshCertificateAuthoritiesSchema.pick({
   id: true,

@@ -6,7 +6,7 @@ import { MongoQuery } from "@ucast/mongo2js";
 import { Cluster, Redis } from "ioredis";
 import { nanoid } from "nanoid";
 
-import { ProjectType } from "@app/db/schemas";
+import { ProjectType } from "@app/db/schemas/models";
 import { ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { conditionsMatcher } from "@app/lib/casl";

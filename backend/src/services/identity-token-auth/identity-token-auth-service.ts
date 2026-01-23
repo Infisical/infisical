@@ -6,7 +6,7 @@ import {
   IdentityAuthMethod,
   OrganizationActionScope,
   TableName
-} from "@app/db/schemas";
+} from "@app/db/schemas/models";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {

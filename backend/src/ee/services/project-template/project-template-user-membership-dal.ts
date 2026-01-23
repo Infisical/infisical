@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TProjectTemplateUserMembershipDALFactory = ReturnType<typeof projectTemplateUserMembershipDALFactory>;

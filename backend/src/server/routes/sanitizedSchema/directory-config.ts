@@ -1,4 +1,6 @@
-import { LdapConfigsSchema, OidcConfigsSchema, SamlConfigsSchema } from "@app/db/schemas";
+import { LdapConfigsSchema } from "@app/db/schemas/ldap-configs";
+import { OidcConfigsSchema } from "@app/db/schemas/oidc-configs";
+import { SamlConfigsSchema } from "@app/db/schemas/saml-configs";
 
 export const SanitizedSamlConfigSchema = SamlConfigsSchema.pick({
   id: true,

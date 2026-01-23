@@ -1,4 +1,4 @@
-import { IdentityAuthMethod } from "@app/db/schemas";
+import { IdentityAuthMethod } from "@app/db/schemas/models";
 
 export const buildAuthMethods = ({
   uaId,

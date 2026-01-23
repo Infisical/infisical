@@ -5,7 +5,7 @@ import { customAlphabet } from "nanoid";
 import RE2 from "re2";
 import { z } from "zod";
 
-import { TDynamicSecrets } from "@app/db/schemas";
+import { TDynamicSecrets } from "@app/db/schemas/dynamic-secrets";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 

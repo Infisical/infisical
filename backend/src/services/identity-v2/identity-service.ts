@@ -1,4 +1,4 @@
-import { AccessScope, OrgMembershipRole } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole } from "@app/db/schemas/models";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";

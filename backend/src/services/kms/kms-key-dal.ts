@@ -1,7 +1,9 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { KmsKeysSchema, TableName, TInternalKms, TKmsKeys } from "@app/db/schemas";
+import { TInternalKms } from "@app/db/schemas/internal-kms";
+import { KmsKeysSchema, TKmsKeys } from "@app/db/schemas/kms-keys";
+import { TableName } from "@app/db/schemas/models";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, prependTableNameToFindFilter, selectAllTableCols } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";

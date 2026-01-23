@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, TAiMcpActivityLogsInsert } from "@app/db/schemas";
+import { TAiMcpActivityLogsInsert } from "@app/db/schemas/ai-mcp-activity-logs";
+import { ActionProjectType } from "@app/db/schemas/models";
 import { TProjectPermission } from "@app/lib/types";
 
 import { TPermissionServiceFactory } from "../permission/permission-service-types";

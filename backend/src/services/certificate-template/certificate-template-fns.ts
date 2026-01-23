@@ -1,6 +1,6 @@
 import RE2 from "re2";
 
-import { TCertificateTemplates } from "@app/db/schemas";
+import { TCertificateTemplates } from "@app/db/schemas/certificate-templates";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 

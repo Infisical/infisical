@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { PamSessionsSchema } from "@app/db/schemas";
+import { PamSessionsSchema } from "@app/db/schemas/pam-sessions";
 
 export const PamSessionCommandLogSchema = z.object({
   input: z.string(),

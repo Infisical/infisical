@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import { z } from "zod";
 
-import { OrganizationActionScope } from "@app/db/schemas";
+import { OrganizationActionScope } from "@app/db/schemas/models";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";

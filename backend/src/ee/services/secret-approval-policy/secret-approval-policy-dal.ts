@@ -1,13 +1,10 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import {
-  SecretApprovalPoliciesSchema,
-  TableName,
-  TSecretApprovalPolicies,
-  TUserGroupMembership,
-  TUsers
-} from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
+import { SecretApprovalPoliciesSchema, TSecretApprovalPolicies } from "@app/db/schemas/secret-approval-policies";
+import { TUserGroupMembership } from "@app/db/schemas/user-group-membership";
+import { TUsers } from "@app/db/schemas/users";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, sqlNestRelationships, TFindFilter } from "@app/lib/knex";
 

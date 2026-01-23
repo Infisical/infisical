@@ -1,12 +1,10 @@
 import { z } from "zod";
 
-import {
-  ApprovalPoliciesSchema,
-  ApprovalRequestApprovalsSchema,
-  ApprovalRequestGrantsSchema,
-  ApprovalRequestsSchema,
-  ApprovalRequestStepsSchema
-} from "@app/db/schemas";
+import { ApprovalPoliciesSchema } from "@app/db/schemas/approval-policies";
+import { ApprovalRequestApprovalsSchema } from "@app/db/schemas/approval-request-approvals";
+import { ApprovalRequestGrantsSchema } from "@app/db/schemas/approval-request-grants";
+import { ApprovalRequestStepsSchema } from "@app/db/schemas/approval-request-steps";
+import { ApprovalRequestsSchema } from "@app/db/schemas/approval-requests";
 import { ms } from "@app/lib/ms";
 
 import { ApproverType } from "./approval-policy-enums";

@@ -2,7 +2,9 @@
 // akhilmhdh: I did this, quite strange bug with eslint. Everything do have a type stil has this error
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, TableName, TSecretTagJunctionInsert, TSecretV2TagJunctionInsert } from "@app/db/schemas";
+import { ActionProjectType, TableName } from "@app/db/schemas/models";
+import { TSecretTagJunctionInsert } from "@app/db/schemas/secret-tag-junction";
+import { TSecretV2TagJunctionInsert } from "@app/db/schemas/secret-v2-tag-junction";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { InternalServerError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";

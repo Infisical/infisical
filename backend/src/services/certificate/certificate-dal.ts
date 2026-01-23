@@ -1,5 +1,6 @@
 import { TDbClient } from "@app/db";
-import { TableName, TCertificates } from "@app/db/schemas";
+import { TCertificates } from "@app/db/schemas/certificates";
+import { TableName } from "@app/db/schemas/models";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify, selectAllTableCols } from "@app/lib/knex";

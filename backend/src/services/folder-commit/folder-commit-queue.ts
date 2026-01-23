@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { TSecretFolders } from "@app/db/schemas";
+import { TSecretFolders } from "@app/db/schemas/secret-folders";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";

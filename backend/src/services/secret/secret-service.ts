@@ -9,9 +9,9 @@ import {
   ProjectVersion,
   SecretEncryptionAlgo,
   SecretKeyEncoding,
-  SecretsSchema,
   SecretType
-} from "@app/db/schemas";
+} from "@app/db/schemas/models";
+import { SecretsSchema } from "@app/db/schemas/secrets";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   hasSecretReadValueOrDescribePermission,

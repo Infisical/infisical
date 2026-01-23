@@ -1,7 +1,7 @@
 import argon2 from "argon2";
 import jsrp from "jsrp";
 
-import { TUserEncryptionKeys } from "@app/db/schemas";
+import { TUserEncryptionKeys } from "@app/db/schemas/user-encryption-keys";
 import { UserEncryption } from "@app/services/user/user-types";
 
 import { BadRequestError } from "../errors";

@@ -3,7 +3,7 @@ import { customAlphabet } from "nanoid";
 import snowflake from "snowflake-sdk";
 import { z } from "zod";
 
-import { TDynamicSecrets } from "@app/db/schemas";
+import { TDynamicSecrets } from "@app/db/schemas/dynamic-secrets";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";

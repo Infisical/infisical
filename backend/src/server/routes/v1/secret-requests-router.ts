@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { SecretSharingSchema } from "@app/db/schemas";
+import { SecretSharingSchema } from "@app/db/schemas/secret-sharing";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { NotFoundError } from "@app/lib/errors";
 import { SecretSharingAccessType } from "@app/lib/types";

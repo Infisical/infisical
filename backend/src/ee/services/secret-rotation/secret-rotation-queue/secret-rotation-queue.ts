@@ -5,7 +5,7 @@ import {
   IAMClient
 } from "@aws-sdk/client-iam";
 
-import { SecretType } from "@app/db/schemas";
+import { SecretType } from "@app/db/schemas/models";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";

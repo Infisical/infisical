@@ -1,4 +1,4 @@
-import { TDynamicSecrets } from "@app/db/schemas";
+import { TDynamicSecrets } from "@app/db/schemas/dynamic-secrets";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
 export type TGenericPermission = {

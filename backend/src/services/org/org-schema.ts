@@ -1,4 +1,4 @@
-import { OrganizationsSchema } from "@app/db/schemas";
+import { OrganizationsSchema } from "@app/db/schemas/organizations";
 
 export const sanitizedOrganizationSchema = OrganizationsSchema.pick({
   id: true,

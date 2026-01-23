@@ -1,4 +1,4 @@
-import { ProjectMembershipRole } from "@app/db/schemas";
+import { ProjectMembershipRole } from "@app/db/schemas/models";
 import { DisableRotationErrors } from "@app/ee/services/secret-rotation/secret-rotation-queue";
 import { getConfig } from "@app/lib/config/env";
 import { applyJitter } from "@app/lib/delay";

@@ -1,4 +1,6 @@
-import { TImmutableDBKeys, TSecretApprovalPolicies, TSecretApprovalRequestsSecrets } from "@app/db/schemas";
+import { TImmutableDBKeys } from "@app/db/schemas/models";
+import { TSecretApprovalPolicies } from "@app/db/schemas/secret-approval-policies";
+import { TSecretApprovalRequestsSecrets } from "@app/db/schemas/secret-approval-requests-secrets";
 import { TProjectPermission } from "@app/lib/types";
 import { ResourceMetadataWithEncryptionDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretOperations } from "@app/services/secret/secret-types";

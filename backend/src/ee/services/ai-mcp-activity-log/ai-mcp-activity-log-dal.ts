@@ -1,7 +1,8 @@
 import knex from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TAiMcpActivityLogs } from "@app/db/schemas";
+import { TAiMcpActivityLogs } from "@app/db/schemas/ai-mcp-activity-logs";
+import { TableName } from "@app/db/schemas/models";
 import { DatabaseError, GatewayTimeoutError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, TOrmify } from "@app/lib/knex";
 

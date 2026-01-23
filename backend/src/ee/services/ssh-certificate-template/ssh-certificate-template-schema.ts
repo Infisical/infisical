@@ -1,4 +1,4 @@
-import { SshCertificateTemplatesSchema } from "@app/db/schemas";
+import { SshCertificateTemplatesSchema } from "@app/db/schemas/ssh-certificate-templates";
 
 export const sanitizedSshCertificateTemplate = SshCertificateTemplatesSchema.pick({
   id: true,

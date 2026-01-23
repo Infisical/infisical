@@ -1,4 +1,5 @@
-import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
+import { TMembershipRolesInsert } from "@app/db/schemas/membership-roles";
+import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode } from "@app/db/schemas/models";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";

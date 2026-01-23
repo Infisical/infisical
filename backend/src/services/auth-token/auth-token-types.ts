@@ -1,4 +1,4 @@
-import { ProjectMembershipRole } from "@app/db/schemas";
+import { ProjectMembershipRole } from "@app/db/schemas/models";
 
 export enum TokenType {
   TOKEN_EMAIL_CONFIRMATION = "emailConfirmation",

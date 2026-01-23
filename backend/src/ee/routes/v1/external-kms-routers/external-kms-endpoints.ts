@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { ExternalKmsSchema, KmsKeysSchema } from "@app/db/schemas";
+import { ExternalKmsSchema } from "@app/db/schemas/external-kms";
+import { KmsKeysSchema } from "@app/db/schemas/kms-keys";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   KmsProviders,

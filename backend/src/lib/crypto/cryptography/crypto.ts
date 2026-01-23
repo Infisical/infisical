@@ -8,7 +8,7 @@ import jwtDep from "jsonwebtoken";
 import nacl from "tweetnacl";
 import naclUtils from "tweetnacl-util";
 
-import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
+import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas/models";
 import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";

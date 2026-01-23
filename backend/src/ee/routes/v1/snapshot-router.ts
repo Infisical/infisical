@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { SecretSnapshotsSchema } from "@app/db/schemas";
+import { SecretSnapshotsSchema } from "@app/db/schemas/secret-snapshots";
 import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { AuditLogsSchema, SecretSnapshotsSchema } from "@app/db/schemas";
+import { AuditLogsSchema } from "@app/db/schemas/audit-logs";
+import { SecretSnapshotsSchema } from "@app/db/schemas/secret-snapshots";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, AUDIT_LOGS, PROJECTS } from "@app/lib/api-docs";
 import { getLastMidnightDateISO, removeTrailingSlash } from "@app/lib/fn";

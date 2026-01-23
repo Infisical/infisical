@@ -5,13 +5,13 @@ import https from "https";
 import jwt from "jsonwebtoken";
 import { JwksClient } from "jwks-rsa";
 
+import { TIdentityOidcAuthsUpdate } from "@app/db/schemas/identity-oidc-auths";
 import {
   AccessScope,
   ActionProjectType,
   IdentityAuthMethod,
-  OrganizationActionScope,
-  TIdentityOidcAuthsUpdate
-} from "@app/db/schemas";
+  OrganizationActionScope
+} from "@app/db/schemas/models";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {

@@ -1,6 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
+import {
+  AccessScope,
+  OrgMembershipRole,
+  OrganizationActionScope,
+  TableName
+} from "@app/db/schemas/models";
+import { TRoles } from "@app/db/schemas/roles";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {

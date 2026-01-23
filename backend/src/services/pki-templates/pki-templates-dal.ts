@@ -2,7 +2,7 @@ import { Knex } from "knex";
 import { Tables } from "knex/types/tables";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } from "@app/lib/knex";
 

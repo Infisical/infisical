@@ -2,7 +2,7 @@ import "fastify";
 
 import { Cluster, Redis } from "ioredis";
 
-import { TUsers } from "@app/db/schemas";
+import { TUsers } from "@app/db/schemas/users";
 import { TAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { TAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { TAiMcpActivityLogServiceFactory } from "@app/ee/services/ai-mcp-activity-log/ai-mcp-activity-log-service";

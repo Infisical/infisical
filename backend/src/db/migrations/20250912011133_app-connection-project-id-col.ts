@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { dropConstraintIfExists } from "@app/db/migrations/utils/dropConstraintIfExists";
-import { TableName } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
 
 const UNIQUE_NAME_ORG_CONNECTION_INDEX = "unique_name_org_app_connection";
 

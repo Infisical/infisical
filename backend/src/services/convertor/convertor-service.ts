@@ -1,4 +1,4 @@
-import { AccessScope } from "@app/db/schemas";
+import { AccessScope } from "@app/db/schemas/models";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { NotFoundError } from "@app/lib/errors";
 

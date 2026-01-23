@@ -1,7 +1,8 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { GatewaysV2Schema, TableName, TGatewaysV2 } from "@app/db/schemas";
+import { GatewaysV2Schema, TGatewaysV2 } from "@app/db/schemas/gateways-v2";
+import { TableName } from "@app/db/schemas/models";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } from "@app/lib/knex";
 

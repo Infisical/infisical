@@ -3,7 +3,8 @@ import { Knex } from "knex";
 import { validate as uuidValidate } from "uuid";
 
 import { TDbClient } from "@app/db";
-import { ProjectType, SecretsV2Schema, SecretType, TableName, TSecretsV2, TSecretsV2Update } from "@app/db/schemas";
+import { ProjectType, SecretType, TableName } from "@app/db/schemas/models";
+import { SecretsV2Schema, TSecretsV2, TSecretsV2Update } from "@app/db/schemas/secrets-v2";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { generateCacheKeyFromData } from "@app/lib/crypto/cache";

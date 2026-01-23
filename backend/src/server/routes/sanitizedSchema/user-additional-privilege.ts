@@ -1,4 +1,4 @@
-import { ProjectUserAdditionalPrivilegeSchema } from "@app/db/schemas";
+import { ProjectUserAdditionalPrivilegeSchema } from "@app/db/schemas/project-user-additional-privilege";
 
 import { UnpackedPermissionSchema } from "./permission";
 

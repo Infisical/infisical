@@ -1,7 +1,8 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TBackupPrivateKey } from "@app/db/schemas";
+import { TBackupPrivateKey } from "@app/db/schemas/backup-private-key";
+import { TableName } from "@app/db/schemas/models";
 import { withTransaction } from "@app/lib/knex";
 
 export type TAuthDALFactory = ReturnType<typeof authDALFactory>;

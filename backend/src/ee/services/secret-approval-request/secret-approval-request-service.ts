@@ -8,10 +8,10 @@ import {
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretType,
-  TableName,
-  TSecretApprovalRequestsSecretsInsert,
-  TSecretApprovalRequestsSecretsV2Insert
-} from "@app/db/schemas";
+  TableName
+} from "@app/db/schemas/models";
+import { TSecretApprovalRequestsSecretsInsert } from "@app/db/schemas/secret-approval-requests-secrets";
+import { TSecretApprovalRequestsSecretsV2Insert } from "@app/db/schemas/secret-approval-requests-secrets-v2";
 import { Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";

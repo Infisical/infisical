@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { PamSessionsSchema } from "@app/db/schemas";
+import { PamSessionsSchema } from "@app/db/schemas/pam-sessions";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { KubernetesSessionCredentialsSchema } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
 import { MySQLSessionCredentialsSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";

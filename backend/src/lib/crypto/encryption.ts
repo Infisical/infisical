@@ -1,6 +1,6 @@
 import argon2 from "argon2";
 
-import { SecretKeyEncoding } from "@app/db/schemas";
+import { SecretKeyEncoding } from "@app/db/schemas/models";
 
 import { crypto, SymmetricKeySize } from "./cryptography";
 

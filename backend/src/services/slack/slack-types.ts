@@ -1,4 +1,4 @@
-import { TSlackIntegrations } from "@app/db/schemas";
+import { TSlackIntegrations } from "@app/db/schemas/slack-integrations";
 import { TOrgPermission } from "@app/lib/types";
 import { TNotification } from "@app/lib/workflow-integrations/types";
 

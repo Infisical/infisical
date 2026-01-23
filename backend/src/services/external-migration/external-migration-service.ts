@@ -1,4 +1,4 @@
-import { OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
+import { OrgMembershipRole, OrganizationActionScope } from "@app/db/schemas/models";
 import {
   AuditLogInfo,
   EventType,

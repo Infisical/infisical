@@ -1,4 +1,4 @@
-import { AuditLogStreamsSchema } from "@app/db/schemas";
+import { AuditLogStreamsSchema } from "@app/db/schemas/audit-log-streams";
 
 export const BaseProviderSchema = AuditLogStreamsSchema.omit({
   encryptedCredentials: true,

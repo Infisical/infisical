@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 
-import { ProjectMembershipRole, ProjectType } from "@app/db/schemas";
+import { ProjectMembershipRole, ProjectType } from "@app/db/schemas/models";
 import {
   cryptographicOperatorPermissions,
   projectAdminPermissions,

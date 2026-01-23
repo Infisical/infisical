@@ -7,12 +7,12 @@ import { Knex } from "knex";
 import {
   AccessScope,
   ActionProjectType,
-  OrganizationActionScope,
   OrgMembershipRole,
+  OrganizationActionScope,
   ProjectMembershipRole,
-  ServiceTokenScopes,
-  TProjects
-} from "@app/db/schemas";
+  ServiceTokenScopes
+} from "@app/db/schemas/models";
+import { TProjects } from "@app/db/schemas/projects";
 import {
   cryptographicOperatorPermissions,
   projectAdminPermissions,

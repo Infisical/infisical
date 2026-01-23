@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { UsersSchema } from "@app/db/schemas";
+import { UsersSchema } from "@app/db/schemas/users";
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { authRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";

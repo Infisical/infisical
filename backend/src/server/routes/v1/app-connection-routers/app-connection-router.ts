@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { ProjectType } from "@app/db/schemas";
+import { ProjectType } from "@app/db/schemas/models";
 import { ChefConnectionListItemSchema, SanitizedChefConnectionSchema } from "@app/ee/services/app-connections/chef";
 import { OCIConnectionListItemSchema, SanitizedOCIConnectionSchema } from "@app/ee/services/app-connections/oci";
 import {

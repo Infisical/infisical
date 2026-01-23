@@ -12,7 +12,7 @@ import handlebars from "handlebars";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
-import { TDynamicSecrets } from "@app/db/schemas";
+import { TDynamicSecrets } from "@app/db/schemas/dynamic-secrets";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";

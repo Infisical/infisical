@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { TDynamicSecrets } from "@app/db/schemas";
+import { TDynamicSecrets } from "@app/db/schemas/dynamic-secrets";
 import { OrderByDirection, OrgServiceActor, TDynamicSecretWithMetadata, TProjectPermission } from "@app/lib/types";
 import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";

@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { TableName } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "@app/db/utils";
 import {
   SecretScanningFindingStatus,

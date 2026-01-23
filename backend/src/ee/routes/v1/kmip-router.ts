@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { KmipClientsSchema } from "@app/db/schemas";
+import { KmipClientsSchema } from "@app/db/schemas/kmip-clients";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { KmipPermission } from "@app/ee/services/kmip/kmip-enum";
 import { KmipClientOrderBy } from "@app/ee/services/kmip/kmip-types";

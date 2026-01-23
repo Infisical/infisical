@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { UserActionsSchema } from "@app/db/schemas";
+import { UserActionsSchema } from "@app/db/schemas/user-actions";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";

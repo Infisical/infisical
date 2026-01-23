@@ -3,7 +3,7 @@ import { subject } from "@casl/ability";
 import { pipeline } from "stream/promises";
 import { z } from "zod";
 
-import { ActionProjectType, ProjectType } from "@app/db/schemas";
+import { ActionProjectType, ProjectType } from "@app/db/schemas/models";
 import { getServerSentEventsHeaders } from "@app/ee/services/event/event-sse-stream";
 import { EventRegisterSchema, Mappings } from "@app/ee/services/event/types";
 import { ProjectPermissionSub } from "@app/ee/services/permission/project-permission";

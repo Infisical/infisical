@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { MicrosoftTeamsIntegrationsSchema, WorkflowIntegrationsSchema } from "@app/db/schemas";
+import { MicrosoftTeamsIntegrationsSchema } from "@app/db/schemas/microsoft-teams-integrations";
+import { WorkflowIntegrationsSchema } from "@app/db/schemas/workflow-integrations";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";

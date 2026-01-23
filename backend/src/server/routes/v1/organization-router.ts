@@ -1,16 +1,13 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import {
-  AccessScope,
-  AuditLogsSchema,
-  GroupsSchema,
-  IncidentContactsSchema,
-  OrgMembershipsSchema,
-  OrgMembershipStatus,
-  OrgRolesSchema,
-  UsersSchema
-} from "@app/db/schemas";
+import { AuditLogsSchema } from "@app/db/schemas/audit-logs";
+import { GroupsSchema } from "@app/db/schemas/groups";
+import { IncidentContactsSchema } from "@app/db/schemas/incident-contacts";
+import { AccessScope, OrgMembershipStatus } from "@app/db/schemas/models";
+import { OrgMembershipsSchema } from "@app/db/schemas/org-memberships";
+import { OrgRolesSchema } from "@app/db/schemas/org-roles";
+import { UsersSchema } from "@app/db/schemas/users";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
 import { getLastMidnightDateISO, removeTrailingSlash } from "@app/lib/fn";

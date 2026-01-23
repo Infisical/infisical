@@ -3,7 +3,8 @@ import { isIP } from "node:net";
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, TRelays } from "@app/db/schemas";
+import { OrgMembershipRole, OrgMembershipStatus, OrganizationActionScope } from "@app/db/schemas/models";
+import { TRelays } from "@app/db/schemas/relays";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";

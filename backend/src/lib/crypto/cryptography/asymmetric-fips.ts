@@ -1,6 +1,6 @@
 import crypto, { KeyObject } from "node:crypto";
 
-import { SecretEncryptionAlgo } from "@app/db/schemas";
+import { SecretEncryptionAlgo } from "@app/db/schemas/models";
 import { CryptographyError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 

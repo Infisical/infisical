@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { PamFoldersSchema } from "@app/db/schemas";
+import { PamFoldersSchema } from "@app/db/schemas/pam-folders";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountOrderBy, PamAccountView } from "@app/ee/services/pam-account/pam-account-enums";
 import { SanitizedAwsIamAccountWithResourceSchema } from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";

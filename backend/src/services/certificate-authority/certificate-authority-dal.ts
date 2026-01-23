@@ -1,7 +1,8 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { CertificateAuthoritiesSchema, TableName, TCertificateAuthorities } from "@app/db/schemas";
+import { CertificateAuthoritiesSchema, TCertificateAuthorities } from "@app/db/schemas/certificate-authorities";
+import { TableName } from "@app/db/schemas/models";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindOpt } from "@app/lib/knex";
 import {

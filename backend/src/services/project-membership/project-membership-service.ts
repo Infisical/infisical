@@ -1,7 +1,13 @@
 /* eslint-disable no-await-in-loop */
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
+import {
+  AccessScope,
+  ActionProjectType,
+  ProjectMembershipRole,
+  ProjectVersion,
+  TableName
+} from "@app/db/schemas/models";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";

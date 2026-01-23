@@ -1,12 +1,10 @@
 import { z } from "zod";
 
-import {
-  CertificatesSchema,
-  PkiAlertsSchema,
-  PkiCollectionsSchema,
-  ProjectKeysSchema,
-  ProjectType
-} from "@app/db/schemas";
+import { CertificatesSchema } from "@app/db/schemas/certificates";
+import { ProjectType } from "@app/db/schemas/models";
+import { PkiAlertsSchema } from "@app/db/schemas/pki-alerts";
+import { PkiCollectionsSchema } from "@app/db/schemas/pki-collections";
+import { ProjectKeysSchema } from "@app/db/schemas/project-keys";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
 import { sanitizedSshCa } from "@app/ee/services/ssh/ssh-certificate-authority-schema";

@@ -2,7 +2,7 @@
 import { AxiosError } from "axios";
 import * as crypto from "crypto";
 
-import { TCertificateSyncs } from "@app/db/schemas";
+import { TCertificateSyncs } from "@app/db/schemas/certificate-syncs";
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";

@@ -1,7 +1,8 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { AccessScope, AccessScopeData, MembershipsSchema, TableName } from "@app/db/schemas";
+import { MembershipsSchema } from "@app/db/schemas/memberships";
+import { AccessScope, AccessScopeData, TableName } from "@app/db/schemas/models";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { buildKnexFilterForSearchResource } from "@app/lib/search-resource/db";

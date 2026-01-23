@@ -1,7 +1,9 @@
 import picomatch from "picomatch";
 import { z } from "zod";
 
-import { SecretApprovalRequestsSchema, SecretsSchema, SecretType, ServiceTokenScopes } from "@app/db/schemas";
+import { SecretType, ServiceTokenScopes } from "@app/db/schemas/models";
+import { SecretApprovalRequestsSchema } from "@app/db/schemas/secret-approval-requests";
+import { SecretsSchema } from "@app/db/schemas/secrets";
 import { EventType, SecretApprovalEvent, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, RAW_SECRETS, SECRETS } from "@app/lib/api-docs";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";

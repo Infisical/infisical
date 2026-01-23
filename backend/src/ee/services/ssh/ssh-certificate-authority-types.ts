@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { TSshCertificateTemplates } from "@app/db/schemas";
+import { TSshCertificateTemplates } from "@app/db/schemas/ssh-certificate-templates";
 import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
 import { TSshCertificateAuthoritySecretDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-secret-dal";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";

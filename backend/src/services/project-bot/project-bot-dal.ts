@@ -1,7 +1,9 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { AccessScope, TableName, TProjectBots, TUserEncryptionKeys } from "@app/db/schemas";
+import { AccessScope, TableName } from "@app/db/schemas/models";
+import { TProjectBots } from "@app/db/schemas/project-bots";
+import { TUserEncryptionKeys } from "@app/db/schemas/user-encryption-keys";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 

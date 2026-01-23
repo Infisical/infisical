@@ -2,13 +2,8 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import {
-  AccessScope,
-  SecretVersionsV2Schema,
-  TableName,
-  TSecretVersionsV2,
-  TSecretVersionsV2Update
-} from "@app/db/schemas";
+import { AccessScope, TableName } from "@app/db/schemas/models";
+import { SecretVersionsV2Schema, TSecretVersionsV2, TSecretVersionsV2Update } from "@app/db/schemas/secret-versions-v2";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, sqlNestRelationships, TFindOpt } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";

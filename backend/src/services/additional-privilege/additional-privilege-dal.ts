@@ -1,5 +1,6 @@
 import { TDbClient } from "@app/db";
-import { TableName, TAdditionalPrivileges } from "@app/db/schemas";
+import { TAdditionalPrivileges } from "@app/db/schemas/additional-privileges";
+import { TableName } from "@app/db/schemas/models";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter } from "@app/lib/knex";
 
 export type TAdditionalPrivilegeDALFactory = ReturnType<typeof additionalPrivilegeDALFactory>;

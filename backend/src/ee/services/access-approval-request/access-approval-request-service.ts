@@ -1,7 +1,7 @@
 import slugify from "@sindresorhus/slugify";
 import msFn from "ms";
 
-import { ActionProjectType, ProjectMembershipRole, TemporaryPermissionMode } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole, TemporaryPermissionMode } from "@app/db/schemas/models";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";

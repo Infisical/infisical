@@ -1,7 +1,8 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TSecretFolderVersions } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
+import { TSecretFolderVersions } from "@app/db/schemas/secret-folder-versions";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";

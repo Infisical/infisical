@@ -2,7 +2,8 @@
 import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
-import { TCertificateTemplates, TPkiSubscribers } from "@app/db/schemas";
+import { TCertificateTemplates } from "@app/db/schemas/certificate-templates";
+import { TPkiSubscribers } from "@app/db/schemas/pki-subscribers";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";

@@ -3,7 +3,8 @@ import { FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 import type { JwtPayload } from "jsonwebtoken";
 
-import { TServiceTokens, TUsers } from "@app/db/schemas";
+import { TServiceTokens } from "@app/db/schemas/service-tokens";
+import { TUsers } from "@app/db/schemas/users";
 import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";

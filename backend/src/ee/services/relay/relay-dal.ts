@@ -1,5 +1,6 @@
 import { TDbClient } from "@app/db";
-import { TableName, TRelays } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
+import { TRelays } from "@app/db/schemas/relays";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, TFindFilter, TFindOpt } from "@app/lib/knex";
 

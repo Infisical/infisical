@@ -1,6 +1,6 @@
 /* eslint-disable no-continue */
 /* eslint-disable no-await-in-loop */
-import { TCertificateSyncs } from "@app/db/schemas";
+import { TCertificateSyncs } from "@app/db/schemas/certificate-syncs";
 import {
   createChefDataBagItem,
   listChefDataBagItems,

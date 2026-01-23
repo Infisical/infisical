@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { CertificateTemplatesSchema } from "@app/db/schemas";
+import { CertificateTemplatesSchema } from "@app/db/schemas/certificate-templates";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";

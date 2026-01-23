@@ -3,7 +3,7 @@ import { STSServiceException } from "@aws-sdk/client-sts";
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
-import { OrganizationActionScope } from "@app/db/schemas";
+import { OrganizationActionScope } from "@app/db/schemas/models";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";

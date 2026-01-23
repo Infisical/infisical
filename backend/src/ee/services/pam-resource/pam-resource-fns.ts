@@ -1,4 +1,4 @@
-import { TPamResources } from "@app/db/schemas";
+import { TPamResources } from "@app/db/schemas/pam-resources";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 

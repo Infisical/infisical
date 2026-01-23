@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { SecretRotationOutputsSchema, SecretRotationsSchema } from "@app/db/schemas";
+import { SecretRotationOutputsSchema } from "@app/db/schemas/secret-rotation-outputs";
+import { SecretRotationsSchema } from "@app/db/schemas/secret-rotations";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";

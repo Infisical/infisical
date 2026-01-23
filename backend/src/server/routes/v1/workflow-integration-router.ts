@@ -1,4 +1,4 @@
-import { WorkflowIntegrationsSchema } from "@app/db/schemas";
+import { WorkflowIntegrationsSchema } from "@app/db/schemas/workflow-integrations";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";

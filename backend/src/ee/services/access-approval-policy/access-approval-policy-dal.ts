@@ -1,7 +1,9 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { AccessApprovalPoliciesSchema, TableName, TAccessApprovalPolicies, TUsers } from "@app/db/schemas";
+import { AccessApprovalPoliciesSchema, TAccessApprovalPolicies } from "@app/db/schemas/access-approval-policies";
+import { TableName } from "@app/db/schemas/models";
+import { TUsers } from "@app/db/schemas/users";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, sqlNestRelationships, TFindFilter, TOrmify } from "@app/lib/knex";
 

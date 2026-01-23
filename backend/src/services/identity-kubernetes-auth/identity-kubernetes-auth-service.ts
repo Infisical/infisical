@@ -4,13 +4,13 @@ import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import https from "https";
 import RE2 from "re2";
 
+import { TIdentityKubernetesAuthsUpdate } from "@app/db/schemas/identity-kubernetes-auths";
 import {
   AccessScope,
   ActionProjectType,
   IdentityAuthMethod,
-  OrganizationActionScope,
-  TIdentityKubernetesAuthsUpdate
-} from "@app/db/schemas";
+  OrganizationActionScope
+} from "@app/db/schemas/models";
 import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";

@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 import RE2 from "re2";
 
-import { TableName } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
 import { logger } from "@app/lib/logger";
 
 import { PkiFilterField, PkiFilterOperator, TPkiFilterRule } from "./pki-alert-v2-types";

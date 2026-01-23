@@ -1,11 +1,11 @@
+import { TMembershipRolesInsert } from "@app/db/schemas/membership-roles";
 import {
   AccessScope,
   OrgMembershipRole,
   OrgMembershipStatus,
   ProjectMembershipRole,
-  TemporaryPermissionMode,
-  TMembershipRolesInsert
-} from "@app/db/schemas";
+  TemporaryPermissionMode
+} from "@app/db/schemas/models";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";

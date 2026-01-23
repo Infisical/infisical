@@ -2,7 +2,9 @@ import path from "node:path";
 
 import RE2 from "re2";
 
-import { SecretType, TableName, TSecretFolders, TSecretsV2 } from "@app/db/schemas";
+import { SecretType, TableName } from "@app/db/schemas/models";
+import { TSecretFolders } from "@app/db/schemas/secret-folders";
+import { TSecretsV2 } from "@app/db/schemas/secrets-v2";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";

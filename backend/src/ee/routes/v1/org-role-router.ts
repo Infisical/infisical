@@ -1,7 +1,8 @@
 import { packRules } from "@casl/ability/extra";
 import { z } from "zod";
 
-import { AccessScope, OrgMembershipRole, OrgRolesSchema } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole } from "@app/db/schemas/models";
+import { OrgRolesSchema } from "@app/db/schemas/org-roles";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { OrgPermissionSchema, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { BadRequestError } from "@app/lib/errors";

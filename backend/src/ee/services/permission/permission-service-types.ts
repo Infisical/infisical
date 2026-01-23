@@ -2,7 +2,8 @@ import { MongoAbility } from "@casl/ability";
 import { MongoQuery } from "@ucast/mongo2js";
 import { Knex } from "knex";
 
-import { ActionProjectType, OrganizationActionScope, TMemberships } from "@app/db/schemas";
+import { TMemberships } from "@app/db/schemas/memberships";
+import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas/models";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
 import { OrgPermissionSet } from "./org-permission";

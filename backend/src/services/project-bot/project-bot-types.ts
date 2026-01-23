@@ -1,4 +1,4 @@
-import { TProjectBots } from "@app/db/schemas";
+import { TProjectBots } from "@app/db/schemas/project-bots";
 import { TProjectPermission } from "@app/lib/types";
 
 export type TSetActiveStateDTO = {

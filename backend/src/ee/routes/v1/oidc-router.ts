@@ -11,7 +11,7 @@ import fastifySession from "@fastify/session";
 import RedisStore from "connect-redis";
 import { z } from "zod";
 
-import { OidcConfigsSchema } from "@app/db/schemas";
+import { OidcConfigsSchema } from "@app/db/schemas/oidc-configs";
 import { OIDCConfigurationType, OIDCJWTSignatureAlgorithm } from "@app/ee/services/oidc/oidc-config-types";
 import { ApiDocsTags, OidcSSo } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";

@@ -29,7 +29,9 @@ import isEqual from "lodash.isequal";
 import RE2 from "re2";
 import { z } from "zod";
 
-import { SecretType, TIntegrationAuths, TIntegrations } from "@app/db/schemas";
+import { TIntegrationAuths } from "@app/db/schemas/integration-auths";
+import { TIntegrations } from "@app/db/schemas/integrations";
+import { SecretType } from "@app/db/schemas/models";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";

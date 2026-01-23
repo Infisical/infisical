@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { InternalKmsSchema, KmsKeysSchema } from "@app/db/schemas";
+import { InternalKmsSchema } from "@app/db/schemas/internal-kms";
+import { KmsKeysSchema } from "@app/db/schemas/kms-keys";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, KMS } from "@app/lib/api-docs";
 import { getBase64SizeInBytes, isBase64 } from "@app/lib/base64";

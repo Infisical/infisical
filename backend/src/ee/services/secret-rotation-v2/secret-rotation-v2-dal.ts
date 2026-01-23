@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
 import { TSecretRotationsV2 } from "@app/db/schemas/secret-rotations-v2";
 import { DatabaseError } from "@app/lib/errors";
 import {

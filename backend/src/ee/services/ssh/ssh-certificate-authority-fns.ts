@@ -6,7 +6,7 @@ import path from "path";
 import RE2 from "re2";
 import { promisify } from "util";
 
-import { TSshCertificateTemplates } from "@app/db/schemas";
+import { TSshCertificateTemplates } from "@app/db/schemas/ssh-certificate-templates";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";

@@ -1,5 +1,5 @@
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 

@@ -2,7 +2,7 @@
 import { ForbiddenError, MongoAbility, PureAbility, subject } from "@casl/ability";
 import { z } from "zod";
 
-import { TOrganizations } from "@app/db/schemas";
+import { TOrganizations } from "@app/db/schemas/organizations";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { ActorAuthMethod, AuthMethod } from "@app/services/auth/auth-type";

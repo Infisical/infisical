@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { SecretSnapshotsSchema } from "@app/db/schemas";
+import { SecretSnapshotsSchema } from "@app/db/schemas/secret-snapshots";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
 import { removeTrailingSlash } from "@app/lib/fn";

@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType, OrganizationActionScope, TAppConnections } from "@app/db/schemas";
+import { TAppConnections } from "@app/db/schemas/app-connections";
+import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas/models";
 import { ValidateChefConnectionCredentialsSchema } from "@app/ee/services/app-connections/chef";
 import { chefConnectionService } from "@app/ee/services/app-connections/chef/chef-connection-service";
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";

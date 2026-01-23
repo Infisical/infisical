@@ -1,7 +1,7 @@
 import { AbilityBuilder, createMongoAbility, ForcedSubject, MongoAbility } from "@casl/ability";
 import { z } from "zod";
 
-import { ProjectMembershipRole } from "@app/db/schemas";
+import { ProjectMembershipRole } from "@app/db/schemas/models";
 import {
   CASL_ACTION_SCHEMA_ENUM,
   CASL_ACTION_SCHEMA_NATIVE_ENUM

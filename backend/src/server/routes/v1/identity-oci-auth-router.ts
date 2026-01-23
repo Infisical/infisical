@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { IdentityOciAuthsSchema } from "@app/db/schemas";
+import { IdentityOciAuthsSchema } from "@app/db/schemas/identity-oci-auths";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, OCI_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";

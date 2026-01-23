@@ -1,5 +1,6 @@
 import { TDbClient } from "@app/db";
-import { TableName, TApprovalRequestApprovals } from "@app/db/schemas";
+import { TApprovalRequestApprovals } from "@app/db/schemas/approval-request-approvals";
+import { TableName } from "@app/db/schemas/models";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 

@@ -3,16 +3,12 @@ import { Knex } from "knex";
 import { z } from "zod";
 
 import { TDbClient } from "@app/db";
-import {
-  SecretVersionsSchema,
-  SecretVersionsV2Schema,
-  TableName,
-  TSecretFolderVersions,
-  TSecretSnapshotFolders,
-  TSecretSnapshots,
-  TSecretVersions,
-  TSecretVersionsV2
-} from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
+import { TSecretFolderVersions } from "@app/db/schemas/secret-folder-versions";
+import { TSecretSnapshotFolders } from "@app/db/schemas/secret-snapshot-folders";
+import { TSecretSnapshots } from "@app/db/schemas/secret-snapshots";
+import { SecretVersionsSchema, TSecretVersions } from "@app/db/schemas/secret-versions";
+import { SecretVersionsV2Schema, TSecretVersionsV2 } from "@app/db/schemas/secret-versions-v2";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";

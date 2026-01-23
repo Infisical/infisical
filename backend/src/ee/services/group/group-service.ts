@@ -1,7 +1,8 @@
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
-import { AccessScope, OrganizationActionScope, OrgMembershipRole, TRoles } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, OrganizationActionScope } from "@app/db/schemas/models";
+import { TRoles } from "@app/db/schemas/roles";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";

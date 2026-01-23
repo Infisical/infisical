@@ -1,4 +1,4 @@
-import { TSecretFolders } from "@app/db/schemas";
+import { TSecretFolders } from "@app/db/schemas/secret-folders";
 import { InternalServerError } from "@app/lib/errors";
 
 export const buildFolderPath = (

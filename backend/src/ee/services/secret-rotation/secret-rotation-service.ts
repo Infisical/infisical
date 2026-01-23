@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import Ajv from "ajv";
 
-import { ActionProjectType, ProjectVersion, TableName } from "@app/db/schemas";
+import { ActionProjectType, ProjectVersion, TableName } from "@app/db/schemas/models";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";

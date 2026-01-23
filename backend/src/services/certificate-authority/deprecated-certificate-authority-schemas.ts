@@ -1,6 +1,6 @@
 import z from "zod";
 
-import { CertificateAuthoritiesSchema } from "@app/db/schemas";
+import { CertificateAuthoritiesSchema } from "@app/db/schemas/certificate-authorities";
 import { CertificateAuthorities } from "@app/lib/api-docs/constants";
 import { slugSchema } from "@app/server/lib/schemas";
 

@@ -1,13 +1,10 @@
 import { z } from "zod";
 
-import {
-  IntegrationsSchema,
-  ProjectRolesSchema,
-  ProjectSlackConfigsSchema,
-  ProjectSshConfigsSchema,
-  ProjectType,
-  SortDirection
-} from "@app/db/schemas";
+import { IntegrationsSchema } from "@app/db/schemas/integrations";
+import { ProjectType, SortDirection } from "@app/db/schemas/models";
+import { ProjectRolesSchema } from "@app/db/schemas/project-roles";
+import { ProjectSlackConfigsSchema } from "@app/db/schemas/project-slack-configs";
+import { ProjectSshConfigsSchema } from "@app/db/schemas/project-ssh-configs";
 import { ProjectMicrosoftTeamsConfigsSchema } from "@app/db/schemas/project-microsoft-teams-configs";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";

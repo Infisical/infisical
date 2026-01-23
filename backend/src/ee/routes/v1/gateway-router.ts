@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { GatewaysSchema } from "@app/db/schemas";
+import { GatewaysSchema } from "@app/db/schemas/gateways";
 import { isValidIp } from "@app/lib/ip";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";

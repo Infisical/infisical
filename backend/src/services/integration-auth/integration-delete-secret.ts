@@ -3,7 +3,8 @@ import { createAppAuth } from "@octokit/auth-app";
 import { retry } from "@octokit/plugin-retry";
 import { Octokit } from "@octokit/rest";
 
-import { TIntegrationAuths, TIntegrations } from "@app/db/schemas";
+import { TIntegrationAuths } from "@app/db/schemas/integration-auths";
+import { TIntegrations } from "@app/db/schemas/integrations";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";

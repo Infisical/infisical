@@ -1,4 +1,4 @@
-import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
+import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas/models";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";

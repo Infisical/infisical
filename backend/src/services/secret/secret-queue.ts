@@ -9,10 +9,10 @@ import {
   ProjectType,
   ProjectUpgradeStatus,
   ProjectVersion,
-  SecretType,
-  TSecretSnapshotSecretsV2,
-  TSecretVersionsV2
-} from "@app/db/schemas";
+  SecretType
+} from "@app/db/schemas/models";
+import { TSecretSnapshotSecretsV2 } from "@app/db/schemas/secret-snapshot-secrets-v2";
+import { TSecretVersionsV2 } from "@app/db/schemas/secret-versions-v2";
 import { Actor, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TEventBusService } from "@app/ee/services/event/event-bus-service";
 import { BusEventName, PublishableEvent, TopicName } from "@app/ee/services/event/types";

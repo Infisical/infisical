@@ -1,4 +1,4 @@
-import { TIntegrations } from "@app/db/schemas";
+import { TIntegrations } from "@app/db/schemas/integrations";
 import { TProjectPermission } from "@app/lib/types";
 
 export type TGetIntegrationAuthDTO = {

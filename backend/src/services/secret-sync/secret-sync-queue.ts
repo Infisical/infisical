@@ -2,7 +2,7 @@ import opentelemetry from "@opentelemetry/api";
 import { AxiosError } from "axios";
 import { Job } from "bullmq";
 
-import { ProjectMembershipRole, SecretType } from "@app/db/schemas";
+import { ProjectMembershipRole, SecretType } from "@app/db/schemas/models";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";

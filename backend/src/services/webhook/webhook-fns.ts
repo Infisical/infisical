@@ -1,7 +1,7 @@
 import { AxiosError } from "axios";
 import picomatch from "picomatch";
 
-import { TWebhooks } from "@app/db/schemas";
+import { TWebhooks } from "@app/db/schemas/webhooks";
 import { EventType, TAuditLogServiceFactory, WebhookTriggeredEvent } from "@app/ee/services/audit-log/audit-log-types";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";

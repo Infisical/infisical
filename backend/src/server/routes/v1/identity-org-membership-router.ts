@@ -1,6 +1,8 @@
 import { z } from "zod";
 
-import { AccessScope, IdentitiesSchema, MembershipRolesSchema, TemporaryPermissionMode } from "@app/db/schemas";
+import { IdentitiesSchema } from "@app/db/schemas/identities";
+import { MembershipRolesSchema } from "@app/db/schemas/membership-roles";
+import { AccessScope, TemporaryPermissionMode } from "@app/db/schemas/models";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, ORG_IDENTITY_MEMBERSHIP } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";

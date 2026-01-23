@@ -8,7 +8,8 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-import { ActionProjectType, TAiMcpEndpoints } from "@app/db/schemas";
+import { TAiMcpEndpoints } from "@app/db/schemas/ai-mcp-endpoints";
+import { ActionProjectType } from "@app/db/schemas/models";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto as cryptoModule } from "@app/lib/crypto";

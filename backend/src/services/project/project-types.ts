@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
-import { ProjectType, SortDirection, TProjectKeys } from "@app/db/schemas";
+import { ProjectType, SortDirection } from "@app/db/schemas/models";
+import { TProjectKeys } from "@app/db/schemas/project-keys";
 import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
 import { TSshCertificateAuthoritySecretDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-secret-dal";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";

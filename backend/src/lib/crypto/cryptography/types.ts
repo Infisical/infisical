@@ -1,4 +1,4 @@
-import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
+import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas/models";
 
 export enum DigestType {
   Hex = "hex",

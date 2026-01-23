@@ -1,4 +1,4 @@
-import { TSecretApprovalRequests } from "@app/db/schemas";
+import { TSecretApprovalRequests } from "@app/db/schemas/secret-approval-requests";
 import { getConfig } from "@app/lib/config/env";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";

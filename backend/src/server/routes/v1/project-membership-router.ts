@@ -1,14 +1,10 @@
 import { z } from "zod";
 
-import {
-  AccessScope,
-  ProjectMembershipRole,
-  ProjectMembershipsSchema,
-  ProjectUserMembershipRolesSchema,
-  TemporaryPermissionMode,
-  UserEncryptionKeysSchema,
-  UsersSchema
-} from "@app/db/schemas";
+import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode } from "@app/db/schemas/models";
+import { ProjectMembershipsSchema } from "@app/db/schemas/project-memberships";
+import { ProjectUserMembershipRolesSchema } from "@app/db/schemas/project-user-membership-roles";
+import { UserEncryptionKeysSchema } from "@app/db/schemas/user-encryption-keys";
+import { UsersSchema } from "@app/db/schemas/users";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECT_USERS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";

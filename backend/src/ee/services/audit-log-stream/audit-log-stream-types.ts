@@ -1,4 +1,4 @@
-import { TAuditLogs } from "@app/db/schemas";
+import { TAuditLogs } from "@app/db/schemas/audit-logs";
 
 import { LogProvider } from "./audit-log-stream-enums";
 import { TAzureProvider, TAzureProviderCredentials } from "./azure/azure-provider-types";

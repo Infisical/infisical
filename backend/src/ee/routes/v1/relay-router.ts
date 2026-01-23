@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { RelaysSchema } from "@app/db/schemas";
+import { RelaysSchema } from "@app/db/schemas/relays";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { UnauthorizedError } from "@app/lib/errors";

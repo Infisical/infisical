@@ -1,4 +1,5 @@
-import { AccessScope, IdentityAuthMethod, TableName, TIdentityAccessTokens } from "@app/db/schemas";
+import { TIdentityAccessTokens } from "@app/db/schemas/identity-access-tokens";
+import { AccessScope, IdentityAuthMethod, TableName } from "@app/db/schemas/models";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { AccessScope, OrgMembershipRole, UsersSchema } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole } from "@app/db/schemas/models";
+import { UsersSchema } from "@app/db/schemas/users";
 import { inviteUserRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";

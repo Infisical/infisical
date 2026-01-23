@@ -2,7 +2,8 @@ import { Knex } from "knex";
 import { validate as uuidValidate } from "uuid";
 
 import { TDbClient } from "@app/db";
-import { SecretsSchema, SecretType, TableName, TSecrets, TSecretsUpdate } from "@app/db/schemas";
+import { SecretType, TableName } from "@app/db/schemas/models";
+import { SecretsSchema, TSecrets, TSecretsUpdate } from "@app/db/schemas/secrets";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 

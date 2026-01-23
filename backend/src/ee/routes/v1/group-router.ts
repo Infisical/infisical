@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-import { GroupsSchema, IdentitiesSchema, OrgMembershipRole, ProjectsSchema, UsersSchema } from "@app/db/schemas";
+import { GroupsSchema } from "@app/db/schemas/groups";
+import { IdentitiesSchema } from "@app/db/schemas/identities";
+import { OrgMembershipRole } from "@app/db/schemas/models";
+import { ProjectsSchema } from "@app/db/schemas/projects";
+import { UsersSchema } from "@app/db/schemas/users";
 import {
   FilterMemberType,
   FilterReturnedMachineIdentities,

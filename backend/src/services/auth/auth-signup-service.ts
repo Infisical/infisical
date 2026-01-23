@@ -1,4 +1,4 @@
-import { AccessScope, OrgMembershipStatus, TableName } from "@app/db/schemas";
+import { AccessScope, OrgMembershipStatus, TableName } from "@app/db/schemas/models";
 import { convertPendingGroupAdditionsToGroupMemberships } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";

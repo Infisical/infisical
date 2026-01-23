@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { SlackIntegrationsSchema, WorkflowIntegrationsSchema } from "@app/db/schemas";
+import { SlackIntegrationsSchema } from "@app/db/schemas/slack-integrations";
+import { WorkflowIntegrationsSchema } from "@app/db/schemas/workflow-integrations";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";

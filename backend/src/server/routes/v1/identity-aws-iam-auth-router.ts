@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { IdentityAwsAuthsSchema } from "@app/db/schemas";
+import { IdentityAwsAuthsSchema } from "@app/db/schemas/identity-aws-auths";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, AWS_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";

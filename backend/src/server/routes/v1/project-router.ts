@@ -1,22 +1,19 @@
 import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
-import {
-  CertificatesSchema,
-  IntegrationsSchema,
-  PkiAlertsSchema,
-  PkiCollectionsSchema,
-  ProjectEnvironmentsSchema,
-  ProjectMembershipsSchema,
-  ProjectRolesSchema,
-  ProjectSlackConfigsSchema,
-  ProjectSshConfigsSchema,
-  ProjectType,
-  SecretFoldersSchema,
-  SortDirection,
-  UserEncryptionKeysSchema,
-  UsersSchema
-} from "@app/db/schemas";
+import { CertificatesSchema } from "@app/db/schemas/certificates";
+import { IntegrationsSchema } from "@app/db/schemas/integrations";
+import { ProjectType, SortDirection } from "@app/db/schemas/models";
+import { PkiAlertsSchema } from "@app/db/schemas/pki-alerts";
+import { PkiCollectionsSchema } from "@app/db/schemas/pki-collections";
+import { ProjectEnvironmentsSchema } from "@app/db/schemas/project-environments";
+import { ProjectMembershipsSchema } from "@app/db/schemas/project-memberships";
+import { ProjectRolesSchema } from "@app/db/schemas/project-roles";
+import { ProjectSlackConfigsSchema } from "@app/db/schemas/project-slack-configs";
+import { ProjectSshConfigsSchema } from "@app/db/schemas/project-ssh-configs";
+import { SecretFoldersSchema } from "@app/db/schemas/secret-folders";
+import { UserEncryptionKeysSchema } from "@app/db/schemas/user-encryption-keys";
+import { UsersSchema } from "@app/db/schemas/users";
 import { ProjectMicrosoftTeamsConfigsSchema } from "@app/db/schemas/project-microsoft-teams-configs";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";

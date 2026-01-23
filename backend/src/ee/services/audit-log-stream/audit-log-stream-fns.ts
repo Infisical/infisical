@@ -1,4 +1,4 @@
-import { TAuditLogStreams } from "@app/db/schemas";
+import { TAuditLogStreams } from "@app/db/schemas/audit-log-streams";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 

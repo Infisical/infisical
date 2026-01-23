@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { SecretScanningResourcesSchema, SecretScanningScansSchema } from "@app/db/schemas";
+import { SecretScanningResourcesSchema } from "@app/db/schemas/secret-scanning-resources";
+import { SecretScanningScansSchema } from "@app/db/schemas/secret-scanning-scans";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   SecretScanningDataSource,

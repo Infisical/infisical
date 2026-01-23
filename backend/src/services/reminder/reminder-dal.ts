@@ -1,15 +1,13 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import {
-  TableName,
-  TOrganizations,
-  TProjectEnvironments,
-  TProjects,
-  TSecretFolders,
-  TSecretsV2,
-  TUsers
-} from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
+import { TOrganizations } from "@app/db/schemas/organizations";
+import { TProjectEnvironments } from "@app/db/schemas/project-environments";
+import { TProjects } from "@app/db/schemas/projects";
+import { TSecretFolders } from "@app/db/schemas/secret-folders";
+import { TSecretsV2 } from "@app/db/schemas/secrets-v2";
+import { TUsers } from "@app/db/schemas/users";
 import { RemindersSchema } from "@app/db/schemas/reminders";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 

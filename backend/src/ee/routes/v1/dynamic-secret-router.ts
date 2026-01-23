@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { DynamicSecretLeasesSchema } from "@app/db/schemas";
+import { DynamicSecretLeasesSchema } from "@app/db/schemas/dynamic-secret-leases";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { DynamicSecretProviderSchema } from "@app/ee/services/dynamic-secret/providers/models";
 import { ApiDocsTags, DYNAMIC_SECRETS } from "@app/lib/api-docs";

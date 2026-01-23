@@ -1,4 +1,5 @@
-import { ProjectVersion, TProjects } from "@app/db/schemas";
+import { ProjectVersion } from "@app/db/schemas/models";
+import { TProjects } from "@app/db/schemas/projects";
 import { createSshCaHelper } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
 import { SshCaKeySource } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";

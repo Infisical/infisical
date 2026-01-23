@@ -1,6 +1,8 @@
 import { z } from "zod";
 
-import { SecretApprovalRequestsReviewersSchema, SecretApprovalRequestsSchema, UsersSchema } from "@app/db/schemas";
+import { SecretApprovalRequestsSchema } from "@app/db/schemas/secret-approval-requests";
+import { SecretApprovalRequestsReviewersSchema } from "@app/db/schemas/secret-approval-requests-reviewers";
+import { UsersSchema } from "@app/db/schemas/users";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApprovalStatus, RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";

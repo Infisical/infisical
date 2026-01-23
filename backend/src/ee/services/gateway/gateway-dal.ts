@@ -1,5 +1,6 @@
 import { TDbClient } from "@app/db";
-import { AccessScope, GatewaysSchema, TableName, TGateways } from "@app/db/schemas";
+import { GatewaysSchema, TGateways } from "@app/db/schemas/gateways";
+import { AccessScope, TableName } from "@app/db/schemas/models";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } from "@app/lib/knex";
 

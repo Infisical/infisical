@@ -1,7 +1,8 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { DynamicSecretLeasesSchema, TableName } from "@app/db/schemas";
+import { DynamicSecretLeasesSchema } from "@app/db/schemas/dynamic-secret-leases";
+import { TableName } from "@app/db/schemas/models";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, TOrmify } from "@app/lib/knex";
 

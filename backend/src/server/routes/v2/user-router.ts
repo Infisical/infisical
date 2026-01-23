@@ -1,6 +1,8 @@
 import { z } from "zod";
 
-import { AuthTokenSessionsSchema, UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
+import { AuthTokenSessionsSchema } from "@app/db/schemas/auth-token-sessions";
+import { UserEncryptionKeysSchema } from "@app/db/schemas/user-encryption-keys";
+import { UsersSchema } from "@app/db/schemas/users";
 import { ApiKeysSchema } from "@app/db/schemas/api-keys";
 import { readLimit, smtpRateLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";

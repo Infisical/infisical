@@ -1,4 +1,4 @@
-import { SecretKeyEncoding } from "@app/db/schemas";
+import { SecretKeyEncoding } from "@app/db/schemas/models";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";

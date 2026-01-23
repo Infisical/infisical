@@ -1,7 +1,8 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
+import { TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas/super-admin";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 

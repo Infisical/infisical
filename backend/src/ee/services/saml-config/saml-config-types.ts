@@ -1,4 +1,6 @@
-import { TOrganizations, TSamlConfigs, TUsers } from "@app/db/schemas";
+import { TOrganizations } from "@app/db/schemas/organizations";
+import { TSamlConfigs } from "@app/db/schemas/saml-configs";
+import { TUsers } from "@app/db/schemas/users";
 import { TOrgPermission } from "@app/lib/types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 

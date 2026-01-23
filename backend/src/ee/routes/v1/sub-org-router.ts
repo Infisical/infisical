@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { OrganizationsSchema } from "@app/db/schemas";
+import { OrganizationsSchema } from "@app/db/schemas/organizations";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SUB_ORGANIZATIONS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";

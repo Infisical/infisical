@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { BackupPrivateKeySchema, UsersSchema } from "@app/db/schemas";
+import { BackupPrivateKeySchema } from "@app/db/schemas/backup-private-key";
+import { UsersSchema } from "@app/db/schemas/users";
 import { getConfig } from "@app/lib/config/env";
 import { authRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";

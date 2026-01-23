@@ -1,7 +1,8 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { AccessScope, TableName, TProjectKeys } from "@app/db/schemas";
+import { AccessScope, TableName } from "@app/db/schemas/models";
+import { TProjectKeys } from "@app/db/schemas/project-keys";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 

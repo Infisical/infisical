@@ -1,7 +1,8 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { SecretVersionsSchema, TableName, TSecretVersions, TSecretVersionsUpdate } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
+import { SecretVersionsSchema, TSecretVersions, TSecretVersionsUpdate } from "@app/db/schemas/secret-versions";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships, TFindOpt } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";

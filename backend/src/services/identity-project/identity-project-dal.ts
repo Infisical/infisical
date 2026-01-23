@@ -1,20 +1,17 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import {
-  AccessScope,
-  TableName,
-  TIdentities,
-  TIdentityAlicloudAuths,
-  TIdentityAwsAuths,
-  TIdentityAzureAuths,
-  TIdentityGcpAuths,
-  TIdentityKubernetesAuths,
-  TIdentityOciAuths,
-  TIdentityOidcAuths,
-  TIdentityTokenAuths,
-  TIdentityUniversalAuths
-} from "@app/db/schemas";
+import { TIdentities } from "@app/db/schemas/identities";
+import { TIdentityAlicloudAuths } from "@app/db/schemas/identity-alicloud-auths";
+import { TIdentityAwsAuths } from "@app/db/schemas/identity-aws-auths";
+import { TIdentityAzureAuths } from "@app/db/schemas/identity-azure-auths";
+import { TIdentityGcpAuths } from "@app/db/schemas/identity-gcp-auths";
+import { TIdentityKubernetesAuths } from "@app/db/schemas/identity-kubernetes-auths";
+import { TIdentityOciAuths } from "@app/db/schemas/identity-oci-auths";
+import { TIdentityOidcAuths } from "@app/db/schemas/identity-oidc-auths";
+import { TIdentityTokenAuths } from "@app/db/schemas/identity-token-auths";
+import { TIdentityUniversalAuths } from "@app/db/schemas/identity-universal-auths";
+import { AccessScope, TableName } from "@app/db/schemas/models";
 import { DatabaseError } from "@app/lib/errors";
 import { selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";

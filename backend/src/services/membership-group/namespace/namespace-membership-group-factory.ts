@@ -1,4 +1,4 @@
-import { AccessScope } from "@app/db/schemas";
+import { AccessScope } from "@app/db/schemas/models";
 import { InternalServerError } from "@app/lib/errors";
 
 import { TMembershipGroupScopeFactory } from "../membership-group-types";

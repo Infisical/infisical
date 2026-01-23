@@ -1,5 +1,6 @@
 import { TDbClient } from "@app/db";
-import { TableName, TAiMcpServerUserCredentialsInsert } from "@app/db/schemas";
+import { TAiMcpServerUserCredentialsInsert } from "@app/db/schemas/ai-mcp-server-user-credentials";
+import { TableName } from "@app/db/schemas/models";
 import { ormify } from "@app/lib/knex";
 
 export type TAiMcpServerUserCredentialDALFactory = ReturnType<typeof aiMcpServerUserCredentialDALFactory>;

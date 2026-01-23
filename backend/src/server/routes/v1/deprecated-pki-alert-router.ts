@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { PkiAlertsSchema } from "@app/db/schemas";
+import { PkiAlertsSchema } from "@app/db/schemas/pki-alerts";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ALERTS, ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";

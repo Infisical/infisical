@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { IdentityAccessTokensSchema, IdentityTokenAuthsSchema } from "@app/db/schemas";
+import { IdentityAccessTokensSchema } from "@app/db/schemas/identity-access-tokens";
+import { IdentityTokenAuthsSchema } from "@app/db/schemas/identity-token-auths";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, TOKEN_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";

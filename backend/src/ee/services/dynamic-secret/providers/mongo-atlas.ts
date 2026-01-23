@@ -2,7 +2,7 @@ import axios, { AxiosError } from "axios";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
-import { TDynamicSecrets } from "@app/db/schemas";
+import { TDynamicSecrets } from "@app/db/schemas/dynamic-secrets";
 import { createDigestAuthRequestInterceptor } from "@app/lib/axios/digest-auth";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";

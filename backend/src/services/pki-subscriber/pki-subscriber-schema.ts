@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { PkiSubscribersSchema } from "@app/db/schemas";
+import { PkiSubscribersSchema } from "@app/db/schemas/pki-subscribers";
 
 export const sanitizedPkiSubscriber = PkiSubscribersSchema.pick({
   id: true,

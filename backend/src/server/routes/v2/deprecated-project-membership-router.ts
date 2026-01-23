@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { AccessScope, OrgMembershipRole, ProjectMembershipRole, ProjectMembershipsSchema } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas/models";
+import { ProjectMembershipsSchema } from "@app/db/schemas/project-memberships";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECT_USERS } from "@app/lib/api-docs";
 import { writeLimit } from "@app/server/config/rateLimiter";

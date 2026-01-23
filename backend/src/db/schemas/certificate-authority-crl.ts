@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 
-import { zodBuffer } from "@app/lib/zod";
+import { zodBuffer } from "./utils/zod";
 
 import { TImmutableDBKeys } from "./models";
 

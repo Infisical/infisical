@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { IdentityAzureAuthsSchema } from "@app/db/schemas";
+import { IdentityAzureAuthsSchema } from "@app/db/schemas/identity-azure-auths";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, AZURE_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";

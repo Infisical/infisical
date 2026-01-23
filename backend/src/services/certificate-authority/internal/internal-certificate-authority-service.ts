@@ -5,7 +5,9 @@ import * as x509 from "@peculiar/x509";
 import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
-import { ActionProjectType, TableName, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
+import { TCertificateAuthorities } from "@app/db/schemas/certificate-authorities";
+import { TCertificateTemplates } from "@app/db/schemas/certificate-templates";
+import { ActionProjectType, TableName } from "@app/db/schemas/models";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,

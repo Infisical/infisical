@@ -1,4 +1,4 @@
-import { TUsers } from "@app/db/schemas";
+import { TUsers } from "@app/db/schemas/users";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";

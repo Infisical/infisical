@@ -1,4 +1,6 @@
-import { ProjectMembershipRole, ProjectType, TOrgRolesUpdate, TProjectRolesInsert } from "@app/db/schemas";
+import { ProjectMembershipRole, ProjectType } from "@app/db/schemas/models";
+import { TOrgRolesUpdate } from "@app/db/schemas/org-roles";
+import { TProjectRolesInsert } from "@app/db/schemas/project-roles";
 import { TProjectPermission } from "@app/lib/types";
 
 export enum ProjectRoleServiceIdentifierType {

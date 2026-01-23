@@ -1,7 +1,10 @@
 import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
-import { SecretFoldersSchema, SecretImportsSchema, SecretType, UsersSchema } from "@app/db/schemas";
+import { SecretType } from "@app/db/schemas/models";
+import { SecretFoldersSchema } from "@app/db/schemas/secret-folders";
+import { SecretImportsSchema } from "@app/db/schemas/secret-imports";
+import { UsersSchema } from "@app/db/schemas/users";
 import { RemindersSchema } from "@app/db/schemas/reminders";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";

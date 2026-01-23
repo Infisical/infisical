@@ -1,7 +1,8 @@
 import { packRules } from "@casl/ability/extra";
 import { z } from "zod";
 
-import { AccessScope, ProjectMembershipRole, ProjectRolesSchema } from "@app/db/schemas";
+import { AccessScope, ProjectMembershipRole } from "@app/db/schemas/models";
+import { ProjectRolesSchema } from "@app/db/schemas/project-roles";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";

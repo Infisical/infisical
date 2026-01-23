@@ -1,4 +1,5 @@
-import { OrgMembershipRole, TRoles } from "@app/db/schemas";
+import { OrgMembershipRole } from "@app/db/schemas/models";
+import { TRoles } from "@app/db/schemas/roles";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";

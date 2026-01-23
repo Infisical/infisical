@@ -1,7 +1,8 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TGitAppOrgInsert } from "@app/db/schemas";
+import { TGitAppOrgInsert } from "@app/db/schemas/git-app-org";
+import { TableName } from "@app/db/schemas/models";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 

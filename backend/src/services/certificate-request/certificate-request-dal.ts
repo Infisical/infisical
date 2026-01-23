@@ -1,7 +1,9 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TCertificateRequests, TCertificates } from "@app/db/schemas";
+import { TCertificateRequests } from "@app/db/schemas/certificate-requests";
+import { TCertificates } from "@app/db/schemas/certificates";
+import { TableName } from "@app/db/schemas/models";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify, selectAllTableCols } from "@app/lib/knex";

@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { AccessScope, OrgMembershipStatus, TableName } from "@app/db/schemas";
+import { AccessScope, OrgMembershipStatus, TableName } from "@app/db/schemas/models";
 import { DatabaseError } from "@app/lib/errors";
 
 export type TLicenseDALFactory = ReturnType<typeof licenseDALFactory>;

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { PamFoldersSchema } from "@app/db/schemas";
+import { PamFoldersSchema } from "@app/db/schemas/pam-folders";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { isValidFolderName } from "@app/lib/validator";
 import { writeLimit } from "@app/server/config/rateLimiter";

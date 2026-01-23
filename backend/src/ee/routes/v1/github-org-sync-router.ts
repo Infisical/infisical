@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { GithubOrgSyncConfigsSchema } from "@app/db/schemas";
+import { GithubOrgSyncConfigsSchema } from "@app/db/schemas/github-org-sync-configs";
 import { CharacterType, zodValidateCharacters } from "@app/lib/validator/validate-string";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";

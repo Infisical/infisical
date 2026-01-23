@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, OrganizationActionScope } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope } from "@app/db/schemas/models";
 import {
   orgAdminPermissions,
   orgMemberPermissions,

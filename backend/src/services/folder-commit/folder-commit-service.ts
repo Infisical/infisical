@@ -2,13 +2,11 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import {
-  ActionProjectType,
-  TSecretFolders,
-  TSecretFolderVersions,
-  TSecretV2TagJunctionInsert,
-  TSecretVersionsV2
-} from "@app/db/schemas";
+import { ActionProjectType } from "@app/db/schemas/models";
+import { TSecretFolderVersions } from "@app/db/schemas/secret-folder-versions";
+import { TSecretFolders } from "@app/db/schemas/secret-folders";
+import { TSecretV2TagJunctionInsert } from "@app/db/schemas/secret-v2-tag-junction";
+import { TSecretVersionsV2 } from "@app/db/schemas/secret-versions-v2";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";

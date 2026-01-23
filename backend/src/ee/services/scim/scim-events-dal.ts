@@ -1,5 +1,6 @@
 import { TDbClient } from "@app/db";
-import { TableName, TScimEvents } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
+import { TScimEvents } from "@app/db/schemas/scim-events";
 import { ormify, TOrmify } from "@app/lib/knex";
 
 export type TScimEventsDALFactory = TOrmify<TableName.ScimEvents> & {

@@ -1,7 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
 import { v4 as uuidv4 } from "uuid";
 
-import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
+import {
+  AccessScope,
+  ActionProjectType,
+  ProjectMembershipRole,
+  ProjectType
+} from "@app/db/schemas/models";
 import {
   cryptographicOperatorPermissions,
   projectAdminPermissions,

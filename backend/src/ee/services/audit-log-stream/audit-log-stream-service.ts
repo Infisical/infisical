@@ -1,7 +1,8 @@
 import { ForbiddenError } from "@casl/ability";
 import { AxiosError } from "axios";
 
-import { OrganizationActionScope, TAuditLogs } from "@app/db/schemas";
+import { TAuditLogs } from "@app/db/schemas/audit-logs";
+import { OrganizationActionScope } from "@app/db/schemas/models";
 import {
   decryptLogStream,
   decryptLogStreamCredentials,

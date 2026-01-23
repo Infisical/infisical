@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 import { Compare, Filter, parse } from "scim2-parse-filter";
 
-import { TableName } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
 
 const appendParentToGroupingOperator = (parentPath: string, filter: Filter) => {
   if (filter.op !== "[]" && filter.op !== "and" && filter.op !== "or" && filter.op !== "not") {

@@ -19,7 +19,7 @@ import {
 import { AssumeRoleCommand, GetSessionTokenCommand, STSClient } from "@aws-sdk/client-sts";
 import { z } from "zod";
 
-import { TDynamicSecrets } from "@app/db/schemas";
+import { TDynamicSecrets } from "@app/db/schemas/dynamic-secrets";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";

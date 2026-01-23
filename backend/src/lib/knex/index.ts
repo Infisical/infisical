@@ -2,7 +2,7 @@
 import { Knex } from "knex";
 import { Tables } from "knex/types/tables";
 
-import { TableName } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
 
 import { DatabaseError } from "../errors";
 import { buildDynamicKnexQuery, TKnexDynamicOperator } from "./dynamic";

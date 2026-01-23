@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { CertificateTemplateEstConfigsSchema } from "@app/db/schemas";
+import { CertificateTemplateEstConfigsSchema } from "@app/db/schemas/certificate-template-est-configs";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, CERTIFICATE_TEMPLATES } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";

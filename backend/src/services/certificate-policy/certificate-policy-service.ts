@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 import RE2 from "re2";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType } from "@app/db/schemas/models";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificatePolicyActions,

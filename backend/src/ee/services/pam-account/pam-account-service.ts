@@ -2,7 +2,10 @@ import path from "node:path";
 
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType, OrganizationActionScope, TPamAccounts, TPamFolders, TPamResources } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas/models";
+import { TPamAccounts } from "@app/db/schemas/pam-accounts";
+import { TPamFolders } from "@app/db/schemas/pam-folders";
+import { TPamResources } from "@app/db/schemas/pam-resources";
 import {
   extractAwsAccountIdFromArn,
   generateConsoleFederationUrl,

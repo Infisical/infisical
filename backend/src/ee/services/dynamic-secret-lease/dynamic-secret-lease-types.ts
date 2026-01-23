@@ -1,4 +1,4 @@
-import { TDynamicSecretLeases } from "@app/db/schemas";
+import { TDynamicSecretLeases } from "@app/db/schemas/dynamic-secret-leases";
 import { TDynamicSecretWithMetadata, TProjectPermission } from "@app/lib/types";
 
 export enum DynamicSecretLeaseStatus {

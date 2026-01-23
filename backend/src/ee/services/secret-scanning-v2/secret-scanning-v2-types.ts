@@ -1,9 +1,7 @@
-import {
-  TSecretScanningDataSources,
-  TSecretScanningFindingsInsert,
-  TSecretScanningResources,
-  TSecretScanningScans
-} from "@app/db/schemas";
+import { TSecretScanningDataSources } from "@app/db/schemas/secret-scanning-data-sources";
+import { TSecretScanningFindingsInsert } from "@app/db/schemas/secret-scanning-findings";
+import { TSecretScanningResources } from "@app/db/schemas/secret-scanning-resources";
+import { TSecretScanningScans } from "@app/db/schemas/secret-scanning-scans";
 import {
   TBitbucketDataSource,
   TBitbucketDataSourceCredentials,

@@ -9,7 +9,7 @@ import { AxiosError } from "axios";
 import { CronJob } from "cron";
 import { Knex } from "knex";
 
-import { OrganizationActionScope } from "@app/db/schemas";
+import { OrganizationActionScope } from "@app/db/schemas/models";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { TEnvConfig } from "@app/lib/config/env";
 import { verifyOfflineLicense } from "@app/lib/crypto";

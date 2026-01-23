@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { ProjectMembershipRole, ProjectType, TProjectEnvironments } from "@app/db/schemas";
+import { ProjectMembershipRole, ProjectType } from "@app/db/schemas/models";
+import { TProjectEnvironments } from "@app/db/schemas/project-environments";
 import { TProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { ProjectServiceActor } from "@app/lib/types";
 import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";

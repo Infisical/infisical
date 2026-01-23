@@ -1,7 +1,7 @@
 import { Job, JobsOptions, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from "bullmq";
 import PgBoss, { WorkOptions } from "pg-boss";
 
-import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
+import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas/models";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import {
   TSecretRotationRotateSecretsJobPayload,

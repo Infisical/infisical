@@ -1,12 +1,8 @@
 import { z } from "zod";
 
-import {
-  AccessScope,
-  IdentitiesSchema,
-  IdentityProjectMembershipsSchema,
-  ProjectMembershipRole,
-  TemporaryPermissionMode
-} from "@app/db/schemas";
+import { IdentitiesSchema } from "@app/db/schemas/identities";
+import { IdentityProjectMembershipsSchema } from "@app/db/schemas/identity-project-memberships";
+import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode } from "@app/db/schemas/models";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECT_IDENTITIES, PROJECT_IDENTITY_MEMBERSHIP } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";

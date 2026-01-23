@@ -1,4 +1,5 @@
-import { TProjects, TTrustedIps } from "@app/db/schemas";
+import { TProjects } from "@app/db/schemas/projects";
+import { TTrustedIps } from "@app/db/schemas/trusted-ips";
 import { TProjectPermission } from "@app/lib/types";
 
 export type TCreateIpDTO = TProjectPermission & {

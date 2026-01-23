@@ -3,15 +3,13 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import {
   AccessScope,
-  ProjectsSchema,
   ProjectType,
   ProjectUpgradeStatus,
   ProjectVersion,
   SortDirection,
-  TableName,
-  TProjects,
-  TProjectsUpdate
-} from "@app/db/schemas";
+  TableName
+} from "@app/db/schemas/models";
+import { ProjectsSchema, TProjects, TProjectsUpdate } from "@app/db/schemas/projects";
 import { BadRequestError, DatabaseError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 

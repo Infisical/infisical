@@ -1,4 +1,4 @@
-import { TPkiCollectionItems } from "@app/db/schemas";
+import { TPkiCollectionItems } from "@app/db/schemas/pki-collection-items";
 
 import { PkiItemType } from "./pki-collection-types";
 

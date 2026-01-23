@@ -1,13 +1,11 @@
 import { z } from "zod";
 
-import {
-  OrgMembershipsSchema,
-  OrgMembershipStatus,
-  ProjectMembershipsSchema,
-  ProjectsSchema,
-  UserEncryptionKeysSchema,
-  UsersSchema
-} from "@app/db/schemas";
+import { OrgMembershipStatus } from "@app/db/schemas/models";
+import { OrgMembershipsSchema } from "@app/db/schemas/org-memberships";
+import { ProjectMembershipsSchema } from "@app/db/schemas/project-memberships";
+import { ProjectsSchema } from "@app/db/schemas/projects";
+import { UserEncryptionKeysSchema } from "@app/db/schemas/user-encryption-keys";
+import { UsersSchema } from "@app/db/schemas/users";
 import { ApiDocsTags, ORGANIZATIONS } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";

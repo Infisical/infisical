@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { TableName } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
 
 export async function up(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.SecretSync)) {

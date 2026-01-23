@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { ProjectType } from "@app/db/schemas";
+import { ProjectType } from "@app/db/schemas/models";
 
 import { ProjectPermissionSecretEventActions } from "../permission/project-permission";
 

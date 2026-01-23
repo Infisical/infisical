@@ -1,5 +1,6 @@
 import { TDbClient } from "@app/db";
-import { TableName, TPkiAlertHistory } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
+import { TPkiAlertHistory } from "@app/db/schemas/pki-alert-history";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 

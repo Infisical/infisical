@@ -1,7 +1,7 @@
 import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
-import { AccessScope, TemporaryPermissionMode } from "@app/db/schemas";
+import { AccessScope, TemporaryPermissionMode } from "@app/db/schemas/models";
 import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { PROJECT_USER_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";

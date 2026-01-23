@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { SecretTagsSchema } from "@app/db/schemas";
+import { SecretTagsSchema } from "@app/db/schemas/secret-tags";
 import { ApiDocsTags, SECRET_TAGS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";

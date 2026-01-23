@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { GitAppOrgSchema, SecretScanningGitRisksSchema } from "@app/db/schemas";
+import { GitAppOrgSchema } from "@app/db/schemas/git-app-org";
+import { SecretScanningGitRisksSchema } from "@app/db/schemas/secret-scanning-git-risks";
 import { canUseSecretScanning } from "@app/ee/services/secret-scanning/secret-scanning-fns";
 import {
   SecretScanningResolvedStatus,

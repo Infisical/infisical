@@ -3,7 +3,7 @@ import https from "https";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
-import { TDynamicSecrets } from "@app/db/schemas";
+import { TDynamicSecrets } from "@app/db/schemas/dynamic-secrets";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";

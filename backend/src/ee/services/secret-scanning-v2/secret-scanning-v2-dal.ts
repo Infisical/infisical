@@ -1,12 +1,10 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import {
-  SecretScanningResourcesSchema,
-  SecretScanningScansSchema,
-  TableName,
-  TSecretScanningDataSources
-} from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
+import { TSecretScanningDataSources } from "@app/db/schemas/secret-scanning-data-sources";
+import { SecretScanningResourcesSchema } from "@app/db/schemas/secret-scanning-resources";
+import { SecretScanningScansSchema } from "@app/db/schemas/secret-scanning-scans";
 import { SecretScanningFindingStatus } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { DatabaseError } from "@app/lib/errors";
 import {

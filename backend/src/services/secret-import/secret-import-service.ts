@@ -2,7 +2,7 @@ import path from "node:path";
 
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType, TableName } from "@app/db/schemas";
+import { ActionProjectType, TableName } from "@app/db/schemas/models";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   hasSecretReadValueOrDescribePermission,

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { PamAccountsSchema, PamResourcesSchema } from "@app/db/schemas";
+import { PamAccountsSchema } from "@app/db/schemas/pam-accounts";
+import { PamResourcesSchema } from "@app/db/schemas/pam-resources";
 import { slugSchema } from "@app/server/lib/schemas";
 
 export const GatewayAccessResponseSchema = z.object({

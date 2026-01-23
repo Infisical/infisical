@@ -4,13 +4,8 @@ import { Octokit } from "@octokit/rest";
 import { Client as OctopusClient, SpaceRepository as OctopusSpaceRepository } from "@octopusdeploy/api-client";
 import AWS from "aws-sdk";
 
-import {
-  ActionProjectType,
-  SecretEncryptionAlgo,
-  SecretKeyEncoding,
-  TIntegrationAuths,
-  TIntegrationAuthsInsert
-} from "@app/db/schemas";
+import { TIntegrationAuths, TIntegrationAuthsInsert } from "@app/db/schemas/integration-auths";
+import { ActionProjectType, SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas/models";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";

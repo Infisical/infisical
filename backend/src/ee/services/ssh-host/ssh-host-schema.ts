@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { SshHostsSchema } from "@app/db/schemas";
+import { SshHostsSchema } from "@app/db/schemas/ssh-hosts";
 
 export const sanitizedSshHost = SshHostsSchema.pick({
   id: true,

@@ -3,7 +3,7 @@ import AWS from "aws-sdk";
 import RE2 from "re2";
 import { z } from "zod";
 
-import { TCertificateSyncs } from "@app/db/schemas";
+import { TCertificateSyncs } from "@app/db/schemas/certificate-syncs";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";

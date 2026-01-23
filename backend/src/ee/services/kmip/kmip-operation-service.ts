@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { OrganizationActionScope } from "@app/db/schemas";
+import { OrganizationActionScope } from "@app/db/schemas/models";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { KmipOperationType, recordKmipOperationMetric } from "@app/lib/telemetry/metrics";
 import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";

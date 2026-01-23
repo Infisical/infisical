@@ -1,6 +1,7 @@
 import slugify from "@sindresorhus/slugify";
 
-import { SecretType, TSecretFolders } from "@app/db/schemas";
+import { SecretType } from "@app/db/schemas/models";
+import { TSecretFolders } from "@app/db/schemas/secret-folders";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";

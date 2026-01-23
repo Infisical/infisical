@@ -1,7 +1,9 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { AccessScope, TableName, TMemberships, TUserEncryptionKeys } from "@app/db/schemas";
+import { TMemberships } from "@app/db/schemas/memberships";
+import { AccessScope, TableName } from "@app/db/schemas/models";
+import { TUserEncryptionKeys } from "@app/db/schemas/user-encryption-keys";
 import { DatabaseError } from "@app/lib/errors";
 import { selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 

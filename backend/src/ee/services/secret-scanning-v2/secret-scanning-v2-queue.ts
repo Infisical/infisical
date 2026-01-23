@@ -1,6 +1,7 @@
 import { join } from "path";
 
-import { ProjectMembershipRole, TSecretScanningFindings } from "@app/db/schemas";
+import { ProjectMembershipRole } from "@app/db/schemas/models";
+import { TSecretScanningFindings } from "@app/db/schemas/secret-scanning-findings";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import {
   createTempFolder,

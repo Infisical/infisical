@@ -1,6 +1,6 @@
 import z from "zod";
 
-import { GatewaysV2Schema } from "@app/db/schemas";
+import { GatewaysV2Schema } from "@app/db/schemas/gateways-v2";
 import { zodBuffer } from "@app/lib/zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";

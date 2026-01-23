@@ -1,7 +1,8 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { SecretRotationsSchema, TableName, TSecretRotations } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
+import { SecretRotationsSchema, TSecretRotations } from "@app/db/schemas/secret-rotations";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships, TFindFilter } from "@app/lib/knex";
 

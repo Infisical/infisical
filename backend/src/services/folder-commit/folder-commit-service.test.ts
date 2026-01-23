@@ -4,7 +4,8 @@
 import { Knex } from "knex";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { TSecretFolderVersions, TSecretVersionsV2 } from "@app/db/schemas";
+import { TSecretFolderVersions } from "@app/db/schemas/secret-folder-versions";
+import { TSecretVersionsV2 } from "@app/db/schemas/secret-versions-v2";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { ActorType } from "../auth/auth-type";

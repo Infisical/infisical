@@ -2,7 +2,8 @@ import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 import { z } from "zod";
 
-import { KmsKeysSchema, TKmsRootConfig } from "@app/db/schemas";
+import { KmsKeysSchema } from "@app/db/schemas/kms-keys";
+import { TKmsRootConfig } from "@app/db/schemas/kms-root-config";
 import { AwsKmsProviderFactory } from "@app/ee/services/external-kms/providers/aws-kms";
 import { GcpKmsProviderFactory } from "@app/ee/services/external-kms/providers/gcp-kms";
 import {

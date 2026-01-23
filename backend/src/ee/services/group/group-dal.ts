@@ -1,7 +1,8 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { AccessScope, TableName, TGroups } from "@app/db/schemas";
+import { TGroups } from "@app/db/schemas/groups";
+import { AccessScope, TableName } from "@app/db/schemas/models";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";

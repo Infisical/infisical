@@ -1,13 +1,11 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import {
-  TableName,
-  TFolderCheckpointResources,
-  TFolderCheckpoints,
-  TSecretFolderVersions,
-  TSecretVersionsV2
-} from "@app/db/schemas";
+import { TFolderCheckpointResources } from "@app/db/schemas/folder-checkpoint-resources";
+import { TFolderCheckpoints } from "@app/db/schemas/folder-checkpoints";
+import { TableName } from "@app/db/schemas/models";
+import { TSecretFolderVersions } from "@app/db/schemas/secret-folder-versions";
+import { TSecretVersionsV2 } from "@app/db/schemas/secret-versions-v2";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 

@@ -6,7 +6,7 @@ import { paginateGraphql } from "@octokit/plugin-paginate-graphql";
 import { Octokit as OctokitRest } from "@octokit/rest";
 import RE2 from "re2";
 
-import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, OrganizationActionScope } from "@app/db/schemas/models";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";

@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, TPamFolders } from "@app/db/schemas";
+import { ActionProjectType } from "@app/db/schemas/models";
+import { TPamFolders } from "@app/db/schemas/pam-folders";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { DatabaseErrorCode } from "@app/lib/error-codes";

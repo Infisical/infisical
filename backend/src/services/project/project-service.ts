@@ -9,10 +9,10 @@ import {
   ProjectMembershipRole,
   ProjectType,
   ProjectVersion,
-  TableName,
-  TProjectEnvironments,
-  TProjects
-} from "@app/db/schemas";
+  TableName
+} from "@app/db/schemas/models";
+import { TProjectEnvironments } from "@app/db/schemas/project-environments";
+import { TProjects } from "@app/db/schemas/projects";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";

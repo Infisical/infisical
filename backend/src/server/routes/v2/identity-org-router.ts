@@ -1,6 +1,8 @@
 import { z } from "zod";
 
-import { IdentitiesSchema, IdentityOrgMembershipsSchema, OrgRolesSchema } from "@app/db/schemas";
+import { IdentitiesSchema } from "@app/db/schemas/identities";
+import { IdentityOrgMembershipsSchema } from "@app/db/schemas/identity-org-memberships";
+import { OrgRolesSchema } from "@app/db/schemas/org-roles";
 import { ApiDocsTags, ORGANIZATIONS } from "@app/lib/api-docs";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit } from "@app/server/config/rateLimiter";

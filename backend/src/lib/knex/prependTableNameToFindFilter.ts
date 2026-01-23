@@ -1,4 +1,4 @@
-import { TableName } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
 import { buildFindFilter } from "@app/lib/knex/index";
 
 type TFindFilterParameters = Parameters<typeof buildFindFilter<object>>[0];

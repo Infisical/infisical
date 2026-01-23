@@ -1,14 +1,14 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
+import { TLdapConfigsUpdate } from "@app/db/schemas/ldap-configs";
 import {
   AccessScope,
-  OrganizationActionScope,
   OrgMembershipStatus,
-  TableName,
-  TLdapConfigsUpdate,
-  TUsers
-} from "@app/db/schemas";
+  OrganizationActionScope,
+  TableName
+} from "@app/db/schemas/models";
+import { TUsers } from "@app/db/schemas/users";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";

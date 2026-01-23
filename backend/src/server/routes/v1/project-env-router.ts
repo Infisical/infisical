@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { ProjectEnvironmentsSchema } from "@app/db/schemas";
+import { ProjectEnvironmentsSchema } from "@app/db/schemas/project-environments";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, ENVIRONMENTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";

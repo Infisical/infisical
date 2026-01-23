@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { PkiCollectionItemsSchema, PkiCollectionsSchema } from "@app/db/schemas";
+import { PkiCollectionItemsSchema } from "@app/db/schemas/pki-collection-items";
+import { PkiCollectionsSchema } from "@app/db/schemas/pki-collections";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PKI_COLLECTIONS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";

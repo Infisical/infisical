@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { dropConstraintIfExists } from "@app/db/migrations/utils/dropConstraintIfExists";
-import { TableName } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable(TableName.AppConnection, (t) => {

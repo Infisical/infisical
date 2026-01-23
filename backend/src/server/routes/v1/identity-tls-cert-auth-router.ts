@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { IdentityTlsCertAuthsSchema } from "@app/db/schemas";
+import { IdentityTlsCertAuthsSchema } from "@app/db/schemas/identity-tls-cert-auths";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, TLS_CERT_AUTH } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";

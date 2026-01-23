@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { RateLimitSchema } from "@app/db/schemas";
+import { RateLimitSchema } from "@app/db/schemas/rate-limit";
 import { NotFoundError } from "@app/lib/errors";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";

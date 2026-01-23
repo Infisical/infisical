@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas/models";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { isValidIp } from "@app/lib/ip";

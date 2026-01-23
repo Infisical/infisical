@@ -1,7 +1,9 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TProjectSlackConfigs, TSlackIntegrations } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
+import { TProjectSlackConfigs } from "@app/db/schemas/project-slack-configs";
+import { TSlackIntegrations } from "@app/db/schemas/slack-integrations";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TProjectSlackConfigDALFactory = ReturnType<typeof projectSlackConfigDALFactory>;

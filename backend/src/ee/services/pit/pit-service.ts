@@ -1,7 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType } from "@app/db/schemas/models";
 import { Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";

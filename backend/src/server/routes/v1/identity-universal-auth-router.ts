@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { IdentityUaClientSecretsSchema, IdentityUniversalAuthsSchema } from "@app/db/schemas";
+import { IdentityUaClientSecretsSchema } from "@app/db/schemas/identity-ua-client-secrets";
+import { IdentityUniversalAuthsSchema } from "@app/db/schemas/identity-universal-auths";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, UNIVERSAL_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";

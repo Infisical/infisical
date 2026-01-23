@@ -1,7 +1,8 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TPkiAlertChannels, TPkiAlertChannelsInsert } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
+import { TPkiAlertChannels, TPkiAlertChannelsInsert } from "@app/db/schemas/pki-alert-channels";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 

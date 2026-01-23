@@ -1,6 +1,8 @@
 import { z } from "zod";
 
-import { AccessApprovalRequestsReviewersSchema, AccessApprovalRequestsSchema, UsersSchema } from "@app/db/schemas";
+import { AccessApprovalRequestsSchema } from "@app/db/schemas/access-approval-requests";
+import { AccessApprovalRequestsReviewersSchema } from "@app/db/schemas/access-approval-requests-reviewers";
+import { UsersSchema } from "@app/db/schemas/users";
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { ms } from "@app/lib/ms";
 import { writeLimit } from "@app/server/config/rateLimiter";

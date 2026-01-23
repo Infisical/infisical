@@ -1,5 +1,6 @@
 import { TDbClient } from "@app/db";
-import { IdentityAuthMethod, TableName, TIdentities } from "@app/db/schemas";
+import { TIdentities } from "@app/db/schemas/identities";
+import { IdentityAuthMethod, TableName } from "@app/db/schemas/models";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 

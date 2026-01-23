@@ -2,15 +2,10 @@ import { Knex } from "knex";
 import { z } from "zod";
 
 import { TDbClient } from "@app/db";
-import {
-  AccessScope,
-  AccessScopeData,
-  MembershipRolesSchema,
-  MembershipsSchema,
-  TableName,
-  TMemberships,
-  TRoles
-} from "@app/db/schemas";
+import { MembershipRolesSchema } from "@app/db/schemas/membership-roles";
+import { MembershipsSchema, TMemberships } from "@app/db/schemas/memberships";
+import { AccessScope, AccessScopeData, TableName } from "@app/db/schemas/models";
+import { TRoles } from "@app/db/schemas/roles";
 import { DatabaseError } from "@app/lib/errors";
 import { selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { ActorType } from "@app/services/auth/auth-type";

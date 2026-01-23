@@ -1,4 +1,4 @@
-import { AccessScopeData } from "@app/db/schemas";
+import { AccessScopeData } from "@app/db/schemas/models";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 
 export interface TIdentityV2Factory {

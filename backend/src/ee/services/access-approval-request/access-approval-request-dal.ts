@@ -1,15 +1,11 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import {
-  AccessApprovalRequestsSchema,
-  AccessScope,
-  TableName,
-  TAccessApprovalRequests,
-  TMemberships,
-  TUserGroupMembership,
-  TUsers
-} from "@app/db/schemas";
+import { AccessApprovalRequestsSchema, TAccessApprovalRequests } from "@app/db/schemas/access-approval-requests";
+import { TMemberships } from "@app/db/schemas/memberships";
+import { AccessScope, TableName } from "@app/db/schemas/models";
+import { TUserGroupMembership } from "@app/db/schemas/user-group-membership";
+import { TUsers } from "@app/db/schemas/users";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships, TFindFilter, TOrmify } from "@app/lib/knex";
 

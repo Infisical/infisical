@@ -1,20 +1,16 @@
 /* eslint-disable no-await-in-loop */
+import { IntegrationAuthsSchema, TIntegrationAuths } from "@app/db/schemas/integration-auths";
 import {
   AccessScope,
-  IntegrationAuthsSchema,
   ProjectMembershipRole,
   ProjectUpgradeStatus,
   ProjectVersion,
-  SecretApprovalRequestsSecretsSchema,
   SecretKeyEncoding,
-  SecretsSchema,
-  SecretVersionsSchema,
-  TableName,
-  TIntegrationAuths,
-  TSecretApprovalRequestsSecrets,
-  TSecrets,
-  TSecretVersions
-} from "@app/db/schemas";
+  TableName
+} from "@app/db/schemas/models";
+import { SecretApprovalRequestsSecretsSchema, TSecretApprovalRequestsSecrets } from "@app/db/schemas/secret-approval-requests-secrets";
+import { SecretVersionsSchema, TSecretVersions } from "@app/db/schemas/secret-versions";
+import { SecretsSchema, TSecrets } from "@app/db/schemas/secrets";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";

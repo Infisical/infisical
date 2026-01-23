@@ -7,11 +7,11 @@ import {
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretType,
-  TableName,
-  TSecretBlindIndexes,
-  TSecretFolders,
-  TSecrets
-} from "@app/db/schemas";
+  TableName
+} from "@app/db/schemas/models";
+import { TSecretBlindIndexes } from "@app/db/schemas/secret-blind-indexes";
+import { TSecretFolders } from "@app/db/schemas/secret-folders";
+import { TSecrets } from "@app/db/schemas/secrets";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";

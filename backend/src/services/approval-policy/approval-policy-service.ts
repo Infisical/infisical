@@ -1,6 +1,8 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, ProjectMembershipRole, TApprovalPolicies, TApprovalRequests } from "@app/db/schemas";
+import { TApprovalPolicies } from "@app/db/schemas/approval-policies";
+import { TApprovalRequests } from "@app/db/schemas/approval-requests";
+import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas/models";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {

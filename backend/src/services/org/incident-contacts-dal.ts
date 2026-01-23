@@ -1,5 +1,6 @@
 import { TDbClient } from "@app/db";
-import { TableName, TIncidentContacts } from "@app/db/schemas";
+import { TIncidentContacts } from "@app/db/schemas/incident-contacts";
+import { TableName } from "@app/db/schemas/models";
 import { DatabaseError } from "@app/lib/errors";
 
 export type TIncidentContactsDALFactory = ReturnType<typeof incidentContactDALFactory>;

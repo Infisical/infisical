@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { AccessScope, IdentitiesSchema } from "@app/db/schemas";
+import { IdentitiesSchema } from "@app/db/schemas/identities";
+import { AccessScope } from "@app/db/schemas/models";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, IDENTITIES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";

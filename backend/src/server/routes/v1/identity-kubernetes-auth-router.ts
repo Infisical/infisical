@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { IdentityKubernetesAuthsSchema } from "@app/db/schemas";
+import { IdentityKubernetesAuthsSchema } from "@app/db/schemas/identity-kubernetes-auths";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, KUBERNETES_AUTH } from "@app/lib/api-docs";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";

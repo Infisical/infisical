@@ -1,14 +1,10 @@
 import { z } from "zod";
 
-import {
-  AccessScope,
-  GroupProjectMembershipsSchema,
-  GroupsSchema,
-  ProjectMembershipRole,
-  ProjectUserMembershipRolesSchema,
-  TemporaryPermissionMode,
-  UsersSchema
-} from "@app/db/schemas";
+import { GroupProjectMembershipsSchema } from "@app/db/schemas/group-project-memberships";
+import { GroupsSchema } from "@app/db/schemas/groups";
+import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode } from "@app/db/schemas/models";
+import { ProjectUserMembershipRolesSchema } from "@app/db/schemas/project-user-membership-roles";
+import { UsersSchema } from "@app/db/schemas/users";
 import { FilterReturnedUsers } from "@app/ee/services/group/group-types";
 import { ApiDocsTags, GROUPS, PROJECTS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";

@@ -2,16 +2,16 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 import { scimPatch } from "scim-patch";
 
+import { TGroups } from "@app/db/schemas/groups";
+import { TMemberships } from "@app/db/schemas/memberships";
 import {
   AccessScope,
-  OrganizationActionScope,
   OrgMembershipRole,
   OrgMembershipStatus,
-  TableName,
-  TGroups,
-  TMemberships,
-  TUsers
-} from "@app/db/schemas";
+  OrganizationActionScope,
+  TableName
+} from "@app/db/schemas/models";
+import { TUsers } from "@app/db/schemas/users";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";

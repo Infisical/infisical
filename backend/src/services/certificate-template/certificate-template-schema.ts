@@ -1,6 +1,6 @@
 import z from "zod";
 
-import { CertificateTemplatesSchema } from "@app/db/schemas";
+import { CertificateTemplatesSchema } from "@app/db/schemas/certificate-templates";
 
 export const sanitizedCertificateTemplate = CertificateTemplatesSchema.pick({
   id: true,

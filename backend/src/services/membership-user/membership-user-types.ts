@@ -1,4 +1,4 @@
-import { AccessScopeData, TemporaryPermissionMode } from "@app/db/schemas";
+import { AccessScopeData, TemporaryPermissionMode } from "@app/db/schemas/models";
 import { OrgServiceActor } from "@app/lib/types";
 
 export interface TMembershipUserScopeFactory {

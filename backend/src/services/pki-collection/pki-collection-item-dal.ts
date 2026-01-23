@@ -1,5 +1,6 @@
 import { TDbClient } from "@app/db";
-import { TableName, TPkiCollectionItems } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
+import { TPkiCollectionItems } from "@app/db/schemas/pki-collection-items";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 

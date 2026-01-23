@@ -1,7 +1,8 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TPkiAcmeChallenges } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
+import { TPkiAcmeChallenges } from "@app/db/schemas/pki-acme-challenges";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 

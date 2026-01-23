@@ -1,4 +1,6 @@
-import { SecretType, TSecrets, TSecretsV2 } from "@app/db/schemas";
+import { SecretType } from "@app/db/schemas/models";
+import { TSecrets } from "@app/db/schemas/secrets";
+import { TSecretsV2 } from "@app/db/schemas/secrets-v2";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";

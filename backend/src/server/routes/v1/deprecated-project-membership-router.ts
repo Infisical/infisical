@@ -3,14 +3,14 @@ import { z } from "zod";
 import {
   AccessScope,
   OrgMembershipRole,
-  OrgMembershipsSchema,
   OrgMembershipStatus,
-  ProjectMembershipsSchema,
-  ProjectUserMembershipRolesSchema,
-  TemporaryPermissionMode,
-  UserEncryptionKeysSchema,
-  UsersSchema
-} from "@app/db/schemas";
+  TemporaryPermissionMode
+} from "@app/db/schemas/models";
+import { OrgMembershipsSchema } from "@app/db/schemas/org-memberships";
+import { ProjectMembershipsSchema } from "@app/db/schemas/project-memberships";
+import { ProjectUserMembershipRolesSchema } from "@app/db/schemas/project-user-membership-roles";
+import { UserEncryptionKeysSchema } from "@app/db/schemas/user-encryption-keys";
+import { UsersSchema } from "@app/db/schemas/users";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECT_USERS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";

@@ -1,6 +1,7 @@
 import { ScimPatchOperation } from "scim-patch";
 
-import { TScimEvents, TScimTokens } from "@app/db/schemas";
+import { TScimEvents } from "@app/db/schemas/scim-events";
+import { TScimTokens } from "@app/db/schemas/scim-tokens";
 import { TOrgPermission } from "@app/lib/types";
 
 export enum ScimEvent {

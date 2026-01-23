@@ -4,13 +4,13 @@ import { Knex } from "knex";
 
 import {
   AccessScope,
-  OrganizationActionScope,
   OrgMembershipRole,
   OrgMembershipStatus,
-  TableName,
-  TOidcConfigs,
-  TSamlConfigs
-} from "@app/db/schemas";
+  OrganizationActionScope,
+  TableName
+} from "@app/db/schemas/models";
+import { TOidcConfigs } from "@app/db/schemas/oidc-configs";
+import { TSamlConfigs } from "@app/db/schemas/saml-configs";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLdapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";

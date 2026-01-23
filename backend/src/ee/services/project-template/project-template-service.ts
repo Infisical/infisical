@@ -1,7 +1,8 @@
 import { ForbiddenError } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 
-import { OrganizationActionScope, ProjectMembershipRole, ProjectType, TProjectTemplates } from "@app/db/schemas";
+import { OrganizationActionScope, ProjectMembershipRole, ProjectType } from "@app/db/schemas/models";
+import { TProjectTemplates } from "@app/db/schemas/project-templates";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";

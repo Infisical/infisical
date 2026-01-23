@@ -1,7 +1,8 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TFolderTreeCheckpointResources } from "@app/db/schemas";
+import { TFolderTreeCheckpointResources } from "@app/db/schemas/folder-tree-checkpoint-resources";
+import { TableName } from "@app/db/schemas/models";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols } from "@app/lib/knex";
 

@@ -4,11 +4,10 @@ import {
   AccessScope,
   IdentityAuthMethod,
   OrgMembershipRole,
-  OrgMembershipStatus,
-  TSuperAdmin,
-  TSuperAdminUpdate,
-  TUsers
-} from "@app/db/schemas";
+  OrgMembershipStatus
+} from "@app/db/schemas/models";
+import { TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas/super-admin";
+import { TUsers } from "@app/db/schemas/users";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import {

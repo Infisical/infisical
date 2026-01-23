@@ -3,7 +3,8 @@ import knex from "knex";
 import { v4 as uuidv4 } from "uuid";
 
 import { TDbClient } from "@app/db";
-import { TableName, TAuditLogs } from "@app/db/schemas";
+import { TAuditLogs } from "@app/db/schemas/audit-logs";
+import { TableName } from "@app/db/schemas/models";
 import { getConfig } from "@app/lib/config/env";
 import { DatabaseError, GatewayTimeoutError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, TOrmify } from "@app/lib/knex";

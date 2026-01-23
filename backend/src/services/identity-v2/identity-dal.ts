@@ -1,5 +1,6 @@
 import { TDbClient } from "@app/db";
-import { AccessScope, AccessScopeData, IdentitiesSchema, TableName } from "@app/db/schemas";
+import { IdentitiesSchema } from "@app/db/schemas/identities";
+import { AccessScope, AccessScopeData, TableName } from "@app/db/schemas/models";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
 import { buildAuthMethods } from "../identity/identity-fns";

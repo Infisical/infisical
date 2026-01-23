@@ -1,6 +1,6 @@
 import z from "zod";
 
-import { KmsKeysSchema } from "@app/db/schemas";
+import { KmsKeysSchema } from "@app/db/schemas/kms-keys";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";

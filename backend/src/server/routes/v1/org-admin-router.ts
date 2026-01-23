@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { ProjectMembershipsSchema } from "@app/db/schemas";
+import { ProjectMembershipsSchema } from "@app/db/schemas/project-memberships";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";

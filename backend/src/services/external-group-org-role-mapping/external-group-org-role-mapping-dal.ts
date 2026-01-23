@@ -1,7 +1,7 @@
 import { Tables } from "knex/types/tables";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
 import { TExternalGroupOrgRoleMappings } from "@app/db/schemas/external-group-org-role-mappings";
 import { ormify } from "@app/lib/knex";
 

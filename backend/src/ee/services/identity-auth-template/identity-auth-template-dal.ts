@@ -2,7 +2,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
 import { buildFindFilter, ormify } from "@app/lib/knex";
 
 import { IdentityAuthTemplateMethod } from "./identity-auth-template-enums";

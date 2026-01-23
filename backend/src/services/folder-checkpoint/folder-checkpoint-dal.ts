@@ -1,7 +1,9 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TFolderCheckpoints, TFolderCommits } from "@app/db/schemas";
+import { TFolderCheckpoints } from "@app/db/schemas/folder-checkpoints";
+import { TFolderCommits } from "@app/db/schemas/folder-commits";
+import { TableName } from "@app/db/schemas/models";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols } from "@app/lib/knex";
 

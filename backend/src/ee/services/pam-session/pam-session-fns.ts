@@ -1,4 +1,4 @@
-import { TPamSessions } from "@app/db/schemas";
+import { TPamSessions } from "@app/db/schemas/pam-sessions";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 

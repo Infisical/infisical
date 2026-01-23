@@ -1,7 +1,8 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TAppConnections } from "@app/db/schemas";
+import { TAppConnections } from "@app/db/schemas/app-connections";
+import { TableName } from "@app/db/schemas/models";
 import { buildFindFilter, ormify, prependTableNameToFindFilter, selectAllTableCols } from "@app/lib/knex";
 import { transformUsageToProjects } from "@app/services/app-connection/app-connection-fns";
 

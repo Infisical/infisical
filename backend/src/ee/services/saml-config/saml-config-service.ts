@@ -3,17 +3,16 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 import RE2 from "re2";
 
+import { TGroups } from "@app/db/schemas/groups";
 import {
   AccessScope,
-  OrganizationActionScope,
   OrgMembershipRole,
   OrgMembershipStatus,
-  TableName,
-  TGroups,
-  TSamlConfigs,
-  TSamlConfigsUpdate,
-  TUsers
-} from "@app/db/schemas";
+  OrganizationActionScope,
+  TableName
+} from "@app/db/schemas/models";
+import { TSamlConfigs, TSamlConfigsUpdate } from "@app/db/schemas/saml-configs";
+import { TUsers } from "@app/db/schemas/users";
 import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";

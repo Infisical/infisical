@@ -9,7 +9,7 @@ import {
 } from "@aws-sdk/client-secrets-manager";
 import RE2 from "re2";
 
-import { TCertificateSyncs } from "@app/db/schemas";
+import { TCertificateSyncs } from "@app/db/schemas/certificate-syncs";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto";
 import { logger } from "@app/lib/logger";

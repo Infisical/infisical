@@ -4,7 +4,9 @@ import { Knex } from "knex";
 import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 
-import { ActionProjectType, TProjectEnvironments, TSecretFolders, TSecretFoldersInsert } from "@app/db/schemas";
+import { ActionProjectType } from "@app/db/schemas/models";
+import { TProjectEnvironments } from "@app/db/schemas/project-environments";
+import { TSecretFolders, TSecretFoldersInsert } from "@app/db/schemas/secret-folders";
 import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";

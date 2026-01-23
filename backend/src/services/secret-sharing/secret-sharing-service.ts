@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { OrganizationActionScope, TSecretSharing } from "@app/db/schemas";
+import { OrganizationActionScope } from "@app/db/schemas/models";
+import { TSecretSharing } from "@app/db/schemas/secret-sharing";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionSecretShareAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";

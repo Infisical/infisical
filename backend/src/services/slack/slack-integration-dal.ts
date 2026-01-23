@@ -1,7 +1,9 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TSlackIntegrations, TWorkflowIntegrations } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
+import { TSlackIntegrations } from "@app/db/schemas/slack-integrations";
+import { TWorkflowIntegrations } from "@app/db/schemas/workflow-integrations";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 

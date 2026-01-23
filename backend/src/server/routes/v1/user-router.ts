@@ -1,7 +1,7 @@
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from "@simplewebauthn/server";
 import { z } from "zod";
 
-import { UsersSchema } from "@app/db/schemas";
+import { UsersSchema } from "@app/db/schemas/users";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";

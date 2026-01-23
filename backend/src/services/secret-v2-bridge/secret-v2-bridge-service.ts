@@ -5,11 +5,10 @@ import { z } from "zod";
 import {
   ActionProjectType,
   ProjectMembershipRole,
-  SecretsV2Schema,
   SecretType,
-  TableName,
-  TSecretsV2
-} from "@app/db/schemas";
+  TableName
+} from "@app/db/schemas/models";
+import { SecretsV2Schema, TSecretsV2 } from "@app/db/schemas/secrets-v2";
 import {
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission

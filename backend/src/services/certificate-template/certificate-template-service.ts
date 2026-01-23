@@ -1,7 +1,8 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { ActionProjectType, TCertificateTemplateEstConfigsUpdate } from "@app/db/schemas";
+import { TCertificateTemplateEstConfigsUpdate } from "@app/db/schemas/certificate-template-est-configs";
+import { ActionProjectType } from "@app/db/schemas/models";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {

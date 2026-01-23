@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 import isEqual from "lodash.isequal";
 
-import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
+import { ActionProjectType, SecretType, TableName } from "@app/db/schemas/models";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";

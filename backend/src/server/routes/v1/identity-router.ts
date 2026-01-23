@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-import { IdentitiesSchema, IdentityOrgMembershipsSchema, OrgMembershipRole, OrgRolesSchema } from "@app/db/schemas";
+import { IdentitiesSchema } from "@app/db/schemas/identities";
+import { IdentityOrgMembershipsSchema } from "@app/db/schemas/identity-org-memberships";
+import { OrgMembershipRole } from "@app/db/schemas/models";
+import { OrgRolesSchema } from "@app/db/schemas/org-roles";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, IDENTITIES } from "@app/lib/api-docs";
 import { buildSearchZodSchema, SearchResourceOperators } from "@app/lib/search-resource/search";

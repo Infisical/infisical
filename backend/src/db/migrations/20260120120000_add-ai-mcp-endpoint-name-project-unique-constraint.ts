@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { dropConstraintIfExists } from "@app/db/migrations/utils/dropConstraintIfExists";
-import { TableName } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
 
 const CONSTRAINT_NAME = "ai_mcp_endpoints_name_project_id_unique";
 

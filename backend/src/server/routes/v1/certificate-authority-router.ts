@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
 import { z } from "zod";
 
-import { CertificateTemplatesSchema } from "@app/db/schemas";
+import { CertificateTemplatesSchema } from "@app/db/schemas/certificate-templates";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, CERTIFICATE_AUTHORITIES } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";

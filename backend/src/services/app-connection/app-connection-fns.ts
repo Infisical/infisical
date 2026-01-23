@@ -1,4 +1,4 @@
-import { ProjectType } from "@app/db/schemas";
+import { ProjectType } from "@app/db/schemas/models";
 import { TAppConnections } from "@app/db/schemas/app-connections";
 import {
   ChefConnectionMethod,

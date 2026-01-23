@@ -1,4 +1,4 @@
-import { AccessScope } from "@app/db/schemas";
+import { AccessScope } from "@app/db/schemas/models";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { BadRequestError } from "@app/lib/errors";

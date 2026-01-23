@@ -3,7 +3,13 @@ import { ForbiddenError } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } from "openid-client";
 
-import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
+import {
+  AccessScope,
+  OrgMembershipStatus,
+  OrganizationActionScope,
+  TableName
+} from "@app/db/schemas/models";
+import { TUsers } from "@app/db/schemas/users";
 import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";

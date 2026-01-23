@@ -1,7 +1,7 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import { CertificatesSchema } from "@app/db/schemas";
+import { CertificatesSchema } from "@app/db/schemas/certificates";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PKI_SUBSCRIBERS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";

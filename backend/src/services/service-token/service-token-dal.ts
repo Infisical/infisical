@@ -1,7 +1,8 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TUsers } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
+import { TUsers } from "@app/db/schemas/users";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 

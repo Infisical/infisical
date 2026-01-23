@@ -1,5 +1,5 @@
 import { TDbClient } from "@app/db";
-import { ProjectType, TableName } from "@app/db/schemas";
+import { ProjectType, TableName } from "@app/db/schemas/models";
 
 export type TOfflineUsageReportDALFactory = ReturnType<typeof offlineUsageReportDALFactory>;
 

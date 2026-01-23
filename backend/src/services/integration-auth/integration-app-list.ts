@@ -3,7 +3,7 @@ import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 import { Client as OctopusDeployClient, ProjectRepository as OctopusDeployRepository } from "@octopusdeploy/api-client";
 
-import { TIntegrationAuths } from "@app/db/schemas";
+import { TIntegrationAuths } from "@app/db/schemas/integration-auths";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { NotFoundError } from "@app/lib/errors";

@@ -1,6 +1,7 @@
 import { MongoAbility, RawRuleOf } from "@casl/ability";
 
-import { AccessScopeData, TRoles } from "@app/db/schemas";
+import { AccessScopeData } from "@app/db/schemas/models";
+import { TRoles } from "@app/db/schemas/roles";
 import { OrgServiceActor } from "@app/lib/types";
 
 export interface TRoleScopeFactory {

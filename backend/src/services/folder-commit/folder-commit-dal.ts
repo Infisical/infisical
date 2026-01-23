@@ -1,14 +1,12 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import {
-  TableName,
-  TFolderCommitChanges,
-  TFolderCommits,
-  TProjectEnvironments,
-  TSecretFolderVersions,
-  TSecretVersionsV2
-} from "@app/db/schemas";
+import { TFolderCommitChanges } from "@app/db/schemas/folder-commit-changes";
+import { TFolderCommits } from "@app/db/schemas/folder-commits";
+import { TableName } from "@app/db/schemas/models";
+import { TProjectEnvironments } from "@app/db/schemas/project-environments";
+import { TSecretFolderVersions } from "@app/db/schemas/secret-folder-versions";
+import { TSecretVersionsV2 } from "@app/db/schemas/secret-versions-v2";
 import { DatabaseError, NotFoundError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols } from "@app/lib/knex";
 

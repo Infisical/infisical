@@ -1,7 +1,9 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TMicrosoftTeamsIntegrations, TWorkflowIntegrations } from "@app/db/schemas";
+import { TMicrosoftTeamsIntegrations } from "@app/db/schemas/microsoft-teams-integrations";
+import { TableName } from "@app/db/schemas/models";
+import { TWorkflowIntegrations } from "@app/db/schemas/workflow-integrations";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 

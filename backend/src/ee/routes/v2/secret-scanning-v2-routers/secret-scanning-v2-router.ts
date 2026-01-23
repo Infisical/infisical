@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { SecretScanningConfigsSchema } from "@app/db/schemas";
+import { SecretScanningConfigsSchema } from "@app/db/schemas/secret-scanning-configs";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BitbucketDataSourceListItemSchema } from "@app/ee/services/secret-scanning-v2/bitbucket";
 import { GitHubDataSourceListItemSchema } from "@app/ee/services/secret-scanning-v2/github";

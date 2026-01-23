@@ -3,7 +3,8 @@ import * as x509 from "@peculiar/x509";
 import { randomUUID } from "crypto";
 import RE2 from "re2";
 
-import { ActionProjectType, TCertificates } from "@app/db/schemas";
+import { TCertificates } from "@app/db/schemas/certificates";
+import { ActionProjectType } from "@app/db/schemas/models";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,

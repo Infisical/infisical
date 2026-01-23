@@ -5,9 +5,9 @@ import {
   OrgMembershipRole,
   OrgMembershipStatus,
   TableName,
-  TUsers,
   UserDeviceSchema
-} from "@app/db/schemas";
+} from "@app/db/schemas/models";
+import { TUsers } from "@app/db/schemas/users";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";

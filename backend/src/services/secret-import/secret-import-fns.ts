@@ -1,6 +1,9 @@
 import RE2 from "re2";
 
-import { SecretType, TSecretImports, TSecrets, TSecretsV2 } from "@app/db/schemas";
+import { SecretType } from "@app/db/schemas/models";
+import { TSecretImports } from "@app/db/schemas/secret-imports";
+import { TSecrets } from "@app/db/schemas/secrets";
+import { TSecretsV2 } from "@app/db/schemas/secrets-v2";
 import { groupBy, unique } from "@app/lib/fn";
 
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";

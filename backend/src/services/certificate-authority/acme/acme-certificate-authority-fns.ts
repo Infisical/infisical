@@ -3,7 +3,7 @@ import acme, { CsrBuffer } from "acme-client";
 import { Knex } from "knex";
 import RE2 from "re2";
 
-import { TableName } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas/models";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, CryptographyError, NotFoundError } from "@app/lib/errors";

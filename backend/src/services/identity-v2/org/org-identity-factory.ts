@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, OrganizationActionScope } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope } from "@app/db/schemas/models";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { InternalServerError } from "@app/lib/errors";

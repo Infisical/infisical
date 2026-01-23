@@ -5,7 +5,7 @@ import { AxiosError } from "axios";
 import { Job } from "bullmq";
 import handlebars from "handlebars";
 
-import { TCertificates } from "@app/db/schemas";
+import { TCertificates } from "@app/db/schemas/certificates";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";

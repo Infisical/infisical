@@ -1,6 +1,8 @@
 import { Knex } from "knex";
 
-import { AccessScope, TAuthTokens, TAuthTokenSessions } from "@app/db/schemas";
+import { TAuthTokenSessions } from "@app/db/schemas/auth-token-sessions";
+import { TAuthTokens } from "@app/db/schemas/auth-tokens";
+import { AccessScope } from "@app/db/schemas/models";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";

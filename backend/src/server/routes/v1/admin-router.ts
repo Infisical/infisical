@@ -1,14 +1,12 @@
 import DOMPurify from "isomorphic-dompurify";
 import { z } from "zod";
 
-import {
-  IdentitiesSchema,
-  OrganizationsSchema,
-  OrgMembershipsSchema,
-  OrgMembershipStatus,
-  SuperAdminSchema,
-  UsersSchema
-} from "@app/db/schemas";
+import { IdentitiesSchema } from "@app/db/schemas/identities";
+import { OrgMembershipStatus } from "@app/db/schemas/models";
+import { OrgMembershipsSchema } from "@app/db/schemas/org-memberships";
+import { OrganizationsSchema } from "@app/db/schemas/organizations";
+import { SuperAdminSchema } from "@app/db/schemas/super-admin";
+import { UsersSchema } from "@app/db/schemas/users";
 import { getLicenseKeyConfig } from "@app/ee/services/license/license-fns";
 import { LicenseType } from "@app/ee/services/license/license-types";
 import { getConfig, overridableKeys } from "@app/lib/config/env";
