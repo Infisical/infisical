@@ -27,6 +27,7 @@ import { ChecklySyncReviewFields } from "./ChecklySyncReviewFields";
 import { ChefSyncReviewFields } from "./ChefSyncReviewFields";
 import { CloudflarePagesSyncReviewFields } from "./CloudflarePagesReviewFields";
 import { CloudflareWorkersSyncReviewFields } from "./CloudflareWorkersReviewFields";
+import { CircleCISyncReviewFields } from "./CircleCISyncReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
 import { DigitalOceanAppPlatformSyncReviewFields } from "./DigitalOceanAppPlatformSyncReviewFields";
 import { FlyioSyncReviewFields } from "./FlyioSyncReviewFields";
@@ -184,6 +185,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.OctopusDeploy:
       DestinationFieldsComponent = <OctopusDeploySyncReviewFields />;
+      break;
+    case SecretSync.CircleCI:
+      DestinationFieldsComponent = <CircleCISyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

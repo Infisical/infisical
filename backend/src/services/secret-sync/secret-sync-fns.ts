@@ -33,6 +33,7 @@ import { AZURE_DEVOPS_SYNC_LIST_OPTION, azureDevOpsSyncFactory } from "./azure-d
 import { AZURE_KEY_VAULT_SYNC_LIST_OPTION, azureKeyVaultSyncFactory } from "./azure-key-vault";
 import { BITBUCKET_SYNC_LIST_OPTION, BitbucketSyncFns } from "./bitbucket";
 import { CAMUNDA_SYNC_LIST_OPTION, camundaSyncFactory } from "./camunda";
+import { CIRCLECI_SYNC_LIST_OPTION, CircleCISyncFns } from "./circleci";
 import { CHECKLY_SYNC_LIST_OPTION } from "./checkly/checkly-sync-constants";
 import { ChecklySyncFns } from "./checkly/checkly-sync-fns";
 import { CLOUDFLARE_PAGES_SYNC_LIST_OPTION } from "./cloudflare-pages/cloudflare-pages-constants";
@@ -99,7 +100,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Bitbucket]: BITBUCKET_SYNC_LIST_OPTION,
   [SecretSync.LaravelForge]: LARAVEL_FORGE_SYNC_LIST_OPTION,
   [SecretSync.Chef]: CHEF_SYNC_LIST_OPTION,
-  [SecretSync.OctopusDeploy]: OCTOPUS_DEPLOY_SYNC_LIST_OPTION
+  [SecretSync.OctopusDeploy]: OCTOPUS_DEPLOY_SYNC_LIST_OPTION,
+  [SecretSync.CircleCI]: CIRCLECI_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -307,6 +309,8 @@ export const SecretSyncFns = {
         return ChefSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.OctopusDeploy:
         return OctopusDeploySyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.CircleCI:
+        return CircleCISyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -435,6 +439,9 @@ export const SecretSyncFns = {
       case SecretSync.OctopusDeploy:
         secretMap = await OctopusDeploySyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.CircleCI:
+        secretMap = await CircleCISyncFns.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -536,6 +543,8 @@ export const SecretSyncFns = {
         return ChefSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.OctopusDeploy:
         return OctopusDeploySyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.CircleCI:
+        return CircleCISyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

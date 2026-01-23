@@ -8,6 +8,7 @@ import { AzureDevOpsSyncDestinationSchema } from "./azure-devops-sync-destinatio
 import { AzureKeyVaultSyncDestinationSchema } from "./azure-key-vault-sync-destination-schema";
 import { BitbucketSyncDestinationSchema } from "./bitbucket-sync-destination-schema";
 import { CamundaSyncDestinationSchema } from "./camunda-sync-destination-schema";
+import { CircleCISyncDestinationSchema } from "./circleci-sync-destination-schema";
 import { ChecklySyncDestinationSchema } from "./checkly-sync-destination-schema";
 import { ChefSyncDestinationSchema } from "./chef-sync-destination-schema";
 import { CloudflarePagesSyncDestinationSchema } from "./cloudflare-pages-sync-destination-schema";
@@ -69,7 +70,8 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   OctopusDeploySyncDestinationSchema,
   BitbucketSyncDestinationSchema,
   LaravelForgeSyncDestinationSchema,
-  ChefSyncDestinationSchema
+  ChefSyncDestinationSchema,
+  CircleCISyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

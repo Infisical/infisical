@@ -214,6 +214,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       }
       secondaryText = destinationConfig.spaceName || destinationConfig.spaceId;
       break;
+    case SecretSync.CircleCI:
+      primaryText = destinationConfig.projectName || destinationConfig.projectSlug;
+      secondaryText = "Project";
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

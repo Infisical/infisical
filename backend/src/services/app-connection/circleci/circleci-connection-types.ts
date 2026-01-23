@@ -23,3 +23,9 @@ export type TCircleCIConnectionConfig = DiscriminativePick<
 > & {
   orgId: string;
 };
+
+export type TCircleCIProject = {
+  id: string;
+  name: string;
+  slug: string;
+};

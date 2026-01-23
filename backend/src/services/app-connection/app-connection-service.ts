@@ -68,6 +68,7 @@ import { bitbucketConnectionService } from "./bitbucket/bitbucket-connection-ser
 import { ValidateCamundaConnectionCredentialsSchema } from "./camunda";
 import { camundaConnectionService } from "./camunda/camunda-connection-service";
 import { ValidateCircleCIConnectionCredentialsSchema } from "./circleci";
+import { circleciConnectionService } from "./circleci/circleci-connection-service";
 import { ValidateChecklyConnectionCredentialsSchema } from "./checkly";
 import { checklyConnectionService } from "./checkly/checkly-connection-service";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
@@ -907,6 +908,7 @@ export const appConnectionServiceFactory = ({
     okta: oktaConnectionService(connectAppConnectionById),
     laravelForge: laravelForgeConnectionService(connectAppConnectionById),
     chef: chefConnectionService(connectAppConnectionById, licenseService),
-    octopusDeploy: octopusDeployConnectionService(connectAppConnectionById)
+    octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),
+    circleci: circleciConnectionService(connectAppConnectionById)
   };
 };

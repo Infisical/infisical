@@ -3,3 +3,7 @@ export type TCircleCIProject = {
   name: string;
   slug: string;
 };
+
+export type TCircleCIProjectListResponse = {
+  projects: TCircleCIProject[];
+};
