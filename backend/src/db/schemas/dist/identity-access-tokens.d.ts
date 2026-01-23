@@ -1,0 +1,58 @@
+import { z } from "zod";
+import { TImmutableDBKeys } from "./models";
+export declare const IdentityAccessTokensSchema: z.ZodObject<{
+    id: z.ZodString;
+    accessTokenTTL: z.ZodDefault<z.ZodNumber>;
+    accessTokenMaxTTL: z.ZodDefault<z.ZodNumber>;
+    accessTokenNumUses: z.ZodDefault<z.ZodNumber>;
+    accessTokenNumUsesLimit: z.ZodDefault<z.ZodNumber>;
+    accessTokenLastUsedAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
+    accessTokenLastRenewedAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
+    isAccessTokenRevoked: z.ZodDefault<z.ZodBoolean>;
+    identityUAClientSecretId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    identityId: z.ZodString;
+    createdAt: z.ZodDate;
+    updatedAt: z.ZodDate;
+    name: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    authMethod: z.ZodString;
+    accessTokenPeriod: z.ZodDefault<z.ZodNumber>;
+    subOrganizationId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+}, "strip", z.ZodTypeAny, {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    authMethod: string;
+    identityId: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUses: number;
+    accessTokenNumUsesLimit: number;
+    isAccessTokenRevoked: boolean;
+    accessTokenPeriod: number;
+    name?: string | null | undefined;
+    accessTokenLastUsedAt?: Date | null | undefined;
+    accessTokenLastRenewedAt?: Date | null | undefined;
+    identityUAClientSecretId?: string | null | undefined;
+    subOrganizationId?: string | null | undefined;
+}, {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    authMethod: string;
+    identityId: string;
+    name?: string | null | undefined;
+    accessTokenTTL?: number | undefined;
+    accessTokenMaxTTL?: number | undefined;
+    accessTokenNumUses?: number | undefined;
+    accessTokenNumUsesLimit?: number | undefined;
+    accessTokenLastUsedAt?: Date | null | undefined;
+    accessTokenLastRenewedAt?: Date | null | undefined;
+    isAccessTokenRevoked?: boolean | undefined;
+    identityUAClientSecretId?: string | null | undefined;
+    accessTokenPeriod?: number | undefined;
+    subOrganizationId?: string | null | undefined;
+}>;
+export type TIdentityAccessTokens = z.infer<typeof IdentityAccessTokensSchema>;
+export type TIdentityAccessTokensInsert = Omit<z.input<typeof IdentityAccessTokensSchema>, TImmutableDBKeys>;
+export type TIdentityAccessTokensUpdate = Partial<Omit<z.input<typeof IdentityAccessTokensSchema>, TImmutableDBKeys>>;
+//# sourceMappingURL=identity-access-tokens.d.ts.map

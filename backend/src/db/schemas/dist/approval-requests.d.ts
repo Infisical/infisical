@@ -1,0 +1,55 @@
+import { z } from "zod";
+import { TImmutableDBKeys } from "./models";
+export declare const ApprovalRequestsSchema: z.ZodObject<{
+    id: z.ZodString;
+    projectId: z.ZodString;
+    organizationId: z.ZodString;
+    policyId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    requesterId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    requesterName: z.ZodString;
+    requesterEmail: z.ZodString;
+    type: z.ZodString;
+    status: z.ZodString;
+    justification: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    currentStep: z.ZodNumber;
+    requestData: z.ZodUnknown;
+    expiresAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
+    createdAt: z.ZodDate;
+    updatedAt: z.ZodDate;
+}, "strip", z.ZodTypeAny, {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    type: string;
+    status: string;
+    projectId: string;
+    organizationId: string;
+    requesterName: string;
+    requesterEmail: string;
+    currentStep: number;
+    policyId?: string | null | undefined;
+    expiresAt?: Date | null | undefined;
+    requesterId?: string | null | undefined;
+    justification?: string | null | undefined;
+    requestData?: unknown;
+}, {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    type: string;
+    status: string;
+    projectId: string;
+    organizationId: string;
+    requesterName: string;
+    requesterEmail: string;
+    currentStep: number;
+    policyId?: string | null | undefined;
+    expiresAt?: Date | null | undefined;
+    requesterId?: string | null | undefined;
+    justification?: string | null | undefined;
+    requestData?: unknown;
+}>;
+export type TApprovalRequests = z.infer<typeof ApprovalRequestsSchema>;
+export type TApprovalRequestsInsert = Omit<z.input<typeof ApprovalRequestsSchema>, TImmutableDBKeys>;
+export type TApprovalRequestsUpdate = Partial<Omit<z.input<typeof ApprovalRequestsSchema>, TImmutableDBKeys>>;
+//# sourceMappingURL=approval-requests.d.ts.map

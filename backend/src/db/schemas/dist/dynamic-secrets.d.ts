@@ -1,0 +1,75 @@
+/// <reference types="node" />
+/// <reference types="node" />
+import { z } from "zod";
+import { TImmutableDBKeys } from "./models";
+export declare const DynamicSecretsSchema: z.ZodObject<{
+    id: z.ZodString;
+    name: z.ZodString;
+    version: z.ZodNumber;
+    type: z.ZodString;
+    defaultTTL: z.ZodString;
+    maxTTL: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    inputIV: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    inputCiphertext: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    inputTag: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    algorithm: z.ZodDefault<z.ZodString>;
+    keyEncoding: z.ZodDefault<z.ZodString>;
+    folderId: z.ZodString;
+    status: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    statusDetails: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    createdAt: z.ZodDate;
+    updatedAt: z.ZodDate;
+    encryptedInput: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    projectGatewayId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    gatewayId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    usernameTemplate: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    gatewayV2Id: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+}, "strip", z.ZodTypeAny, {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    type: string;
+    name: string;
+    version: number;
+    algorithm: string;
+    keyEncoding: string;
+    defaultTTL: string;
+    folderId: string;
+    encryptedInput: Buffer;
+    status?: string | null | undefined;
+    gatewayId?: string | null | undefined;
+    statusDetails?: string | null | undefined;
+    maxTTL?: string | null | undefined;
+    inputIV?: string | null | undefined;
+    inputCiphertext?: string | null | undefined;
+    inputTag?: string | null | undefined;
+    projectGatewayId?: string | null | undefined;
+    usernameTemplate?: string | null | undefined;
+    gatewayV2Id?: string | null | undefined;
+}, {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    type: string;
+    name: string;
+    version: number;
+    defaultTTL: string;
+    folderId: string;
+    encryptedInput: Buffer;
+    status?: string | null | undefined;
+    gatewayId?: string | null | undefined;
+    algorithm?: string | undefined;
+    keyEncoding?: string | undefined;
+    statusDetails?: string | null | undefined;
+    maxTTL?: string | null | undefined;
+    inputIV?: string | null | undefined;
+    inputCiphertext?: string | null | undefined;
+    inputTag?: string | null | undefined;
+    projectGatewayId?: string | null | undefined;
+    usernameTemplate?: string | null | undefined;
+    gatewayV2Id?: string | null | undefined;
+}>;
+export type TDynamicSecrets = z.infer<typeof DynamicSecretsSchema>;
+export type TDynamicSecretsInsert = Omit<z.input<typeof DynamicSecretsSchema>, TImmutableDBKeys>;
+export type TDynamicSecretsUpdate = Partial<Omit<z.input<typeof DynamicSecretsSchema>, TImmutableDBKeys>>;
+//# sourceMappingURL=dynamic-secrets.d.ts.map

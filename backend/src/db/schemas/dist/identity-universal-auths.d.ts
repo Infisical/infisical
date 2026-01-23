@@ -1,0 +1,55 @@
+import { z } from "zod";
+import { TImmutableDBKeys } from "./models";
+export declare const IdentityUniversalAuthsSchema: z.ZodObject<{
+    id: z.ZodString;
+    clientId: z.ZodString;
+    accessTokenTTL: z.ZodDefault<z.ZodNumber>;
+    accessTokenMaxTTL: z.ZodDefault<z.ZodNumber>;
+    accessTokenNumUsesLimit: z.ZodDefault<z.ZodNumber>;
+    clientSecretTrustedIps: z.ZodUnknown;
+    accessTokenTrustedIps: z.ZodUnknown;
+    createdAt: z.ZodDate;
+    updatedAt: z.ZodDate;
+    identityId: z.ZodString;
+    accessTokenPeriod: z.ZodDefault<z.ZodNumber>;
+    lockoutEnabled: z.ZodDefault<z.ZodBoolean>;
+    lockoutThreshold: z.ZodDefault<z.ZodNumber>;
+    lockoutDurationSeconds: z.ZodDefault<z.ZodNumber>;
+    lockoutCounterResetSeconds: z.ZodDefault<z.ZodNumber>;
+}, "strip", z.ZodTypeAny, {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    identityId: string;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenPeriod: number;
+    lockoutEnabled: boolean;
+    lockoutThreshold: number;
+    lockoutDurationSeconds: number;
+    lockoutCounterResetSeconds: number;
+    clientId: string;
+    accessTokenTrustedIps?: unknown;
+    clientSecretTrustedIps?: unknown;
+}, {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    identityId: string;
+    clientId: string;
+    accessTokenTTL?: number | undefined;
+    accessTokenMaxTTL?: number | undefined;
+    accessTokenNumUsesLimit?: number | undefined;
+    accessTokenPeriod?: number | undefined;
+    accessTokenTrustedIps?: unknown;
+    lockoutEnabled?: boolean | undefined;
+    lockoutThreshold?: number | undefined;
+    lockoutDurationSeconds?: number | undefined;
+    lockoutCounterResetSeconds?: number | undefined;
+    clientSecretTrustedIps?: unknown;
+}>;
+export type TIdentityUniversalAuths = z.infer<typeof IdentityUniversalAuthsSchema>;
+export type TIdentityUniversalAuthsInsert = Omit<z.input<typeof IdentityUniversalAuthsSchema>, TImmutableDBKeys>;
+export type TIdentityUniversalAuthsUpdate = Partial<Omit<z.input<typeof IdentityUniversalAuthsSchema>, TImmutableDBKeys>>;
+//# sourceMappingURL=identity-universal-auths.d.ts.map

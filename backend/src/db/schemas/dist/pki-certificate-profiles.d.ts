@@ -1,0 +1,52 @@
+import { z } from "zod";
+import { TImmutableDBKeys } from "./models";
+export declare const PkiCertificateProfilesSchema: z.ZodObject<{
+    id: z.ZodString;
+    projectId: z.ZodString;
+    caId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    certificatePolicyId: z.ZodString;
+    slug: z.ZodString;
+    description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    enrollmentType: z.ZodString;
+    estConfigId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    apiConfigId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    createdAt: z.ZodDate;
+    updatedAt: z.ZodDate;
+    acmeConfigId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    issuerType: z.ZodDefault<z.ZodString>;
+    externalConfigs: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+}, "strip", z.ZodTypeAny, {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    projectId: string;
+    slug: string;
+    certificatePolicyId: string;
+    enrollmentType: string;
+    issuerType: string;
+    description?: string | null | undefined;
+    caId?: string | null | undefined;
+    estConfigId?: string | null | undefined;
+    apiConfigId?: string | null | undefined;
+    acmeConfigId?: string | null | undefined;
+    externalConfigs?: string | null | undefined;
+}, {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    projectId: string;
+    slug: string;
+    certificatePolicyId: string;
+    enrollmentType: string;
+    description?: string | null | undefined;
+    caId?: string | null | undefined;
+    estConfigId?: string | null | undefined;
+    apiConfigId?: string | null | undefined;
+    acmeConfigId?: string | null | undefined;
+    issuerType?: string | undefined;
+    externalConfigs?: string | null | undefined;
+}>;
+export type TPkiCertificateProfiles = z.infer<typeof PkiCertificateProfilesSchema>;
+export type TPkiCertificateProfilesInsert = Omit<z.input<typeof PkiCertificateProfilesSchema>, TImmutableDBKeys>;
+export type TPkiCertificateProfilesUpdate = Partial<Omit<z.input<typeof PkiCertificateProfilesSchema>, TImmutableDBKeys>>;
+//# sourceMappingURL=pki-certificate-profiles.d.ts.map

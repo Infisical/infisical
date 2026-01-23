@@ -1,0 +1,78 @@
+/// <reference types="node" />
+/// <reference types="node" />
+import { z } from "zod";
+import { TImmutableDBKeys } from "./models";
+export declare const SecretRotationsV2Schema: z.ZodObject<{
+    id: z.ZodString;
+    name: z.ZodString;
+    description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    type: z.ZodString;
+    parameters: z.ZodUnknown;
+    secretsMapping: z.ZodUnknown;
+    encryptedGeneratedCredentials: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    isAutoRotationEnabled: z.ZodDefault<z.ZodBoolean>;
+    activeIndex: z.ZodDefault<z.ZodNumber>;
+    folderId: z.ZodString;
+    connectionId: z.ZodString;
+    createdAt: z.ZodDate;
+    updatedAt: z.ZodDate;
+    rotationInterval: z.ZodNumber;
+    rotateAtUtc: z.ZodUnknown;
+    rotationStatus: z.ZodString;
+    lastRotationAttemptedAt: z.ZodDate;
+    lastRotatedAt: z.ZodDate;
+    encryptedLastRotationMessage: z.ZodOptional<z.ZodNullable<z.ZodType<Buffer, z.ZodTypeDef, Buffer>>>;
+    lastRotationJobId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    nextRotationAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
+    isLastRotationManual: z.ZodDefault<z.ZodBoolean>;
+}, "strip", z.ZodTypeAny, {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    type: string;
+    name: string;
+    folderId: string;
+    lastRotatedAt: Date;
+    rotationStatus: string;
+    connectionId: string;
+    encryptedGeneratedCredentials: Buffer;
+    isAutoRotationEnabled: boolean;
+    activeIndex: number;
+    rotationInterval: number;
+    lastRotationAttemptedAt: Date;
+    isLastRotationManual: boolean;
+    description?: string | null | undefined;
+    encryptedLastRotationMessage?: Buffer | null | undefined;
+    parameters?: unknown;
+    secretsMapping?: unknown;
+    rotateAtUtc?: unknown;
+    lastRotationJobId?: string | null | undefined;
+    nextRotationAt?: Date | null | undefined;
+}, {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    type: string;
+    name: string;
+    folderId: string;
+    lastRotatedAt: Date;
+    rotationStatus: string;
+    connectionId: string;
+    encryptedGeneratedCredentials: Buffer;
+    rotationInterval: number;
+    lastRotationAttemptedAt: Date;
+    description?: string | null | undefined;
+    encryptedLastRotationMessage?: Buffer | null | undefined;
+    parameters?: unknown;
+    secretsMapping?: unknown;
+    isAutoRotationEnabled?: boolean | undefined;
+    activeIndex?: number | undefined;
+    rotateAtUtc?: unknown;
+    lastRotationJobId?: string | null | undefined;
+    nextRotationAt?: Date | null | undefined;
+    isLastRotationManual?: boolean | undefined;
+}>;
+export type TSecretRotationsV2 = z.infer<typeof SecretRotationsV2Schema>;
+export type TSecretRotationsV2Insert = Omit<z.input<typeof SecretRotationsV2Schema>, TImmutableDBKeys>;
+export type TSecretRotationsV2Update = Partial<Omit<z.input<typeof SecretRotationsV2Schema>, TImmutableDBKeys>>;
+//# sourceMappingURL=secret-rotations-v2.d.ts.map

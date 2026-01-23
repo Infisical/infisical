@@ -1,0 +1,72 @@
+/// <reference types="node" />
+/// <reference types="node" />
+import { z } from "zod";
+import { TImmutableDBKeys } from "./models";
+export declare const WebhooksSchema: z.ZodObject<{
+    id: z.ZodString;
+    secretPath: z.ZodDefault<z.ZodString>;
+    url: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    lastStatus: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    lastRunErrorMessage: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    isDisabled: z.ZodDefault<z.ZodBoolean>;
+    encryptedSecretKey: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    iv: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    tag: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    algorithm: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    keyEncoding: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    createdAt: z.ZodDate;
+    updatedAt: z.ZodDate;
+    envId: z.ZodString;
+    urlCipherText: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    urlIV: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    urlTag: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    type: z.ZodOptional<z.ZodNullable<z.ZodDefault<z.ZodString>>>;
+    encryptedPassKey: z.ZodOptional<z.ZodNullable<z.ZodType<Buffer, z.ZodTypeDef, Buffer>>>;
+    encryptedUrl: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+}, "strip", z.ZodTypeAny, {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    secretPath: string;
+    envId: string;
+    isDisabled: boolean;
+    encryptedUrl: Buffer;
+    type?: string | null | undefined;
+    url?: string | null | undefined;
+    iv?: string | null | undefined;
+    tag?: string | null | undefined;
+    algorithm?: string | null | undefined;
+    keyEncoding?: string | null | undefined;
+    lastStatus?: string | null | undefined;
+    lastRunErrorMessage?: string | null | undefined;
+    encryptedSecretKey?: string | null | undefined;
+    urlCipherText?: string | null | undefined;
+    urlIV?: string | null | undefined;
+    urlTag?: string | null | undefined;
+    encryptedPassKey?: Buffer | null | undefined;
+}, {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    envId: string;
+    encryptedUrl: Buffer;
+    type?: string | null | undefined;
+    secretPath?: string | undefined;
+    url?: string | null | undefined;
+    iv?: string | null | undefined;
+    tag?: string | null | undefined;
+    algorithm?: string | null | undefined;
+    keyEncoding?: string | null | undefined;
+    isDisabled?: boolean | undefined;
+    lastStatus?: string | null | undefined;
+    lastRunErrorMessage?: string | null | undefined;
+    encryptedSecretKey?: string | null | undefined;
+    urlCipherText?: string | null | undefined;
+    urlIV?: string | null | undefined;
+    urlTag?: string | null | undefined;
+    encryptedPassKey?: Buffer | null | undefined;
+}>;
+export type TWebhooks = z.infer<typeof WebhooksSchema>;
+export type TWebhooksInsert = Omit<z.input<typeof WebhooksSchema>, TImmutableDBKeys>;
+export type TWebhooksUpdate = Partial<Omit<z.input<typeof WebhooksSchema>, TImmutableDBKeys>>;
+//# sourceMappingURL=webhooks.d.ts.map

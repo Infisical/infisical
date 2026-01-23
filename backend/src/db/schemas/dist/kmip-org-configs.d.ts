@@ -1,0 +1,78 @@
+/// <reference types="node" />
+/// <reference types="node" />
+import { z } from "zod";
+import { TImmutableDBKeys } from "./models";
+export declare const KmipOrgConfigsSchema: z.ZodObject<{
+    id: z.ZodString;
+    orgId: z.ZodString;
+    caKeyAlgorithm: z.ZodString;
+    rootCaIssuedAt: z.ZodDate;
+    rootCaExpiration: z.ZodDate;
+    rootCaSerialNumber: z.ZodString;
+    encryptedRootCaCertificate: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    encryptedRootCaPrivateKey: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    serverIntermediateCaIssuedAt: z.ZodDate;
+    serverIntermediateCaExpiration: z.ZodDate;
+    serverIntermediateCaSerialNumber: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    encryptedServerIntermediateCaCertificate: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    encryptedServerIntermediateCaChain: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    encryptedServerIntermediateCaPrivateKey: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    clientIntermediateCaIssuedAt: z.ZodDate;
+    clientIntermediateCaExpiration: z.ZodDate;
+    clientIntermediateCaSerialNumber: z.ZodString;
+    encryptedClientIntermediateCaCertificate: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    encryptedClientIntermediateCaChain: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    encryptedClientIntermediateCaPrivateKey: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    createdAt: z.ZodDate;
+    updatedAt: z.ZodDate;
+}, "strip", z.ZodTypeAny, {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    orgId: string;
+    caKeyAlgorithm: string;
+    rootCaIssuedAt: Date;
+    rootCaExpiration: Date;
+    rootCaSerialNumber: string;
+    encryptedRootCaCertificate: Buffer;
+    encryptedRootCaPrivateKey: Buffer;
+    serverIntermediateCaIssuedAt: Date;
+    serverIntermediateCaExpiration: Date;
+    encryptedServerIntermediateCaCertificate: Buffer;
+    encryptedServerIntermediateCaChain: Buffer;
+    encryptedServerIntermediateCaPrivateKey: Buffer;
+    clientIntermediateCaIssuedAt: Date;
+    clientIntermediateCaExpiration: Date;
+    clientIntermediateCaSerialNumber: string;
+    encryptedClientIntermediateCaCertificate: Buffer;
+    encryptedClientIntermediateCaChain: Buffer;
+    encryptedClientIntermediateCaPrivateKey: Buffer;
+    serverIntermediateCaSerialNumber?: string | null | undefined;
+}, {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    orgId: string;
+    caKeyAlgorithm: string;
+    rootCaIssuedAt: Date;
+    rootCaExpiration: Date;
+    rootCaSerialNumber: string;
+    encryptedRootCaCertificate: Buffer;
+    encryptedRootCaPrivateKey: Buffer;
+    serverIntermediateCaIssuedAt: Date;
+    serverIntermediateCaExpiration: Date;
+    encryptedServerIntermediateCaCertificate: Buffer;
+    encryptedServerIntermediateCaChain: Buffer;
+    encryptedServerIntermediateCaPrivateKey: Buffer;
+    clientIntermediateCaIssuedAt: Date;
+    clientIntermediateCaExpiration: Date;
+    clientIntermediateCaSerialNumber: string;
+    encryptedClientIntermediateCaCertificate: Buffer;
+    encryptedClientIntermediateCaChain: Buffer;
+    encryptedClientIntermediateCaPrivateKey: Buffer;
+    serverIntermediateCaSerialNumber?: string | null | undefined;
+}>;
+export type TKmipOrgConfigs = z.infer<typeof KmipOrgConfigsSchema>;
+export type TKmipOrgConfigsInsert = Omit<z.input<typeof KmipOrgConfigsSchema>, TImmutableDBKeys>;
+export type TKmipOrgConfigsUpdate = Partial<Omit<z.input<typeof KmipOrgConfigsSchema>, TImmutableDBKeys>>;
+//# sourceMappingURL=kmip-org-configs.d.ts.map

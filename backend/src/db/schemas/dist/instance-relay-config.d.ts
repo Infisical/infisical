@@ -1,0 +1,75 @@
+/// <reference types="node" />
+/// <reference types="node" />
+import { z } from "zod";
+import { TImmutableDBKeys } from "./models";
+export declare const InstanceRelayConfigSchema: z.ZodObject<{
+    id: z.ZodString;
+    createdAt: z.ZodDate;
+    updatedAt: z.ZodDate;
+    encryptedRootRelayPkiCaPrivateKey: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    encryptedRootRelayPkiCaCertificate: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    encryptedInstanceRelayPkiCaPrivateKey: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    encryptedInstanceRelayPkiCaCertificate: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    encryptedInstanceRelayPkiCaCertificateChain: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    encryptedInstanceRelayPkiClientCaPrivateKey: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    encryptedInstanceRelayPkiClientCaCertificate: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    encryptedInstanceRelayPkiClientCaCertificateChain: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    encryptedInstanceRelayPkiServerCaPrivateKey: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    encryptedInstanceRelayPkiServerCaCertificate: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    encryptedInstanceRelayPkiServerCaCertificateChain: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    encryptedOrgRelayPkiCaPrivateKey: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    encryptedOrgRelayPkiCaCertificate: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    encryptedOrgRelayPkiCaCertificateChain: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    encryptedInstanceRelaySshClientCaPrivateKey: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    encryptedInstanceRelaySshClientCaPublicKey: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    encryptedInstanceRelaySshServerCaPrivateKey: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+    encryptedInstanceRelaySshServerCaPublicKey: z.ZodType<Buffer, z.ZodTypeDef, Buffer>;
+}, "strip", z.ZodTypeAny, {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    encryptedRootRelayPkiCaPrivateKey: Buffer;
+    encryptedRootRelayPkiCaCertificate: Buffer;
+    encryptedInstanceRelayPkiCaPrivateKey: Buffer;
+    encryptedInstanceRelayPkiCaCertificate: Buffer;
+    encryptedInstanceRelayPkiCaCertificateChain: Buffer;
+    encryptedInstanceRelayPkiClientCaPrivateKey: Buffer;
+    encryptedInstanceRelayPkiClientCaCertificate: Buffer;
+    encryptedInstanceRelayPkiClientCaCertificateChain: Buffer;
+    encryptedInstanceRelayPkiServerCaPrivateKey: Buffer;
+    encryptedInstanceRelayPkiServerCaCertificate: Buffer;
+    encryptedInstanceRelayPkiServerCaCertificateChain: Buffer;
+    encryptedOrgRelayPkiCaPrivateKey: Buffer;
+    encryptedOrgRelayPkiCaCertificate: Buffer;
+    encryptedOrgRelayPkiCaCertificateChain: Buffer;
+    encryptedInstanceRelaySshClientCaPrivateKey: Buffer;
+    encryptedInstanceRelaySshClientCaPublicKey: Buffer;
+    encryptedInstanceRelaySshServerCaPrivateKey: Buffer;
+    encryptedInstanceRelaySshServerCaPublicKey: Buffer;
+}, {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    encryptedRootRelayPkiCaPrivateKey: Buffer;
+    encryptedRootRelayPkiCaCertificate: Buffer;
+    encryptedInstanceRelayPkiCaPrivateKey: Buffer;
+    encryptedInstanceRelayPkiCaCertificate: Buffer;
+    encryptedInstanceRelayPkiCaCertificateChain: Buffer;
+    encryptedInstanceRelayPkiClientCaPrivateKey: Buffer;
+    encryptedInstanceRelayPkiClientCaCertificate: Buffer;
+    encryptedInstanceRelayPkiClientCaCertificateChain: Buffer;
+    encryptedInstanceRelayPkiServerCaPrivateKey: Buffer;
+    encryptedInstanceRelayPkiServerCaCertificate: Buffer;
+    encryptedInstanceRelayPkiServerCaCertificateChain: Buffer;
+    encryptedOrgRelayPkiCaPrivateKey: Buffer;
+    encryptedOrgRelayPkiCaCertificate: Buffer;
+    encryptedOrgRelayPkiCaCertificateChain: Buffer;
+    encryptedInstanceRelaySshClientCaPrivateKey: Buffer;
+    encryptedInstanceRelaySshClientCaPublicKey: Buffer;
+    encryptedInstanceRelaySshServerCaPrivateKey: Buffer;
+    encryptedInstanceRelaySshServerCaPublicKey: Buffer;
+}>;
+export type TInstanceRelayConfig = z.infer<typeof InstanceRelayConfigSchema>;
+export type TInstanceRelayConfigInsert = Omit<z.input<typeof InstanceRelayConfigSchema>, TImmutableDBKeys>;
+export type TInstanceRelayConfigUpdate = Partial<Omit<z.input<typeof InstanceRelayConfigSchema>, TImmutableDBKeys>>;
+//# sourceMappingURL=instance-relay-config.d.ts.map
