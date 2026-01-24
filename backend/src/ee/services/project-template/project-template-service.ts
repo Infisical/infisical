@@ -639,7 +639,7 @@ export const projectTemplateServiceFactory = ({
     }
 
     // Validate org-managed identities exist in the organization
-    let validatedIdentities: { identityId: string; roles: string[] }[] | undefined = [];
+    let validatedIdentities: { identityId: string; roles: string[] }[] | undefined;
     if (identities) {
       const identityIds = identities.map((i) => i.identityId);
       const foundIdentities = await identityDAL.find({
