@@ -140,6 +140,7 @@ export * from "./project-slack-configs";
 export * from "./project-split-backfill-ids";
 export * from "./project-ssh-configs";
 export * from "./project-template-group-memberships";
+export * from "./project-template-identity-memberships";
 export * from "./project-template-user-memberships";
 export * from "./project-templates";
 export * from "./project-user-additional-privilege";

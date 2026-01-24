@@ -6,6 +6,7 @@ import {
   AccessScope,
   ActionProjectType,
   OrganizationActionScope,
+  OrgMembershipRole,
   ProjectMembershipRole,
   ProjectType,
   ProjectVersion,
@@ -50,12 +51,13 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TProjectPermission } from "@app/lib/types";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 
+import { TGroupDALFactory } from "../../ee/services/group/group-dal";
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { expandInternalCa } from "../certificate-authority/certificate-authority-fns";
 import { TCertificateTemplateDALFactory } from "../certificate-template/certificate-template-dal";
-import { TGroupDALFactory } from "../../ee/services/group/group-dal";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "../membership-group/membership-group-dal";
@@ -135,7 +137,8 @@ type TProjectServiceFactoryDep = {
   membershipUserDAL: Pick<TMembershipUserDALFactory, "create" | "findOne" | "delete" | "find" | "insertMany">;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "delete" | "insertMany">;
   groupDAL: Pick<TGroupDALFactory, "find">;
-  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "create" | "findOne">;
+  identityDAL: Pick<TIdentityDALFactory, "find" | "create">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "create" | "findOne" | "insertMany">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "insertMany">;
   projectSlackConfigDAL: Pick<
     TProjectSlackConfigDALFactory,
@@ -223,6 +226,7 @@ export const projectServiceFactory = ({
   projectTemplateService,
   smtpService,
   notificationService,
+  identityDAL,
   membershipIdentityDAL,
   membershipUserDAL,
   membershipGroupDAL,
@@ -452,6 +456,7 @@ export const projectServiceFactory = ({
           }
         }
 
+        // Add template groups to the project
         if (projectTemplate.groups?.length) {
           const templateGroupSlugs = projectTemplate.groups.map((g) => g.groupSlug.toLowerCase());
           const groups = await groupDAL.find({
@@ -505,6 +510,129 @@ export const projectServiceFactory = ({
 
             if (groupRoleAssignments.length) {
               await membershipRoleDAL.insertMany(groupRoleAssignments, tx);
+            }
+          }
+        }
+
+        // Add template (org owned) identities to the project
+        if (projectTemplate.identities?.length) {
+          const templateIdentityIds = projectTemplate.identities.map((i) => i.identityId);
+          const orgIdentities = await identityDAL.find({
+            orgId: project.orgId,
+            $in: { id: templateIdentityIds }
+          });
+
+          if (orgIdentities.length) {
+            const identityIdToRoles = new Map(projectTemplate.identities.map((i) => [i.identityId, i.roles]));
+
+            // Create org identity memberships
+            const identityProjectMemberships = await membershipIdentityDAL.insertMany(
+              orgIdentities.map((identity) => ({
+                scopeProjectId: project.id,
+                actorIdentityId: identity.id,
+                scope: AccessScope.Project,
+                scopeOrgId: project.orgId
+              })),
+              tx
+            );
+
+            const projectRoles = await roleDAL.find({ projectId: project.id }, { tx });
+            const roleSlugToId = new Map(projectRoles.map((r) => [r.slug, r.id]));
+
+            // Create role assignments for each identity membership
+            const identityRoleAssignments: { membershipId: string; role: string; customRoleId?: string }[] = [];
+            for (const membership of identityProjectMemberships) {
+              const identity = orgIdentities.find((i) => i.id === membership.actorIdentityId);
+              if (identity) {
+                const roles = identityIdToRoles.get(identity.id) ?? [];
+
+                for (const roleSlug of roles) {
+                  if (Object.values(ProjectMembershipRole).includes(roleSlug as ProjectMembershipRole)) {
+                    identityRoleAssignments.push({
+                      membershipId: membership.id,
+                      role: roleSlug
+                    });
+                  } else {
+                    const customRoleId = roleSlugToId.get(roleSlug);
+                    if (customRoleId) {
+                      identityRoleAssignments.push({
+                        membershipId: membership.id,
+                        role: ProjectMembershipRole.Custom,
+                        customRoleId
+                      });
+                    }
+                  }
+                }
+              }
+            }
+
+            if (identityRoleAssignments.length) {
+              await membershipRoleDAL.insertMany(identityRoleAssignments, tx);
+            }
+          }
+        }
+
+        // Add template (project owned) identities to the project
+        if (projectTemplate.projectManagedIdentities?.length) {
+          const projectRoles = await roleDAL.find({ projectId: project.id }, { tx });
+          const roleSlugToId = new Map(projectRoles.map((r) => [r.slug, r.id]));
+
+          for await (const templateIdentity of projectTemplate.projectManagedIdentities) {
+            const newIdentity = await identityDAL.create(
+              {
+                name: templateIdentity.name,
+                orgId: project.orgId,
+                projectId: project.id
+              },
+              tx
+            );
+
+            const orgMembership = await membershipIdentityDAL.create(
+              {
+                scope: AccessScope.Organization,
+                actorIdentityId: newIdentity.id,
+                scopeOrgId: project.orgId
+              },
+              tx
+            );
+
+            const projectMembership = await membershipIdentityDAL.create(
+              {
+                scope: AccessScope.Project,
+                actorIdentityId: newIdentity.id,
+                scopeOrgId: project.orgId,
+                scopeProjectId: project.id
+              },
+              tx
+            );
+
+            const roleAssignments: { membershipId: string; role: string; customRoleId?: string }[] = [];
+
+            roleAssignments.push({
+              membershipId: orgMembership.id,
+              role: OrgMembershipRole.NoAccess
+            });
+
+            for (const roleSlug of templateIdentity.roles) {
+              if (Object.values(ProjectMembershipRole).includes(roleSlug as ProjectMembershipRole)) {
+                roleAssignments.push({
+                  membershipId: projectMembership.id,
+                  role: roleSlug
+                });
+              } else {
+                const customRoleId = roleSlugToId.get(roleSlug);
+                if (customRoleId) {
+                  roleAssignments.push({
+                    membershipId: projectMembership.id,
+                    role: ProjectMembershipRole.Custom,
+                    customRoleId
+                  });
+                }
+              }
+            }
+
+            if (roleAssignments.length) {
+              await membershipRoleDAL.insertMany(roleAssignments, tx);
             }
           }
         }

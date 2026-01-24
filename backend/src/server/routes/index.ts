@@ -101,6 +101,7 @@ import { pkiAcmeQueueServiceFactory } from "@app/ee/services/pki-acme/pki-acme-q
 import { pkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-service";
 import { projectTemplateDALFactory } from "@app/ee/services/project-template/project-template-dal";
 import { projectTemplateGroupMembershipDALFactory } from "@app/ee/services/project-template/project-template-group-membership-dal";
+import { projectTemplateIdentityMembershipDALFactory } from "@app/ee/services/project-template/project-template-identity-membership-dal";
 import { projectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
 import { projectTemplateUserMembershipDALFactory } from "@app/ee/services/project-template/project-template-user-membership-dal";
 import { rateLimitDALFactory } from "@app/ee/services/rate-limit/rate-limit-dal";
@@ -588,6 +589,7 @@ export const registerRoutes = async (
   const projectTemplateDAL = projectTemplateDALFactory(db);
   const projectTemplateUserMembershipDAL = projectTemplateUserMembershipDALFactory(db);
   const projectTemplateGroupMembershipDAL = projectTemplateGroupMembershipDALFactory(db);
+  const projectTemplateIdentityMembershipDAL = projectTemplateIdentityMembershipDALFactory(db);
   const resourceMetadataDAL = resourceMetadataDALFactory(db);
   const kmipClientDAL = kmipClientDALFactory(db);
   const kmipClientCertificateDAL = kmipClientCertificateDALFactory(db);
@@ -1277,8 +1279,10 @@ export const registerRoutes = async (
     projectTemplateDAL,
     projectTemplateUserMembershipDAL,
     projectTemplateGroupMembershipDAL,
+    projectTemplateIdentityMembershipDAL,
     orgMembershipDAL,
-    groupDAL
+    groupDAL,
+    identityDAL
   });
 
   const integrationAuthService = integrationAuthServiceFactory({
@@ -1429,6 +1433,7 @@ export const registerRoutes = async (
     projectTemplateService,
     smtpService,
     notificationService,
+    identityDAL,
     membershipGroupDAL,
     membershipIdentityDAL,
     membershipRoleDAL,
