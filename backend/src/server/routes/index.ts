@@ -49,6 +49,7 @@ import { dynamicSecretLeaseQueueServiceFactory } from "@app/ee/services/dynamic-
 import { dynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-service";
 import { eventBusFactory } from "@app/ee/services/event/event-bus-service";
 import { sseServiceFactory } from "@app/ee/services/event/event-sse-service";
+import { eventBusServiceFactory } from "@app/ee/services/event-bus";
 import { externalKmsDALFactory } from "@app/ee/services/external-kms/external-kms-dal";
 import { externalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
 import { gatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
@@ -623,6 +624,9 @@ export const registerRoutes = async (
 
   const eventBusService = eventBusFactory(server.redis);
   const sseService = sseServiceFactory(eventBusService, server.redis);
+
+  // New event bus for inter-container communication
+  const internalEventBus = eventBusServiceFactory({ redis: server.redis });
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -2679,6 +2683,7 @@ export const registerRoutes = async (
   await microsoftTeamsService.start();
   await dynamicSecretQueueService.init();
   await eventBusService.init();
+  await internalEventBus.init();
 
   // inject all services
   server.decorate<FastifyZodProvider["services"]>("services", {
@@ -2796,6 +2801,7 @@ export const registerRoutes = async (
     secretScanningV2: secretScanningV2Service,
     reminder: reminderService,
     bus: eventBusService,
+    eventBus: internalEventBus,
     sse: sseService,
     notification: notificationService,
     pamFolder: pamFolderService,
@@ -2955,6 +2961,7 @@ export const registerRoutes = async (
     cronJobs.forEach((job) => job.stop());
     await telemetryService.flushAll();
     await eventBusService.close();
+    await internalEventBus.close();
     sseService.close();
   });
 };

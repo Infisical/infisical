@@ -17,6 +17,7 @@ import { TDynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dy
 import { TDynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-types";
 import { TEventBusService } from "@app/ee/services/event/event-bus-service";
 import { TServerSentEventsService } from "@app/ee/services/event/event-sse-service";
+import { TEventBusService as TInternalEventBusService } from "@app/ee/services/event-bus";
 import { TExternalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -352,6 +353,7 @@ declare module "fastify" {
       pkiTemplate: TPkiTemplatesServiceFactory;
       reminder: TReminderServiceFactory;
       bus: TEventBusService;
+      eventBus: TInternalEventBusService;
       sse: TServerSentEventsService;
       identityAuthTemplate: TIdentityAuthTemplateServiceFactory;
       notification: TNotificationServiceFactory;
