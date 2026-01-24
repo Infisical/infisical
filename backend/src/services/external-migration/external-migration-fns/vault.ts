@@ -121,7 +121,7 @@ const vaultFactory = (gatewayService: Pick<TGatewayServiceFactory, "fnGetGateway
       const response = await request
         .get<{
           data: {
-            data: Record<string, string>; // KV v2 has nested data structure
+            data: Record<string, string> | null; // KV v2 has nested data structure. Can be null if it's a soft deleted secret.
             metadata: {
               created_time: string;
               deletion_time: string;
@@ -132,10 +132,26 @@ const vaultFactory = (gatewayService: Pick<TGatewayServiceFactory, "fnGetGateway
         }>(`/v1/${mountPath}/data/${secretPath}`)
         .catch((err) => {
           if (axios.isAxiosError(err)) {
+            // handle soft-deleted secrets (Vault returns 404 with metadata for soft deleted secrets)
+            const { data: vaultResponse } = err.response?.data as { data: { metadata: { deletion_time: string } } };
+
+            if (err.response?.status === 404 && vaultResponse?.metadata?.deletion_time) {
+              logger.info(
+                { secretPath, deletion_time: vaultResponse.metadata.deletion_time },
+                "External migration: Skipping soft-deleted Vault secret"
+              );
+              return null;
+            }
+
             logger.error(err.response?.data, "External migration: Failed to get Vault secret");
           }
           throw err;
         });
+
+      // if null returned from catch, skip secret
+      if (response === null) {
+        return null;
+      }
 
       return response.data.data.data;
     }
@@ -252,12 +268,14 @@ const vaultFactory = (gatewayService: Pick<TGatewayServiceFactory, "fnGetGateway
             kvVersion
           );
 
-          allData.push({
-            namespace: namespace || "",
-            mount: mountPath.replace(/\/$/, ""),
-            path: secretPath.replace(`${cleanMountPath}/`, ""),
-            secretData
-          });
+          if (secretData) {
+            allData.push({
+              namespace: namespace || "",
+              mount: mountPath.replace(/\/$/, ""),
+              path: secretPath.replace(`${cleanMountPath}/`, ""),
+              secretData
+            });
+          }
         }
       }
 
