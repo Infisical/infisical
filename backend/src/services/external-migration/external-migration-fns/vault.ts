@@ -133,11 +133,11 @@ const vaultFactory = (gatewayService: Pick<TGatewayServiceFactory, "fnGetGateway
         .catch((err) => {
           if (axios.isAxiosError(err)) {
             // handle soft-deleted secrets (Vault returns 404 with metadata for soft deleted secrets)
-            const { data: vaultResponse } = err.response?.data as { data: { metadata: { deletion_time: string } } };
+            const vaultResponse = err.response?.data as { data?: { metadata?: { deletion_time?: string } } };
 
-            if (err.response?.status === 404 && vaultResponse?.metadata?.deletion_time) {
+            if (err.response?.status === 404 && vaultResponse?.data?.metadata?.deletion_time) {
               logger.info(
-                { secretPath, deletion_time: vaultResponse.metadata.deletion_time },
+                { secretPath, deletion_time: vaultResponse.data?.metadata?.deletion_time },
                 "External migration: Skipping soft-deleted Vault secret"
               );
               return null;
