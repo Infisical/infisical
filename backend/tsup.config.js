@@ -24,7 +24,8 @@ export default defineConfig({
     ".handlebars": "copy",
     ".md": "copy",
     ".txt": "copy",
-    ".pem": "copy"
+    ".pem": "copy",
+    ".yaml": "copy"
   },
   external: ["../../../frontend/node_modules/next/dist/server/next-server.js"],
   outDir: "dist",
