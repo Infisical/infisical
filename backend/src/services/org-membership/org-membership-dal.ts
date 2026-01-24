@@ -133,7 +133,7 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
             const slotStartDate = new Date(now.getTime() - currentSlotDays * 24 * 60 * 60 * 1000);
             const slotEndDate = nextSlotDays
               ? new Date(now.getTime() - nextSlotDays * 24 * 60 * 60 * 1000)
-              : slotStartDate;
+              : new Date(now.getTime() - (currentSlotDays + 1) * 24 * 60 * 60 * 1000);
 
             void qb.orWhere((qbInner) => {
               void qbInner.where(`${TableName.Membership}.createdAt`, "<=", slotStartDate);
