@@ -15,6 +15,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
+import { TAzureDnsConnection } from "@app/services/app-connection/azure-dns/azure-dns-connection-types";
 import { TCloudflareConnection } from "@app/services/app-connection/cloudflare/cloudflare-connection-types";
 import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
@@ -46,6 +47,7 @@ import {
   TCreateAcmeCertificateAuthorityDTO,
   TUpdateAcmeCertificateAuthorityDTO
 } from "./acme-certificate-authority-types";
+import { azureDnsDeleteTxtRecord, azureDnsInsertTxtRecord } from "./dns-providers/azure-dns";
 import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
 import { dnsMadeEasyDeleteTxtRecord, dnsMadeEasyInsertTxtRecord } from "./dns-providers/dns-made-easy";
 import { route53DeleteTxtRecord, route53InsertTxtRecord } from "./dns-providers/route54";
@@ -365,6 +367,15 @@ export const orderCertificate = async (
           );
           break;
         }
+        case AcmeDnsProvider.AzureDNS: {
+          await azureDnsInsertTxtRecord(
+            connection as TAzureDnsConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue
+          );
+          break;
+        }
         default: {
           throw new Error(`Unsupported DNS provider: ${acmeCa.configuration.dnsProviderConfig.provider as string}`);
         }
@@ -399,6 +410,15 @@ export const orderCertificate = async (
         case AcmeDnsProvider.DNSMadeEasy: {
           await dnsMadeEasyDeleteTxtRecord(
             connection as TDNSMadeEasyConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue
+          );
+          break;
+        }
+        case AcmeDnsProvider.AzureDNS: {
+          await azureDnsDeleteTxtRecord(
+            connection as TAzureDnsConnection,
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
             recordValue
@@ -560,6 +580,12 @@ export const AcmeCertificateAuthorityFns = ({
       });
     }
 
+    if (dnsProviderConfig.provider === AcmeDnsProvider.AzureDNS && appConnection.app !== AppConnection.AzureDNS) {
+      throw new BadRequestError({
+        message: `App connection with ID '${dnsAppConnectionId}' is not an Azure DNS connection`
+      });
+    }
+
     // validates permission to connect
     await appConnectionService.validateAppConnectionUsageById(
       appConnection.app as AppConnection,
@@ -659,6 +685,12 @@ export const AcmeCertificateAuthorityFns = ({
         ) {
           throw new BadRequestError({
             message: `App connection with ID '${dnsAppConnectionId}' is not a DNS Made Easy connection`
+          });
+        }
+
+        if (dnsProviderConfig.provider === AcmeDnsProvider.AzureDNS && appConnection.app !== AppConnection.AzureDNS) {
+          throw new BadRequestError({
+            message: `App connection with ID '${dnsAppConnectionId}' is not an Azure DNS connection`
           });
         }
 

@@ -23,6 +23,10 @@ import {
   useListAvailableAppConnections
 } from "@app/hooks/api/appConnections";
 import {
+  TAzureDNSZone,
+  useAzureDNSConnectionListZones
+} from "@app/hooks/api/appConnections/azure-dns";
+import {
   TCloudflareZone,
   useCloudflareConnectionListZones
 } from "@app/hooks/api/appConnections/cloudflare";
@@ -215,6 +219,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       enabled: caType === CaType.ACME
     });
 
+  const { data: availableAzureDNSConnections, isPending: isAzureDNSPending } =
+    useListAvailableAppConnections(AppConnection.AzureDNS, currentProject.id, {
+      enabled: caType === CaType.ACME
+    });
+
   const { data: availableAzureConnections, isPending: isAzurePending } =
     useListAvailableAppConnections(AppConnection.AzureADCS, currentProject.id, {
       enabled: caType === CaType.AZURE_AD_CS
@@ -227,13 +236,15 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     return [
       ...(availableRoute53Connections || []),
       ...(availableCloudflareConnections || []),
-      ...(availableDNSMadeEasyConnections || [])
+      ...(availableDNSMadeEasyConnections || []),
+      ...(availableAzureDNSConnections || [])
     ];
   }, [
     caType,
     availableRoute53Connections,
     availableCloudflareConnections,
     availableDNSMadeEasyConnections,
+    availableAzureDNSConnections,
     availableAzureConnections
   ]);
 
@@ -241,6 +252,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     isRoute53Pending ||
     isCloudflarePending ||
     isDNSMadeEasyPending ||
+    isAzureDNSPending ||
     (isAzurePending && caType === CaType.AZURE_AD_CS);
 
   const dnsAppConnection =
@@ -256,6 +268,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { data: dnsMadeEasyZones = [], isPending: isDNSMadeEasyZonesPending } =
     useDNSMadeEasyConnectionListZones(dnsAppConnection.id, {
       enabled: dnsProvider === AcmeDnsProvider.DNSMadeEasy && !!dnsAppConnection.id
+    });
+
+  const { data: azureDnsZones = [], isPending: isAzureDNSZonesPending } =
+    useAzureDNSConnectionListZones(dnsAppConnection.id, {
+      enabled: dnsProvider === AcmeDnsProvider.AzureDNS && !!dnsAppConnection.id
     });
 
   // Populate form with CA data when editing
@@ -530,6 +547,32 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                           onChange((option as SingleValue<TDNSMadeEasyZone>)?.id ?? null);
                         }}
                         options={dnsMadeEasyZones}
+                        placeholder="Select a zone..."
+                        getOptionLabel={(option) => option.name}
+                        getOptionValue={(option) => option.id}
+                      />
+                    </FormControl>
+                  )}
+                />
+              )}
+              {dnsProvider === AcmeDnsProvider.AzureDNS && (
+                <Controller
+                  name="configuration.dnsProviderConfig.hostedZoneId"
+                  control={control}
+                  render={({ field: { value, onChange }, fieldState: { error } }) => (
+                    <FormControl
+                      errorText={error?.message}
+                      isError={Boolean(error?.message)}
+                      label="Zone"
+                    >
+                      <FilterableSelect
+                        isLoading={isAzureDNSZonesPending && !!dnsAppConnection.id}
+                        isDisabled={!dnsAppConnection.id}
+                        value={azureDnsZones.find((zone) => zone.id === value)}
+                        onChange={(option) => {
+                          onChange((option as SingleValue<TAzureDNSZone>)?.id ?? null);
+                        }}
+                        options={azureDnsZones}
                         placeholder="Select a zone..."
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}

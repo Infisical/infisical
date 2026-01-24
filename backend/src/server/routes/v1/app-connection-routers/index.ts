@@ -10,6 +10,7 @@ import { registerAzureADCSConnectionRouter } from "./azure-adcs-connection-route
 import { registerAzureAppConfigurationConnectionRouter } from "./azure-app-configuration-connection-router";
 import { registerAzureClientSecretsConnectionRouter } from "./azure-client-secrets-connection-router";
 import { registerAzureDevOpsConnectionRouter } from "./azure-devops-connection-router";
+import { registerAzureDnsConnectionRouter } from "./azure-dns-connection-router";
 import { registerAzureKeyVaultConnectionRouter } from "./azure-key-vault-connection-router";
 import { registerBitbucketConnectionRouter } from "./bitbucket-connection-router";
 import { registerCamundaConnectionRouter } from "./camunda-connection-router";
@@ -60,6 +61,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.AzureClientSecrets]: registerAzureClientSecretsConnectionRouter,
     [AppConnection.AzureDevOps]: registerAzureDevOpsConnectionRouter,
     [AppConnection.AzureADCS]: registerAzureADCSConnectionRouter,
+    [AppConnection.AzureDNS]: registerAzureDnsConnectionRouter,
     [AppConnection.Databricks]: registerDatabricksConnectionRouter,
     [AppConnection.Humanitec]: registerHumanitecConnectionRouter,
     [AppConnection.TerraformCloud]: registerTerraformCloudConnectionRouter,
