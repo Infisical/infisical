@@ -1,4 +1,5 @@
 import { AxiosError } from "axios";
+import RE2 from "re2";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
@@ -7,6 +8,19 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 
 import { AzureDnsConnectionMethod } from "./azure-dns-connection-enum";
 import { TAzureDnsConnection, TAzureDnsConnectionConfig, TAzureDnsZone } from "./azure-dns-connection-types";
+
+const AZURE_DNS_ZONE_RESOURCE_ID_REGEX = new RE2(
+  "^\\/subscriptions\\/[0-9a-f-]+\\/resourceGroups\\/[^/]+\\/providers\\/Microsoft\\.Network\\/dnsZones\\/[^/]+$",
+  "i"
+);
+
+export const validateAzureDnsZoneResourceId = (hostedZoneId: string): void => {
+  if (!AZURE_DNS_ZONE_RESOURCE_ID_REGEX.test(hostedZoneId)) {
+    throw new BadRequestError({
+      message: "Invalid Azure DNS Zone resource ID format."
+    });
+  }
+};
 
 interface AzureDnsZonesResponse {
   value: Array<{
@@ -89,6 +103,10 @@ export const listAzureDnsZones = async (appConnection: TAzureDnsConnection): Pro
 
       if (!response.nextLink) {
         break;
+      }
+
+      if (!response.nextLink.startsWith("https://management.azure.com/")) {
+        throw new BadRequestError({ message: "Invalid nextLink URL from Azure API" });
       }
 
       // eslint-disable-next-line no-await-in-loop

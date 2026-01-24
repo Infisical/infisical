@@ -2,7 +2,10 @@ import axios from "axios";
 
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
-import { getAzureDnsAccessToken } from "@app/services/app-connection/azure-dns/azure-dns-connection-fns";
+import {
+  getAzureDnsAccessToken,
+  validateAzureDnsZoneResourceId
+} from "@app/services/app-connection/azure-dns/azure-dns-connection-fns";
 import { TAzureDnsConnection } from "@app/services/app-connection/azure-dns/azure-dns-connection-types";
 
 export const azureDnsInsertTxtRecord = async (
@@ -14,6 +17,8 @@ export const azureDnsInsertTxtRecord = async (
   const {
     credentials: { tenantId, clientId, clientSecret }
   } = connection;
+
+  validateAzureDnsZoneResourceId(hostedZoneId);
 
   logger.info({ hostedZoneId, recordName, value }, "Inserting TXT record for Azure DNS");
 
@@ -56,6 +61,8 @@ export const azureDnsDeleteTxtRecord = async (
   const {
     credentials: { tenantId, clientId, clientSecret }
   } = connection;
+
+  validateAzureDnsZoneResourceId(hostedZoneId);
 
   logger.info({ hostedZoneId, recordName, value }, "Deleting TXT record for Azure DNS");
 

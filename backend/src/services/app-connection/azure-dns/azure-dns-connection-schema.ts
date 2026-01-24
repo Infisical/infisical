@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import z from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
@@ -11,19 +12,21 @@ import {
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { AzureDnsConnectionMethod } from "./azure-dns-connection-enum";
 
+const AZURE_GUID_REGEX = new RE2("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", "i");
+
+const azureGuidSchema = z
+  .string()
+  .trim()
+  .refine((val) => AZURE_GUID_REGEX.test(val), { message: "Invalid GUID format" });
 export const AzureDnsConnectionClientSecretCredentialsSchema = z.object({
-  tenantId: z.string().trim().min(1, "Tenant ID required").max(256, "Tenant ID cannot exceed 256 characters"),
-  clientId: z.string().trim().min(1, "Client ID required").max(256, "Client ID cannot exceed 256 characters"),
+  tenantId: azureGuidSchema.describe("Tenant ID must be a valid GUID"),
+  clientId: azureGuidSchema.describe("Client ID must be a valid GUID"),
   clientSecret: z
     .string()
     .trim()
     .min(1, "Client secret required")
     .max(256, "Client secret cannot exceed 256 characters"),
-  subscriptionId: z
-    .string()
-    .trim()
-    .min(1, "Subscription ID required")
-    .max(256, "Subscription ID cannot exceed 256 characters")
+  subscriptionId: azureGuidSchema.describe("Subscription ID must be a valid GUID")
 });
 
 const BaseAzureDnsConnectionSchema = BaseAppConnectionSchema.extend({
