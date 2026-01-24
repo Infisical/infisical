@@ -56,6 +56,7 @@ export type TAiMcpServer = {
   status: AiMcpServerStatus;
   credentialMode: AiMcpServerCredentialMode;
   authMethod: AiMcpServerAuthMethod;
+  gatewayId?: string;
   projectId: string;
   toolsCount?: number;
   createdAt: string;
@@ -71,6 +72,7 @@ export type TCreateAiMcpServerDTO = {
   credentialMode: AiMcpServerCredentialMode;
   oauthClientId?: string;
   oauthClientSecret?: string;
+  gatewayId?: string;
 } & TAiMcpServerCredentials;
 
 // OAuth initiate DTO
@@ -79,6 +81,7 @@ export type TInitiateOAuthDTO = {
   url: string;
   clientId?: string;
   clientSecret?: string;
+  gatewayId?: string;
 };
 
 export type TInitiateOAuthResponse = {
@@ -117,6 +120,7 @@ export type TUpdateAiMcpServerDTO = {
   serverId: string;
   name?: string;
   description?: string;
+  gatewayId?: string | null;
 };
 
 export type TAiMcpServerTool = {

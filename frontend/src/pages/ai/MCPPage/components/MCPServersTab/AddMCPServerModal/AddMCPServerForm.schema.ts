@@ -50,7 +50,8 @@ export const AddMCPServerFormSchema = z
     url: z.string().trim().min(1, "Endpoint URL is required").url("Must be a valid URL"),
     credentialMode: z.nativeEnum(MCPServerCredentialMode),
     oauthClientId: z.string().trim().optional(),
-    oauthClientSecret: z.string().trim().optional()
+    oauthClientSecret: z.string().trim().optional(),
+    gatewayId: z.string().uuid().optional().nullable()
   })
   .and(MCPServerCredentialsSchema);
 

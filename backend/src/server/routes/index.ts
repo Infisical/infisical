@@ -2577,7 +2577,9 @@ export const registerRoutes = async (
     aiMcpServerUserCredentialDAL,
     kmsService,
     keyStore,
-    permissionService
+    permissionService,
+    gatewayV2DAL,
+    gatewayV2Service
   });
 
   const aiMcpActivityLogService = aiMcpActivityLogServiceFactory({
@@ -2598,7 +2600,8 @@ export const registerRoutes = async (
     authTokenService: tokenService,
     aiMcpActivityLogService,
     userDAL,
-    permissionService
+    permissionService,
+    gatewayV2Service
   });
 
   const migrationService = externalMigrationServiceFactory({
