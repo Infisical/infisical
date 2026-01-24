@@ -513,6 +513,49 @@ export const projectTemplateServiceFactory = ({
       });
     }
 
+    // Validate that roles being removed are not in use by users, groups, or identities
+    if (roles) {
+      const currentRoles = projectTemplate.roles as TProjectTemplateRole[];
+      const newRoleSlugs = new Set(roles.map((r) => r.slug));
+      const removedRoleSlugs = currentRoles.filter((r) => !newRoleSlugs.has(r.slug)).map((r) => r.slug);
+
+      if (removedRoleSlugs.length > 0) {
+        const [currentUserMemberships, currentGroupMemberships, currentIdentityMemberships] = await Promise.all([
+          projectTemplateUserMembershipDAL.findByTemplateId(id),
+          projectTemplateGroupMembershipDAL.findByTemplateId(id),
+          projectTemplateIdentityMembershipDAL.findByTemplateId(id)
+        ]);
+
+        const currentProjectManagedIdentities =
+          (projectTemplate.projectManagedIdentities as TProjectTemplateProjectManagedIdentity[]) || [];
+
+        for (const roleSlug of removedRoleSlugs) {
+          const usersWithRole = currentUserMemberships.filter((u) => u.roles.includes(roleSlug));
+          const groupsWithRole = currentGroupMemberships.filter((g) => g.roles.includes(roleSlug));
+          const identitiesWithRole = currentIdentityMemberships.filter((i) => i.roles.includes(roleSlug));
+          const projectManagedIdentitiesWithRole = currentProjectManagedIdentities.filter((i) =>
+            i.roles.includes(roleSlug)
+          );
+
+          const usageMessages: string[] = [];
+          if (usersWithRole.length > 0)
+            usageMessages.push(`${usersWithRole.length} user${usersWithRole.length === 1 ? "" : "s"}`);
+          if (groupsWithRole.length > 0)
+            usageMessages.push(`${groupsWithRole.length} group${groupsWithRole.length === 1 ? "" : "s"}`);
+          if (identitiesWithRole.length > 0 || projectManagedIdentitiesWithRole.length > 0) {
+            const totalIdentities = identitiesWithRole.length + projectManagedIdentitiesWithRole.length;
+            usageMessages.push(`${totalIdentities} identit${totalIdentities === 1 ? "y" : "ies"}`);
+          }
+
+          if (usageMessages.length > 0) {
+            throw new BadRequestError({
+              message: `Cannot remove role "${roleSlug}" because it is assigned to ${usageMessages.join(", ")}`
+            });
+          }
+        }
+      }
+    }
+
     // Validate that users exist and are members of the organization
     let validatedUsers: { membershipId: string; roles: string[] }[] | undefined;
     if (users) {
