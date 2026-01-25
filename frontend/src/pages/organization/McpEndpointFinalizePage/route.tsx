@@ -10,7 +10,7 @@ const McpEndpointFinalizePageQuerySchema = z.object({
   code_challenge: z.string(),
   code_challenge_method: z.string(),
   redirect_uri: z.string(),
-  resource: z.string(),
+  resource: z.string().optional(),
   state: z.string().optional(),
   scope: z.string().optional(),
   endpointId: z.string()
