@@ -52,7 +52,7 @@ export const eventBusServiceFactory = ({ redis }: TEventBusServiceFactoryDep) =>
    * - Immediately delivers to local subscribers via memory bus
    * - Broadcasts to other containers via Redis
    */
-  const publish = async <T extends Record<string, unknown>>(type: EventBusServiceEvents, payload: T): Promise<void> => {
+  const publish = async <T>(type: EventBusServiceEvents, payload: T): Promise<void> => {
     const event: TEventBusEvent = {
       type,
       timestamp: new Date().toISOString(),

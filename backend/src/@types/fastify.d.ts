@@ -19,6 +19,7 @@ import { TEventBusService } from "@app/ee/services/event/event-bus-service";
 import { TServerSentEventsService } from "@app/ee/services/event/event-sse-service";
 import { TEventBusService as TInternalEventBusService } from "@app/ee/services/event-bus";
 import { TExternalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
+import { TProjectEventsService, TProjectEventsSSEService } from "@app/ee/services/project-events";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGithubOrgSyncServiceFactory } from "@app/ee/services/github-org-sync/github-org-sync-service";
@@ -354,6 +355,8 @@ declare module "fastify" {
       reminder: TReminderServiceFactory;
       bus: TEventBusService;
       eventBus: TInternalEventBusService;
+      projectEvents: TProjectEventsService;
+      projectEventsSSE: TProjectEventsSSEService;
       sse: TServerSentEventsService;
       identityAuthTemplate: TIdentityAuthTemplateServiceFactory;
       notification: TNotificationServiceFactory;

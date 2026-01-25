@@ -110,7 +110,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   enterpriseCertificateSyncs: false,
   enterpriseAppConnections: false,
   fips: false,
-  eventSubscriptions: false,
+  eventSubscriptions: true,
   machineIdentityAuthTemplates: false,
   pkiLegacyTemplates: false,
   secretShareExternalBranding: false

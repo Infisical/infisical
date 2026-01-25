@@ -50,6 +50,7 @@ import { dynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secre
 import { eventBusFactory } from "@app/ee/services/event/event-bus-service";
 import { sseServiceFactory } from "@app/ee/services/event/event-sse-service";
 import { eventBusServiceFactory } from "@app/ee/services/event-bus";
+import { projectEventsServiceFactory, projectEventsSSEServiceFactory } from "@app/ee/services/project-events";
 import { externalKmsDALFactory } from "@app/ee/services/external-kms/external-kms-dal";
 import { externalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
 import { gatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
@@ -628,6 +629,9 @@ export const registerRoutes = async (
   // New event bus for inter-container communication
   const internalEventBus = eventBusServiceFactory({ redis: server.redis });
 
+  // Project events service (publishes via event bus for inter-container communication)
+  const projectEventsService = projectEventsServiceFactory({ eventBus: internalEventBus });
+
   const permissionService = permissionServiceFactory({
     permissionDAL,
     serviceTokenDAL,
@@ -650,6 +654,13 @@ export const registerRoutes = async (
     keyStore,
     projectDAL,
     envConfig
+  });
+
+  // Project events SSE service (for clients to subscribe to secret mutation events)
+  const projectEventsSSEService = projectEventsSSEServiceFactory({
+    projectEventsService,
+    permissionService,
+    licenseService
   });
 
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL, orgDAL });
@@ -2802,6 +2813,8 @@ export const registerRoutes = async (
     reminder: reminderService,
     bus: eventBusService,
     eventBus: internalEventBus,
+    projectEvents: projectEventsService,
+    projectEventsSSE: projectEventsSSEService,
     sse: sseService,
     notification: notificationService,
     pamFolder: pamFolderService,
