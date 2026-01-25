@@ -79,8 +79,10 @@ const ServerToolsSection = ({
 
   // Count enabled filtered tools for the select all checkbox
   const enabledFilteredCount = filteredTools.filter((tool) => enabledToolIds.has(tool.id)).length;
-  const allFilteredEnabled = filteredTools.length > 0 && enabledFilteredCount === filteredTools.length;
-  const someFilteredEnabled = enabledFilteredCount > 0 && enabledFilteredCount < filteredTools.length;
+  const allFilteredEnabled =
+    filteredTools.length > 0 && enabledFilteredCount === filteredTools.length;
+  const someFilteredEnabled =
+    enabledFilteredCount > 0 && enabledFilteredCount < filteredTools.length;
 
   // Check if tool is enabled
   const isToolEnabled = (toolId: string) => {
