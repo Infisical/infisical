@@ -654,7 +654,7 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         code_challenge: z.string(),
         code_challenge_method: z.enum(["S256"]),
         redirect_uri: z.string(),
-        resource: z.string(),
+        resource: z.string().optional(),
         state: z.string().optional()
       })
     },
@@ -688,7 +688,7 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         code_challenge: z.string(),
         code_challenge_method: z.enum(["S256"]),
         redirect_uri: z.string(),
-        resource: z.string(),
+        resource: z.string().optional(),
         expireIn: z.string().refine((val) => ms(val) > 0, "Max TTL must be a positive number")
       }),
       response: {
