@@ -9,7 +9,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
-import { Checkbox, Input, Switch, Tooltip } from "@app/components/v2";
+import { Input, Switch, Tooltip } from "@app/components/v2";
 import {
   ProjectPermissionMcpEndpointActions,
   ProjectPermissionSub,
@@ -77,12 +77,10 @@ const ServerToolsSection = ({
   const enabledCount = tools.filter((tool) => enabledToolIds.has(tool.id)).length;
   const totalCount = tools.length;
 
-  // Count enabled filtered tools for the select all checkbox
+  // Count enabled filtered tools for the toggle all switch
   const enabledFilteredCount = filteredTools.filter((tool) => enabledToolIds.has(tool.id)).length;
   const allFilteredEnabled =
     filteredTools.length > 0 && enabledFilteredCount === filteredTools.length;
-  const someFilteredEnabled =
-    enabledFilteredCount > 0 && enabledFilteredCount < filteredTools.length;
 
   // Check if tool is enabled
   const isToolEnabled = (toolId: string) => {
@@ -128,22 +126,24 @@ const ServerToolsSection = ({
 
       {isExpanded && filteredTools.length > 0 && (
         <div className="border-t border-mineshaft-600">
+          <div className="flex items-center justify-between border-b border-mineshaft-600 px-4 py-2">
+            <span className="text-sm text-bunker-300">
+              {allFilteredEnabled ? "Disable" : "Enable"} all tools
+            </span>
+            <Tooltip content={allFilteredEnabled ? "Disable all tools" : "Enable all tools"}>
+              <div>
+                <Switch
+                  id={`toggle-all-${serverId}`}
+                  isChecked={allFilteredEnabled}
+                  onCheckedChange={handleToggleAll}
+                  isDisabled={isUpdating || !canEdit}
+                />
+              </div>
+            </Tooltip>
+          </div>
           <div className="grid grid-cols-[1fr_auto] items-center gap-2 border-b border-mineshaft-600 px-4 py-2 text-xs font-medium tracking-wider text-bunker-300 uppercase">
             <span>Tool Name</span>
-            <div className="flex items-center gap-2">
-              <span className="mr-1">Enabled</span>
-              <Tooltip content={allFilteredEnabled ? "Deselect all tools" : "Select all tools"}>
-                <div>
-                  <Checkbox
-                    id={`select-all-${serverId}`}
-                    isChecked={allFilteredEnabled}
-                    isIndeterminate={someFilteredEnabled}
-                    onCheckedChange={handleToggleAll}
-                    isDisabled={isUpdating || !canEdit}
-                  />
-                </div>
-              </Tooltip>
-            </div>
+            <span>Enabled</span>
           </div>
           <div className="divide-y divide-mineshaft-600">
             {filteredTools.map((tool) => (
@@ -222,10 +222,6 @@ export const MCPEndpointToolSelectionSection = ({ endpointId, projectId, serverI
           serverToolId: tool.id,
           isEnabled: enableAll
         }))
-      });
-      createNotification({
-        text: enableAll ? "All tools enabled" : "All tools disabled",
-        type: "success"
       });
     } catch (error) {
       console.error("Failed to update tools:", error);

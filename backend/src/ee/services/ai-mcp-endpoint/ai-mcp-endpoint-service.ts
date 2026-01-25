@@ -730,6 +730,10 @@ export const aiMcpEndpointServiceFactory = ({
 
     // Update server connections if provided
     if (serverIds !== undefined) {
+      // Get existing server connections to identify newly added servers
+      const existingConnections = await aiMcpEndpointServerDAL.find({ aiMcpEndpointId: endpointId });
+      const existingServerIds = new Set(existingConnections.map((conn) => conn.aiMcpServerId));
+
       // Validate that all serverIds belong to the same project
       if (serverIds.length > 0) {
         const servers = await aiMcpServerDAL.find({ $in: { id: serverIds } });
@@ -757,6 +761,23 @@ export const aiMcpEndpointServiceFactory = ({
             aiMcpServerId: serverId
           }))
         );
+
+        // Enable all tools by default for newly added servers
+        const newServerIds = serverIds.filter((id) => !existingServerIds.has(id));
+        if (newServerIds.length > 0) {
+          // Get all tools for the newly added servers
+          const newServerTools = await aiMcpServerToolDAL.find({ $in: { aiMcpServerId: newServerIds } });
+
+          // Enable all tools for the new servers
+          if (newServerTools.length > 0) {
+            await aiMcpEndpointServerToolDAL.insertMany(
+              newServerTools.map((tool) => ({
+                aiMcpEndpointId: endpointId,
+                aiMcpServerToolId: tool.id
+              }))
+            );
+          }
+        }
       }
     }
 
