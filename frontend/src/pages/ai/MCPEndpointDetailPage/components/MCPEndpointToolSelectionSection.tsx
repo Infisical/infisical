@@ -126,7 +126,7 @@ const ServerToolsSection = ({
 
       {isExpanded && filteredTools.length > 0 && (
         <div className="border-t border-mineshaft-600">
-          <div className="grid grid-cols-[1fr_auto] items-center gap-2 border-b border-mineshaft-600 px-4 py-2">
+          <div className="grid grid-cols-[1fr_auto] items-center gap-2 border-b border-mineshaft-600 bg-mineshaft-700 px-4 py-2">
             <span className="text-sm text-bunker-300">Enable all tools</span>
             <Tooltip content={allFilteredEnabled ? "Disable all tools" : "Enable all tools"}>
               <div>
