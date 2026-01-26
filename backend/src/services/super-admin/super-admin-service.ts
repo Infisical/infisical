@@ -361,8 +361,7 @@ export const superAdminServiceFactory = ({
       //    login methods regardless of enabledLoginMethods (frontend bypass), and org admins
       //    bypass the enabledLoginMethods restriction in the backend auth service
       const isAliasSsoMethodEnabled =
-        data.enabledLoginMethods.includes(LoginMethod.SAML) ||
-        data.enabledLoginMethods.includes(LoginMethod.OIDC);
+        data.enabledLoginMethods.includes(LoginMethod.SAML) || data.enabledLoginMethods.includes(LoginMethod.OIDC);
 
       const canServerAdminAccessAfterApply =
         data.enabledLoginMethods.some((loginMethod) =>
