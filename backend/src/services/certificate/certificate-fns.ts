@@ -184,7 +184,8 @@ export const parseCertificateBody = (decryptedCertificate: Buffer): TParsedCerti
 
     // Calculate fingerprints and format with colons (e.g., "1A:2F:73:...")
     const rawData = Buffer.from(certObj.rawData);
-    const formatFingerprint = (hash: string) => hash.toUpperCase().match(/.{2}/g)?.join(":") ?? hash.toUpperCase();
+    const formatFingerprint = (hash: string) =>
+      new RE2(".{2}", "g").match(hash.toUpperCase())?.join(":") ?? hash.toUpperCase();
     const fingerprints: TCertificateFingerprints = {
       sha256: formatFingerprint(crypto.nativeCrypto.createHash("sha256").update(rawData).digest("hex")),
       sha1: formatFingerprint(crypto.nativeCrypto.createHash("sha1").update(rawData).digest("hex"))
