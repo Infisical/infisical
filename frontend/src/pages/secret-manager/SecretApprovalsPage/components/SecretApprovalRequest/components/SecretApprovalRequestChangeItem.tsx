@@ -1,7 +1,7 @@
 /* eslint-disable jsx-a11y/no-static-element-interactions */
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 /* eslint-disable no-nested-ternary */
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   faCircleCheck,
   faCircleXmark,
@@ -31,7 +31,7 @@ const isSingleLine = (str: string | null | undefined): boolean => {
 };
 
 type DiffLine = {
-  type: typeof DIFF_TYPE[keyof typeof DIFF_TYPE];
+  type: (typeof DIFF_TYPE)[keyof typeof DIFF_TYPE];
   oldLine?: string;
   newLine?: string;
 };
@@ -56,44 +56,49 @@ const computeLineDiff = (oldText: string, newText: string): DiffLine[] => {
         type: DIFF_TYPE.ADDED,
         newLine: newLines[newIndex]
       });
-      newIndex++;
+      newIndex += 1;
     } else if (newIndex >= newLines.length) {
       result.push({
         type: DIFF_TYPE.DELETED,
         oldLine: oldLines[oldIndex]
       });
-      oldIndex++;
+      oldIndex += 1;
     } else if (oldLines[oldIndex] === newLines[newIndex]) {
       result.push({
         type: DIFF_TYPE.UNCHANGED,
         oldLine: oldLines[oldIndex],
         newLine: newLines[newIndex]
       });
-      oldIndex++;
-      newIndex++;
+      oldIndex += 1;
+      newIndex += 1;
     } else {
+      const currentOldIndex = oldIndex;
+      const currentNewIndex = newIndex;
+      const currentOldLine = oldLines[currentOldIndex];
+      const currentNewLine = newLines[currentNewIndex];
+
       const nextOldMatch = newLines.findIndex(
-        (line, idx) => idx >= newIndex && line === oldLines[oldIndex]
+        (line, idx) => idx >= currentNewIndex && line === currentOldLine
       );
       const nextNewMatch = oldLines.findIndex(
-        (line, idx) => idx >= oldIndex && line === newLines[newIndex]
+        (line, idx) => idx >= currentOldIndex && line === currentNewLine
       );
 
       if (nextOldMatch === -1 && nextNewMatch === -1) {
         result.push({
           type: DIFF_TYPE.MODIFIED,
-          oldLine: oldLines[oldIndex],
-          newLine: newLines[newIndex]
+          oldLine: currentOldLine,
+          newLine: currentNewLine
         });
-        oldIndex++;
-        newIndex++;
+        oldIndex += 1;
+        newIndex += 1;
       } else if (nextOldMatch !== -1 && (nextNewMatch === -1 || nextOldMatch < nextNewMatch)) {
         while (newIndex < nextOldMatch) {
           result.push({
             type: DIFF_TYPE.ADDED,
             newLine: newLines[newIndex]
           });
-          newIndex++;
+          newIndex += 1;
         }
       } else {
         while (oldIndex < nextNewMatch) {
@@ -101,7 +106,7 @@ const computeLineDiff = (oldText: string, newText: string): DiffLine[] => {
             type: DIFF_TYPE.DELETED,
             oldLine: oldLines[oldIndex]
           });
-          oldIndex++;
+          oldIndex += 1;
         }
       }
     }
@@ -199,7 +204,7 @@ const renderMultilineDiffForApproval = (
   isOldVersion: boolean
 ): JSX.Element => {
   const diffLines = computeLineDiff(oldText, newText);
-  
+
   // Find the first changed line index
   const firstChangedIndex = diffLines.findIndex((line) =>
     isOldVersion
@@ -208,7 +213,7 @@ const renderMultilineDiffForApproval = (
   );
 
   return (
-    <div className="font-mono text-sm whitespace-pre-wrap min-w-full break-words">
+    <div className="min-w-full font-mono text-sm break-words whitespace-pre-wrap">
       {diffLines.map((diffLine, lineIndex) => {
         const lineKey = `multiline-${lineIndex}-${diffLine.type}`;
         const isFirstChanged = lineIndex === firstChangedIndex;
@@ -219,7 +224,8 @@ const renderMultilineDiffForApproval = (
             return null; // Skip added lines in old version
           }
 
-          const isChanged = diffLine.type === DIFF_TYPE.DELETED || diffLine.type === DIFF_TYPE.MODIFIED;
+          const isChanged =
+            diffLine.type === DIFF_TYPE.DELETED || diffLine.type === DIFF_TYPE.MODIFIED;
           const lineClass = isChanged
             ? "flex min-w-full bg-red-500/50 rounded-xs text-red-300"
             : "flex min-w-full";
@@ -227,16 +233,18 @@ const renderMultilineDiffForApproval = (
           if (diffLine.type === DIFF_TYPE.MODIFIED && diffLine.oldLine) {
             const wordDiffs = computeWordDiff(diffLine.oldLine, diffLine.newLine || "");
             return (
-              <div key={lineKey} className={lineClass} data-first-change={isFirstChanged ? "true" : undefined}>
+              <div
+                key={lineKey}
+                className={lineClass}
+                data-first-change={isFirstChanged ? "true" : undefined}
+              >
                 <div className="w-4 shrink-0">-</div>
-                <div className="flex-1 min-w-0 break-words">
+                <div className="min-w-0 flex-1 break-words">
                   {wordDiffs.map((wordDiff, wordIdx) => {
                     if (wordDiff.type === DIFF_TYPE.ADDED) return null;
                     const wordKey = `${lineKey}-word-${wordIdx}`;
                     const wordClass =
-                      wordDiff.type === DIFF_TYPE.DELETED
-                        ? "bg-red-600/70 rounded px-0.5"
-                        : "";
+                      wordDiff.type === DIFF_TYPE.DELETED ? "bg-red-600/70 rounded px-0.5" : "";
                     return (
                       <span key={wordKey} className={wordClass}>
                         {wordDiff.text}
@@ -249,9 +257,13 @@ const renderMultilineDiffForApproval = (
           }
 
           return (
-            <div key={lineKey} className={lineClass} data-first-change={isFirstChanged ? "true" : undefined}>
+            <div
+              key={lineKey}
+              className={lineClass}
+              data-first-change={isFirstChanged ? "true" : undefined}
+            >
               <div className="w-4 shrink-0">{isChanged ? "-" : " "}</div>
-              <div className="flex-1 min-w-0 break-words">{diffLine.oldLine}</div>
+              <div className="min-w-0 flex-1 break-words">{diffLine.oldLine}</div>
             </div>
           );
         }
@@ -269,16 +281,18 @@ const renderMultilineDiffForApproval = (
         if (diffLine.type === DIFF_TYPE.MODIFIED && diffLine.newLine) {
           const wordDiffs = computeWordDiff(diffLine.oldLine || "", diffLine.newLine);
           return (
-            <div key={lineKey} className={lineClass} data-first-change={isFirstChanged ? "true" : undefined}>
+            <div
+              key={lineKey}
+              className={lineClass}
+              data-first-change={isFirstChanged ? "true" : undefined}
+            >
               <div className="w-4 shrink-0">+</div>
-              <div className="flex-1 min-w-0 break-words">
+              <div className="min-w-0 flex-1 break-words">
                 {wordDiffs.map((wordDiff, wordIdx) => {
                   if (wordDiff.type === DIFF_TYPE.DELETED) return null;
                   const wordKey = `${lineKey}-word-${wordIdx}`;
                   const wordClass =
-                    wordDiff.type === DIFF_TYPE.ADDED
-                      ? "bg-green-600/70 rounded px-0.5"
-                      : "";
+                    wordDiff.type === DIFF_TYPE.ADDED ? "bg-green-600/70 rounded px-0.5" : "";
                   return (
                     <span key={wordKey} className={wordClass}>
                       {wordDiff.text}
@@ -291,9 +305,13 @@ const renderMultilineDiffForApproval = (
         }
 
         return (
-          <div key={lineKey} className={lineClass} data-first-change={isFirstChanged ? "true" : undefined}>
+          <div
+            key={lineKey}
+            className={lineClass}
+            data-first-change={isFirstChanged ? "true" : undefined}
+          >
             <div className="w-4 shrink-0">{isChanged ? "+" : " "}</div>
-            <div className="flex-1 min-w-0 break-words">{diffLine.newLine}</div>
+            <div className="min-w-0 flex-1 break-words">{diffLine.newLine}</div>
           </div>
         );
       })}
@@ -356,7 +374,7 @@ export const SecretApprovalRequestChangeItem = ({
   useEffect(() => {
     const scrollToFirstChange = (container: HTMLDivElement | null) => {
       if (!container) return;
-      
+
       const firstChange = container.querySelector('[data-first-change="true"]') as HTMLElement;
       if (firstChange) {
         // Calculate the element's position relative to the container's scrollable area
@@ -364,12 +382,12 @@ export const SecretApprovalRequestChangeItem = ({
         const containerScrollTop = container.scrollTop;
         const containerHeight = container.clientHeight;
         const elementHeight = firstChange.offsetHeight;
-        
+
         // Check if element is visible in the container viewport
-        const isVisible = 
+        const isVisible =
           elementTop >= containerScrollTop &&
           elementTop + elementHeight <= containerScrollTop + containerHeight;
-        
+
         // If element is not visible, scroll the container (not the page)
         if (!isVisible) {
           // Scroll to center the element in the container
@@ -455,10 +473,10 @@ export const SecretApprovalRequestChangeItem = ({
                       />
                     </div>
                   ) : (() => {
-                    const oldValue = secretVersion?.secretValue ?? "";
-                    const newValue = newVersion?.secretValue ?? "";
-                    return oldValue !== newValue;
-                  })() ? (
+                      const oldValue = secretVersion?.secretValue ?? "";
+                      const newValue = newVersion?.secretValue ?? "";
+                      return oldValue !== newValue;
+                    })() ? (
                     (() => {
                       const oldValue = secretVersion?.secretValue ?? "";
                       const newValue = newVersion?.secretValue ?? "";
@@ -642,10 +660,10 @@ export const SecretApprovalRequestChangeItem = ({
                       />
                     </div>
                   ) : (() => {
-                    const oldValue = secretVersion?.secretValue ?? "";
-                    const newValue = newVersion?.secretValue ?? secretVersion?.secretValue ?? "";
-                    return oldValue !== newValue;
-                  })() ? (
+                      const oldValue = secretVersion?.secretValue ?? "";
+                      const newValue = newVersion?.secretValue ?? secretVersion?.secretValue ?? "";
+                      return oldValue !== newValue;
+                    })() ? (
                     (() => {
                       const oldValue = secretVersion?.secretValue ?? "";
                       const newValue = newVersion?.secretValue ?? secretVersion?.secretValue ?? "";
