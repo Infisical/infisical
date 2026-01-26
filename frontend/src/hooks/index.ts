@@ -9,3 +9,4 @@ export * from "./useResizableHeaderHeight";
 export { useSyntaxHighlight } from "./useSyntaxHighlight";
 export { useTimedReset } from "./useTimedReset";
 export { useToggle } from "./useToggle";
+export { useRenderNewVersionDiffLine } from "./useRenderNewVersionDiffLine";

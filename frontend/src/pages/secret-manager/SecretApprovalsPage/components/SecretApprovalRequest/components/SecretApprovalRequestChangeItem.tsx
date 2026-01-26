@@ -16,6 +16,7 @@ import { twMerge } from "tailwind-merge";
 
 import { SecretInput, Tag, Tooltip } from "@app/components/v2";
 import { CommitType, SecretV3Raw, TSecretApprovalSecChange, WsTag } from "@app/hooks/api/types";
+import { useRenderNewVersionDiffLine } from "@app/hooks/useRenderNewVersionDiffLine";
 
 // ===== MULTILINE DIFF FUNCTIONS =====
 const DIFF_TYPE = {
@@ -286,7 +287,14 @@ const renderSingleLineDiffForApproval = (
 const renderMultilineDiffForApproval = (
   oldText: string,
   newText: string,
-  isOldVersion: boolean
+  isOldVersion: boolean,
+  renderNewVersionDiffLine?: (params: {
+    diffLine: DiffLine;
+    lineKey: string;
+    isFirstChanged: boolean;
+    lineClass: string;
+    computeWordDiff: (oldText: string, newText: string) => WordDiff[] | null;
+  }) => JSX.Element | null
 ): JSX.Element => {
   const diffLines = computeLineDiff(oldText, newText);
 
@@ -312,7 +320,7 @@ const renderMultilineDiffForApproval = (
           const isChanged =
             diffLine.type === DIFF_TYPE.DELETED || diffLine.type === DIFF_TYPE.MODIFIED;
           const lineClass = isChanged
-            ? "flex min-w-full bg-red-500/50 rounded-xs text-red-300"
+            ? "flex min-w-full bg-red-500/70 rounded-xs text-red-300"
             : "flex min-w-full";
 
           if (diffLine.type === DIFF_TYPE.MODIFIED && diffLine.oldLine) {
@@ -373,60 +381,21 @@ const renderMultilineDiffForApproval = (
 
         const isChanged = diffLine.type === DIFF_TYPE.ADDED || diffLine.type === DIFF_TYPE.MODIFIED;
         const lineClass = isChanged
-          ? "flex min-w-full bg-green-500/50 rounded-xs text-green-300"
+          ? "flex min-w-full bg-green-500/70 rounded-xs text-green-300"
           : "flex min-w-full";
 
-        // ADDED lines should always be shown as a single block (no word-by-word highlighting)
-        if (diffLine.type === DIFF_TYPE.ADDED && diffLine.newLine) {
-          return (
-            <div
-              key={lineKey}
-              className={lineClass}
-              data-first-change={isFirstChanged ? "true" : undefined}
-            >
-              <div className="w-4 shrink-0">+</div>
-              <div className="min-w-0 flex-1 break-words">{diffLine.newLine}</div>
-            </div>
-          );
-        }
-
-        if (diffLine.type === DIFF_TYPE.MODIFIED && diffLine.newLine) {
-          const wordDiffs = computeWordDiff(diffLine.oldLine || "", diffLine.newLine);
-          // If no common words, just show the line with line-level background (no extra inner highlight)
-          if (wordDiffs === null) {
-            return (
-              <div
-                key={lineKey}
-                className={lineClass}
-                data-first-change={isFirstChanged ? "true" : undefined}
-              >
-                <div className="w-4 shrink-0">+</div>
-                <div className="min-w-0 flex-1 break-words">{diffLine.newLine}</div>
-              </div>
-            );
+        // Use the hook to render new version diff lines
+        if (renderNewVersionDiffLine) {
+          const rendered = renderNewVersionDiffLine({
+            diffLine,
+            lineKey,
+            isFirstChanged,
+            lineClass,
+            computeWordDiff
+          });
+          if (rendered !== null) {
+            return rendered;
           }
-          return (
-            <div
-              key={lineKey}
-              className={lineClass}
-              data-first-change={isFirstChanged ? "true" : undefined}
-            >
-              <div className="w-4 shrink-0">+</div>
-              <div className="min-w-0 flex-1 break-words">
-                {wordDiffs.map((wordDiff, wordIdx) => {
-                  if (wordDiff.type === DIFF_TYPE.DELETED) return null;
-                  const wordKey = `${lineKey}-word-${wordIdx}`;
-                  const wordClass =
-                    wordDiff.type === DIFF_TYPE.ADDED ? "bg-green-600/70 rounded px-0.5" : "";
-                  return (
-                    <span key={wordKey} className={wordClass}>
-                      {wordDiff.text}
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-          );
         }
 
         return (
@@ -477,6 +446,214 @@ const generateConflictText = (op: CommitType) => {
   return null;
 };
 
+// Helper function to render old secret value
+const renderOldSecretValue = ({
+  isRotatedSecret,
+  isValueHidden,
+  value,
+  isVisible,
+  onToggleVisibility,
+  hasValueChanges,
+  isBothSingleLine,
+  oldValue,
+  newValue,
+  oldDiffContainerRef,
+  renderNewVersionDiffLine
+}: {
+  isRotatedSecret?: boolean;
+  isValueHidden?: boolean;
+  value?: string;
+  isVisible: boolean;
+  onToggleVisibility: () => void;
+  hasValueChanges: boolean;
+  isBothSingleLine: boolean;
+  oldValue: string;
+  newValue: string;
+  oldDiffContainerRef: React.RefObject<HTMLDivElement>;
+  renderNewVersionDiffLine: (params: {
+    diffLine: DiffLine;
+    lineKey: string;
+    isFirstChanged: boolean;
+    lineClass: string;
+    computeWordDiff: (oldText: string, newText: string) => WordDiff[] | null;
+  }) => JSX.Element | null;
+}) => {
+  if (isRotatedSecret) {
+    return (
+      <span className="text-mineshaft-400">Rotated Secret value will not be affected</span>
+    );
+  }
+
+  if (isValueHidden) {
+    return (
+      <div className="relative">
+        <div className="absolute top-1/2 left-1 z-50 -translate-y-1/2">
+          <Tooltip position="right" content="You do not have access to view the old secret value.">
+            <FontAwesomeIcon className="pl-2 text-mineshaft-300" size="sm" icon={faEyeSlash} />
+          </Tooltip>
+        </div>
+        <SecretInput
+          isReadOnly
+          isVisible={isVisible}
+          valueAlwaysHidden={isValueHidden}
+          value={value}
+          containerClassName="border border-mineshaft-600 bg-bunker-700 py-1.5 text-bunker-300 hover:border-primary-400/50 pr-2 pl-8"
+        />
+      </div>
+    );
+  }
+
+  if (hasValueChanges) {
+    if (isBothSingleLine) {
+      return (
+        <div className="relative rounded-lg border border-mineshaft-600 p-2" style={{ backgroundColor: "#120808" }}>
+          {renderSingleLineDiffForApproval(oldValue, newValue, true)}
+        </div>
+      );
+    }
+
+    return (
+      <div
+        ref={oldDiffContainerRef}
+        className="relative max-h-96 overflow-x-auto overflow-y-auto rounded-lg border border-mineshaft-600 p-2 thin-scrollbar"
+        style={{ backgroundColor: "#120808" }}
+      >
+        <div className="min-w-max">
+          {renderMultilineDiffForApproval(oldValue, newValue, true, renderNewVersionDiffLine)}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <SecretInput
+        isReadOnly
+        isVisible={isVisible}
+        valueAlwaysHidden={isValueHidden}
+        value={value}
+        containerClassName={twMerge(
+          "border border-mineshaft-600 bg-bunker-700 py-1.5 text-bunker-300 hover:border-primary-400/50",
+          isValueHidden ? "pr-2 pl-8" : "px-2"
+        )}
+      />
+      {!isValueHidden && (
+        <div className="absolute top-1 right-1" onClick={onToggleVisibility}>
+          <FontAwesomeIcon
+            icon={isVisible ? faEyeSlash : faEye}
+            className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Helper function to render new secret value
+const renderNewSecretValue = ({
+  isRotatedSecret,
+  isValueHidden,
+  value,
+  fallbackValue,
+  isVisible,
+  onToggleVisibility,
+  hasValueChanges,
+  isBothSingleLine,
+  oldValue,
+  newValue,
+  newDiffContainerRef,
+  renderNewVersionDiffLine
+}: {
+  isRotatedSecret?: boolean;
+  isValueHidden?: boolean;
+  value?: string;
+  fallbackValue?: string;
+  isVisible: boolean;
+  onToggleVisibility: () => void;
+  hasValueChanges: boolean;
+  isBothSingleLine: boolean;
+  oldValue: string;
+  newValue: string;
+  newDiffContainerRef: React.RefObject<HTMLDivElement>;
+  renderNewVersionDiffLine: (params: {
+    diffLine: DiffLine;
+    lineKey: string;
+    isFirstChanged: boolean;
+    lineClass: string;
+    computeWordDiff: (oldText: string, newText: string) => WordDiff[] | null;
+  }) => JSX.Element | null;
+}) => {
+  if (isRotatedSecret) {
+    return (
+      <span className="text-mineshaft-400">Rotated Secret value will not be affected</span>
+    );
+  }
+
+  if (isValueHidden) {
+    return (
+      <div className="relative">
+        <div className="absolute top-1/2 left-1 z-50 -translate-y-1/2">
+          <Tooltip position="right" content="You do not have access to view the new secret value.">
+            <FontAwesomeIcon className="pl-2 text-mineshaft-300" size="sm" icon={faEyeSlash} />
+          </Tooltip>
+        </div>
+        <SecretInput
+          isReadOnly
+          valueAlwaysHidden={isValueHidden}
+          isVisible={isVisible}
+          value={value ?? fallbackValue}
+          containerClassName="border border-mineshaft-600 bg-bunker-700 py-1.5 text-bunker-300 hover:border-primary-400/50 pr-2 pl-8"
+        />
+      </div>
+    );
+  }
+
+  if (hasValueChanges) {
+    if (isBothSingleLine) {
+      return (
+        <div className="relative rounded-lg border border-mineshaft-600 p-2" style={{ backgroundColor: "#081208" }}>
+          {renderSingleLineDiffForApproval(oldValue, newValue, false)}
+        </div>
+      );
+    }
+
+    return (
+      <div
+        ref={newDiffContainerRef}
+        className="relative max-h-96 overflow-x-auto overflow-y-auto rounded-lg border border-mineshaft-600 p-2 thin-scrollbar"
+        style={{ backgroundColor: "#081208" }}
+      >
+        <div className="min-w-max">
+          {renderMultilineDiffForApproval(oldValue, newValue, false, renderNewVersionDiffLine)}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <SecretInput
+        isReadOnly
+        valueAlwaysHidden={isValueHidden}
+        isVisible={isVisible}
+        value={value ?? fallbackValue}
+        containerClassName={twMerge(
+          "border border-mineshaft-600 bg-bunker-700 py-1.5 text-bunker-300 hover:border-primary-400/50",
+          isValueHidden ? "pr-2 pl-8" : "px-2"
+        )}
+      />
+      {!isValueHidden && (
+        <div className="absolute top-1 right-1" onClick={onToggleVisibility}>
+          <FontAwesomeIcon
+            icon={isVisible ? faEyeSlash : faEye}
+            className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const SecretApprovalRequestChangeItem = ({
   op,
   secretVersion,
@@ -494,6 +671,16 @@ export const SecretApprovalRequestChangeItem = ({
   const [isNewSecretValueVisible, setIsNewSecretValueVisible] = useState(false);
   const oldDiffContainerRef = useRef<HTMLDivElement>(null);
   const newDiffContainerRef = useRef<HTMLDivElement>(null);
+  const renderNewVersionDiffLine = useRenderNewVersionDiffLine();
+
+  // Compute conditions for secret value comparisons
+  const oldSecretValue = secretVersion?.secretValue ?? "";
+  const newSecretValue = newVersion?.secretValue ?? "";
+  const newSecretValueForComparison = newVersion?.secretValue ?? secretVersion?.secretValue ?? "";
+  const hasValueChanges = !areValuesEqual(oldSecretValue, newSecretValue);
+  const hasValueChangesForNew = !areValuesEqual(oldSecretValue, newSecretValueForComparison);
+  const isBothSingleLine = isSingleLine(oldSecretValue) && isSingleLine(newSecretValue);
+  const isBothSingleLineForNew = isSingleLine(oldSecretValue) && isSingleLine(newSecretValueForComparison);
 
   // Scroll to first change when diff is rendered
   useEffect(() => {
@@ -571,92 +758,19 @@ export const SecretApprovalRequestChangeItem = ({
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Value</div>
                 <div className="text-sm">
-                  {newVersion?.isRotatedSecret ? (
-                    <span className="text-mineshaft-400">
-                      Rotated Secret value will not be affected
-                    </span>
-                  ) : secretVersion?.secretValueHidden ? (
-                    <div className="relative">
-                      <div className="absolute top-1/2 left-1 z-50 -translate-y-1/2">
-                        <Tooltip
-                          position="right"
-                          content="You do not have access to view the old secret value."
-                        >
-                          <FontAwesomeIcon
-                            className="pl-2 text-mineshaft-300"
-                            size="sm"
-                            icon={faEyeSlash}
-                          />
-                        </Tooltip>
-                      </div>
-                      <SecretInput
-                        isReadOnly
-                        isVisible={isOldSecretValueVisible}
-                        valueAlwaysHidden={secretVersion?.secretValueHidden}
-                        value={secretVersion?.secretValue}
-                        containerClassName="border border-mineshaft-600 bg-bunker-700 py-1.5 text-bunker-300 hover:border-primary-400/50 pr-2 pl-8"
-                      />
-                    </div>
-                  ) : (() => {
-                      const oldValue = secretVersion?.secretValue ?? "";
-                      const newValue = newVersion?.secretValue ?? "";
-                      return !areValuesEqual(oldValue, newValue);
-                    })() ? (
-                    (() => {
-                      const oldValue = secretVersion?.secretValue ?? "";
-                      const newValue = newVersion?.secretValue ?? "";
-                      return isSingleLine(oldValue) && isSingleLine(newValue);
-                    })() ? (
-                      <div
-                        className="relative rounded border border-mineshaft-600 p-2"
-                        style={{ backgroundColor: "#120808" }}
-                      >
-                        {renderSingleLineDiffForApproval(
-                          secretVersion?.secretValue ?? "",
-                          newVersion?.secretValue ?? "",
-                          true
-                        )}
-                      </div>
-                    ) : (
-                      <div
-                        ref={oldDiffContainerRef}
-                        className="relative max-h-96 overflow-x-auto overflow-y-auto rounded border border-mineshaft-600 p-2"
-                        style={{ backgroundColor: "#120808" }}
-                      >
-                        <div className="min-w-max">
-                          {renderMultilineDiffForApproval(
-                            secretVersion?.secretValue ?? "",
-                            newVersion?.secretValue ?? "",
-                            true
-                          )}
-                        </div>
-                      </div>
-                    )
-                  ) : (
-                    <div className="relative">
-                      <SecretInput
-                        isReadOnly
-                        isVisible={isOldSecretValueVisible}
-                        valueAlwaysHidden={secretVersion?.secretValueHidden}
-                        value={secretVersion?.secretValue}
-                        containerClassName={twMerge(
-                          "border border-mineshaft-600 bg-bunker-700 py-1.5 text-bunker-300 hover:border-primary-400/50",
-                          secretVersion?.secretValueHidden ? "pr-2 pl-8" : "px-2"
-                        )}
-                      />
-                      {!secretVersion?.secretValueHidden && (
-                        <div
-                          className="absolute top-1 right-1"
-                          onClick={() => setIsOldSecretValueVisible(!isOldSecretValueVisible)}
-                        >
-                          <FontAwesomeIcon
-                            icon={isOldSecretValueVisible ? faEyeSlash : faEye}
-                            className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {renderOldSecretValue({
+                    isRotatedSecret: newVersion?.isRotatedSecret,
+                    isValueHidden: secretVersion?.secretValueHidden,
+                    value: secretVersion?.secretValue,
+                    isVisible: isOldSecretValueVisible,
+                    onToggleVisibility: () => setIsOldSecretValueVisible(!isOldSecretValueVisible),
+                    hasValueChanges,
+                    isBothSingleLine,
+                    oldValue: oldSecretValue,
+                    newValue: newSecretValue,
+                    oldDiffContainerRef,
+                    renderNewVersionDiffLine
+                  })}
                 </div>
               </div>
               <div className="mb-2">
@@ -758,92 +872,20 @@ export const SecretApprovalRequestChangeItem = ({
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Value</div>
                 <div className="text-sm">
-                  {newVersion?.isRotatedSecret ? (
-                    <span className="text-mineshaft-400">
-                      Rotated Secret value will not be affected
-                    </span>
-                  ) : newVersion?.secretValueHidden ? (
-                    <div className="relative">
-                      <div className="absolute top-1/2 left-1 z-50 -translate-y-1/2">
-                        <Tooltip
-                          position="right"
-                          content="You do not have access to view the new secret value."
-                        >
-                          <FontAwesomeIcon
-                            className="pl-2 text-mineshaft-300"
-                            size="sm"
-                            icon={faEyeSlash}
-                          />
-                        </Tooltip>
-                      </div>
-                      <SecretInput
-                        isReadOnly
-                        valueAlwaysHidden={newVersion?.secretValueHidden}
-                        isVisible={isNewSecretValueVisible}
-                        value={newVersion?.secretValue ?? secretVersion?.secretValue}
-                        containerClassName="border border-mineshaft-600 bg-bunker-700 py-1.5 text-bunker-300 hover:border-primary-400/50 pr-2 pl-8"
-                      />
-                    </div>
-                  ) : (() => {
-                      const oldValue = secretVersion?.secretValue ?? "";
-                      const newValue = newVersion?.secretValue ?? secretVersion?.secretValue ?? "";
-                      return !areValuesEqual(oldValue, newValue);
-                    })() ? (
-                    (() => {
-                      const oldValue = secretVersion?.secretValue ?? "";
-                      const newValue = newVersion?.secretValue ?? secretVersion?.secretValue ?? "";
-                      return isSingleLine(oldValue) && isSingleLine(newValue);
-                    })() ? (
-                      <div
-                        className="relative rounded border border-mineshaft-600 p-2"
-                        style={{ backgroundColor: "#081208" }}
-                      >
-                        {renderSingleLineDiffForApproval(
-                          secretVersion?.secretValue ?? "",
-                          newVersion?.secretValue ?? secretVersion?.secretValue ?? "",
-                          false
-                        )}
-                      </div>
-                    ) : (
-                      <div
-                        ref={newDiffContainerRef}
-                        className="relative max-h-96 overflow-x-auto overflow-y-auto rounded border border-mineshaft-600 p-2"
-                        style={{ backgroundColor: "#081208" }}
-                      >
-                        <div className="min-w-max">
-                          {renderMultilineDiffForApproval(
-                            secretVersion?.secretValue ?? "",
-                            newVersion?.secretValue ?? secretVersion?.secretValue ?? "",
-                            false
-                          )}
-                        </div>
-                      </div>
-                    )
-                  ) : (
-                    <div className="relative">
-                      <SecretInput
-                        isReadOnly
-                        valueAlwaysHidden={newVersion?.secretValueHidden}
-                        isVisible={isNewSecretValueVisible}
-                        value={newVersion?.secretValue ?? secretVersion?.secretValue}
-                        containerClassName={twMerge(
-                          "border border-mineshaft-600 bg-bunker-700 py-1.5 text-bunker-300 hover:border-primary-400/50",
-                          newVersion?.secretValueHidden ? "pr-2 pl-8" : "px-2"
-                        )}
-                      />
-                      {!newVersion?.secretValueHidden && (
-                        <div
-                          className="absolute top-1 right-1"
-                          onClick={() => setIsNewSecretValueVisible(!isNewSecretValueVisible)}
-                        >
-                          <FontAwesomeIcon
-                            icon={isNewSecretValueVisible ? faEyeSlash : faEye}
-                            className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {renderNewSecretValue({
+                    isRotatedSecret: newVersion?.isRotatedSecret,
+                    isValueHidden: newVersion?.secretValueHidden,
+                    value: newVersion?.secretValue,
+                    fallbackValue: secretVersion?.secretValue,
+                    isVisible: isNewSecretValueVisible,
+                    onToggleVisibility: () => setIsNewSecretValueVisible(!isNewSecretValueVisible),
+                    hasValueChanges: hasValueChangesForNew,
+                    isBothSingleLine: isBothSingleLineForNew,
+                    oldValue: oldSecretValue,
+                    newValue: newSecretValueForComparison,
+                    newDiffContainerRef,
+                    renderNewVersionDiffLine
+                  })}
                 </div>
               </div>
               <div className="mb-2">
