@@ -93,6 +93,7 @@ const createSchema = z
         value: z.number().min(1, "Duration must be at least 1").nullable().optional(),
         unit: z.enum(["days", "months", "years"]).optional()
       })
+      .nullable()
       .optional()
       .refine(
         (data) => {
