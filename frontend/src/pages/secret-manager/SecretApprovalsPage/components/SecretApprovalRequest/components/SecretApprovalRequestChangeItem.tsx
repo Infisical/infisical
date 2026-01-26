@@ -128,36 +128,41 @@ const computeWordDiff = (oldText: string, newText: string): WordDiff[] => {
   while (oldIdx < oldWords.length || newIdx < newWords.length) {
     if (oldIdx >= oldWords.length) {
       result.push({ type: DIFF_TYPE.ADDED, text: newWords[newIdx] });
-      newIdx++;
+      newIdx += 1;
     } else if (newIdx >= newWords.length) {
       result.push({ type: DIFF_TYPE.DELETED, text: oldWords[oldIdx] });
-      oldIdx++;
+      oldIdx += 1;
     } else if (oldWords[oldIdx] === newWords[newIdx]) {
       result.push({ type: DIFF_TYPE.UNCHANGED, text: oldWords[oldIdx] });
-      oldIdx++;
-      newIdx++;
+      oldIdx += 1;
+      newIdx += 1;
     } else {
+      const currentOldIdx = oldIdx;
+      const currentNewIdx = newIdx;
+      const currentOldWord = oldWords[currentOldIdx];
+      const currentNewWord = newWords[currentNewIdx];
+
       const nextOldMatch = newWords.findIndex(
-        (word, idx) => idx >= newIdx && word === oldWords[oldIdx]
+        (word, idx) => idx >= currentNewIdx && word === currentOldWord
       );
       const nextNewMatch = oldWords.findIndex(
-        (word, idx) => idx >= oldIdx && word === newWords[newIdx]
+        (word, idx) => idx >= currentOldIdx && word === currentNewWord
       );
 
       if (nextOldMatch === -1 && nextNewMatch === -1) {
-        result.push({ type: DIFF_TYPE.DELETED, text: oldWords[oldIdx] });
-        result.push({ type: DIFF_TYPE.ADDED, text: newWords[newIdx] });
-        oldIdx++;
-        newIdx++;
+        result.push({ type: DIFF_TYPE.DELETED, text: currentOldWord });
+        result.push({ type: DIFF_TYPE.ADDED, text: currentNewWord });
+        oldIdx += 1;
+        newIdx += 1;
       } else if (nextOldMatch !== -1 && (nextNewMatch === -1 || nextOldMatch < nextNewMatch)) {
         while (newIdx < nextOldMatch) {
           result.push({ type: DIFF_TYPE.ADDED, text: newWords[newIdx] });
-          newIdx++;
+          newIdx += 1;
         }
       } else {
         while (oldIdx < nextNewMatch) {
           result.push({ type: DIFF_TYPE.DELETED, text: oldWords[oldIdx] });
-          oldIdx++;
+          oldIdx += 1;
         }
       }
     }
