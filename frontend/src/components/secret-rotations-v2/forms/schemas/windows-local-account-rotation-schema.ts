@@ -5,7 +5,11 @@ import { PasswordRequirementsSchema } from "@app/components/secret-rotations-v2/
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { WindowsLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/windows-local-account-rotation";
 
-const WINDOWS_USERNAME_REGEX = /^[a-zA-Z0-9_.-]+$/;
+// Windows local account username validation:
+// - Must start with alphanumeric, underscore, or hyphen (not a period)
+// - Can contain alphanumeric, underscore, hyphen, and period
+// - Max 20 characters for local accounts
+const WINDOWS_USERNAME_REGEX = /^[a-zA-Z0-9_-][a-zA-Z0-9_.-]*$/;
 
 export const WindowsLocalAccountRotationSchema = z
   .object({
@@ -15,10 +19,10 @@ export const WindowsLocalAccountRotationSchema = z
         .string()
         .trim()
         .min(1, "Username required")
-        .max(256, "Username too long")
+        .max(20, "Username too long - Windows local accounts are limited to 20 characters")
         .refine(
           (val) => WINDOWS_USERNAME_REGEX.test(val),
-          "Username can only contain alphanumeric characters, underscores, hyphens, and periods"
+          "Username must start with a letter, number, underscore, or hyphen"
         ),
       passwordRequirements: PasswordRequirementsSchema.optional(),
       rotationMethod: z.nativeEnum(WindowsLocalAccountRotationMethod).optional()

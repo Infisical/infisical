@@ -25,17 +25,21 @@ export const WindowsLocalAccountRotationGeneratedCredentialsSchema = z
   .min(1)
   .max(2);
 
-const WINDOWS_USERNAME_REGEX = /^[a-zA-Z0-9_.-]+$/;
+// Windows local account username validation:
+// - Must start with alphanumeric, underscore, or hyphen (not a period)
+// - Can contain alphanumeric, underscore, hyphen, and period
+// - Max 20 characters for local accounts
+const WINDOWS_USERNAME_REGEX = /^[a-zA-Z0-9_-][a-zA-Z0-9_.-]*$/;
 
 const WindowsLocalAccountRotationParametersSchema = z.object({
   username: z
     .string()
     .trim()
     .min(1, "Username required")
-    .max(256, "Username too long")
+    .max(20, "Username too long - Windows local accounts are limited to 20 characters")
     .refine(
       (val) => WINDOWS_USERNAME_REGEX.test(val),
-      "Username can only contain alphanumeric characters, underscores, hyphens, and periods"
+      "Username must start with a letter, number, underscore, or hyphen, and can only contain alphanumeric characters, underscores, hyphens, and periods"
     )
     .describe(SecretRotations.PARAMETERS.WINDOWS_LOCAL_ACCOUNT.username),
   passwordRequirements: PasswordRequirementsSchema.optional(),

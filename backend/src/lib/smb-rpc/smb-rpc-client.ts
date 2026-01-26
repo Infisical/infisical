@@ -161,12 +161,13 @@ const escapePasswordForRpc = (password: string): string => {
 };
 
 /**
- * Windows username validation regex
- * Allows alphanumeric, underscore, hyphen, and period
- * Windows usernames cannot contain: " / \ [ ] : ; | = , + * ? < >
+ * Windows local account username validation:
+ * - Must start with alphanumeric, underscore, or hyphen (not a period)
+ * - Can contain alphanumeric, underscore, hyphen, and period
+ * - Max 20 characters for local accounts
  */
-const WINDOWS_USERNAME_REGEX = /^[a-zA-Z0-9_.-]+$/;
-const MAX_USERNAME_LENGTH = 256;
+const WINDOWS_USERNAME_REGEX = /^[a-zA-Z0-9_-][a-zA-Z0-9_.-]*$/;
+const MAX_USERNAME_LENGTH = 20;
 
 /**
  * Validate that a username contains only safe characters to prevent command injection
