@@ -46,7 +46,8 @@ export const calculateRenewalThreshold = (
  * Priority order:
  * 1. Request TTL (user explicitly passed)
  * 2. Profile's defaultTtlDays (validates against policy max)
- * 3. Flow-specific default
+ * 3. Flow-specific default (for ACME, EST, etc.)
+ * 4. Error - throws if no TTL source is available
  *
  * @param requestTtl - TTL from the certificate request
  * @param profileDefaultTtlDays - Profile's default TTL in days
@@ -54,6 +55,7 @@ export const calculateRenewalThreshold = (
  * @param flowDefaultTtl - Default TTL for the enrollment flow (e.g., "47d" for ACME, "90d" for EST)
  * @returns The resolved TTL string
  * @throws BadRequestError if profile default TTL exceeds policy max validity
+ * @throws BadRequestError if no TTL source is available (for API flows)
  */
 export const resolveEffectiveTtl = ({
   requestTtl,
@@ -87,6 +89,13 @@ export const resolveEffectiveTtl = ({
     return `${profileDefaultTtlDays}d`;
   }
 
-  // Priority 3: Flow default
-  return flowDefaultTtl;
+  // Priority 3: Flow default (for ACME, EST, etc.)
+  if (flowDefaultTtl) {
+    return flowDefaultTtl;
+  }
+
+  // No TTL source available - throw error for API flows
+  throw new BadRequestError({
+    message: "TTL is required. Either pass a TTL in the request or set a default TTL on the certificate profile."
+  });
 };
