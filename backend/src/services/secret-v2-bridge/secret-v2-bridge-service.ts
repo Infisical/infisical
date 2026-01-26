@@ -2987,7 +2987,7 @@ export const secretV2BridgeServiceFactory = ({
         actor,
         events: [
           {
-            type: ProjectEvents.SecretImportMutations,
+            type: ProjectEvents.SecretImportMutation,
             projectId,
             secretPath: sourceFolder.path,
             environment: sourceFolder.environment.slug
@@ -3007,7 +3007,7 @@ export const secretV2BridgeServiceFactory = ({
         actor,
         events: [
           {
-            type: ProjectEvents.SecretImportMutations,
+            type: ProjectEvents.SecretImportMutation,
             projectId,
             secretPath: sourceFolder.path,
             environment: sourceFolder.environment.slug

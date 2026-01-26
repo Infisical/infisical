@@ -5,7 +5,7 @@ export enum ProjectEvents {
   SecretCreate = "secret:create",
   SecretUpdate = "secret:update",
   SecretDelete = "secret:delete",
-  SecretImportMutations = "secret:import-mutations"
+  SecretImportMutation = "secret:import-mutation"
 }
 
 // Base fields for all secret mutations
@@ -35,7 +35,7 @@ interface SecretDeletedPayload extends SecretMutationBase {
 
 // Payload for import mutation - NO secretKey
 interface SecretImportMutationPayload extends SecretMutationBase {
-  type: ProjectEvents.SecretImportMutations;
+  type: ProjectEvents.SecretImportMutation;
 }
 
 // Discriminated union of all mutation payloads
@@ -46,7 +46,7 @@ export type TProjectEventPayload =
   | SecretImportMutationPayload;
 
 // Subscriber callback type
-export type TProjectEventSubscriber = (payload: TProjectEventPayload) => void | Promise<void>;
+export type TProjectEventSubscriber = (payload: TProjectEventPayload) => Promise<void>;
 
 // Unsubscribe function type
 export type TProjectEventUnsubscribe = () => void;

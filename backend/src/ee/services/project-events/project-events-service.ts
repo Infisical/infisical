@@ -14,15 +14,10 @@ export const projectEventsServiceFactory = ({ eventBus }: TProjectEventsServiceF
   };
 
   const subscribe = (callback: TProjectEventSubscriber): TProjectEventUnsubscribe => {
-    return eventBus.subscribe(EventBusServiceEvents.ProjectEvents, (event) => {
+    return eventBus.subscribe(EventBusServiceEvents.ProjectEvents, async (event) => {
       try {
         const payload = event.payload as TProjectEventPayload;
-        const result = callback(payload);
-        if (result instanceof Promise) {
-          result.catch((error) => {
-            logger.error(error, "Error in project event subscriber");
-          });
-        }
+        await callback(payload);
       } catch (error) {
         logger.error(error, "Error in project event subscriber");
       }

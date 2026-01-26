@@ -36,7 +36,7 @@ const MutationTypeToAction: Record<ProjectEvents, ProjectPermissionSecretEventAc
   [ProjectEvents.SecretCreate]: ProjectPermissionSecretEventActions.SubscribeCreated,
   [ProjectEvents.SecretUpdate]: ProjectPermissionSecretEventActions.SubscribeUpdated,
   [ProjectEvents.SecretDelete]: ProjectPermissionSecretEventActions.SubscribeDeleted,
-  [ProjectEvents.SecretImportMutations]: ProjectPermissionSecretEventActions.SubscribeImportMutations
+  [ProjectEvents.SecretImportMutation]: ProjectPermissionSecretEventActions.SubscribeImportMutations
 };
 
 const getBusEventToSubject = (type: ProjectEvents) => {
@@ -45,7 +45,7 @@ const getBusEventToSubject = (type: ProjectEvents) => {
       ProjectEvents.SecretCreate,
       ProjectEvents.SecretUpdate,
       ProjectEvents.SecretDelete,
-      ProjectEvents.SecretImportMutations
+      ProjectEvents.SecretImportMutation
     ].includes(type)
   ) {
     return ProjectPermissionSub.SecretEvents;
@@ -345,7 +345,7 @@ export const projectEventsSSEServiceFactory = ({
     clients.set(id, entry);
 
     // Subscribe to secret mutations and filter for this client
-    const unsubscribe = projectEventsService.subscribe((payload) => {
+    const unsubscribe = projectEventsService.subscribe(async (payload) => {
       const currentEntry = clients.get(id);
       if (!currentEntry) return;
 
@@ -361,7 +361,7 @@ export const projectEventsSSEServiceFactory = ({
         projectType: ProjectType.SecretManager,
         data: { eventType: payload.type, payload: {} }
       };
-      if (payload.type === ProjectEvents.SecretImportMutations) {
+      if (payload.type === ProjectEvents.SecretImportMutation) {
         payloadFormattedData.data.payload = {
           environment: payload.environment,
           secretPath: payload.secretPath
