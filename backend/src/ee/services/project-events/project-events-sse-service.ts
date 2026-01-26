@@ -26,7 +26,7 @@ import { ProjectEvents, TProjectEventPayload } from "./project-events-types";
 
 const PERMISSION_REFRESH_INTERVAL = 60 * 1000; // 60 seconds
 const HEARTBEAT_INTERVAL = 60 * 1000; // 60 seconds
-const PING_INTERVAL = 15 * 1000; // 60 seconds
+const PING_INTERVAL = 15 * 1000; // 15 seconds
 const MAX_CONNECTIONS_PER_PROJECT = 100;
 const CONNECTION_TTL_SECONDS = KeyStoreTtls.ProjectSSEConnectionTtlSeconds;
 

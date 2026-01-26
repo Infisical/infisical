@@ -1001,35 +1001,39 @@ export const secretApprovalRequestServiceFactory = ({
     }
 
     const { secrets } = mergeStatus;
-    const events = secrets.created
-      .map((el) => ({
+    const events: TProjectEventPayload[] = [];
+    if (secrets.created.length > 0) {
+      events.push({
         type: ProjectEvents.SecretCreate,
         projectId,
         environment: folder.environmentSlug,
         secretPath: folder.path,
         // @ts-expect-error - not present on V1 secrets
-        secretKey: el.key as string
-      }))
-      .concat(
-        secrets.updated.map((el) => ({
-          type: ProjectEvents.SecretUpdate,
-          projectId,
-          environment: folder.environmentSlug,
-          secretPath: folder.path,
-          // @ts-expect-error - not present on V1 secrets
-          secretKey: el.key as string
-        }))
-      )
-      .concat(
-        secrets.deleted.map((el) => ({
-          type: ProjectEvents.SecretDelete,
-          projectId,
-          environment: folder.environmentSlug,
-          secretPath: folder.path,
-          // @ts-expect-error - not present on V1 secrets
-          secretKey: el.key as string
-        }))
-      ) as TProjectEventPayload[];
+        secretKeys: secrets.created.map((el) => el.key as string)
+      });
+    }
+
+    if (secrets.updated.length > 0) {
+      events.push({
+        type: ProjectEvents.SecretUpdate,
+        projectId,
+        environment: folder.environmentSlug,
+        secretPath: folder.path,
+        // @ts-expect-error - not present on V1 secrets
+        secretKeys: secrets.updated.map((el) => el.key as string)
+      });
+    }
+
+    if (secrets.deleted.length > 0) {
+      events.push({
+        type: ProjectEvents.SecretDelete,
+        projectId,
+        environment: folder.environmentSlug,
+        secretPath: folder.path,
+        // @ts-expect-error - not present on V1 secrets
+        secretKeys: secrets.deleted.map((el) => el.key as string)
+      });
+    }
 
     await secretQueueService.syncSecrets({
       projectId,
