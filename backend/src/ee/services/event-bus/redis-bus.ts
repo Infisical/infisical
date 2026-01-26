@@ -27,7 +27,10 @@ export const createRedisBus = (redis: Redis | Cluster, topic: EventBusTopicName)
     });
 
     subscriber.on("message", (channel: string, message: string) => {
-      if (channel !== topic || !messageHandler) return;
+      if (channel !== topic || !messageHandler) {
+        logger.info("Received emtpy channel or message in event bus");
+        return;
+      }
 
       try {
         const validated = EventBusSchema.safeParse(JSON.parse(message));
