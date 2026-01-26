@@ -17,6 +17,14 @@ export const camelCaseToSpaces = (input: string) => {
   return input.replace(/([a-z])([A-Z])/g, "$1 $2");
 };
 
+export const toTitleCase = (str: string) => {
+  return str
+    .toLowerCase()
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
 export const formatSessionUserAgent = (userAgent: string) => {
   const result = {
     os: "Unknown",

@@ -32,6 +32,7 @@ import { expandInternalCa, getCaCertChain, rebuildCaCrl } from "../certificate-a
 import {
   generatePkcs12FromCertificate,
   getCertificateCredentials,
+  parseCertificateBody,
   revocationReasonToCrlCode,
   splitPemChain
 } from "./certificate-fns";
@@ -54,7 +55,7 @@ import {
 type TCertificateServiceFactoryDep = {
   certificateDAL: Pick<
     TCertificateDALFactory,
-    "findOne" | "deleteById" | "update" | "find" | "transaction" | "create" | "findById"
+    "findOne" | "deleteById" | "update" | "find" | "transaction" | "create" | "findById" | "findWithFullDetails"
   >;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
@@ -95,12 +96,22 @@ export const certificateServiceFactory = ({
    * Return details for certificate with serial number [serialNumber]
    */
   const getCert = async ({ id, serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertDTO) => {
-    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
+    // Validation: require either id or serialNumber
+    if (!id && !serialNumber) {
+      throw new BadRequestError({ message: "Either id or serialNumber must be provided" });
+    }
+
+    // Unified lookup - consistent response for both id and serialNumber
+    const certWithDetails = await certificateDAL.findWithFullDetails(id ? { id } : { serialNumber: serialNumber! });
+
+    if (!certWithDetails) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      projectId: cert.projectId,
+      projectId: certWithDetails.projectId,
       actorAuthMethod,
       actorOrgId,
       actionProjectType: ActionProjectType.CertificateManager
@@ -109,14 +120,81 @@ export const certificateServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Read,
       subject(ProjectPermissionSub.Certificates, {
-        commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
-        serialNumber: cert.serialNumber
+        commonName: certWithDetails.commonName,
+        altNames: certWithDetails.altNames ?? undefined,
+        serialNumber: certWithDetails.serialNumber
       })
     );
 
+    // Extract additional details from the joined result while creating clean cert object
+    const {
+      caName,
+      profileName,
+      renewedFromId,
+      renewedFromSerialNumber,
+      renewedFromCommonName,
+      renewedById,
+      renewedBySerialNumber,
+      renewedByCommonName,
+      ...cert
+    } = certWithDetails;
+
+    // Extract subject, fingerprints, and basicConstraints from certificate body
+    let certSubject;
+    let fingerprints;
+    let basicConstraints;
+
+    const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
+    if (certBody?.encryptedCertificate) {
+      const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
+        projectId: cert.projectId,
+        projectDAL,
+        kmsService
+      });
+
+      const kmsDecryptor = await kmsService.decryptWithKmsKey({
+        kmsId: certificateManagerKeyId
+      });
+
+      const decryptedCert = await kmsDecryptor({
+        cipherTextBlob: certBody.encryptedCertificate
+      });
+
+      // Use helper to parse the decrypted certificate
+      const parsed = parseCertificateBody(decryptedCert);
+      certSubject = parsed.subject;
+      fingerprints = parsed.fingerprints;
+      basicConstraints = parsed.basicConstraints;
+    }
+
+    // Build renewal chain objects
+    const renewedFromCertificate = renewedFromId
+      ? {
+          id: renewedFromId,
+          serialNumber: renewedFromSerialNumber ?? "",
+          commonName: renewedFromCommonName ?? ""
+        }
+      : null;
+
+    const renewedByCertificate = renewedById
+      ? {
+          id: renewedById,
+          serialNumber: renewedBySerialNumber ?? "",
+          commonName: renewedByCommonName ?? ""
+        }
+      : null;
+
     return {
-      cert
+      cert: {
+        ...cert,
+        subject: certSubject,
+        fingerprints,
+        basicConstraints,
+        caName,
+        profileName,
+        renewedFromCertificate,
+        renewedByCertificate
+      }
     };
   };
 

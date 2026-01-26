@@ -1,5 +1,25 @@
 import { CertExtendedKeyUsage, CertKeyUsage, CertStatus } from "./enums";
 
+export type TCertificateSubject = {
+  commonName?: string;
+  organization?: string;
+  organizationalUnit?: string;
+  country?: string;
+  state?: string;
+  locality?: string;
+};
+
+export type TCertificateFingerprints = {
+  sha256: string;
+  sha1: string;
+};
+
+export type TRenewalChainCertificate = {
+  id: string;
+  serialNumber: string;
+  commonName: string;
+};
+
 export type TCertificate = {
   id: string;
   caId: string;
@@ -21,6 +41,22 @@ export type TCertificate = {
   renewedByCertificateId?: string;
   renewalError?: string;
   hasPrivateKey?: boolean;
+  keyAlgorithm?: string | null;
+  signatureAlgorithm?: string | null;
+  subject?: TCertificateSubject;
+  fingerprints?: TCertificateFingerprints;
+  basicConstraints?: {
+    isCA: boolean;
+    pathLength?: number;
+  };
+  caName?: string | null;
+  profileName?: string | null;
+  renewedFromCertificate?: TRenewalChainCertificate | null;
+  renewedByCertificate?: TRenewalChainCertificate | null;
+};
+
+export type TCertificateByIdResponse = {
+  certificate: TCertificate;
 };
 
 export type TDeleteCertDTO = {

@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { TableName, TCertificates } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
@@ -460,6 +462,72 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  type TCertificateWithRequestDetails = TCertificates & {
+    caName?: string | null;
+    profileName?: string | null;
+    renewedFromId?: string | null;
+    renewedFromSerialNumber?: string | null;
+    renewedFromCommonName?: string | null;
+    renewedById?: string | null;
+    renewedBySerialNumber?: string | null;
+    renewedByCommonName?: string | null;
+  };
+
+  // Flexible lookup filter for certificate queries - either id or serialNumber, not both
+  type TCertificateLookupFilter = { id: string; serialNumber?: never } | { id?: never; serialNumber: string };
+
+  const findWithFullDetails = async (
+    filter: TCertificateLookupFilter,
+    tx?: Knex
+  ): Promise<TCertificateWithRequestDetails | undefined> => {
+    try {
+      let query = (tx || db)
+        .replicaNode()(TableName.Certificate)
+        .leftJoin(
+          TableName.CertificateAuthority,
+          `${TableName.Certificate}.caId`,
+          `${TableName.CertificateAuthority}.id`
+        )
+        .leftJoin(
+          TableName.PkiCertificateProfile,
+          `${TableName.Certificate}.profileId`,
+          `${TableName.PkiCertificateProfile}.id`
+        )
+        .leftJoin(
+          `${TableName.Certificate} as renewedFrom`,
+          `${TableName.Certificate}.renewedFromCertificateId`,
+          `renewedFrom.id`
+        )
+        .leftJoin(
+          `${TableName.Certificate} as renewedBy`,
+          `${TableName.Certificate}.renewedByCertificateId`,
+          `renewedBy.id`
+        )
+        .select(selectAllTableCols(TableName.Certificate))
+        .select(db.ref("name").withSchema(TableName.CertificateAuthority).as("caName"))
+        .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
+        .select(db.raw(`"renewedFrom"."id" as "renewedFromId"`))
+        .select(db.raw(`"renewedFrom"."serialNumber" as "renewedFromSerialNumber"`))
+        .select(db.raw(`"renewedFrom"."commonName" as "renewedFromCommonName"`))
+        .select(db.raw(`"renewedBy"."id" as "renewedById"`))
+        .select(db.raw(`"renewedBy"."serialNumber" as "renewedBySerialNumber"`))
+        .select(db.raw(`"renewedBy"."commonName" as "renewedByCommonName"`));
+
+      // Dynamic where clause based on filter
+      if (filter.id) {
+        query = query.where(`${TableName.Certificate}.id`, filter.id);
+      } else {
+        query = query.where(`${TableName.Certificate}.serialNumber`, filter.serialNumber);
+      }
+
+      const result = (await query.first()) as TCertificateWithRequestDetails | undefined;
+
+      return result;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find certificate with full details" });
+    }
+  };
+
   return {
     ...certificateOrm,
     countCertificatesInProject,
@@ -471,6 +539,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     findActiveCertificatesByIds,
     findActiveCertificatesForSync,
     findCertificatesEligibleForRenewal,
-    findWithPrivateKeyInfo
+    findWithPrivateKeyInfo,
+    findWithFullDetails
   };
 };

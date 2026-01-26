@@ -324,6 +324,10 @@ export const ROUTE_PATHS = Object.freeze({
     PkiSyncDetailsByIDPage: setRoute(
       "/organizations/$orgId/projects/cert-manager/$projectId/integrations/$syncId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/integrations/$syncId"
+    ),
+    CertificateDetailsByIDPage: setRoute(
+      "/organizations/$orgId/projects/cert-manager/$projectId/certificates/$certificateId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificates/$certificateId"
     )
   },
   Ssh: {

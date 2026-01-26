@@ -11,10 +11,13 @@ export {
   useGetCert,
   useGetCertBody,
   useGetCertBundle,
+  useGetCertificateById,
   useGetCertificateRequest,
   useListCertificateRequests
 } from "./queries";
 export type {
+  TCertificate,
+  TCertificateByIdResponse,
   TCertificateRequestDetails,
   TCertificateRequestListItem,
   TListCertificateRequestsParams,

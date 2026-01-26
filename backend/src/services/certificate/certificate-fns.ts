@@ -5,8 +5,15 @@ import RE2 from "re2";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
+import { parseDistinguishedName } from "../certificate-authority/certificate-authority-fns";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
-import { CrlReason, TGetCertificateCredentialsDTO } from "./certificate-types";
+import {
+  CrlReason,
+  TCertificateFingerprints,
+  TCertificateSubject,
+  TGetCertificateCredentialsDTO,
+  TParsedCertificateBody
+} from "./certificate-types";
 
 export const revocationReasonToCrlCode = (crlReason: CrlReason) => {
   switch (crlReason) {
@@ -153,5 +160,49 @@ export const generatePkcs12FromCertificate = async ({
     throw new BadRequestError({
       message: `Failed to generate PKCS12 keystore: ${error instanceof Error ? error.message : "Unknown error"}`
     });
+  }
+};
+
+/**
+ * Parse and extract subject, fingerprints, and basicConstraints from a decrypted certificate.
+ * Returns empty object on failure (graceful degradation).
+ */
+export const parseCertificateBody = (decryptedCertificate: Buffer): TParsedCertificateBody => {
+  try {
+    const certObj = new x509.X509Certificate(decryptedCertificate);
+
+    // Parse subject DN to extract attributes
+    const parsedDn = parseDistinguishedName(certObj.subject);
+    const subject: TCertificateSubject = {
+      commonName: parsedDn.commonName,
+      organization: parsedDn.organization,
+      organizationalUnit: parsedDn.ou,
+      country: parsedDn.country,
+      state: parsedDn.province,
+      locality: parsedDn.locality
+    };
+
+    // Calculate fingerprints and format with colons (e.g., "1A:2F:73:...")
+    const rawData = Buffer.from(certObj.rawData);
+    const formatFingerprint = (hash: string) => hash.toUpperCase().match(/.{2}/g)?.join(":") ?? hash.toUpperCase();
+    const fingerprints: TCertificateFingerprints = {
+      sha256: formatFingerprint(crypto.nativeCrypto.createHash("sha256").update(rawData).digest("hex")),
+      sha1: formatFingerprint(crypto.nativeCrypto.createHash("sha1").update(rawData).digest("hex"))
+    };
+
+    // Extract basicConstraints extension
+    let basicConstraints: { isCA: boolean; pathLength?: number } | undefined;
+    const basicConstraintsExt = certObj.getExtension(x509.BasicConstraintsExtension);
+    if (basicConstraintsExt) {
+      basicConstraints = {
+        isCA: basicConstraintsExt.ca,
+        pathLength: basicConstraintsExt.pathLength
+      };
+    }
+
+    return { subject, fingerprints, basicConstraints };
+  } catch {
+    // If we can't parse the certificate, return empty object (graceful degradation)
+    return {};
   }
 };
