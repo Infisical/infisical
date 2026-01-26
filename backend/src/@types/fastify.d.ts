@@ -55,6 +55,7 @@ import { TSshHostGroupServiceFactory } from "@app/ee/services/ssh-host-group/ssh
 import { TSubOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
 import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-types";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
+import { TAccountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { TAdditionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
 import { TApiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -241,6 +242,7 @@ declare module "fastify" {
     services: {
       login: TAuthLoginFactory;
       password: TAuthPasswordFactory;
+      accountRecovery: TAccountRecoveryServiceFactory;
       signup: TAuthSignupFactory;
       authToken: TAuthTokenServiceFactory;
       permission: TPermissionServiceFactory;

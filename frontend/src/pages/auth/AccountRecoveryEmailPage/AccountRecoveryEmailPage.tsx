@@ -4,22 +4,22 @@ import { Link } from "@tanstack/react-router";
 
 import { Button, EmailServiceSetupModal, Input } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
-import { useSendPasswordResetEmail } from "@app/hooks/api";
+import { useSendAccountRecoveryEmail } from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 
-export const VerifyEmailPage = () => {
+export const AccountRecoveryEmailPage = () => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [step, setStep] = useState(1);
   const { data: serverDetails } = useFetchServerStatus();
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(["setUpEmail"] as const);
 
-  const { mutateAsync } = useSendPasswordResetEmail();
+  const { mutateAsync } = useSendAccountRecoveryEmail();
 
   /**
-   * This function sends the verification email and forwards a user to the next step.
+   * This function sends the recovery email and forwards a user to the next step.
    */
-  const sendVerificationEmail = async () => {
+  const sendRecoveryEmail = async () => {
     if (email) {
       try {
         await mutateAsync({ email });
@@ -35,7 +35,7 @@ export const VerifyEmailPage = () => {
     setLoading(true);
 
     if (serverDetails?.emailConfigured) {
-      sendVerificationEmail();
+      sendRecoveryEmail();
     } else {
       handlePopUpOpen("setUpEmail");
       setLoading(false);
@@ -45,10 +45,10 @@ export const VerifyEmailPage = () => {
   return (
     <div className="flex min-h-screen flex-col justify-center bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6 pb-28">
       <Helmet>
-        <title>Reset Password</title>
+        <title>Account Recovery</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content="Verify your email in Infisical" />
+        <meta property="og:title" content="Account Recovery in Infisical" />
         <meta
           name="og:description"
           content="Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files."
@@ -72,11 +72,11 @@ export const VerifyEmailPage = () => {
           className="mx-auto flex w-full flex-col items-center justify-center"
         >
           <h1 className="mb-2 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
-            Forgot your password?
+            Recover your account?
           </h1>
           <p className="w-max justify-center text-center text-sm text-gray-400">
-            Enter your email to start the password reset process. <br /> You will receive an email
-            with instructions.
+            Enter your email to start the recovery process. <br /> You will receive an email with
+            instructions.
           </p>
           <div className="mt-8 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
             <Input
@@ -118,7 +118,7 @@ export const VerifyEmailPage = () => {
           </h1>
           <p className="w-max max-w-lg justify-center text-center text-sm text-gray-400">
             If the email is in our system, you will receive an email at{" "}
-            <span className="italic">{email}</span> with instructions on how to reset your password.
+            <span className="italic">{email}</span> to initiate the account recovery process.
           </p>
           <div className="mt-6 flex flex-row text-sm text-bunker-400">
             <Link to="/login">

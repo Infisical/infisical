@@ -377,6 +377,12 @@ import {
   TProjectSshConfigsInsert,
   TProjectSshConfigsUpdate,
   TProjectsUpdate,
+  TProjectTemplateGroupMemberships,
+  TProjectTemplateGroupMembershipsInsert,
+  TProjectTemplateGroupMembershipsUpdate,
+  TProjectTemplateIdentityMemberships,
+  TProjectTemplateIdentityMembershipsInsert,
+  TProjectTemplateIdentityMembershipsUpdate,
   TProjectTemplates,
   TProjectTemplatesInsert,
   TProjectTemplatesUpdate,
@@ -1275,6 +1281,16 @@ declare module "knex/types/tables" {
       TProjectTemplateUserMemberships,
       TProjectTemplateUserMembershipsInsert,
       TProjectTemplateUserMembershipsUpdate
+    >;
+    [TableName.ProjectTemplateGroupMembership]: KnexOriginal.CompositeTableType<
+      TProjectTemplateGroupMemberships,
+      TProjectTemplateGroupMembershipsInsert,
+      TProjectTemplateGroupMembershipsUpdate
+    >;
+    [TableName.ProjectTemplateIdentityMembership]: KnexOriginal.CompositeTableType<
+      TProjectTemplateIdentityMemberships,
+      TProjectTemplateIdentityMembershipsInsert,
+      TProjectTemplateIdentityMembershipsUpdate
     >;
     [TableName.TotpConfig]: KnexOriginal.CompositeTableType<TTotpConfigs, TTotpConfigsInsert, TTotpConfigsUpdate>;
     [TableName.ProjectSplitBackfillIds]: KnexOriginal.CompositeTableType<

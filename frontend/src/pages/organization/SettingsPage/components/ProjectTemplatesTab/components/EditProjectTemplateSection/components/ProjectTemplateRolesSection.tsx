@@ -42,6 +42,34 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
   const updateProjectTemplate = useUpdateProjectTemplate();
 
   const handleRemoveRole = async (slug: string) => {
+    // Check if role is used by users, groups, or identities
+    const usersWithRole = projectTemplate.users?.filter((u) => u.roles.includes(slug)) || [];
+    const groupsWithRole = projectTemplate.groups?.filter((g) => g.roles.includes(slug)) || [];
+    const identitiesWithRole =
+      projectTemplate.identities?.filter((i) => i.roles.includes(slug)) || [];
+    const projectManagedIdentitiesWithRole =
+      projectTemplate.projectManagedIdentities?.filter((i) => i.roles.includes(slug)) || [];
+
+    const usageMessages: string[] = [];
+
+    if (usersWithRole.length > 0)
+      usageMessages.push(`${usersWithRole.length} user${usersWithRole.length === 1 ? "" : "s"}`);
+    if (groupsWithRole.length > 0)
+      usageMessages.push(`${groupsWithRole.length} group${groupsWithRole.length === 1 ? "" : "s"}`);
+    if (identitiesWithRole.length > 0 || projectManagedIdentitiesWithRole.length > 0) {
+      const totalIdentities = identitiesWithRole.length + projectManagedIdentitiesWithRole.length;
+      usageMessages.push(`${totalIdentities} identit${totalIdentities === 1 ? "y" : "ies"}`);
+    }
+
+    if (usageMessages.length > 0) {
+      createNotification({
+        text: `Cannot remove role "${slug}" because it is assigned to ${usageMessages.join(", ")}`,
+        type: "error"
+      });
+      handlePopUpClose("removeRole");
+      return;
+    }
+
     await updateProjectTemplate.mutateAsync({
       templateId: projectTemplate.id,
       roles: projectTemplate.roles.filter(

@@ -69,6 +69,8 @@ export enum TableName {
   ProjectKeys = "project_keys",
   ProjectTemplates = "project_templates",
   ProjectTemplateUserMembership = "project_template_user_memberships",
+  ProjectTemplateGroupMembership = "project_template_group_memberships",
+  ProjectTemplateIdentityMembership = "project_template_identity_memberships",
   Secret = "secrets",
   SecretReference = "secret_references",
   SecretSharing = "secret_sharing",

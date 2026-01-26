@@ -76,8 +76,20 @@ export const authSignupServiceFactory = ({
     let user =
       usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === sanitizedEmail) : usersByUsername?.[0];
     if (user && user.isAccepted) {
-      // TODO(akhilmhdh-pg): copy as old one. this needs to be changed due to security issues
-      throw new BadRequestError({ message: "Failed to send verification code for complete account" });
+      // Send informational email for existing accounts instead of throwing error
+      // This prevents user enumeration vulnerability
+      const appCfg = getConfig();
+      await smtpService.sendMail({
+        template: SmtpTemplates.SignupExistingAccount,
+        subjectLine: "Sign-up Request for Your Infisical Account",
+        recipients: [sanitizedEmail],
+        substitutions: {
+          email: sanitizedEmail,
+          loginUrl: `${appCfg.SITE_URL}/login`,
+          resetPasswordUrl: `${appCfg.SITE_URL}/account-recovery`
+        }
+      });
+      return;
     }
     if (!user) {
       user = await userDAL.create({

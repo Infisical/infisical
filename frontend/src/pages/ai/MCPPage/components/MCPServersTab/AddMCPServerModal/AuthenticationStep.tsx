@@ -33,7 +33,13 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
   const { control, watch, setValue, getValues } = useFormContext<TAddMCPServerForm>();
   const authMethod = watch("authMethod");
   const credentialMode = watch("credentialMode");
+  const gatewayId = watch("gatewayId");
   const isPersonalMode = credentialMode === MCPServerCredentialMode.PERSONAL;
+
+  // Filter out OAuth when gateway is selected (OAuth requires browser access to auth page)
+  const availableAuthMethods = gatewayId
+    ? AUTH_METHOD_OPTIONS.filter((opt) => opt.value !== MCPServerAuthMethod.OAUTH)
+    : AUTH_METHOD_OPTIONS;
 
   // OAuth state
   const [oauthSessionId, setOauthSessionId] = useState<string | null>(null);
@@ -139,6 +145,13 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
     [setValue]
   );
 
+  // Auto-switch from OAuth to Bearer when gateway is selected
+  useEffect(() => {
+    if (gatewayId && authMethod === MCPServerAuthMethod.OAUTH) {
+      handleAuthMethodChange(MCPServerAuthMethod.BEARER);
+    }
+  }, [gatewayId, authMethod, handleAuthMethodChange]);
+
   const handleOAuthAuthorize = async () => {
     const serverUrl = getValues("url");
     if (!serverUrl) {
@@ -160,16 +173,18 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
     try {
       setIsOAuthPending(true);
 
-      // Get optional client credentials
+      // Get optional client credentials and gateway
       const clientId = getValues("oauthClientId");
       const clientSecret = getValues("oauthClientSecret");
+      const selectedGatewayId = getValues("gatewayId");
 
       // 1. Call backend to initiate OAuth and get auth URL
       const { authUrl, sessionId } = await initiateOAuth.mutateAsync({
         url: serverUrl,
         projectId: currentProject.id,
         clientId: clientId || undefined,
-        clientSecret: clientSecret || undefined
+        clientSecret: clientSecret || undefined,
+        gatewayId: selectedGatewayId || undefined
       });
 
       setOauthSessionId(sessionId);
@@ -235,6 +250,15 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
         </p>
       )}
 
+      {gatewayId && (
+        <div className="mb-4 rounded-md border border-primary-500/30 bg-primary-500/10 p-3">
+          <p className="text-xs text-mineshaft-200">
+            <span className="font-medium text-primary-400">Note:</span> OAuth is not available when
+            using a gateway.
+          </p>
+        </div>
+      )}
+
       <Controller
         control={control}
         name="authMethod"
@@ -254,7 +278,7 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
               position="popper"
               dropdownContainerClassName="max-w-none"
             >
-              {AUTH_METHOD_OPTIONS.map((option) => (
+              {availableAuthMethods.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>

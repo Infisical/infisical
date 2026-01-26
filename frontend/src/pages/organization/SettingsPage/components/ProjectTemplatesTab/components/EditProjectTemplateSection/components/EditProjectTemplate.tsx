@@ -12,6 +12,8 @@ import { TProjectTemplate, useDeleteProjectTemplate } from "@app/hooks/api/proje
 
 import { ProjectTemplateDetailsModal } from "../../ProjectTemplateDetailsModal";
 import { ProjectTemplateEnvironmentsForm } from "./ProjectTemplateEnvironmentsForm";
+import { ProjectTemplateGroupsSection } from "./ProjectTemplateGroupsSection";
+import { ProjectTemplateIdentitiesSection } from "./ProjectTemplateIdentitiesSection";
 import { ProjectTemplateRolesSection } from "./ProjectTemplateRolesSection";
 import { ProjectTemplateUsersSection } from "./ProjectTemplateUsersSection";
 
@@ -102,10 +104,13 @@ export const EditProjectTemplate = ({ isInfisicalTemplate, projectTemplate, onBa
         isInfisicalTemplate={isInfisicalTemplate}
         projectTemplate={projectTemplate}
       />
-      <ProjectTemplateUsersSection
-        isInfisicalTemplate={isInfisicalTemplate}
-        projectTemplate={projectTemplate}
-      />
+      {!isInfisicalTemplate && (
+        <>
+          <ProjectTemplateUsersSection projectTemplate={projectTemplate} />
+          <ProjectTemplateGroupsSection projectTemplate={projectTemplate} />
+          <ProjectTemplateIdentitiesSection projectTemplate={projectTemplate} />
+        </>
+      )}
       <ProjectTemplateDetailsModal
         isOpen={popUp.editDetails.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("editDetails", isOpen)}

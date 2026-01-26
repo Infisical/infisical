@@ -132,7 +132,7 @@ const createGatewayConnection = async (
   });
 };
 
-const setupRelayServer = async ({
+export const setupRelayServer = async ({
   protocol,
   relayHost,
   gateway,

@@ -64,6 +64,19 @@ When adding an MCP server, you choose how credentials are managed:
   When using **Personal Credentials** mode, the administrator setting up the MCP server must still authenticate during setup. This initial authentication is required to fetch and discover the available tools from the server.
 </Note>
 
+## Gateway Support
+
+By default, Infisical connects directly to MCP servers over the internet. For MCP servers hosted on private networks (internal APIs, self-hosted services), you can route connections through a [Gateway](/documentation/platform/gateways/overview).
+
+<Note>
+  OAuth is not supported when using a gateway. Only Bearer Token authentication is available.
+</Note>
+
+Gateways enable you to:
+- Connect to MCP servers on private networks without exposing them to the internet
+- Access self-hosted MCP servers within VPCs or on-premises infrastructure
+- Maintain network isolation while enabling AI tool access
+
 ## Guide to Adding an MCP Server
 
 In the following steps, we explore how to add an MCP server to your Agent Sentinel project.
@@ -81,6 +94,7 @@ In the following steps, we explore how to add an MCP server to your Agent Sentin
 
         - **Name**: A friendly name to identify this server (e.g., "Notion", "GitHub")
         - **URL**: The MCP server endpoint URL (e.g., `https://mcp.notion.com/mcp`)
+        - **Gateway** (optional): Select a gateway to route connections through a private network. Leave as "Internet Gateway" for public MCP servers
         - **Credential Mode**: Choose between **Shared Credentials** or **Personal Credentials**
 
         ![mcp server add](/images/platform/ai/mcp/mcp-servers-add.png)
@@ -147,5 +161,16 @@ In the following steps, we explore how to add an MCP server to your Agent Sentin
     - Users already have API tokens they want to use
     - The MCP server doesn't support OAuth
     - You need a simpler authentication flow
+  </Accordion>
+  <Accordion title="When should I use a gateway for MCP servers?">
+    Use a gateway when your MCP server is:
+    - Hosted on a private network (VPC, on-premises)
+    - Not accessible from the public internet
+    - A self-hosted service that should not be exposed externally
+
+    For public MCP servers like Notion or GitHub, use the default "Internet Gateway" option.
+  </Accordion>
+  <Accordion title="Can I use OAuth with a gateway?">
+    No, only Bearer Token authentication is supported when using a gateway. If you choose Personal Credentials mode, each user can provide their own token when connecting to an MCP endpoint.
   </Accordion>
 </AccordionGroup>

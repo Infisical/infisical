@@ -240,6 +240,11 @@ const migrateMembershipData = async (knex: Knex) => {
       ])
     );
 
+  // clear orphaned identity project memberships
+  await knex(TableName.IdentityOrgMembership)
+    .whereNotIn("identityId", knex.select("id").from(TableName.Identity))
+    .del();
+
   await knex
     .insert(
       knex(TableName.IdentityOrgMembership).select(
@@ -308,6 +313,11 @@ const migrateMembershipData = async (knex: Knex) => {
         "scope"
       ])
     );
+
+  // clear orphaned identity project memberships
+  await knex(TableName.IdentityProjectMembership)
+    .whereNotIn("identityId", knex.select("id").from(TableName.Identity))
+    .del();
 
   await knex
     .insert(

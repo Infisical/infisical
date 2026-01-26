@@ -45,6 +45,7 @@ import {
   approvalRequestQuery,
   ApprovalRequestStatus,
   ApprovalRequestStepStatus,
+  PamAccessRequestData,
   TApprovalRequest
 } from "@app/hooks/api/approvalRequests";
 
@@ -121,7 +122,9 @@ export const ApprovalRequestTab = () => {
           request.requesterName?.toLowerCase().includes(search.toLowerCase()) ||
           request.requesterEmail?.toLowerCase().includes(search.toLowerCase()) ||
           request.justification?.toLowerCase().includes(search.toLowerCase()) ||
-          request.requestData.requestData.accountPath.toLowerCase().includes(search.toLowerCase())
+          (request.requestData.requestData as PamAccessRequestData).accountPath
+            .toLowerCase()
+            .includes(search.toLowerCase())
       );
     }
 
@@ -284,7 +287,8 @@ export const ApprovalRequestTab = () => {
               {!isRequestsLoading &&
                 paginatedRequests.map((request) => {
                   const needsApproval = checkIfUserNeedsToApprove(request, userId, userGroups);
-                  const { accountPath, accessDuration } = request.requestData.requestData;
+                  const { accountPath, accessDuration } = request.requestData
+                    .requestData as PamAccessRequestData;
 
                   return (
                     <Tr

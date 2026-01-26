@@ -20,11 +20,11 @@ import { Route as publicShareSecretPageRouteImport } from './pages/public/ShareS
 import { Route as authCliRedirectPageRouteImport } from './pages/auth/CliRedirectPage/route'
 import { Route as indexImport } from './pages/index'
 import { Route as middlewaresInjectOrgDetailsImport } from './pages/middlewares/inject-org-details'
-import { Route as authVerifyEmailPageRouteImport } from './pages/auth/VerifyEmailPage/route'
 import { Route as authSignUpInvitePageRouteImport } from './pages/auth/SignUpInvitePage/route'
 import { Route as authRequestNewInvitePageRouteImport } from './pages/auth/RequestNewInvitePage/route'
-import { Route as authPasswordResetPageRouteImport } from './pages/auth/PasswordResetPage/route'
 import { Route as authEmailNotVerifiedPageRouteImport } from './pages/auth/EmailNotVerifiedPage/route'
+import { Route as authAccountRecoveryResetPageRouteImport } from './pages/auth/AccountRecoveryResetPage/route'
+import { Route as authAccountRecoveryEmailPageRouteImport } from './pages/auth/AccountRecoveryEmailPage/route'
 import { Route as authPasswordSetupPageRouteImport } from './pages/auth/PasswordSetupPage/route'
 import { Route as userLayoutImport } from './pages/user/layout'
 import { Route as organizationLayoutImport } from './pages/organization/layout'
@@ -124,6 +124,7 @@ import { Route as kmsKmipPageRouteImport } from './pages/kms/KmipPage/route'
 import { Route as certManagerSettingsPageRouteImport } from './pages/cert-manager/SettingsPage/route'
 import { Route as certManagerPoliciesPageRouteImport } from './pages/cert-manager/PoliciesPage/route'
 import { Route as certManagerCertificateAuthoritiesPageRouteImport } from './pages/cert-manager/CertificateAuthoritiesPage/route'
+import { Route as certManagerApprovalsPageRouteImport } from './pages/cert-manager/ApprovalsPage/route'
 import { Route as certManagerAlertingPageRouteImport } from './pages/cert-manager/AlertingPage/route'
 import { Route as aiSettingsPageRouteImport } from './pages/ai/SettingsPage/route'
 import { Route as aiMCPPageRouteImport } from './pages/ai/MCPPage/route'
@@ -166,6 +167,7 @@ import { Route as pamApprovalRequestDetailPageRouteImport } from './pages/pam/Ap
 import { Route as certManagerPkiSubscriberDetailsByIDPageRouteImport } from './pages/cert-manager/PkiSubscriberDetailsByIDPage/route'
 import { Route as certManagerPkiSyncDetailsByIDPageRouteImport } from './pages/cert-manager/PkiSyncDetailsByIDPage/route'
 import { Route as certManagerCertAuthDetailsByIDPageRouteImport } from './pages/cert-manager/CertAuthDetailsByIDPage/route'
+import { Route as certManagerApprovalRequestDetailPageRouteImport } from './pages/cert-manager/ApprovalRequestDetailPage/route'
 import { Route as aiMCPServerDetailPageRouteImport } from './pages/ai/MCPServerDetailPage/route'
 import { Route as aiMCPEndpointDetailPageRouteImport } from './pages/ai/MCPEndpointDetailPage/route'
 import { Route as secretScanningSecretScanningDataSourcesPageRouteImport } from './pages/secret-scanning/SecretScanningDataSourcesPage/route'
@@ -426,12 +428,6 @@ const middlewaresInjectOrgDetailsRoute =
     getParentRoute: () => middlewaresAuthenticateRoute,
   } as any)
 
-const authVerifyEmailPageRouteRoute = authVerifyEmailPageRouteImport.update({
-  id: '/verify-email',
-  path: '/verify-email',
-  getParentRoute: () => middlewaresRestrictLoginSignupRoute,
-} as any)
-
 const authSignUpInvitePageRouteRoute = authSignUpInvitePageRouteImport.update({
   id: '/signupinvite',
   path: '/signupinvite',
@@ -445,18 +441,24 @@ const authRequestNewInvitePageRouteRoute =
     getParentRoute: () => middlewaresRestrictLoginSignupRoute,
   } as any)
 
-const authPasswordResetPageRouteRoute = authPasswordResetPageRouteImport.update(
-  {
-    id: '/password-reset',
-    path: '/password-reset',
-    getParentRoute: () => middlewaresRestrictLoginSignupRoute,
-  } as any,
-)
-
 const authEmailNotVerifiedPageRouteRoute =
   authEmailNotVerifiedPageRouteImport.update({
     id: '/email-not-verified',
     path: '/email-not-verified',
+    getParentRoute: () => middlewaresRestrictLoginSignupRoute,
+  } as any)
+
+const authAccountRecoveryResetPageRouteRoute =
+  authAccountRecoveryResetPageRouteImport.update({
+    id: '/account-recovery-reset',
+    path: '/account-recovery-reset',
+    getParentRoute: () => middlewaresRestrictLoginSignupRoute,
+  } as any)
+
+const authAccountRecoveryEmailPageRouteRoute =
+  authAccountRecoveryEmailPageRouteImport.update({
+    id: '/account-recovery',
+    path: '/account-recovery',
     getParentRoute: () => middlewaresRestrictLoginSignupRoute,
   } as any)
 
@@ -1338,6 +1340,13 @@ const certManagerCertificateAuthoritiesPageRouteRoute =
     getParentRoute: () => certManagerLayoutRoute,
   } as any)
 
+const certManagerApprovalsPageRouteRoute =
+  certManagerApprovalsPageRouteImport.update({
+    id: '/approvals',
+    path: '/approvals',
+    getParentRoute: () => certManagerLayoutRoute,
+  } as any)
+
 const certManagerAlertingPageRouteRoute =
   certManagerAlertingPageRouteImport.update({
     id: '/alerting',
@@ -1631,6 +1640,13 @@ const certManagerCertAuthDetailsByIDPageRouteRoute =
   certManagerCertAuthDetailsByIDPageRouteImport.update({
     id: '/ca/$caId',
     path: '/ca/$caId',
+    getParentRoute: () => certManagerLayoutRoute,
+  } as any)
+
+const certManagerApprovalRequestDetailPageRouteRoute =
+  certManagerApprovalRequestDetailPageRouteImport.update({
+    id: '/approval-requests/$approvalRequestId',
+    path: '/approval-requests/$approvalRequestId',
     getParentRoute: () => certManagerLayoutRoute,
   } as any)
 
@@ -2408,18 +2424,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authPasswordSetupPageRouteImport
       parentRoute: typeof middlewaresAuthenticateImport
     }
+    '/_restrict-login-signup/account-recovery': {
+      id: '/_restrict-login-signup/account-recovery'
+      path: '/account-recovery'
+      fullPath: '/account-recovery'
+      preLoaderRoute: typeof authAccountRecoveryEmailPageRouteImport
+      parentRoute: typeof middlewaresRestrictLoginSignupImport
+    }
+    '/_restrict-login-signup/account-recovery-reset': {
+      id: '/_restrict-login-signup/account-recovery-reset'
+      path: '/account-recovery-reset'
+      fullPath: '/account-recovery-reset'
+      preLoaderRoute: typeof authAccountRecoveryResetPageRouteImport
+      parentRoute: typeof middlewaresRestrictLoginSignupImport
+    }
     '/_restrict-login-signup/email-not-verified': {
       id: '/_restrict-login-signup/email-not-verified'
       path: '/email-not-verified'
       fullPath: '/email-not-verified'
       preLoaderRoute: typeof authEmailNotVerifiedPageRouteImport
-      parentRoute: typeof middlewaresRestrictLoginSignupImport
-    }
-    '/_restrict-login-signup/password-reset': {
-      id: '/_restrict-login-signup/password-reset'
-      path: '/password-reset'
-      fullPath: '/password-reset'
-      preLoaderRoute: typeof authPasswordResetPageRouteImport
       parentRoute: typeof middlewaresRestrictLoginSignupImport
     }
     '/_restrict-login-signup/requestnewinvite': {
@@ -2434,13 +2457,6 @@ declare module '@tanstack/react-router' {
       path: '/signupinvite'
       fullPath: '/signupinvite'
       preLoaderRoute: typeof authSignUpInvitePageRouteImport
-      parentRoute: typeof middlewaresRestrictLoginSignupImport
-    }
-    '/_restrict-login-signup/verify-email': {
-      id: '/_restrict-login-signup/verify-email'
-      path: '/verify-email'
-      fullPath: '/verify-email'
-      preLoaderRoute: typeof authVerifyEmailPageRouteImport
       parentRoute: typeof middlewaresRestrictLoginSignupImport
     }
     '/_authenticate/_inject-org-details': {
@@ -3024,6 +3040,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof certManagerAlertingPageRouteImport
       parentRoute: typeof certManagerLayoutImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/approvals': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/approvals'
+      path: '/approvals'
+      fullPath: '/organizations/$orgId/projects/cert-manager/$projectId/approvals'
+      preLoaderRoute: typeof certManagerApprovalsPageRouteImport
+      parentRoute: typeof certManagerLayoutImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-authorities': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-authorities'
       path: '/certificate-authorities'
@@ -3387,6 +3410,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/organizations/$orgId/projects/ai/$projectId/mcp-servers/$serverId'
       preLoaderRoute: typeof aiMCPServerDetailPageRouteImport
       parentRoute: typeof aiLayoutImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/approval-requests/$approvalRequestId': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/approval-requests/$approvalRequestId'
+      path: '/approval-requests/$approvalRequestId'
+      fullPath: '/organizations/$orgId/projects/cert-manager/$projectId/approval-requests/$approvalRequestId'
+      preLoaderRoute: typeof certManagerApprovalRequestDetailPageRouteImport
+      parentRoute: typeof certManagerLayoutImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/ca/$caId': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/ca/$caId'
@@ -4373,6 +4403,7 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManager
 
 interface certManagerLayoutRouteChildren {
   certManagerAlertingPageRouteRoute: typeof certManagerAlertingPageRouteRoute
+  certManagerApprovalsPageRouteRoute: typeof certManagerApprovalsPageRouteRoute
   certManagerCertificateAuthoritiesPageRouteRoute: typeof certManagerCertificateAuthoritiesPageRouteRoute
   certManagerPoliciesPageRouteRoute: typeof certManagerPoliciesPageRouteRoute
   certManagerSettingsPageRouteRoute: typeof certManagerSettingsPageRouteRoute
@@ -4382,6 +4413,7 @@ interface certManagerLayoutRouteChildren {
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdCertManagerLayoutCertificateTemplatesRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdCertManagerLayoutCertificateTemplatesRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdCertManagerLayoutIntegrationsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdCertManagerLayoutIntegrationsRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdCertManagerLayoutSubscribersRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdCertManagerLayoutSubscribersRouteWithChildren
+  certManagerApprovalRequestDetailPageRouteRoute: typeof certManagerApprovalRequestDetailPageRouteRoute
   certManagerCertAuthDetailsByIDPageRouteRoute: typeof certManagerCertAuthDetailsByIDPageRouteRoute
   projectGroupDetailsByIDPageRouteCertManagerRoute: typeof projectGroupDetailsByIDPageRouteCertManagerRoute
   projectIdentityDetailsByIDPageRouteCertManagerRoute: typeof projectIdentityDetailsByIDPageRouteCertManagerRoute
@@ -4392,6 +4424,7 @@ interface certManagerLayoutRouteChildren {
 
 const certManagerLayoutRouteChildren: certManagerLayoutRouteChildren = {
   certManagerAlertingPageRouteRoute: certManagerAlertingPageRouteRoute,
+  certManagerApprovalsPageRouteRoute: certManagerApprovalsPageRouteRoute,
   certManagerCertificateAuthoritiesPageRouteRoute:
     certManagerCertificateAuthoritiesPageRouteRoute,
   certManagerPoliciesPageRouteRoute: certManagerPoliciesPageRouteRoute,
@@ -4408,6 +4441,8 @@ const certManagerLayoutRouteChildren: certManagerLayoutRouteChildren = {
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdCertManagerLayoutIntegrationsRouteWithChildren,
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdCertManagerLayoutSubscribersRoute:
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdCertManagerLayoutSubscribersRouteWithChildren,
+  certManagerApprovalRequestDetailPageRouteRoute:
+    certManagerApprovalRequestDetailPageRouteRoute,
   certManagerCertAuthDetailsByIDPageRouteRoute:
     certManagerCertAuthDetailsByIDPageRouteRoute,
   projectGroupDetailsByIDPageRouteCertManagerRoute:
@@ -5348,11 +5383,11 @@ const RestrictLoginSignupSignupRouteWithChildren =
   )
 
 interface middlewaresRestrictLoginSignupRouteChildren {
+  authAccountRecoveryEmailPageRouteRoute: typeof authAccountRecoveryEmailPageRouteRoute
+  authAccountRecoveryResetPageRouteRoute: typeof authAccountRecoveryResetPageRouteRoute
   authEmailNotVerifiedPageRouteRoute: typeof authEmailNotVerifiedPageRouteRoute
-  authPasswordResetPageRouteRoute: typeof authPasswordResetPageRouteRoute
   authRequestNewInvitePageRouteRoute: typeof authRequestNewInvitePageRouteRoute
   authSignUpInvitePageRouteRoute: typeof authSignUpInvitePageRouteRoute
-  authVerifyEmailPageRouteRoute: typeof authVerifyEmailPageRouteRoute
   RestrictLoginSignupLoginRoute: typeof RestrictLoginSignupLoginRouteWithChildren
   RestrictLoginSignupSignupRoute: typeof RestrictLoginSignupSignupRouteWithChildren
   adminSignUpPageRouteRoute: typeof adminSignUpPageRouteRoute
@@ -5360,11 +5395,13 @@ interface middlewaresRestrictLoginSignupRouteChildren {
 
 const middlewaresRestrictLoginSignupRouteChildren: middlewaresRestrictLoginSignupRouteChildren =
   {
+    authAccountRecoveryEmailPageRouteRoute:
+      authAccountRecoveryEmailPageRouteRoute,
+    authAccountRecoveryResetPageRouteRoute:
+      authAccountRecoveryResetPageRouteRoute,
     authEmailNotVerifiedPageRouteRoute: authEmailNotVerifiedPageRouteRoute,
-    authPasswordResetPageRouteRoute: authPasswordResetPageRouteRoute,
     authRequestNewInvitePageRouteRoute: authRequestNewInvitePageRouteRoute,
     authSignUpInvitePageRouteRoute: authSignUpInvitePageRouteRoute,
-    authVerifyEmailPageRouteRoute: authVerifyEmailPageRouteRoute,
     RestrictLoginSignupLoginRoute: RestrictLoginSignupLoginRouteWithChildren,
     RestrictLoginSignupSignupRoute: RestrictLoginSignupSignupRouteWithChildren,
     adminSignUpPageRouteRoute: adminSignUpPageRouteRoute,
@@ -5382,11 +5419,11 @@ export interface FileRoutesByFullPath {
   '/upgrade-path': typeof publicUpgradePathPageRouteRoute
   '': typeof organizationLayoutRouteWithChildren
   '/password-setup': typeof authPasswordSetupPageRouteRoute
+  '/account-recovery': typeof authAccountRecoveryEmailPageRouteRoute
+  '/account-recovery-reset': typeof authAccountRecoveryResetPageRouteRoute
   '/email-not-verified': typeof authEmailNotVerifiedPageRouteRoute
-  '/password-reset': typeof authPasswordResetPageRouteRoute
   '/requestnewinvite': typeof authRequestNewInvitePageRouteRoute
   '/signupinvite': typeof authSignUpInvitePageRouteRoute
-  '/verify-email': typeof authVerifyEmailPageRouteRoute
   '/personal-settings': typeof userLayoutRouteWithChildren
   '/login': typeof RestrictLoginSignupLoginRouteWithChildren
   '/signup': typeof RestrictLoginSignupSignupRouteWithChildren
@@ -5459,6 +5496,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/ai/$projectId/overview': typeof aiMCPPageRouteRoute
   '/organizations/$orgId/projects/ai/$projectId/settings': typeof aiSettingsPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/alerting': typeof certManagerAlertingPageRouteRoute
+  '/organizations/$orgId/projects/cert-manager/$projectId/approvals': typeof certManagerApprovalsPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities': typeof certManagerCertificateAuthoritiesPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/policies': typeof certManagerPoliciesPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/settings': typeof certManagerSettingsPageRouteRoute
@@ -5511,6 +5549,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/secret-scanning/$projectId/data-sources/': typeof secretScanningSecretScanningDataSourcesPageRouteRoute
   '/organizations/$orgId/projects/ai/$projectId/mcp-endpoints/$endpointId': typeof aiMCPEndpointDetailPageRouteRoute
   '/organizations/$orgId/projects/ai/$projectId/mcp-servers/$serverId': typeof aiMCPServerDetailPageRouteRoute
+  '/organizations/$orgId/projects/cert-manager/$projectId/approval-requests/$approvalRequestId': typeof certManagerApprovalRequestDetailPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/ca/$caId': typeof certManagerCertAuthDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/integrations/$syncId': typeof certManagerPkiSyncDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
@@ -5640,11 +5679,11 @@ export interface FileRoutesByTo {
   '/upgrade-path': typeof publicUpgradePathPageRouteRoute
   '': typeof organizationLayoutRouteWithChildren
   '/password-setup': typeof authPasswordSetupPageRouteRoute
+  '/account-recovery': typeof authAccountRecoveryEmailPageRouteRoute
+  '/account-recovery-reset': typeof authAccountRecoveryResetPageRouteRoute
   '/email-not-verified': typeof authEmailNotVerifiedPageRouteRoute
-  '/password-reset': typeof authPasswordResetPageRouteRoute
   '/requestnewinvite': typeof authRequestNewInvitePageRouteRoute
   '/signupinvite': typeof authSignUpInvitePageRouteRoute
-  '/verify-email': typeof authVerifyEmailPageRouteRoute
   '/personal-settings': typeof userPersonalSettingsPageRouteRoute
   '/login': typeof authLoginPageRouteRoute
   '/signup': typeof authSignUpPageRouteRoute
@@ -5710,6 +5749,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/ai/$projectId/overview': typeof aiMCPPageRouteRoute
   '/organizations/$orgId/projects/ai/$projectId/settings': typeof aiSettingsPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/alerting': typeof certManagerAlertingPageRouteRoute
+  '/organizations/$orgId/projects/cert-manager/$projectId/approvals': typeof certManagerApprovalsPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities': typeof certManagerCertificateAuthoritiesPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/policies': typeof certManagerPoliciesPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/settings': typeof certManagerSettingsPageRouteRoute
@@ -5756,6 +5796,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/secret-scanning/$projectId/data-sources': typeof secretScanningSecretScanningDataSourcesPageRouteRoute
   '/organizations/$orgId/projects/ai/$projectId/mcp-endpoints/$endpointId': typeof aiMCPEndpointDetailPageRouteRoute
   '/organizations/$orgId/projects/ai/$projectId/mcp-servers/$serverId': typeof aiMCPServerDetailPageRouteRoute
+  '/organizations/$orgId/projects/cert-manager/$projectId/approval-requests/$approvalRequestId': typeof certManagerApprovalRequestDetailPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/ca/$caId': typeof certManagerCertAuthDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/integrations/$syncId': typeof certManagerPkiSyncDetailsByIDPageRouteRoute
   '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
@@ -5885,11 +5926,11 @@ export interface FileRoutesById {
   '/_authenticate': typeof middlewaresAuthenticateRouteWithChildren
   '/_restrict-login-signup': typeof middlewaresRestrictLoginSignupRouteWithChildren
   '/_authenticate/password-setup': typeof authPasswordSetupPageRouteRoute
+  '/_restrict-login-signup/account-recovery': typeof authAccountRecoveryEmailPageRouteRoute
+  '/_restrict-login-signup/account-recovery-reset': typeof authAccountRecoveryResetPageRouteRoute
   '/_restrict-login-signup/email-not-verified': typeof authEmailNotVerifiedPageRouteRoute
-  '/_restrict-login-signup/password-reset': typeof authPasswordResetPageRouteRoute
   '/_restrict-login-signup/requestnewinvite': typeof authRequestNewInvitePageRouteRoute
   '/_restrict-login-signup/signupinvite': typeof authSignUpInvitePageRouteRoute
-  '/_restrict-login-signup/verify-email': typeof authVerifyEmailPageRouteRoute
   '/_authenticate/_inject-org-details': typeof middlewaresInjectOrgDetailsRouteWithChildren
   '/_authenticate/personal-settings': typeof AuthenticatePersonalSettingsRouteWithChildren
   '/_restrict-login-signup/login': typeof RestrictLoginSignupLoginRouteWithChildren
@@ -5973,6 +6014,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/overview': typeof aiMCPPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/settings': typeof aiSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/alerting': typeof certManagerAlertingPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/approvals': typeof certManagerApprovalsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-authorities': typeof certManagerCertificateAuthoritiesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/policies': typeof certManagerPoliciesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/settings': typeof certManagerSettingsPageRouteRoute
@@ -6025,6 +6067,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId/_secret-scanning-layout/data-sources/': typeof secretScanningSecretScanningDataSourcesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/mcp-endpoints/$endpointId': typeof aiMCPEndpointDetailPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/mcp-servers/$serverId': typeof aiMCPServerDetailPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/approval-requests/$approvalRequestId': typeof certManagerApprovalRequestDetailPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/ca/$caId': typeof certManagerCertAuthDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/integrations/$syncId': typeof certManagerPkiSyncDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
@@ -6156,11 +6199,11 @@ export interface FileRouteTypes {
     | '/upgrade-path'
     | ''
     | '/password-setup'
+    | '/account-recovery'
+    | '/account-recovery-reset'
     | '/email-not-verified'
-    | '/password-reset'
     | '/requestnewinvite'
     | '/signupinvite'
-    | '/verify-email'
     | '/personal-settings'
     | '/login'
     | '/signup'
@@ -6233,6 +6276,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/ai/$projectId/overview'
     | '/organizations/$orgId/projects/ai/$projectId/settings'
     | '/organizations/$orgId/projects/cert-manager/$projectId/alerting'
+    | '/organizations/$orgId/projects/cert-manager/$projectId/approvals'
     | '/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities'
     | '/organizations/$orgId/projects/cert-manager/$projectId/policies'
     | '/organizations/$orgId/projects/cert-manager/$projectId/settings'
@@ -6285,6 +6329,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/secret-scanning/$projectId/data-sources/'
     | '/organizations/$orgId/projects/ai/$projectId/mcp-endpoints/$endpointId'
     | '/organizations/$orgId/projects/ai/$projectId/mcp-servers/$serverId'
+    | '/organizations/$orgId/projects/cert-manager/$projectId/approval-requests/$approvalRequestId'
     | '/organizations/$orgId/projects/cert-manager/$projectId/ca/$caId'
     | '/organizations/$orgId/projects/cert-manager/$projectId/integrations/$syncId'
     | '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName'
@@ -6413,11 +6458,11 @@ export interface FileRouteTypes {
     | '/upgrade-path'
     | ''
     | '/password-setup'
+    | '/account-recovery'
+    | '/account-recovery-reset'
     | '/email-not-verified'
-    | '/password-reset'
     | '/requestnewinvite'
     | '/signupinvite'
-    | '/verify-email'
     | '/personal-settings'
     | '/login'
     | '/signup'
@@ -6483,6 +6528,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/ai/$projectId/overview'
     | '/organizations/$orgId/projects/ai/$projectId/settings'
     | '/organizations/$orgId/projects/cert-manager/$projectId/alerting'
+    | '/organizations/$orgId/projects/cert-manager/$projectId/approvals'
     | '/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities'
     | '/organizations/$orgId/projects/cert-manager/$projectId/policies'
     | '/organizations/$orgId/projects/cert-manager/$projectId/settings'
@@ -6529,6 +6575,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/secret-scanning/$projectId/data-sources'
     | '/organizations/$orgId/projects/ai/$projectId/mcp-endpoints/$endpointId'
     | '/organizations/$orgId/projects/ai/$projectId/mcp-servers/$serverId'
+    | '/organizations/$orgId/projects/cert-manager/$projectId/approval-requests/$approvalRequestId'
     | '/organizations/$orgId/projects/cert-manager/$projectId/ca/$caId'
     | '/organizations/$orgId/projects/cert-manager/$projectId/integrations/$syncId'
     | '/organizations/$orgId/projects/cert-manager/$projectId/subscribers/$subscriberName'
@@ -6656,11 +6703,11 @@ export interface FileRouteTypes {
     | '/_authenticate'
     | '/_restrict-login-signup'
     | '/_authenticate/password-setup'
+    | '/_restrict-login-signup/account-recovery'
+    | '/_restrict-login-signup/account-recovery-reset'
     | '/_restrict-login-signup/email-not-verified'
-    | '/_restrict-login-signup/password-reset'
     | '/_restrict-login-signup/requestnewinvite'
     | '/_restrict-login-signup/signupinvite'
-    | '/_restrict-login-signup/verify-email'
     | '/_authenticate/_inject-org-details'
     | '/_authenticate/personal-settings'
     | '/_restrict-login-signup/login'
@@ -6744,6 +6791,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/overview'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/settings'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/alerting'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/approvals'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-authorities'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/policies'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/settings'
@@ -6796,6 +6844,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId/_secret-scanning-layout/data-sources/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/mcp-endpoints/$endpointId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/mcp-servers/$serverId'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/approval-requests/$approvalRequestId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/ca/$caId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/integrations/$syncId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName'
@@ -6990,11 +7039,11 @@ export const routeTree = rootRoute
     "/_restrict-login-signup": {
       "filePath": "middlewares/restrict-login-signup.tsx",
       "children": [
+        "/_restrict-login-signup/account-recovery",
+        "/_restrict-login-signup/account-recovery-reset",
         "/_restrict-login-signup/email-not-verified",
-        "/_restrict-login-signup/password-reset",
         "/_restrict-login-signup/requestnewinvite",
         "/_restrict-login-signup/signupinvite",
-        "/_restrict-login-signup/verify-email",
         "/_restrict-login-signup/login",
         "/_restrict-login-signup/signup",
         "/_restrict-login-signup/admin/signup"
@@ -7004,12 +7053,16 @@ export const routeTree = rootRoute
       "filePath": "auth/PasswordSetupPage/route.tsx",
       "parent": "/_authenticate"
     },
-    "/_restrict-login-signup/email-not-verified": {
-      "filePath": "auth/EmailNotVerifiedPage/route.tsx",
+    "/_restrict-login-signup/account-recovery": {
+      "filePath": "auth/AccountRecoveryEmailPage/route.tsx",
       "parent": "/_restrict-login-signup"
     },
-    "/_restrict-login-signup/password-reset": {
-      "filePath": "auth/PasswordResetPage/route.tsx",
+    "/_restrict-login-signup/account-recovery-reset": {
+      "filePath": "auth/AccountRecoveryResetPage/route.tsx",
+      "parent": "/_restrict-login-signup"
+    },
+    "/_restrict-login-signup/email-not-verified": {
+      "filePath": "auth/EmailNotVerifiedPage/route.tsx",
       "parent": "/_restrict-login-signup"
     },
     "/_restrict-login-signup/requestnewinvite": {
@@ -7018,10 +7071,6 @@ export const routeTree = rootRoute
     },
     "/_restrict-login-signup/signupinvite": {
       "filePath": "auth/SignUpInvitePage/route.tsx",
-      "parent": "/_restrict-login-signup"
-    },
-    "/_restrict-login-signup/verify-email": {
-      "filePath": "auth/VerifyEmailPage/route.tsx",
       "parent": "/_restrict-login-signup"
     },
     "/_authenticate/_inject-org-details": {
@@ -7449,6 +7498,7 @@ export const routeTree = rootRoute
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId",
       "children": [
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/alerting",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/approvals",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-authorities",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/policies",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/settings",
@@ -7458,6 +7508,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-templates",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/integrations",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/approval-requests/$approvalRequestId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/ca/$caId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/groups/$groupId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/identities/$identityId",
@@ -7564,6 +7615,10 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/alerting": {
       "filePath": "cert-manager/AlertingPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/approvals": {
+      "filePath": "cert-manager/ApprovalsPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificate-authorities": {
@@ -7872,6 +7927,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout/mcp-servers/$serverId": {
       "filePath": "ai/MCPServerDetailPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ai/$projectId/_ai-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/approval-requests/$approvalRequestId": {
+      "filePath": "cert-manager/ApprovalRequestDetailPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/ca/$caId": {
       "filePath": "cert-manager/CertAuthDetailsByIDPage/route.tsx",
