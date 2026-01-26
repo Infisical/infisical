@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { ExternalLinkIcon } from "lucide-react";
 
 import { Tooltip } from "@app/components/v2";
+import { CopyButton } from "@app/components/v2/CopyButton";
 import {
   Badge,
   Detail,
@@ -90,7 +91,10 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
             </Detail>
             <Detail>
               <DetailLabel>Serial Number</DetailLabel>
-              <DetailValue className="font-mono">{certificate.serialNumber}</DetailValue>
+              <DetailValue className="flex items-center gap-2 font-mono text-xs">
+                {certificate.serialNumber}
+                <CopyButton value={certificate.serialNumber} size="xs" variant="plain" />
+              </DetailValue>
             </Detail>
             <Detail>
               <DetailLabel>Not Before</DetailLabel>
