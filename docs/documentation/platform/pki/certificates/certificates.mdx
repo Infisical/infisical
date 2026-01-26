@@ -17,6 +17,33 @@ A certificate is the (X.509) leaf certificate issued for a certificate profile.
 Once issued, a certificate is kept track of in the certificate inventory
 where you can manage various aspects of its lifecycle including deployment to cloud key stores, server-side auto-renewal behavior, revocation, and more.
 
+## Guide to Viewing Certificate Details
+
+You can view comprehensive details for any certificate by clicking on it in the certificates table. This opens the certificate details page where you can see all certificate information and perform management actions.
+
+![pki certificate details page](/images/platform/pki/certificate/cert-details.png)
+
+### Certificate Information
+
+The details page displays:
+
+- **Overview**: Common name, friendly name, status badge, serial number, and validity period. Dates are shown in UTC with local time available on hover.
+- **Issuance**: The issuing Certificate Authority (with link to CA details), certificate profile used, and renewal chain showing if the certificate was renewed from or has been renewed by another certificate.
+- **Subject Attributes**: Full distinguished name components including Organization, Organizational Unit, Country, State, Locality, and Subject Alternative Names.
+- **Extensions**: Basic constraints (CA flag and path length), Key Usage flags, and Extended Key Usage purposes.
+- **Cryptographic Info**: Key algorithm, signature algorithm, and certificate fingerprints (SHA-256 and SHA-1).
+
+### Managing Certificates
+
+From the certificate details page, you can perform various actions using the **Options** dropdown menu:
+
+- **Export Certificate**: Download the certificate in PEM or PKCS12 format
+- **Enable/Manage Auto-Renewal**: Configure server-driven certificate renewal (available for API-enrolled certificates with server-generated keys)
+- **Renew Now**: Manually trigger certificate renewal
+- **Manage PKI Syncs**: Configure destinations to sync the certificate to cloud key stores
+- **Revoke Certificate**: Revoke the certificate with a specified reason
+- **Delete Certificate**: Permanently remove the certificate from the inventory
+
 ## Guide to Issuing Certificates
 
 To [issue a certificate](/documentation/platform/pki/concepts/certificate-lifecycle#enrollment-request-%2F-issuance), you must first create a [certificate profile](/documentation/platform/pki/certificates/profiles) and a [certificate policy](/documentation/platform/pki/certificates/policies) to go along with it.

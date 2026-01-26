@@ -134,17 +134,21 @@ export const CertificateDetailsSection = ({ certificateId }: Props) => {
               <Detail>
                 <DetailLabel>Basic Constraints</DetailLabel>
                 <DetailValue>
-                  {certificate.basicConstraints
-                    ? `CA:${certificate.basicConstraints.isCA ? "TRUE" : "FALSE"}`
-                    : "—"}
+                  {certificate.basicConstraints ? (
+                    `CA:${certificate.basicConstraints.isCA ? "TRUE" : "FALSE"}`
+                  ) : (
+                    <span className="text-muted">—</span>
+                  )}
                 </DetailValue>
               </Detail>
               <Detail>
                 <DetailLabel>Path Length</DetailLabel>
                 <DetailValue>
-                  {certificate.basicConstraints?.pathLength !== undefined
-                    ? certificate.basicConstraints.pathLength
-                    : "—"}
+                  {certificate.basicConstraints?.pathLength !== undefined ? (
+                    certificate.basicConstraints.pathLength
+                  ) : (
+                    <span className="text-muted">—</span>
+                  )}
                 </DetailValue>
               </Detail>
             </div>
