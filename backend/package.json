@@ -113,7 +113,6 @@
     "react-email": "^5.0.6",
     "rimraf": "^5.0.5",
     "tsc-alias": "^1.8.8",
-    "tsconfig-paths": "^4.2.0",
     "tsup": "^8.5.0",
     "tsx": "^4.4.0",
     "typescript": "^5.3.2",
@@ -249,6 +248,7 @@
     "uuid": "^9.0.1",
     "zod": "^3.22.4",
     "zod-to-json-schema": "^3.24.5",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0"
   }
 }
