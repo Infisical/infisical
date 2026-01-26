@@ -4,10 +4,10 @@ sidebarTitle: "Events Subscriptions"
 description: "Subscribe to events in Infisical for real-time updates"
 ---
 
-<Info>
+<Note>
    Event Subscriptions is a paid feature that is available under the Enterprise license.
-   Please contact[sales@infisical.com](mailto:sales@infisical.com).
-</Info>
+   Please contact [sales@infisical.com](mailto:sales@infisical.com).
+</Note>
 
 Event Subscriptions allow you to receive real-time notifications when specific actions occur within your Infisical projects. You can subscribe to changes such as secret modifications, with support for additional resource types coming soon.
 
@@ -36,7 +36,7 @@ You can subscribe to the following event types:
 | `secret:created` | Triggered when a new secret is created |
 | `secret:updated` | Triggered when an existing secret is modified |
 | `secret:deleted` | Triggered when a secret is removed |
-| `secret:import-mutations` | Triggered when a secret changes via an import |
+| `secret:import-mutation` | Triggered when a secret changes via an import |
 
 
 ## Permissions Setup
@@ -105,25 +105,43 @@ To subscribe to events, make a request to the events endpoint with your project 
 | `register[].conditions.secretPath` | string | Filter by secret path (e.g., `/api/keys`) |
 
 
-The endpoint responds with `Content-Type: text/event-stream` to initiate an SSE connection.
+The endpoint responds with `Content-Type: text/event-stream` to initiate an SSE connection. In the cURL example below, we use the `-N` flag to keep the connection open to receive incoming events from Infisical.
 
 ```bash
-curl -N --location \
-  'http://app.infisical.com/api/v1/events/subscribe/project-events' \
+curl -X POST -N --location \
+  'https://app.infisical.com/api/v1/events/subscribe/project-events' \
   --header 'Content-Type: application/json' \
-  --header 'Authorization: Bearer <identity token>' \
+  --header "Authorization: Bearer <identity-access-token>" \
   --data '{
     "projectId": "<project-id>",
     "register": [
       {
-        "event": "secret:create"
+        "event": "secret:create",
+        "conditions": {
+          "environmentSlug": "dev",
+          "secretPath": "/micro_service1"
+        }
       },
       {
-        "event": "secret:update"
+        "event": "secret:update",
+        "conditions": {
+          "environmentSlug": "staging",
+          "secretPath": "/**"
+        }
       },
       {
-        {
-        "event": "secret:import-mutations"
+        "event": "secret:delete",
+        "conditions": {
+          "environmentSlug": "prod",
+          "secretPath": "/database"
+        }
+      },
+      {
+        "event": "secret:import-mutations",
+        "conditions": {
+          "environmentSlug": "prod",
+          "secretPath": "/database"
+        }
       }
     ]
   }'
@@ -139,14 +157,19 @@ curl -N --location \
 {
     "projectType": "secret-manager",
     "data": {
-        "eventType": "secret:<create,update,delete>",
+        "eventType": "secret:create|update|delete",
         "payload": [
           {
             "environment": "staging",
             "secretPath": "/",
-            "secretKey": "TEST"
+            "secretKey": "SECRET_KEY1"
+          },
+          {
+            "environment": "staging",
+            "secretPath": "/",
+            "secretKey": "SECRET_KEY2"
           }
-        ]
+        ],
     }
 }
 ```
@@ -159,7 +182,7 @@ curl -N --location \
 {
     "projectType": "secret-manager",
     "data": {
-        "eventType": "secret:import-mutations",
+        "eventType": "secret:import-mutation",
         "payload": {
             "environment": "staging",
             "secretPath": "/"
