@@ -12,6 +12,11 @@ import {
   UnstableCardTitle
 } from "@app/components/v3";
 import { useGetCertificateById } from "@app/hooks/api";
+import {
+  CertKeyAlgorithm,
+  certKeyAlgorithmToNameMap,
+  certSignatureAlgorithmToNameMap
+} from "@app/hooks/api/certificates";
 import { camelCaseToSpaces, toTitleCase } from "@app/lib/fn/string";
 
 type Props = {
@@ -201,13 +206,23 @@ export const CertificateDetailsSection = ({ certificateId }: Props) => {
               <Detail>
                 <DetailLabel>Key Algorithm</DetailLabel>
                 <DetailValue>
-                  {certificate.keyAlgorithm || <span className="text-muted">—</span>}
+                  {certificate.keyAlgorithm ? (
+                    certKeyAlgorithmToNameMap[certificate.keyAlgorithm as CertKeyAlgorithm] ||
+                    certificate.keyAlgorithm
+                  ) : (
+                    <span className="text-muted">—</span>
+                  )}
                 </DetailValue>
               </Detail>
               <Detail>
                 <DetailLabel>Signature Algorithm</DetailLabel>
                 <DetailValue>
-                  {certificate.signatureAlgorithm || <span className="text-muted">—</span>}
+                  {certificate.signatureAlgorithm ? (
+                    certSignatureAlgorithmToNameMap[certificate.signatureAlgorithm] ||
+                    certificate.signatureAlgorithm
+                  ) : (
+                    <span className="text-muted">—</span>
+                  )}
                 </DetailValue>
               </Detail>
             </div>
