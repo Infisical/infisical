@@ -75,7 +75,7 @@ export const SanitizedSmbConnectionSchema = z.discriminatedUnion("method", [
 // List item schema
 export const SmbConnectionListItemSchema = z
   .object({
-    name: z.literal("SMB"),
+    name: z.literal("Windows"),
     app: z.literal(AppConnection.SMB),
     methods: z.nativeEnum(SmbConnectionMethod).array()
   })

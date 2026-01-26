@@ -137,9 +137,6 @@ export const SmbConnectionForm = ({ appConnection, onSubmit }: Props) => {
           </OrgPermissionCan>
         )}
         <div className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3 pb-0">
-          <p className="mb-3 text-xs text-mineshaft-300">
-            SMB connection uses SMB3 encryption for secure Windows remote management.
-          </p>
           <Controller
             name="credentials.host"
             control={control}
@@ -161,7 +158,6 @@ export const SmbConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 errorText={error?.message}
                 isError={Boolean(error?.message)}
                 label="Port"
-                isOptional
               >
                 <Input
                   type="number"

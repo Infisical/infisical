@@ -142,7 +142,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Chef]: { name: "Chef", image: "Chef.png", enterprise: true },
   [AppConnection.OctopusDeploy]: { name: "Octopus Deploy", image: "Octopus Deploy.png" },
   [AppConnection.SSH]: { name: "SSH", image: "SSH.png" },
-  [AppConnection.SMB]: { name: "SMB", image: "Windows.png", size: 50 }
+  [AppConnection.SMB]: { name: "Windows", image: "Windows.png", size: 50 }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {

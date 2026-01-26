@@ -12,11 +12,13 @@ import { PostgresCredentialsRotationSchema } from "@app/components/secret-rotati
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { LdapPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/types/ldap-password-rotation";
 import { UnixLinuxLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/unix-linux-local-account-rotation";
+import { WindowsLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/windows-local-account-rotation";
 
 import { OktaClientSecretRotationSchema } from "./okta-client-secret-rotation-schema";
 import { OracleDBCredentialsRotationSchema } from "./oracledb-credentials-rotation-schema";
 import { RedisCredentialsRotationSchema } from "./redis-credentials-rotation-schema";
 import { UnixLinuxLocalAccountRotationSchema } from "./unix-linux-local-account-rotation-schema";
+import { WindowsLocalAccountRotationSchema } from "./windows-local-account-rotation-schema";
 
 export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
   z
@@ -34,7 +36,8 @@ export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
         RedisCredentialsRotationSchema,
         MongoDBCredentialsRotationSchema,
         DatabricksServicePrincipalSecretRotationSchema,
-        UnixLinuxLocalAccountRotationSchema
+        UnixLinuxLocalAccountRotationSchema,
+        WindowsLocalAccountRotationSchema
       ]),
       z.object({ id: z.string().optional() })
     )
@@ -58,6 +61,19 @@ export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
       if (val.type === SecretRotation.UnixLinuxLocalAccount) {
         if (
           val.parameters.rotationMethod === UnixLinuxLocalAccountRotationMethod.LoginAsTarget &&
+          !val.temporaryParameters?.password
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Password required",
+            path: ["temporaryParameters", "password"]
+          });
+        }
+      }
+
+      if (val.type === SecretRotation.WindowsLocalAccount) {
+        if (
+          val.parameters.rotationMethod === WindowsLocalAccountRotationMethod.LoginAsTarget &&
           !val.temporaryParameters?.password
         ) {
           ctx.addIssue({

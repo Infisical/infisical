@@ -33,7 +33,7 @@ export const WindowsLocalAccountRotationParametersFields = () => {
                 <span>Determines how the rotation will be performed:</span>
                 <ul className="mt-2 ml-4 flex list-disc flex-col gap-2">
                   <li>
-                    <span className="font-medium">Login as Root</span> - The SMB connection
+                    <span className="font-medium">Login as Root</span> - The Windows connection
                     credentials of the app connection linked will be used to change the target
                     user&#39;s password.
                   </li>
@@ -53,7 +53,7 @@ export const WindowsLocalAccountRotationParametersFields = () => {
               isUpdate
                 ? "Cannot be updated."
                 : value === WindowsLocalAccountRotationMethod.LoginAsRoot
-                  ? "The SMB connection credentials will change the target user's password"
+                  ? "The Windows connection credentials will change the target user's password"
                   : "The target user will change their own password"
             }
           >

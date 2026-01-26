@@ -47,7 +47,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Northflank]: "Northflank",
   [AppConnection.OctopusDeploy]: "Octopus Deploy",
   [AppConnection.SSH]: "SSH",
-  [AppConnection.SMB]: "SMB"
+  [AppConnection.SMB]: "Windows"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {

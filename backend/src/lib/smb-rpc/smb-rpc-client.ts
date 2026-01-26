@@ -1,4 +1,9 @@
 import { spawn } from "child_process";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
+
+import { logger } from "@app/lib/logger";
 
 export interface SmbRpcConfig {
   host: string;
@@ -11,30 +16,51 @@ export interface SmbRpcConfig {
 const SMB3_SECURITY_OPTIONS = ["--option=client min protocol=SMB3", "--option=client smb encrypt=required"];
 
 /**
- * Build the target string (//host:port)
+ * Build the target string (//host)
  */
 const buildTarget = (config: SmbRpcConfig): string => {
-  return `//${config.host}:${config.port}`;
+  return `//${config.host}`;
 };
 
 /**
- * Helper to build common auth args for SMB commands
- * Uses --stdin to read password from stdin (avoids exposing password in process listings)
+ * Build port args for SMB commands
  */
-const buildAuthArgs = (config: SmbRpcConfig): string[] => {
-  const userCredential = config.domain ? `${config.domain}\\${config.adminUser}` : config.adminUser;
+const buildPortArgs = (config: SmbRpcConfig): string[] => {
+  return ["-p", String(config.port)];
+};
 
-  return ["-U", userCredential, "--stdin", ...SMB3_SECURITY_OPTIONS];
+/**
+ * Create a temporary authentication file for Samba tools
+ * Format: username = value, password = value, domain = value (optional)
+ * Returns the file path
+ */
+const createAuthFile = (config: SmbRpcConfig): string => {
+  const authFilePath = path.join(os.tmpdir(), `smb-auth-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+
+  let content = `username = ${config.adminUser}\npassword = ${config.adminPassword}\n`;
+  if (config.domain) {
+    content += `domain = ${config.domain}\n`;
+  }
+
+  // Write with restrictive permissions (owner read/write only)
+  fs.writeFileSync(authFilePath, content, { mode: 0o600 });
+
+  return authFilePath;
+};
+
+/**
+ * Helper to build common auth args for SMB commands using authentication file
+ */
+const buildAuthArgs = (authFilePath: string): string[] => {
+  return ["-A", authFilePath, ...SMB3_SECURITY_OPTIONS];
 };
 
 /**
  * Execute a command and return stdout/stderr
- * Optionally writes data to stdin (used for password input)
  */
 const executeCommand = (
   command: string,
-  args: string[],
-  stdinData?: string
+  args: string[]
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> => {
   return new Promise((resolve) => {
     const proc = spawn(command, args, {
@@ -60,12 +86,6 @@ const executeCommand = (
       stderr += err.message;
       resolve({ stdout, stderr, exitCode: 1 });
     });
-
-    // Write password to stdin if provided
-    if (stdinData !== undefined) {
-      proc.stdin.write(`${stdinData}\n`);
-      proc.stdin.end();
-    }
   });
 };
 
@@ -93,6 +113,7 @@ const getNtStatusMessage = (ntStatus: string): string => {
     NT_STATUS_CONNECTION_REFUSED: "Connection refused - check if SMB is enabled on target",
     NT_STATUS_HOST_UNREACHABLE: "Host unreachable",
     NT_STATUS_IO_TIMEOUT: "Connection timed out",
+    NT_STATUS_UNSUCCESSFUL: `Connection failed - verify SMB is enabled on target, firewall allows the port provided in the connection configuration, and SMB3 protocol is supported`,
     NT_STATUS_PASSWORD_RESTRICTION:
       "Password rejected by Windows policy - ensure Infisical password requirements meet or exceed Windows password policy",
     NT_STATUS_WRONG_PASSWORD: "Incorrect password"
@@ -106,18 +127,28 @@ const getNtStatusMessage = (ntStatus: string): string => {
  * Uses smbclient to list shares and verify connectivity
  */
 const testSmbConnection = async (config: SmbRpcConfig): Promise<void> => {
-  const args = ["-L", buildTarget(config), ...buildAuthArgs(config)];
+  const authFilePath = createAuthFile(config);
 
-  const { stdout, stderr, exitCode } = await executeCommand("smbclient", args, config.adminPassword);
-  const combinedOutput = stdout + stderr;
+  try {
+    const args = ["-L", buildTarget(config), ...buildPortArgs(config), ...buildAuthArgs(authFilePath)];
 
-  const ntStatus = parseNtStatusError(combinedOutput);
-  if (ntStatus) {
-    throw new Error(getNtStatusMessage(ntStatus));
-  }
+    const { stdout, stderr, exitCode } = await executeCommand("smbclient", args);
+    const combinedOutput = stdout + stderr;
 
-  if (exitCode !== 0) {
-    throw new Error(`SMB connection failed: ${combinedOutput || "Unknown error"}`);
+    const ntStatus = parseNtStatusError(combinedOutput);
+    if (ntStatus) {
+      throw new Error(getNtStatusMessage(ntStatus));
+    }
+
+    if (exitCode !== 0) {
+      throw new Error(`SMB connection failed: ${combinedOutput || "Unknown error"}`);
+    }
+  } finally {
+    try {
+      fs.unlinkSync(authFilePath);
+    } catch (err) {
+      logger.warn({ err, authFilePath }, "Failed to cleanup SMB auth file");
+    }
   }
 };
 
@@ -159,21 +190,31 @@ export const changeWindowsPassword = async (
     );
   }
 
-  const escapedPassword = escapePasswordForRpc(newPassword);
-  const rpcCommand = `setuserinfo2 ${targetUser} 23 '${escapedPassword}'`;
+  const authFilePath = createAuthFile(config);
 
-  const args = [buildTarget(config), ...buildAuthArgs(config), "-c", rpcCommand];
+  try {
+    const escapedPassword = escapePasswordForRpc(newPassword);
+    const rpcCommand = `setuserinfo2 ${targetUser} 23 '${escapedPassword}'`;
 
-  const { stdout, stderr, exitCode } = await executeCommand("rpcclient", args, config.adminPassword);
-  const combinedOutput = stdout + stderr;
+    const args = [buildTarget(config), ...buildPortArgs(config), ...buildAuthArgs(authFilePath), "-c", rpcCommand];
 
-  const ntStatus = parseNtStatusError(combinedOutput);
-  if (ntStatus) {
-    throw new Error(getNtStatusMessage(ntStatus));
-  }
+    const { stdout, stderr, exitCode } = await executeCommand("rpcclient", args);
+    const combinedOutput = stdout + stderr;
 
-  if (exitCode !== 0) {
-    throw new Error(`Password change failed: ${combinedOutput || "Unknown error"}`);
+    const ntStatus = parseNtStatusError(combinedOutput);
+    if (ntStatus) {
+      throw new Error(getNtStatusMessage(ntStatus));
+    }
+
+    if (exitCode !== 0) {
+      throw new Error(`Password change failed: ${combinedOutput || "Unknown error"}`);
+    }
+  } finally {
+    try {
+      fs.unlinkSync(authFilePath);
+    } catch (err) {
+      logger.warn({ err, authFilePath }, "Failed to cleanup SMB auth file");
+    }
   }
 };
 
