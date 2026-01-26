@@ -6,7 +6,7 @@ import { ApiDocsTags, IDENTITIES } from "@app/lib/api-docs";
 import { buildSearchZodSchema, SearchResourceOperators } from "@app/lib/search-resource/search";
 import { OrderByDirection } from "@app/lib/types";
 import { CharacterType, zodValidateCharacters } from "@app/lib/validator/validate-string";
-import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { identityCreationLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -31,7 +31,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/",
     config: {
-      rateLimit: writeLimit
+      rateLimit: identityCreationLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
