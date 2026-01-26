@@ -85,17 +85,12 @@ import {
   TBitbucketSyncWithCredentials
 } from "./bitbucket/bitbucket-sync-types";
 import {
-  TCircleCISync,
-  TCircleCISyncInput,
-  TCircleCISyncListItem,
-  TCircleCISyncWithCredentials
-} from "./circleci";
-import {
   TChecklySync,
   TChecklySyncInput,
   TChecklySyncListItem,
   TChecklySyncWithCredentials
 } from "./checkly/checkly-sync-types";
+import { TCircleCISync, TCircleCISyncInput, TCircleCISyncListItem, TCircleCISyncWithCredentials } from "./circleci";
 import {
   TCloudflarePagesSync,
   TCloudflarePagesSyncInput,
