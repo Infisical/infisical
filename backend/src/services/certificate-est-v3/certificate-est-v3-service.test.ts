@@ -287,7 +287,7 @@ describe("CertificateEstV3Service", () => {
       ).rejects.toThrow(BadRequestError);
     });
 
-    it("should use policy max validity as TTL", async () => {
+    it("should use flow default TTL when profile has no defaultTtlDays", async () => {
       mockCertificatePolicyDAL.findById.mockResolvedValue({
         id: "policy-123",
         validity: { max: "30d" }
@@ -307,7 +307,7 @@ describe("CertificateEstV3Service", () => {
 
       expect(mockCertificateV3Service.signCertificateFromProfile).toHaveBeenCalledWith(
         expect.objectContaining({
-          validity: { ttl: "30d" }
+          validity: { ttl: "90d" }
         })
       );
     });
