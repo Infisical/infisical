@@ -1,7 +1,7 @@
 /* eslint-disable jsx-a11y/no-static-element-interactions */
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 /* eslint-disable no-nested-ternary */
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   faCircleCheck,
   faCircleXmark,
@@ -16,6 +16,294 @@ import { twMerge } from "tailwind-merge";
 
 import { SecretInput, Tag, Tooltip } from "@app/components/v2";
 import { CommitType, SecretV3Raw, TSecretApprovalSecChange, WsTag } from "@app/hooks/api/types";
+
+// ===== MULTILINE DIFF FUNCTIONS =====
+const isSingleLine = (str: string | null | undefined): boolean => {
+  if (!str || typeof str !== "string") return true;
+  return !str.includes("\n");
+};
+
+type DiffLine = {
+  type: "added" | "deleted" | "unchanged" | "modified";
+  oldLine?: string;
+  newLine?: string;
+};
+
+type WordDiff = {
+  type: "added" | "deleted" | "unchanged";
+  text: string;
+};
+
+// Simple line-by-line diff algorithm
+const computeLineDiff = (oldText: string, newText: string): DiffLine[] => {
+  const oldLines = oldText.split("\n");
+  const newLines = newText.split("\n");
+  const result: DiffLine[] = [];
+
+  let oldIndex = 0;
+  let newIndex = 0;
+
+  while (oldIndex < oldLines.length || newIndex < newLines.length) {
+    if (oldIndex >= oldLines.length) {
+      result.push({
+        type: "added",
+        newLine: newLines[newIndex]
+      });
+      newIndex++;
+    } else if (newIndex >= newLines.length) {
+      result.push({
+        type: "deleted",
+        oldLine: oldLines[oldIndex]
+      });
+      oldIndex++;
+    } else if (oldLines[oldIndex] === newLines[newIndex]) {
+      result.push({
+        type: "unchanged",
+        oldLine: oldLines[oldIndex],
+        newLine: newLines[newIndex]
+      });
+      oldIndex++;
+      newIndex++;
+    } else {
+      const nextOldMatch = newLines.findIndex(
+        (line, idx) => idx >= newIndex && line === oldLines[oldIndex]
+      );
+      const nextNewMatch = oldLines.findIndex(
+        (line, idx) => idx >= oldIndex && line === newLines[newIndex]
+      );
+
+      if (nextOldMatch === -1 && nextNewMatch === -1) {
+        result.push({
+          type: "modified",
+          oldLine: oldLines[oldIndex],
+          newLine: newLines[newIndex]
+        });
+        oldIndex++;
+        newIndex++;
+      } else if (nextOldMatch !== -1 && (nextNewMatch === -1 || nextOldMatch < nextNewMatch)) {
+        while (newIndex < nextOldMatch) {
+          result.push({
+            type: "added",
+            newLine: newLines[newIndex]
+          });
+          newIndex++;
+        }
+      } else {
+        while (oldIndex < nextNewMatch) {
+          result.push({
+            type: "deleted",
+            oldLine: oldLines[oldIndex]
+          });
+          oldIndex++;
+        }
+      }
+    }
+  }
+
+  return result;
+};
+
+// Word-level diff for modified lines
+const computeWordDiff = (oldText: string, newText: string): WordDiff[] => {
+  const wordRegex = /(\s+|[^\s\w]+|\w+)/g;
+  const oldWords = oldText.match(wordRegex) || [];
+  const newWords = newText.match(wordRegex) || [];
+
+  const result: WordDiff[] = [];
+  let oldIdx = 0;
+  let newIdx = 0;
+
+  while (oldIdx < oldWords.length || newIdx < newWords.length) {
+    if (oldIdx >= oldWords.length) {
+      result.push({ type: "added", text: newWords[newIdx] });
+      newIdx++;
+    } else if (newIdx >= newWords.length) {
+      result.push({ type: "deleted", text: oldWords[oldIdx] });
+      oldIdx++;
+    } else if (oldWords[oldIdx] === newWords[newIdx]) {
+      result.push({ type: "unchanged", text: oldWords[oldIdx] });
+      oldIdx++;
+      newIdx++;
+    } else {
+      const nextOldMatch = newWords.findIndex(
+        (word, idx) => idx >= newIdx && word === oldWords[oldIdx]
+      );
+      const nextNewMatch = oldWords.findIndex(
+        (word, idx) => idx >= oldIdx && word === newWords[newIdx]
+      );
+
+      if (nextOldMatch === -1 && nextNewMatch === -1) {
+        result.push({ type: "deleted", text: oldWords[oldIdx] });
+        result.push({ type: "added", text: newWords[newIdx] });
+        oldIdx++;
+        newIdx++;
+      } else if (nextOldMatch !== -1 && (nextNewMatch === -1 || nextOldMatch < nextNewMatch)) {
+        while (newIdx < nextOldMatch) {
+          result.push({ type: "added", text: newWords[newIdx] });
+          newIdx++;
+        }
+      } else {
+        while (oldIdx < nextNewMatch) {
+          result.push({ type: "deleted", text: oldWords[oldIdx] });
+          oldIdx++;
+        }
+      }
+    }
+  }
+  return result;
+};
+
+// Render single-line diff (just word highlighting, no container/+/-)
+const renderSingleLineDiffForApproval = (
+  oldText: string,
+  newText: string,
+  isOldVersion: boolean
+): JSX.Element => {
+  const wordDiffs = computeWordDiff(oldText, newText);
+
+  return (
+    <div className="font-mono text-sm break-words">
+      {wordDiffs.map((wordDiff, wordIdx) => {
+        if (isOldVersion && wordDiff.type === "added") return null;
+        if (!isOldVersion && wordDiff.type === "deleted") return null;
+
+        const wordKey = `singleline-word-${wordIdx}`;
+        const wordClass =
+          wordDiff.type === "deleted"
+            ? "bg-red-600/70 rounded px-0.5"
+            : wordDiff.type === "added"
+              ? "bg-green-600/70 rounded px-0.5"
+              : "";
+
+        return (
+          <span key={wordKey} className={wordClass}>
+            {wordDiff.text}
+          </span>
+        );
+      })}
+    </div>
+  );
+};
+
+// Render multiline diff for approval screen (side-by-side view)
+const renderMultilineDiffForApproval = (
+  oldText: string,
+  newText: string,
+  isOldVersion: boolean
+): JSX.Element => {
+  const diffLines = computeLineDiff(oldText, newText);
+  
+  // Find the first changed line index
+  let firstChangedIndex = -1;
+  for (let i = 0; i < diffLines.length; i++) {
+    const line = diffLines[i];
+    if (isOldVersion) {
+      if (line.type === "deleted" || line.type === "modified") {
+        firstChangedIndex = i;
+        break;
+      }
+    } else {
+      if (line.type === "added" || line.type === "modified") {
+        firstChangedIndex = i;
+        break;
+      }
+    }
+  }
+
+  return (
+    <div className="font-mono text-sm whitespace-pre-wrap min-w-full break-words">
+      {diffLines.map((diffLine, lineIndex) => {
+        const lineKey = `multiline-${lineIndex}-${diffLine.type}`;
+        const isFirstChanged = lineIndex === firstChangedIndex;
+
+        if (isOldVersion) {
+          // Render old version
+          if (diffLine.type === "added") {
+            return null; // Skip added lines in old version
+          }
+
+          const isChanged = diffLine.type === "deleted" || diffLine.type === "modified";
+          const lineClass = isChanged
+            ? "flex min-w-full bg-red-500/50 rounded-xs text-red-300"
+            : "flex min-w-full";
+
+          if (diffLine.type === "modified" && diffLine.oldLine) {
+            const wordDiffs = computeWordDiff(diffLine.oldLine, diffLine.newLine || "");
+            return (
+              <div key={lineKey} className={lineClass} data-first-change={isFirstChanged ? "true" : undefined}>
+                <div className="w-4 shrink-0">-</div>
+                <div className="flex-1 min-w-0 break-words">
+                  {wordDiffs.map((wordDiff, wordIdx) => {
+                    if (wordDiff.type === "added") return null;
+                    const wordKey = `${lineKey}-word-${wordIdx}`;
+                    const wordClass =
+                      wordDiff.type === "deleted"
+                        ? "bg-red-600/70 rounded px-0.5"
+                        : "";
+                    return (
+                      <span key={wordKey} className={wordClass}>
+                        {wordDiff.text}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div key={lineKey} className={lineClass} data-first-change={isFirstChanged ? "true" : undefined}>
+              <div className="w-4 shrink-0">{isChanged ? "-" : " "}</div>
+              <div className="flex-1 min-w-0 break-words">{diffLine.oldLine}</div>
+            </div>
+          );
+        } else {
+          // Render new version
+          if (diffLine.type === "deleted") {
+            return null; // Skip deleted lines in new version
+          }
+
+          const isChanged = diffLine.type === "added" || diffLine.type === "modified";
+          const lineClass = isChanged
+            ? "flex min-w-full bg-green-500/50 rounded-xs text-green-300"
+            : "flex min-w-full";
+
+          if (diffLine.type === "modified" && diffLine.newLine) {
+            const wordDiffs = computeWordDiff(diffLine.oldLine || "", diffLine.newLine);
+            return (
+              <div key={lineKey} className={lineClass} data-first-change={isFirstChanged ? "true" : undefined}>
+                <div className="w-4 shrink-0">+</div>
+                <div className="flex-1 min-w-0 break-words">
+                  {wordDiffs.map((wordDiff, wordIdx) => {
+                    if (wordDiff.type === "deleted") return null;
+                    const wordKey = `${lineKey}-word-${wordIdx}`;
+                    const wordClass =
+                      wordDiff.type === "added"
+                        ? "bg-green-600/70 rounded px-0.5"
+                        : "";
+                    return (
+                      <span key={wordKey} className={wordClass}>
+                        {wordDiff.text}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div key={lineKey} className={lineClass} data-first-change={isFirstChanged ? "true" : undefined}>
+              <div className="w-4 shrink-0">{isChanged ? "+" : " "}</div>
+              <div className="flex-1 min-w-0 break-words">{diffLine.newLine}</div>
+            </div>
+          );
+        }
+      })}
+    </div>
+  );
+};
+// ===== END MULTILINE DIFF FUNCTIONS =====
 
 export type Props = {
   op: CommitType;
@@ -64,6 +352,47 @@ export const SecretApprovalRequestChangeItem = ({
   const hasConflict = Boolean(itemConflict);
   const [isOldSecretValueVisible, setIsOldSecretValueVisible] = useState(false);
   const [isNewSecretValueVisible, setIsNewSecretValueVisible] = useState(false);
+  const oldDiffContainerRef = useRef<HTMLDivElement>(null);
+  const newDiffContainerRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to first change when diff is rendered
+  useEffect(() => {
+    const scrollToFirstChange = (container: HTMLDivElement | null) => {
+      if (!container) return;
+      
+      const firstChange = container.querySelector('[data-first-change="true"]') as HTMLElement;
+      if (firstChange) {
+        // Calculate the element's position relative to the container's scrollable area
+        const elementTop = firstChange.offsetTop;
+        const containerScrollTop = container.scrollTop;
+        const containerHeight = container.clientHeight;
+        const elementHeight = firstChange.offsetHeight;
+        
+        // Check if element is visible in the container viewport
+        const isVisible = 
+          elementTop >= containerScrollTop &&
+          elementTop + elementHeight <= containerScrollTop + containerHeight;
+        
+        // If element is not visible, scroll the container (not the page)
+        if (!isVisible) {
+          // Scroll to center the element in the container
+          const targetScrollTop = elementTop - containerHeight / 2 + elementHeight / 2;
+          container.scrollTo({
+            top: Math.max(0, targetScrollTop),
+            behavior: "smooth"
+          });
+        }
+      }
+    };
+
+    // Small delay to ensure DOM is rendered
+    const timeout = setTimeout(() => {
+      scrollToFirstChange(oldDiffContainerRef.current);
+      scrollToFirstChange(newDiffContainerRef.current);
+    }, 100);
+
+    return () => clearTimeout(timeout);
+  }, [secretVersion?.secretValue, newVersion?.secretValue]);
 
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 pt-2 pb-4">
@@ -106,22 +435,60 @@ export const SecretApprovalRequestChangeItem = ({
                     <span className="text-mineshaft-400">
                       Rotated Secret value will not be affected
                     </span>
+                  ) : secretVersion?.secretValueHidden ? (
+                    <div className="relative">
+                      <div className="absolute top-1/2 left-1 z-50 -translate-y-1/2">
+                        <Tooltip
+                          position="right"
+                          content="You do not have access to view the old secret value."
+                        >
+                          <FontAwesomeIcon
+                            className="pl-2 text-mineshaft-300"
+                            size="sm"
+                            icon={faEyeSlash}
+                          />
+                        </Tooltip>
+                      </div>
+                      <SecretInput
+                        isReadOnly
+                        isVisible={isOldSecretValueVisible}
+                        valueAlwaysHidden={secretVersion?.secretValueHidden}
+                        value={secretVersion?.secretValue}
+                        containerClassName="border border-mineshaft-600 bg-bunker-700 py-1.5 text-bunker-300 hover:border-primary-400/50 pr-2 pl-8"
+                      />
+                    </div>
+                  ) : secretVersion?.secretValue &&
+                    newVersion?.secretValue &&
+                    secretVersion.secretValue !== newVersion.secretValue ? (
+                    isSingleLine(secretVersion.secretValue) &&
+                    isSingleLine(newVersion.secretValue) ? (
+                      <div
+                        className="relative rounded border border-mineshaft-600 p-2"
+                        style={{ backgroundColor: "#120808" }}
+                      >
+                        {renderSingleLineDiffForApproval(
+                          secretVersion.secretValue,
+                          newVersion.secretValue,
+                          true
+                        )}
+                      </div>
+                    ) : (
+                      <div
+                        ref={oldDiffContainerRef}
+                        className="relative max-h-96 overflow-x-auto overflow-y-auto rounded border border-mineshaft-600 p-2"
+                        style={{ backgroundColor: "#120808" }}
+                      >
+                        <div className="min-w-max">
+                          {renderMultilineDiffForApproval(
+                            secretVersion.secretValue,
+                            newVersion.secretValue,
+                            true
+                          )}
+                        </div>
+                      </div>
+                    )
                   ) : (
                     <div className="relative">
-                      {secretVersion?.secretValueHidden && (
-                        <div className="absolute top-1/2 left-1 z-50 -translate-y-1/2">
-                          <Tooltip
-                            position="right"
-                            content="You do not have access to view the old secret value."
-                          >
-                            <FontAwesomeIcon
-                              className="pl-2 text-mineshaft-300"
-                              size="sm"
-                              icon={faEyeSlash}
-                            />
-                          </Tooltip>
-                        </div>
-                      )}
                       <SecretInput
                         isReadOnly
                         isVisible={isOldSecretValueVisible}
@@ -250,22 +617,60 @@ export const SecretApprovalRequestChangeItem = ({
                     <span className="text-mineshaft-400">
                       Rotated Secret value will not be affected
                     </span>
+                  ) : newVersion?.secretValueHidden ? (
+                    <div className="relative">
+                      <div className="absolute top-1/2 left-1 z-50 -translate-y-1/2">
+                        <Tooltip
+                          position="right"
+                          content="You do not have access to view the new secret value."
+                        >
+                          <FontAwesomeIcon
+                            className="pl-2 text-mineshaft-300"
+                            size="sm"
+                            icon={faEyeSlash}
+                          />
+                        </Tooltip>
+                      </div>
+                      <SecretInput
+                        isReadOnly
+                        valueAlwaysHidden={newVersion?.secretValueHidden}
+                        isVisible={isNewSecretValueVisible}
+                        value={newVersion?.secretValue ?? secretVersion?.secretValue}
+                        containerClassName="border border-mineshaft-600 bg-bunker-700 py-1.5 text-bunker-300 hover:border-primary-400/50 pr-2 pl-8"
+                      />
+                    </div>
+                  ) : secretVersion?.secretValue &&
+                    (newVersion?.secretValue ?? secretVersion?.secretValue) &&
+                    secretVersion.secretValue !== (newVersion?.secretValue ?? secretVersion.secretValue) ? (
+                    isSingleLine(secretVersion.secretValue) &&
+                    isSingleLine(newVersion?.secretValue ?? secretVersion.secretValue) ? (
+                      <div
+                        className="relative rounded border border-mineshaft-600 p-2"
+                        style={{ backgroundColor: "#081208" }}
+                      >
+                        {renderSingleLineDiffForApproval(
+                          secretVersion.secretValue,
+                          newVersion?.secretValue ?? secretVersion.secretValue,
+                          false
+                        )}
+                      </div>
+                    ) : (
+                      <div
+                        ref={newDiffContainerRef}
+                        className="relative max-h-96 overflow-x-auto overflow-y-auto rounded border border-mineshaft-600 p-2"
+                        style={{ backgroundColor: "#081208" }}
+                      >
+                        <div className="min-w-max">
+                          {renderMultilineDiffForApproval(
+                            secretVersion.secretValue,
+                            newVersion?.secretValue ?? secretVersion.secretValue,
+                            false
+                          )}
+                        </div>
+                      </div>
+                    )
                   ) : (
                     <div className="relative">
-                      {newVersion?.secretValueHidden && (
-                        <div className="absolute top-1/2 left-1 z-50 -translate-y-1/2">
-                          <Tooltip
-                            position="right"
-                            content="You do not have access to view the new secret value."
-                          >
-                            <FontAwesomeIcon
-                              className="pl-2 text-mineshaft-300"
-                              size="sm"
-                              icon={faEyeSlash}
-                            />
-                          </Tooltip>
-                        </div>
-                      )}
                       <SecretInput
                         isReadOnly
                         valueAlwaysHidden={newVersion?.secretValueHidden}
