@@ -30,14 +30,10 @@ export const createRedisBus = (redis: Redis | Cluster, topic: EventBusTopicName)
       if (channel !== topic || !messageHandler) return;
 
       try {
-        const parsed = JSON.parse(message);
-        const validated = EventBusSchema.safeParse(parsed);
+        const validated = EventBusSchema.safeParse(JSON.parse(message));
 
         if (!validated.success) {
-          logger.error(
-            { error: validated.error, message },
-            `Invalid event received on channel ${channel}`
-          );
+          logger.error({ error: validated.error, message }, `Invalid event received on channel ${channel}`);
           return;
         }
 
