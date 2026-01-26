@@ -279,19 +279,25 @@ export const SecretListView = ({
           (newId) => !orgSecret.secretReminderRecipients?.find((oldId) => newId === oldId.user.id)
         ) && reminderRecipients?.length === orgSecret.secretReminderRecipients?.length;
 
+      // Normalize secret value to match backend behavior for comparison
+      const normalizeSecretValue = (value: string | null | undefined): string => {
+        if (!value || typeof value !== "string") return "";
+        // If value ends with \n, preserve it after trimming
+        if (value.at(-1) === "\n") {
+          return `${value.trim()}\n`;
+        }
+        return value.trim();
+      };
+
       const isSharedSecUnchanged =
-        (
-          [
-            "key",
-            "value",
-            "comment",
-            "skipMultilineEncoding",
-            "reminderRepeatDays",
-            "reminderNote",
-            "reminderRecipients",
-            "secretMetadata"
-          ] as const
-        ).every((el) => orgSecret[el] === modSecret[el]) &&
+        orgSecret.key === modSecret.key &&
+        normalizeSecretValue(orgSecret.value) === normalizeSecretValue(modSecret.value) &&
+        orgSecret.comment === modSecret.comment &&
+        orgSecret.skipMultilineEncoding === modSecret.skipMultilineEncoding &&
+        orgSecret.reminderRepeatDays === modSecret.reminderRepeatDays &&
+        orgSecret.reminderNote === modSecret.reminderNote &&
+        orgSecret.reminderRecipients === modSecret.reminderRecipients &&
+        JSON.stringify(orgSecret.secretMetadata) === JSON.stringify(modSecret.secretMetadata) &&
         isSameTags &&
         isSameRecipients;
 

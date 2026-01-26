@@ -110,7 +110,28 @@ const normalizeValue = (value: any): string | boolean | undefined => {
   return value;
 };
 
-const areValuesEqual = (value1: any, value2: any): boolean => {
+// Normalize secret value to match backend behavior:
+// - Trim whitespace
+// - If value ends with \n, preserve it (but trim everything else)
+// This matches the backend transform: (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())
+const normalizeSecretValue = (value: string | null | undefined): string => {
+  if (!value || typeof value !== "string") return "";
+  // If value ends with \n, preserve it after trimming
+  if (value.at(-1) === "\n") {
+    return `${value.trim()}\n`;
+  }
+  return value.trim();
+};
+
+const areValuesEqual = (value1: any, value2: any, isSecretValue: boolean = false): boolean => {
+  // For secret values, use the backend normalization
+  if (isSecretValue) {
+    const normalized1 = normalizeSecretValue(value1);
+    const normalized2 = normalizeSecretValue(value2);
+    return normalized1 === normalized2;
+  }
+
+  // For other values, use the original normalization
   const normalized1 = normalizeValue(value1);
   const normalized2 = normalizeValue(value2);
 
@@ -139,7 +160,7 @@ const cleanupRevertedSecretFields = (update: PendingSecretUpdate): PendingSecret
 
   if (
     cleaned.secretValue !== undefined &&
-    !areValuesEqual(cleaned.secretValue, cleaned.originalValue)
+    !areValuesEqual(cleaned.secretValue, cleaned.originalValue, true)
   ) {
     hasChanges = true;
   } else {
