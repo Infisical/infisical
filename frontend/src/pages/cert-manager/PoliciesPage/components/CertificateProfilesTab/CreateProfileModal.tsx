@@ -999,7 +999,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                     setValue("defaultTtl.value", 365);
                     setValue("defaultTtl.unit", "days");
                   } else {
-                    setValue("defaultTtl", undefined, { shouldValidate: true });
+                    setValue("defaultTtl", null, { shouldValidate: true });
                   }
                 }}
               >

@@ -86,6 +86,7 @@ import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { addRenewedCertificateToSyncs, triggerAutoSyncForCertificate } from "../pki-sync/pki-sync-utils";
+import { resolveEffectiveTtl } from "./certificate-v3-fns";
 import {
   TCertificateIssuanceResponse,
   TDisableRenewalConfigDTO,
@@ -342,19 +343,6 @@ const parseExtendedKeyUsages = (extendedKeyUsages: unknown): CertExtendedKeyUsag
 
 const convertEnumsToStringArray = <T extends string>(enumArray: T[]): string[] => {
   return enumArray.map((item) => item as string);
-};
-
-const calculateEffectiveTtl = (
-  requestTtl: string | undefined,
-  profileDefaultTtlDays: number | undefined | null
-): string => {
-  if (requestTtl) {
-    return requestTtl;
-  }
-  if (profileDefaultTtlDays) {
-    return `${profileDefaultTtlDays}d`;
-  }
-  return "";
 };
 
 const createSelfSignedCertificateRecord = async ({
@@ -1012,7 +1000,12 @@ export const certificateV3ServiceFactory = ({
         altNames: subjectAlternativeNames,
         basicConstraints: caBasicConstraints,
         pathLength: certificateRequest.basicConstraints?.pathLength,
-        ttl: calculateEffectiveTtl(certificateRequest.validity.ttl, profile.defaultTtlDays),
+        ttl: resolveEffectiveTtl({
+          requestTtl: certificateRequest.validity.ttl,
+          profileDefaultTtlDays: profile.defaultTtlDays,
+          policyMaxValidity: policy?.validity?.max,
+          flowDefaultTtl: ""
+        }),
         keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || [],
         extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || [],
         notBefore: normalizeDateForApi(certificateRequest.notBefore),
@@ -1033,7 +1026,12 @@ export const certificateV3ServiceFactory = ({
       if (!certificateRecord) {
         throw new NotFoundError({ message: "Certificate was issued but could not be found in database" });
       }
-      const effectiveTtl = calculateEffectiveTtl(certificateRequest.validity.ttl, profile.defaultTtlDays);
+      const effectiveTtl = resolveEffectiveTtl({
+        requestTtl: certificateRequest.validity.ttl,
+        profileDefaultTtlDays: profile.defaultTtlDays,
+        policyMaxValidity: policy?.validity?.max,
+        flowDefaultTtl: ""
+      });
 
       const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
         profile,
@@ -1322,7 +1320,12 @@ export const certificateV3ServiceFactory = ({
       ? { isCA: true, pathLength: policy.basicConstraints?.maxPathLength }
       : undefined;
 
-    const effectiveTtl = calculateEffectiveTtl(validity.ttl, profile.defaultTtlDays);
+    const effectiveTtl = resolveEffectiveTtl({
+      requestTtl: validity.ttl,
+      profileDefaultTtlDays: profile.defaultTtlDays,
+      policyMaxValidity: policy?.validity?.max,
+      flowDefaultTtl: ""
+    });
 
     const { certificate, certificateChain, issuingCaCertificate, serialNumber, cert, certificateRequestId } =
       await certificateDAL.transaction(async (tx) => {
