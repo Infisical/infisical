@@ -1,1 +1,6 @@
-export { changeWindowsPassword, SmbRpcConfig, verifyWindowsCredentials } from "./smb-rpc-client";
+export {
+  changeWindowsPassword,
+  isValidWindowsUsername,
+  SmbRpcConfig,
+  verifyWindowsCredentials
+} from "./smb-rpc-client";

@@ -50,7 +50,7 @@ const Content = ({ secretRotation, onComplete }: ContentProps) => {
     <div>
       <p className="mb-4 text-sm text-mineshaft-200">
         Reconciliation ensures the password stored in Infisical matches the actual password on the
-        SSH server.
+        server.
       </p>
       <p className="mb-8 text-sm text-mineshaft-200">
         Use this if you suspect the credentials are out of sync, for example after a failed rotation

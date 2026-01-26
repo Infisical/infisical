@@ -19,21 +19,22 @@ const buildTarget = (config: SmbRpcConfig): string => {
 
 /**
  * Helper to build common auth args for SMB commands
+ * Uses --stdin to read password from stdin (avoids exposing password in process listings)
  */
 const buildAuthArgs = (config: SmbRpcConfig): string[] => {
-  const userCredential = config.domain
-    ? `${config.domain}\\${config.adminUser}%${config.adminPassword}`
-    : `${config.adminUser}%${config.adminPassword}`;
+  const userCredential = config.domain ? `${config.domain}\\${config.adminUser}` : config.adminUser;
 
-  return ["-U", userCredential, ...SMB3_SECURITY_OPTIONS];
+  return ["-U", userCredential, "--stdin", ...SMB3_SECURITY_OPTIONS];
 };
 
 /**
  * Execute a command and return stdout/stderr
+ * Optionally writes data to stdin (used for password input)
  */
 const executeCommand = (
   command: string,
-  args: string[]
+  args: string[],
+  stdinData?: string
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> => {
   return new Promise((resolve) => {
     const proc = spawn(command, args, {
@@ -52,13 +53,19 @@ const executeCommand = (
     });
 
     proc.on("close", (code) => {
-      resolve({ stdout, stderr, exitCode: code ?? 0 });
+      resolve({ stdout, stderr, exitCode: code ?? 1 });
     });
 
     proc.on("error", (err) => {
       stderr += err.message;
       resolve({ stdout, stderr, exitCode: 1 });
     });
+
+    // Write password to stdin if provided
+    if (stdinData !== undefined) {
+      proc.stdin.write(`${stdinData}\n`);
+      proc.stdin.end();
+    }
   });
 };
 
@@ -101,7 +108,7 @@ const getNtStatusMessage = (ntStatus: string): string => {
 const testSmbConnection = async (config: SmbRpcConfig): Promise<void> => {
   const args = ["-L", buildTarget(config), ...buildAuthArgs(config)];
 
-  const { stdout, stderr, exitCode } = await executeCommand("smbclient", args);
+  const { stdout, stderr, exitCode } = await executeCommand("smbclient", args, config.adminPassword);
   const combinedOutput = stdout + stderr;
 
   const ntStatus = parseNtStatusError(combinedOutput);
@@ -123,6 +130,21 @@ const escapePasswordForRpc = (password: string): string => {
 };
 
 /**
+ * Windows username validation regex
+ * Allows alphanumeric, underscore, hyphen, and period
+ * Windows usernames cannot contain: " / \ [ ] : ; | = , + * ? < >
+ */
+const WINDOWS_USERNAME_REGEX = /^[a-zA-Z0-9_.-]+$/;
+const MAX_USERNAME_LENGTH = 256;
+
+/**
+ * Validate that a username contains only safe characters to prevent command injection
+ */
+export const isValidWindowsUsername = (username: string): boolean => {
+  return WINDOWS_USERNAME_REGEX.test(username) && username.length > 0 && username.length <= MAX_USERNAME_LENGTH;
+};
+
+/**
  * Change a Windows local account password using rpcclient
  * Uses setuserinfo2 command with level 23 (password reset)
  */
@@ -131,12 +153,18 @@ export const changeWindowsPassword = async (
   targetUser: string,
   newPassword: string
 ): Promise<void> => {
+  if (!isValidWindowsUsername(targetUser)) {
+    throw new Error(
+      "Invalid username format - only alphanumeric characters, underscores, hyphens, and periods allowed"
+    );
+  }
+
   const escapedPassword = escapePasswordForRpc(newPassword);
   const rpcCommand = `setuserinfo2 ${targetUser} 23 '${escapedPassword}'`;
 
   const args = [buildTarget(config), ...buildAuthArgs(config), "-c", rpcCommand];
 
-  const { stdout, stderr, exitCode } = await executeCommand("rpcclient", args);
+  const { stdout, stderr, exitCode } = await executeCommand("rpcclient", args, config.adminPassword);
   const combinedOutput = stdout + stderr;
 
   const ntStatus = parseNtStatusError(combinedOutput);

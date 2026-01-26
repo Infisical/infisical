@@ -8,7 +8,6 @@ import {
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-schemas";
 import { PasswordRequirementsSchema } from "@app/ee/services/secret-rotation-v2/shared/general";
 import { SecretRotations } from "@app/lib/api-docs";
-import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { SecretNameSchema } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -26,14 +25,17 @@ export const WindowsLocalAccountRotationGeneratedCredentialsSchema = z
   .min(1)
   .max(2);
 
+const WINDOWS_USERNAME_REGEX = /^[a-zA-Z0-9_.-]+$/;
+
 const WindowsLocalAccountRotationParametersSchema = z.object({
   username: z
     .string()
     .trim()
     .min(1, "Username required")
+    .max(256, "Username too long")
     .refine(
-      (val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen, CharacterType.Underscore])(val),
-      "Name can only contain alphanumeric characters, dashes, underscores, and spaces"
+      (val) => WINDOWS_USERNAME_REGEX.test(val),
+      "Username can only contain alphanumeric characters, underscores, hyphens, and periods"
     )
     .describe(SecretRotations.PARAMETERS.WINDOWS_LOCAL_ACCOUNT.username),
   passwordRequirements: PasswordRequirementsSchema.optional(),
