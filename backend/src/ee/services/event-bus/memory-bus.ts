@@ -9,7 +9,7 @@ const ALL_EVENTS_CHANNEL = "__all__";
 export const createMemoryBus = () => {
   const emitter = new EventEmitter();
   // Increase max listeners to avoid warnings with many subscribers
-  emitter.setMaxListeners(0);
+  emitter.setMaxListeners(100);
 
   /**
    * Emit an event to all subscribers of that event type

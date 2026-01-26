@@ -9,7 +9,8 @@ import {
   ProjectPermissionSecretEventActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { BadRequestError } from "@app/lib/errors";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { BadRequestError, RateLimitError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { TLicenseServiceFactory } from "../license/license-service";
@@ -24,7 +25,10 @@ import {
 import { ProjectEvents, TProjectEventPayload } from "./project-events-types";
 
 const PERMISSION_REFRESH_INTERVAL = 60 * 1000; // 60 seconds
-const HEARTBEAT_INTERVAL = 15 * 1000; // 15 seconds
+const HEARTBEAT_INTERVAL = 60 * 1000; // 60 seconds
+const PING_INTERVAL = 15 * 1000; // 60 seconds
+const MAX_CONNECTIONS_PER_PROJECT = 100;
+const CONNECTION_TTL_SECONDS = KeyStoreTtls.ProjectSSEConnectionTtlSeconds;
 
 // Map mutation type to permission action
 const MutationTypeToAction: Record<ProjectEvents, ProjectPermissionSecretEventActions> = {
@@ -70,12 +74,14 @@ type TProjectEventsSSEServiceFactoryDep = {
   projectEventsService: TProjectEventsService;
   permissionService: TPermissionServiceFactory;
   licenseService: TLicenseServiceFactory;
+  keyStore: TKeyStoreFactory;
 };
 
 export const projectEventsSSEServiceFactory = ({
   projectEventsService,
   permissionService,
-  licenseService
+  licenseService,
+  keyStore
 }: TProjectEventsSSEServiceFactoryDep) => {
   // Map: clientId -> { client, opts, permissionCache }
   const clients = new Map<
@@ -88,14 +94,68 @@ export const projectEventsSSEServiceFactory = ({
     }
   >();
 
+  // Connection management functions for rate limiting
+  const registerConnection = async (projectId: string, connectionId: string): Promise<void> => {
+    const set = KeyStorePrefixes.ProjectSSEConnectionsSet(projectId);
+    const key = KeyStorePrefixes.ProjectSSEConnection(projectId, connectionId);
+    await Promise.all([
+      keyStore.listPush(set, connectionId),
+      keyStore.setItemWithExpiry(key, CONNECTION_TTL_SECONDS, "1")
+    ]);
+  };
+
+  const refreshConnection = async (projectId: string, connectionId: string): Promise<void> => {
+    const key = KeyStorePrefixes.ProjectSSEConnection(projectId, connectionId);
+    await keyStore.setItemWithExpiry(key, CONNECTION_TTL_SECONDS, "1");
+  };
+
+  const removeConnection = async (projectId: string, connectionId: string): Promise<void> => {
+    try {
+      const set = KeyStorePrefixes.ProjectSSEConnectionsSet(projectId);
+      const key = KeyStorePrefixes.ProjectSSEConnection(projectId, connectionId);
+      await Promise.all([keyStore.listRemove(set, 0, connectionId), keyStore.deleteItem(key)]);
+    } catch (error) {
+      logger.error(error, "Failed to remove SSE connection from keystore");
+    }
+  };
+
+  const getActiveConnectionsCountFromKeyStore = async (projectId: string): Promise<number> => {
+    const set = KeyStorePrefixes.ProjectSSEConnectionsSet(projectId);
+    const connections = await keyStore.listRange(set, 0, -1);
+
+    if (connections.length === 0) {
+      return 0;
+    }
+
+    // Check which connections are alive (have valid TTL keys)
+    const keys = connections.map((c) => KeyStorePrefixes.ProjectSSEConnection(projectId, c));
+    const values = await keyStore.getItems(keys);
+
+    // Clean up stale connections (crashed servers - expired TTL keys)
+    const staleConnections = connections.filter((_, i) => values[i] === null);
+    if (staleConnections.length > 0) {
+      await Promise.all(staleConnections.map((c) => keyStore.listRemove(set, 0, c)));
+    }
+
+    return connections.length - staleConnections.length;
+  };
+
   // Heartbeat interval to keep connections alive
   const heartbeatInterval = setInterval(() => {
-    for (const [, { client }] of clients) {
+    for (const [clientId, { client, opts }] of clients) {
       if (!client.stream.closed) {
-        client.ping();
+        void refreshConnection(opts.projectId, clientId);
       }
     }
   }, HEARTBEAT_INTERVAL);
+
+  const pingInterval = setInterval(() => {
+    for (const [, el] of clients) {
+      if (!el.client.stream.closed) {
+        el.client.ping();
+      }
+    }
+  }, PING_INTERVAL);
 
   /**
    * Fetch fresh permission from permission service
@@ -226,6 +286,28 @@ export const projectEventsSSEServiceFactory = ({
       });
     }
 
+    const lock = await keyStore
+      .acquireLock([KeyStorePrefixes.ProjectSSEConnectionsLockoutKey(opts.projectId)], 150, {
+        retryCount: -1,
+        retryDelay: 200,
+        retryJitter: 50
+      })
+      .catch(() => null);
+    try {
+      // Rate limit check
+      const activeCount = await getActiveConnectionsCountFromKeyStore(opts.projectId);
+      if (activeCount >= MAX_CONNECTIONS_PER_PROJECT) {
+        throw new RateLimitError({
+          message: `Maximum SSE connections (${MAX_CONNECTIONS_PER_PROJECT}) reached for this project.`
+        });
+      }
+
+      // Register connection in keystore
+      await registerConnection(opts.projectId, id);
+    } finally {
+      await lock?.release();
+    }
+
     // Create the readable stream
     const stream = new Readable({ objectMode: true });
     // eslint-disable-next-line no-underscore-dangle
@@ -247,11 +329,6 @@ export const projectEventsSSEServiceFactory = ({
       stream.push(null);
       stream.destroy();
     };
-
-    stream.on("error", (error: Error) => {
-      logger.error(error, "SSE stream error");
-      stream.destroy(error);
-    });
 
     const client: TSSEClient = {
       id,
@@ -308,10 +385,28 @@ export const projectEventsSSEServiceFactory = ({
       });
     });
 
-    // Clean up on stream close
-    stream.on("close", () => {
+    // Cleanup function that's safe to call multiple times
+    let cleaned = false;
+    const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
       unsubscribe();
       clients.delete(id);
+      void removeConnection(opts.projectId, id);
+    };
+
+    // Handle stream errors - ensure cleanup even if "close" doesn't fire
+    stream.on("error", (error: Error) => {
+      if ((error as NodeJS.ErrnoException).code !== "ERR_STREAM_PREMATURE_CLOSE") {
+        logger.error(error, "SSE stream error");
+      }
+      cleanup();
+      stream.destroy(error);
+    });
+
+    // Clean up on stream close
+    stream.on("close", () => {
+      cleanup();
     });
 
     return client;
@@ -320,13 +415,19 @@ export const projectEventsSSEServiceFactory = ({
   /**
    * Close all connections and clean up
    */
-  const close = () => {
+  const close = async () => {
     clearInterval(heartbeatInterval);
+    clearInterval(pingInterval);
     clearInterval(refreshInterval);
 
-    for (const [, { client }] of clients) {
+    // Clean up keystore connections
+    const cleanupPromises: Promise<void>[] = [];
+    for (const [clientId, { client, opts }] of clients) {
       client.close();
+      cleanupPromises.push(removeConnection(opts.projectId, clientId));
     }
+    await Promise.all(cleanupPromises);
+
     clients.clear();
   };
 

@@ -660,7 +660,8 @@ export const registerRoutes = async (
   const projectEventsSSEService = projectEventsSSEServiceFactory({
     projectEventsService,
     permissionService,
-    licenseService
+    licenseService,
+    keyStore
   });
 
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL, orgDAL });
@@ -2976,5 +2977,6 @@ export const registerRoutes = async (
     await eventBusService.close();
     await internalEventBus.close();
     sseService.close();
+    await projectEventsSSEService.close();
   });
 };

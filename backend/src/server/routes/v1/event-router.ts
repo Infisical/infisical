@@ -10,6 +10,8 @@ import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
+const CONNECTION_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
+
 export const registerEventRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
@@ -44,10 +46,12 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
       reply.raw.writeHead(200, getSSEHeaders()).flushHeaders();
 
       try {
-        await pipeline(client.stream, reply.raw);
+        await pipeline(client.stream, reply.raw, { signal: AbortSignal.timeout(CONNECTION_TIMEOUT_MS) });
       } catch (error) {
         // ERR_STREAM_PREMATURE_CLOSE is expected when clients disconnect from SSE
-        if ((error as NodeJS.ErrnoException).code !== "ERR_STREAM_PREMATURE_CLOSE") {
+        // ABORT_ERR is expected when connection timeout is reached
+        const { code } = error as NodeJS.ErrnoException;
+        if (code !== "ERR_STREAM_PREMATURE_CLOSE" && code !== "ABORT_ERR") {
           throw error;
         }
       }
