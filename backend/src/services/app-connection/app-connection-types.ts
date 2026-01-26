@@ -228,6 +228,12 @@ import {
   TValidateRenderConnectionCredentialsSchema
 } from "./render/render-connection-types";
 import {
+  TSmbConnection,
+  TSmbConnectionConfig,
+  TSmbConnectionInput,
+  TValidateSmbConnectionCredentialsSchema
+} from "./smb";
+import {
   TSshConnection,
   TSshConnectionConfig,
   TSshConnectionInput,
@@ -317,6 +323,7 @@ export type TAppConnection = { id: string } & (
   | TChefConnection
   | TOctopusDeployConnection
   | TSshConnection
+  | TSmbConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -370,6 +377,7 @@ export type TAppConnectionInput = { id: string } & (
   | TChefConnectionInput
   | TOctopusDeployConnectionInput
   | TSshConnectionInput
+  | TSmbConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -440,7 +448,8 @@ export type TAppConnectionConfig =
   | TMongoDBConnectionConfig
   | TChefConnectionConfig
   | TOctopusDeployConnectionConfig
-  | TSshConnectionConfig;
+  | TSshConnectionConfig
+  | TSmbConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -488,7 +497,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateMongoDBConnectionCredentialsSchema
   | TValidateChefConnectionCredentialsSchema
   | TValidateOctopusDeployConnectionCredentialsSchema
-  | TValidateSshConnectionCredentialsSchema;
+  | TValidateSshConnectionCredentialsSchema
+  | TValidateSmbConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

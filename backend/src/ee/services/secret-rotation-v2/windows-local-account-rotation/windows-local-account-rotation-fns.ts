@@ -1,5 +1,3 @@
-import { Client } from "ssh2";
-
 import {
   TRotationFactory,
   TRotationFactoryGetSecretsPayload,
@@ -8,13 +6,12 @@ import {
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { BadRequestError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
+import { changeWindowsPassword, SmbRpcConfig, verifyWindowsCredentials } from "@app/lib/smb-rpc";
 import {
-  executeWithPotentialGateway,
-  getSshConnectionClient,
-  SshConnectionMethod,
-  TSshConnectionConfig
-} from "@app/services/app-connection/ssh";
+  executeSmbWithPotentialGateway,
+  SmbConnectionMethod,
+  TSmbConnectionConfig
+} from "@app/services/app-connection/smb";
 
 import { generatePassword } from "../shared/utils";
 import { WindowsLocalAccountRotationMethod } from "./windows-local-account-rotation-schemas";
@@ -24,159 +21,91 @@ import {
   TWindowsLocalAccountRotationWithConnection
 } from "./windows-local-account-rotation-types";
 
-// Execute command over SSH and return stdout
-const executeCommand = (client: Client, command: string): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    client.exec(command, (err, stream) => {
-      if (err) {
-        reject(new Error(`SSH exec error: ${err.message}`));
-        return;
-      }
-
-      let stdout = "";
-      let stderr = "";
-
-      stream.on("close", (code: number) => {
-        if (code !== 0) {
-          reject(new Error(`Command failed with exit code ${code}: ${stderr || "Unknown error"}`));
-        } else {
-          resolve(stdout);
-        }
-      });
-
-      stream.on("data", (data: Buffer) => {
-        stdout += data.toString();
-      });
-
-      stream.stderr.on("data", (data: Buffer) => {
-        stderr += data.toString();
-      });
-    });
-  });
-};
-
-// Change password for managed rotation (admin changing another user's password)
-const changeManagedPassword = async (client: Client, username: string, newPassword: string): Promise<void> => {
-  // Using base64 encoding to avoid any shell escaping issues
-  const encodedPassword = Buffer.from(newPassword).toString("base64");
-  const encodedUsername = Buffer.from(username).toString("base64");
-  const command = `powershell -Command "$u = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${encodedUsername}')); $p = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${encodedPassword}')); net user $u $p"`;
-
-  try {
-    await executeCommand(client, command);
-  } catch (error) {
-    logger.error(error, "Windows Local Account Rotation: Failed to change password (managed)");
-    throw new Error(`Failed to change password: ${(error as Error).message}`);
-  }
-};
-
-// Change password for self rotation (user changing their own password)
-// Windows net user command works the same for self-rotation on local accounts
-const changeSelfPassword = async (client: Client, username: string, newPassword: string): Promise<void> => {
-  // Using base64 encoding to avoid any shell escaping issues
-  const encodedPassword = Buffer.from(newPassword).toString("base64");
-  const encodedUsername = Buffer.from(username).toString("base64");
-  const command = `powershell -Command "$u = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${encodedUsername}')); $p = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${encodedPassword}')); net user $u $p"`;
-
-  try {
-    await executeCommand(client, command);
-  } catch (error) {
-    logger.error(error, "Windows Local Account Rotation: Failed to change password (self)");
-    throw new Error(`Failed to change password: ${(error as Error).message}`);
-  }
-};
-
 export const windowsLocalAccountRotationFactory: TRotationFactory<
   TWindowsLocalAccountRotationWithConnection,
   TWindowsLocalAccountRotationGeneratedCredentials,
   TWindowsLocalAccountRotationInput["temporaryParameters"]
-> = (secretRotation, appConnectionDAL, kmsService, _gatewayService, gatewayV2Service) => {
+> = (secretRotation, _appConnectionDAL, _kmsService, _gatewayService, gatewayV2Service) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
   const { username, passwordRequirements, rotationMethod = WindowsLocalAccountRotationMethod.LoginAsRoot } = parameters;
 
-  // Helper to verify SSH credentials work
+  // Helper to verify Windows credentials work via SMB
   const $verifyCredentials = async (targetUsername: string, targetPassword: string): Promise<void> => {
-    const verifyConfig: TSshConnectionConfig = {
-      method: SshConnectionMethod.Password,
+    const { credentials } = connection;
+    const credentialsDomain: string | undefined = credentials.domain;
+
+    const verifyConfig: TSmbConnectionConfig = {
+      method: SmbConnectionMethod.Credentials,
       app: connection.app,
       orgId: connection.orgId,
       gatewayId: connection.gatewayId,
       credentials: {
-        host: connection.credentials.host,
-        port: connection.credentials.port,
+        host: credentials.host,
+        port: credentials.port,
+        domain: credentialsDomain,
         username: targetUsername,
         password: targetPassword
       }
     };
 
-    try {
-      await executeWithPotentialGateway(verifyConfig, gatewayV2Service, async (targetHost, targetPort) => {
-        const client = await getSshConnectionClient(verifyConfig, targetHost, targetPort);
-        client.destroy();
-      });
-    } catch (error) {
-      throw new Error(`Failed to verify credentials - ${(error as Error).message}`);
-    }
+    await executeSmbWithPotentialGateway(verifyConfig, gatewayV2Service, async (targetHost, targetPort) => {
+      await verifyWindowsCredentials(targetHost, targetPort, targetUsername, targetPassword, credentialsDomain);
+    });
   };
 
   // Main password rotation logic
   const $rotatePassword = async (currentPassword?: string): Promise<{ username: string; password: string }> => {
     const { credentials } = connection;
+    const credentialsDomain: string | undefined = credentials.domain;
+    const credentialsPassword: string = credentials.password;
     const newPassword = generatePassword(passwordRequirements);
 
     const isSelfRotation = rotationMethod === WindowsLocalAccountRotationMethod.LoginAsTarget;
     if (username === credentials.username)
       throw new BadRequestError({ message: "Provided username is used in Infisical app connections." });
 
-    const privilegedAccounts = ["administrator", "admin"];
-    if (privilegedAccounts.includes(username.toLowerCase()))
-      throw new BadRequestError({ message: "Cannot rotate passwords for privileged system accounts." });
-
-    // Determine which credentials to use for the SSH connection
-    let connectConfig: TSshConnectionConfig;
+    const smbConfig: SmbRpcConfig = {
+      host: credentials.host,
+      port: credentials.port,
+      adminUser: credentials.username,
+      adminPassword: credentialsPassword,
+      domain: credentialsDomain
+    };
 
     if (isSelfRotation && currentPassword) {
-      // For self-rotation with current password, connect as the target user
-      connectConfig = {
-        method: SshConnectionMethod.Password,
-        app: connection.app,
-        orgId: connection.orgId,
-        gatewayId: connection.gatewayId,
-        credentials: {
-          host: credentials.host,
-          port: credentials.port,
-          username,
-          password: currentPassword
-        }
-      };
-    } else {
-      // For managed rotation, connect with the app connection credentials (admin)
-      connectConfig = {
-        method: connection.method,
-        app: connection.app,
-        orgId: connection.orgId,
-        gatewayId: connection.gatewayId,
-        credentials: connection.credentials
-      } as TSshConnectionConfig;
+      smbConfig.adminUser = username;
+      smbConfig.adminPassword = currentPassword;
     }
 
-    await executeWithPotentialGateway(connectConfig, gatewayV2Service, async (targetHost, targetPort) => {
-      const client = await getSshConnectionClient(connectConfig, targetHost, targetPort);
-
-      try {
-        if (isSelfRotation && currentPassword) {
-          // Self rotation: user changes their own password using net user command
-          await changeSelfPassword(client, username, newPassword);
-        } else {
-          // Managed rotation: admin changes user's password using net user command
-          await changeManagedPassword(client, username, newPassword);
-        }
-      } finally {
-        client.destroy();
+    // Determine which credentials to use for the SMB connection
+    const connectConfig: TSmbConnectionConfig = {
+      method: connection.method,
+      app: connection.app,
+      orgId: connection.orgId,
+      gatewayId: connection.gatewayId,
+      credentials: {
+        host: credentials.host,
+        port: credentials.port,
+        domain: credentialsDomain,
+        username: credentials.username,
+        password: credentialsPassword
       }
+    };
+
+    if (isSelfRotation && currentPassword) {
+      connectConfig.credentials.username = username;
+      connectConfig.credentials.password = currentPassword;
+    }
+    await executeSmbWithPotentialGateway(connectConfig, gatewayV2Service, async (targetHost, targetPort) => {
+      const configWithProxiedHost: SmbRpcConfig = {
+        ...smbConfig,
+        host: targetHost,
+        port: targetPort
+      };
+
+      await changeWindowsPassword(configWithProxiedHost, username, newPassword);
     });
 
-    // Verify the new credentials work
     await $verifyCredentials(username, newPassword);
 
     return { username, password: newPassword };
@@ -186,8 +115,8 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
     TWindowsLocalAccountRotationGeneratedCredentials,
     TWindowsLocalAccountRotationInput["temporaryParameters"]
   > = async (callback, temporaryParameters) => {
-    const credentials = await $rotatePassword(temporaryParameters?.password);
-    return callback(credentials);
+    const newCredentials = await $rotatePassword(temporaryParameters?.password);
+    return callback(newCredentials);
   };
 
   const revokeCredentials: TRotationFactoryRevokeCredentials<TWindowsLocalAccountRotationGeneratedCredentials> = async (
@@ -210,8 +139,8 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
     // For both methods, pass the current password
     // Self rotation: needed to authenticate as the user
     // Managed rotation: admin doesn't need it but it's harmless to pass
-    const credentials = await $rotatePassword(activeCredentials.password);
-    return callback(credentials);
+    const newCredentials = await $rotatePassword(activeCredentials.password);
+    return callback(newCredentials);
   };
 
   const getSecretsPayload: TRotationFactoryGetSecretsPayload<TWindowsLocalAccountRotationGeneratedCredentials> = (

@@ -2568,6 +2568,13 @@ export const AppConnections = {
       password: "The password for SSH authentication (required when authMethod is 'password').",
       privateKey: "The private key in PEM format for SSH authentication (required when authMethod is 'ssh-key').",
       passphrase: "The passphrase for the private key, if encrypted (optional, only for 'ssh-key' authMethod)."
+    },
+    SMB: {
+      host: "The hostname or IP address of the Windows server.",
+      port: "The SMB port (defaults to 445).",
+      domain: "The Windows domain name (optional).",
+      username: "The username for SMB authentication.",
+      password: "The password for SMB authentication."
     }
   }
 };

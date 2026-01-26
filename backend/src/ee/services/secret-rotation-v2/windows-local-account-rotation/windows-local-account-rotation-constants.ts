@@ -6,7 +6,7 @@ import { TWindowsLocalAccountRotationListItem } from "./windows-local-account-ro
 export const WINDOWS_LOCAL_ACCOUNT_ROTATION_LIST_OPTION: TWindowsLocalAccountRotationListItem = {
   name: "Windows Local Account",
   type: SecretRotation.WindowsLocalAccount,
-  connection: AppConnection.SSH,
+  connection: AppConnection.SMB,
   template: {
     secretsMapping: {
       username: "WINDOWS_USERNAME",

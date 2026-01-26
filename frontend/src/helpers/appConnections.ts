@@ -59,6 +59,7 @@ import { NorthflankConnectionMethod } from "@app/hooks/api/appConnections/types/
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
+import { SmbConnectionMethod } from "@app/hooks/api/appConnections/types/smb-connection";
 import { SshConnectionMethod } from "@app/hooks/api/appConnections/types/ssh-connection";
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
 
@@ -140,7 +141,8 @@ export const APP_CONNECTION_MAP: Record<
   },
   [AppConnection.Chef]: { name: "Chef", image: "Chef.png", enterprise: true },
   [AppConnection.OctopusDeploy]: { name: "Octopus Deploy", image: "Octopus Deploy.png" },
-  [AppConnection.SSH]: { name: "SSH", image: "SSH.png" }
+  [AppConnection.SSH]: { name: "SSH", image: "SSH.png" },
+  [AppConnection.SMB]: { name: "SMB", image: "Windows.png", size: 50 }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -231,6 +233,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Password", icon: faLock };
     case SshConnectionMethod.SshKey:
       return { name: "SSH Key", icon: faKey };
+    case SmbConnectionMethod.Credentials:
+      return { name: "Credentials", icon: faLock };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

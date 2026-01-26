@@ -113,6 +113,7 @@ import { railwayConnectionService } from "./railway/railway-connection-service";
 import { ValidateRedisConnectionCredentialsSchema } from "./redis";
 import { ValidateRenderConnectionCredentialsSchema } from "./render/render-connection-schema";
 import { renderConnectionService } from "./render/render-connection-service";
+import { ValidateSmbConnectionCredentialsSchema } from "./smb";
 import { ValidateSshConnectionCredentialsSchema } from "./ssh";
 import { ValidateSupabaseConnectionCredentialsSchema } from "./supabase";
 import { supabaseConnectionService } from "./supabase/supabase-connection-service";
@@ -187,7 +188,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.MongoDB]: ValidateMongoDBConnectionCredentialsSchema,
   [AppConnection.Chef]: ValidateChefConnectionCredentialsSchema,
   [AppConnection.OctopusDeploy]: ValidateOctopusDeployConnectionCredentialsSchema,
-  [AppConnection.SSH]: ValidateSshConnectionCredentialsSchema
+  [AppConnection.SSH]: ValidateSshConnectionCredentialsSchema,
+  [AppConnection.SMB]: ValidateSmbConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({

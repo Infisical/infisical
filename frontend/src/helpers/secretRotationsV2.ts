@@ -91,7 +91,7 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.MongoDBCredentials]: AppConnection.MongoDB,
   [SecretRotation.DatabricksServicePrincipalSecret]: AppConnection.Databricks,
   [SecretRotation.UnixLinuxLocalAccount]: AppConnection.SSH,
-  [SecretRotation.WindowsLocalAccount]: AppConnection.SSH
+  [SecretRotation.WindowsLocalAccount]: AppConnection.SMB
 };
 
 // if a rotation can potentially have downtime due to rotating a single credential set this to false

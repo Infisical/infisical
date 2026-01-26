@@ -38,7 +38,7 @@ export type TWindowsLocalAccountRotationGeneratedCredentialsResponse =
 export type TWindowsLocalAccountRotationOption = {
   name: string;
   type: SecretRotation.WindowsLocalAccount;
-  connection: AppConnection.SSH;
+  connection: AppConnection.SMB;
   template: {
     secretsMapping: TWindowsLocalAccountRotation["secretsMapping"];
   };

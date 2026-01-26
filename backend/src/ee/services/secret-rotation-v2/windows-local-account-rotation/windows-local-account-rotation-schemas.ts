@@ -95,7 +95,7 @@ export const UpdateWindowsLocalAccountRotationSchema = BaseUpdateSecretRotationS
 
 export const WindowsLocalAccountRotationListItemSchema = z.object({
   name: z.literal("Windows Local Account"),
-  connection: z.literal(AppConnection.SSH),
+  connection: z.literal(AppConnection.SMB),
   type: z.literal(SecretRotation.WindowsLocalAccount),
   template: WindowsLocalAccountRotationTemplateSchema
 });

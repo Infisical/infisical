@@ -48,6 +48,7 @@ import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { RailwayConnectionForm } from "./RailwayConnectionForm";
 import { RedisConnectionForm } from "./RedisConnectionForm";
 import { RenderConnectionForm } from "./RenderConnectionForm";
+import { SmbConnectionForm } from "./SmbConnectionForm";
 import { SshConnectionForm } from "./SshConnectionForm";
 import { SupabaseConnectionForm } from "./SupabaseConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
@@ -182,6 +183,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       return <OctopusDeployConnectionForm onSubmit={onSubmit} />;
     case AppConnection.SSH:
       return <SshConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.SMB:
+      return <SmbConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -346,6 +349,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <OctopusDeployConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.SSH:
       return <SshConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.SMB:
+      return <SmbConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

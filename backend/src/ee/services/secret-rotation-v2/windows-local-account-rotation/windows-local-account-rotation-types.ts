@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { TSshConnection } from "@app/services/app-connection/ssh";
+import { TSmbConnection } from "@app/services/app-connection/smb";
 
 import {
   CreateWindowsLocalAccountRotationSchema,
@@ -16,7 +16,7 @@ export type TWindowsLocalAccountRotationInput = z.infer<typeof CreateWindowsLoca
 export type TWindowsLocalAccountRotationListItem = z.infer<typeof WindowsLocalAccountRotationListItemSchema>;
 
 export type TWindowsLocalAccountRotationWithConnection = TWindowsLocalAccountRotation & {
-  connection: TSshConnection;
+  connection: TSmbConnection;
 };
 
 export type TWindowsLocalAccountRotationGeneratedCredentials = z.infer<
