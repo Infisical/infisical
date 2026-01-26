@@ -32,7 +32,10 @@ const normalizeSecretValue = (value: string | null | undefined): string => {
 };
 
 // Compare normalized values to determine if they're actually different
-const areValuesEqual = (oldValue: string | null | undefined, newValue: string | null | undefined): boolean => {
+const areValuesEqual = (
+  oldValue: string | null | undefined,
+  newValue: string | null | undefined
+): boolean => {
   const normalizedOld = normalizeSecretValue(oldValue);
   const normalizedNew = normalizeSecretValue(newValue);
   return normalizedOld === normalizedNew;

@@ -279,14 +279,12 @@ export const SecretListView = ({
           (newId) => !orgSecret.secretReminderRecipients?.find((oldId) => newId === oldId.user.id)
         ) && reminderRecipients?.length === orgSecret.secretReminderRecipients?.length;
 
-      // Normalize secret value to match backend behavior for comparison
-      const normalizeSecretValue = (value: string | null | undefined): string => {
-        if (!value || typeof value !== "string") return "";
-        // If value ends with \n, preserve it after trimming
-        if (value.at(-1) === "\n") {
-          return `${value.trim()}\n`;
+      const normalizeSecretValue = (val: string | null | undefined): string => {
+        if (!val || typeof val !== "string") return "";
+        if (val.at(-1) === "\n") {
+          return `${val.trim()}\n`;
         }
-        return value.trim();
+        return val.trim();
       };
 
       const isSharedSecUnchanged =

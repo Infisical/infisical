@@ -62,8 +62,9 @@ const normalizeSecretValue = (value: string | null | undefined): string => {
 // Normalize a JSON value for comparison - specifically handles secretValue strings
 const normalizeValueForComparison = (value: JsonValue, key?: string, path?: string): JsonValue => {
   // Check if this is a secretValue field - either by key name or path
-  const isSecretValue = key === "secretValue" || path?.endsWith(".secretValue") || path === "secretValue";
-  
+  const isSecretValue =
+    key === "secretValue" || path?.endsWith(".secretValue") || path === "secretValue";
+
   // Only normalize secretValue strings
   if (isSecretValue && typeof value === "string") {
     return normalizeSecretValue(value);
@@ -72,24 +73,25 @@ const normalizeValueForComparison = (value: JsonValue, key?: string, path?: stri
 };
 
 const deepEqual = (a: JsonValue, b: JsonValue, key?: string, path?: string): boolean => {
-  // Normalize values before comparison if they're secretValue strings
   const normalizedA = normalizeValueForComparison(a, key, path);
   const normalizedB = normalizeValueForComparison(b, key, path);
-  
+
   if (normalizedA === normalizedB) return true;
   if (normalizedA == null || normalizedB == null) return false;
   if (typeof normalizedA !== typeof normalizedB) return false;
 
   if (isArray(normalizedA) && isArray(normalizedB)) {
     if (normalizedA.length !== normalizedB.length) return false;
-    return normalizedA.every((item: JsonValue, index: number) => deepEqual(item, normalizedB[index], undefined, path));
+    return normalizedA.every((item: JsonValue, index: number) =>
+      deepEqual(item, normalizedB[index], undefined, path)
+    );
   }
 
   if (isObject(normalizedA) && isObject(normalizedB)) {
     const keysA = Object.keys(normalizedA);
     const keysB = Object.keys(normalizedB);
     if (keysA.length !== keysB.length) return false;
-    const currentPath = path ? `${path}.${key || ""}` : (key || "");
+    const currentPath = path ? `${path}.${key || ""}` : key || "";
     return keysA.every((k) => {
       const nestedPath = currentPath ? `${currentPath}.${k}` : k;
       return keysB.includes(k) && deepEqual(normalizedA[k], normalizedB[k], k, nestedPath);
@@ -101,12 +103,8 @@ const deepEqual = (a: JsonValue, b: JsonValue, key?: string, path?: string): boo
 
 const getDiffPaths = (oldObj: JsonValue, newObj: JsonValue, path: string = ""): Set<string> => {
   const diffPaths = new Set<string>();
-
-  // Extract the key name from the path for normalization
   const pathParts = path.split(".");
   const currentKey = pathParts[pathParts.length - 1] || "";
-  
-  // Normalize values before comparison if they're secretValue strings
   const normalizedOld = normalizeValueForComparison(oldObj, currentKey, path);
   const normalizedNew = normalizeValueForComparison(newObj, currentKey, path);
 
@@ -136,7 +134,11 @@ const getDiffPaths = (oldObj: JsonValue, newObj: JsonValue, path: string = ""): 
         return;
       }
 
-      if (!(key in normalizedOld) || !(key in normalizedNew) || !deepEqual(normalizedOld[key], normalizedNew[key], key, currentPath)) {
+      if (
+        !(key in normalizedOld) ||
+        !(key in normalizedNew) ||
+        !deepEqual(normalizedOld[key], normalizedNew[key], key, currentPath)
+      ) {
         diffPaths.add(currentPath);
 
         if (
