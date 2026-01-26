@@ -28,21 +28,29 @@ export const registerCircleCIConnectionRouter = async (server: FastifyZodProvide
       rateLimit: readLimit
     },
     schema: {
-      operationId: "listCircleCIProjects",
+      operationId: "listCircleCIOrganizations",
       params: z.object({
         connectionId: z.string().uuid()
       }),
       response: {
         200: z.object({
-          projects: z.object({ id: z.string(), name: z.string(), slug: z.string() }).array()
+          organizations: z
+            .object({
+              name: z.string(),
+              projects: z.object({ name: z.string(), id: z.string() }).array()
+            })
+            .array()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { connectionId } = req.params;
-      const projects = await server.services.appConnection.circleci.listProjects(connectionId, req.permission);
-      return { projects };
+      const organizations = await server.services.appConnection.circleci.listOrganizations(
+        connectionId,
+        req.permission
+      );
+      return { organizations };
     }
   });
 };

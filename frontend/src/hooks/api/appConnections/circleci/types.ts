@@ -1,9 +1,13 @@
 export type TCircleCIProject = {
-  id: string;
   name: string;
-  slug: string;
+  id: string;
 };
 
-export type TCircleCIProjectListResponse = {
+export type TCircleCIOrganization = {
+  name: string;
   projects: TCircleCIProject[];
+};
+
+export type TCircleCIOrganizationListResponse = {
+  organizations: TCircleCIOrganization[];
 };

@@ -5,45 +5,44 @@ import { BadRequestError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { CircleCIConnectionMethod } from "./circleci-connection-enums";
-import { TCircleCIConnection, TCircleCIConnectionConfig, TCircleCIProject } from "./circleci-connection-types";
+import {
+  TCircleCIConnection,
+  TCircleCIConnectionConfig,
+  TCircleCIOrganization,
+  TCircleCIProject
+} from "./circleci-connection-types";
 
-export const CIRCLECI_API_URL = "https://circleci.com/api/v2";
+export const CIRCLECI_API_URL = "https://circleci.com/api";
 
 type TCircleCICollaboration = {
-  slug?: string;
-};
-
-type TCircleCIPipeline = {
-  project_slug?: string;
-};
-
-type TCircleCIPipelineListResponse = {
-  items: TCircleCIPipeline[];
-  next_page_token?: string | null;
-};
-
-type TCircleCIProjectResponse = {
   id?: string;
   name?: string;
   slug?: string;
+  vcs_type?: string;
+};
+
+type TCircleCIProjectV1Response = {
+  reponame: string;
+  username: string;
+  vcs_url: string;
 };
 
 export const getCircleCIConnectionListItem = () => {
   return {
     name: "CircleCI" as const,
     app: AppConnection.CircleCI as const,
-    methods: Object.values(CircleCIConnectionMethod) as [CircleCIConnectionMethod.PersonalAccessToken]
+    methods: Object.values(CircleCIConnectionMethod) as [CircleCIConnectionMethod.ApiToken]
   };
 };
 
 export const validateCircleCIConnectionCredentials = async (config: TCircleCIConnectionConfig) => {
-  const { credentials: inputCredentials } = config;
+  const { credentials } = config;
 
   try {
     // Validate the API token by calling the /me endpoint
-    await request.get(`${CIRCLECI_API_URL}/me`, {
+    await request.get(`${CIRCLECI_API_URL}/v2/me`, {
       headers: {
-        "Circle-Token": inputCredentials.apiToken
+        "Circle-Token": credentials.apiToken
       }
     });
   } catch (error: unknown) {
@@ -57,16 +56,19 @@ export const validateCircleCIConnectionCredentials = async (config: TCircleCICon
     });
   }
 
-  return inputCredentials;
+  return credentials;
 };
 
-export const listCircleCIProjects = async (appConnection: TCircleCIConnection): Promise<TCircleCIProject[]> => {
+export const listCircleCIOrganizations = async (
+  appConnection: TCircleCIConnection
+): Promise<TCircleCIOrganization[]> => {
   const { credentials } = appConnection;
   const { apiToken } = credentials;
 
   try {
+    // Fetch organizations the user has access to (same as legacy integration)
     const { data: collaborations } = await request.get<TCircleCICollaboration[]>(
-      `${CIRCLECI_API_URL}/me/collaborations`,
+      `${CIRCLECI_API_URL}/v2/me/collaborations`,
       {
         headers: {
           "Circle-Token": apiToken,
@@ -75,71 +77,40 @@ export const listCircleCIProjects = async (appConnection: TCircleCIConnection): 
       }
     );
 
-    const orgSlugs = collaborations
-      .map((org) => org.slug)
-      .filter((slug): slug is string => Boolean(slug));
+    // Fetch all followed projects using the v1.1 API (same as legacy integration)
+    const { data: allProjects } = await request.get<TCircleCIProjectV1Response[]>(`${CIRCLECI_API_URL}/v1.1/projects`, {
+      headers: {
+        "Circle-Token": apiToken,
+        "Accept-Encoding": "application/json"
+      }
+    });
 
-    const projectSlugs = new Set<string>();
+    // Group projects by organization (username field maps to org name)
+    const projectsByOrg = new Map<string, TCircleCIProject[]>();
+    for (const project of allProjects) {
+      const orgName = project.username;
+      if (!projectsByOrg.has(orgName)) {
+        projectsByOrg.set(orgName, []);
+      }
 
-    for (const orgSlug of orgSlugs) {
-      let nextPageToken: string | undefined;
-
-      do {
-        // eslint-disable-next-line no-await-in-loop
-        const { data } = await request.get<TCircleCIPipelineListResponse>(`${CIRCLECI_API_URL}/pipeline`, {
-          headers: {
-            "Circle-Token": apiToken,
-            "Accept-Encoding": "application/json"
-          },
-          params: {
-            "org-slug": orgSlug,
-            ...(nextPageToken ? { "page-token": nextPageToken } : {})
-          }
-        });
-
-        data.items.forEach((pipeline) => {
-          if (pipeline.project_slug) {
-            projectSlugs.add(pipeline.project_slug);
-          }
-        });
-
-        nextPageToken = data.next_page_token ?? undefined;
-      } while (nextPageToken);
+      projectsByOrg.get(orgName)!.push({
+        name: project.reponame,
+        id: project.vcs_url.split("/").pop()!
+      });
     }
 
-    const projects = await Promise.all(
-      Array.from(projectSlugs).map(async (slug) => {
-        try {
-          const { data: project } = await request.get<TCircleCIProjectResponse>(
-            `${CIRCLECI_API_URL}/project/${encodeURIComponent(slug)}`,
-            {
-              headers: {
-                "Circle-Token": apiToken,
-                "Accept-Encoding": "application/json"
-              }
-            }
-          );
+    const organizations = collaborations
+      .filter((org): org is TCircleCICollaboration & { name: string } => Boolean(org.name))
+      .map((org) => ({
+        name: org.name,
+        projects: projectsByOrg.get(org.name) ?? []
+      }));
 
-          return {
-            id: project.slug || slug,
-            name: project.name || slug,
-            slug: project.slug || slug
-          };
-        } catch {
-          return {
-            id: slug,
-            name: slug,
-            slug
-          };
-        }
-      })
-    );
-
-    return projects;
+    return organizations;
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
       throw new BadRequestError({
-        message: `Failed to fetch CircleCI projects: ${error.message || "Unknown error"}`
+        message: `Failed to fetch CircleCI organizations: ${error.message || "Unknown error"}`
       });
     }
     throw error;

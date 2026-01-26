@@ -4,8 +4,8 @@ import { DiscriminativePick } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
 import {
-  CreateCircleCIConnectionSchema,
   CircleCIConnectionSchema,
+  CreateCircleCIConnectionSchema,
   ValidateCircleCIConnectionCredentialsSchema
 } from "./circleci-connection-schemas";
 
@@ -25,7 +25,11 @@ export type TCircleCIConnectionConfig = DiscriminativePick<
 };
 
 export type TCircleCIProject = {
-  id: string;
   name: string;
-  slug: string;
+  id: string;
+};
+
+export type TCircleCIOrganization = {
+  name: string;
+  projects: TCircleCIProject[];
 };

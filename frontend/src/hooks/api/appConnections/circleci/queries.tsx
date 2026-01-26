@@ -3,33 +3,34 @@ import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { appConnectionKeys } from "../queries";
-import { TCircleCIProject, TCircleCIProjectListResponse } from "./types";
+import { TCircleCIOrganization, TCircleCIOrganizationListResponse } from "./types";
 
 const circleciConnectionKeys = {
   all: [...appConnectionKeys.all, "circleci"] as const,
-  listProjects: (connectionId: string) => [...circleciConnectionKeys.all, "projects", connectionId] as const
+  listOrganizations: (connectionId: string) =>
+    [...circleciConnectionKeys.all, "organizations", connectionId] as const
 };
 
-export const useCircleCIConnectionListProjects = (
+export const useCircleCIConnectionListOrganizations = (
   connectionId: string,
   options?: Omit<
     UseQueryOptions<
-      TCircleCIProject[],
+      TCircleCIOrganization[],
       unknown,
-      TCircleCIProject[],
-      ReturnType<typeof circleciConnectionKeys.listProjects>
+      TCircleCIOrganization[],
+      ReturnType<typeof circleciConnectionKeys.listOrganizations>
     >,
     "queryKey" | "queryFn"
   >
 ) => {
   return useQuery({
-    queryKey: circleciConnectionKeys.listProjects(connectionId),
+    queryKey: circleciConnectionKeys.listOrganizations(connectionId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TCircleCIProjectListResponse>(
+      const { data } = await apiRequest.get<TCircleCIOrganizationListResponse>(
         `/api/v1/app-connections/circleci/${connectionId}/projects`
       );
 
-      return data.projects;
+      return data.organizations;
     },
     ...options
   });

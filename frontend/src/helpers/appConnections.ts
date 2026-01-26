@@ -50,10 +50,10 @@ import {
 import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
 import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/checkly-connection";
 import { ChefConnectionMethod } from "@app/hooks/api/appConnections/types/chef-connection";
+import { CircleCIConnectionMethod } from "@app/hooks/api/appConnections/types/circleci-connection";
 import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
 import { DNSMadeEasyConnectionMethod } from "@app/hooks/api/appConnections/types/dns-made-easy-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
-import { CircleCIConnectionMethod } from "@app/hooks/api/appConnections/types/circleci-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
 import { NorthflankConnectionMethod } from "@app/hooks/api/appConnections/types/northflank-connection";
@@ -182,9 +182,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case NorthflankConnectionMethod.ApiToken:
     case OktaConnectionMethod.ApiToken:
     case LaravelForgeConnectionMethod.ApiToken:
+    case CircleCIConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
-    case CircleCIConnectionMethod.PersonalAccessToken:
-      return { name: "Personal Access Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
     case MySqlConnectionMethod.UsernameAndPassword:

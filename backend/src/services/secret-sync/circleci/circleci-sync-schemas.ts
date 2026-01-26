@@ -13,18 +13,13 @@ import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types"
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 
 const CircleCISyncDestinationConfigSchema = z.object({
-  projectSlug: z
-    .string()
-    .min(1, "Project slug is required")
-    .describe(SecretSyncs.DESTINATION_CONFIG.CIRCLECI.projectSlug),
-  projectName: z
-    .string()
-    .min(1, "Project name is required")
-    .describe(SecretSyncs.DESTINATION_CONFIG.CIRCLECI.projectName)
-    .optional()
+  orgName: z.string().trim().min(1, "Organization is required"),
+  projectName: z.string().trim().min(1, "Project is required"),
+  projectId: z.string().trim().min(1, "Project ID is required")
 });
 
 const CreateCircleCISyncDestinationConfigSchema = CircleCISyncDestinationConfigSchema.extend({
+  orgName: z.string().min(1, "Organization name is required"),
   projectName: z
     .string()
     .min(1, "Project name is required")

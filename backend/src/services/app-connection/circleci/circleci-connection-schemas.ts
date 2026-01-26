@@ -18,22 +18,20 @@ export const CircleCIConnectionAccessTokenCredentialsSchema = z.object({
 const BaseCircleCIConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.CircleCI) });
 
 export const CircleCIConnectionSchema = BaseCircleCIConnectionSchema.extend({
-  method: z.literal(CircleCIConnectionMethod.PersonalAccessToken),
+  method: z.literal(CircleCIConnectionMethod.ApiToken),
   credentials: CircleCIConnectionAccessTokenCredentialsSchema
 });
 
 export const SanitizedCircleCIConnectionSchema = z.discriminatedUnion("method", [
   BaseCircleCIConnectionSchema.extend({
-    method: z.literal(CircleCIConnectionMethod.PersonalAccessToken),
+    method: z.literal(CircleCIConnectionMethod.ApiToken),
     credentials: CircleCIConnectionAccessTokenCredentialsSchema.pick({})
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.CircleCI]} (Personal Access Token)` }))
 ]);
 
 export const ValidateCircleCIConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
-    method: z
-      .literal(CircleCIConnectionMethod.PersonalAccessToken)
-      .describe(AppConnections.CREATE(AppConnection.CircleCI).method),
+    method: z.literal(CircleCIConnectionMethod.ApiToken).describe(AppConnections.CREATE(AppConnection.CircleCI).method),
     credentials: CircleCIConnectionAccessTokenCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.CircleCI).credentials
     )

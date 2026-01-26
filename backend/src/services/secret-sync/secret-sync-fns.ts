@@ -33,9 +33,9 @@ import { AZURE_DEVOPS_SYNC_LIST_OPTION, azureDevOpsSyncFactory } from "./azure-d
 import { AZURE_KEY_VAULT_SYNC_LIST_OPTION, azureKeyVaultSyncFactory } from "./azure-key-vault";
 import { BITBUCKET_SYNC_LIST_OPTION, BitbucketSyncFns } from "./bitbucket";
 import { CAMUNDA_SYNC_LIST_OPTION, camundaSyncFactory } from "./camunda";
-import { CIRCLECI_SYNC_LIST_OPTION, CircleCISyncFns } from "./circleci";
 import { CHECKLY_SYNC_LIST_OPTION } from "./checkly/checkly-sync-constants";
 import { ChecklySyncFns } from "./checkly/checkly-sync-fns";
+import { CIRCLECI_SYNC_LIST_OPTION, CircleCISyncFns } from "./circleci";
 import { CLOUDFLARE_PAGES_SYNC_LIST_OPTION } from "./cloudflare-pages/cloudflare-pages-constants";
 import { CloudflarePagesSyncFns } from "./cloudflare-pages/cloudflare-pages-fns";
 import { CLOUDFLARE_WORKERS_SYNC_LIST_OPTION, CloudflareWorkersSyncFns } from "./cloudflare-workers";

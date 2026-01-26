@@ -1,3 +1,3 @@
 export enum CircleCIConnectionMethod {
-  PersonalAccessToken = "personal-access-token"
+  ApiToken = "api-token"
 }

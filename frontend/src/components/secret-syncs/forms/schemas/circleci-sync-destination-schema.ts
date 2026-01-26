@@ -7,16 +7,9 @@ export const CircleCISyncDestinationSchema = BaseSecretSyncSchema().merge(
   z.object({
     destination: z.literal(SecretSync.CircleCI),
     destinationConfig: z.object({
-      projectSlug: z
-        .string()
-        .trim()
-        .min(1, "Project slug is required")
-        .describe("CircleCI project slug (format: vcs-slug/org-name/repo-name)"),
-      projectName: z
-        .string()
-        .trim()
-        .min(1, "Project name is required")
-        .optional()
+      orgName: z.string().trim().min(1, "Organization is required"),
+      projectName: z.string().trim().min(1, "Project is required"),
+      projectId: z.string().trim().min(1, "Project ID is required")
     })
   })
 );

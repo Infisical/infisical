@@ -30,7 +30,7 @@ const rootSchema = genericAppConnectionFieldsSchema.extend({
 
 const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
-    method: z.literal(CircleCIConnectionMethod.PersonalAccessToken),
+    method: z.literal(CircleCIConnectionMethod.ApiToken),
     credentials: z.object({
       apiToken: z.string().trim().min(1, "API Token required")
     })
@@ -46,7 +46,7 @@ export const CircleCIConnectionForm = ({ appConnection, onSubmit }: Props) => {
     resolver: zodResolver(formSchema),
     defaultValues: appConnection ?? {
       app: AppConnection.CircleCI,
-      method: CircleCIConnectionMethod.PersonalAccessToken
+      method: CircleCIConnectionMethod.ApiToken
     }
   });
 
@@ -99,8 +99,8 @@ export const CircleCIConnectionForm = ({ appConnection, onSubmit }: Props) => {
             <FormControl
               errorText={error?.message}
               isError={Boolean(error?.message)}
-              label="Personal API Token"
-              tooltipText="Your CircleCI Personal API Token. You can generate one from CircleCI User Settings > Personal API Tokens."
+              label="API Token"
+              tooltipText="Your CircleCI API Token. You can generate one from CircleCI User Settings > Personal API Tokens."
             >
               <SecretInput
                 containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"

@@ -6,8 +6,13 @@ import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const CircleCISyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.CircleCI }>();
-  const projectSlug = watch("destinationConfig.projectSlug");
+  const orgName = watch("destinationConfig.orgName");
   const projectName = watch("destinationConfig.projectName");
 
-  return <GenericFieldLabel label="Project">{projectName || projectSlug}</GenericFieldLabel>;
+  return (
+    <>
+      <GenericFieldLabel label="Organization">{orgName}</GenericFieldLabel>
+      <GenericFieldLabel label="Project">{projectName}</GenericFieldLabel>
+    </>
+  );
 };
