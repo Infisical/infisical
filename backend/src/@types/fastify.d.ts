@@ -35,7 +35,8 @@ import { TPamSessionServiceFactory } from "@app/ee/services/pam-session/pam-sess
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TPitServiceFactory } from "@app/ee/services/pit/pit-service";
 import { TPkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-types";
-import { TProjectEventsService, TProjectEventsSSEService } from "@app/ee/services/project-events";
+import { TProjectEventsService } from "@app/ee/services/project-events/project-events-service";
+import { TProjectEventsSSEService } from "@app/ee/services/project-events/project-events-sse-service";
 import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-types";
 import { RateLimitConfiguration, TRateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-types";
 import { TRelayServiceFactory } from "@app/ee/services/relay/relay-service";
