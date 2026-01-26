@@ -10,8 +10,8 @@ import {
   TEventBusSubscriber,
   TEventBusUnsubscribe
 } from "./event-bus-types";
-import { createMemoryBus, TMemoryBus } from "./memory-bus";
-import { createRedisBus, TRedisBus } from "./redis-bus";
+import { createMemoryBus } from "./memory-bus";
+import { createRedisBus } from "./redis-bus";
 
 type TEventBusServiceFactoryDep = {
   redis: Redis | Cluster;
@@ -22,10 +22,10 @@ export const eventBusServiceFactory = ({ redis }: TEventBusServiceFactoryDep) =>
   const containerId = `container-${nanoid()}`;
 
   // Create memory bus for local event delivery
-  const memoryBus: TMemoryBus = createMemoryBus();
+  const memoryBus = createMemoryBus();
 
   // Create Redis bus for inter-container communication
-  const redisBus: TRedisBus = createRedisBus(redis, EventBusTopicName.CoreServers);
+  const redisBus = createRedisBus(redis, EventBusTopicName.CoreServers);
 
   /**
    * Initialize the event bus
