@@ -350,6 +350,13 @@ export const superAdminServiceFactory = ({
         [LoginMethod.OIDC]: []
       };
 
+      // Check if any SSO method is enabled - if so, users can still log in via SSO
+      // and server admins can always use the admin bypass route (/login/admin)
+      const isSsoMethodEnabled =
+        data.enabledLoginMethods.includes(LoginMethod.SAML) ||
+        data.enabledLoginMethods.includes(LoginMethod.OIDC) ||
+        data.enabledLoginMethods.includes(LoginMethod.LDAP);
+
       const canServerAdminAccessAfterApply =
         data.enabledLoginMethods.some((loginMethod) =>
           loginMethodToAuthMethod[loginMethod as LoginMethod].some((authMethod) =>
@@ -357,7 +364,8 @@ export const superAdminServiceFactory = ({
           )
         ) ||
         isUserSamlAccessEnabled ||
-        isUserOidcAccessEnabled;
+        isUserOidcAccessEnabled ||
+        (superAdminUser.superAdmin && isSsoMethodEnabled);
 
       if (!canServerAdminAccessAfterApply) {
         throw new BadRequestError({
