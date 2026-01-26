@@ -18,19 +18,26 @@ import { SecretInput, Tag, Tooltip } from "@app/components/v2";
 import { CommitType, SecretV3Raw, TSecretApprovalSecChange, WsTag } from "@app/hooks/api/types";
 
 // ===== MULTILINE DIFF FUNCTIONS =====
+const DIFF_TYPE = {
+  ADDED: "added",
+  DELETED: "deleted",
+  UNCHANGED: "unchanged",
+  MODIFIED: "modified"
+} as const;
+
 const isSingleLine = (str: string | null | undefined): boolean => {
   if (!str || typeof str !== "string") return true;
   return !str.includes("\n");
 };
 
 type DiffLine = {
-  type: "added" | "deleted" | "unchanged" | "modified";
+  type: typeof DIFF_TYPE[keyof typeof DIFF_TYPE];
   oldLine?: string;
   newLine?: string;
 };
 
 type WordDiff = {
-  type: "added" | "deleted" | "unchanged";
+  type: typeof DIFF_TYPE.ADDED | typeof DIFF_TYPE.DELETED | typeof DIFF_TYPE.UNCHANGED;
   text: string;
 };
 
@@ -46,19 +53,19 @@ const computeLineDiff = (oldText: string, newText: string): DiffLine[] => {
   while (oldIndex < oldLines.length || newIndex < newLines.length) {
     if (oldIndex >= oldLines.length) {
       result.push({
-        type: "added",
+        type: DIFF_TYPE.ADDED,
         newLine: newLines[newIndex]
       });
       newIndex++;
     } else if (newIndex >= newLines.length) {
       result.push({
-        type: "deleted",
+        type: DIFF_TYPE.DELETED,
         oldLine: oldLines[oldIndex]
       });
       oldIndex++;
     } else if (oldLines[oldIndex] === newLines[newIndex]) {
       result.push({
-        type: "unchanged",
+        type: DIFF_TYPE.UNCHANGED,
         oldLine: oldLines[oldIndex],
         newLine: newLines[newIndex]
       });
@@ -74,7 +81,7 @@ const computeLineDiff = (oldText: string, newText: string): DiffLine[] => {
 
       if (nextOldMatch === -1 && nextNewMatch === -1) {
         result.push({
-          type: "modified",
+          type: DIFF_TYPE.MODIFIED,
           oldLine: oldLines[oldIndex],
           newLine: newLines[newIndex]
         });
@@ -83,7 +90,7 @@ const computeLineDiff = (oldText: string, newText: string): DiffLine[] => {
       } else if (nextOldMatch !== -1 && (nextNewMatch === -1 || nextOldMatch < nextNewMatch)) {
         while (newIndex < nextOldMatch) {
           result.push({
-            type: "added",
+            type: DIFF_TYPE.ADDED,
             newLine: newLines[newIndex]
           });
           newIndex++;
@@ -91,7 +98,7 @@ const computeLineDiff = (oldText: string, newText: string): DiffLine[] => {
       } else {
         while (oldIndex < nextNewMatch) {
           result.push({
-            type: "deleted",
+            type: DIFF_TYPE.DELETED,
             oldLine: oldLines[oldIndex]
           });
           oldIndex++;
@@ -115,13 +122,13 @@ const computeWordDiff = (oldText: string, newText: string): WordDiff[] => {
 
   while (oldIdx < oldWords.length || newIdx < newWords.length) {
     if (oldIdx >= oldWords.length) {
-      result.push({ type: "added", text: newWords[newIdx] });
+      result.push({ type: DIFF_TYPE.ADDED, text: newWords[newIdx] });
       newIdx++;
     } else if (newIdx >= newWords.length) {
-      result.push({ type: "deleted", text: oldWords[oldIdx] });
+      result.push({ type: DIFF_TYPE.DELETED, text: oldWords[oldIdx] });
       oldIdx++;
     } else if (oldWords[oldIdx] === newWords[newIdx]) {
-      result.push({ type: "unchanged", text: oldWords[oldIdx] });
+      result.push({ type: DIFF_TYPE.UNCHANGED, text: oldWords[oldIdx] });
       oldIdx++;
       newIdx++;
     } else {
@@ -133,18 +140,18 @@ const computeWordDiff = (oldText: string, newText: string): WordDiff[] => {
       );
 
       if (nextOldMatch === -1 && nextNewMatch === -1) {
-        result.push({ type: "deleted", text: oldWords[oldIdx] });
-        result.push({ type: "added", text: newWords[newIdx] });
+        result.push({ type: DIFF_TYPE.DELETED, text: oldWords[oldIdx] });
+        result.push({ type: DIFF_TYPE.ADDED, text: newWords[newIdx] });
         oldIdx++;
         newIdx++;
       } else if (nextOldMatch !== -1 && (nextNewMatch === -1 || nextOldMatch < nextNewMatch)) {
         while (newIdx < nextOldMatch) {
-          result.push({ type: "added", text: newWords[newIdx] });
+          result.push({ type: DIFF_TYPE.ADDED, text: newWords[newIdx] });
           newIdx++;
         }
       } else {
         while (oldIdx < nextNewMatch) {
-          result.push({ type: "deleted", text: oldWords[oldIdx] });
+          result.push({ type: DIFF_TYPE.DELETED, text: oldWords[oldIdx] });
           oldIdx++;
         }
       }
@@ -164,14 +171,14 @@ const renderSingleLineDiffForApproval = (
   return (
     <div className="font-mono text-sm break-words">
       {wordDiffs.map((wordDiff, wordIdx) => {
-        if (isOldVersion && wordDiff.type === "added") return null;
-        if (!isOldVersion && wordDiff.type === "deleted") return null;
+        if (isOldVersion && wordDiff.type === DIFF_TYPE.ADDED) return null;
+        if (!isOldVersion && wordDiff.type === DIFF_TYPE.DELETED) return null;
 
         const wordKey = `singleline-word-${wordIdx}`;
         const wordClass =
-          wordDiff.type === "deleted"
+          wordDiff.type === DIFF_TYPE.DELETED
             ? "bg-red-600/70 rounded px-0.5"
-            : wordDiff.type === "added"
+            : wordDiff.type === DIFF_TYPE.ADDED
               ? "bg-green-600/70 rounded px-0.5"
               : "";
 
@@ -194,21 +201,11 @@ const renderMultilineDiffForApproval = (
   const diffLines = computeLineDiff(oldText, newText);
   
   // Find the first changed line index
-  let firstChangedIndex = -1;
-  for (let i = 0; i < diffLines.length; i++) {
-    const line = diffLines[i];
-    if (isOldVersion) {
-      if (line.type === "deleted" || line.type === "modified") {
-        firstChangedIndex = i;
-        break;
-      }
-    } else {
-      if (line.type === "added" || line.type === "modified") {
-        firstChangedIndex = i;
-        break;
-      }
-    }
-  }
+  const firstChangedIndex = diffLines.findIndex((line) =>
+    isOldVersion
+      ? line.type === DIFF_TYPE.DELETED || line.type === DIFF_TYPE.MODIFIED
+      : line.type === DIFF_TYPE.ADDED || line.type === DIFF_TYPE.MODIFIED
+  );
 
   return (
     <div className="font-mono text-sm whitespace-pre-wrap min-w-full break-words">
@@ -218,26 +215,26 @@ const renderMultilineDiffForApproval = (
 
         if (isOldVersion) {
           // Render old version
-          if (diffLine.type === "added") {
+          if (diffLine.type === DIFF_TYPE.ADDED) {
             return null; // Skip added lines in old version
           }
 
-          const isChanged = diffLine.type === "deleted" || diffLine.type === "modified";
+          const isChanged = diffLine.type === DIFF_TYPE.DELETED || diffLine.type === DIFF_TYPE.MODIFIED;
           const lineClass = isChanged
             ? "flex min-w-full bg-red-500/50 rounded-xs text-red-300"
             : "flex min-w-full";
 
-          if (diffLine.type === "modified" && diffLine.oldLine) {
+          if (diffLine.type === DIFF_TYPE.MODIFIED && diffLine.oldLine) {
             const wordDiffs = computeWordDiff(diffLine.oldLine, diffLine.newLine || "");
             return (
               <div key={lineKey} className={lineClass} data-first-change={isFirstChanged ? "true" : undefined}>
                 <div className="w-4 shrink-0">-</div>
                 <div className="flex-1 min-w-0 break-words">
                   {wordDiffs.map((wordDiff, wordIdx) => {
-                    if (wordDiff.type === "added") return null;
+                    if (wordDiff.type === DIFF_TYPE.ADDED) return null;
                     const wordKey = `${lineKey}-word-${wordIdx}`;
                     const wordClass =
-                      wordDiff.type === "deleted"
+                      wordDiff.type === DIFF_TYPE.DELETED
                         ? "bg-red-600/70 rounded px-0.5"
                         : "";
                     return (
@@ -257,48 +254,48 @@ const renderMultilineDiffForApproval = (
               <div className="flex-1 min-w-0 break-words">{diffLine.oldLine}</div>
             </div>
           );
-        } else {
-          // Render new version
-          if (diffLine.type === "deleted") {
-            return null; // Skip deleted lines in new version
-          }
+        }
 
-          const isChanged = diffLine.type === "added" || diffLine.type === "modified";
-          const lineClass = isChanged
-            ? "flex min-w-full bg-green-500/50 rounded-xs text-green-300"
-            : "flex min-w-full";
+        // Render new version
+        if (diffLine.type === DIFF_TYPE.DELETED) {
+          return null; // Skip deleted lines in new version
+        }
 
-          if (diffLine.type === "modified" && diffLine.newLine) {
-            const wordDiffs = computeWordDiff(diffLine.oldLine || "", diffLine.newLine);
-            return (
-              <div key={lineKey} className={lineClass} data-first-change={isFirstChanged ? "true" : undefined}>
-                <div className="w-4 shrink-0">+</div>
-                <div className="flex-1 min-w-0 break-words">
-                  {wordDiffs.map((wordDiff, wordIdx) => {
-                    if (wordDiff.type === "deleted") return null;
-                    const wordKey = `${lineKey}-word-${wordIdx}`;
-                    const wordClass =
-                      wordDiff.type === "added"
-                        ? "bg-green-600/70 rounded px-0.5"
-                        : "";
-                    return (
-                      <span key={wordKey} className={wordClass}>
-                        {wordDiff.text}
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          }
+        const isChanged = diffLine.type === DIFF_TYPE.ADDED || diffLine.type === DIFF_TYPE.MODIFIED;
+        const lineClass = isChanged
+          ? "flex min-w-full bg-green-500/50 rounded-xs text-green-300"
+          : "flex min-w-full";
 
+        if (diffLine.type === DIFF_TYPE.MODIFIED && diffLine.newLine) {
+          const wordDiffs = computeWordDiff(diffLine.oldLine || "", diffLine.newLine);
           return (
             <div key={lineKey} className={lineClass} data-first-change={isFirstChanged ? "true" : undefined}>
-              <div className="w-4 shrink-0">{isChanged ? "+" : " "}</div>
-              <div className="flex-1 min-w-0 break-words">{diffLine.newLine}</div>
+              <div className="w-4 shrink-0">+</div>
+              <div className="flex-1 min-w-0 break-words">
+                {wordDiffs.map((wordDiff, wordIdx) => {
+                  if (wordDiff.type === DIFF_TYPE.DELETED) return null;
+                  const wordKey = `${lineKey}-word-${wordIdx}`;
+                  const wordClass =
+                    wordDiff.type === DIFF_TYPE.ADDED
+                      ? "bg-green-600/70 rounded px-0.5"
+                      : "";
+                  return (
+                    <span key={wordKey} className={wordClass}>
+                      {wordDiff.text}
+                    </span>
+                  );
+                })}
+              </div>
             </div>
           );
         }
+
+        return (
+          <div key={lineKey} className={lineClass} data-first-change={isFirstChanged ? "true" : undefined}>
+            <div className="w-4 shrink-0">{isChanged ? "+" : " "}</div>
+            <div className="flex-1 min-w-0 break-words">{diffLine.newLine}</div>
+          </div>
+        );
       })}
     </div>
   );
@@ -457,18 +454,23 @@ export const SecretApprovalRequestChangeItem = ({
                         containerClassName="border border-mineshaft-600 bg-bunker-700 py-1.5 text-bunker-300 hover:border-primary-400/50 pr-2 pl-8"
                       />
                     </div>
-                  ) : secretVersion?.secretValue &&
-                    newVersion?.secretValue &&
-                    secretVersion.secretValue !== newVersion.secretValue ? (
-                    isSingleLine(secretVersion.secretValue) &&
-                    isSingleLine(newVersion.secretValue) ? (
+                  ) : (() => {
+                    const oldValue = secretVersion?.secretValue ?? "";
+                    const newValue = newVersion?.secretValue ?? "";
+                    return oldValue !== newValue;
+                  })() ? (
+                    (() => {
+                      const oldValue = secretVersion?.secretValue ?? "";
+                      const newValue = newVersion?.secretValue ?? "";
+                      return isSingleLine(oldValue) && isSingleLine(newValue);
+                    })() ? (
                       <div
                         className="relative rounded border border-mineshaft-600 p-2"
                         style={{ backgroundColor: "#120808" }}
                       >
                         {renderSingleLineDiffForApproval(
-                          secretVersion.secretValue,
-                          newVersion.secretValue,
+                          secretVersion?.secretValue ?? "",
+                          newVersion?.secretValue ?? "",
                           true
                         )}
                       </div>
@@ -480,8 +482,8 @@ export const SecretApprovalRequestChangeItem = ({
                       >
                         <div className="min-w-max">
                           {renderMultilineDiffForApproval(
-                            secretVersion.secretValue,
-                            newVersion.secretValue,
+                            secretVersion?.secretValue ?? "",
+                            newVersion?.secretValue ?? "",
                             true
                           )}
                         </div>
@@ -639,18 +641,23 @@ export const SecretApprovalRequestChangeItem = ({
                         containerClassName="border border-mineshaft-600 bg-bunker-700 py-1.5 text-bunker-300 hover:border-primary-400/50 pr-2 pl-8"
                       />
                     </div>
-                  ) : secretVersion?.secretValue &&
-                    (newVersion?.secretValue ?? secretVersion?.secretValue) &&
-                    secretVersion.secretValue !== (newVersion?.secretValue ?? secretVersion.secretValue) ? (
-                    isSingleLine(secretVersion.secretValue) &&
-                    isSingleLine(newVersion?.secretValue ?? secretVersion.secretValue) ? (
+                  ) : (() => {
+                    const oldValue = secretVersion?.secretValue ?? "";
+                    const newValue = newVersion?.secretValue ?? secretVersion?.secretValue ?? "";
+                    return oldValue !== newValue;
+                  })() ? (
+                    (() => {
+                      const oldValue = secretVersion?.secretValue ?? "";
+                      const newValue = newVersion?.secretValue ?? secretVersion?.secretValue ?? "";
+                      return isSingleLine(oldValue) && isSingleLine(newValue);
+                    })() ? (
                       <div
                         className="relative rounded border border-mineshaft-600 p-2"
                         style={{ backgroundColor: "#081208" }}
                       >
                         {renderSingleLineDiffForApproval(
-                          secretVersion.secretValue,
-                          newVersion?.secretValue ?? secretVersion.secretValue,
+                          secretVersion?.secretValue ?? "",
+                          newVersion?.secretValue ?? secretVersion?.secretValue ?? "",
                           false
                         )}
                       </div>
@@ -662,8 +669,8 @@ export const SecretApprovalRequestChangeItem = ({
                       >
                         <div className="min-w-max">
                           {renderMultilineDiffForApproval(
-                            secretVersion.secretValue,
-                            newVersion?.secretValue ?? secretVersion.secretValue,
+                            secretVersion?.secretValue ?? "",
+                            newVersion?.secretValue ?? secretVersion?.secretValue ?? "",
                             false
                           )}
                         </div>
