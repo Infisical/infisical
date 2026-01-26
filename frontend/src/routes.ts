@@ -441,10 +441,10 @@ export const routes = rootRoute("root.tsx", [
       route("/sso", "auth/SignUpSsoPage/route.tsx")
     ]),
     route("/email-not-verified", "auth/EmailNotVerifiedPage/route.tsx"),
-    route("/password-reset", "auth/PasswordResetPage/route.tsx"),
+    route("/account-recovery-reset", "auth/AccountRecoveryResetPage/route.tsx"),
     route("/requestnewinvite", "auth/RequestNewInvitePage/route.tsx"),
     route("/signupinvite", "auth/SignUpInvitePage/route.tsx"),
-    route("/verify-email", "auth/VerifyEmailPage/route.tsx")
+    route("/account-recovery", "auth/AccountRecoveryEmailPage/route.tsx")
   ]),
   middleware("authenticate.tsx", [
     route("/password-setup", "auth/PasswordSetupPage/route.tsx"),
