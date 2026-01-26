@@ -91,15 +91,13 @@ export const accountRecoveryServiceFactory = ({
     // akhilmhdh: case sensitive email resolution
     const user = users?.length > 1 ? users.find((el) => el.username === email) : users?.[0];
     if (!user) throw new BadRequestError({ message: "Failed to find user data" });
-
-    const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
-
-    if (!userEnc) throw new BadRequestError({ message: "Failed to find user encryption data" });
-
     // ignore as user is not found to avoid an outside entity to identify infisical registered accounts
     if (!user || (user && !user.isAccepted)) {
       throw new Error("Failed email verification for pass reset");
     }
+
+    const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
+    if (!userEnc) throw new BadRequestError({ message: "Failed to find user encryption data" });
 
     await tokenService.validateTokenForUser({
       type: TokenType.TOKEN_EMAIL_PASSWORD_RESET,
