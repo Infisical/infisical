@@ -350,12 +350,19 @@ export const superAdminServiceFactory = ({
         [LoginMethod.OIDC]: []
       };
 
-      // Check if any SSO method is enabled - if so, users can still log in via SSO
-      // and server admins can always use the admin bypass route (/login/admin)
-      const isSsoMethodEnabled =
+      // Check if SAML or OIDC SSO is enabled. These methods use user aliases (not authMethods),
+      // so they aren't covered by the loginMethodToAuthMethod check above.
+      // Note: LDAP is NOT included here because it stores auth in the user's authMethods field
+      // (see loginMethodToAuthMethod mapping) and is already handled by the check above.
+      //
+      // When alias-based SSO is enabled, server admins can safely disable email auth because:
+      // 1. Regular users can still authenticate via the configured SSO method
+      // 2. Server admins can always use the admin bypass route (/login/admin) which shows all
+      //    login methods regardless of enabledLoginMethods (frontend bypass), and org admins
+      //    bypass the enabledLoginMethods restriction in the backend auth service
+      const isAliasSsoMethodEnabled =
         data.enabledLoginMethods.includes(LoginMethod.SAML) ||
-        data.enabledLoginMethods.includes(LoginMethod.OIDC) ||
-        data.enabledLoginMethods.includes(LoginMethod.LDAP);
+        data.enabledLoginMethods.includes(LoginMethod.OIDC);
 
       const canServerAdminAccessAfterApply =
         data.enabledLoginMethods.some((loginMethod) =>
@@ -365,7 +372,7 @@ export const superAdminServiceFactory = ({
         ) ||
         isUserSamlAccessEnabled ||
         isUserOidcAccessEnabled ||
-        (superAdminUser.superAdmin && isSsoMethodEnabled);
+        (superAdminUser.superAdmin && isAliasSsoMethodEnabled);
 
       if (!canServerAdminAccessAfterApply) {
         throw new BadRequestError({
