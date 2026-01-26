@@ -5,7 +5,7 @@ export enum ProjectEvents {
   SecretCreate = "secret:create",
   SecretUpdate = "secret:update",
   SecretDelete = "secret:delete",
-  SecretImportMutation = "secret:import-mutation"
+  SecretImportMutations = "secret:import-mutations"
 }
 
 // Base fields for all secret mutations
@@ -35,7 +35,7 @@ interface SecretDeletedPayload extends SecretMutationBase {
 
 // Payload for import mutation - NO secretKey
 interface SecretImportMutationPayload extends SecretMutationBase {
-  type: ProjectEvents.SecretImportMutation;
+  type: ProjectEvents.SecretImportMutations;
 }
 
 // Discriminated union of all mutation payloads

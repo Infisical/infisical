@@ -1,13 +1,12 @@
 ---
 title: "Event Subscriptions"
-sidebarTitle: "Events"
+sidebarTitle: "Events Subscriptions"
 description: "Subscribe to events in Infisical for real-time updates"
 ---
 
 <Info>
-  Event Subscriptions is a paid feature.
-  - **Infisical Cloud:** Available under the **Enterprise Tier**.
-  - **Self-Hosted:** Contact [sales@infisical.com](mailto:sales@infisical.com) to purchase an enterprise license.
+   Event Subscriptions is a paid feature that is available under the Enterprise license.
+   Please contact[sales@infisical.com](mailto:sales@infisical.com).
 </Info>
 
 Event Subscriptions allow you to receive real-time notifications when specific actions occur within your Infisical projects. You can subscribe to changes such as secret modifications, with support for additional resource types coming soon.
@@ -37,7 +36,7 @@ You can subscribe to the following event types:
 | `secret:created` | Triggered when a new secret is created |
 | `secret:updated` | Triggered when an existing secret is modified |
 | `secret:deleted` | Triggered when a secret is removed |
-| `secret:import-mutation` | Triggered when a secret changes via an import |
+| `secret:import-mutations` | Triggered when a secret changes via an import |
 
 
 ## Permissions Setup
@@ -45,16 +44,6 @@ You can subscribe to the following event types:
 To receive events, the machine identity must have the **Secret Events** permission with the appropriate actions enabled.
 
 <Steps>
-  <Step title="Copy your Project ID">
-    ![Select Project](/images/platform/events/select-project.png)
-
-    Navigate to **Project Settings** from the sidebar. In the Project name section, click **Copy Project ID**, or extract it from the URL:
-
-    ```
-    https://app.infisical.com/project/<your_project_id>/settings
-    ```
-  </Step>
-
   <Step title="Open Project Roles">
     ![Project Detail](/images/platform/events/project-detail.png)
     ![Project Access](/images/platform/events/project-access.png)
@@ -115,13 +104,71 @@ To subscribe to events, make a request to the events endpoint with your project 
 | `register[].conditions.environmentSlug` | string | Filter by environment (e.g., `dev`, `staging`, `prod`) |
 | `register[].conditions.secretPath` | string | Filter by secret path (e.g., `/api/keys`) |
 
-#### Response
 
 The endpoint responds with `Content-Type: text/event-stream` to initiate an SSE connection.
 
-![Postman Subscription Response](/images/platform/events/postman-sse-response.png)
+```bash
+curl -N --location \
+  'http://app.infisical.com/api/v1/events/subscribe/project-events' \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer <identity token>' \
+  --data '{
+    "projectId": "<project-id>",
+    "register": [
+      {
+        "event": "secret:create"
+      },
+      {
+        "event": "secret:update"
+      },
+      {
+        {
+        "event": "secret:import-mutations"
+      }
+    ]
+  }'
+```
 
-Events are delivered as JSON payloads containing the event type and relevant metadata.
+### Response Format
+
+<AccordionGroup>
+<Accordion title="Secret Changes">
+  - Event triggered on a secret change
+
+```json
+{
+    "projectType": "secret-manager",
+    "data": {
+        "eventType": "secret:<create,update,delete>",
+        "payload": [
+          {
+            "environment": "staging",
+            "secretPath": "/",
+            "secretKey": "TEST"
+          }
+        ]
+    }
+}
+```
+</Accordion>
+<Accordion title="Secret Import Mutation">
+  - Event triggered on a secret change in an import 
+
+
+```json
+{
+    "projectType": "secret-manager",
+    "data": {
+        "eventType": "secret:import-mutations",
+        "payload": {
+            "environment": "staging",
+            "secretPath": "/"
+        }
+    }
+}
+```
+</Accordion>
+</AccordionGroup>
 
 <Tip>
   For complete API specifications and additional examples, see the [API Reference](/api-reference/endpoints/events).

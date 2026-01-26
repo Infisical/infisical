@@ -185,7 +185,7 @@ export const secretImportServiceFactory = ({
         actor,
         events: [
           {
-            type: ProjectEvents.SecretImportMutation,
+            type: ProjectEvents.SecretImportMutations,
             projectId,
             secretPath,
             environment
@@ -368,7 +368,7 @@ export const secretImportServiceFactory = ({
       actorId,
       events: [
         {
-          type: ProjectEvents.SecretImportMutation,
+          type: ProjectEvents.SecretImportMutations,
           projectId,
           secretPath,
           environment

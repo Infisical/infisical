@@ -77,14 +77,6 @@ export const eventBusServiceFactory = ({ redis }: TEventBusServiceFactoryDep) =>
   };
 
   /**
-   * Subscribe to ALL events (useful for debugging/logging)
-   * @returns Unsubscribe function
-   */
-  const subscribeAll = (callback: TEventBusSubscriber): TEventBusUnsubscribe => {
-    return memoryBus.subscribeAll(callback);
-  };
-
-  /**
    * Close the event bus and cleanup resources
    */
   const close = async (): Promise<void> => {
@@ -97,7 +89,6 @@ export const eventBusServiceFactory = ({ redis }: TEventBusServiceFactoryDep) =>
     init,
     publish,
     subscribe,
-    subscribeAll,
     close
   };
 };

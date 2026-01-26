@@ -770,7 +770,7 @@ export const secretQueueFactory = ({
                 excludeReplication: true,
                 events: [
                   {
-                    type: ProjectEvents.SecretImportMutation,
+                    type: ProjectEvents.SecretImportMutations,
                     projectId,
                     secretPath: foldersGroupedById[folderId][0]?.path as string,
                     environment: foldersGroupedById[folderId][0]?.environmentSlug as string
@@ -831,7 +831,7 @@ export const secretQueueFactory = ({
                 excludeReplication: true,
                 events: [
                   {
-                    type: ProjectEvents.SecretImportMutation,
+                    type: ProjectEvents.SecretImportMutations,
                     projectId,
                     secretPath: referencedFoldersGroupedById[folderId][0]?.path as string,
                     environment: referencedFoldersGroupedById[folderId][0]?.environmentSlug as string

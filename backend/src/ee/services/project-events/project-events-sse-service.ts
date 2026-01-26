@@ -2,6 +2,7 @@ import { Readable } from "node:stream";
 
 import { ForbiddenError, subject } from "@casl/ability";
 import { nanoid } from "nanoid";
+import picomatch from "picomatch";
 
 import { ProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -35,7 +36,7 @@ const MutationTypeToAction: Record<ProjectEvents, ProjectPermissionSecretEventAc
   [ProjectEvents.SecretCreate]: ProjectPermissionSecretEventActions.SubscribeCreated,
   [ProjectEvents.SecretUpdate]: ProjectPermissionSecretEventActions.SubscribeUpdated,
   [ProjectEvents.SecretDelete]: ProjectPermissionSecretEventActions.SubscribeDeleted,
-  [ProjectEvents.SecretImportMutation]: ProjectPermissionSecretEventActions.SubscribeImportMutations
+  [ProjectEvents.SecretImportMutations]: ProjectPermissionSecretEventActions.SubscribeImportMutations
 };
 
 const getBusEventToSubject = (type: ProjectEvents) => {
@@ -44,7 +45,7 @@ const getBusEventToSubject = (type: ProjectEvents) => {
       ProjectEvents.SecretCreate,
       ProjectEvents.SecretUpdate,
       ProjectEvents.SecretDelete,
-      ProjectEvents.SecretImportMutation
+      ProjectEvents.SecretImportMutations
     ].includes(type)
   ) {
     return ProjectPermissionSub.SecretEvents;
@@ -95,25 +96,24 @@ export const projectEventsSSEServiceFactory = ({
   >();
 
   // Connection management functions for rate limiting
-  const registerConnection = async (projectId: string, connectionId: string): Promise<void> => {
+  const $registerConnection = async (projectId: string, connectionId: string): Promise<void> => {
     const set = KeyStorePrefixes.ProjectSSEConnectionsSet(projectId);
     const key = KeyStorePrefixes.ProjectSSEConnection(projectId, connectionId);
-    await Promise.all([
-      keyStore.listPush(set, connectionId),
-      keyStore.setItemWithExpiry(key, CONNECTION_TTL_SECONDS, "1")
-    ]);
+    await keyStore.setItemWithExpiry(key, CONNECTION_TTL_SECONDS, "1");
+    await keyStore.listPush(set, connectionId);
   };
 
-  const refreshConnection = async (projectId: string, connectionId: string): Promise<void> => {
+  const $refreshConnection = async (projectId: string, connectionId: string): Promise<void> => {
     const key = KeyStorePrefixes.ProjectSSEConnection(projectId, connectionId);
     await keyStore.setItemWithExpiry(key, CONNECTION_TTL_SECONDS, "1");
   };
 
-  const removeConnection = async (projectId: string, connectionId: string): Promise<void> => {
+  const $removeConnection = async (projectId: string, connectionId: string): Promise<void> => {
     try {
       const set = KeyStorePrefixes.ProjectSSEConnectionsSet(projectId);
       const key = KeyStorePrefixes.ProjectSSEConnection(projectId, connectionId);
-      await Promise.all([keyStore.listRemove(set, 0, connectionId), keyStore.deleteItem(key)]);
+      await keyStore.listRemove(set, 0, connectionId);
+      await keyStore.deleteItem(key);
     } catch (error) {
       logger.error(error, "Failed to remove SSE connection from keystore");
     }
@@ -133,8 +133,8 @@ export const projectEventsSSEServiceFactory = ({
 
     // Clean up stale connections (crashed servers - expired TTL keys)
     const staleConnections = connections.filter((_, i) => values[i] === null);
-    if (staleConnections.length > 0) {
-      await Promise.all(staleConnections.map((c) => keyStore.listRemove(set, 0, c)));
+    for await (const staleConnection of staleConnections) {
+      await keyStore.listRemove(set, 0, staleConnection);
     }
 
     return connections.length - staleConnections.length;
@@ -144,7 +144,7 @@ export const projectEventsSSEServiceFactory = ({
   const heartbeatInterval = setInterval(() => {
     for (const [clientId, { client, opts }] of clients) {
       if (!client.stream.closed) {
-        void refreshConnection(opts.projectId, clientId);
+        void $refreshConnection(opts.projectId, clientId);
       }
     }
   }, HEARTBEAT_INTERVAL);
@@ -203,7 +203,7 @@ export const projectEventsSSEServiceFactory = ({
    * Refresh permission for a client
    * Also re-validates registered permissions - closes connection if revoked
    */
-  const refreshPermission = async (clientId: string): Promise<void> => {
+  const $refreshPermission = async (clientId: string): Promise<void> => {
     const entry = clients.get(clientId);
     if (!entry) return;
 
@@ -226,7 +226,7 @@ export const projectEventsSSEServiceFactory = ({
   const refreshInterval = setInterval(() => {
     for (const [clientId, entry] of clients) {
       if (!entry.client.stream.closed) {
-        void refreshPermission(clientId);
+        void $refreshPermission(clientId);
       }
     }
   }, PERMISSION_REFRESH_INTERVAL);
@@ -235,7 +235,7 @@ export const projectEventsSSEServiceFactory = ({
    * Check if client has permission to receive this event based on registrations
    * This is called for each incoming event - returns boolean, does not throw
    */
-  const canReceiveEvent = (
+  const $canReceiveEvent = (
     permissionCache: TSSEPermissionCache,
     payload: TProjectEventPayload,
     register: TSSERegisterEntry[]
@@ -251,7 +251,10 @@ export const projectEventsSSEServiceFactory = ({
       if (reg.conditions?.environmentSlug && payload.environment !== reg.conditions.environmentSlug) {
         return false;
       }
-      if (reg.conditions?.secretPath && !payload.secretPath.startsWith(reg.conditions.secretPath)) {
+      if (
+        reg.conditions?.secretPath &&
+        !picomatch.isMatch(payload.secretPath, reg.conditions.secretPath, { strictSlashes: false })
+      ) {
         return false;
       }
 
@@ -298,20 +301,18 @@ export const projectEventsSSEServiceFactory = ({
       const activeCount = await getActiveConnectionsCountFromKeyStore(opts.projectId);
       if (activeCount >= MAX_CONNECTIONS_PER_PROJECT) {
         throw new RateLimitError({
-          message: `Maximum SSE connections (${MAX_CONNECTIONS_PER_PROJECT}) reached for this project.`
+          message: `You have reached your maximum concurrent event subscriptions for this project. Your project supports ${MAX_CONNECTIONS_PER_PROJECT} concurrent event subscriptions.`
         });
       }
 
       // Register connection in keystore
-      await registerConnection(opts.projectId, id);
+      await $registerConnection(opts.projectId, id);
     } finally {
       await lock?.release();
     }
 
     // Create the readable stream
-    const stream = new Readable({ objectMode: true });
-    // eslint-disable-next-line no-underscore-dangle
-    stream._read = () => {}; // Manual push mode
+    const stream = new Readable({ objectMode: true, read: () => {} });
 
     const send = (event: TSSEEvent) => {
       const chunk = serializeSSEEvent(event);
@@ -352,15 +353,15 @@ export const projectEventsSSEServiceFactory = ({
       if (payload.projectId !== opts.projectId) return;
 
       // Check permission and registered events/conditions
-      if (!canReceiveEvent(currentEntry.permissionCache, payload, opts.register)) {
+      if (!$canReceiveEvent(currentEntry.permissionCache, payload, opts.register)) {
         return;
       }
 
       const payloadFormattedData = {
-        type: ProjectType.SecretManager,
+        projectType: ProjectType.SecretManager,
         data: { eventType: payload.type, payload: {} }
       };
-      if (payload.type === ProjectEvents.SecretImportMutation) {
+      if (payload.type === ProjectEvents.SecretImportMutations) {
         payloadFormattedData.data.payload = {
           environment: payload.environment,
           secretPath: payload.secretPath
@@ -373,7 +374,7 @@ export const projectEventsSSEServiceFactory = ({
         payloadFormattedData.data.payload = payload.secretKeys.map((key) => ({
           environment: payload.environment,
           secretPath: payload.secretPath,
-          secretKeys: key
+          secretKey: key
         }));
       }
 
@@ -392,7 +393,7 @@ export const projectEventsSSEServiceFactory = ({
       cleaned = true;
       unsubscribe();
       clients.delete(id);
-      void removeConnection(opts.projectId, id);
+      void $removeConnection(opts.projectId, id);
     };
 
     // Handle stream errors - ensure cleanup even if "close" doesn't fire
@@ -424,7 +425,7 @@ export const projectEventsSSEServiceFactory = ({
     const cleanupPromises: Promise<void>[] = [];
     for (const [clientId, { client, opts }] of clients) {
       client.close();
-      cleanupPromises.push(removeConnection(opts.projectId, clientId));
+      cleanupPromises.push($removeConnection(opts.projectId, clientId));
     }
     await Promise.all(cleanupPromises);
 

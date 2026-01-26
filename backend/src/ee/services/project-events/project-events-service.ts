@@ -1,6 +1,7 @@
 import { logger } from "@app/lib/logger";
 
-import { EventBusServiceEvents, TEventBusService } from "../event-bus";
+import { TEventBusService } from "../event-bus/event-bus-service";
+import { EventBusServiceEvents } from "../event-bus/event-bus-types";
 import { TProjectEventPayload, TProjectEventSubscriber, TProjectEventUnsubscribe } from "./project-events-types";
 
 type TProjectEventsServiceFactoryDep = {

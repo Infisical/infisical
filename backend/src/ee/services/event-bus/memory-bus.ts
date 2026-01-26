@@ -4,8 +4,6 @@ import { logger } from "@app/lib/logger";
 
 import { EventBusServiceEvents, TEventBusEvent, TEventBusSubscriber, TEventBusUnsubscribe } from "./event-bus-types";
 
-const ALL_EVENTS_CHANNEL = "__all__";
-
 export const createMemoryBus = () => {
   const emitter = new EventEmitter();
   // Increase max listeners to avoid warnings with many subscribers
@@ -17,7 +15,6 @@ export const createMemoryBus = () => {
    */
   const emit = (event: TEventBusEvent): void => {
     emitter.emit(event.type, event);
-    emitter.emit(ALL_EVENTS_CHANNEL, event);
   };
 
   /**
@@ -47,31 +44,6 @@ export const createMemoryBus = () => {
   };
 
   /**
-   * Subscribe to ALL events (useful for debugging/logging)
-   * @returns Unsubscribe function
-   */
-  const subscribeAll = (callback: TEventBusSubscriber): TEventBusUnsubscribe => {
-    const wrappedCallback = (event: TEventBusEvent) => {
-      try {
-        const result = callback(event);
-        if (result instanceof Promise) {
-          result.catch((error) => {
-            logger.error(error, "Error in event bus global subscriber");
-          });
-        }
-      } catch (error) {
-        logger.error(error, "Error in event bus global subscriber");
-      }
-    };
-
-    emitter.on(ALL_EVENTS_CHANNEL, wrappedCallback);
-
-    return () => {
-      emitter.off(ALL_EVENTS_CHANNEL, wrappedCallback);
-    };
-  };
-
-  /**
    * Remove all listeners from the memory bus
    */
   const removeAllListeners = (): void => {
@@ -81,7 +53,6 @@ export const createMemoryBus = () => {
   return {
     emit,
     subscribe,
-    subscribeAll,
     removeAllListeners
   };
 };
