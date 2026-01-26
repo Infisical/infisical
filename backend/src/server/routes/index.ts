@@ -98,7 +98,8 @@ import { pkiAcmeOrderAuthDALFactory } from "@app/ee/services/pki-acme/pki-acme-o
 import { pkiAcmeOrderDALFactory } from "@app/ee/services/pki-acme/pki-acme-order-dal";
 import { pkiAcmeQueueServiceFactory } from "@app/ee/services/pki-acme/pki-acme-queue";
 import { pkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-service";
-import { projectEventsServiceFactory, projectEventsSSEServiceFactory } from "@app/ee/services/project-events";
+import { projectEventsServiceFactory } from "@app/ee/services/project-events/project-events-service";
+import { projectEventsSSEServiceFactory } from "@app/ee/services/project-events/project-events-sse-service";
 import { projectTemplateDALFactory } from "@app/ee/services/project-template/project-template-dal";
 import { projectTemplateGroupMembershipDALFactory } from "@app/ee/services/project-template/project-template-group-membership-dal";
 import { projectTemplateIdentityMembershipDALFactory } from "@app/ee/services/project-template/project-template-identity-membership-dal";
