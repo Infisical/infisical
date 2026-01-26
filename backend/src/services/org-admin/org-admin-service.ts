@@ -1,9 +1,9 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, OrganizationActionScope, ProjectMembershipRole, ProjectVersion } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, ProjectMembershipRole } from "@app/db/schemas";
 import { OrgPermissionAdminConsoleAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
@@ -92,12 +92,6 @@ export const orgAdminServiceFactory = ({
 
     const project = await projectDAL.findOne({ id: projectId, orgId: actorOrgId });
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
-
-    if (project.version === ProjectVersion.V1 || project.version === ProjectVersion.V2) {
-      throw new BadRequestError({
-        message: `Project '${project.name}' is a legacy project and must be upgraded before accessing it through the admin console.`
-      });
-    }
 
     // check already there exist a membership if there return it
     const projectMembership = await membershipUserDAL.findOne({
