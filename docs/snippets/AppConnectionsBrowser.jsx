@@ -69,6 +69,13 @@ export const AppConnectionsBrowser = () => {
       category: "Cloud Providers",
     },
     {
+      name: "SSH",
+      slug: "ssh",
+      path: "/integrations/app-connections/ssh",
+      description: "Learn how to connect your machine using SSH.",
+      category: "Networking & DNS",
+    },
+    {
       name: "GCP",
       slug: "gcp",
       path: "/integrations/app-connections/gcp",

@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { Server as RawMcpServer } from "@modelcontextprotocol/sdk/server/index.js";
@@ -8,13 +8,17 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, TAiMcpEndpoints } from "@app/db/schemas";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto as cryptoModule } from "@app/lib/crypto";
-import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { BadRequestError, DatabaseError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { GatewayProxyProtocol } from "@app/lib/gateway";
+import { setupRelayServer } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
+import { PiiEntityType, redactPiiFromObject } from "@app/lib/pii";
 import { ActorType, AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -27,6 +31,7 @@ import { AiMcpServerCredentialMode } from "../ai-mcp-server/ai-mcp-server-enum";
 import { TAiMcpServerServiceFactory } from "../ai-mcp-server/ai-mcp-server-service";
 import { TAiMcpServerToolDALFactory } from "../ai-mcp-server/ai-mcp-server-tool-dal";
 import { TAiMcpServerUserCredentialDALFactory } from "../ai-mcp-server/ai-mcp-server-user-credential-dal";
+import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionMcpEndpointActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TAiMcpEndpointDALFactory } from "./ai-mcp-endpoint-dal";
@@ -52,7 +57,8 @@ import {
   TOAuthTokenExchangeDTO,
   TSaveUserServerCredentialDTO,
   TServerAuthStatus,
-  TUpdateAiMcpEndpointDTO
+  TUpdateAiMcpEndpointDTO,
+  TVerifyServerBearerTokenDTO
 } from "./ai-mcp-endpoint-types";
 
 type TAiMcpEndpointServiceFactoryDep = {
@@ -72,6 +78,7 @@ type TAiMcpEndpointServiceFactoryDep = {
   authTokenService: Pick<TAuthTokenServiceFactory, "getUserTokenSessionById">;
   userDAL: TUserDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
 };
 
 // OAuth schemas for parsing cached data
@@ -128,8 +135,75 @@ export const aiMcpEndpointServiceFactory = ({
   keyStore,
   authTokenService,
   userDAL,
-  permissionService
+  permissionService,
+  gatewayV2Service
 }: TAiMcpEndpointServiceFactoryDep) => {
+  /**
+   * Opens a long-lived gateway proxy for MCP sessions.
+   *
+   * This creates a local TCP server that tunnels connections through a V2 gateway
+   * to reach MCP servers on private networks. The proxy remains open until the
+   * cleanup function is called.
+   *
+   * @returns Port to connect to and cleanup function, or null if gateway not found
+   */
+  const $openGatewayProxy = async (inputs: {
+    gatewayId: string;
+    targetHost: string;
+    targetPort: number;
+  }): Promise<{ port: number; cleanup: () => Promise<void> } | null> => {
+    const gatewayV2ConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+      gatewayId: inputs.gatewayId,
+      targetHost: inputs.targetHost,
+      targetPort: inputs.targetPort
+    });
+
+    if (!gatewayV2ConnectionDetails) {
+      return null;
+    }
+
+    const relayServer = await setupRelayServer({
+      protocol: GatewayProxyProtocol.Http,
+      relayHost: gatewayV2ConnectionDetails.relayHost,
+      gateway: gatewayV2ConnectionDetails.gateway,
+      relay: gatewayV2ConnectionDetails.relay
+    });
+
+    return {
+      port: relayServer.port,
+      cleanup: relayServer.cleanup
+    };
+  };
+
+  /**
+   * Wraps an HTTP request to route it through a V2 gateway proxy.
+   *
+   * Used for short-lived operations like OAuth discovery and tool fetching
+   * where the connection doesn't need to persist.
+   *
+   * @throws NotFoundError if the gateway doesn't exist
+   */
+  const $gatewayHttpProxyWrapper = async <T>(
+    inputs: {
+      gatewayId: string;
+      targetHost: string;
+      targetPort: number;
+    },
+    gatewayCallback: (host: string, port: number) => Promise<T>
+  ): Promise<T> => {
+    const proxyResult = await $openGatewayProxy(inputs);
+
+    if (!proxyResult) {
+      throw new NotFoundError({ message: `Gateway with ID ${inputs.gatewayId} not found or not available` });
+    }
+
+    try {
+      return await gatewayCallback("http://localhost", proxyResult.port);
+    } finally {
+      await proxyResult.cleanup();
+    }
+  };
+
   const interactWithMcp = async ({
     endpointId,
     userId,
@@ -156,7 +230,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Connect,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
     const user = await userDAL.findById(userId);
@@ -199,8 +273,14 @@ export const aiMcpEndpointServiceFactory = ({
         enableJsonResponse: true
       });
 
-      return { server: emptyServer, transport };
+      // No-op cleanup since there are no gateway connections
+      const cleanup = async () => {};
+
+      return { server: emptyServer, transport, cleanup };
     }
+
+    // Track gateway proxy cleanup functions for long-lived MCP sessions
+    const gatewayCleanups: Array<() => Promise<void>> = [];
 
     // Connect to each server and get their tools
     const mcpClientTools = await Promise.all(
@@ -229,13 +309,19 @@ export const aiMcpEndpointServiceFactory = ({
           headers.Authorization = `Bearer ${credentialsResult.accessToken}`;
         }
 
-        try {
+        // Helper function to connect to MCP server and get tools
+        const connectAndGetTools = async (
+          serverUrl: string
+        ): Promise<{
+          client: Client;
+          tools: Array<{ name: string; description?: string; inputSchema?: Record<string, unknown> }>;
+        }> => {
           const client = new Client({
             name: `infisical-mcp-client-${mcpServer.name}`,
             version: "1.0.0"
           });
 
-          const clientTransport = new StreamableHTTPClientTransport(new URL(mcpServer.url), {
+          const clientTransport = new StreamableHTTPClientTransport(new URL(serverUrl), {
             requestInit: { headers }
           });
 
@@ -246,8 +332,50 @@ export const aiMcpEndpointServiceFactory = ({
 
           return {
             client,
+            tools: tools as Array<{ name: string; description?: string; inputSchema?: Record<string, unknown> }>
+          };
+        };
+
+        try {
+          let clientResult: {
+            client: Client;
+            tools: Array<{ name: string; description?: string; inputSchema?: Record<string, unknown> }>;
+          };
+
+          if (mcpServer.gatewayId) {
+            // Route through gateway proxy - use long-lived proxy for V2 gateways
+            const urlObj = new URL(mcpServer.url);
+            const targetHost = urlObj.hostname;
+            let targetPort = 80;
+            if (urlObj.port) {
+              targetPort = Number(urlObj.port);
+            } else if (urlObj.protocol === "https:") {
+              targetPort = 443;
+            }
+
+            // Try to open a long-lived V2 gateway proxy
+            const proxyResult = await $openGatewayProxy({
+              gatewayId: mcpServer.gatewayId,
+              targetHost,
+              targetPort
+            });
+
+            if (!proxyResult) {
+              throw new NotFoundError({ message: "Gateway not found or not available" });
+            }
+
+            gatewayCleanups.push(proxyResult.cleanup);
+            const proxyUrl = `http://localhost:${proxyResult.port}${urlObj.pathname}${urlObj.search}`;
+            clientResult = await connectAndGetTools(proxyUrl);
+          } else {
+            // Direct connection (no gateway)
+            clientResult = await connectAndGetTools(mcpServer.url);
+          }
+
+          return {
+            client: clientResult.client,
             server: mcpServer,
-            tools: tools as Array<{ name: string; description?: string; inputSchema?: Record<string, unknown> }>,
+            tools: clientResult.tools,
             toolNameToDbId
           };
         } catch (error) {
@@ -298,23 +426,34 @@ export const aiMcpEndpointServiceFactory = ({
         throw new Error(`Unknown tool: ${name}`);
       }
 
+      // Apply PII redaction to request if enabled
+      const piiEntityTypes = (endpoint.piiEntityTypes as PiiEntityType[]) || [];
+      const sanitizedArgs =
+        endpoint.piiRequestFiltering && piiEntityTypes.length > 0 ? redactPiiFromObject(args, piiEntityTypes) : args;
+
       try {
         const result = await selectedMcpClient.client.callTool({
           name,
-          arguments: args
+          arguments: sanitizedArgs
         });
+
+        // Apply PII redaction to response if enabled
+        const sanitizedResult =
+          endpoint.piiResponseFiltering && piiEntityTypes.length > 0
+            ? redactPiiFromObject(result, piiEntityTypes)
+            : result;
 
         await aiMcpActivityLogService.createActivityLog({
           endpointName: endpoint.name,
           serverName: selectedMcpClient.server.name,
           toolName: name,
           actor: user.email || "",
-          request: args,
-          response: result,
+          request: sanitizedArgs,
+          response: sanitizedResult,
           projectId: endpoint.projectId
         });
 
-        return result as Record<string, unknown>;
+        return sanitizedResult as Record<string, unknown>;
       } catch (error) {
         // Log the full error internally for system administrators
         logger.error(
@@ -336,7 +475,7 @@ export const aiMcpEndpointServiceFactory = ({
           serverName: selectedMcpClient.server.name,
           toolName: name,
           actor: user.email || "",
-          request: args,
+          request: sanitizedArgs,
           response: { error: errorMessage },
           projectId: endpoint.projectId
         });
@@ -359,7 +498,18 @@ export const aiMcpEndpointServiceFactory = ({
       enableJsonResponse: true
     });
 
-    return { server, transport, projectId: endpoint.projectId, endpointName: endpoint.name };
+    // Create cleanup function that closes all gateway proxies
+    const cleanup = async () => {
+      await Promise.all(
+        gatewayCleanups.map((fn) =>
+          fn().catch((err) => {
+            logger.error(err, "Failed to cleanup gateway proxy");
+          })
+        )
+      );
+    };
+
+    return { server, transport, projectId: endpoint.projectId, endpointName: endpoint.name, cleanup };
   };
 
   const createMcpEndpoint = async ({
@@ -383,7 +533,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Create,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name })
     );
 
     // Validate that all serverIds belong to the same project
@@ -402,12 +552,22 @@ export const aiMcpEndpointServiceFactory = ({
       }
     }
 
-    const endpoint = await aiMcpEndpointDAL.create({
-      projectId,
-      name,
-      description,
-      status: AiMcpEndpointStatus.ACTIVE
-    });
+    let endpoint: TAiMcpEndpoints;
+    try {
+      endpoint = await aiMcpEndpointDAL.create({
+        projectId,
+        name,
+        description,
+        status: AiMcpEndpointStatus.ACTIVE
+      });
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+        throw new BadRequestError({
+          message: `An MCP endpoint with the name "${name}" already exists in this project`
+        });
+      }
+      throw err;
+    }
 
     // Connect servers if provided
     if (serverIds && serverIds.length > 0) {
@@ -438,16 +598,19 @@ export const aiMcpEndpointServiceFactory = ({
       actionProjectType: ActionProjectType.AI
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionMcpEndpointActions.Read,
-      ProjectPermissionSub.McpEndpoints
-    );
-
     const endpoints = await aiMcpEndpointDAL.find({ projectId });
+
+    // Filter endpoints based on read permission with conditions
+    const filteredEndpoints = endpoints.filter((ep) =>
+      permission.can(
+        ProjectPermissionMcpEndpointActions.Read,
+        subject(ProjectPermissionSub.McpEndpoints, { name: ep.name })
+      )
+    );
 
     // Get connected servers count and tools count for each endpoint
     const endpointsWithStats = await Promise.all(
-      endpoints.map(async (endpoint) => {
+      filteredEndpoints.map(async (endpoint) => {
         const [connectedServersCount, activeToolsCount] = await Promise.all([
           aiMcpEndpointServerDAL.countByEndpointId(endpoint.id),
           aiMcpEndpointServerToolDAL.countByEndpointId(endpoint.id)
@@ -487,7 +650,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Read,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
     const [connectedServers, activeToolsCount] = await Promise.all([
@@ -508,7 +671,9 @@ export const aiMcpEndpointServiceFactory = ({
     name,
     description,
     serverIds,
-    piiFiltering,
+    piiRequestFiltering,
+    piiResponseFiltering,
+    piiEntityTypes,
     actor,
     actorId,
     actorAuthMethod,
@@ -530,17 +695,37 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Edit,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
-    const updateData: { name?: string; description?: string; piiFiltering?: boolean } = {};
+    const updateData: {
+      name?: string;
+      description?: string;
+      piiRequestFiltering?: boolean;
+      piiResponseFiltering?: boolean;
+      piiEntityTypes?: string[];
+    } = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
-    if (piiFiltering !== undefined) updateData.piiFiltering = piiFiltering;
+    if (piiRequestFiltering !== undefined) updateData.piiRequestFiltering = piiRequestFiltering;
+    if (piiResponseFiltering !== undefined) updateData.piiResponseFiltering = piiResponseFiltering;
+    if (piiEntityTypes !== undefined) updateData.piiEntityTypes = piiEntityTypes;
 
     let updatedEndpoint = endpoint;
     if (Object.keys(updateData).length > 0) {
-      updatedEndpoint = await aiMcpEndpointDAL.updateById(endpointId, updateData);
+      try {
+        updatedEndpoint = await aiMcpEndpointDAL.updateById(endpointId, updateData);
+      } catch (err) {
+        if (
+          err instanceof DatabaseError &&
+          (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation
+        ) {
+          throw new BadRequestError({
+            message: `An MCP endpoint with the name "${updateData.name}" already exists in this project`
+          });
+        }
+        throw err;
+      }
     }
 
     // Update server connections if provided
@@ -601,7 +786,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Delete,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
     await aiMcpEndpointDAL.deleteById(endpointId);
@@ -632,7 +817,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Read,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
     const toolConfigs = await aiMcpEndpointServerToolDAL.find({ aiMcpEndpointId: endpointId });
@@ -663,7 +848,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Edit,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
     // Get the tool name for audit logging
@@ -711,7 +896,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Edit,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
     // Get the tool name for audit logging
@@ -754,7 +939,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Edit,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
     // Separate tools to enable and disable
@@ -892,7 +1077,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(projectPermission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Connect,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
     const code = crypto.randomBytes(32).toString("hex");
@@ -1013,7 +1198,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Read,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
     // Get connected servers
@@ -1044,7 +1229,8 @@ export const aiMcpEndpointServiceFactory = ({
           id: server.id,
           name: server.name,
           url: server.url,
-          hasCredentials: Boolean(existingCredential)
+          hasCredentials: Boolean(existingCredential),
+          authMethod: server.authMethod || "oauth"
         };
       })
     );
@@ -1077,7 +1263,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Connect,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
     const server = await aiMcpServerDAL.findById(serverId);
@@ -1112,6 +1298,116 @@ export const aiMcpEndpointServiceFactory = ({
     });
   };
 
+  // Verify bearer token against MCP server
+  const verifyServerBearerToken = async ({
+    endpointId,
+    serverId,
+    accessToken,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TVerifyServerBearerTokenDTO): Promise<{ valid: boolean; message?: string }> => {
+    const endpoint = await aiMcpEndpointDAL.findById(endpointId);
+    if (!endpoint) {
+      throw new NotFoundError({ message: `MCP endpoint with ID '${endpointId}' not found` });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: endpoint.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.AI
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionMcpEndpointActions.Connect,
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
+    );
+
+    const server = await aiMcpServerDAL.findById(serverId);
+    if (!server) {
+      throw new NotFoundError({ message: `MCP server with ID '${serverId}' not found` });
+    }
+
+    // Check that the server is linked to this endpoint
+    const serverLink = await aiMcpEndpointServerDAL.findOne({
+      aiMcpEndpointId: endpointId,
+      aiMcpServerId: serverId
+    });
+
+    if (!serverLink) {
+      throw new BadRequestError({ message: "This MCP server is not linked to the specified endpoint" });
+    }
+
+    // Helper function to verify token by connecting to the MCP server
+    const verifyWithUrl = async (targetUrl: string): Promise<{ valid: boolean; message?: string }> => {
+      let client: Client | undefined;
+      try {
+        client = new Client({
+          name: "infisical-mcp-client",
+          version: "1.0.0"
+        });
+
+        const transport = new StreamableHTTPClientTransport(new URL(targetUrl), {
+          requestInit: {
+            headers: {
+              Authorization: `Bearer ${accessToken}`
+            }
+          }
+        });
+
+        await client.connect(transport);
+        await client.listTools();
+        await client.close();
+
+        return { valid: true };
+      } catch (error) {
+        const err = error as { code?: string | number; cause?: { code?: string } };
+        const errCode = err?.code || err?.cause?.code;
+
+        let message = "An unknown error occurred";
+        if (errCode === 401 || errCode === 403) {
+          message = "Invalid token";
+        } else if (errCode === "ECONNREFUSED" || errCode === "ENOTFOUND" || errCode === "ETIMEDOUT") {
+          message = "Server unreachable";
+        }
+
+        return { valid: false, message };
+      } finally {
+        if (client) {
+          try {
+            await client.close();
+          } catch {
+            // Ignore close errors
+          }
+        }
+      }
+    };
+
+    // Route through gateway if configured
+    if (server.gatewayId) {
+      const urlObj = new URL(server.url);
+      const targetHost = urlObj.hostname;
+      let targetPort = 80;
+      if (urlObj.port) {
+        targetPort = Number(urlObj.port);
+      } else if (urlObj.protocol === "https:") {
+        targetPort = 443;
+      }
+
+      return $gatewayHttpProxyWrapper({ gatewayId: server.gatewayId, targetHost, targetPort }, async (host, port) => {
+        const proxyUrl = `${host}:${port}${urlObj.pathname}${urlObj.search}`;
+        return verifyWithUrl(proxyUrl);
+      });
+    }
+
+    // Direct connection (no gateway)
+    return verifyWithUrl(server.url);
+  };
+
   // Save user credentials after OAuth completes
   const saveUserServerCredential = async ({
     endpointId,
@@ -1141,7 +1437,7 @@ export const aiMcpEndpointServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionMcpEndpointActions.Connect,
-      ProjectPermissionSub.McpEndpoints
+      subject(ProjectPermissionSub.McpEndpoints, { name: endpoint.name })
     );
 
     const server = await aiMcpServerDAL.findById(serverId);
@@ -1208,6 +1504,7 @@ export const aiMcpEndpointServiceFactory = ({
     oauthTokenExchange,
     getServersRequiringAuth,
     initiateServerOAuth,
+    verifyServerBearerToken,
     saveUserServerCredential
   };
 };

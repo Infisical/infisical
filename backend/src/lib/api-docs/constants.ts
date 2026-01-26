@@ -59,6 +59,7 @@ export enum ApiDocsTags {
   AuditLogs = "Audit Logs",
   PkiCertificateAuthorities = "PKI Certificate Authorities",
   PkiCertificates = "PKI Certificates",
+  PkiCertificatePolicies = "PKI Certificate Policies",
   PkiCertificateTemplates = "PKI Certificate Templates",
   PkiCertificateProfiles = "PKI Certificate Profiles",
   PkiCertificateCollections = "PKI Certificate Collections",
@@ -865,7 +866,9 @@ export const PROJECTS = {
     secretSharing: "Enable or disable secret sharing for the project.",
     showSnapshotsLegacy: "Enable or disable legacy snapshots for the project.",
     defaultProduct: "The default product in which the project will open",
-    secretDetectionIgnoreValues: "The list of secret values to ignore for secret detection."
+    secretDetectionIgnoreValues: "The list of secret values to ignore for secret detection.",
+    enforceEncryptedSecretManagerSecretMetadata:
+      "Enable or disable enforcement of encrypted secret metadata for the project."
   },
   GET_KEY: {
     projectId: "The ID of the project to get the key from."
@@ -1163,7 +1166,7 @@ export const RAW_SECRETS = {
     includeImports: "Weather to include imported secrets or not.",
     tagSlugs: "The comma separated tag slugs to filter secrets.",
     metadataFilter:
-      "The secret metadata key-value pairs to filter secrets by. When querying for multiple metadata pairs, the query is treated as an AND operation. Secret metadata format is key=value1,value=value2|key=value3,value=value4."
+      "Unencrypted secret metadata key–value pairs used to filter secrets. Only metadata with unencrypted values is supported. When querying for multiple metadata pairs, the query is treated as an AND operation. Secret metadata format is key=value1,value=value2|key=value3,value=value4."
   },
   CREATE: {
     secretName: "The name of the secret to create.",
@@ -2308,6 +2311,10 @@ export const KMS = {
     keyId: "The ID of the key to get the public key for. The key must be for signing and verifying."
   },
 
+  GET_PRIVATE_KEY: {
+    keyId: "The ID of the key to export the private key or key material for."
+  },
+
   SIGN: {
     keyId: "The ID of the key to sign the data with.",
     data: "The data in string format to be signed (base64 encoded).",
@@ -2332,14 +2339,30 @@ export const ProjectTemplates = {
     type: "The type of project template to be created.",
     description: "An optional description of the project template.",
     roles: "The roles to be created when the template is applied to a project.",
-    environments: "The environments to be created when the template is applied to a project."
+    environments: "The environments to be created when the template is applied to a project.",
+    users:
+      "The users to be automatically added to projects created from this template. Each user is identified by username and assigned one or more roles.",
+    groups:
+      "The groups to be automatically added to projects created from this template. Each group is identified by slug and assigned one or more roles.",
+    identities:
+      "The organization-owned identities to be automatically added to projects created from this template. Each identity is identified by ID and assigned one or more roles.",
+    projectManagedIdentities:
+      "The project-owned identities to be automatically created for projects created from this template. Each identity is identified by name and assigned one or more roles."
   },
   UPDATE: {
     templateId: "The ID of the project template to be updated.",
     name: "The updated name of the project template. Must be slug-friendly.",
     description: "The updated description of the project template.",
     roles: "The updated roles to be created when the template is applied to a project.",
-    environments: "The updated environments to be created when the template is applied to a project."
+    environments: "The updated environments to be created when the template is applied to a project.",
+    users:
+      "The updated users to be automatically added to projects created from this template. Each user is identified by username and assigned one or more roles.",
+    groups:
+      "The updated groups to be automatically added to projects created from this template. Each group is identified by slug and assigned one or more roles.",
+    identities:
+      "The updated organization-owned identities to be automatically added to projects created from this template. Each identity is identified by ID and assigned one or more roles.",
+    projectManagedIdentities:
+      "The updated project-owned identities to be automatically created for projects created from this template. Each identity is identified by name and assigned one or more roles."
   },
   DELETE: {
     templateId: "The ID of the project template to be deleted."
@@ -2565,6 +2588,15 @@ export const AppConnections = {
     OCTOPUS_DEPLOY: {
       instanceUrl: "The Octopus Deploy instance URL to connect to.",
       apiKey: "The API key used to authenticate with Octopus Deploy."
+    },
+    SSH: {
+      host: "The hostname or IP address of the SSH server.",
+      port: "The port number of the SSH server (default: 22).",
+      username: "The username for SSH authentication.",
+      authMethod: "The authentication method to use (password or ssh-key).",
+      password: "The password for SSH authentication (required when authMethod is 'password').",
+      privateKey: "The private key in PEM format for SSH authentication (required when authMethod is 'ssh-key').",
+      passphrase: "The passphrase for the private key, if encrypted (optional, only for 'ssh-key' authMethod)."
     }
   }
 };
@@ -2882,6 +2914,9 @@ export const SecretRotations = {
   ROTATE: (type: SecretRotation) => ({
     rotationId: `The ID of the ${SECRET_ROTATION_NAME_MAP[type]} Rotation to rotate generated credentials for.`
   }),
+  RECONCILE: {
+    rotationId: "The ID of the SSH Password Rotation to reconcile credentials for."
+  },
   PARAMETERS: {
     SQL_CREDENTIALS: {
       username1:
@@ -2903,6 +2938,12 @@ export const SecretRotations = {
       rotationMethod:
         'Whether the rotation should be performed by the LDAP "connection-principal" or the "target-principal" (defaults to \'connection-principal\').',
       password: 'The password of the provided principal if "parameters.rotationMethod" is set to "target-principal".'
+    },
+    UNIX_LINUX_LOCAL_ACCOUNT: {
+      username: "The username of the Unix/Linux user account to rotate the password for.",
+      rotationMethod:
+        'Whether the rotation should be performed using "self" (the target user\'s own credentials) or "managed" (the SSH connection\'s admin credentials). Defaults to "managed".',
+      password: 'The current password of the target user if "parameters.rotationMethod" is set to "managed".'
     },
     GENERAL: {
       PASSWORD_REQUIREMENTS: {
@@ -2963,6 +3004,10 @@ export const SecretRotations = {
     },
     LDAP_PASSWORD: {
       dn: "The name of the secret that the Distinguished Name (DN) or User Principal Name (UPN) of the principal will be mapped to.",
+      password: "The name of the secret that the rotated password will be mapped to."
+    },
+    UNIX_LINUX_LOCAL_ACCOUNT: {
+      username: "The name of the secret that the username will be mapped to.",
       password: "The name of the secret that the rotated password will be mapped to."
     },
     AWS_IAM_USER_SECRET: {

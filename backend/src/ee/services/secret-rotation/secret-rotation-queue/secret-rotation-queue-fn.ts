@@ -115,7 +115,7 @@ export const secretRotationDbFn = async ({
   options
 }: TSecretRotationDbFn) => {
   const ssl = ca ? { rejectUnauthorized: false, ca } : undefined;
-  const [hostIp] = await verifyHostInputValidity(host);
+  const [hostIp] = await verifyHostInputValidity({ host, isDynamicSecret: false });
   const db = knex({
     client,
     connection: {

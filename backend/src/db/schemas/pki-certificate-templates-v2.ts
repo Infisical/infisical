@@ -19,7 +19,8 @@ export const PkiCertificateTemplatesV2Schema = z.object({
   algorithms: z.unknown().nullable().optional(),
   validity: z.unknown().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  basicConstraints: z.unknown().nullable().optional()
 });
 
 export type TPkiCertificateTemplatesV2 = z.infer<typeof PkiCertificateTemplatesV2Schema>;

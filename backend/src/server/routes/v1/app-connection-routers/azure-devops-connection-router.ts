@@ -28,6 +28,7 @@ export const registerAzureDevOpsConnectionRouter = async (server: FastifyZodProv
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listAzureDevOpsProjects",
       params: z.object({
         connectionId: z.string().uuid()
       }),

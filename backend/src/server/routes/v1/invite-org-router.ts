@@ -15,6 +15,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
     },
     method: "POST",
     schema: {
+      operationId: "inviteUsersToOrganization",
       body: z.object({
         inviteeEmails: z
           .string()
@@ -83,6 +84,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
     },
     method: "POST",
     schema: {
+      operationId: "resendOrganizationMemberInvitation",
       body: z.object({
         membershipId: z.string()
       }),
@@ -117,6 +119,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
       rateLimit: inviteUserRateLimit
     },
     schema: {
+      operationId: "verifyUserToOrganization",
       body: z.object({
         email: z
           .string()

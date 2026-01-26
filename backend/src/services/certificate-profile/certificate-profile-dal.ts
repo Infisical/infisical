@@ -126,9 +126,14 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           `${TableName.CertificateAuthority}.id`
         )
         .leftJoin(
-          TableName.PkiCertificateTemplateV2,
-          `${TableName.PkiCertificateProfile}.certificateTemplateId`,
-          `${TableName.PkiCertificateTemplateV2}.id`
+          TableName.ExternalCertificateAuthority,
+          `${TableName.CertificateAuthority}.id`,
+          `${TableName.ExternalCertificateAuthority}.caId`
+        )
+        .leftJoin(
+          TableName.PkiCertificatePolicy,
+          `${TableName.PkiCertificateProfile}.certificatePolicyId`,
+          `${TableName.PkiCertificatePolicy}.id`
         )
         .leftJoin(
           TableName.PkiEstEnrollmentConfig,
@@ -153,10 +158,12 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db.ref("projectId").withSchema(TableName.CertificateAuthority).as("caProjectId"),
           db.ref("status").withSchema(TableName.CertificateAuthority).as("caStatus"),
           db.ref("name").withSchema(TableName.CertificateAuthority).as("caName"),
-          db.ref("id").withSchema(TableName.PkiCertificateTemplateV2).as("templateId"),
-          db.ref("projectId").withSchema(TableName.PkiCertificateTemplateV2).as("templateProjectId"),
-          db.ref("name").withSchema(TableName.PkiCertificateTemplateV2).as("templateName"),
-          db.ref("description").withSchema(TableName.PkiCertificateTemplateV2).as("templateDescription"),
+          db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
+          db.ref("type").withSchema(TableName.ExternalCertificateAuthority).as("externalCaType"),
+          db.ref("id").withSchema(TableName.PkiCertificatePolicy).as("policyId"),
+          db.ref("projectId").withSchema(TableName.PkiCertificatePolicy).as("policyProjectId"),
+          db.ref("name").withSchema(TableName.PkiCertificatePolicy).as("policyName"),
+          db.ref("description").withSchema(TableName.PkiCertificatePolicy).as("policyDescription"),
           db.ref("id").withSchema(TableName.PkiEstEnrollmentConfig).as("estConfigId"),
           db
             .ref("disableBootstrapCaValidation")
@@ -212,18 +219,20 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
             id: result.caId,
             projectId: result.caProjectId,
             status: result.caStatus,
-            name: result.caName
+            name: result.caName,
+            isExternal: !!result.externalCaId,
+            externalType: result.externalCaType as string | undefined
           } as TCertificateProfileWithConfigs["certificateAuthority"])
         : undefined;
 
-      const certificateTemplate =
-        result.templateId && result.templateProjectId && result.templateName
+      const certificatePolicy =
+        result.policyId && result.policyProjectId && result.policyName
           ? ({
-              id: result.templateId,
-              projectId: result.templateProjectId,
-              name: result.templateName,
-              description: result.templateDescription || undefined
-            } as TCertificateProfileWithConfigs["certificateTemplate"])
+              id: result.policyId,
+              projectId: result.policyProjectId,
+              name: result.policyName,
+              description: result.policyDescription || undefined
+            } as TCertificateProfileWithConfigs["certificatePolicy"])
           : undefined;
 
       const project = {
@@ -235,7 +244,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         id: result.id,
         projectId: result.projectId,
         caId: result.caId,
-        certificateTemplateId: result.certificateTemplateId,
+        certificatePolicyId: result.certificatePolicyId,
         slug: result.slug,
         description: result.description,
         enrollmentType: result.enrollmentType as EnrollmentType,
@@ -253,7 +262,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         acmeConfig,
         project,
         certificateAuthority,
-        certificateTemplate
+        certificatePolicy
       };
 
       return transformedResult;
@@ -423,7 +432,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           id: result.id,
           projectId: result.projectId,
           caId: result.caId,
-          certificateTemplateId: result.certificateTemplateId,
+          certificatePolicyId: result.certificatePolicyId,
           slug: result.slug,
           description: result.description,
           enrollmentType: result.enrollmentType as EnrollmentType,

@@ -29,6 +29,7 @@ export const registerNetlifyConnectionRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listNetlifyAccounts",
       params: z.object({
         connectionId: z.string().uuid()
       }),
@@ -60,6 +61,7 @@ export const registerNetlifyConnectionRouter = async (server: FastifyZodProvider
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listNetlifySites",
       params: z.object({
         connectionId: z.string().uuid(),
         accountId: z.string()

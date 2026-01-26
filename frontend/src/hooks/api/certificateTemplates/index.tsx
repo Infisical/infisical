@@ -8,4 +8,9 @@ export {
   useUpdateCertTemplateV2,
   useUpdateEstConfig
 } from "./mutations";
-export { useGetCertTemplate, useGetEstConfig, useListCertificateTemplates } from "./queries";
+export {
+  certTemplateKeys,
+  useGetCertTemplate,
+  useGetEstConfig,
+  useListCertificateTemplates
+} from "./queries";

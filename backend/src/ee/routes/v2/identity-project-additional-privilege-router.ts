@@ -22,6 +22,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     schema: {
       hide: false,
+      operationId: "createIdentityProjectAdditionalPrivilege",
       tags: [ApiDocsTags.IdentitySpecificPrivilegesV2],
       description: "Add an additional privilege for identity.",
       security: [
@@ -99,6 +100,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     schema: {
       hide: false,
+      operationId: "updateIdentityProjectAdditionalPrivilege",
       tags: [ApiDocsTags.IdentitySpecificPrivilegesV2],
       description: "Update a specific identity privilege.",
       security: [
@@ -182,6 +184,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     schema: {
       hide: false,
+      operationId: "deleteIdentityProjectAdditionalPrivilege",
       tags: [ApiDocsTags.IdentitySpecificPrivilegesV2],
       description: "Delete the specified identity privilege.",
       security: [
@@ -235,6 +238,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     schema: {
       hide: false,
+      operationId: "getIdentityProjectAdditionalPrivilege",
       tags: [ApiDocsTags.IdentitySpecificPrivilegesV2],
       description: "Retrieve details of a specific privilege by id.",
       security: [
@@ -288,6 +292,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     schema: {
       hide: false,
+      operationId: "getIdentityProjectAdditionalPrivilegeBySlug",
       tags: [ApiDocsTags.IdentitySpecificPrivilegesV2],
       description: "Retrieve details of a specific privilege by slug.",
       security: [
@@ -350,6 +355,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     schema: {
       hide: false,
+      operationId: "listIdentityProjectAdditionalPrivileges",
       tags: [ApiDocsTags.IdentitySpecificPrivilegesV2],
       description: "List privileges for the specified identity by project.",
       security: [

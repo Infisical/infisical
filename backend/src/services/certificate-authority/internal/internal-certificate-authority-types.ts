@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TProjectPermission } from "@app/lib/types";
+import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import {
   CertExtendedKeyUsage,
@@ -168,7 +169,12 @@ export type TImportCertToCaDTO = {
     } & Omit<TProjectPermission, "projectId">)
 );
 
-export type TIssueCertFromCaDTO = {
+export type TBasicConstraints = {
+  isCA: boolean;
+  pathLength?: number;
+} | null;
+
+type TIssueCertFromCaBaseDTO = {
   caId?: string;
   certificateTemplateId?: string;
   pkiCollectionId?: string;
@@ -184,9 +190,27 @@ export type TIssueCertFromCaDTO = {
   keyAlgorithm?: CertKeyAlgorithm;
   isFromProfile?: boolean;
   profileId?: string;
-  internal?: boolean;
+  basicConstraints?: TBasicConstraints;
+  pathLength?: number | null;
+  organization?: string;
+  country?: string;
+  state?: string;
+  locality?: string;
+  ou?: string;
   tx?: Knex;
-} & Omit<TProjectPermission, "projectId">;
+};
+
+export type TIssueCertFromCaDTO =
+  | (TIssueCertFromCaBaseDTO & {
+      internal: true;
+      actor?: ActorType;
+      actorId?: string;
+      actorAuthMethod?: ActorAuthMethod;
+      actorOrgId?: string;
+    })
+  | (TIssueCertFromCaBaseDTO & {
+      internal?: false;
+    } & Omit<TProjectPermission, "projectId">);
 
 export type TSignCertFromCaDTO =
   | {
@@ -207,6 +231,8 @@ export type TSignCertFromCaDTO =
       keyAlgorithm?: string;
       isFromProfile?: boolean;
       profileId?: string;
+      basicConstraints?: TBasicConstraints;
+      pathLength?: number | null;
       tx?: Knex;
     }
   | ({
@@ -227,6 +253,8 @@ export type TSignCertFromCaDTO =
       keyAlgorithm?: string;
       isFromProfile?: boolean;
       profileId?: string;
+      basicConstraints?: TBasicConstraints;
+      pathLength?: number | null;
       tx?: Knex;
     } & Omit<TProjectPermission, "projectId">);
 

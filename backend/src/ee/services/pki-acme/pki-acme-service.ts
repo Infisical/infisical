@@ -19,6 +19,15 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { logger } from "@app/lib/logger";
+import { ms } from "@app/lib/ms";
+import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
+import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import { APPROVAL_POLICY_FACTORY_MAP } from "@app/services/approval-policy/approval-policy-factory";
+import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
+import {
+  TCertRequestPolicy,
+  TCertRequestRequestData
+} from "@app/services/approval-policy/cert-request/cert-request-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { CertSubjectAlternativeNameType } from "@app/services/certificate/certificate-types";
@@ -32,15 +41,16 @@ import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "@app/services/certificate-common/certificate-csr-utils";
+import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
+import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import {
   EnrollmentType,
   TCertificateProfileWithConfigs
 } from "@app/services/certificate-profile/certificate-profile-types";
+import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
-import { TCertificateTemplateV2DALFactory } from "@app/services/certificate-template-v2/certificate-template-v2-dal";
-import { TCertificateTemplateV2ServiceFactory } from "@app/services/certificate-template-v2/certificate-template-v2-service";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -100,7 +110,7 @@ type TPkiAcmeServiceFactoryDep = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithOwnerOrgId" | "findByIdWithConfigs">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
-  certificateTemplateV2DAL: Pick<TCertificateTemplateV2DALFactory, "findById">;
+  certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
   acmeAccountDAL: Pick<
     TPkiAcmeAccountDALFactory,
     "findByProjectIdAndAccountId" | "findByProfileIdAndPublicKeyThumbprintAndAlg" | "create"
@@ -128,12 +138,15 @@ type TPkiAcmeServiceFactoryDep = {
     "decryptWithKmsKey" | "generateKmsKey" | "encryptWithKmsKey" | "createCipherPairWithDataKey"
   >;
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
-  certificateTemplateV2Service: Pick<TCertificateTemplateV2ServiceFactory, "validateCertificateRequest">;
+  certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest">;
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;
   certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "queueCertificateIssuance">;
   acmeChallengeService: Pick<TPkiAcmeChallengeServiceFactory, "markChallengeAsReady">;
   pkiAcmeQueueService: Pick<TPkiAcmeQueueServiceFactory, "queueChallengeValidation">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId" | "findStepsByPolicyId">;
+  approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy">;
+  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "create" | "updateById">;
 };
 
 export const pkiAcmeServiceFactory = ({
@@ -141,7 +154,7 @@ export const pkiAcmeServiceFactory = ({
   certificateAuthorityDAL,
   certificateProfileDAL,
   certificateBodyDAL,
-  certificateTemplateV2DAL,
+  certificatePolicyDAL,
   acmeAccountDAL,
   acmeOrderDAL,
   acmeAuthDAL,
@@ -150,12 +163,15 @@ export const pkiAcmeServiceFactory = ({
   keyStore,
   kmsService,
   certificateV3Service,
-  certificateTemplateV2Service,
+  certificatePolicyService,
   certificateRequestService,
   certificateIssuanceQueue,
   acmeChallengeService,
   pkiAcmeQueueService,
-  auditLogService
+  auditLogService,
+  approvalPolicyDAL,
+  approvalPolicyService,
+  certificateRequestDAL
 }: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
   const validateAcmeProfile = async (profileId: string): Promise<TCertificateProfileWithConfigs> => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
@@ -380,6 +396,7 @@ export const pkiAcmeServiceFactory = ({
       let newCertificateId: string | undefined;
       switch (orderWithCertificateRequest.certificateRequest.status) {
         case CertificateRequestStatus.PENDING:
+        case CertificateRequestStatus.PENDING_APPROVAL:
           break;
         case CertificateRequestStatus.ISSUED:
           newStatus = AcmeOrderStatus.Valid;
@@ -830,9 +847,12 @@ export const pkiAcmeServiceFactory = ({
             ({ ttl: "0d" } as const),
         enrollmentType: EnrollmentType.ACME
       });
-      return {
-        certificateId: result.certificateId
-      };
+      if ("certificateId" in result) {
+        return {
+          certificateId: result.certificateId
+        };
+      }
+      return {};
     }
 
     const { keyAlgorithm: extractedKeyAlgorithm, signatureAlgorithm: extractedSignatureAlgorithm } =
@@ -852,12 +872,12 @@ export const pkiAcmeServiceFactory = ({
         : certificateRequest.validity
     };
 
-    const template = await certificateTemplateV2DAL.findById(profile.certificateTemplateId);
-    if (!template) {
-      throw new NotFoundError({ message: "Certificate template not found" });
+    const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
+    if (!policy) {
+      throw new NotFoundError({ message: "Certificate policy not found" });
     }
-    const validationResult = await certificateTemplateV2Service.validateCertificateRequest(
-      template.id,
+    const validationResult = await certificatePolicyService.validateCertificateRequest(
+      policy.id,
       updatedCertificateRequest
     );
     if (!validationResult.isValid) {
@@ -877,12 +897,14 @@ export const pkiAcmeServiceFactory = ({
       extendedKeyUsages: updatedCertificateRequest.extendedKeyUsages?.map((usage) => usage.toString()) ?? [],
       keyAlgorithm: updatedCertificateRequest.keyAlgorithm || "",
       signatureAlgorithm: updatedCertificateRequest.signatureAlgorithm || "",
-      altNames: updatedCertificateRequest.subjectAlternativeNames?.map((san) => san.value).join(","),
+      altNames: updatedCertificateRequest.subjectAlternativeNames,
       notBefore: updatedCertificateRequest.notBefore,
       notAfter: updatedCertificateRequest.notAfter,
       status: CertificateRequestStatus.PENDING,
       acmeOrderId: orderId,
       csr,
+      ttl: updatedCertificateRequest.validity?.ttl,
+      enrollmentType: EnrollmentType.ACME,
       tx
     });
     const csrObj = new x509.Pkcs10CertificateRequest(csr);
@@ -978,6 +1000,158 @@ export const pkiAcmeServiceFactory = ({
         if (!ca) {
           throw new NotFoundError({ message: "Certificate Authority not found" });
         }
+
+        const approvalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](
+          ApprovalPolicyType.CertRequest
+        );
+        const matchedApprovalPolicy = (await approvalFactory.matchPolicy(
+          approvalPolicyDAL as TApprovalPolicyDALFactory,
+          profile.projectId,
+          {
+            profileName: profile.slug
+          }
+        )) as TCertRequestPolicy | null;
+
+        if (matchedApprovalPolicy) {
+          const approvalPolicy = matchedApprovalPolicy;
+          const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
+          if (!policy) {
+            throw new NotFoundError({ message: "Certificate policy not found" });
+          }
+
+          const validationResult = await certificatePolicyService.validateCertificateRequest(
+            policy.id,
+            certificateRequest
+          );
+          if (!validationResult.isValid) {
+            throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });
+          }
+
+          const policySteps = await approvalPolicyDAL.findStepsByPolicyId(approvalPolicy.id);
+
+          const requesterName = `ACME Account (${accountId})`;
+
+          const ttl = finalizingOrder.notAfter
+            ? (() => {
+                const notBefore = finalizingOrder.notBefore ? new Date(finalizingOrder.notBefore) : new Date();
+                const notAfter = new Date(finalizingOrder.notAfter);
+                const diffMs = notAfter.getTime() - notBefore.getTime();
+                const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+                return `${diffDays}d`;
+              })()
+            : "47d"; // Default 47 days
+
+          const altNames = certificateRequest.subjectAlternativeNames?.map((san) => ({
+            type: san.type,
+            value: san.value
+          }));
+
+          // Create certificate request record
+          const certRequest = await certificateRequestDAL.create(
+            {
+              projectId: profile.projectId,
+              profileId: profile.id,
+              commonName: certificateRequest.commonName || null,
+              altNames: altNames ? JSON.stringify(altNames) : null,
+              keyUsages: certificateRequest.keyUsages || null,
+              extendedKeyUsages: certificateRequest.extendedKeyUsages || null,
+              notBefore: finalizingOrder.notBefore || null,
+              notAfter: finalizingOrder.notAfter || null,
+              keyAlgorithm: null,
+              signatureAlgorithm: null,
+              ttl,
+              status: CertificateRequestStatus.PENDING_APPROVAL,
+              organization: certificateRequest.organization || null,
+              organizationalUnit: certificateRequest.organizationalUnit || null,
+              country: certificateRequest.country || null,
+              state: certificateRequest.state || null,
+              locality: certificateRequest.locality || null,
+              basicConstraints: certificateRequest.basicConstraints
+                ? JSON.stringify(certificateRequest.basicConstraints)
+                : null,
+              acmeOrderId: orderId,
+              csr
+            },
+            tx
+          );
+
+          const requestData: TCertRequestRequestData = {
+            profileId,
+            profileName: profile.slug,
+            certificateRequest: {
+              commonName: certificateRequest.commonName,
+              organization: certificateRequest.organization,
+              organizationalUnit: certificateRequest.organizationalUnit,
+              country: certificateRequest.country,
+              state: certificateRequest.state,
+              locality: certificateRequest.locality,
+              keyUsages: certificateRequest.keyUsages,
+              extendedKeyUsages: certificateRequest.extendedKeyUsages,
+              altNames,
+              validity: { ttl },
+              notBefore: finalizingOrder.notBefore?.toISOString(),
+              notAfter: finalizingOrder.notAfter?.toISOString(),
+              signatureAlgorithm: undefined,
+              keyAlgorithm: undefined,
+              basicConstraints: certificateRequest.basicConstraints
+            },
+            certificateRequestId: certRequest.id
+          };
+
+          const expiresAt = approvalPolicy.maxRequestTtl
+            ? new Date(Date.now() + ms(approvalPolicy.maxRequestTtl))
+            : null;
+
+          const { request: approvalRequest } = await approvalPolicyService.createRequestFromPolicy({
+            projectId: profile.projectId,
+            organizationId: actorOrgId,
+            policy: { ...approvalPolicy, steps: policySteps },
+            requestData,
+            justification: `ACME certificate request for ${certificateRequest.commonName || profile.slug}`,
+            expiresAt,
+            requesterUserId: null,
+            machineIdentityId: null,
+            requesterName,
+            requesterEmail: "",
+            tx
+          });
+
+          await certificateRequestDAL.updateById(
+            certRequest.id,
+            {
+              approvalRequestId: approvalRequest.id
+            },
+            tx
+          );
+
+          await acmeOrderDAL.updateById(
+            orderId,
+            {
+              status: AcmeOrderStatus.Processing,
+              csr
+            },
+            tx
+          );
+
+          logger.info(
+            {
+              certificateRequestId: certRequest.id,
+              approvalRequestId: approvalRequest.id,
+              profileId,
+              profileName: profile.slug,
+              orderId
+            },
+            "ACME certificate request requires approval"
+          );
+
+          // Return the order in processing status - client will poll until approved
+          return {
+            order: (await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId, tx))!,
+            error: undefined,
+            certIssuanceJobData: undefined
+          };
+        }
+
         const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
         let errorToReturn: Error | undefined;
         let certIssuanceJobDataToReturn: TIssueCertificateFromProfileJobData | undefined;

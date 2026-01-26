@@ -1,3 +1,11 @@
+export enum CertificateRequestStatus {
+  PENDING_APPROVAL = "pending_approval",
+  PENDING = "pending",
+  ISSUED = "issued",
+  FAILED = "failed",
+  REJECTED = "rejected"
+}
+
 export enum CertSubjectAlternativeNameType {
   DNS_NAME = "dns_name",
   IP_ADDRESS = "ip_address",
@@ -43,6 +51,12 @@ export enum CertSanEffect {
   REQUIRE = "require"
 }
 
+export enum CertPolicyState {
+  ALLOWED = "allowed",
+  REQUIRED = "required",
+  DENIED = "denied"
+}
+
 export enum CertDurationUnit {
   DAYS = "days",
   MONTHS = "months",
@@ -52,7 +66,10 @@ export enum CertDurationUnit {
 export enum CertSubjectAttributeType {
   COMMON_NAME = "common_name",
   ORGANIZATION = "organization",
-  COUNTRY = "country"
+  COUNTRY = "country",
+  STATE = "state",
+  LOCALITY = "locality",
+  ORGANIZATIONAL_UNIT = "organizational_unit"
 }
 
 export const mapKeyUsageToLegacy = (usage: CertKeyUsageType): string => {
@@ -205,5 +222,6 @@ export const DURATION_UNIT_OPTIONS = Object.values(CertDurationUnit);
 export const SUBJECT_ATTRIBUTE_TYPE_OPTIONS = Object.values(CertSubjectAttributeType);
 export const ATTRIBUTE_RULE_OPTIONS = Object.values(CertAttributeRule);
 export const SAN_EFFECT_OPTIONS = Object.values(CertSanEffect);
+export const POLICY_STATE_OPTIONS = Object.values(CertPolicyState);
 export const KEY_ALGORITHM_OPTIONS = Object.values(CertKeyAlgorithm);
 export const SIGNATURE_ALGORITHM_OPTIONS = Object.values(CertSignatureAlgorithm);

@@ -201,6 +201,8 @@ const createAdditionalPrivilegeTable = async (knex: Knex) => {
 };
 
 const migrateMembershipData = async (knex: Knex) => {
+  await knex(TableName.OrgMembership).whereNull("userId").del();
+
   await knex
     .insert(
       knex(TableName.OrgMembership).select(
@@ -237,6 +239,11 @@ const migrateMembershipData = async (knex: Knex) => {
         "scope"
       ])
     );
+
+  // clear orphaned identity project memberships
+  await knex(TableName.IdentityOrgMembership)
+    .whereNotIn("identityId", knex.select("id").from(TableName.Identity))
+    .del();
 
   await knex
     .insert(
@@ -306,6 +313,11 @@ const migrateMembershipData = async (knex: Knex) => {
         "scope"
       ])
     );
+
+  // clear orphaned identity project memberships
+  await knex(TableName.IdentityProjectMembership)
+    .whereNotIn("identityId", knex.select("id").from(TableName.Identity))
+    .del();
 
   await knex
     .insert(
@@ -1061,22 +1073,54 @@ const rollbackMembershipData = async (knex: Knex) => {
 
 export async function down(knex: Knex): Promise<void> {
   const hasRoleTable = await knex.schema.hasTable(TableName.Role);
-  if (hasRoleTable) {
+  const hasOrgRoleTable = await knex.schema.hasTable(TableName.OrgRoles);
+  const hasProjectRoleTable = await knex.schema.hasTable(TableName.ProjectRoles);
+  if (hasRoleTable && hasOrgRoleTable && hasProjectRoleTable) {
     await rollbackRoleData(knex);
   }
 
   const hasMembershipTable = await knex.schema.hasTable(TableName.Membership);
-  if (hasMembershipTable) {
+  const hasOrgMembershipTable = await knex.schema.hasTable(TableName.OrgMembership);
+  const hasIdentityOrgMembershipTable = await knex.schema.hasTable(TableName.IdentityOrgMembership);
+  const hasProjectMembershipTable = await knex.schema.hasTable(TableName.ProjectMembership);
+  const hasIdentityProjectMembershipTable = await knex.schema.hasTable(TableName.IdentityProjectMembership);
+  const hasGroupProjectMembershipTable = await knex.schema.hasTable(TableName.GroupProjectMembership);
+  if (
+    hasMembershipTable &&
+    hasOrgMembershipTable &&
+    hasIdentityOrgMembershipTable &&
+    hasProjectMembershipTable &&
+    hasIdentityProjectMembershipTable &&
+    hasGroupProjectMembershipTable
+  ) {
     await rollbackMembershipData(knex);
   }
 
   const hasMembershipRoleTable = await knex.schema.hasTable(TableName.MembershipRole);
-  if (hasMembershipRoleTable) {
+  const hasProjectUserMembershipRoleTable = await knex.schema.hasTable(TableName.ProjectUserMembershipRole);
+  const hasIdentityProjectMembershipRoleTable = await knex.schema.hasTable(TableName.IdentityProjectMembershipRole);
+  const hasGroupProjectMembershipRoleTable = await knex.schema.hasTable(TableName.GroupProjectMembershipRole);
+  const hasGroupsTable = await knex.schema.hasTable(TableName.Groups);
+  if (
+    hasMembershipRoleTable &&
+    hasProjectUserMembershipRoleTable &&
+    hasIdentityProjectMembershipRoleTable &&
+    hasGroupProjectMembershipRoleTable &&
+    hasGroupsTable
+  ) {
     await rollbackMembershipRoleData(knex);
   }
 
   const hasAdditionalPrivilegeTable = await knex.schema.hasTable(TableName.AdditionalPrivilege);
-  if (hasAdditionalPrivilegeTable) {
+  const hasProjectUserAdditionalPrivilegeTable = await knex.schema.hasTable(TableName.ProjectUserAdditionalPrivilege);
+  const hasIdentityProjectAdditionalPrivilegeTable = await knex.schema.hasTable(
+    TableName.IdentityProjectAdditionalPrivilege
+  );
+  if (
+    hasAdditionalPrivilegeTable &&
+    hasProjectUserAdditionalPrivilegeTable &&
+    hasIdentityProjectAdditionalPrivilegeTable
+  ) {
     await rollbackAdditionalPrivilegeData(knex);
   }
 
@@ -1085,7 +1129,7 @@ export async function down(knex: Knex): Promise<void> {
     TableName.AccessApprovalRequest,
     "privilegeId"
   );
-  if (hasApColumnInAccessApprovalRequest) {
+  if (hasApColumnInAccessApprovalRequest && hasProjectUserAdditionalPrivilegeTable) {
     await knex.schema.alterTable(TableName.AccessApprovalRequest, (t) => {
       t.dropForeign("privilegeId");
       t.foreign("privilegeId").references("id").inTable(TableName.ProjectUserAdditionalPrivilege);
@@ -1096,7 +1140,7 @@ export async function down(knex: Knex): Promise<void> {
     TableName.ExternalGroupOrgRoleMapping,
     "roleId"
   );
-  if (hasExternalGroupRoleMappingRoleColumn) {
+  if (hasExternalGroupRoleMappingRoleColumn && hasOrgRoleTable) {
     await knex.schema.alterTable(TableName.ExternalGroupOrgRoleMapping, (t) => {
       t.dropForeign("roleId");
       t.foreign("roleId").references("id").inTable(TableName.OrgRoles);

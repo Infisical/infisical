@@ -13,7 +13,7 @@ import {
 } from "../certificate/certificate-types";
 import { parseDistinguishedName } from "../certificate-authority/certificate-authority-fns";
 import { validateAndMapAltNameType } from "../certificate-authority/certificate-authority-validators";
-import { TCertificateRequest } from "../certificate-template-v2/certificate-template-v2-types";
+import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { mapLegacyExtendedKeyUsageToStandard, mapLegacyKeyUsageToStandard } from "./certificate-constants";
 
 /**
@@ -28,7 +28,7 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
   const certificateRequest: TCertificateRequest = {
     commonName: subject.commonName,
     organization: subject.organization,
-    organizationUnit: subject.ou,
+    organizationalUnit: subject.ou,
     locality: subject.locality,
     state: subject.province,
     country: subject.country
@@ -74,6 +74,14 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
       type: mapLegacyAltNameType(altName.type),
       value: altName.value
     }));
+  }
+
+  const basicConstraintsExtension = csrObj.getExtension("2.5.29.19") as x509.BasicConstraintsExtension;
+  if (basicConstraintsExtension) {
+    certificateRequest.basicConstraints = {
+      isCA: basicConstraintsExtension.ca,
+      pathLength: basicConstraintsExtension.pathLength
+    };
   }
 
   return certificateRequest;

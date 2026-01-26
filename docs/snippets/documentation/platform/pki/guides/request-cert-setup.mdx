@@ -15,13 +15,13 @@
     </Note>
 
 </Step>
-<Step title="Create a certificate template">
-    Next, follow the guide [here](/documentation/platform/pki/certificates/templates#guide-to-creating-a-certificate-template) to create a [certificate template](/documentation/platform/pki/certificates/templates).
+<Step title="Create a certificate policy">
+    Next, follow the guide [here](/documentation/platform/pki/certificates/policies#guide-to-creating-a-certificate-policy) to create a [certificate policy](/documentation/platform/pki/certificates/policies).
 
-    The certificate template will constrain what attributes may or may not be allowed in the request to issue a certificate.
+    The certificate policy will constrain what attributes may or may not be allowed in the request to issue a certificate.
     For example, you can specify that the requested common name must adhere to a specific format like `*.acme.com` and
     that the maximum TTL cannot exceed 1 year.
 
-    If you're looking to issue TLS server certificates, you should select the **TLS Server Certificate** option under the **Template Preset** dropdown.
+    If you're looking to issue TLS server certificates, you should select the **TLS Server Certificate** option under the **Policy Preset** dropdown.
 
 </Step>

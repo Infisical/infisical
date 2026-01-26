@@ -1,6 +1,5 @@
 import { Knex } from "knex";
 
-import { TGroups } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { OrderByDirection, TGenericPermission } from "@app/lib/types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
@@ -102,7 +101,7 @@ export type TRemoveMachineIdentityFromGroupDTO = {
 
 export type TAddUsersToGroup = {
   userIds: string[];
-  group: TGroups;
+  group: { id: string; name: string; slug: string; orgId: string };
   userDAL: Pick<TUserDALFactory, "findUserEncKeyByUserIdsBatch">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "transaction" | "insertMany">;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
@@ -113,7 +112,7 @@ export type TAddUsersToGroup = {
 };
 
 export type TAddUsersToGroupByUserIds = {
-  group: TGroups;
+  group: { id: string; name: string; slug: string; orgId: string };
   userIds: string[];
   userDAL: Pick<TUserDALFactory, "find" | "findUserEncKeyByUserIdsBatch" | "transaction">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "transaction" | "insertMany">;
@@ -126,7 +125,7 @@ export type TAddUsersToGroupByUserIds = {
 };
 
 export type TAddIdentitiesToGroup = {
-  group: TGroups;
+  group: { id: string; name: string; slug: string; orgId: string };
   identityIds: string[];
   identityDAL: Pick<TIdentityDALFactory, "transaction">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "insertMany">;
@@ -134,7 +133,7 @@ export type TAddIdentitiesToGroup = {
 };
 
 export type TRemoveUsersFromGroupByUserIds = {
-  group: TGroups;
+  group: { id: string; name: string; slug: string; orgId: string };
   userIds: string[];
   userDAL: Pick<TUserDALFactory, "find" | "transaction">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "filterProjectsByUserMembership" | "delete">;
@@ -144,7 +143,7 @@ export type TRemoveUsersFromGroupByUserIds = {
 };
 
 export type TRemoveIdentitiesFromGroup = {
-  group: TGroups;
+  group: { id: string; name: string; slug: string; orgId: string };
   identityIds: string[];
   identityDAL: Pick<TIdentityDALFactory, "find" | "transaction">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;

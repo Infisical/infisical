@@ -3,7 +3,7 @@ ARG POSTHOG_API_KEY=posthog-api-key
 ARG INTERCOM_ID=intercom-id
 ARG CAPTCHA_SITE_KEY=captcha-site-key
 
-FROM node:20.19.5-trixie-slim AS base
+FROM node:20.20.0-trixie-slim AS base
 
 # Fixes NPM vulnerability: https://security.snyk.io/vuln/SNYK-JS-CROSSSPAWN-8303230
 RUN npm install -g npm@10.9.0
@@ -15,7 +15,7 @@ WORKDIR /app
 COPY frontend/package.json frontend/package-lock.json  ./
 
 # Install dependencies
-RUN npm ci --only-production --ignore-scripts
+RUN npm ci --ignore-scripts
 
 # Rebuild the source code only when needed
 FROM base AS frontend-builder
@@ -79,11 +79,11 @@ RUN groupadd --system --gid 1001 nodejs
 RUN useradd --system --uid 1001 --gid nodejs non-root-user
 
 COPY backend/package*.json ./
-RUN npm ci --only-production
+RUN npm ci
 
 COPY /backend .
 COPY --chown=non-root-user:nodejs standalone-entrypoint.sh standalone-entrypoint.sh
-RUN npm i -D tsconfig-paths
+RUN npm i -g tsconfig-paths
 ENV NODE_OPTIONS="--max-old-space-size=8192"
 RUN npm run build
 
@@ -109,10 +109,9 @@ RUN apt-get update && apt-get install -y \
 # Configure ODBC
 RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
 
-COPY backend/package*.json ./
-RUN npm ci --only-production
-
 COPY --from=backend-build /app .
+RUN rm -rf ./node_modules
+RUN npm ci --omit=dev
 
 RUN mkdir frontend-build
 
@@ -170,7 +169,7 @@ RUN ARCH=$(dpkg --print-architecture) && \
 
 # Install Infisical CLI
 RUN curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
-    && apt-get update && apt-get install -y infisical=0.43.14 \
+    && apt-get update && apt-get install -y infisical=0.43.47 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /

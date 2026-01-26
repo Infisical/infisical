@@ -14,12 +14,15 @@ import {
   TAddMCPServerForm
 } from "./AddMCPServerForm.schema";
 
-// Only OAuth is supported for now - other methods are defined in schema for future use
-const AUTH_METHOD_OPTIONS = [{ value: MCPServerAuthMethod.OAUTH, label: "OAuth" }];
+const AUTH_METHOD_OPTIONS = [
+  { value: MCPServerAuthMethod.OAUTH, label: "OAuth" },
+  { value: MCPServerAuthMethod.BEARER, label: "Bearer Token" }
+];
 
 const OAUTH_POPUP_WIDTH = 600;
 const OAUTH_POPUP_HEIGHT = 700;
 const OAUTH_POLL_INTERVAL = 2000; // Poll every 2 seconds
+const OAUTH_MAX_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 type Props = {
   onOAuthSuccess?: () => void;
@@ -30,14 +33,18 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
   const { control, watch, setValue, getValues } = useFormContext<TAddMCPServerForm>();
   const authMethod = watch("authMethod");
   const credentialMode = watch("credentialMode");
+  const gatewayId = watch("gatewayId");
   const isPersonalMode = credentialMode === MCPServerCredentialMode.PERSONAL;
+
+  // Filter out OAuth when gateway is selected (OAuth requires browser access to auth page)
+  const availableAuthMethods = gatewayId
+    ? AUTH_METHOD_OPTIONS.filter((opt) => opt.value !== MCPServerAuthMethod.OAUTH)
+    : AUTH_METHOD_OPTIONS;
 
   // OAuth state
   const [oauthSessionId, setOauthSessionId] = useState<string | null>(null);
   const [isOAuthPending, setIsOAuthPending] = useState(false);
   const popupRef = useRef<Window | null>(null);
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const oauthSucceededRef = useRef(false);
 
   // Check if OAuth is already authorized (has access token)
   const oauthCredentials = authMethod === MCPServerAuthMethod.OAUTH ? watch("credentials") : null;
@@ -57,9 +64,6 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
   // Handle OAuth status updates
   useEffect(() => {
     if (oauthStatus?.authorized && oauthStatus.accessToken) {
-      // Mark OAuth as succeeded (for popup close detection)
-      oauthSucceededRef.current = true;
-
       // OAuth completed successfully - use shouldDirty and shouldTouch to trigger re-renders
       setValue(
         "credentials",
@@ -77,12 +81,6 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
 
       setIsOAuthPending(false);
       setOauthSessionId(null);
-
-      // Clear polling interval
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
-      }
 
       createNotification({
         text: "OAuth authorization successful",
@@ -102,48 +100,30 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
       if (popupRef.current && !popupRef.current.closed) {
         popupRef.current.close();
       }
     };
   }, []);
 
-  // Check if popup was closed manually
+  // Timeout-based cancellation (popup.closed is unreliable with COOP headers)
   useEffect(() => {
-    let checkPopupClosed: NodeJS.Timeout | null = null;
+    if (!isOAuthPending) return () => {};
 
-    if (isOAuthPending) {
-      // Reset the success ref when starting a new OAuth flow
-      oauthSucceededRef.current = false;
-
-      checkPopupClosed = setInterval(() => {
-        if (popupRef.current?.closed) {
-          if (checkPopupClosed) {
-            clearInterval(checkPopupClosed);
-          }
-          // Don't immediately cancel - give a few more seconds for callback to process
-          setTimeout(() => {
-            // Use ref to check if OAuth succeeded (avoids stale closure)
-            if (!oauthSucceededRef.current) {
-              setIsOAuthPending(false);
-              createNotification({
-                text: "OAuth authorization was cancelled",
-                type: "info"
-              });
-            }
-          }, 3000);
-        }
-      }, 500);
-    }
-
-    return () => {
-      if (checkPopupClosed) {
-        clearInterval(checkPopupClosed);
+    const startTime = Date.now();
+    const checkTimeout = setInterval(() => {
+      if (Date.now() - startTime > OAUTH_MAX_TIMEOUT) {
+        clearInterval(checkTimeout);
+        setIsOAuthPending(false);
+        setOauthSessionId(null);
+        createNotification({
+          text: "OAuth authorization timed out. Please try again.",
+          type: "error"
+        });
       }
-    };
+    }, 5000);
+
+    return () => clearInterval(checkTimeout);
   }, [isOAuthPending]);
 
   const handleAuthMethodChange = useCallback(
@@ -161,10 +141,16 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
       // Reset OAuth state
       setOauthSessionId(null);
       setIsOAuthPending(false);
-      oauthSucceededRef.current = false;
     },
     [setValue]
   );
+
+  // Auto-switch from OAuth to Bearer when gateway is selected
+  useEffect(() => {
+    if (gatewayId && authMethod === MCPServerAuthMethod.OAUTH) {
+      handleAuthMethodChange(MCPServerAuthMethod.BEARER);
+    }
+  }, [gatewayId, authMethod, handleAuthMethodChange]);
 
   const handleOAuthAuthorize = async () => {
     const serverUrl = getValues("url");
@@ -187,16 +173,18 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
     try {
       setIsOAuthPending(true);
 
-      // Get optional client credentials
+      // Get optional client credentials and gateway
       const clientId = getValues("oauthClientId");
       const clientSecret = getValues("oauthClientSecret");
+      const selectedGatewayId = getValues("gatewayId");
 
       // 1. Call backend to initiate OAuth and get auth URL
       const { authUrl, sessionId } = await initiateOAuth.mutateAsync({
         url: serverUrl,
         projectId: currentProject.id,
         clientId: clientId || undefined,
-        clientSecret: clientSecret || undefined
+        clientSecret: clientSecret || undefined,
+        gatewayId: selectedGatewayId || undefined
       });
 
       setOauthSessionId(sessionId);
@@ -238,11 +226,6 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
     if (popupRef.current && !popupRef.current.closed) {
       popupRef.current.close();
     }
-
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = null;
-    }
   };
 
   return (
@@ -267,6 +250,15 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
         </p>
       )}
 
+      {gatewayId && (
+        <div className="mb-4 rounded-md border border-primary-500/30 bg-primary-500/10 p-3">
+          <p className="text-xs text-mineshaft-200">
+            <span className="font-medium text-primary-400">Note:</span> OAuth is not available when
+            using a gateway.
+          </p>
+        </div>
+      )}
+
       <Controller
         control={control}
         name="authMethod"
@@ -286,7 +278,7 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
               position="popper"
               dropdownContainerClassName="max-w-none"
             >
-              {AUTH_METHOD_OPTIONS.map((option) => (
+              {availableAuthMethods.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>

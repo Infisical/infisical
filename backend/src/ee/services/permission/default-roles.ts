@@ -8,6 +8,7 @@ import {
   ProjectPermissionAuditLogsActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateAuthorityActions,
+  ProjectPermissionCertificatePolicyActions,
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionCmekActions,
   ProjectPermissionCommitsActions,
@@ -95,6 +96,16 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionPkiTemplateActions.ListCerts // deprecated
     ],
     ProjectPermissionSub.CertificateTemplates
+  );
+
+  can(
+    [
+      ProjectPermissionCertificatePolicyActions.Read,
+      ProjectPermissionCertificatePolicyActions.Create,
+      ProjectPermissionCertificatePolicyActions.Edit,
+      ProjectPermissionCertificatePolicyActions.Delete
+    ],
+    ProjectPermissionSub.CertificatePolicies
   );
 
   can(
@@ -234,7 +245,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionCmekActions.Encrypt,
       ProjectPermissionCmekActions.Decrypt,
       ProjectPermissionCmekActions.Sign,
-      ProjectPermissionCmekActions.Verify
+      ProjectPermissionCmekActions.Verify,
+      ProjectPermissionCmekActions.ExportPrivateKey
     ],
     ProjectPermissionSub.Cmek
   );
@@ -502,6 +514,7 @@ const buildMemberPermissionRules = () => {
   // double check if all CRUD are needed for CA and Certificates
   can([ProjectPermissionCertificateAuthorityActions.Read], ProjectPermissionSub.CertificateAuthorities);
   can([ProjectPermissionPkiTemplateActions.Read], ProjectPermissionSub.CertificateTemplates);
+  can([ProjectPermissionCertificatePolicyActions.Read], ProjectPermissionSub.CertificatePolicies);
 
   can(
     [
@@ -649,6 +662,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionCertificateAuthorityActions.Read, ProjectPermissionSub.CertificateAuthorities);
   can(ProjectPermissionCertificateActions.Read, ProjectPermissionSub.Certificates);
   can(ProjectPermissionPkiTemplateActions.Read, ProjectPermissionSub.CertificateTemplates);
+  can(ProjectPermissionCertificatePolicyActions.Read, ProjectPermissionSub.CertificatePolicies);
   can(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificates);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateTemplates);

@@ -24,3 +24,169 @@ Both people and machines are able to utilize corresponding clients (e.g., Dashbo
     Understand the concept of machine identities in Infisical. 
   </Card>
 </CardGroup>
+
+## Calculating Identity Counts
+
+Understanding how to calculate your identity requirements helps with capacity planning and licensing.
+
+### User Identities
+
+User identity count is straightforward—it equals the number of human users who need access to Infisical. This includes developers, DevOps/platform engineers, security administrators, and any other team members requiring direct Infisical access.
+
+<Tip>
+  User identities map 1:1 with people. If you have 50 engineers who need Infisical access, that's 50 user identities.
+</Tip>
+
+### Machine Identities
+
+If you're familiar with cloud provider IAM concepts, Infisical machine identities work the same way:
+
+| Cloud Provider | Equivalent Concept |
+|----------------|-------------------|
+| AWS | IAM Roles |
+| GCP | Service Accounts |
+| Azure | Service Principals |
+| Kubernetes | ServiceAccounts |
+
+Just as you don't create a new IAM role for every EC2 instance or a new service account for every VM, you don't create a new Infisical machine identity for every machine. Instead, machine identities are **permission-based, not machine-based**—they represent a unique set of access permissions that can be shared across multiple workloads.
+
+<Info>
+  **Key principle**: If multiple machines require identical permissions to the same secrets, they share a single machine identity—just like multiple EC2 instances can assume the same IAM role.
+</Info>
+
+#### How to Calculate Machine Identities
+
+Consider these factors when determining your machine identity count:
+
+| Factor | Impact on Identity Count |
+|--------|-------------------------|
+| **Unique permission sets** | Each distinct combination of project access + environment access + secret paths = 1 identity |
+| **Number of machines** | Does NOT directly increase identity count if permissions are identical |
+| **Authentication methods** | A single identity can authenticate via multiple methods (AWS IAM, Kubernetes, GCP, Azure, etc.) simultaneously |
+
+#### Examples
+
+<Accordion title="Example 1: Multiple VMs with identical access">
+  **Scenario**: 10 VMs in your production environment all need read access to the same database credentials in `prod/database/*`.
+  
+  **Machine identities needed**: **1**
+  
+  All VMs share the same permission requirements, so they authenticate using a single machine identity. This is equivalent to having 10 EC2 instances assume the same IAM role.
+</Accordion>
+
+<Accordion title="Example 2: Separate environments">
+  **Scenario**: You have application servers for staging and production, each needing access to their respective environment's secrets.
+  
+  **Machine identities needed**: **2**
+  
+  - 1 identity for staging servers → access to `staging/*`
+  - 1 identity for production servers → access to `prod/*`
+  
+  Even if you have 20 staging servers and 50 production servers, you only need 2 identities—just as you'd have separate IAM roles for staging vs. production access.
+</Accordion>
+
+<Accordion title="Example 3: CI/CD pipelines with different scopes">
+  **Scenario**: Your CI/CD system has:
+  - Build pipelines that need read access to artifact registry credentials
+  - Deployment pipelines that need read access to cloud provider secrets and database URLs
+  - Security scanning pipelines that need access to scanning tool API keys
+  
+  **Machine identities needed**: **3**
+  
+  Each pipeline type has distinct permission requirements, warranting separate identities.
+</Accordion>
+
+<Accordion title="Example 4: Multi-cloud authentication">
+  **Scenario**: Your application runs across AWS EKS, GCP GKE, and Azure AKS, but all clusters need identical access to the same secrets.
+  
+  **Machine identities needed**: **1**
+  
+  A single machine identity can have multiple authentication methods configured simultaneously. You would attach AWS IAM Auth, GCP IAM Auth, and Azure Auth to the same identity, allowing workloads from any cloud to authenticate to the same permission set.
+</Accordion>
+
+<Accordion title="Example 5: Microservices architecture">
+  **Scenario**: You have 15 microservices:
+  - 10 services need access only to shared infrastructure secrets (Redis, message queue)
+  - 3 services need access to payment processing secrets
+  - 2 services need access to third-party integration API keys
+  
+  **Machine identities needed**: **3**
+  
+  Group services by their secret access requirements, not by the number of service instances or replicas.
+</Accordion>
+
+## Best Practices
+
+While consolidating machine identities reduces management overhead, **more granular identities provide stronger security** through least-privilege access and reduced blast radius. The right balance depends on your security requirements.
+
+### When to Use Separate Identities
+
+Create distinct machine identities to enforce security boundaries between:
+
+| Boundary | Why Separate? |
+|----------|---------------|
+| **Different applications** | Prevents one compromised app from accessing another app's secrets |
+| **Security tiers** | Payment processing, PII handling, and general app secrets should be isolated |
+| **Trust levels** | Internal tools vs. customer-facing services vs. third-party integrations |
+| **Compliance scopes** | SOC 2, PCI-DSS, or HIPAA-regulated workloads may require isolation |
+
+<Warning>
+  **Blast radius consideration**: If a machine identity is compromised, an attacker gains access to everything that identity can access. Design your identity boundaries around "what's the worst case if this credential leaks?"
+</Warning>
+
+### When Consolidation is Acceptable
+
+Sharing a machine identity across workloads is appropriate when:
+
+- **Replicas of the same application** — Multiple pods/instances running identical code with identical secret needs
+- **Stateless workers** — Horizontally scaled workers performing the same job
+- **Tightly coupled services** — Services that are deployed together and share a security boundary
+
+### Kubernetes Best Practices
+
+For Kubernetes environments, we recommend mapping machine identities at the **namespace level**:
+
+<Steps>
+  <Step title="One identity per namespace">
+    Create a machine identity for each Kubernetes namespace that needs secrets. This aligns with Kubernetes' native isolation model and simplifies RBAC management.
+  </Step>
+  <Step title="Leverage Kubernetes Auth">
+    Use [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) to bind machine identities to specific ServiceAccounts and namespaces. This ensures only pods in the authorized namespace can authenticate.
+  </Step>
+  <Step title="Scope Agent Injector or Operator access">
+    When using the [Infisical Agent Injector](/integrations/platforms/kubernetes/infisical-agent-injector) or [Operator](/integrations/platforms/kubernetes/infisical-operator), configure namespace-scoped access rather than cluster-wide permissions.
+  </Step>
+</Steps>
+
+<Accordion title="Example: Multi-tenant Kubernetes cluster">
+  **Scenario**: You have a shared Kubernetes cluster with three teams, each with their own namespace:
+  - `team-payments` — handles payment processing
+  - `team-platform` — runs shared infrastructure (API gateway, service mesh)
+  - `team-analytics` — runs data pipelines
+  
+  **Recommended approach**: **3 machine identities**
+  
+  | Identity | Namespace | Access |
+  |----------|-----------|--------|
+  | `k8s-payments` | `team-payments` | Payment secrets only |
+  | `k8s-platform` | `team-platform` | Infrastructure secrets only |
+  | `k8s-analytics` | `team-analytics` | Analytics pipeline secrets only |
+  
+  This ensures that a compromised pod in `team-analytics` cannot access payment processing credentials, even if an attacker gains cluster-level access.
+</Accordion>
+
+### Quick Assessment Questions
+
+When planning your machine identity strategy, consider:
+
+1. **What's the blast radius?** If this identity is compromised, what secrets are exposed? Design boundaries to limit damage.
+
+2. **Are these workloads in the same trust boundary?** Applications that shouldn't access each other's data need separate identities.
+
+3. **What are your compliance requirements?** Regulated workloads may require documented isolation from non-regulated systems.
+
+4. **What's your authentication topology?** A single identity can authenticate from multiple sources (Kubernetes + AWS IAM + GCP), so multi-cloud doesn't necessarily mean multiple identities—but multi-tenant does.
+
+<Note>
+  **Bottom line**: When in doubt, err on the side of more identities. The operational overhead of additional identities is minimal compared to the security benefits of proper isolation.
+</Note>

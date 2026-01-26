@@ -2,16 +2,15 @@ import * as x509 from "@peculiar/x509";
 
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { ActorType } from "@app/services/auth/auth-type";
 import { isCertChainValid } from "@app/services/certificate/certificate-fns";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { getCaCertChain, getCaCertChains } from "@app/services/certificate-authority/certificate-authority-fns";
-import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
-import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
-import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
-import { TCertificateTemplateV2ServiceFactory } from "@app/services/certificate-template-v2/certificate-template-v2-service";
+import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
+import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TEstEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -19,10 +18,10 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { convertRawCertsToPkcs7 } from "../../ee/services/certificate-est/certificate-est-fns";
 import { TLicenseServiceFactory } from "../../ee/services/license/license-service";
+import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
 
 type TCertificateEstV3ServiceFactoryDep = {
-  internalCertificateAuthorityService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa">;
-  certificateTemplateV2Service: Pick<TCertificateTemplateV2ServiceFactory, "validateCertificateRequest">;
+  certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
@@ -30,21 +29,69 @@ type TCertificateEstV3ServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
   estEnrollmentConfigDAL: Pick<TEstEnrollmentConfigDALFactory, "findById">;
+  certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
 };
 
 export type TCertificateEstV3ServiceFactory = ReturnType<typeof certificateEstV3ServiceFactory>;
 
 export const certificateEstV3ServiceFactory = ({
-  internalCertificateAuthorityService,
-  certificateTemplateV2Service,
+  certificateV3Service,
   certificateAuthorityCertDAL,
   certificateAuthorityDAL,
   projectDAL,
   kmsService,
   licenseService,
   certificateProfileDAL,
-  estEnrollmentConfigDAL
+  estEnrollmentConfigDAL,
+  certificatePolicyDAL
 }: TCertificateEstV3ServiceFactoryDep) => {
+  const validateEstClientCertificate = async (
+    estConfig: { disableBootstrapCaValidation?: boolean | null; encryptedCaChain?: Buffer | null },
+    projectId: string,
+    sslClientCert: string
+  ) => {
+    if (estConfig.disableBootstrapCaValidation) {
+      return;
+    }
+
+    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+      projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
+
+    const decryptedCaChain = estConfig.encryptedCaChain
+      ? (
+          await kmsDecryptor({
+            cipherTextBlob: estConfig.encryptedCaChain
+          })
+        ).toString()
+      : "";
+
+    const caCerts = extractX509CertFromChain(decryptedCaChain)?.map((cert) => {
+      return new x509.X509Certificate(cert);
+    });
+
+    if (!caCerts) {
+      throw new BadRequestError({ message: "Failed to parse certificate chain" });
+    }
+
+    const leafCertificate = extractX509CertFromChain(decodeURIComponent(sslClientCert))?.[0];
+
+    if (!leafCertificate) {
+      throw new UnauthorizedError({ message: "Missing client certificate" });
+    }
+
+    const certObj = new x509.X509Certificate(leafCertificate);
+    if (!(await isCertChainValid([certObj, ...caCerts]))) {
+      throw new BadRequestError({ message: "Invalid certificate chain" });
+    }
+  };
+
   const simpleEnrollByProfile = async ({
     csr,
     profileId,
@@ -91,66 +138,33 @@ export const certificateEstV3ServiceFactory = ({
       });
     }
 
-    if (!estConfig.disableBootstrapCaValidation) {
-      const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-        projectId: profile.projectId,
-        projectDAL,
-        kmsService
-      });
+    await validateEstClientCertificate(estConfig, profile.projectId, sslClientCert);
+    const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
+    const ttl = policy?.validity?.max || "90d";
 
-      const kmsDecryptor = await kmsService.decryptWithKmsKey({
-        kmsId: certificateManagerKmsId
-      });
-
-      const decryptedCaChain = estConfig.encryptedCaChain
-        ? (
-            await kmsDecryptor({
-              cipherTextBlob: estConfig.encryptedCaChain
-            })
-          ).toString()
-        : "";
-
-      const caCerts = extractX509CertFromChain(decryptedCaChain)?.map((cert) => {
-        return new x509.X509Certificate(cert);
-      });
-
-      if (!caCerts) {
-        throw new BadRequestError({ message: "Failed to parse certificate chain" });
-      }
-
-      const leafCertificate = extractX509CertFromChain(decodeURIComponent(sslClientCert))?.[0];
-
-      if (!leafCertificate) {
-        throw new UnauthorizedError({ message: "Missing client certificate" });
-      }
-
-      const certObj = new x509.X509Certificate(leafCertificate);
-      if (!(await isCertChainValid([certObj, ...caCerts]))) {
-        throw new BadRequestError({ message: "Invalid certificate chain" });
-      }
-    }
-
-    const certificateRequest = extractCertificateRequestFromCSR(csr);
-    const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
-    const validationResult = await certificateTemplateV2Service.validateCertificateRequest(
-      profile.certificateTemplateId,
-      mappedCertificateRequest
-    );
-
-    if (!validationResult.isValid) {
-      throw new BadRequestError({
-        message: `Certificate request validation failed: ${validationResult.errors.join(", ")}`
-      });
-    }
-
-    const { certificate } = await internalCertificateAuthorityService.signCertFromCa({
-      isInternal: true,
-      caId: profile.caId,
+    const result = await certificateV3Service.signCertificateFromProfile({
+      actor: ActorType.EST_ACCOUNT,
+      actorId: profileId,
+      actorAuthMethod: null,
+      actorOrgId: project.orgId,
+      profileId,
       csr,
-      isFromProfile: true
+      validity: { ttl },
+      enrollmentType: EnrollmentType.EST
     });
 
-    return convertRawCertsToPkcs7([certificate.rawData]);
+    if (result.status === CertificateRequestStatus.PENDING_APPROVAL) {
+      throw new BadRequestError({
+        message: `Certificate request requires approval. Certificate Request ID: ${result.certificateRequestId}. Manage the approval request in the Infisical UI.`
+      });
+    }
+
+    if (!result.certificate) {
+      throw new BadRequestError({ message: "There was an error issuing the certificate" });
+    }
+
+    const certObj = new x509.X509Certificate(result.certificate);
+    return convertRawCertsToPkcs7([certObj.rawData]);
   };
 
   const simpleReenrollByProfile = async ({
@@ -256,27 +270,32 @@ export const certificateEstV3ServiceFactory = ({
       });
     }
 
-    const certificateRequest = extractCertificateRequestFromCSR(csr);
-    const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
-    const validationResult = await certificateTemplateV2Service.validateCertificateRequest(
-      profile.certificateTemplateId,
-      mappedCertificateRequest
-    );
+    const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
+    const ttl = policy?.validity?.max || "90d";
 
-    if (!validationResult.isValid) {
+    const result = await certificateV3Service.signCertificateFromProfile({
+      actor: ActorType.EST_ACCOUNT,
+      actorId: profileId,
+      actorAuthMethod: null,
+      actorOrgId: project.orgId,
+      profileId,
+      csr,
+      validity: { ttl },
+      enrollmentType: EnrollmentType.EST
+    });
+
+    if (result.status === CertificateRequestStatus.PENDING_APPROVAL) {
       throw new BadRequestError({
-        message: `Certificate request validation failed: ${validationResult.errors.join(", ")}`
+        message: `Certificate re-enrollment request requires approval. Certificate Request ID: ${result.certificateRequestId}. Manage the approval request in the Infisical UI.`
       });
     }
 
-    const { certificate } = await internalCertificateAuthorityService.signCertFromCa({
-      isInternal: true,
-      caId: profile.caId,
-      csr,
-      isFromProfile: true
-    });
+    if (!result.certificate) {
+      throw new BadRequestError({ message: "Certificate was not returned from issuance" });
+    }
 
-    return convertRawCertsToPkcs7([certificate.rawData]);
+    const certObj = new x509.X509Certificate(result.certificate);
+    return convertRawCertsToPkcs7([certObj.rawData]);
   };
 
   const getCaCertsByProfile = async ({ profileId }: { profileId: string }) => {

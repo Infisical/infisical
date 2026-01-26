@@ -3,19 +3,20 @@ import knex from "knex";
 import RE2 from "re2";
 import { z } from "zod";
 
+import { TDynamicSecrets } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
-import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
+import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretAzureSqlDBSchema, PasswordRequirements, SqlProviders, TDynamicProviderFns } from "./models";
-import { compileUsernameTemplate } from "./templateUtils";
+import { generateUsername } from "./templateUtils";
 
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
@@ -104,16 +105,6 @@ const generatePassword = (requirements?: PasswordRequirements) => {
   }
 };
 
-const generateUsername = (usernameTemplate?: string | null, identity?: { name: string }) => {
-  const randomUsername = alphaNumericNanoId(32);
-  if (!usernameTemplate) return randomUsername;
-  return compileUsernameTemplate({
-    usernameTemplate,
-    randomUsername,
-    identity
-  });
-};
-
 type TAzureSqlDatabaseProviderDTO = {
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -126,7 +117,11 @@ export const AzureSqlDatabaseProvider = ({
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretAzureSqlDBSchema.parseAsync(inputs);
 
-    const [hostIp] = await verifyHostInputValidity(providerInputs.host, Boolean(providerInputs.gatewayId));
+    const [hostIp] = await verifyHostInputValidity({
+      host: providerInputs.host,
+      isGateway: Boolean(providerInputs.gatewayId),
+      isDynamicSecret: true
+    });
     validateHandlebarTemplate("Azure SQL master creation", providerInputs.masterCreationStatement, {
       allowedExpressions: (val) => ["username", "password", "expiration", "database"].includes(val)
     });
@@ -278,13 +273,18 @@ export const AzureSqlDatabaseProvider = ({
     inputs: unknown;
     expireAt: number;
     usernameTemplate?: string | null;
-    identity?: { name: string };
+    identity: ActorIdentityAttributes;
+    dynamicSecret: TDynamicSecrets;
   }) => {
-    const { inputs, expireAt, usernameTemplate, identity } = data;
+    const { inputs, expireAt, usernameTemplate, identity, dynamicSecret } = data;
 
     const providerInputs = await validateProviderInputs(inputs);
     const { database, masterDatabase } = providerInputs;
-    const username = generateUsername(usernameTemplate, identity);
+    const username = await generateUsername(usernameTemplate, {
+      decryptedDynamicSecretInputs: inputs,
+      dynamicSecret,
+      identity
+    });
     const password = generatePassword(providerInputs.passwordRequirements);
 
     const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {

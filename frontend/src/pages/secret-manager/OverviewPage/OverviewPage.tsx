@@ -31,6 +31,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { CreateSecretRotationV2Modal } from "@app/components/secret-rotations-v2";
 import { DeleteSecretRotationV2Modal } from "@app/components/secret-rotations-v2/DeleteSecretRotationV2Modal";
 import { EditSecretRotationV2Modal } from "@app/components/secret-rotations-v2/EditSecretRotationV2Modal";
+import { ReconcileUnixLinuxLocalAccountRotationModal } from "@app/components/secret-rotations-v2/ReconcileUnixLinuxLocalAccountRotationModal";
 import { RotateSecretRotationV2Modal } from "@app/components/secret-rotations-v2/RotateSecretRotationV2Modal";
 import { ViewSecretRotationV2GeneratedCredentialsModal } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials";
 import {
@@ -99,7 +100,10 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
-import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
+import {
+  SecretRotation as SecretRotationV2,
+  TSecretRotationV2
+} from "@app/hooks/api/secretRotationsV2";
 import { ProjectEnv, SecretType, SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/types";
 import {
   useDynamicSecretOverview,
@@ -403,7 +407,8 @@ export const OverviewPage = () => {
     "rotateSecretRotation",
     "viewSecretRotationGeneratedCredentials",
     "deleteSecretRotation",
-    "upgradePlan"
+    "upgradePlan",
+    "reconcileSecretRotation"
   ] as const);
 
   const handleFolderCreate = async (folderName: string, description: string | null) => {
@@ -1535,6 +1540,9 @@ export const OverviewPage = () => {
                         onRotate={(secretRotation) =>
                           handlePopUpOpen("rotateSecretRotation", secretRotation)
                         }
+                        onReconcile={(secretRotation) =>
+                          handlePopUpOpen("reconcileSecretRotation", secretRotation)
+                        }
                         onViewGeneratedCredentials={(secretRotation) =>
                           handlePopUpOpen("viewSecretRotationGeneratedCredentials", secretRotation)
                         }
@@ -1718,6 +1726,15 @@ export const OverviewPage = () => {
         isOpen={popUp.rotateSecretRotation.isOpen}
         secretRotation={popUp.rotateSecretRotation.data as TSecretRotationV2}
         onOpenChange={(isOpen) => handlePopUpToggle("rotateSecretRotation", isOpen)}
+      />
+      <ReconcileUnixLinuxLocalAccountRotationModal
+        isOpen={
+          popUp.reconcileSecretRotation.isOpen &&
+          (popUp.reconcileSecretRotation.data as TSecretRotationV2)?.type ===
+            SecretRotationV2.UnixLinuxLocalAccount
+        }
+        secretRotation={popUp.reconcileSecretRotation.data as TSecretRotationV2}
+        onOpenChange={(isOpen) => handlePopUpToggle("reconcileSecretRotation", isOpen)}
       />
       <ViewSecretRotationV2GeneratedCredentialsModal
         isOpen={popUp.viewSecretRotationGeneratedCredentials.isOpen}

@@ -5,7 +5,7 @@ import { twMerge } from "tailwind-merge";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Lottie } from "@app/components/v2";
 import {
-  UnstableButton,
+  Button,
   UnstableDropdownMenu,
   UnstableDropdownMenuCheckboxItem,
   UnstableDropdownMenuContent,
@@ -217,7 +217,7 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
                   a={OrgPermissionSubjects.Groups}
                 >
                   {(isAllowed) => (
-                    <UnstableButton
+                    <Button
                       variant={isSubOrganization ? "sub-org" : "org"}
                       size="xs"
                       isDisabled={!isAllowed}
@@ -230,7 +230,7 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
                     >
                       <PlusIcon />
                       Add Member
-                    </UnstableButton>
+                    </Button>
                   )}
                 </OrgPermissionCan>
               </UnstableEmptyContent>

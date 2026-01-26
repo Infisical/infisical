@@ -1,4 +1,5 @@
 export * from "./accessApproval";
+export * from "./accountRecovery";
 export * from "./admin";
 export * from "./aiMcpActivityLogs";
 export * from "./aiMcpEndpoints";
@@ -13,6 +14,7 @@ export * from "./auditLogStreams";
 export * from "./auth";
 export * from "./bots";
 export * from "./ca";
+export * from "./certificatePolicies";
 export * from "./certificates";
 export * from "./certificateTemplates";
 export * from "./dynamicSecret";

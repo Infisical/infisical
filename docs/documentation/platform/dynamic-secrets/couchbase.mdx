@@ -3,6 +3,8 @@ title: "Couchbase"
 description: "Learn how to dynamically generate Couchbase Database user credentials."
 ---
 
+import DynamicSecretUsernameTemplateParamField from "/snippets/documentation/platform/dynamic-secrets/dynamic-secret-username-template-field.mdx";
+
 The Infisical Couchbase dynamic secret allows you to generate Couchbase Cloud Database user credentials on demand based on configured roles and bucket access permissions.
 
 ## Prerequisite
@@ -89,31 +91,7 @@ Create an API Key in your Couchbase Cloud following the [official documentation]
           - **Scope Name**: Name of the scope (e.g., inventory, _default)
           - **Collections**: Optional array of collection names within the scope
     </ParamField>
-
-    <ParamField path="Username Template" type="string" default="{{randomUsername}}">
-        Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
-
-        Allowed template variables are:
-        - `{{randomUsername}}`: Random username string
-        - `{{unixTimestamp}}`: Current Unix timestamp
-        - `{{identity.name}}`: Name of the identity that is generating the secret
-        - `{{random N}}`: Random string of N characters
-
-        Allowed template functions are:
-        - `truncate`: Truncates a string to a specified length
-        - `replace`: Replaces a substring with another value
-
-        Examples:
-        ```
-        {{randomUsername}}                              // infisical-3POnzeFyK9gW2nioK0q2gMjr6CZqsRiX
-        {{unixTimestamp}}                               // 17490641580
-        {{identity.name}}                               // testuser
-        {{random 5}}                                    // x9k2m
-        {{truncate identity.name 4}}                    // test
-        {{replace identity.name 'user' 'replace'}}      // testreplace
-        ```
-	</ParamField>
-
+    <DynamicSecretUsernameTemplateParamField />
     <ParamField path="Password Configuration" type="object">
         Optional password generation requirements for Couchbase users:
         

@@ -11,7 +11,10 @@ import { CertStatus } from "@app/services/certificate/certificate-types";
 import { ExternalConfigUnionSchema } from "@app/services/certificate-profile/certificate-profile-external-config-schemas";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 
-export const registerCertificateProfilesRouter = async (server: FastifyZodProvider) => {
+export const registerCertificateProfilesRouter = async (
+  server: FastifyZodProvider,
+  enableOperationId: boolean = true
+) => {
   server.route({
     method: "POST",
     url: "/",
@@ -20,12 +23,13 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     },
     schema: {
       hide: false,
+      ...(enableOperationId ? { operationId: "createCertificateProfile" } : {}),
       tags: [ApiDocsTags.PkiCertificateProfiles],
       body: z
         .object({
           projectId: z.string().min(1),
           caId: z.string().uuid().optional(),
-          certificateTemplateId: z.string().uuid(),
+          certificatePolicyId: z.string().uuid(),
           slug: z
             .string()
             .min(1)
@@ -199,6 +203,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     },
     schema: {
       hide: false,
+      ...(enableOperationId ? { operationId: "listCertificateProfiles" } : {}),
       tags: [ApiDocsTags.PkiCertificateProfiles],
       querystring: z.object({
         projectId: z.string().min(1),
@@ -292,6 +297,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     },
     schema: {
       hide: false,
+      ...(enableOperationId ? { operationId: "getCertificateProfile" } : {}),
       tags: [ApiDocsTags.PkiCertificateProfiles],
       params: z.object({
         id: z.string().uuid()
@@ -311,7 +317,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
                 externalType: z.string().nullable().optional()
               })
               .optional(),
-            certificateTemplate: z
+            certificatePolicy: z
               .object({
                 id: z.string(),
                 projectId: z.string(),
@@ -373,6 +379,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     },
     schema: {
       hide: false,
+      ...(enableOperationId ? { operationId: "getCertificateProfileBySlug" } : {}),
       tags: [ApiDocsTags.PkiCertificateProfiles],
       params: z.object({
         slug: z.string().min(1)
@@ -411,6 +418,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     },
     schema: {
       hide: false,
+      ...(enableOperationId ? { operationId: "updateCertificateProfile" } : {}),
       tags: [ApiDocsTags.PkiCertificateProfiles],
       params: z.object({
         id: z.string().uuid()
@@ -507,6 +515,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     },
     schema: {
       hide: false,
+      ...(enableOperationId ? { operationId: "deleteCertificateProfile" } : {}),
       tags: [ApiDocsTags.PkiCertificateProfiles],
       params: z.object({
         id: z.string().uuid()
@@ -553,6 +562,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     },
     schema: {
       hide: false,
+      ...(enableOperationId ? { operationId: "listCertificateProfileCertificates" } : {}),
       tags: [ApiDocsTags.PkiCertificateProfiles],
       params: z.object({
         id: z.string().uuid()
@@ -603,6 +613,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     },
     schema: {
       hide: false,
+      ...(enableOperationId ? { operationId: "getCertificateProfileLatestActiveBundle" } : {}),
       tags: [ApiDocsTags.PkiCertificateProfiles],
       description: "Get latest active certificate bundle for a profile",
       params: z.object({
@@ -668,6 +679,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     },
     schema: {
       hide: false,
+      ...(enableOperationId ? { operationId: "revealCertificateProfileAcmeEabSecret" } : {}),
       tags: [ApiDocsTags.PkiCertificateProfiles],
       params: z.object({
         id: z.string().uuid()

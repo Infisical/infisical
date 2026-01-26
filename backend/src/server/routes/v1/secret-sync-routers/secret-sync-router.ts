@@ -141,6 +141,7 @@ export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listSecretSyncOptions",
       tags: [ApiDocsTags.SecretSyncs],
       description: "List the available Secret Sync Options.",
       response: {
@@ -164,6 +165,7 @@ export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listSecretSyncs",
       tags: [ApiDocsTags.SecretSyncs],
       description: "List all the Secret Syncs for the specified project.",
       querystring: z.object({

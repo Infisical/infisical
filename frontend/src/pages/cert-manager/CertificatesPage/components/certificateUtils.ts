@@ -1,4 +1,4 @@
-import { CertSubjectAlternativeNameType } from "@app/pages/cert-manager/PoliciesPage/components/CertificateTemplatesV2Tab/shared/certificate-constants";
+import { CertSubjectAlternativeNameType } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 export const getSanPlaceholder = (sanType: CertSubjectAlternativeNameType): string => {
   switch (sanType) {

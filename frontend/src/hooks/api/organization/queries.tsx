@@ -126,7 +126,8 @@ export const useUpdateOrg = () => {
       shareSecretsProductEnabled,
       maxSharedSecretLifetime,
       maxSharedSecretViewLimit,
-      blockDuplicateSecretSyncDestinations
+      blockDuplicateSecretSyncDestinations,
+      secretShareBrandConfig
     }) => {
       return apiRequest.patch(`/api/v1/organization/${orgId}`, {
         name,
@@ -148,7 +149,8 @@ export const useUpdateOrg = () => {
         shareSecretsProductEnabled,
         maxSharedSecretLifetime,
         maxSharedSecretViewLimit,
-        blockDuplicateSecretSyncDestinations
+        blockDuplicateSecretSyncDestinations,
+        secretShareBrandConfig
       });
     },
     onSuccess: () => {

@@ -302,7 +302,11 @@ export const secretSyncQueueFactory = ({
         }
 
         secretMap[secretKey].skipMultilineEncoding = Boolean(secret.skipMultilineEncoding);
-        secretMap[secretKey].secretMetadata = secret.secretMetadata;
+        secretMap[secretKey].secretMetadata = secret.secretMetadata.map((el) => ({
+          isEncrypted: Boolean(el.encryptedValue),
+          key: el.key,
+          value: el.encryptedValue ? decryptSecretValue(el.encryptedValue) : el.value || ""
+        }));
       })
     );
 

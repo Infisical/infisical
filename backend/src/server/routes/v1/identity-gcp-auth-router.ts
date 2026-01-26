@@ -20,6 +20,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     },
     schema: {
       hide: false,
+      operationId: "loginWithGcpAuth",
       tags: [ApiDocsTags.GcpAuth],
       description: "Login with GCP Auth for machine identity",
       body: z.object({
@@ -71,6 +72,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "attachGcpAuth",
       tags: [ApiDocsTags.GcpAuth],
       description: "Attach GCP Auth configuration onto machine identity",
       security: [
@@ -164,6 +166,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "updateGcpAuth",
       tags: [ApiDocsTags.GcpAuth],
       description: "Update GCP Auth configuration on machine identity",
       security: [
@@ -250,6 +253,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "getGcpAuth",
       tags: [ApiDocsTags.GcpAuth],
       description: "Retrieve GCP Auth configuration on machine identity",
       security: [
@@ -299,6 +303,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "deleteGcpAuth",
       tags: [ApiDocsTags.GcpAuth],
       description: "Delete GCP Auth configuration on machine identity",
       security: [

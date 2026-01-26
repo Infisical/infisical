@@ -26,6 +26,7 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       hide: true,
+      operationId: "createOrganizationIdentityMembership",
       tags: [ApiDocsTags.OrgIdentityMembership],
       description: "Create org identity membership",
       security: [
@@ -115,6 +116,7 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       hide: true,
+      operationId: "updateOrganizationIdentityMembership",
       tags: [ApiDocsTags.OrgIdentityMembership],
       description: "Update org identity membership",
       security: [
@@ -206,6 +208,7 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       hide: true,
+      operationId: "deleteOrganizationIdentityMembership",
       tags: [ApiDocsTags.OrgIdentityMembership],
       description: "Delete org identity membership",
       security: [
@@ -260,6 +263,7 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       hide: true,
+      operationId: "listOrganizationIdentityMemberships",
       tags: [ApiDocsTags.OrgIdentityMembership],
       description: "List org identity memberships",
       security: [
@@ -348,6 +352,7 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       hide: true,
+      operationId: "getOrganizationIdentityMembershipById",
       tags: [ApiDocsTags.OrgIdentityMembership],
       description: "Get org identity membership by identity ID",
       security: [
@@ -410,6 +415,7 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       hide: false,
+      operationId: "listAvailableOrganizationIdentities",
       tags: [ApiDocsTags.OrgIdentityMembership],
       description: "List available identities for org membership",
       security: [

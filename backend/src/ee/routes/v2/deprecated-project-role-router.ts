@@ -21,6 +21,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
     },
     schema: {
       hide: false,
+      operationId: "createProjectRole",
       tags: [ApiDocsTags.ProjectRoles],
       description: "Create a project role",
       security: [
@@ -95,6 +96,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
     },
     schema: {
       hide: false,
+      operationId: "updateProjectRole",
       tags: [ApiDocsTags.ProjectRoles],
       description: "Update a project role",
       security: [
@@ -174,6 +176,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
     },
     schema: {
       hide: false,
+      operationId: "deleteProjectRole",
       tags: [ApiDocsTags.ProjectRoles],
       description: "Delete a project role",
       security: [
@@ -231,6 +234,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
     },
     schema: {
       hide: false,
+      operationId: "listProjectRoles",
       tags: [ApiDocsTags.ProjectRoles],
       description: "List project role",
       security: [
@@ -270,6 +274,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
     },
     schema: {
       hide: false,
+      operationId: "getProjectRoleBySlug",
       tags: [ApiDocsTags.ProjectRoles],
       params: z.object({
         projectId: z.string().trim().describe(PROJECT_ROLE.GET_ROLE_BY_SLUG.projectId),

@@ -3,7 +3,9 @@ export type TAiMcpEndpoint = {
   name: string;
   description: string | null;
   status: string | null;
-  piiFiltering?: boolean;
+  piiRequestFiltering?: boolean;
+  piiResponseFiltering?: boolean;
+  piiEntityTypes?: string[] | null;
   projectId: string;
   createdAt: string;
   updatedAt: string;
@@ -27,7 +29,9 @@ export type TUpdateAiMcpEndpointDTO = {
   name?: string;
   description?: string;
   serverIds?: string[];
-  piiFiltering?: boolean;
+  piiRequestFiltering?: boolean;
+  piiResponseFiltering?: boolean;
+  piiEntityTypes?: string[];
 };
 
 export type TDeleteAiMcpEndpointDTO = {
@@ -78,7 +82,7 @@ export type TFinalizeMcpEndpointOAuthDTO = {
   code_challenge: string;
   code_challenge_method: string;
   redirect_uri: string;
-  resource: string;
+  resource?: string;
   expireIn: string;
 };
 
@@ -88,6 +92,7 @@ export type TServerAuthStatus = {
   name: string;
   url: string;
   hasCredentials: boolean;
+  authMethod: string;
 };
 
 export type TInitiateServerOAuthDTO = {
@@ -102,4 +107,15 @@ export type TSaveUserServerCredentialDTO = {
   refreshToken?: string;
   expiresAt?: number;
   tokenType?: string;
+};
+
+export type TVerifyServerBearerTokenDTO = {
+  endpointId: string;
+  serverId: string;
+  accessToken: string;
+};
+
+export type TVerifyServerBearerTokenResponse = {
+  valid: boolean;
+  message?: string;
 };

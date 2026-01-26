@@ -29,7 +29,7 @@ import { sanitizedSshHostGroup } from "@app/ee/services/ssh-host-group/ssh-host-
 import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { re2Validator } from "@app/lib/zod";
-import { readLimit, requestAccessLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { projectCreationLimit, readLimit, requestAccessLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -65,6 +65,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listProjectUsers",
       querystring: z.object({
         includeGroupMembers: z
           .enum(["true", "false"])
@@ -141,10 +142,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/",
     config: {
-      rateLimit: writeLimit
+      rateLimit: projectCreationLimit
     },
     schema: {
       hide: false,
+      operationId: "createProject",
       tags: [ApiDocsTags.Projects],
       description: "Create a new project",
       security: [
@@ -224,6 +226,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listProjects",
       tags: [ApiDocsTags.Projects],
       description: "List projects",
       security: [
@@ -270,6 +273,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "getProjectById",
       tags: [ApiDocsTags.Projects],
       description: "Get project",
       security: [
@@ -310,6 +314,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "getProjectBySlug",
       tags: [ApiDocsTags.Projects],
       description: "Get project details by slug",
       security: [
@@ -350,6 +355,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "deleteProject",
       tags: [ApiDocsTags.Projects],
       description: "Delete project",
       security: [
@@ -401,6 +407,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "updateProject",
       tags: [ApiDocsTags.Projects],
       description: "Update project",
       security: [
@@ -426,6 +433,10 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .describe(PROJECTS.UPDATE.projectDescription),
         autoCapitalization: z.boolean().optional().describe(PROJECTS.UPDATE.autoCapitalization),
         hasDeleteProtection: z.boolean().optional().describe(PROJECTS.UPDATE.hasDeleteProtection),
+        enforceEncryptedSecretManagerSecretMetadata: z
+          .boolean()
+          .optional()
+          .describe(PROJECTS.UPDATE.enforceEncryptedSecretManagerSecretMetadata),
         slug: z
           .string()
           .trim()
@@ -466,7 +477,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           secretSharing: req.body.secretSharing,
           showSnapshotsLegacy: req.body.showSnapshotsLegacy,
           secretDetectionIgnoreValues: req.body.secretDetectionIgnoreValues,
-          pitVersionLimit: req.body.pitVersionLimit
+          pitVersionLimit: req.body.pitVersionLimit,
+          enforceEncryptedSecretManagerSecretMetadata: req.body.enforceEncryptedSecretManagerSecretMetadata
         },
         actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
@@ -497,6 +509,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "updateProjectAuditLogsRetention",
       params: z.object({
         projectId: z.string().trim()
       }),
@@ -549,6 +562,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listProjectIntegrations",
       tags: [ApiDocsTags.Integrations],
       description: "List integrations for a project.",
       security: [
@@ -594,6 +608,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listProjectIntegrationAuthorizations",
       tags: [ApiDocsTags.Integrations],
       description: "List integration auth objects for a project.",
       security: [
@@ -630,6 +645,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listProjectServiceTokens",
       params: z.object({
         projectId: z.string().trim()
       }),
@@ -659,6 +675,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getProjectSshConfig",
       params: z.object({
         projectId: z.string().trim()
       }),
@@ -706,6 +723,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "updateProjectSshConfig",
       params: z.object({
         projectId: z.string().trim()
       }),
@@ -760,6 +778,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getProjectWorkflowIntegrationConfig",
       params: z.object({
         projectId: z.string().trim(),
         integration: z.nativeEnum(WorkflowIntegration)
@@ -829,6 +848,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteProjectWorkflowIntegration",
       params: z.object({
         projectId: z.string().trim(),
         integration: z.nativeEnum(WorkflowIntegration),
@@ -867,6 +887,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "updateProjectWorkflowIntegration",
       params: z.object({
         projectId: z.string().trim()
       }),
@@ -960,6 +981,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getProjectEnvironmentFolderTree",
       params: z.object({
         projectId: z.string().trim()
       }),
@@ -987,6 +1009,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "searchProjects",
       body: z.object({
         limit: z.number().default(100),
         offset: z.number().default(0),
@@ -1027,6 +1050,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: requestAccessLimit
     },
     schema: {
+      operationId: "requestProjectAccess",
       params: z.object({
         projectId: z.string().trim()
       }),
@@ -1092,6 +1116,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "upgradeProject",
       params: z.object({
         projectId: z.string().trim()
       }),
@@ -1123,6 +1148,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getProjectUpgradeStatus",
       params: z.object({
         projectId: z.string().trim()
       }),
@@ -1154,6 +1180,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listProjectCertificateAuthorities",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       params: z.object({
         projectId: z.string().trim()
@@ -1196,6 +1223,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listProjectCertificates",
       tags: [ApiDocsTags.PkiCertificates],
       params: z.object({
         projectId: z.string().trim()
@@ -1252,6 +1280,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listProjectPkiAlerts",
       tags: [ApiDocsTags.PkiAlerting],
       params: z.object({
         projectId: z.string().trim()
@@ -1284,6 +1313,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listProjectPkiCollections",
       tags: [ApiDocsTags.PkiCertificateCollections],
       params: z.object({
         projectId: z.string().trim()
@@ -1316,6 +1346,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listProjectPkiSubscribers",
       tags: [ApiDocsTags.PkiSubscribers],
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.LIST_PKI_SUBSCRIBERS.projectId)
@@ -1348,6 +1379,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listProjectCertificateTemplates",
       tags: [ApiDocsTags.PkiCertificateTemplates],
       params: z.object({
         projectId: z.string().trim()
@@ -1379,6 +1411,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listProjectSshCertificates",
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.LIST_SSH_CAS.projectId)
       }),
@@ -1417,6 +1450,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listProjectSshCertificateTemplates",
       tags: [ApiDocsTags.SshCertificateTemplates],
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.LIST_SSH_CERTIFICATE_TEMPLATES.projectId)
@@ -1449,6 +1483,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listProjectSshCertificateAuthorities",
       tags: [ApiDocsTags.SshCertificateAuthorities],
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.LIST_SSH_CAS.projectId)
@@ -1481,6 +1516,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listProjectSshHosts",
       tags: [ApiDocsTags.SshHosts],
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.LIST_SSH_HOSTS.projectId)
@@ -1521,6 +1557,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listProjectSshHostGroups",
       tags: [ApiDocsTags.SshHostGroups],
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.LIST_SSH_HOST_GROUPS.projectId)

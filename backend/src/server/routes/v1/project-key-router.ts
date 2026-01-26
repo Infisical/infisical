@@ -12,6 +12,7 @@ export const registerProjectKeyRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "uploadProjectKey",
       params: z.object({
         workspaceId: z.string().trim()
       }),

@@ -60,6 +60,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "getIntegrationAuth",
       tags: [ApiDocsTags.Integrations],
       description: "Get details of an integration authorization by auth object id.",
       security: [
@@ -97,6 +98,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "updateIntegrationAuth",
       tags: [ApiDocsTags.Integrations],
       description: "Update the integration authentication object required for syncing secrets.",
       security: [
@@ -160,6 +162,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "deleteIntegrationAuths",
       tags: [ApiDocsTags.Integrations],
       description: "Remove all integration's auth object from the project.",
       security: [
@@ -211,6 +214,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "deleteIntegrationAuth",
       tags: [ApiDocsTags.Integrations],
       description: "Remove an integration auth object by object id.",
       security: [
@@ -259,6 +263,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      operationId: "exchangeOauthToken",
       body: z.object({
         workspaceId: z.string().trim(),
         code: z.string().trim(),
@@ -305,6 +310,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "createIntegrationAuth",
       tags: [ApiDocsTags.Integrations],
       description: "Create the integration authentication object required for syncing secrets.",
       security: [

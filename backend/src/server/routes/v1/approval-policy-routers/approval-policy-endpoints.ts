@@ -6,15 +6,25 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import {
-  TApprovalPolicy,
   TApprovalPolicyInputs,
   TCreatePolicyDTO,
   TCreateRequestDTO,
   TUpdatePolicyDTO
 } from "@app/services/approval-policy/approval-policy-types";
+import {
+  CreateCertRequestPolicySchema,
+  UpdateCertRequestPolicySchema
+} from "@app/services/approval-policy/cert-request/cert-request-policy-schemas";
+import {
+  CreatePamAccessPolicySchema,
+  UpdatePamAccessPolicySchema
+} from "@app/services/approval-policy/pam-access/pam-access-policy-schemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
+type TCreatePolicySchema = typeof CreatePamAccessPolicySchema | typeof CreateCertRequestPolicySchema;
+type TUpdatePolicySchema = typeof UpdatePamAccessPolicySchema | typeof UpdateCertRequestPolicySchema;
+
+export const registerApprovalPolicyEndpoints = ({
   server,
   policyType,
   createPolicySchema,
@@ -27,22 +37,12 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
 }: {
   server: FastifyZodProvider;
   policyType: ApprovalPolicyType;
-  createPolicySchema: z.ZodType<
-    TCreatePolicyDTO & {
-      conditions: P["conditions"]["conditions"];
-      constraints: P["constraints"]["constraints"];
-    }
-  >;
-  updatePolicySchema: z.ZodType<
-    TUpdatePolicyDTO & {
-      conditions?: P["conditions"]["conditions"];
-      constraints?: P["constraints"]["constraints"];
-    }
-  >;
-  policyResponseSchema: z.ZodTypeAny;
+  createPolicySchema: TCreatePolicySchema;
+  updatePolicySchema: TUpdatePolicySchema;
+  policyResponseSchema: z.ZodObject<z.ZodRawShape>;
   createRequestSchema: z.ZodType<TCreateRequestDTO>;
-  requestResponseSchema: z.ZodTypeAny;
-  grantResponseSchema: z.ZodTypeAny;
+  requestResponseSchema: z.ZodObject<z.ZodRawShape>;
+  grantResponseSchema: z.ZodObject<z.ZodRawShape>;
   inputsSchema: z.ZodType<TApprovalPolicyInputs>;
 }) => {
   // Policies
@@ -53,6 +53,7 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "createApprovalPolicy",
       description: "Create approval policy",
       body: createPolicySchema,
       response: {
@@ -63,17 +64,21 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { policy } = await server.services.approvalPolicy.create(policyType, req.body, req.permission);
+      const { policy } = await server.services.approvalPolicy.create(
+        policyType,
+        req.body as TCreatePolicyDTO,
+        req.permission
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.body.projectId,
+        projectId: policy.projectId,
         event: {
           type: EventType.APPROVAL_POLICY_CREATE,
           metadata: {
             policyType,
-            name: req.body.name
+            name: policy.name
           }
         }
       });
@@ -89,6 +94,7 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listApprovalPolicies",
       description: "List approval policies",
       querystring: z.object({
         projectId: z.string().uuid()
@@ -127,6 +133,7 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getApprovalPolicy",
       description: "Get approval policy",
       params: z.object({
         policyId: z.string().uuid()
@@ -166,6 +173,7 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "updateApprovalPolicy",
       description: "Update approval policy",
       params: z.object({
         policyId: z.string().uuid()
@@ -179,7 +187,11 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { policy } = await server.services.approvalPolicy.updateById(req.params.policyId, req.body, req.permission);
+      const { policy } = await server.services.approvalPolicy.updateById(
+        req.params.policyId,
+        req.body as TUpdatePolicyDTO,
+        req.permission
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -206,6 +218,7 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteApprovalPolicy",
       description: "Delete approval policy",
       params: z.object({
         policyId: z.string().uuid()
@@ -248,6 +261,7 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listApprovalRequests",
       description: "List approval requests",
       querystring: z.object({
         projectId: z.string().uuid()
@@ -290,6 +304,7 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "createApprovalRequest",
       description: "Create approval request",
       body: createRequestSchema,
       response: {
@@ -340,6 +355,7 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getApprovalRequest",
       description: "Get approval request",
       params: z.object({
         requestId: z.string().uuid()
@@ -379,6 +395,7 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "approveApprovalRequest",
       description: "Approve approval request",
       params: z.object({
         requestId: z.string().uuid()
@@ -425,6 +442,7 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "rejectApprovalRequest",
       description: "Reject approval request",
       params: z.object({
         requestId: z.string().uuid()
@@ -471,6 +489,7 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "cancelApprovalRequest",
       description: "Cancel approval request",
       params: z.object({
         requestId: z.string().uuid()
@@ -510,6 +529,7 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listApprovalGrants",
       description: "List approval grants",
       querystring: z.object({
         projectId: z.string().uuid()
@@ -552,6 +572,7 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getApprovalGrant",
       description: "Get approval grant",
       params: z.object({
         grantId: z.string().uuid()
@@ -591,6 +612,7 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "revokeApprovalGrant",
       description: "Revoke approval grant",
       params: z.object({
         grantId: z.string().uuid()
@@ -633,6 +655,7 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
       rateLimit: readLimit
     },
     schema: {
+      operationId: "checkApprovalPolicyMatch",
       description: "Check if a resource path matches any approval policy and if the user has an active grant",
       body: z.object({
         projectId: z.string().uuid(),

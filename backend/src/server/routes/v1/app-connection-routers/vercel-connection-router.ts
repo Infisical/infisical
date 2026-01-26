@@ -30,8 +30,12 @@ export const registerVercelConnectionRouter = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listVercelProjects",
       params: z.object({
         connectionId: z.string().uuid()
+      }),
+      querystring: z.object({
+        projectSearch: z.string().optional()
       }),
       response: {
         200: z
@@ -65,10 +69,12 @@ export const registerVercelConnectionRouter = async (server: FastifyZodProvider)
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { connectionId } = req.params;
+      const { projectSearch } = req.query;
 
       const projects: VercelOrgWithApps[] = await server.services.appConnection.vercel.listProjects(
         connectionId,
-        req.permission
+        req.permission,
+        projectSearch
       );
 
       return projects;

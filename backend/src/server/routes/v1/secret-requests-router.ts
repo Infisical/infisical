@@ -2,8 +2,9 @@ import { z } from "zod";
 
 import { SecretSharingSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { NotFoundError } from "@app/lib/errors";
 import { SecretSharingAccessType } from "@app/lib/types";
-import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { publicEndpointLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -18,25 +19,37 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getSecretRequest",
       params: z.object({
         id: z.string()
       }),
       response: {
         200: z.object({
-          secretRequest: SecretSharingSchema.omit({
+          request: SecretSharingSchema.omit({
             encryptedSecret: true,
             tag: true,
             iv: true,
             encryptedValue: true
-          }).extend({
-            isSecretValueSet: z.boolean(),
-            requester: z.object({
-              organizationName: z.string(),
-              firstName: z.string().nullish(),
-              lastName: z.string().nullish(),
-              username: z.string()
-            })
           })
+            .extend({
+              requester: z.object({
+                organizationName: z.string(),
+                firstName: z.string().nullish(),
+                lastName: z.string().nullish(),
+                username: z.string()
+              })
+            })
+            .optional(),
+          brandingConfig: z
+            .object({
+              hasLogo: z.boolean(),
+              hasFavicon: z.boolean(),
+              primaryColor: z.string().optional(),
+              secondaryColor: z.string().optional()
+            })
+            .optional(),
+          error: z.string().optional(),
+          isSecretValueSet: z.boolean()
         })
       }
     },
@@ -49,7 +62,55 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
         actorAuthMethod: req.permission?.authMethod
       });
 
-      return { secretRequest };
+      let brandingConfig;
+      if (secretRequest.requestOrgId) {
+        const orgBrandConfig = await req.server.services.secretSharing.getOrgBrandConfig(secretRequest.requestOrgId);
+        if (orgBrandConfig) {
+          brandingConfig = {
+            hasLogo: orgBrandConfig.hasLogo,
+            hasFavicon: orgBrandConfig.hasFavicon,
+            primaryColor: orgBrandConfig.primaryColor,
+            secondaryColor: orgBrandConfig.secondaryColor
+          };
+        }
+      }
+
+      return { ...secretRequest, brandingConfig };
+    }
+  });
+
+  // Endpoint to serve branding images for secret requests
+  server.route({
+    method: "GET",
+    url: "/:id/branding/:assetType",
+    config: {
+      rateLimit: publicEndpointLimit
+    },
+    schema: {
+      params: z.object({
+        id: z.string(),
+        assetType: z.enum(["brand-logo", "brand-favicon"])
+      })
+    },
+    handler: async (req, res) => {
+      const { id, assetType } = req.params;
+
+      const orgId = await req.server.services.secretSharing.getSecretRequestOrgId(id);
+
+      if (!orgId) {
+        throw new NotFoundError({ message: "Secret request not found or has no organization" });
+      }
+
+      const asset = await req.server.services.secretSharing.getBrandingAsset(orgId, assetType);
+
+      if (!asset) {
+        throw new NotFoundError({ message: `No ${assetType} configured for this organization` });
+      }
+
+      void res.header("Content-Type", asset.contentType);
+      void res.header("Cache-Control", "public, max-age=3600"); // Cache for 1 hour
+
+      return res.send(asset.data);
     }
   });
 
@@ -60,6 +121,7 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "setSecretRequestValue",
       params: z.object({
         id: z.string()
       }),
@@ -98,6 +160,7 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "revealSecretRequestValue",
       params: z.object({
         id: z.string()
       }),
@@ -136,6 +199,7 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteSecretRequest",
       params: z.object({
         id: z.string()
       }),
@@ -183,6 +247,7 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listSecretRequests",
       querystring: z.object({
         offset: z.coerce.number().min(0).max(100).default(0),
         limit: z.coerce.number().min(1).max(100).default(25)
@@ -219,6 +284,7 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "createSecretRequest",
       body: z.object({
         name: z.string().max(50).optional(),
         expiresAt: z.string(),

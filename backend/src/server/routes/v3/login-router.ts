@@ -13,6 +13,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
       rateLimit: authRateLimit
     },
     schema: {
+      operationId: "loginGenServerPublicKeyV3",
       body: z.object({
         email: z.string().trim(),
         providerAuthToken: z.string().trim().optional(),
@@ -43,6 +44,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
       rateLimit: authRateLimit
     },
     schema: {
+      operationId: "selectOrganizationV3",
       body: z.object({
         organizationId: z.string().trim(),
         userAgent: z.enum(["cli"]).optional()
@@ -116,6 +118,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
       rateLimit: authRateLimit
     },
     schema: {
+      operationId: "loginExchangeClientProofV3",
       body: z.object({
         email: z.string().trim(),
         providerAuthToken: z.string().trim().optional(),
@@ -191,6 +194,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
       rateLimit: authRateLimit
     },
     schema: {
+      operationId: "loginV3",
       body: z.object({
         email: z.string().trim(),
         password: z.string().trim(),

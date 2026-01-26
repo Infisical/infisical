@@ -76,6 +76,7 @@ export type TOAuthSession = {
   serverUrl: string;
   redirectUri: string;
   tokenEndpoint: string; // Stored from OAuth discovery for token exchange
+  gatewayId?: string;
   // Set after callback
   accessToken?: string;
   refreshToken?: string;
@@ -90,6 +91,7 @@ export type TInitiateOAuthDTO = {
   actorId: string;
   clientId?: string;
   clientSecret?: string;
+  gatewayId?: string;
   actor?: string;
   actorAuthMethod?: ActorAuthMethod;
   actorOrgId?: string;
@@ -113,6 +115,7 @@ export type TCreateAiMcpServerDTO = {
   credentials: TBasicCredentials | TBearerCredentials | TOAuthCredentials;
   oauthClientId?: string;
   oauthClientSecret?: string;
+  gatewayId?: string;
 } & TProjectPermission;
 
 export type TListMcpServersDTO = TProjectPermission;
@@ -125,6 +128,7 @@ export type TUpdateAiMcpServerDTO = {
   serverId: string;
   name?: string;
   description?: string;
+  gatewayId?: string | null;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteMcpServerDTO = {

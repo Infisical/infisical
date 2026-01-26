@@ -30,7 +30,7 @@ export const executeWithGateway = async <T>(
 ): Promise<T> => {
   const { connectionDetails, gatewayId } = config;
   const url = new URL(connectionDetails.url);
-  const [targetHost] = await verifyHostInputValidity(url.hostname, true);
+  const [targetHost] = await verifyHostInputValidity({ host: url.hostname, isGateway: true, isDynamicSecret: false });
 
   let targetPort: number;
   if (url.port) {

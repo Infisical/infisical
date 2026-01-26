@@ -7,23 +7,28 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore - MCP SDK uses ESM with .js extensions which don't resolve types with moduleResolution: "Node"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import axios, { AxiosError } from "axios";
+import axios from "axios";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { GatewayProxyProtocol } from "@app/lib/gateway";
+import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
+import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
+import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TAiMcpServerDALFactory } from "./ai-mcp-server-dal";
-import { AiMcpServerCredentialMode, AiMcpServerStatus } from "./ai-mcp-server-enum";
+import { AiMcpServerAuthMethod, AiMcpServerCredentialMode, AiMcpServerStatus } from "./ai-mcp-server-enum";
 import { TAiMcpServerToolDALFactory } from "./ai-mcp-server-tool-dal";
 import {
   TAiMcpServerCredentials,
@@ -51,7 +56,9 @@ type TAiMcpServerServiceFactoryDep = {
   aiMcpServerUserCredentialDAL: TAiMcpServerUserCredentialDALFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
+  gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
 };
 
 export type TAiMcpServerServiceFactory = ReturnType<typeof aiMcpServerServiceFactory>;
@@ -150,41 +157,111 @@ export const aiMcpServerServiceFactory = ({
   aiMcpServerUserCredentialDAL,
   kmsService,
   keyStore,
-  permissionService
+  permissionService,
+  gatewayV2DAL,
+  gatewayV2Service
 }: TAiMcpServerServiceFactoryDep) => {
+  /**
+   * Wraps an HTTP request to route it through a V2 gateway proxy.
+   *
+   * Used for short-lived operations like OAuth discovery and tool fetching
+   * where the connection doesn't need to persist.
+   *
+   * @throws NotFoundError if the gateway doesn't exist
+   */
+  const $gatewayHttpProxyWrapper = async <T>(
+    inputs: {
+      gatewayId: string;
+      targetHost: string;
+      targetPort: number;
+    },
+    gatewayCallback: (host: string, port: number) => Promise<T>
+  ): Promise<T> => {
+    const gatewayV2ConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+      gatewayId: inputs.gatewayId,
+      targetHost: inputs.targetHost,
+      targetPort: inputs.targetPort
+    });
+
+    if (!gatewayV2ConnectionDetails) {
+      throw new NotFoundError({ message: `Gateway with ID ${inputs.gatewayId} not found or not available` });
+    }
+
+    const callbackResult = await withGatewayV2Proxy(
+      async (port) => {
+        return gatewayCallback("http://localhost", port);
+      },
+      {
+        relayHost: gatewayV2ConnectionDetails.relayHost,
+        gateway: gatewayV2ConnectionDetails.gateway,
+        relay: gatewayV2ConnectionDetails.relay,
+        protocol: GatewayProxyProtocol.Http
+      }
+    );
+
+    return callbackResult;
+  };
+
   /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-redundant-type-constituents */
-  const fetchMcpTools = async (serverUrl: string, accessToken: string): Promise<TMcpTool[]> => {
-    let client: Client | undefined;
-    try {
-      client = new Client({
-        name: "infisical-mcp-client",
-        version: "1.0.0"
-      });
+  const fetchMcpTools = async (serverUrl: string, accessToken: string, gatewayId?: string): Promise<TMcpTool[]> => {
+    const fetchToolsCallback = async (host: string, port: number): Promise<TMcpTool[]> => {
+      let client: Client | undefined;
+      try {
+        client = new Client({
+          name: "infisical-mcp-client",
+          version: "1.0.0"
+        });
 
-      const transport = new StreamableHTTPClientTransport(new URL(serverUrl), {
-        requestInit: {
-          headers: {
-            Authorization: `Bearer ${accessToken}`
-          }
+        // When using gateway, construct the URL with localhost and the proxy port, preserving the path
+        let targetUrl = serverUrl;
+        if (gatewayId) {
+          const originalUrl = new URL(serverUrl);
+          targetUrl = new URL(`${originalUrl.pathname}${originalUrl.search}`, `${host}:${port}`).toString();
         }
-      });
 
-      await client.connect(transport);
-      const { tools } = await client.listTools();
+        const transport = new StreamableHTTPClientTransport(new URL(targetUrl), {
+          requestInit: {
+            headers: {
+              Authorization: `Bearer ${accessToken}`
+            }
+          }
+        });
 
-      return tools.map((tool: { name: string; description?: string; inputSchema?: unknown }) => ({
-        name: tool.name,
-        description: tool.description,
-        inputSchema: tool.inputSchema as Record<string, unknown> | undefined
-      }));
+        await client.connect(transport);
+        const { tools } = await client.listTools();
+
+        return tools.map((tool: { name: string; description?: string; inputSchema?: unknown }) => ({
+          name: tool.name,
+          description: tool.description,
+          inputSchema: tool.inputSchema as Record<string, unknown> | undefined
+        }));
+      } finally {
+        if (client) {
+          await client.close();
+        }
+      }
+    };
+
+    try {
+      if (gatewayId) {
+        // Route through gateway proxy
+        const urlObj = new URL(serverUrl);
+        const targetHost = urlObj.hostname;
+        let targetPort = 80;
+        if (urlObj.port) {
+          targetPort = Number(urlObj.port);
+        } else if (urlObj.protocol === "https:") {
+          targetPort = 443;
+        }
+
+        return await $gatewayHttpProxyWrapper({ gatewayId, targetHost, targetPort }, fetchToolsCallback);
+      }
+      // Direct connection (no gateway)
+      return await fetchToolsCallback(serverUrl, 0);
     } catch (error) {
       // Log but don't fail - tools can be fetched later
       logger.error(error, "Failed to fetch tools from MCP server");
       return [];
-    } finally {
-      if (client) {
-        await client.close();
-      }
     }
   };
   /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-redundant-type-constituents */
@@ -199,6 +276,71 @@ export const aiMcpServerServiceFactory = ({
   };
 
   /**
+   * Helper to create a gateway-aware HTTP request function
+   * Returns a function that can make requests either directly or through a gateway proxy
+   */
+  const createGatewayAwareRequest = (
+    gatewayId: string | undefined,
+    mcpUrlObj: URL
+  ): {
+    get: <T>(url: string) => Promise<{ data: T }>;
+    // getRaw returns full response including status and headers (for OAuth discovery that needs 401 headers)
+    getRaw: <T>(url: string) => Promise<{ data: T; status: number; headers: Record<string, unknown> }>;
+    post: <T>(url: string, data: unknown, config?: { headers?: Record<string, string> }) => Promise<{ data: T }>;
+  } => {
+    if (!gatewayId) {
+      // Direct requests (no gateway)
+      return {
+        get: <T>(url: string) => request.get<T>(url),
+        getRaw: async <T>(url: string) => {
+          const response = await request.get<T>(url, { validateStatus: () => true });
+          return { data: response.data, status: response.status, headers: response.headers as Record<string, unknown> };
+        },
+        post: <T>(url: string, data: unknown, config?: { headers?: Record<string, string> }) =>
+          request.post<T>(url, data, config)
+      };
+    }
+
+    // Gateway-proxied requests
+    const targetHost = mcpUrlObj.hostname;
+    let targetPort = 80;
+    if (mcpUrlObj.port) {
+      targetPort = Number(mcpUrlObj.port);
+    } else if (mcpUrlObj.protocol === "https:") {
+      targetPort = 443;
+    }
+
+    return {
+      get: async <T>(url: string) => {
+        return $gatewayHttpProxyWrapper({ gatewayId, targetHost, targetPort }, async (host, port) => {
+          // Replace the original host/port with the proxy host/port
+          const originalUrl = new URL(url);
+          const proxyUrl = new URL(`${originalUrl.pathname}${originalUrl.search}`, `${host}:${port}`).toString();
+          return request.get<T>(proxyUrl);
+        });
+      },
+      getRaw: async <T>(url: string) => {
+        return $gatewayHttpProxyWrapper({ gatewayId, targetHost, targetPort }, async (host, port) => {
+          // Replace the original host/port with the proxy host/port
+          const originalUrl = new URL(url);
+          const proxyUrl = new URL(`${originalUrl.pathname}${originalUrl.search}`, `${host}:${port}`).toString();
+          // Use validateStatus to accept all responses (including 401) so we can access headers
+          const response = await request.get<T>(proxyUrl, { validateStatus: () => true });
+          return { data: response.data, status: response.status, headers: response.headers as Record<string, unknown> };
+        });
+      },
+      post: async <T>(url: string, data: unknown, config?: { headers?: Record<string, string> }) => {
+        return $gatewayHttpProxyWrapper({ gatewayId, targetHost, targetPort }, async (host, port) => {
+          // Replace the original host/port with the proxy host/port
+          const originalUrl = new URL(url);
+          const proxyUrl = new URL(`${originalUrl.pathname}${originalUrl.search}`, `${host}:${port}`).toString();
+          return request.post<T>(proxyUrl, data, config);
+        });
+      }
+    };
+  };
+
+  /**
    * Discover OAuth metadata by following the RFC 9728 Protected Resource Metadata flow:
    * 1. Try to access the MCP server URL → get 401 with WWW-Authenticate header
    * 2. Parse the protected resource metadata URL from the header
@@ -206,7 +348,8 @@ export const aiMcpServerServiceFactory = ({
    * 4. Fetch the authorization server metadata
    */
   const discoverOAuthMetadata = async (
-    mcpUrl: string
+    mcpUrl: string,
+    gatewayId?: string
   ): Promise<{
     protectedResource: TOAuthProtectedResourceMetadata;
     authServer: TOAuthAuthorizationServerMetadata;
@@ -214,35 +357,37 @@ export const aiMcpServerServiceFactory = ({
     let resourceMetadataUrl: string | null = null;
 
     const url = new URL(mcpUrl);
-    await verifyHostInputValidity(url.hostname, true);
+    await verifyHostInputValidity({ host: url.hostname, isGateway: true, isDynamicSecret: false });
+
+    // Create gateway-aware request helper
+    const gatewayRequest = createGatewayAwareRequest(gatewayId, url);
 
     // 1. Try to access the MCP server to get WWW-Authenticate header
-    try {
-      await request.get(mcpUrl);
-      // If we get here without error, the server doesn't require auth (unusual)
+    // Use getRaw to get full response including status and headers (needed for 401 with WWW-Authenticate)
+    const initialResponse = await gatewayRequest.getRaw(mcpUrl);
+
+    if (initialResponse.status === 401) {
+      // Extract WWW-Authenticate header from 401 response
+      const wwwAuth = initialResponse.headers["www-authenticate"] as string | undefined;
+      if (wwwAuth) {
+        resourceMetadataUrl = parseWwwAuthenticateHeader(wwwAuth);
+      }
+    } else if (initialResponse.status >= 200 && initialResponse.status < 300) {
+      // If we get a success response, the server doesn't require auth (unusual)
       throw new BadRequestError({
         message: "MCP server did not return authentication requirements"
       });
-    } catch (error) {
-      // Check if it's an axios error with 401 status
-      if (axios.isAxiosError(error)) {
-        const axiosErr = error as AxiosError;
-        if (axiosErr.response?.status === 401) {
-          const wwwAuth = axiosErr.response.headers["www-authenticate"] as string | undefined;
-          if (wwwAuth) {
-            resourceMetadataUrl = parseWwwAuthenticateHeader(wwwAuth);
-          }
-        } else {
-          throw error;
-        }
-      } else {
-        throw error;
-      }
+    } else {
+      // Other error status codes
+      throw new BadRequestError({
+        message: `MCP server returned unexpected status: ${initialResponse.status}`
+      });
     }
+
+    const urlObj = new URL(mcpUrl);
 
     if (!resourceMetadataUrl) {
       // Fallback: Try common .well-known paths
-      const urlObj = new URL(mcpUrl);
       const possiblePaths = [
         `${urlObj.origin}/.well-known/oauth-protected-resource${urlObj.pathname}`,
         `${urlObj.origin}/.well-known/oauth-protected-resource`
@@ -253,7 +398,7 @@ export const aiMcpServerServiceFactory = ({
       for (const path of possiblePaths) {
         try {
           // eslint-disable-next-line no-await-in-loop
-          const { data } = await request.get<TOAuthProtectedResourceMetadata>(path);
+          const { data } = await gatewayRequest.get<TOAuthProtectedResourceMetadata>(path);
           if (data.authorization_servers?.length > 0) {
             resourceMetadataUrl = path;
             break;
@@ -265,13 +410,34 @@ export const aiMcpServerServiceFactory = ({
     }
 
     if (!resourceMetadataUrl) {
+      // Fallback: Try auth server metadata directly (for servers like Linear
+      // that don't support RFC 9728 Protected Resource Metadata)
+      try {
+        const authServerMetadataUrl = `${urlObj.origin}/.well-known/oauth-authorization-server`;
+        const { data: authServer } = await gatewayRequest.get<TOAuthAuthorizationServerMetadata>(authServerMetadataUrl);
+        if (authServer.authorization_endpoint && authServer.token_endpoint) {
+          return {
+            protectedResource: {
+              resource: mcpUrl,
+              authorization_servers: [urlObj.origin]
+            } as TOAuthProtectedResourceMetadata,
+            authServer
+          };
+        }
+      } catch (err) {
+        // Log non-404 errors for debugging, but still fall through
+        if (!axios.isAxiosError(err) || err.response?.status !== 404) {
+          logger.warn(err, "Failed to fetch OAuth authorization server metadata");
+        }
+      }
+
       throw new BadRequestError({
-        message: "Could not discover OAuth metadata for MCP server. WWW-Authenticate header not found."
+        message: "Could not discover OAuth metadata for MCP server."
       });
     }
 
     // 2. Fetch protected resource metadata
-    const { data: protectedResource } = await request.get<TOAuthProtectedResourceMetadata>(resourceMetadataUrl);
+    const { data: protectedResource } = await gatewayRequest.get<TOAuthProtectedResourceMetadata>(resourceMetadataUrl);
 
     if (!protectedResource.authorization_servers?.length) {
       throw new BadRequestError({
@@ -289,12 +455,12 @@ export const aiMcpServerServiceFactory = ({
     try {
       // First try: origin-only format
       const originOnlyUrl = `${authServerUrlObj.origin}/.well-known/oauth-authorization-server`;
-      const { data } = await request.get<TOAuthAuthorizationServerMetadata>(originOnlyUrl);
+      const { data } = await gatewayRequest.get<TOAuthAuthorizationServerMetadata>(originOnlyUrl);
       authServer = data;
     } catch {
       // Second try: origin + pathname format
       const pathnameUrl = `${authServerUrlObj.origin}/.well-known/oauth-authorization-server${authServerUrlObj.pathname !== "/" ? authServerUrlObj.pathname : ""}`;
-      const { data } = await request.get<TOAuthAuthorizationServerMetadata>(pathnameUrl);
+      const { data } = await gatewayRequest.get<TOAuthAuthorizationServerMetadata>(pathnameUrl);
       authServer = data;
     }
 
@@ -312,6 +478,7 @@ export const aiMcpServerServiceFactory = ({
     actorId,
     clientId,
     clientSecret,
+    gatewayId,
     actor,
     actorAuthMethod,
     actorOrgId
@@ -330,13 +497,38 @@ export const aiMcpServerServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.McpServers);
+
+      // Validate gateway exists and user has permission to attach it
+      if (gatewayId) {
+        const [gateway] = await gatewayV2DAL.find({ id: gatewayId, orgId: actorOrgId });
+        if (!gateway) {
+          throw new NotFoundError({ message: `Gateway with ID ${gatewayId} not found` });
+        }
+
+        const { permission: orgPermission } = await permissionService.getOrgPermission({
+          scope: OrganizationActionScope.Any,
+          actor: actor as ActorType,
+          actorId,
+          orgId: actorOrgId,
+          actorAuthMethod: actorAuthMethod as AuthMethod,
+          actorOrgId
+        });
+
+        ForbiddenError.from(orgPermission).throwUnlessCan(
+          OrgPermissionGatewayActions.AttachGateways,
+          OrgPermissionSubjects.Gateway
+        );
+      }
     }
 
     const urlObj = new URL(url);
-    await verifyHostInputValidity(urlObj.hostname, true);
+    await verifyHostInputValidity({ host: urlObj.hostname, isGateway: true, isDynamicSecret: false });
 
-    // 1. Discover OAuth metadata following RFC 9728 flow
-    const { protectedResource, authServer } = await discoverOAuthMetadata(url);
+    // Create gateway-aware request helper for DCR
+    const gatewayRequest = createGatewayAwareRequest(gatewayId, urlObj);
+
+    // 1. Discover OAuth metadata following RFC 9728 flow (route through gateway if configured)
+    const { protectedResource, authServer } = await discoverOAuthMetadata(url, gatewayId);
 
     // 2. Generate session ID
     const sessionId = crypto.randomUUID();
@@ -360,7 +552,8 @@ export const aiMcpServerServiceFactory = ({
         });
       }
 
-      const { data: clientMetadata } = await request.post<TOAuthDynamicClientMetadata>(
+      // Route DCR request through gateway when configured
+      const { data: clientMetadata } = await gatewayRequest.post<TOAuthDynamicClientMetadata>(
         authServer.registration_endpoint,
         {
           redirect_uris: [redirectUri],
@@ -384,7 +577,7 @@ export const aiMcpServerServiceFactory = ({
     const codeVerifier = crypto.randomBytes(32).toString("base64url");
     const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
 
-    // 6. Store session data in keystore (include auth server token endpoint for callback)
+    // 6. Store session data in keystore (include auth server token endpoint and gateway for callback)
     const sessionData: TOAuthSession = {
       actorId,
       codeVerifier,
@@ -395,6 +588,7 @@ export const aiMcpServerServiceFactory = ({
       serverUrl: url,
       redirectUri,
       tokenEndpoint: authServer.token_endpoint,
+      gatewayId,
       authorized: false
     };
 
@@ -445,6 +639,10 @@ export const aiMcpServerServiceFactory = ({
       });
     }
 
+    // Create gateway-aware request helper using the stored gatewayId
+    const serverUrlObj = new URL(sessionData.serverUrl);
+    const gatewayRequest = createGatewayAwareRequest(sessionData.gatewayId, serverUrlObj);
+
     // 2. Exchange code for tokens using the stored token endpoint
     const tokenParams: Record<string, string> = {
       grant_type: "authorization_code",
@@ -459,7 +657,8 @@ export const aiMcpServerServiceFactory = ({
       tokenParams.client_secret = sessionData.clientSecret;
     }
 
-    const { data: tokenResponse } = await request.post<TOAuthTokenResponse>(
+    // Route token exchange through gateway when configured
+    const { data: tokenResponse } = await gatewayRequest.post<TOAuthTokenResponse>(
       sessionData.tokenEndpoint,
       new URLSearchParams(tokenParams).toString(),
       {
@@ -541,6 +740,7 @@ export const aiMcpServerServiceFactory = ({
     credentials,
     oauthClientId,
     oauthClientSecret,
+    gatewayId,
     actor,
     actorId,
     actorAuthMethod,
@@ -556,6 +756,41 @@ export const aiMcpServerServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.McpServers);
+
+    // Block OAuth + Gateway combination (OAuth requires external redirect which doesn't work through gateway)
+    if (gatewayId && authMethod === AiMcpServerAuthMethod.OAUTH) {
+      throw new BadRequestError({
+        message:
+          "OAuth authentication is not supported when using a gateway. Please use Bearer or Basic authentication."
+      });
+    }
+
+    // Validate gateway exists and user has permission to attach it
+    if (gatewayId) {
+      const [gateway] = await gatewayV2DAL.find({ id: gatewayId, orgId: actorOrgId });
+      if (!gateway) {
+        throw new NotFoundError({ message: `Gateway with ID ${gatewayId} not found` });
+      }
+
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: actorOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayActions.AttachGateways,
+        OrgPermissionSubjects.Gateway
+      );
+    }
+
+    const urlObj = new URL(url);
+    if (!gatewayId) {
+      await verifyHostInputValidity({ host: urlObj.hostname, isGateway: false, isDynamicSecret: false });
+    }
 
     const encryptedCredentials = await encryptCredentials({
       projectId,
@@ -584,6 +819,7 @@ export const aiMcpServerServiceFactory = ({
       authMethod,
       encryptedCredentials,
       encryptedOauthConfig,
+      gatewayId,
       status: AiMcpServerStatus.ACTIVE
     });
 
@@ -597,7 +833,7 @@ export const aiMcpServerServiceFactory = ({
     }
 
     if (accessToken) {
-      const tools = await fetchMcpTools(url, accessToken);
+      const tools = await fetchMcpTools(url, accessToken, gatewayId);
 
       if (tools.length > 0) {
         await aiMcpServerToolDAL.insertMany(
@@ -651,7 +887,7 @@ export const aiMcpServerServiceFactory = ({
   };
 
   const updateMcpServer = async (dto: TUpdateAiMcpServerDTO) => {
-    const { serverId, name, description, actor, actorId, actorAuthMethod, actorOrgId } = dto;
+    const { serverId, name, description, gatewayId, actor, actorId, actorAuthMethod, actorOrgId } = dto;
 
     const server = await aiMcpServerDAL.findById(serverId);
     if (!server) {
@@ -669,9 +905,32 @@ export const aiMcpServerServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.McpServers);
 
-    const updateData: { name?: string; description?: string } = {};
+    // Validate gateway if changing to a new gateway
+    if (gatewayId !== undefined && gatewayId !== null && gatewayId !== server.gatewayId) {
+      const [gateway] = await gatewayV2DAL.find({ id: gatewayId, orgId: actorOrgId });
+      if (!gateway) {
+        throw new NotFoundError({ message: `Gateway with ID ${gatewayId} not found` });
+      }
+
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: actorOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayActions.AttachGateways,
+        OrgPermissionSubjects.Gateway
+      );
+    }
+
+    const updateData: { name?: string; description?: string; gatewayId?: string | null } = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
+    if (gatewayId !== undefined) updateData.gatewayId = gatewayId;
 
     const updatedServer = await aiMcpServerDAL.updateById(serverId, updateData);
 
@@ -775,8 +1034,8 @@ export const aiMcpServerServiceFactory = ({
       throw new BadRequestError({ message: "No access token available for this server" });
     }
 
-    // Fetch tools from MCP server
-    const fetchedTools = await fetchMcpTools(server.url, accessToken);
+    // Fetch tools from MCP server (route through gateway if configured)
+    const fetchedTools = await fetchMcpTools(server.url, accessToken, server.gatewayId ?? undefined);
 
     // Delete existing tools
     await aiMcpServerToolDAL.delete({ aiMcpServerId: serverId });

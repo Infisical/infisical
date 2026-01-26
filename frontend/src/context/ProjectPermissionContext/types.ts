@@ -43,7 +43,8 @@ export enum ProjectPermissionCmekActions {
   Encrypt = "encrypt",
   Decrypt = "decrypt",
   Sign = "sign",
-  Verify = "verify"
+  Verify = "verify",
+  ExportPrivateKey = "export-private-key"
 }
 
 export enum ProjectPermissionKmipActions {
@@ -129,6 +130,13 @@ export enum ProjectPermissionPkiTemplateActions {
   Delete = "delete",
   IssueCert = "issue-cert",
   ListCerts = "list-certs"
+}
+
+export enum ProjectPermissionCertificatePolicyActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
 }
 
 export enum ProjectPermissionCertificateAuthorityActions {
@@ -266,12 +274,14 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.CertificateAuthorities
   | ProjectPermissionSub.Certificates
   | ProjectPermissionSub.CertificateProfiles
+  | ProjectPermissionSub.CertificatePolicies
   | ProjectPermissionSub.SecretFolders
   | ProjectPermissionSub.SecretImports
   | ProjectPermissionSub.SecretRotation
   | ProjectPermissionSub.SecretEvents
   | ProjectPermissionSub.AppConnections
-  | ProjectPermissionSub.PamAccounts;
+  | ProjectPermissionSub.PamAccounts
+  | ProjectPermissionSub.McpEndpoints;
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
   [PermissionConditionOperators.$EQ]: "equal to",
@@ -343,6 +353,7 @@ export enum ProjectPermissionSub {
   PkiCollections = "pki-collections",
   PkiSubscribers = "pki-subscribers",
   CertificateProfiles = "certificate-profiles",
+  CertificatePolicies = "certificate-policies",
   Kms = "kms",
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
@@ -438,10 +449,18 @@ export type PkiTemplateSubjectFields = {
   // (dangtony98): consider adding [commonName] as a subject field in the future
 };
 
+export type CertificatePolicySubjectFields = {
+  name: string;
+};
+
 export type PamAccountSubjectFields = {
   resourceName: string;
   accountName: string;
   accountPath: string;
+};
+
+export type McpEndpointSubjectFields = {
+  name: string;
 };
 
 export type ProjectPermissionSet =
@@ -561,6 +580,13 @@ export type ProjectPermissionSet =
             CertificateProfileSubjectFields)
       )
     ]
+  | [
+      ProjectPermissionCertificatePolicyActions,
+      (
+        | ProjectPermissionSub.CertificatePolicies
+        | (ForcedSubject<ProjectPermissionSub.CertificatePolicies> & CertificatePolicySubjectFields)
+      )
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]
@@ -603,7 +629,13 @@ export type ProjectPermissionSet =
   | [ProjectPermissionPamSessionActions, ProjectPermissionSub.PamSessions]
   | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
-  | [ProjectPermissionMcpEndpointActions, ProjectPermissionSub.McpEndpoints]
+  | [
+      ProjectPermissionMcpEndpointActions,
+      (
+        | ProjectPermissionSub.McpEndpoints
+        | (ForcedSubject<ProjectPermissionSub.McpEndpoints> & McpEndpointSubjectFields)
+      )
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.McpServers]
   | [ProjectPermissionActions, ProjectPermissionSub.McpActivityLogs];
 

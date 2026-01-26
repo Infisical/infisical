@@ -69,6 +69,11 @@ export type TFindAllWorkspacesDTO = {
   orgId: string;
 };
 
+export type TSecretShareBrandConfig = {
+  primaryColor?: string;
+  secondaryColor?: string;
+} | null;
+
 export type TUpdateOrgDTO = {
   data: Partial<{
     name: string;
@@ -91,12 +96,15 @@ export type TUpdateOrgDTO = {
     maxSharedSecretLifetime: number;
     maxSharedSecretViewLimit: number | null;
     blockDuplicateSecretSyncDestinations: boolean;
+    secretShareBrandConfig: TSecretShareBrandConfig;
   }>;
 } & TOrgPermission;
 
 export type TUpgradePrivilegeSystemDTO = Omit<TOrgPermission, "actor">;
 
 export type TGetOrgGroupsDTO = TOrgPermission;
+
+export type TFindAllOrgMembersDTO = TOrgPermission;
 
 export type TListProjectMembershipsByOrgMembershipIdDTO = {
   orgMembershipId: string;

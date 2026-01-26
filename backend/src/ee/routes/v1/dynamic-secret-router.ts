@@ -13,7 +13,7 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
+import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 const validateUsernameTemplateCharacters = characterValidator([
   CharacterType.AlphaNumeric,
@@ -26,7 +26,10 @@ const validateUsernameTemplateCharacters = characterValidator([
   CharacterType.Fullstop,
   CharacterType.SingleQuote,
   CharacterType.Spaces,
-  CharacterType.Pipe
+  CharacterType.Pipe,
+  CharacterType.OpenParen,
+  CharacterType.CloseParen,
+  CharacterType.DoubleQuote
 ]);
 
 const userTemplateSchema = z
@@ -36,7 +39,8 @@ const userTemplateSchema = z
   .refine((el) => validateUsernameTemplateCharacters(el))
   .refine((el) =>
     isValidHandleBarTemplate(el, {
-      allowedExpressions: (val) => ["randomUsername", "unixTimestamp", "identity.name"].includes(val)
+      allowedExpressions: (val) =>
+        ["randomUsername", "unixTimestamp", "identity.name", "dynamicSecret.name", "dynamicSecret.type"].includes(val)
     })
   );
 
@@ -79,7 +83,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         path: z.string().describe(DYNAMIC_SECRETS.CREATE.path).trim().default("/").transform(removeTrailingSlash),
         environmentSlug: z.string().describe(DYNAMIC_SECRETS.CREATE.environmentSlug).min(1),
         name: slugSchema({ min: 1, max: 64, field: "Name" }).describe(DYNAMIC_SECRETS.CREATE.name),
-        metadata: ResourceMetadataSchema.optional(),
+        metadata: ResourceMetadataNonEncryptionSchema.optional(),
         usernameTemplate: userTemplateSchema.optional()
       }),
       response: {
@@ -168,7 +172,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
             })
             .nullable(),
           newName: z.string().describe(DYNAMIC_SECRETS.UPDATE.newName).optional(),
-          metadata: ResourceMetadataSchema.optional(),
+          metadata: ResourceMetadataNonEncryptionSchema.optional(),
           usernameTemplate: userTemplateSchema.nullable().optional()
         })
       }),

@@ -39,6 +39,7 @@ import { TPostgresConnection } from "./postgres-connection";
 import { TRailwayConnection } from "./railway-connection";
 import { TRedisConnection } from "./redis-connection";
 import { TRenderConnection } from "./render-connection";
+import { TSshConnection } from "./ssh-connection";
 import { TSupabaseConnection } from "./supabase-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
@@ -84,6 +85,7 @@ export * from "./postgres-connection";
 export * from "./railway-connection";
 export * from "./redis-connection";
 export * from "./render-connection";
+export * from "./ssh-connection";
 export * from "./supabase-connection";
 export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
@@ -136,7 +138,8 @@ export type TAppConnection =
   | TRedisConnection
   | TMongoDBConnection
   | TChefConnection
-  | TDNSMadeEasyConnection;
+  | TDNSMadeEasyConnection
+  | TSshConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

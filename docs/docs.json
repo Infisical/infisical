@@ -132,6 +132,7 @@
                       "integrations/app-connections/humanitec",
                       "integrations/app-connections/laravel-forge",
                       "integrations/app-connections/ldap",
+                      "integrations/app-connections/ssh",
                       "integrations/app-connections/mssql",
                       "integrations/app-connections/mongodb",
                       "integrations/app-connections/mysql",
@@ -450,6 +451,7 @@
                       "documentation/platform/secret-rotation/azure-client-secret",
                       "documentation/platform/secret-rotation/databricks-service-principal-secret",
                       "documentation/platform/secret-rotation/ldap-password",
+                      "documentation/platform/secret-rotation/unix-linux-local-account",
                       "documentation/platform/secret-rotation/mongodb-credentials",
                       "documentation/platform/secret-rotation/mssql-credentials",
                       "documentation/platform/secret-rotation/mysql-credentials",
@@ -513,6 +515,7 @@
                   },
                   "integrations/platforms/kubernetes-injector",
                   "integrations/platforms/kubernetes-csi",
+                  "integrations/platforms/infisical-proxy",
                   {
                     "group": "Agent",
                     "pages": [
@@ -677,7 +680,8 @@
                     "pages": [
                       "documentation/platform/pki/guides/request-cert-agent",
                       "documentation/platform/pki/guides/request-cert-api",
-                      "documentation/platform/pki/guides/request-cert-acme"
+                      "documentation/platform/pki/guides/request-cert-acme",
+                      "documentation/platform/pki/guides/certificate-approvals"
                     ]
                   }
                 ]
@@ -698,7 +702,7 @@
                     "pages": [
                       "documentation/platform/pki/certificates/overview",
                       "documentation/platform/pki/certificates/profiles",
-                      "documentation/platform/pki/certificates/templates",
+                      "documentation/platform/pki/certificates/policies",
                       "documentation/platform/pki/certificates/certificates"
                     ]
                   },
@@ -711,7 +715,8 @@
                       "documentation/platform/pki/enrollment-methods/est"
                     ]
                   },
-                  "documentation/platform/pki/alerting"
+                  "documentation/platform/pki/alerting",
+                  "documentation/platform/pki/approvals"
                 ]
               },
               {
@@ -800,16 +805,16 @@
             ]
           },
           {
-            "item": "Agentic Manager",
+            "item": "Agent Sentinel",
             "groups": [
               {
-                "group": "Agentic Manager",
+                "group": "Agent Sentinel",
                 "pages": [
-                  "documentation/platform/agentic-manager/overview",
+                  "documentation/platform/agent-sentinel/overview",
                   {
                     "group": "Concepts",
                     "pages": [
-                      "documentation/platform/agentic-manager/concepts/mcp-overview"
+                      "documentation/platform/agent-sentinel/concepts/mcp-overview"
                     ]
                   }
                 ]
@@ -817,9 +822,9 @@
               {
                 "group": "Product Reference",
                 "pages": [
-                  "documentation/platform/agentic-manager/mcp-servers",
-                  "documentation/platform/agentic-manager/mcp-endpoints",
-                  "documentation/platform/agentic-manager/activity-logs"
+                  "documentation/platform/agent-sentinel/mcp-servers",
+                  "documentation/platform/agent-sentinel/mcp-endpoints",
+                  "documentation/platform/agent-sentinel/activity-logs"
                 ]
               }
             ]
@@ -1596,6 +1601,18 @@
                     ]
                   },
                   {
+                    "group": "SSH",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/ssh/list",
+                      "api-reference/endpoints/app-connections/ssh/available",
+                      "api-reference/endpoints/app-connections/ssh/get-by-id",
+                      "api-reference/endpoints/app-connections/ssh/get-by-name",
+                      "api-reference/endpoints/app-connections/ssh/create",
+                      "api-reference/endpoints/app-connections/ssh/update",
+                      "api-reference/endpoints/app-connections/ssh/delete"
+                    ]
+                  },
+                  {
                     "group": "TeamCity",
                     "pages": [
                       "api-reference/endpoints/app-connections/teamcity/list",
@@ -1997,6 +2014,20 @@
                       "api-reference/endpoints/secret-rotations/ldap-password/list",
                       "api-reference/endpoints/secret-rotations/ldap-password/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/ldap-password/update"
+                    ]
+                  },
+                  {
+                    "group": "Unix/Linux Local Account",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/create",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/delete",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-by-id",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-by-name",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/list",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/update",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/reconcile"
                     ]
                   },
                   {
@@ -2614,13 +2645,13 @@
                 ]
               },
               {
-                "group": "Certificate Templates",
+                "group": "Certificate Policies",
                 "pages": [
-                  "api-reference/endpoints/certificate-templates/list",
-                  "api-reference/endpoints/certificate-templates/create",
-                  "api-reference/endpoints/certificate-templates/update",
-                  "api-reference/endpoints/certificate-templates/get-by-id",
-                  "api-reference/endpoints/certificate-templates/delete"
+                  "api-reference/endpoints/certificate-policies/list",
+                  "api-reference/endpoints/certificate-policies/create",
+                  "api-reference/endpoints/certificate-policies/update",
+                  "api-reference/endpoints/certificate-policies/get-by-id",
+                  "api-reference/endpoints/certificate-policies/delete"
                 ]
               },
               {
@@ -2788,7 +2819,9 @@
                   "api-reference/endpoints/kms/keys/get-by-name",
                   "api-reference/endpoints/kms/keys/create",
                   "api-reference/endpoints/kms/keys/update",
-                  "api-reference/endpoints/kms/keys/delete"
+                  "api-reference/endpoints/kms/keys/delete",
+                  "api-reference/endpoints/kms/keys/public-key",
+                  "api-reference/endpoints/kms/keys/private-key"
                 ]
               },
               {
@@ -2803,7 +2836,6 @@
                 "pages": [
                   "api-reference/endpoints/kms/signing/sign",
                   "api-reference/endpoints/kms/signing/verify",
-                  "api-reference/endpoints/kms/signing/public-key",
                   "api-reference/endpoints/kms/signing/signing-algorithms"
                 ]
               }
@@ -2941,6 +2973,10 @@
             "href": "https://infisical.com/docs/documentation/getting-started/introduction"
           },
           {
+            "label": "Infisical Proxy",
+            "href": "https://infisical.com/docs/integrations/platforms/infisical-proxy"
+          },
+          {
             "label": "Kubernetes",
             "href": "https://infisical.com/docs/integrations/platforms/kubernetes"
           },
@@ -3061,6 +3097,9 @@
   "integrations": {
     "koala": {
       "publicApiKey": "pk_b50d7184e0e39ddd5cdb43cf6abeadd9b97d"
+    },
+    "gtm": {
+      "tagId": "GTM-WL5C7MWT"
     }
   },
   "redirects": [

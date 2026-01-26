@@ -63,6 +63,7 @@ import { deleteOrgMembershipsFn } from "./org-fns";
 import {
   TDeleteOrgMembershipDTO,
   TDeleteOrgMembershipsDTO,
+  TFindAllOrgMembersDTO,
   TFindAllWorkspacesDTO,
   TFindOrgMembersByEmailDTO,
   TGetOrgGroupsDTO,
@@ -210,22 +211,18 @@ export const orgServiceFactory = ({
     return org;
   };
   /*
-   * Get all workspace members
+   * Get all organization members
    * */
-  const findAllOrgMembers = async (
-    userId: string,
-    orgId: string,
-    actorAuthMethod: ActorAuthMethod,
-    actorOrgId: string
-  ) => {
+  const findAllOrgMembers = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TFindAllOrgMembersDTO) => {
     const { permission } = await permissionService.getOrgPermission({
-      actor: ActorType.USER,
-      actorId: userId,
+      actor,
+      actorId,
       orgId,
       actorAuthMethod,
       actorOrgId,
       scope: OrganizationActionScope.Any
     });
+
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
 
     const members = await orgDAL.findAllOrgMembers(orgId);
@@ -417,7 +414,8 @@ export const orgServiceFactory = ({
       shareSecretsProductEnabled,
       maxSharedSecretLifetime,
       maxSharedSecretViewLimit,
-      blockDuplicateSecretSyncDestinations
+      blockDuplicateSecretSyncDestinations,
+      secretShareBrandConfig
     }
   }: TUpdateOrgDTO) => {
     const appCfg = getConfig();
@@ -437,8 +435,25 @@ export const orgServiceFactory = ({
         OrgPermissionSubjects.SecretShare
       );
     }
+
+    if (secretShareBrandConfig !== undefined) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionSecretShareAction.ManageSettings,
+        OrgPermissionSubjects.SecretShare
+      );
+    }
+
     const plan = await licenseService.getPlan(orgId);
     const currentOrg = await orgDAL.findOrgById(actorOrgId);
+
+    if (secretShareBrandConfig !== undefined) {
+      if (!plan.secretShareExternalBranding) {
+        throw new BadRequestError({
+          message:
+            "Failed to update secret share branding due to plan restriction. Upgrade plan to configure custom branding."
+        });
+      }
+    }
 
     if (enforceMfa !== undefined) {
       if (!plan.enforceMfa) {
@@ -602,7 +617,8 @@ export const orgServiceFactory = ({
       shareSecretsProductEnabled,
       maxSharedSecretLifetime,
       maxSharedSecretViewLimit,
-      blockDuplicateSecretSyncDestinations
+      blockDuplicateSecretSyncDestinations,
+      secretShareBrandConfig
     });
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     return org;

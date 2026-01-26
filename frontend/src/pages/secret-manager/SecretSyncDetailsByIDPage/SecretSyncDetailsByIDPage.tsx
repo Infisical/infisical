@@ -99,8 +99,8 @@ const PageContent = () => {
               src={`/images/integrations/${destinationDetails.image}`}
               className="mt-3 ml-1 w-16"
             />
-            <div>
-              <p className="text-3xl font-medium text-white">{secretSync.name}</p>
+            <div className="min-w-0">
+              <p className="truncate text-3xl font-medium text-white">{secretSync.name}</p>
               <p className="leading-3 text-bunker-300">{destinationDetails.name} Sync</p>
             </div>
             <SecretSyncActionTriggers secretSync={secretSync} />

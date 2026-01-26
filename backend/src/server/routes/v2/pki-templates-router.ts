@@ -23,6 +23,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      operationId: "createPkiTemplate",
       tags: [ApiDocsTags.PkiCertificateTemplates],
       body: z.object({
         name: slugSchema(),
@@ -66,6 +67,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      operationId: "updatePkiTemplate",
       tags: [ApiDocsTags.PkiCertificateTemplates],
       params: z.object({
         templateName: slugSchema()
@@ -116,6 +118,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      operationId: "deletePkiTemplate",
       tags: [ApiDocsTags.PkiCertificateTemplates],
       params: z.object({
         templateName: z.string().min(1)
@@ -152,6 +155,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      operationId: "getPkiTemplate",
       tags: [ApiDocsTags.PkiCertificateTemplates],
       params: z.object({
         templateName: slugSchema()
@@ -190,6 +194,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      operationId: "listPkiTemplates",
       tags: [ApiDocsTags.PkiCertificateTemplates],
       querystring: z.object({
         projectId: z.string(),
@@ -227,6 +232,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      operationId: "issueCertificateFromTemplate",
       tags: [ApiDocsTags.PkiCertificateTemplates],
       params: z.object({
         templateName: slugSchema()
@@ -274,6 +280,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      operationId: "signCertificateFromTemplate",
       tags: [ApiDocsTags.PkiCertificateTemplates],
       params: z.object({
         templateName: slugSchema()

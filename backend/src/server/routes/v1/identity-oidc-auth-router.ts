@@ -44,6 +44,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
     },
     schema: {
       hide: false,
+      operationId: "loginWithOidcAuth",
       tags: [ApiDocsTags.OidcAuth],
       description: "Login with OIDC Auth for machine identity",
       body: z.object({
@@ -98,6 +99,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "attachOidcAuth",
       tags: [ApiDocsTags.OidcAuth],
       description: "Attach OIDC Auth configuration onto machine identity",
       security: [
@@ -199,6 +201,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "updateOidcAuth",
       tags: [ApiDocsTags.OidcAuth],
       description: "Update OIDC Auth configuration on machine identity",
       security: [
@@ -298,6 +301,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "getOidcAuth",
       tags: [ApiDocsTags.OidcAuth],
       description: "Retrieve OIDC Auth configuration on machine identity",
       security: [
@@ -347,6 +351,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "deleteOidcAuth",
       tags: [ApiDocsTags.OidcAuth],
       description: "Delete OIDC Auth configuration on machine identity",
       security: [

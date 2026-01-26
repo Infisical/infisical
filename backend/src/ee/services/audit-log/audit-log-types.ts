@@ -81,7 +81,8 @@ export type TCreateAuditLogDTO = {
     | UnknownUserActor
     | KmipClientActor
     | AcmeProfileActor
-    | AcmeAccountActor;
+    | AcmeAccountActor
+    | EstAccountActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -373,11 +374,11 @@ export enum EventType {
   USER_LOGIN = "user-login",
   SELECT_ORGANIZATION = "select-organization",
   SELECT_SUB_ORGANIZATION = "select-sub-organization",
-  CREATE_CERTIFICATE_TEMPLATE = "create-certificate-template",
-  UPDATE_CERTIFICATE_TEMPLATE = "update-certificate-template",
-  DELETE_CERTIFICATE_TEMPLATE = "delete-certificate-template",
-  GET_CERTIFICATE_TEMPLATE = "get-certificate-template",
-  LIST_CERTIFICATE_TEMPLATES = "list-certificate-templates",
+  CREATE_CERTIFICATE_POLICY = "create-certificate-policy",
+  UPDATE_CERTIFICATE_POLICY = "update-certificate-policy",
+  DELETE_CERTIFICATE_POLICY = "delete-certificate-policy",
+  GET_CERTIFICATE_POLICY = "get-certificate-policy",
+  LIST_CERTIFICATE_POLICIES = "list-certificate-policies",
   CREATE_CERTIFICATE_TEMPLATE_EST_CONFIG = "create-certificate-template-est-config",
   UPDATE_CERTIFICATE_TEMPLATE_EST_CONFIG = "update-certificate-template-est-config",
   GET_CERTIFICATE_TEMPLATE_EST_CONFIG = "get-certificate-template-est-config",
@@ -421,6 +422,7 @@ export enum EventType {
   CMEK_VERIFY = "cmek-verify",
   CMEK_LIST_SIGNING_ALGORITHMS = "cmek-list-signing-algorithms",
   CMEK_GET_PUBLIC_KEY = "cmek-get-public-key",
+  CMEK_GET_PRIVATE_KEY = "cmek-get-private-key",
 
   UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "update-external-group-org-role-mapping",
   GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS = "get-external-group-org-role-mapping",
@@ -487,6 +489,7 @@ export enum EventType {
   UPDATE_SECRET_ROTATION = "update-secret-rotation",
   DELETE_SECRET_ROTATION = "delete-secret-rotation",
   SECRET_ROTATION_ROTATE_SECRETS = "secret-rotation-rotate-secrets",
+  RECONCILE_SECRET_ROTATION = "reconcile-secret-rotation",
 
   PROJECT_ACCESS_REQUEST = "project-access-request",
 
@@ -681,6 +684,10 @@ interface AcmeAccountActorMetadata {
   accountId: string;
 }
 
+interface EstAccountActorMetadata {
+  profileId: string;
+}
+
 interface UnknownUserActorMetadata {}
 
 export interface UserActor {
@@ -728,6 +735,10 @@ export interface AcmeAccountActor {
   metadata: AcmeAccountActorMetadata;
 }
 
+export interface EstAccountActor {
+  type: ActorType.EST_ACCOUNT;
+  metadata: EstAccountActorMetadata;
+}
 export type Actor =
   | UserActor
   | ServiceActor
@@ -736,7 +747,8 @@ export type Actor =
   | PlatformActor
   | KmipClientActor
   | AcmeProfileActor
-  | AcmeAccountActor;
+  | AcmeAccountActor
+  | EstAccountActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -2839,16 +2851,16 @@ interface GetCertificateTemplateEstConfig {
   };
 }
 
-interface CreateCertificateTemplate {
-  type: EventType.CREATE_CERTIFICATE_TEMPLATE;
+interface CreateCertificatePolicy {
+  type: EventType.CREATE_CERTIFICATE_POLICY;
   metadata:
     | {
-        certificateTemplateId: string;
+        certificatePolicyId: string;
         name: string;
         projectId: string;
       }
     | {
-        certificateTemplateId: string;
+        certificatePolicyId: string;
         caId: string;
         pkiCollectionId: string;
         name: string;
@@ -2859,15 +2871,15 @@ interface CreateCertificateTemplate {
       };
 }
 
-interface UpdateCertificateTemplate {
-  type: EventType.UPDATE_CERTIFICATE_TEMPLATE;
+interface UpdateCertificatePolicy {
+  type: EventType.UPDATE_CERTIFICATE_POLICY;
   metadata:
     | {
-        certificateTemplateId: string;
+        certificatePolicyId: string;
         name: string;
       }
     | {
-        certificateTemplateId: string;
+        certificatePolicyId: string;
         caId: string;
         pkiCollectionId: string;
         name: string;
@@ -2878,24 +2890,24 @@ interface UpdateCertificateTemplate {
       };
 }
 
-interface DeleteCertificateTemplate {
-  type: EventType.DELETE_CERTIFICATE_TEMPLATE;
+interface DeleteCertificatePolicy {
+  type: EventType.DELETE_CERTIFICATE_POLICY;
   metadata: {
-    certificateTemplateId: string;
+    certificatePolicyId: string;
     name: string;
   };
 }
 
-interface GetCertificateTemplate {
-  type: EventType.GET_CERTIFICATE_TEMPLATE;
+interface GetCertificatePolicy {
+  type: EventType.GET_CERTIFICATE_POLICY;
   metadata: {
-    certificateTemplateId: string;
+    certificatePolicyId: string;
     name: string;
   };
 }
 
-interface ListCertificateTemplates {
-  type: EventType.LIST_CERTIFICATE_TEMPLATES;
+interface ListCertificatePolicies {
+  type: EventType.LIST_CERTIFICATE_POLICIES;
   metadata: {
     projectId: string;
   };
@@ -3164,6 +3176,15 @@ interface CmekGetPublicKeyEvent {
   type: EventType.CMEK_GET_PUBLIC_KEY;
   metadata: {
     keyId: string;
+    keyName: string;
+  };
+}
+
+interface CmekGetPrivateKeyEvent {
+  type: EventType.CMEK_GET_PRIVATE_KEY;
+  metadata: {
+    keyId: string;
+    keyName: string;
   };
 }
 
@@ -3700,6 +3721,15 @@ interface RotateSecretRotationEvent {
     jobId?: string | undefined;
     occurredAt: Date;
     message?: string | null | undefined;
+  };
+}
+
+interface ReconcileSecretRotationEvent {
+  type: EventType.RECONCILE_SECRET_ROTATION;
+  metadata: {
+    type: string;
+    rotationId: string;
+    reconciled: boolean;
   };
 }
 
@@ -4571,7 +4601,9 @@ interface McpEndpointUpdateEvent {
     name?: string;
     description?: string;
     serverIds?: string[];
-    piiFiltering?: boolean;
+    piiRequestFiltering?: boolean;
+    piiResponseFiltering?: boolean;
+    piiEntityTypes?: string;
   };
 }
 
@@ -5095,11 +5127,11 @@ export type Event =
   | CreateCertificateTemplateEstConfig
   | UpdateCertificateTemplateEstConfig
   | GetCertificateTemplateEstConfig
-  | CreateCertificateTemplate
-  | UpdateCertificateTemplate
-  | DeleteCertificateTemplate
-  | GetCertificateTemplate
-  | ListCertificateTemplates
+  | CreateCertificatePolicy
+  | UpdateCertificatePolicy
+  | DeleteCertificatePolicy
+  | GetCertificatePolicy
+  | ListCertificatePolicies
   | CreateCertificateProfile
   | UpdateCertificateProfile
   | DeleteCertificateProfile
@@ -5132,6 +5164,7 @@ export type Event =
   | CmekVerifyEvent
   | CmekListSigningAlgorithmsEvent
   | CmekGetPublicKeyEvent
+  | CmekGetPrivateKeyEvent
   | GetExternalGroupOrgRoleMappingsEvent
   | UpdateExternalGroupOrgRoleMappingsEvent
   | GetProjectTemplatesEvent
@@ -5205,6 +5238,7 @@ export type Event =
   | UpdateSecretRotationEvent
   | DeleteSecretRotationEvent
   | RotateSecretRotationEvent
+  | ReconcileSecretRotationEvent
   | MicrosoftTeamsWorkflowIntegrationCreateEvent
   | MicrosoftTeamsWorkflowIntegrationDeleteEvent
   | MicrosoftTeamsWorkflowIntegrationCheckInstallationStatusEvent

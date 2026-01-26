@@ -18,7 +18,6 @@ export const CertificateRequestsSchema = z.object({
   certificateId: z.string().uuid().nullable().optional(),
   csr: z.string().nullable().optional(),
   commonName: z.string().nullable().optional(),
-  altNames: z.string().nullable().optional(),
   keyUsages: z.string().array().nullable().optional(),
   extendedKeyUsages: z.string().array().nullable().optional(),
   notBefore: z.date().nullable().optional(),
@@ -27,7 +26,17 @@ export const CertificateRequestsSchema = z.object({
   signatureAlgorithm: z.string().nullable().optional(),
   errorMessage: z.string().nullable().optional(),
   metadata: z.string().nullable().optional(),
-  acmeOrderId: z.string().uuid().nullable().optional()
+  acmeOrderId: z.string().uuid().nullable().optional(),
+  basicConstraints: z.unknown().nullable().optional(),
+  approvalRequestId: z.string().uuid().nullable().optional(),
+  ttl: z.string().nullable().optional(),
+  enrollmentType: z.string().nullable().optional(),
+  altNames: z.unknown().nullable().optional(),
+  organization: z.string().nullable().optional(),
+  organizationalUnit: z.string().nullable().optional(),
+  country: z.string().nullable().optional(),
+  state: z.string().nullable().optional(),
+  locality: z.string().nullable().optional()
 });
 
 export type TCertificateRequests = z.infer<typeof CertificateRequestsSchema>;

@@ -26,6 +26,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listOrgMemberships",
       tags: [ApiDocsTags.Organizations],
       description: "Return organization user memberships",
       security: [
@@ -57,13 +58,14 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      if (req.auth.actor !== ActorType.USER) return;
-      const users = await server.services.org.findAllOrgMembers(
-        req.permission.id,
-        req.params.organizationId,
-        req.permission.authMethod,
-        req.permission.orgId
-      );
+      const users = await server.services.org.findAllOrgMembers({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.params.organizationId,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
       return { users: users.map((el) => ({ ...el, status: el.status || OrgMembershipStatus.Accepted })) };
     }
   });
@@ -76,6 +78,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listOrgProjects",
       tags: [ApiDocsTags.Organizations],
       description: "Return projects in organization that user is apart of",
       security: [
@@ -126,6 +129,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "getOrgMembership",
       description: "Get organization user membership",
       security: [
         {
@@ -182,6 +186,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "updateOrgMembership",
       tags: [ApiDocsTags.Organizations],
       description: "Update organization user memberships",
       security: [
@@ -241,6 +246,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "deleteOrgMembership",
       tags: [ApiDocsTags.Organizations],
       description: "Delete organization user memberships",
       security: [
@@ -288,6 +294,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "bulkDeleteOrgMemberships",
       tags: [ApiDocsTags.Organizations],
       description: "Bulk delete organization user memberships",
       security: [
@@ -337,6 +344,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "listProjectMembershipsByOrgMembership",
       description: "Get project memberships given organization membership",
       security: [
         {
@@ -399,6 +407,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "createOrganization",
       body: z.object({
         name: GenericResourceNameSchema
       }),
@@ -429,6 +438,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteOrganization",
       params: z.object({
         organizationId: z.string().trim()
       }),
@@ -475,6 +485,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "upgradePrivilegeSystem",
       response: {
         200: z.object({
           organization: sanitizedOrganizationSchema

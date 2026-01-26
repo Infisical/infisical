@@ -58,7 +58,8 @@ export enum ProjectPermissionCmekActions {
   Encrypt = "encrypt",
   Decrypt = "decrypt",
   Sign = "sign",
-  Verify = "verify"
+  Verify = "verify",
+  ExportPrivateKey = "export-private-key"
 }
 
 export enum ProjectPermissionDynamicSecretActions {
@@ -114,6 +115,13 @@ export enum ProjectPermissionPkiTemplateActions {
   Delete = "delete",
   IssueCert = "issue-cert",
   ListCerts = "list-certs"
+}
+
+export enum ProjectPermissionCertificatePolicyActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
 }
 
 export enum ProjectPermissionPkiSubscriberActions {
@@ -293,6 +301,7 @@ export enum ProjectPermissionSub {
   PamAccounts = "pam-accounts",
   PamSessions = "pam-sessions",
   CertificateProfiles = "certificate-profiles",
+  CertificatePolicies = "certificate-policies",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
   McpEndpoints = "mcp-endpoints",
@@ -382,12 +391,16 @@ export type CertificateProfileSubjectFields = {
   slug: string;
 };
 
-export type CertificateTemplateV2SubjectFields = {
+export type CertificatePolicySubjectFields = {
   name: string;
 };
 
 export type AppConnectionSubjectFields = {
   connectionId: string;
+};
+
+export type McpEndpointSubjectFields = {
+  name: string;
 };
 
 export type PamAccountSubjectFields = {
@@ -517,7 +530,10 @@ export type ProjectPermissionSet =
       ProjectPermissionSub.PamAccounts | (ForcedSubject<ProjectPermissionSub.PamAccounts> & PamAccountSubjectFields)
     ]
   | [ProjectPermissionPamSessionActions, ProjectPermissionSub.PamSessions]
-  | [ProjectPermissionMcpEndpointActions, ProjectPermissionSub.McpEndpoints]
+  | [
+      ProjectPermissionMcpEndpointActions,
+      ProjectPermissionSub.McpEndpoints | (ForcedSubject<ProjectPermissionSub.McpEndpoints> & McpEndpointSubjectFields)
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.McpServers]
   | [ProjectPermissionActions, ProjectPermissionSub.McpActivityLogs]
   | [
@@ -525,6 +541,13 @@ export type ProjectPermissionSet =
       (
         | ProjectPermissionSub.CertificateProfiles
         | (ForcedSubject<ProjectPermissionSub.CertificateProfiles> & CertificateProfileSubjectFields)
+      )
+    ]
+  | [
+      ProjectPermissionCertificatePolicyActions,
+      (
+        | ProjectPermissionSub.CertificatePolicies
+        | (ForcedSubject<ProjectPermissionSub.CertificatePolicies> & CertificatePolicySubjectFields)
       )
     ]
   | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
@@ -761,6 +784,22 @@ const SshHostConditionSchema = z
   })
   .partial();
 
+const McpEndpointConditionSchema = z
+  .object({
+    name: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        })
+        .partial()
+    ])
+  })
+  .partial();
+
 const PkiSubscriberConditionSchema = z
   .object({
     name: z.union([
@@ -777,6 +816,22 @@ const PkiSubscriberConditionSchema = z
   .partial();
 
 const PkiTemplateConditionSchema = z
+  .object({
+    name: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        })
+        .partial()
+    ])
+  })
+  .partial();
+
+const CertificatePolicyConditionSchema = z
   .object({
     name: z.union([
       z.string(),
@@ -1136,9 +1191,13 @@ const GeneralPermissionSchema = [
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.McpEndpoints).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionMcpEndpointActions).describe(
       "Describe what action an entity can take."
-    )
+    ),
+    conditions: McpEndpointConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.McpServers).describe("The entity this permission pertains to."),
@@ -1328,6 +1387,16 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
       "Describe what action an entity can take."
     ),
     conditions: CertificateProfileConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.CertificatePolicies).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionCertificatePolicyActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: CertificatePolicyConditionSchema.describe(
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
   }),

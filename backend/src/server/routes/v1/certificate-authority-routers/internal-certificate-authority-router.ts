@@ -33,6 +33,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "getCaCsr",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get CA CSR",
       params: z.object({
@@ -80,6 +81,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "renewCaCertificate",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Perform CA certificate renewal",
       params: z.object({
@@ -251,6 +253,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "getCaCertificates",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get list of past and current CA certificates for a CA",
       params: z.object({
@@ -302,6 +305,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "getCaCertificate",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get current CA cert and cert chain of a CA",
       params: z.object({
@@ -412,6 +416,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "signIntermediateCa",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Create intermediate CA certificate from parent CA",
       params: z.object({
@@ -477,6 +482,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "importCaCertificate",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Import certificate and chain to CA",
       params: z.object({
@@ -531,6 +537,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "getCaCrls",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get list of CRLs of the CA",
       params: z.object({
@@ -580,6 +587,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     },
     schema: {
       hide: false,
+      operationId: "getCaCertificateDer",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get DER-encoded certificate of CA",
       params: z.object({

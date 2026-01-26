@@ -30,6 +30,7 @@ export const registerDatabricksConnectionRouter = async (server: FastifyZodProvi
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listDatabricksSecretScopes",
       params: z.object({
         connectionId: z.string().uuid()
       }),
@@ -59,6 +60,7 @@ export const registerDatabricksConnectionRouter = async (server: FastifyZodProvi
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listDatabricksServicePrincipals",
       params: z.object({
         connectionId: z.string().uuid()
       }),

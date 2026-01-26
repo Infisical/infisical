@@ -30,12 +30,14 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listOrganizations",
       response: {
         200: z.object({
           organizations: sanitizedOrganizationSchema
             .extend({
               orgAuthMethod: z.string(),
-              userRole: z.string()
+              userRole: z.string(),
+              userJoinedAt: z.date()
             })
             .array()
         })
@@ -55,6 +57,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getOrganizationById",
       params: z.object({
         organizationId: z.string().trim()
       }),
@@ -84,6 +87,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listOrganizationIntegrationAuthorizations",
       params: z.object({
         organizationId: z.string().trim()
       }),
@@ -114,6 +118,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listOrganizationAuditLogs",
       tags: [ApiDocsTags.AuditLogs],
       description: "Get all audit logs for an organization",
       querystring: z
@@ -236,6 +241,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listOrganizationUsers",
       params: z.object({
         organizationId: z.string().trim()
       }),
@@ -260,12 +266,13 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const users = await server.services.org.findAllOrgMembers(
-        req.permission.id,
-        req.params.organizationId,
-        req.permission.authMethod,
-        req.permission.orgId
-      );
+      const users = await server.services.org.findAllOrgMembers({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.params.organizationId,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
       return { users: users.map((el) => ({ ...el, status: el.status || OrgMembershipStatus.Accepted })) };
     }
   });
@@ -277,6 +284,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "updateOrganization",
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({
         name: GenericResourceNameSchema.optional(),
@@ -320,7 +328,29 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         blockDuplicateSecretSyncDestinations: z
           .boolean()
           .optional()
-          .describe("Block duplicate secret sync destinations across the organization")
+          .describe("Block duplicate secret sync destinations across the organization"),
+        secretShareBrandConfig: z
+          .object({
+            primaryColor: z
+              .string()
+              .refine(
+                (val) => !val || new RE2(/^#[0-9A-Fa-f]{6}$/).test(val),
+                "Primary color must be a valid hex color (e.g., #FF5733)"
+              )
+              .optional()
+              .or(z.literal("")),
+            secondaryColor: z
+              .string()
+              .refine(
+                (val) => !val || new RE2(/^#[0-9A-Fa-f]{6}$/).test(val),
+                "Secondary color must be a valid hex color (e.g., #FF5733)"
+              )
+              .optional()
+              .or(z.literal(""))
+          })
+          .nullable()
+          .optional()
+          .describe("Custom branding configuration for secret sharing pages")
       }),
       response: {
         200: z.object({
@@ -363,6 +393,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listOrganizationIncidentContacts",
       params: z.object({ organizationId: z.string().trim() }),
       response: {
         200: z.object({
@@ -389,6 +420,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "createOrganizationIncidentContact",
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({ email: z.string().email().trim() }),
       response: {
@@ -417,6 +449,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteOrganizationIncidentContact",
       params: z.object({ organizationId: z.string().trim(), incidentContactId: z.string().trim() }),
       response: {
         200: z.object({
@@ -441,22 +474,23 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/:organizationId/groups",
     schema: {
+      operationId: "listOrganizationGroups",
       params: z.object({
         organizationId: z.string().trim().describe(ORGANIZATIONS.LIST_GROUPS.organizationId)
       }),
       response: {
         200: z.object({
-          groups: GroupsSchema.merge(
-            z.object({
-              customRole: OrgRolesSchema.pick({
-                id: true,
-                name: true,
-                slug: true,
-                permissions: true,
-                description: true
-              }).optional()
-            })
-          ).array()
+          groups: GroupsSchema.extend({
+            role: z.string(),
+            roleId: z.string().nullish(),
+            customRole: OrgRolesSchema.pick({
+              id: true,
+              name: true,
+              slug: true,
+              permissions: true,
+              description: true
+            }).optional()
+          }).array()
         })
       }
     },
@@ -478,6 +512,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/users/available",
     schema: {
+      operationId: "listAvailableOrganizationUsers",
       response: {
         200: z.object({
           users: z
@@ -511,6 +546,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/identities/available",
     schema: {
+      operationId: "listAvailableOrganizationMachineIdentities",
       response: {
         200: z.object({
           identities: z

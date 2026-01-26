@@ -262,14 +262,17 @@ Supports conditions and permission inversion
 
 #### Subject: `cmek`
 
-| Action    | Description                           |
-| --------- | ------------------------------------- |
-| `read`    | View Customer-Managed Encryption Keys |
-| `create`  | Add new encryption keys               |
-| `edit`    | Modify key properties                 |
-| `delete`  | Remove encryption keys                |
-| `encrypt` | Use keys for encryption operations    |
-| `decrypt` | Use keys for decryption operations    |
+| Action               | Description                                                                 |
+| -------------------- | --------------------------------------------------------------------------- |
+| `read`               | View Customer-Managed Encryption Keys                                       |
+| `create`             | Add new encryption keys                                                     |
+| `edit`               | Modify key properties                                                       |
+| `delete`             | Remove encryption keys                                                      |
+| `encrypt`            | Use keys for encryption operations                                          |
+| `decrypt`            | Use keys for decryption operations                                          |
+| `sign`               | Use keys for signing operations                                             |
+| `verify`             | Use keys for signature verification operations                              |
+| `export-private-key` | Export key material (private key for asymmetric, secret key for symmetric)  |
 
 ### Public Key Infrastructure (PKI)
 
@@ -301,14 +304,14 @@ Supports conditions and permission inversion
 | `delete` | Remove certificate profiles     |
 | `issue-cert` | Issue new certificates |
 
-#### Subject: `certificate-templates`
+#### Subject: `certificate-policies`
 
 | Action   | Description                      |
 | -------- | -------------------------------- |
-| `read`   | View certificate templates       |
-| `create` | Create new certificate templates |
-| `edit`   | Modify template configurations   |
-| `delete` | Remove certificate templates     |
+| `read`   | View certificate policies         |
+| `create` | Create new certificate policies  |
+| `edit`   | Modify policy configurations     |
+| `delete` | Remove certificate policies      |
 
 #### Subject: `pki-alerts`
 
@@ -355,3 +358,20 @@ Supports conditions and permission inversion
 | ---------------- | -------------------------------------------- |
 | `read-configs`   | View Secret Scanning Project Configuration   |
 | `update-configs` | Update Secret Scanning Project Configuration |
+
+### Agent Sentinel
+
+#### Subject: `mcp-endpoints`
+
+Supports conditions and permission inversion.
+
+| Action    | Description                         |
+| --------- | ----------------------------------- |
+| `read`    | View MCP endpoints                  |
+| `create`  | Create new MCP endpoints            |
+| `edit`    | Modify MCP endpoint configurations  |
+| `delete`  | Remove MCP endpoints                |
+| `connect` | Connect AI clients to MCP endpoints |
+
+**Condition Properties:**
+- `name`: Control access based on endpoint name

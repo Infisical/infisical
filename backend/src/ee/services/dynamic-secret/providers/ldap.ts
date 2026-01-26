@@ -5,12 +5,13 @@ import { customAlphabet } from "nanoid";
 import RE2 from "re2";
 import { z } from "zod";
 
+import { TDynamicSecrets } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
-import { alphaNumericNanoId } from "@app/lib/nanoid";
 
+import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { LdapCredentialType, LdapSchema, TDynamicProviderFns } from "./models";
-import { compileUsernameTemplate } from "./templateUtils";
+import { generateUsername } from "./templateUtils";
 
 const generatePassword = () => {
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*$#";
@@ -22,16 +23,6 @@ const encodePassword = (password?: string) => {
   const utf16lePassword = Buffer.from(quotedPassword, "utf16le");
   const base64Password = utf16lePassword.toString("base64");
   return base64Password;
-};
-
-const generateUsername = (usernameTemplate?: string | null, identity?: { name: string }) => {
-  const randomUsername = alphaNumericNanoId(32); // Username must start with an ascii letter, so we prepend the username with "inf-"
-  if (!usernameTemplate) return randomUsername;
-  return compileUsernameTemplate({
-    usernameTemplate,
-    randomUsername,
-    identity
-  });
 };
 
 const generateLDIF = ({
@@ -208,8 +199,13 @@ export const LdapProvider = (): TDynamicProviderFns => {
     return dnArray;
   };
 
-  const create = async (data: { inputs: unknown; usernameTemplate?: string | null; identity?: { name: string } }) => {
-    const { inputs, usernameTemplate, identity } = data;
+  const create = async (data: {
+    inputs: unknown;
+    usernameTemplate?: string | null;
+    identity: ActorIdentityAttributes;
+    dynamicSecret: TDynamicSecrets;
+  }) => {
+    const { inputs, usernameTemplate, identity, dynamicSecret } = data;
     const providerInputs = await validateProviderInputs(inputs);
     const client = await $getClient(providerInputs);
 
@@ -240,7 +236,11 @@ export const LdapProvider = (): TDynamicProviderFns => {
         });
       }
     } else {
-      const username = generateUsername(usernameTemplate, identity);
+      const username = await generateUsername(usernameTemplate, {
+        decryptedDynamicSecretInputs: inputs,
+        identity,
+        dynamicSecret
+      });
       const password = generatePassword();
       const generatedLdif = generateLDIF({ username, password, ldifTemplate: providerInputs.creationLdif });
 

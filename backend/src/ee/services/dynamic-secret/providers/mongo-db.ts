@@ -2,33 +2,24 @@ import { MongoClient } from "mongodb";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
+import { TDynamicSecrets } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
-import { alphaNumericNanoId } from "@app/lib/nanoid";
 
+import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretMongoDBSchema, TDynamicProviderFns } from "./models";
-import { compileUsernameTemplate } from "./templateUtils";
+import { generateUsername } from "./templateUtils";
 
 const generatePassword = (size = 48) => {
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*";
   return customAlphabet(charset, 48)(size);
 };
 
-const generateUsername = (usernameTemplate?: string | null, identity?: { name: string }) => {
-  const randomUsername = alphaNumericNanoId(32);
-  if (!usernameTemplate) return randomUsername;
-  return compileUsernameTemplate({
-    usernameTemplate,
-    randomUsername,
-    identity
-  });
-};
-
 export const MongoDBProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretMongoDBSchema.parseAsync(inputs);
-    await verifyHostInputValidity(providerInputs.host);
+    await verifyHostInputValidity({ host: providerInputs.host, isDynamicSecret: true });
     return { ...providerInputs };
   };
 
@@ -73,15 +64,27 @@ export const MongoDBProvider = (): TDynamicProviderFns => {
     }
   };
 
-  const create = async (data: { inputs: unknown; usernameTemplate?: string | null; identity?: { name: string } }) => {
-    const { inputs, usernameTemplate, identity } = data;
+  const create = async (data: {
+    inputs: unknown;
+    usernameTemplate?: string | null;
+    identity: ActorIdentityAttributes;
+    dynamicSecret: TDynamicSecrets;
+  }) => {
+    const { inputs, usernameTemplate, identity, dynamicSecret } = data;
     const providerInputs = await validateProviderInputs(inputs);
     const client = await $getClient(providerInputs);
 
-    const username = generateUsername(usernameTemplate, identity);
-    const password = generatePassword();
+    let username = "";
+    let password = "";
 
     try {
+      username = await generateUsername(usernameTemplate, {
+        decryptedDynamicSecretInputs: inputs,
+        dynamicSecret,
+        identity
+      });
+      password = generatePassword();
+
       const db = client.db(providerInputs.database);
 
       await db.command({

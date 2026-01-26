@@ -4,6 +4,7 @@ import { z } from "zod";
 import { SecretApprovalRequestsSchema, SecretType, ServiceTokenScopes } from "@app/db/schemas";
 import { EventType, SecretApprovalEvent, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, RAW_SECRETS } from "@app/lib/api-docs";
+import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { secretsLimit } from "@app/server/config/rateLimiter";
@@ -12,7 +13,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
-import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
+import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretProtectionType } from "@app/services/secret/secret-types";
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -48,6 +49,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "listSecretsV4",
       tags: [ApiDocsTags.Secrets],
       description: "List secrets",
       security: [
@@ -136,7 +138,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             .extend({
               secretPath: z.string().optional(),
               secretValueHidden: z.boolean(),
-              secretMetadata: ResourceMetadataSchema.optional(),
+              secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
               tags: SanitizedTagSchema.array().optional()
             })
             .array(),
@@ -149,7 +151,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
                 .omit({ createdAt: true, updatedAt: true })
                 .extend({
                   secretValueHidden: z.boolean(),
-                  secretMetadata: ResourceMetadataSchema.optional()
+                  secretMetadata: ResourceMetadataWithEncryptionSchema.optional()
                 })
                 .array()
             })
@@ -189,7 +191,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         recursive: req.query.recursive,
         tagSlugs: req.query.tagSlugs
       });
-
       await server.services.auditLog.createAuditLog({
         projectId,
         ...req.auditLogInfo,
@@ -231,6 +232,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "getSecretByIdV4",
       tags: [ApiDocsTags.Secrets],
       params: z.object({
         secretId: z.string()
@@ -240,7 +242,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           secret: secretRawSchema.extend({
             secretPath: z.string(),
             tags: SanitizedTagSchema.array().optional(),
-            secretMetadata: ResourceMetadataSchema.optional()
+            secretMetadata: ResourceMetadataWithEncryptionSchema.optional()
           })
         })
       }
@@ -268,6 +270,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "getSecretByNameV4",
       tags: [ApiDocsTags.Secrets],
       description: "Get a secret by name",
       security: [
@@ -294,7 +297,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secretValueHidden: z.boolean(),
             secretPath: z.string(),
             tags: SanitizedTagSchema.array().optional(),
-            secretMetadata: ResourceMetadataSchema.optional()
+            secretMetadata: ResourceMetadataWithEncryptionSchema.optional()
           })
         })
       }
@@ -344,7 +347,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secretId: secret.id,
             secretKey: req.params.secretName,
             secretVersion: secret.version,
-            secretMetadata: secret.secretMetadata
+            secretMetadata: secret.secretMetadata?.map((meta) => ({
+              key: meta.key,
+              isEncrypted: meta.isEncrypted,
+              value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value
+            }))
           }
         }
       });
@@ -376,6 +383,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "createSecretV4",
       tags: [ApiDocsTags.Secrets],
       description: "Create secret",
       security: [
@@ -400,7 +408,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
           .describe(RAW_SECRETS.CREATE.secretValue),
         secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
-        secretMetadata: ResourceMetadataSchema.optional(),
+        secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
         tagIds: z.string().array().optional().describe(RAW_SECRETS.CREATE.tagIds),
         skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
         type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.CREATE.type),
@@ -478,7 +486,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secretId: secret.id,
             secretKey: req.params.secretName,
             secretVersion: secret.version,
-            secretMetadata: req.body.secretMetadata,
+            secretMetadata: req.body.secretMetadata?.map((meta) => ({
+              key: meta.key,
+              isEncrypted: meta.isEncrypted,
+              value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value
+            })),
             secretTags: secret.tags?.map((tag) => tag.name)
           }
         }
@@ -510,6 +522,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "updateSecretV4",
       tags: [ApiDocsTags.Secrets],
       description: "Update secret",
       security: [
@@ -538,7 +551,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.UPDATE.type),
         tagIds: z.string().array().optional().describe(RAW_SECRETS.UPDATE.tagIds),
         metadata: z.record(z.string()).optional(),
-        secretMetadata: ResourceMetadataSchema.optional(),
+        secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
         secretReminderNote: z
           .string()
           .max(1024, "Secret reminder note cannot exceed 1024 characters")
@@ -622,7 +635,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secretId: secret.id,
             secretKey: req.params.secretName,
             secretVersion: secret.version,
-            secretMetadata: req.body.secretMetadata,
+            secretMetadata: req.body.secretMetadata?.map((meta) => ({
+              key: meta.key,
+              isEncrypted: meta.isEncrypted,
+              value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value
+            })),
             secretTags: secret.tags?.map((tag) => tag.name)
           }
         }
@@ -653,6 +670,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "deleteSecretV4",
       tags: [ApiDocsTags.Secrets],
       description: "Delete secret",
       security: [
@@ -762,6 +780,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "moveSecretsV4",
       tags: [ApiDocsTags.Secrets],
       body: z.object({
         projectId: z.string().trim(),
@@ -819,6 +838,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "createManySecretsV4",
       tags: [ApiDocsTags.Secrets],
       description: "Create many secrets",
       security: [
@@ -845,7 +865,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
             skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
             metadata: z.record(z.string()).optional(),
-            secretMetadata: ResourceMetadataSchema.optional(),
+            secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
             tagIds: z.string().array().optional().describe(RAW_SECRETS.CREATE.tagIds)
           })
           .array()
@@ -913,7 +933,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               secretId: secret.id,
               secretKey: secret.secretKey,
               secretVersion: secret.version,
-              secretMetadata: secretMetadataMap.get(secret.secretKey),
+              secretMetadata: secretMetadataMap.get(secret.secretKey)?.map((meta) => ({
+                key: meta.key,
+                isEncrypted: meta.isEncrypted,
+                value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value
+              })),
               secretTags: secret.tags?.map((tag) => tag.name)
             }))
           }
@@ -945,6 +969,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "updateManySecretsV4",
       tags: [ApiDocsTags.Secrets],
       description: "Update many secrets",
       security: [
@@ -990,7 +1015,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               .optional()
               .nullable()
               .describe(RAW_SECRETS.UPDATE.secretReminderNote),
-            secretMetadata: ResourceMetadataSchema.optional(),
+            secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
             secretReminderRepeatDays: z
               .number()
               .optional()
@@ -1066,7 +1091,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
                 secretPath: secret.secretPath,
                 secretKey: secret.secretKey,
                 secretVersion: secret.version,
-                secretMetadata: secretMetadataMap.get(secret.secretKey),
+                secretMetadata: secretMetadataMap.get(secret.secretKey)?.map((meta) => ({
+                  key: meta.key,
+                  isEncrypted: meta.isEncrypted,
+                  value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value
+                })),
                 secretTags: secret.tags?.map((tag) => tag.name)
               }))
           }
@@ -1087,7 +1116,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
                 secretPath: secret.secretPath,
                 secretKey: secret.secretKey,
                 secretVersion: secret.version,
-                secretMetadata: secretMetadataMap.get(secret.secretKey)
+                secretMetadata: secretMetadataMap.get(secret.secretKey)?.filter((meta) => !meta.isEncrypted)
               }))
             }
           }
@@ -1119,6 +1148,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "deleteManySecretsV4",
       tags: [ApiDocsTags.Secrets],
       description: "Delete many secrets",
       security: [
@@ -1235,6 +1265,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "getSecretReferenceTreeV4",
       tags: [ApiDocsTags.Secrets],
       description: "Get secret reference tree",
       security: [
@@ -1303,6 +1334,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       rateLimit: secretsLimit
     },
     schema: {
+      operationId: "backfillSecretReferencesV4",
       description: "Backfill secret references",
       security: [
         {

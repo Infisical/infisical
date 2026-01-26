@@ -148,7 +148,7 @@ export const dynamicSecretLeaseServiceFactory = ({
         if (user) {
           identity.name = extractEmailUsername(user.username);
         }
-      } else if (actor === ActorType.Machine) {
+      } else if (actor === ActorType.IDENTITY) {
         const machineIdentity = await identityDAL.findById(actorId);
         if (machineIdentity) {
           identity.name = machineIdentity.name;
@@ -159,6 +159,7 @@ export const dynamicSecretLeaseServiceFactory = ({
         expireAt: expireAt.getTime(),
         usernameTemplate: dynamicSecretCfg.usernameTemplate,
         identity,
+        dynamicSecret: dynamicSecretCfg,
         metadata: { projectId },
         config
       });

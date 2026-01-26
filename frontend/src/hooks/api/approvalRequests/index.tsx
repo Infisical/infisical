@@ -7,9 +7,11 @@ export {
 export { approvalRequestQuery } from "./queries";
 export {
   type ApprovalRequestApproval,
+  ApprovalRequestApprovalDecision,
   ApprovalRequestStatus,
   type ApprovalRequestStep,
   ApprovalRequestStepStatus,
+  type CertRequestRequestData,
   type PamAccessRequestData,
   type TApprovalRequest,
   type TApproveApprovalRequestDTO,

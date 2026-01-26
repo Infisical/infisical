@@ -6,6 +6,7 @@ import {
   faCheck,
   faCheckCircle,
   faCopy,
+  faDownload,
   faEdit,
   faEllipsis,
   faFileSignature,
@@ -59,11 +60,17 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { usePagination, usePopUp, useResetPageHelper, useTimedReset } from "@app/hooks";
 import { useGetCmeksByProjectId, useUpdateCmek } from "@app/hooks/api/cmeks";
-import { CmekOrderBy, KmsKeyUsage, TCmek } from "@app/hooks/api/cmeks/types";
+import {
+  AsymmetricKeyAlgorithm,
+  CmekOrderBy,
+  KmsKeyUsage,
+  TCmek
+} from "@app/hooks/api/cmeks/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 
 import { CmekDecryptModal } from "./CmekDecryptModal";
 import { CmekEncryptModal } from "./CmekEncryptModal";
+import { CmekExportKeyModal } from "./CmekExportKeyModal";
 import { CmekModal } from "./CmekModal";
 import { CmekSignModal } from "./CmekSignModal";
 import { CmekVerifyModal } from "./CmekVerifyModal";
@@ -140,7 +147,8 @@ export const CmekTable = () => {
     "encryptData",
     "decryptData",
     "signData",
-    "verifyData"
+    "verifyData",
+    "exportKey"
   ] as const);
 
   const handleSort = () => {
@@ -193,6 +201,17 @@ export const CmekTable = () => {
     ProjectPermissionCmekActions.Verify,
     ProjectPermissionSub.Cmek
   );
+
+  const cannotExportPrivateKey = permission.cannot(
+    ProjectPermissionCmekActions.ExportPrivateKey,
+    ProjectPermissionSub.Cmek
+  );
+
+  const cannotReadKey = permission.cannot(
+    ProjectPermissionCmekActions.Read,
+    ProjectPermissionSub.Cmek
+  );
+
   return (
     <motion.div
       key="kms-keys-tab"
@@ -443,6 +462,41 @@ export const CmekTable = () => {
                                 </>
                               )}
 
+                              {(() => {
+                                // For asymmetric keys, user can export if they have Read OR ExportPrivateKey permission
+                                // For symmetric keys, user needs ExportPrivateKey permission
+                                const isAsymmetricKey = Object.values(
+                                  AsymmetricKeyAlgorithm
+                                ).includes(encryptionAlgorithm as AsymmetricKeyAlgorithm);
+                                const cannotExportKey = isAsymmetricKey
+                                  ? cannotExportPrivateKey && cannotReadKey
+                                  : cannotExportPrivateKey;
+
+                                return (
+                                  <Tooltip
+                                    content={
+                                      // eslint-disable-next-line no-nested-ternary
+                                      cannotExportKey
+                                        ? "Access Restricted"
+                                        : isDisabled
+                                          ? "Key Disabled"
+                                          : ""
+                                    }
+                                    position="left"
+                                  >
+                                    <div>
+                                      <DropdownMenuItem
+                                        onClick={() => handlePopUpOpen("exportKey", cmek)}
+                                        icon={<FontAwesomeIcon icon={faDownload} />}
+                                        iconPos="left"
+                                        isDisabled={cannotExportKey || isDisabled}
+                                      >
+                                        Export Key
+                                      </DropdownMenuItem>
+                                    </div>
+                                  </Tooltip>
+                                );
+                              })()}
                               <Tooltip
                                 content={cannotEditKey ? "Access Restricted" : ""}
                                 position="left"
@@ -550,6 +604,11 @@ export const CmekTable = () => {
           isOpen={popUp.verifyData.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("verifyData", isOpen)}
           cmek={popUp.verifyData.data as TCmek}
+        />
+        <CmekExportKeyModal
+          isOpen={popUp.exportKey.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("exportKey", isOpen)}
+          cmek={popUp.exportKey.data as TCmek}
         />
       </div>
     </motion.div>

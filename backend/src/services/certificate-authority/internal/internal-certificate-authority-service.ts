@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 /* eslint-disable no-bitwise */
 import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
@@ -144,6 +145,75 @@ export const internalCertificateAuthorityServiceFactory = ({
         message: `Requested signature algorithm ${signatureAlgorithm} is not compatible with CA key algorithm ${caKeyAlg}. CA can only sign with ${caSupports}-based signature algorithms.`
       });
     }
+  };
+
+  /**
+   * Validates CA path length constraints and creates the BasicConstraints extension.
+   * This handles both policy-level validation and issuing CA hierarchy validation.
+   */
+  const $createBasicConstraintsExtension = ({
+    basicConstraints,
+    pathLength,
+    caCertObj
+  }: {
+    basicConstraints?: { isCA: boolean; pathLength?: number } | null;
+    pathLength?: number | null;
+    caCertObj: x509.X509Certificate;
+  }): x509.BasicConstraintsExtension => {
+    const shouldIssueCaCertificate = basicConstraints !== undefined && basicConstraints !== null;
+
+    if (!shouldIssueCaCertificate) {
+      return new x509.BasicConstraintsExtension(false);
+    }
+
+    // Validate against policy's maxPathLength
+    const policyMaxPathLength = basicConstraints.pathLength;
+    if (policyMaxPathLength !== undefined && policyMaxPathLength !== null && policyMaxPathLength !== -1) {
+      if (pathLength === undefined || pathLength === null) {
+        throw new BadRequestError({
+          message: `Path length is required when issuing CA certificates because the policy only allows a maximum path length of ${policyMaxPathLength}.`
+        });
+      }
+      if (pathLength > policyMaxPathLength) {
+        throw new BadRequestError({
+          message: `Path length (${pathLength}) exceeds policy's maximum allowed path length (${policyMaxPathLength})`
+        });
+      }
+    }
+
+    // Validate against issuing CA's BasicConstraints
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    const issuingCaBasicConstraints = caCertObj.getExtension("2.5.29.19") as x509.BasicConstraintsExtension | null;
+
+    if (issuingCaBasicConstraints) {
+      const issuingCaPathLength = issuingCaBasicConstraints.pathLength;
+
+      if (issuingCaPathLength === 0) {
+        throw new BadRequestError({
+          message: "Issuing CA cannot issue subordinate CA certificates (path length is 0)"
+        });
+      }
+
+      if (issuingCaPathLength !== undefined && pathLength !== undefined && pathLength !== null) {
+        if (pathLength >= issuingCaPathLength) {
+          throw new BadRequestError({
+            message: `Path length (${pathLength}) must be less than issuing CA's path length (${issuingCaPathLength})`
+          });
+        }
+      }
+
+      const effectivePathLength =
+        pathLength !== undefined && pathLength !== null
+          ? pathLength
+          : issuingCaPathLength !== undefined
+            ? issuingCaPathLength - 1
+            : undefined;
+
+      return new x509.BasicConstraintsExtension(true, effectivePathLength, true);
+    }
+
+    const effectivePathLength = pathLength !== undefined && pathLength !== null ? pathLength : undefined;
+    return new x509.BasicConstraintsExtension(true, effectivePathLength, true);
   };
 
   const createCa = async ({
@@ -1401,6 +1471,13 @@ export const internalCertificateAuthorityServiceFactory = ({
     keyAlgorithm,
     isFromProfile,
     internal = false,
+    basicConstraints,
+    pathLength,
+    organization,
+    country,
+    state,
+    locality,
+    ou,
     tx
   }: TIssueCertFromCaDTO): Promise<TIssueCertFromCaResponse> => {
     let ca: TCertificateAuthorityWithAssociatedCa | undefined;
@@ -1432,11 +1509,14 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     if (!internal) {
+      if (!actor || !actorId || !actorOrgId) {
+        throw new BadRequestError({ message: "Actor is required" });
+      }
       const { permission } = await permissionService.getProjectPermission({
         actor,
         actorId,
         projectId: ca.projectId,
-        actorAuthMethod,
+        actorAuthMethod: actorAuthMethod || null,
         actorOrgId,
         actionProjectType: ActionProjectType.CertificateManager
       });
@@ -1518,7 +1598,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const keyGenAlg = keyAlgorithmToAlgCfg(effectiveKeyAlgorithm);
     const leafKeys = await crypto.nativeCrypto.subtle.generateKey(keyGenAlg, true, ["sign", "verify"]);
 
-    if (signatureAlgorithm) {
+    if (signatureAlgorithm && ca.internalCa.keyAlgorithm) {
       $checkSignature(ca.internalCa.keyAlgorithm, signatureAlgorithm.split("-")[0], signatureAlgorithm);
     }
 
@@ -1527,8 +1607,17 @@ export const internalCertificateAuthorityServiceFactory = ({
       ? signatureAlgorithmToAlgCfg(signatureAlgorithm, ca.internalCa.keyAlgorithm as CertKeyAlgorithm)
       : keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
 
+    const leafDn = createDistinguishedName({
+      commonName,
+      organization,
+      ou,
+      country,
+      province: state,
+      locality
+    });
+
     const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
-      name: `CN=${commonName}`,
+      name: leafDn,
       keys: leafKeys,
       signingAlgorithm: keyGenAlg,
       extensions: [
@@ -1553,8 +1642,14 @@ export const internalCertificateAuthorityServiceFactory = ({
     const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/crl/${caCrl.id}/der`;
     const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${caCert.id}/der`;
 
+    const basicConstraintsExtension = $createBasicConstraintsExtension({
+      basicConstraints,
+      pathLength,
+      caCertObj
+    });
+
     const extensions: x509.Extension[] = [
-      new x509.BasicConstraintsExtension(false),
+      basicConstraintsExtension,
       new x509.CRLDistributionPointsExtension([distributionPointUrl]),
       await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
       await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey),
@@ -1779,6 +1874,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       extendedKeyUsages,
       signatureAlgorithm,
       keyAlgorithm,
+      basicConstraints,
+      pathLength,
       tx
     } = dto;
 
@@ -1891,7 +1988,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       throw new BadRequestError({ message: "notAfter date is after CA certificate's notAfter date" });
     }
 
-    if (signatureAlgorithm) {
+    if (signatureAlgorithm && ca.internalCa.keyAlgorithm) {
       $checkSignature(ca.internalCa.keyAlgorithm, signatureAlgorithm.split("-")[0], signatureAlgorithm);
     }
 
@@ -1918,8 +2015,15 @@ export const internalCertificateAuthorityServiceFactory = ({
     const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/crl/${caCrl.id}/der`;
 
     const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${caCert.id}/der`;
+
+    const basicConstraintsExtension = $createBasicConstraintsExtension({
+      basicConstraints,
+      pathLength,
+      caCertObj
+    });
+
     const extensions: x509.Extension[] = [
-      new x509.BasicConstraintsExtension(false),
+      basicConstraintsExtension,
       await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
       await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey),
       new x509.CRLDistributionPointsExtension([distributionPointUrl]),

@@ -30,6 +30,7 @@ export const registerGitHubConnectionRouter = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listGitHubRepositories",
       params: z.object({
         connectionId: z.string().uuid()
       }),
@@ -58,6 +59,7 @@ export const registerGitHubConnectionRouter = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listGitHubOrganizations",
       params: z.object({
         connectionId: z.string().uuid()
       }),
@@ -84,6 +86,7 @@ export const registerGitHubConnectionRouter = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listGitHubEnvironments",
       params: z.object({
         connectionId: z.string().uuid()
       }),

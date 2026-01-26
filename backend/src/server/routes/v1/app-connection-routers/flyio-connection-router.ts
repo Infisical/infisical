@@ -29,6 +29,7 @@ export const registerFlyioConnectionRouter = async (server: FastifyZodProvider) 
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listFlyioApps",
       params: z.object({
         connectionId: z.string().uuid()
       }),

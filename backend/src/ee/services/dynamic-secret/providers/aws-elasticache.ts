@@ -12,14 +12,16 @@ import handlebars from "handlebars";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
+import { TDynamicSecrets } from "@app/db/schemas";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
+import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { DynamicSecretAwsElastiCacheSchema, TDynamicProviderFns } from "./models";
-import { compileUsernameTemplate } from "./templateUtils";
+import { generateUsername } from "./templateUtils";
 
 const CreateElastiCacheUserSchema = z.object({
   UserId: z.string().trim().min(1),
@@ -139,17 +141,6 @@ const generatePassword = () => {
   return customAlphabet(charset, 64)();
 };
 
-const generateUsername = (usernameTemplate?: string | null, identity?: { name: string }) => {
-  const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-";
-  const randomUsername = `inf-${customAlphabet(charset, 32)()}`;
-  if (!usernameTemplate) return randomUsername;
-  return compileUsernameTemplate({
-    usernameTemplate,
-    randomUsername,
-    identity
-  });
-};
-
 export const AwsElastiCacheDatabaseProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = DynamicSecretAwsElastiCacheSchema.parse(inputs);
@@ -200,17 +191,23 @@ export const AwsElastiCacheDatabaseProvider = (): TDynamicProviderFns => {
     inputs: unknown;
     expireAt: number;
     usernameTemplate?: string | null;
-    identity?: {
-      name: string;
-    };
+    identity: ActorIdentityAttributes;
+    dynamicSecret: TDynamicSecrets;
   }) => {
-    const { inputs, expireAt, usernameTemplate, identity } = data;
+    const { inputs, expireAt, usernameTemplate, identity, dynamicSecret } = data;
     const providerInputs = await validateProviderInputs(inputs);
     if (!(await validateConnection(providerInputs))) {
       throw new BadRequestError({ message: "Failed to establish connection" });
     }
 
-    const leaseUsername = generateUsername(usernameTemplate, identity);
+    const leaseUsername = await generateUsername(usernameTemplate, {
+      decryptedDynamicSecretInputs: inputs,
+      dynamicSecret,
+      identity,
+
+      usernameCharset: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-",
+      usernamePrefix: "inf-"
+    });
     const leasePassword = generatePassword();
     const leaseExpiration = new Date(expireAt).toISOString();
 

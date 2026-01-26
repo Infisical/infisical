@@ -55,6 +55,7 @@ import { TSshHostGroupServiceFactory } from "@app/ee/services/ssh-host-group/ssh
 import { TSubOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
 import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-types";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
+import { TAccountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { TAdditionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
 import { TApiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -68,10 +69,10 @@ import { TCertificateServiceFactory } from "@app/services/certificate/certificat
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificateEstV3ServiceFactory } from "@app/services/certificate-est-v3/certificate-est-v3-service";
+import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileServiceFactory } from "@app/services/certificate-profile/certificate-profile-service";
 import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
 import { TCertificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
-import { TCertificateTemplateV2ServiceFactory } from "@app/services/certificate-template-v2/certificate-template-v2-service";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TCmekServiceFactory } from "@app/services/cmek/cmek-service";
 import { TConvertorServiceFactory } from "@app/services/convertor/convertor-service";
@@ -241,6 +242,7 @@ declare module "fastify" {
     services: {
       login: TAuthLoginFactory;
       password: TAuthPasswordFactory;
+      accountRecovery: TAccountRecoveryServiceFactory;
       signup: TAuthSignupFactory;
       authToken: TAuthTokenServiceFactory;
       permission: TPermissionServiceFactory;
@@ -297,7 +299,7 @@ declare module "fastify" {
       certificateV3: TCertificateV3ServiceFactory;
       certificateRequest: TCertificateRequestServiceFactory;
       certificateTemplate: TCertificateTemplateServiceFactory;
-      certificateTemplateV2: TCertificateTemplateV2ServiceFactory;
+      certificatePolicy: TCertificatePolicyServiceFactory;
       certificateProfile: TCertificateProfileServiceFactory;
       sshCertificateAuthority: TSshCertificateAuthorityServiceFactory;
       sshCertificateTemplate: TSshCertificateTemplateServiceFactory;

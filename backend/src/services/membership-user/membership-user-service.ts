@@ -13,6 +13,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
+import { isDisposableEmail } from "@app/lib/validator";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { AuthMethod } from "../auth/auth-type";
@@ -20,10 +21,13 @@ import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { deleteOrgMembershipsFn } from "../org/org-fns";
+import { isCustomOrgRole } from "../org/org-role-fns";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TSmtpService } from "../smtp/smtp-service";
+import { getServerCfg } from "../super-admin/super-admin-service";
+import { LoginMethod } from "../super-admin/super-admin-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TMembershipUserDALFactory } from "./membership-user-dal";
@@ -163,7 +167,22 @@ export const membershipUserServiceFactory = ({
     // If roles array is empty and scope is Organization, use org's default role
     let rolesToUse = data.roles;
     if (data.roles.length === 0 && scopeData.scope === AccessScope.Organization) {
-      const defaultRole = orgDetails.defaultMembershipRole || OrgMembershipRole.NoAccess;
+      const defaultMembershipRole = orgDetails.defaultMembershipRole || OrgMembershipRole.NoAccess;
+
+      let defaultRole: string;
+      if (isCustomOrgRole(defaultMembershipRole)) {
+        const customRoles = await roleDAL.find({
+          id: defaultMembershipRole,
+          orgId: dto.permission.orgId
+        });
+        if (customRoles.length === 0) {
+          throw new NotFoundError({ message: "Default custom role not found" });
+        }
+        defaultRole = customRoles[0].slug;
+      } else {
+        defaultRole = defaultMembershipRole;
+      }
+
       rolesToUse = [{ isTemporary: false, role: defaultRole }];
     }
 
@@ -187,6 +206,13 @@ export const membershipUserServiceFactory = ({
       });
     }
 
+    const isEmailInvalid = await isDisposableEmail(data.usernames);
+    if (isEmailInvalid) {
+      throw new BadRequestError({
+        message: "Disposable emails are not allowed"
+      });
+    }
+
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     const users = await $getUsers(dto.data.usernames);
     const existingMemberships = await membershipUserDAL.find({
@@ -200,12 +226,16 @@ export const membershipUserServiceFactory = ({
     if (existingMemberships.length === users.length) return { memberships: [] };
     const isSubOrganization = Boolean(orgDetails.rootOrgId);
 
+    const serverCfg = await getServerCfg();
+    const isEmailLoginEnabled =
+      !serverCfg.enabledLoginMethods || serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL);
+
     const newMembershipUsers = users.filter((user) => !existingMemberships?.find((el) => el.actorUserId === user.id));
     await factory.onCreateMembershipUserGuard(dto, newMembershipUsers);
     const newMemberships = newMembershipUsers.map((user) => {
       let status: OrgMembershipStatus | undefined;
       if (scopeData.scope === AccessScope.Organization) {
-        if (isSubOrganization) {
+        if (isSubOrganization || !isEmailLoginEnabled) {
           status = OrgMembershipStatus.Accepted;
         } else {
           status = OrgMembershipStatus.Invited;

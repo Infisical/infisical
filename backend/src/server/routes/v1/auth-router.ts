@@ -15,6 +15,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
       rateLimit: authRateLimit
     },
     schema: {
+      operationId: "logout",
       response: {
         200: z.object({
           message: z.string()
@@ -61,6 +62,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "checkAuth",
       response: {
         200: z.object({
           message: z.literal("Authenticated")
@@ -78,6 +80,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "refreshAuthToken",
       response: {
         200: z.object({
           token: z.string(),

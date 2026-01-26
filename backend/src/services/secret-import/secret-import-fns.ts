@@ -3,7 +3,7 @@ import RE2 from "re2";
 import { SecretType, TSecretImports, TSecrets, TSecretsV2 } from "@app/db/schemas";
 import { groupBy, unique } from "@app/lib/fn";
 
-import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
+import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -50,7 +50,7 @@ type TSecretImportSecretsV2 = {
     secretValue: string;
     secretValueHidden: boolean;
     secretComment: string;
-    secretMetadata?: ResourceMetadataDTO;
+    secretMetadata?: ResourceMetadataWithEncryptionDTO;
   })[];
 };
 
@@ -320,6 +320,11 @@ export const fnSecretsV2FromImports = async ({
         .map((item) => ({
           ...item,
           secretKey: item.key,
+          secretMetadata: item.secretMetadata.map((metadata) => ({
+            key: metadata.key,
+            value: metadata.encryptedValue ? decryptor(metadata.encryptedValue) : metadata.value || "",
+            isEncrypted: Boolean(metadata.encryptedValue)
+          })),
           secretValue: viewSecretValue ? decryptor(item.encryptedValue) : INFISICAL_SECRET_VALUE_HIDDEN_MASK,
           secretValueHidden: !viewSecretValue,
           secretTags: item.tags,

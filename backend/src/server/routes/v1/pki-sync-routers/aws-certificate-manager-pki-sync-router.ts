@@ -8,7 +8,10 @@ import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 
 import { registerSyncPkiEndpoints } from "./pki-sync-endpoints";
 
-export const registerAwsCertificateManagerPkiSyncRouter = async (server: FastifyZodProvider) =>
+export const registerAwsCertificateManagerPkiSyncRouter = async (
+  server: FastifyZodProvider,
+  enableOperationId: boolean = true
+) =>
   registerSyncPkiEndpoints({
     destination: PkiSync.AwsCertificateManager,
     server,
@@ -18,5 +21,6 @@ export const registerAwsCertificateManagerPkiSyncRouter = async (server: Fastify
     syncOptions: {
       canImportCertificates: AWS_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION.canImportCertificates,
       canRemoveCertificates: AWS_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION.canRemoveCertificates
-    }
+    },
+    enableOperationId
   });

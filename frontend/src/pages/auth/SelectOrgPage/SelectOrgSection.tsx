@@ -5,7 +5,7 @@ import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import axios from "axios";
-import { addSeconds, formatISO } from "date-fns";
+import { addSeconds, format, formatISO } from "date-fns";
 import { jwtDecode } from "jwt-decode";
 
 import { Mfa } from "@app/components/auth/Mfa";
@@ -321,13 +321,18 @@ export const SelectOrganizationSection = () => {
                   <div
                     onClick={() => handleSelectOrganization(org)}
                     key={org.id}
-                    className="group flex cursor-pointer items-center justify-between rounded-md bg-mineshaft-700 px-4 py-3 text-gray-200 capitalize shadow-md transition-colors hover:bg-mineshaft-600"
+                    className="group flex cursor-pointer items-center justify-between rounded-md border border-border bg-mineshaft-700 px-4 py-3 text-gray-200 capitalize shadow-md transition-colors hover:bg-mineshaft-600"
                   >
-                    <p className="truncate transition-colors">{org.name}</p>
+                    <div className="flex flex-col items-start">
+                      <p className="truncate transition-colors">{org.name}</p>
+                      <p className="text-xs text-mineshaft-400">
+                        Member since {format(new Date(org.userJoinedAt), "MMM d yyyy")}
+                      </p>
+                    </div>
 
                     <FontAwesomeIcon
                       icon={faArrowRight}
-                      className="text-gray-400 transition-all group-hover:translate-x-2 group-hover:text-primary-500"
+                      className="text-gray-400 transition-all group-hover:translate-x-1 group-hover:text-primary-500"
                     />
                   </div>
                 ))

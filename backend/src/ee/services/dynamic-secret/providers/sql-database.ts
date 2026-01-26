@@ -3,19 +3,20 @@ import knex from "knex";
 import RE2 from "re2";
 import { z } from "zod";
 
+import { TDynamicSecrets } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
-import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
+import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretSqlDBSchema, PasswordRequirements, SqlProviders, TDynamicProviderFns } from "./models";
-import { compileUsernameTemplate } from "./templateUtils";
+import { generateUsername } from "./templateUtils";
 
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
@@ -110,25 +111,6 @@ const generatePassword = (provider: SqlProviders, requirements?: PasswordRequire
   }
 };
 
-const generateUsername = (provider: SqlProviders, usernameTemplate?: string | null, identity?: { name: string }) => {
-  let randomUsername = "";
-  // For oracle, the client assumes everything is upper case when not using quotes around the password
-  if (provider === SqlProviders.Oracle) {
-    randomUsername = alphaNumericNanoId(32).toUpperCase();
-  } else {
-    randomUsername = alphaNumericNanoId(32);
-  }
-  if (!usernameTemplate) return randomUsername;
-  return compileUsernameTemplate({
-    usernameTemplate,
-    randomUsername,
-    identity,
-    options: {
-      toUpperCase: provider === SqlProviders.Oracle
-    }
-  });
-};
-
 type TSqlDatabaseProviderDTO = {
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -141,7 +123,11 @@ export const SqlDatabaseProvider = ({
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSqlDBSchema.parseAsync(inputs);
 
-    const [hostIp] = await verifyHostInputValidity(providerInputs.host, Boolean(providerInputs.gatewayId));
+    const [hostIp] = await verifyHostInputValidity({
+      host: providerInputs.host,
+      isGateway: Boolean(providerInputs.gatewayId),
+      isDynamicSecret: true
+    });
     validateHandlebarTemplate("SQL creation", providerInputs.creationStatement, {
       allowedExpressions: (val) => ["username", "password", "expiration", "database"].includes(val)
     });
@@ -298,13 +284,18 @@ export const SqlDatabaseProvider = ({
     inputs: unknown;
     expireAt: number;
     usernameTemplate?: string | null;
-    identity?: { name: string };
+    identity: ActorIdentityAttributes;
+    dynamicSecret: TDynamicSecrets;
   }) => {
-    const { inputs, expireAt, usernameTemplate, identity } = data;
+    const { inputs, expireAt, usernameTemplate, identity, dynamicSecret } = data;
 
     const providerInputs = await validateProviderInputs(inputs);
     const { database } = providerInputs;
-    const username = generateUsername(providerInputs.client, usernameTemplate, identity);
+    const username = await generateUsername(usernameTemplate, {
+      decryptedDynamicSecretInputs: inputs,
+      dynamicSecret,
+      identity
+    });
 
     const password = generatePassword(providerInputs.client, providerInputs.passwordRequirements);
     const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {

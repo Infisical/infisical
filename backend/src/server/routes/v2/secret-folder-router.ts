@@ -20,6 +20,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      operationId: "createSecretFolder",
       tags: [ApiDocsTags.Folders],
       description: "Create folders",
       security: [
@@ -90,6 +91,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      operationId: "updateSecretFolder",
       tags: [ApiDocsTags.Folders],
       description: "Update folder",
       security: [
@@ -164,6 +166,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      operationId: "updateSecretFoldersBatch",
       tags: [ApiDocsTags.Folders],
       description: "Update folders by batch",
       security: [
@@ -244,6 +247,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      operationId: "deleteSecretFolder",
       tags: [ApiDocsTags.Folders],
       description: "Delete a folder",
       security: [
@@ -308,6 +312,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      operationId: "listSecretFolders",
       tags: [ApiDocsTags.Folders],
       description: "Get folders",
       security: [
@@ -356,6 +361,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      operationId: "getSecretFolderById",
       tags: [ApiDocsTags.Folders],
       description: "Get folder by id",
       security: [

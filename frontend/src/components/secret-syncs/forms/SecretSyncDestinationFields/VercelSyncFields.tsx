@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
 import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
@@ -7,6 +7,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import { FilterableSelect, FormControl, Tooltip } from "@app/components/v2";
 import { CreatableSelect } from "@app/components/v2/CreatableSelect";
+import { useDebounce } from "@app/hooks";
 import {
   TVercelConnectionApp,
   useVercelConnectionListOrganizations
@@ -26,12 +27,16 @@ export const VercelSyncFields = () => {
     TSecretSyncForm & { destination: SecretSync.Vercel }
   >();
 
+  const [projectSearch, setProjectSearch] = useState("");
+  const [debouncedProjectSearch] = useDebounce(projectSearch, 300);
+
   const connectionId = useWatch({ name: "connection.id", control });
   const currentApp = watch("destinationConfig.app");
   const currentEnv = watch("destinationConfig.env");
 
   const { data: projects, isLoading: isProjectsLoading } = useVercelConnectionListOrganizations(
     connectionId,
+    debouncedProjectSearch,
     {
       enabled: Boolean(connectionId)
     }
@@ -92,7 +97,18 @@ export const VercelSyncFields = () => {
             helperText={
               <Tooltip
                 className="max-w-md"
-                content="Ensure the project exists and the API token scope for this connection includes the desired project."
+                content={
+                  <div className="flex flex-col gap-2">
+                    <span>
+                      Ensure the project exists and the API token scope for this connection includes
+                      the desired project.
+                    </span>
+                    <span>
+                      Use the search bar to filter projects by name. By default only 10 projects are
+                      shown, but you can search for more projects by name.
+                    </span>
+                  </div>
+                }
               >
                 <div>
                   <span>Don&#39;t see the project you&#39;re looking for?</span>{" "}
@@ -103,6 +119,11 @@ export const VercelSyncFields = () => {
           >
             <FilterableSelect
               menuPlacement="top"
+              noOptionsMessage={({ inputValue }) => {
+                return inputValue
+                  ? "No projects found matching your search."
+                  : "No projects found.";
+              }}
               isLoading={isProjectsLoading && Boolean(connectionId)}
               isDisabled={!connectionId}
               value={allApps.find((app) => app.id === value) ?? null}
@@ -119,8 +140,10 @@ export const VercelSyncFields = () => {
                   (option as SingleValue<TVercelConnectionApp>)?.name || ""
                 );
               }}
+              onInputChange={(newValue) => setProjectSearch(newValue)}
+              filterOption={null}
               options={allApps}
-              placeholder="Select a project..."
+              placeholder="Search for a project..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id.toString()}
               groupBy="project"
