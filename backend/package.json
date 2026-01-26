@@ -137,7 +137,7 @@
     "@fastify/multipart": "8.3.1",
     "@fastify/passport": "^2.4.0",
     "@fastify/rate-limit": "^9.0.0",
-    "@fastify/reply-from": "^9.8.0",
+    "@fastify/reply-from": "^11.0.0",
     "@fastify/request-context": "^5.1.0",
     "@fastify/session": "^10.7.0",
     "@fastify/static": "^7.0.4",
