@@ -42,7 +42,15 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
 
       reply.hijack();
       reply.raw.writeHead(200, getSSEHeaders()).flushHeaders();
-      await pipeline(client.stream, reply.raw);
+
+      try {
+        await pipeline(client.stream, reply.raw);
+      } catch (error) {
+        // ERR_STREAM_PREMATURE_CLOSE is expected when clients disconnect from SSE
+        if ((error as NodeJS.ErrnoException).code !== "ERR_STREAM_PREMATURE_CLOSE") {
+          throw error;
+        }
+      }
     }
   });
 };

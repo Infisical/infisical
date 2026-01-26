@@ -4,7 +4,7 @@ export {
   projectEventsSSEServiceFactory,
   TProjectEventsSSEService
 } from "./project-events-sse-service";
-export { ISSERegisterEntry, ISSESubscribeOpts, TSSEClient, TSSEEvent } from "./project-events-sse-types";
+export { TSSERegisterEntry as ISSERegisterEntry, TSSESubscribeOpts as ISSESubscribeOpts, TSSEClient, TSSEEvent } from "./project-events-sse-types";
 export {
   ProjectEvents as SecretMutationType,
   TProjectEventSubscriber,

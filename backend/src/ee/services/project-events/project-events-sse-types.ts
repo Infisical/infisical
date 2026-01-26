@@ -7,7 +7,7 @@ import { ActionProjectType } from "@app/db/schemas";
 import { ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
-import { ProjectEvents, TProjectEventPayload } from "./project-events-types";
+import { ProjectEvents } from "./project-events-types";
 
 // Cached permission info
 export type TSSEPermissionCache = {
@@ -16,16 +16,16 @@ export type TSSEPermissionCache = {
 };
 
 // Registration entry for event subscription
-export interface ISSERegisterEntry {
+export type TSSERegisterEntry = {
   event: ProjectEvents;
   conditions?: {
     environmentSlug?: string;
     secretPath?: string;
   };
-}
+};
 
 // Options for subscribing to SSE events
-export interface ISSESubscribeOpts {
+export type TSSESubscribeOpts = {
   projectId: string;
   actor: ActorType;
   actorId: string;
@@ -33,8 +33,8 @@ export interface ISSESubscribeOpts {
   actorOrgId: string;
   actionProjectType: ActionProjectType;
   // Event registrations with optional conditions
-  register: ISSERegisterEntry[];
-}
+  register: TSSERegisterEntry[];
+};
 
 // SSE Client interface
 export type TSSEClient = {
@@ -50,5 +50,5 @@ export type TSSEClient = {
 export type TSSEEvent = {
   id?: string;
   type: string;
-  data?: TProjectEventPayload | object;
+  data?: object;
 };

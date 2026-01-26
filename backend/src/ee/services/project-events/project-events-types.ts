@@ -18,19 +18,19 @@ interface SecretMutationBase {
 // Payload for created - includes secretKey
 interface SecretCreatedPayload extends SecretMutationBase {
   type: ProjectEvents.SecretCreate;
-  secretKey: string;
+  secretKeys: string[];
 }
 
 // Payload for updated - includes secretKey
 interface SecretUpdatedPayload extends SecretMutationBase {
   type: ProjectEvents.SecretUpdate;
-  secretKey: string;
+  secretKeys: string[];
 }
 
 // Payload for deleted - includes secretKey
 interface SecretDeletedPayload extends SecretMutationBase {
   type: ProjectEvents.SecretDelete;
-  secretKey: string;
+  secretKeys: string[];
 }
 
 // Payload for import mutation - NO secretKey

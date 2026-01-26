@@ -7,7 +7,7 @@ export enum EventBusTopicName {
 
 // Event types that can be published/subscribed
 export enum EventBusServiceEvents {
-  SecretMutation = "secret.mutation"
+  ProjectEvents = "project.events"
 }
 
 // Base event schema - all events must have these fields

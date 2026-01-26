@@ -50,7 +50,6 @@ import { dynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secre
 import { eventBusFactory } from "@app/ee/services/event/event-bus-service";
 import { sseServiceFactory } from "@app/ee/services/event/event-sse-service";
 import { eventBusServiceFactory } from "@app/ee/services/event-bus";
-import { projectEventsServiceFactory, projectEventsSSEServiceFactory } from "@app/ee/services/project-events";
 import { externalKmsDALFactory } from "@app/ee/services/external-kms/external-kms-dal";
 import { externalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
 import { gatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
@@ -101,6 +100,7 @@ import { pkiAcmeOrderAuthDALFactory } from "@app/ee/services/pki-acme/pki-acme-o
 import { pkiAcmeOrderDALFactory } from "@app/ee/services/pki-acme/pki-acme-order-dal";
 import { pkiAcmeQueueServiceFactory } from "@app/ee/services/pki-acme/pki-acme-queue";
 import { pkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-service";
+import { projectEventsServiceFactory, projectEventsSSEServiceFactory } from "@app/ee/services/project-events";
 import { projectTemplateDALFactory } from "@app/ee/services/project-template/project-template-dal";
 import { projectTemplateGroupMembershipDALFactory } from "@app/ee/services/project-template/project-template-group-membership-dal";
 import { projectTemplateIdentityMembershipDALFactory } from "@app/ee/services/project-template/project-template-identity-membership-dal";
@@ -1416,11 +1416,11 @@ export const registerRoutes = async (
     folderCommitService,
     secretSyncQueue,
     reminderService,
-    eventBusService,
     licenseService,
     membershipRoleDAL,
     membershipUserDAL,
-    telemetryService
+    telemetryService,
+    projectEventsService
   });
 
   const projectService = projectServiceFactory({

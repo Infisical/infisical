@@ -1008,7 +1008,7 @@ export const secretApprovalRequestServiceFactory = ({
       environmentSlug: folder.environmentSlug,
       actorId,
       actor,
-      event: {
+      events: {
         created: secrets.created.map((el) => ({
           environment: folder.environmentSlug,
           secretPath: folder.path,

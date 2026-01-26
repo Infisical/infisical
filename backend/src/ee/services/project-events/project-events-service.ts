@@ -8,22 +8,12 @@ type TProjectEventsServiceFactoryDep = {
 };
 
 export const projectEventsServiceFactory = ({ eventBus }: TProjectEventsServiceFactoryDep) => {
-  /**
-   * Publish a secret mutation event via the event bus
-   * Events are broadcast to all containers via Redis
-   * Payload contains projectId - subscribers filter as needed
-   */
-  const publishSecretMutation = async (payload: TProjectEventPayload): Promise<void> => {
-    await eventBus.publish(EventBusServiceEvents.SecretMutation, payload);
+  const publish = async (payload: TProjectEventPayload): Promise<void> => {
+    await eventBus.publish(EventBusServiceEvents.ProjectEvents, payload);
   };
 
-  /**
-   * Subscribe to secret mutation events from the event bus
-   * Subscriber is responsible for filtering by projectId if needed
-   * @returns Unsubscribe function
-   */
-  const subscribeToSecretMutation = (callback: TProjectEventSubscriber): TProjectEventUnsubscribe => {
-    return eventBus.subscribe(EventBusServiceEvents.SecretMutation, (event) => {
+  const subscribe = (callback: TProjectEventSubscriber): TProjectEventUnsubscribe => {
+    return eventBus.subscribe(EventBusServiceEvents.ProjectEvents, (event) => {
       try {
         const payload = event.payload as TProjectEventPayload;
         const result = callback(payload);
@@ -39,8 +29,8 @@ export const projectEventsServiceFactory = ({ eventBus }: TProjectEventsServiceF
   };
 
   return {
-    publishSecretMutation,
-    subscribeToSecretMutation
+    publish,
+    subscribe
   };
 };
 

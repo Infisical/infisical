@@ -3,6 +3,7 @@ import { Readable } from "node:stream";
 import { ForbiddenError, subject } from "@casl/ability";
 import { nanoid } from "nanoid";
 
+import { ProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionSecretEventActions,
@@ -14,11 +15,11 @@ import { logger } from "@app/lib/logger";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TProjectEventsService } from "./project-events-service";
 import {
-  ISSERegisterEntry,
-  ISSESubscribeOpts,
   TSSEClient,
   TSSEEvent,
-  TSSEPermissionCache
+  TSSEPermissionCache,
+  TSSERegisterEntry,
+  TSSESubscribeOpts
 } from "./project-events-sse-types";
 import { ProjectEvents, TProjectEventPayload } from "./project-events-types";
 
@@ -81,7 +82,7 @@ export const projectEventsSSEServiceFactory = ({
     string,
     {
       client: TSSEClient;
-      opts: ISSESubscribeOpts;
+      opts: TSSESubscribeOpts;
       permissionCache: TSSEPermissionCache;
       send: (event: TSSEEvent) => void;
     }
@@ -99,7 +100,7 @@ export const projectEventsSSEServiceFactory = ({
   /**
    * Fetch fresh permission from permission service
    */
-  const fetchPermission = async (opts: ISSESubscribeOpts): Promise<TSSEPermissionCache> => {
+  const fetchPermission = async (opts: TSSESubscribeOpts): Promise<TSSEPermissionCache> => {
     const { permission } = await permissionService.getProjectPermission({
       actor: opts.actor,
       actorId: opts.actorId,
@@ -119,7 +120,7 @@ export const projectEventsSSEServiceFactory = ({
    * Validate that user has permission for all registered events
    * Throws ForbiddenError if any registration is not permitted
    */
-  const validateRegisteredPermissions = (permissionCache: TSSEPermissionCache, register: ISSERegisterEntry[]): void => {
+  const validateRegisteredPermissions = (permissionCache: TSSEPermissionCache, register: TSSERegisterEntry[]): void => {
     for (const reg of register) {
       const permissionSubject = getBusEventToSubject(reg.event);
       const action = MutationTypeToAction[reg.event];
@@ -177,7 +178,7 @@ export const projectEventsSSEServiceFactory = ({
   const canReceiveEvent = (
     permissionCache: TSSEPermissionCache,
     payload: TProjectEventPayload,
-    register: ISSERegisterEntry[]
+    register: TSSERegisterEntry[]
   ): boolean => {
     // Find matching registration for this event type
     const matchingRegistrations = register.filter((r) => r.event === payload.type);
@@ -209,7 +210,7 @@ export const projectEventsSSEServiceFactory = ({
    * Subscribe a client to receive secret mutation events
    * Returns the SSE client for the router to use
    */
-  const subscribe = async (opts: ISSESubscribeOpts): Promise<TSSEClient> => {
+  const subscribe = async (opts: TSSESubscribeOpts): Promise<TSSEClient> => {
     const id = `sse-${nanoid()}`;
 
     // Fetch initial permission (throws if not authorized)
@@ -266,7 +267,7 @@ export const projectEventsSSEServiceFactory = ({
     clients.set(id, entry);
 
     // Subscribe to secret mutations and filter for this client
-    const unsubscribe = projectEventsService.subscribeToSecretMutation((payload) => {
+    const unsubscribe = projectEventsService.subscribe((payload) => {
       const currentEntry = clients.get(id);
       if (!currentEntry) return;
 
@@ -278,11 +279,32 @@ export const projectEventsSSEServiceFactory = ({
         return;
       }
 
+      const payloadFormattedData = {
+        type: ProjectType.SecretManager,
+        data: { eventType: payload.type, payload: {} }
+      };
+      if (payload.type === ProjectEvents.SecretImportMutation) {
+        payloadFormattedData.data.payload = {
+          environment: payload.environment,
+          secretPath: payload.secretPath
+        };
+      } else if (
+        payload.type === ProjectEvents.SecretCreate ||
+        payload.type === ProjectEvents.SecretUpdate ||
+        payload.type === ProjectEvents.SecretDelete
+      ) {
+        payloadFormattedData.data.payload = payload.secretKeys.map((key) => ({
+          environment: payload.environment,
+          secretPath: payload.secretPath,
+          secretKeys: key
+        }));
+      }
+
       // Send event to client
       send({
         id: Date.now().toString(),
-        type: `secret.${payload.type}`,
-        data: payload
+        type: payload.type,
+        data: payloadFormattedData
       });
     });
 
