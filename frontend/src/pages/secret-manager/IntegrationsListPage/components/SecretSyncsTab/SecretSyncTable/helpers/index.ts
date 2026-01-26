@@ -215,7 +215,7 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       secondaryText = destinationConfig.spaceName || destinationConfig.spaceId;
       break;
     case SecretSync.CircleCI:
-      primaryText = destinationConfig.projectName || destinationConfig.projectSlug;
+      primaryText = destinationConfig.projectName;
       secondaryText = "Project";
       break;
     default:

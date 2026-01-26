@@ -7,13 +7,13 @@ type Props = {
 
 export const CircleCISyncDestinationSection = ({ secretSync }: Props) => {
   const {
-    destinationConfig: { orgId, orgName, projectName, projectSlug }
+    destinationConfig: { orgName, projectName }
   } = secretSync;
 
   return (
     <>
-      <GenericFieldLabel label="Organization">{orgName || orgId || "-"}</GenericFieldLabel>
-      <GenericFieldLabel label="Project">{projectName || projectSlug}</GenericFieldLabel>
+      <GenericFieldLabel label="Organization">{orgName}</GenericFieldLabel>
+      <GenericFieldLabel label="Project">{projectName}</GenericFieldLabel>
     </>
   );
 };
