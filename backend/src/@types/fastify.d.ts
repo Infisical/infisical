@@ -15,11 +15,8 @@ import { TCertificateAuthorityCrlServiceFactory } from "@app/ee/services/certifi
 import { TCertificateEstServiceFactory } from "@app/ee/services/certificate-est/certificate-est-service";
 import { TDynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-types";
 import { TDynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-types";
-import { TEventBusService } from "@app/ee/services/event/event-bus-service";
-import { TServerSentEventsService } from "@app/ee/services/event/event-sse-service";
 import { TEventBusService as TInternalEventBusService } from "@app/ee/services/event-bus";
 import { TExternalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
-import { TProjectEventsService, TProjectEventsSSEService } from "@app/ee/services/project-events";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGithubOrgSyncServiceFactory } from "@app/ee/services/github-org-sync/github-org-sync-service";
@@ -38,6 +35,7 @@ import { TPamSessionServiceFactory } from "@app/ee/services/pam-session/pam-sess
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TPitServiceFactory } from "@app/ee/services/pit/pit-service";
 import { TPkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-types";
+import { TProjectEventsService, TProjectEventsSSEService } from "@app/ee/services/project-events";
 import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-types";
 import { RateLimitConfiguration, TRateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-types";
 import { TRelayServiceFactory } from "@app/ee/services/relay/relay-service";
@@ -353,11 +351,9 @@ declare module "fastify" {
       internalCertificateAuthority: TInternalCertificateAuthorityServiceFactory;
       pkiTemplate: TPkiTemplatesServiceFactory;
       reminder: TReminderServiceFactory;
-      bus: TEventBusService;
       eventBus: TInternalEventBusService;
       projectEvents: TProjectEventsService;
       projectEventsSSE: TProjectEventsSSEService;
-      sse: TServerSentEventsService;
       identityAuthTemplate: TIdentityAuthTemplateServiceFactory;
       notification: TNotificationServiceFactory;
       offlineUsageReport: TOfflineUsageReportServiceFactory;
