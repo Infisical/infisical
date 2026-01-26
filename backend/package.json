@@ -64,6 +64,9 @@
     "validator": "^13.15.22",
     "react-email": {
       "glob": "^11.1.0"
+    },
+    "ts-node":{
+      "diff": "^4.0.4"
     }
   },
   "devDependencies": {
