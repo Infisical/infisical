@@ -5,10 +5,9 @@ import { TRootSecretSync } from "@app/hooks/api/secretSyncs/types/root-sync";
 export type TCircleCISync = TRootSecretSync & {
   destination: SecretSync.CircleCI;
   destinationConfig: {
-    orgId?: string;
-    orgName?: string;
-    projectSlug: string;
-    projectName?: string;
+    projectId: string;
+    projectName: string;
+    orgName: string;
   };
   connection: {
     app: AppConnection.CircleCI;

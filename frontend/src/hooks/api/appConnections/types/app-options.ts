@@ -200,6 +200,10 @@ export type TSshConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.SSH;
 };
 
+export type TCircleCISyncConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.CircleCI;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -295,4 +299,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Chef]: TChefConnectionOption;
   [AppConnection.OctopusDeploy]: TOctopusDeployConnectionOption;
   [AppConnection.SSH]: TSshConnectionOption;
+  [AppConnection.CircleCI]: TCircleCISyncConnectionOption;
 };
