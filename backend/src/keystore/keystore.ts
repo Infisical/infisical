@@ -14,6 +14,7 @@ export const PgSqlLock = {
   BootUpMigration: 2023,
   SuperAdminInit: 2024,
   KmsRootKeyInit: 2025,
+  SanitizedSchemaGeneration: 2026,
   OrgGatewayRootCaInit: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-root-ca:${orgId}`),
   OrgGatewayCertExchange: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-cert-exchange:${orgId}`),
   SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`),
@@ -83,6 +84,8 @@ export const KeyStorePrefixes = {
   PkiAcmeNonce: (nonce: string) => `pki-acme-nonce:${nonce}` as const,
   MfaSession: (mfaSessionId: string) => `mfa-session:${mfaSessionId}` as const,
   WebAuthnChallenge: (userId: string) => `webauthn-challenge:${userId}` as const,
+  UserMfaLockoutLock: (userId: string) => `user-mfa-lockout-lock:${userId}` as const,
+  UserMfaUnlockEmailSent: (userId: string) => `user-mfa-unlock-email-sent:${userId}` as const,
 
   AiMcpServerOAuth: (sessionId: string) => `ai-mcp-server-oauth:${sessionId}` as const,
 

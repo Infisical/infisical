@@ -16,7 +16,8 @@ const CreateMcpServerBaseSchema = z.object({
   description: z.string().trim().max(256).optional(),
   credentialMode: z.nativeEnum(AiMcpServerCredentialMode),
   oauthClientId: z.string().trim().min(1).optional(),
-  oauthClientSecret: z.string().trim().min(1).optional()
+  oauthClientSecret: z.string().trim().min(1).optional(),
+  gatewayId: z.string().uuid().optional()
 });
 
 const McpServerCredentialsSchema = z.discriminatedUnion("authMethod", [
@@ -56,7 +57,8 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().uuid().trim().min(1),
         url: z.string().trim().url(),
         clientId: z.string().trim().min(1).optional(),
-        clientSecret: z.string().trim().min(1).optional()
+        clientSecret: z.string().trim().min(1).optional(),
+        gatewayId: z.string().uuid().optional()
       }),
       response: {
         200: z.object({
@@ -72,6 +74,7 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
         url: req.body.url,
         clientId: req.body.clientId,
         clientSecret: req.body.clientSecret,
+        gatewayId: req.body.gatewayId,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
@@ -308,7 +311,8 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
       }),
       body: z.object({
         name: z.string().trim().min(1).max(64).optional(),
-        description: z.string().trim().max(256).optional()
+        description: z.string().trim().max(256).optional(),
+        gatewayId: z.string().uuid().nullable().optional()
       }),
       response: {
         200: z.object({

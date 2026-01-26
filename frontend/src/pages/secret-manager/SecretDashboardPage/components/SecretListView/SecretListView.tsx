@@ -132,7 +132,7 @@ export const SecretListView = ({
       reminderNote: string | null;
       reminderRecipients?: string[] | null;
       tags: string[];
-      skipMultilineEncoding: boolean;
+      skipMultilineEncoding: boolean | null;
       newKey: string;
       secretId: string;
       secretMetadata?: { key: string; value: string }[];

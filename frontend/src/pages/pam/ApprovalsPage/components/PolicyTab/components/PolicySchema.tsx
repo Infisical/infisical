@@ -1,7 +1,7 @@
 import ms from "ms";
 import { z } from "zod";
 
-import { ApproverType } from "@app/hooks/api/approvalPolicies";
+import { ApprovalStepsSchema } from "@app/components/approvals";
 
 // 30 to  7 days
 const DurationSchema = (
@@ -50,26 +50,7 @@ export const PolicyFormSchema = z.object({
       max: DurationSchema()
     })
   }),
-  steps: z
-    .object({
-      name: z
-        .string()
-        .max(128)
-        .nullable()
-        .optional()
-        .transform((name) => name || null),
-      requiredApprovals: z.number().min(1).max(100),
-      notifyApprovers: z.boolean().optional(),
-      approvers: z
-        .object({
-          type: z.nativeEnum(ApproverType),
-          id: z.string().uuid()
-        })
-        .array()
-        .min(1, "At least one approver is required")
-    })
-    .array()
-    .min(1, "At least one approval step is required")
+  steps: ApprovalStepsSchema
 });
 
 export type TPolicyForm = z.infer<typeof PolicyFormSchema>;

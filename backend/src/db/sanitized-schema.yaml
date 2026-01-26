@@ -1,0 +1,1360 @@
+
+tables:
+  - name: access_approval_requests
+    source: public.access_approval_requests
+    columns:
+      - id
+      - policyId
+      - privilegeId
+      - isTemporary
+      - temporaryRange
+      - permissions
+      - createdAt
+      - updatedAt
+      - note
+      - privilegeDeletedAt
+      - status
+      - editedByUserId
+      - editNote
+
+  - name: ai_mcp_activity_logs
+    source: public.ai_mcp_activity_logs
+    columns:
+      - id
+      - projectId
+      - endpointName
+      - serverName
+      - toolName
+      - actor
+      - createdAt
+      - updatedAt
+
+  - name: ai_mcp_endpoint_server_tools
+    source: public.ai_mcp_endpoint_server_tools
+    columns:
+      - id
+      - aiMcpEndpointId
+      - aiMcpServerToolId
+      - isEnabled
+
+  - name: ai_mcp_endpoint_servers
+    source: public.ai_mcp_endpoint_servers
+    columns:
+      - id
+      - aiMcpEndpointId
+      - aiMcpServerId
+
+  - name: ai_mcp_endpoints
+    source: public.ai_mcp_endpoints
+    columns:
+      - id
+      - name
+      - description
+      - status
+      - projectId
+      - createdAt
+      - updatedAt
+
+  - name: ai_mcp_server_tools
+    source: public.ai_mcp_server_tools
+    columns:
+      - id
+      - name
+      - description
+      - inputSchema
+      - aiMcpServerId
+
+  - name: ai_mcp_servers
+    source: public.ai_mcp_servers
+    columns:
+      - id
+      - name
+      - url
+      - description
+      - status
+      - credentialMode
+      - authMethod
+      - projectId
+      - createdAt
+      - updatedAt
+
+  - name: app_connections
+    source: public.app_connections
+    columns:
+      - id
+      - name
+      - description
+      - app
+      - method
+      - version
+      - orgId
+      - createdAt
+      - updatedAt
+      - isPlatformManagedCredentials
+      - gatewayId
+      - projectId
+
+  - name: approval_requests
+    source: public.approval_requests
+    columns:
+      - id
+      - projectId
+      - organizationId
+      - policyId
+      - requesterId
+      - requesterName
+      - requesterEmail
+      - type
+      - status
+      - justification
+      - currentStep
+      - expiresAt
+      - createdAt
+      - updatedAt
+
+  - name: certificate_authorities
+    source: public.certificate_authorities
+    columns:
+      - id
+      - createdAt
+      - updatedAt
+      - projectId
+      - status
+      - enableDirectIssuance
+      - name
+
+  - name: certificate_requests
+    source: public.certificate_requests
+    columns:
+      - id
+      - createdAt
+      - updatedAt
+      - status
+      - projectId
+      - profileId
+      - caId
+      - certificateId
+      - csr
+      - commonName
+      - altNames
+      - keyUsages
+      - extendedKeyUsages
+      - notBefore
+      - notAfter
+      - keyAlgorithm
+      - signatureAlgorithm
+      - errorMessage
+      - metadata
+      - acmeOrderId
+
+  - name: certificate_syncs
+    source: public.certificate_syncs
+    columns:
+      - id
+      - pkiSyncId
+      - certificateId
+      - syncStatus
+      - lastSyncMessage
+      - lastSyncedAt
+      - createdAt
+      - updatedAt
+      - externalIdentifier
+
+  - name: certificates
+    source: public.certificates
+    columns:
+      - id
+      - createdAt
+      - updatedAt
+      - caId
+      - status
+      - serialNumber
+      - friendlyName
+      - commonName
+      - notBefore
+      - notAfter
+      - revokedAt
+      - revocationReason
+      - altNames
+      - caCertId
+      - keyUsages
+      - extendedKeyUsages
+      - pkiSubscriberId
+      - projectId
+      - profileId
+      - renewBeforeDays
+
+  - name: dynamic_secret_leases
+    source: public.dynamic_secret_leases
+    columns:
+      - id
+      - version
+      - externalEntityId
+      - expireAt
+      - status
+      - statusDetails
+      - dynamicSecretId
+      - createdAt
+      - updatedAt
+      - config
+
+  - name: dynamic_secrets
+    source: public.dynamic_secrets
+    columns:
+      - id
+      - name
+      - version
+      - type
+      - defaultTTL
+      - maxTTL
+      - folderId
+      - status
+      - statusDetails
+      - createdAt
+      - updatedAt
+      - projectGatewayId
+      - gatewayId
+      - usernameTemplate
+      - gatewayV2Id
+
+  - name: external_certificate_authorities
+    source: public.external_certificate_authorities
+    columns:
+      - id
+      - type
+      - appConnectionId
+      - dnsAppConnectionId
+      - caId
+      # credentials and configuration columns excluded for security
+
+  - name: external_kms
+    source: public.external_kms
+    columns:
+      - id
+      - provider
+      - status
+      - statusDetails
+      - kmsKeyId
+
+  - name: gateways_v2
+    source: public.gateways_v2
+    columns:
+      - id
+      - createdAt
+      - updatedAt
+      - orgId
+      - identityId
+      - relayId
+      - name
+      - heartbeat
+      - healthAlertedAt
+
+  - name: groups
+    source: public.groups
+    columns:
+      - id
+      - orgId
+      - name
+      - slug
+      - createdAt
+      - updatedAt
+
+  - name: identities
+    source: public.identities
+    columns:
+      - id
+      - name
+      - authMethod
+      - createdAt
+      - updatedAt
+      - hasDeleteProtection
+      - orgId
+      - projectId
+
+  - name: identity_alicloud_auths
+    source: public.identity_alicloud_auths
+    columns:
+      - id
+      - accessTokenTTL
+      - accessTokenMaxTTL
+      - accessTokenNumUsesLimit
+      - accessTokenTrustedIps
+      - createdAt
+      - updatedAt
+      - identityId
+      - type
+      - allowedArns
+
+  - name: identity_auth_templates
+    source: public.identity_auth_templates
+    columns:
+      - id
+      - templateFields
+      - orgId
+      - name
+      - authMethod
+      - createdAt
+      - updatedAt
+
+  - name: identity_aws_auths
+    source: public.identity_aws_auths
+    columns:
+      - id
+      - accessTokenTTL
+      - accessTokenMaxTTL
+      - accessTokenNumUsesLimit
+      - accessTokenTrustedIps
+      - createdAt
+      - updatedAt
+      - identityId
+      - type
+      - stsEndpoint
+      - allowedPrincipalArns
+      - allowedAccountIds
+      - accessTokenPeriod
+
+  - name: identity_azure_auths
+    source: public.identity_azure_auths
+    columns:
+      - id
+      - accessTokenTTL
+      - accessTokenMaxTTL
+      - accessTokenNumUsesLimit
+      - accessTokenTrustedIps
+      - createdAt
+      - updatedAt
+      - identityId
+      - tenantId
+      - resource
+      - allowedServicePrincipalIds
+      - accessTokenPeriod
+
+  - name: identity_gcp_auths
+    source: public.identity_gcp_auths
+    columns:
+      - id
+      - accessTokenTTL
+      - accessTokenMaxTTL
+      - accessTokenNumUsesLimit
+      - accessTokenTrustedIps
+      - createdAt
+      - updatedAt
+      - identityId
+      - type
+      - allowedServiceAccounts
+      - allowedProjects
+      - allowedZones
+      - accessTokenPeriod
+
+  - name: identity_group_membership
+    source: public.identity_group_membership
+    columns:
+      - id
+      - identityId
+      - groupId
+      - createdAt
+      - updatedAt
+
+  - name: identity_jwt_auths
+    source: public.identity_jwt_auths
+    columns:
+      - id
+      - accessTokenTTL
+      - accessTokenMaxTTL
+      - accessTokenNumUsesLimit
+      - accessTokenTrustedIps
+      - identityId
+      - configurationType
+      - jwksUrl
+      - boundIssuer
+      - boundAudiences
+      - boundClaims
+      - boundSubject
+      - createdAt
+      - updatedAt
+      - accessTokenPeriod
+
+  - name: identity_kubernetes_auths
+    source: public.identity_kubernetes_auths
+    columns:
+      - id
+      - accessTokenTTL
+      - accessTokenMaxTTL
+      - accessTokenNumUsesLimit
+      - accessTokenTrustedIps
+      - createdAt
+      - updatedAt
+      - identityId
+      - kubernetesHost
+      - allowedNamespaces
+      - allowedNames
+      - allowedAudience
+      - gatewayId
+      - accessTokenPeriod
+      - tokenReviewMode
+      - gatewayV2Id
+
+  - name: identity_ldap_auths
+    source: public.identity_ldap_auths
+    columns:
+      - id
+      - accessTokenTTL
+      - accessTokenMaxTTL
+      - accessTokenNumUsesLimit
+      - accessTokenTrustedIps
+      - identityId
+      - url
+      - searchBase
+      - searchFilter
+      - allowedFields
+      - createdAt
+      - updatedAt
+      - accessTokenPeriod
+      - templateId
+      - lockoutEnabled
+      - lockoutThreshold
+      - lockoutDurationSeconds
+      - lockoutCounterResetSeconds
+
+  - name: identity_oci_auths
+    source: public.identity_oci_auths
+    columns:
+      - id
+      - accessTokenTTL
+      - accessTokenMaxTTL
+      - accessTokenNumUsesLimit
+      - accessTokenTrustedIps
+      - createdAt
+      - updatedAt
+      - identityId
+      - type
+      - tenancyOcid
+      - allowedUsernames
+      - accessTokenPeriod
+
+  - name: identity_oidc_auths
+    source: public.identity_oidc_auths
+    columns:
+      - id
+      - accessTokenTTL
+      - accessTokenMaxTTL
+      - accessTokenNumUsesLimit
+      - accessTokenTrustedIps
+      - identityId
+      - oidcDiscoveryUrl
+      - boundIssuer
+      - boundAudiences
+      - boundClaims
+      - boundSubject
+      - createdAt
+      - updatedAt
+      - claimMetadataMapping
+      - accessTokenPeriod
+
+  - name: identity_tls_cert_auths
+    source: public.identity_tls_cert_auths
+    columns:
+      - id
+      - accessTokenTTL
+      - accessTokenMaxTTL
+      - accessTokenNumUsesLimit
+      - accessTokenTrustedIps
+      - createdAt
+      - updatedAt
+      - identityId
+      - allowedCommonNames
+
+  - name: identity_token_auths
+    source: public.identity_token_auths
+    columns:
+      - id
+      - accessTokenTTL
+      - accessTokenMaxTTL
+      - accessTokenNumUsesLimit
+      - accessTokenTrustedIps
+      - createdAt
+      - updatedAt
+      - identityId
+      - accessTokenPeriod
+
+  - name: identity_universal_auths
+    source: public.identity_universal_auths
+    columns:
+      - id
+      - clientId
+      - accessTokenTTL
+      - accessTokenMaxTTL
+      - accessTokenNumUsesLimit
+      - clientSecretTrustedIps
+      - accessTokenTrustedIps
+      - createdAt
+      - updatedAt
+      - identityId
+      - accessTokenPeriod
+      - lockoutEnabled
+      - lockoutThreshold
+      - lockoutDurationSeconds
+      - lockoutCounterResetSeconds
+
+  - name: integrations
+    source: public.integrations
+    columns:
+      - id
+      - isActive
+      - url
+      - app
+      - appId
+      - targetEnvironment
+      - targetEnvironmentId
+      - targetService
+      - targetServiceId
+      - owner
+      - path
+      - region
+      - scope
+      - integration
+      - metadata
+      - integrationAuthId
+      - envId
+      - secretPath
+      - createdAt
+      - updatedAt
+      - lastUsed
+      - isSynced
+      - syncMessage
+      - lastSyncJobId
+
+  - name: intermediate_certificate_requests
+    source: public.intermediate_certificate_requests
+    columns:
+      - id
+      - createdAt
+      - updatedAt
+      - status
+      - projectId
+      - profileId
+      - caId
+      - certificateId
+      - commonName
+      - altNames
+      - keyUsages
+      - extendedKeyUsages
+      - notBefore
+      - notAfter
+      - keyAlgorithm
+      - signatureAlgorithm
+      - errorMessage
+      - metadata
+      - acmeOrderId
+
+  - name: internal_certificate_authorities
+    source: public.internal_certificate_authorities
+    columns:
+      - id
+      - parentCaId
+      - type
+      - friendlyName
+      - organization
+      - ou
+      - country
+      - province
+      - locality
+      - commonName
+      - dn
+      - serialNumber
+      - maxPathLength
+      - keyAlgorithm
+      - notBefore
+      - notAfter
+      - activeCaCertId
+      - caId
+
+  - name: kmip_clients
+    source: public.kmip_clients
+    columns:
+      - id
+      - name
+      - permissions
+      - description
+      - projectId
+
+  - name: kms_keys
+    source: public.kms_keys
+    columns:
+      - id
+      - description
+      - isDisabled
+      - isReserved
+      - orgId
+      - name
+      - createdAt
+      - updatedAt
+      - projectId
+      - keyUsage
+      - kmipMetadata
+
+  - name: ldap_configs
+    source: public.ldap_configs
+    columns:
+      - id
+      - orgId
+      - isActive
+      - url
+      - searchBase
+      - groupSearchBase
+      - groupSearchFilter
+      - searchFilter
+      - uniqueUserAttribute
+      - createdAt
+      - updatedAt
+
+  - name: membership_roles
+    source: public.membership_roles
+    columns:
+      - id
+      - role
+      - isTemporary
+      - temporaryMode
+      - temporaryRange
+      - temporaryAccessStartTime
+      - temporaryAccessEndTime
+      - customRoleId
+      - membershipId
+      - createdAt
+      - updatedAt
+
+  - name: memberships
+    source: public.memberships
+    columns:
+      - id
+      - scope
+      - actorUserId
+      - actorIdentityId
+      - actorGroupId
+      - scopeOrgId
+      - scopeProjectId
+      - scopeNamespaceId
+      - isActive
+      - status
+      - inviteEmail
+      - lastInvitedAt
+      - lastLoginAuthMethod
+      - lastLoginTime
+      - projectFavorites
+      - createdAt
+      - updatedAt
+
+  - name: microsoft_teams_integrations
+    source: public.microsoft_teams_integrations
+    columns:
+      - id
+      - internalTeamsAppId
+      - tenantId
+      - accessTokenExpiresAt
+      - botAccessTokenExpiresAt
+      - createdAt
+      - updatedAt
+
+  - name: namespaces
+    source: public.namespaces
+    columns:
+      - id
+      - name
+      - description
+      - orgId
+      - createdAt
+      - updatedAt
+
+  - name: oidc_configs
+    source: public.oidc_configs
+    columns:
+      - id
+      - discoveryURL
+      - issuer
+      - authorizationEndpoint
+      - jwksUri
+      - tokenEndpoint
+      - userinfoEndpoint
+      - configurationType
+      - allowedEmailDomains
+      - isActive
+      - createdAt
+      - updatedAt
+      - orgId
+      - lastUsed
+      - manageGroupMemberships
+      - jwtSignatureAlgorithm
+
+  - name: org_relay_config
+    source: public.org_relay_config
+    columns:
+      - id
+      - createdAt
+      - updatedAt
+      - orgId
+
+  - name: organizations
+    source: public.organizations
+    columns:
+      - id
+      - name
+      - customerId
+      - slug
+      - createdAt
+      - updatedAt
+      - authEnforced
+      - scimEnabled
+      - kmsDefaultKeyId
+      - defaultMembershipRole
+      - enforceMfa
+      - selectedMfaMethod
+      - allowSecretSharingOutsideOrganization
+      - shouldUseNewPrivilegeSystem
+      - privilegeUpgradeInitiatedByUsername
+      - privilegeUpgradeInitiatedAt
+      - bypassOrgAuthEnabled
+      - userTokenExpiration
+      - secretsProductEnabled
+      - pkiProductEnabled
+      - kmsProductEnabled
+      - sshProductEnabled
+      - scannerProductEnabled
+      - shareSecretsProductEnabled
+      - maxSharedSecretLifetime
+      - maxSharedSecretViewLimit
+      - googleSsoAuthEnforced
+      - googleSsoAuthLastUsed
+      - parentOrgId
+      - rootOrgId
+      - blockDuplicateSecretSyncDestinations
+
+  - name: pam_accounts
+    source: public.pam_accounts
+    columns:
+      - id
+      - projectId
+      - folderId
+      - resourceId
+      - name
+      - description
+      - createdAt
+      - updatedAt
+      - rotationEnabled
+      - rotationIntervalSeconds
+      - lastRotatedAt
+      - rotationStatus
+
+  - name: pam_resources
+    source: public.pam_resources
+    columns:
+      - id
+      - projectId
+      - name
+      - gatewayId
+      - resourceType
+      - createdAt
+      - updatedAt
+
+  - name: pam_sessions
+    source: public.pam_sessions
+    columns:
+      - id
+      - projectId
+      - accountId
+      - resourceType
+      - resourceName
+      - accountName
+      - userId
+      - actorName
+      - actorEmail
+      - actorIp
+      - actorUserAgent
+      - status
+      - expiresAt
+      - startedAt
+      - endedAt
+      - createdAt
+      - updatedAt
+
+  - name: pki_alerts_v2
+    source: public.pki_alerts_v2
+    columns:
+      - id
+      - name
+      - description
+      - eventType
+      - alertBefore
+      - filters
+      - enabled
+      - projectId
+      - createdAt
+      - updatedAt
+
+  - name: pki_certificate_profiles
+    source: public.pki_certificate_profiles
+    columns:
+      - id
+      - projectId
+      - caId
+      - slug
+      - description
+      - enrollmentType
+      - estConfigId
+      - apiConfigId
+      - createdAt
+      - updatedAt
+      - acmeConfigId
+      - issuerType
+      - externalConfigs
+
+
+  - name: pki_syncs
+    source: public.pki_syncs
+    columns:
+      - id
+      - name
+      - description
+      - destination
+      - isAutoSyncEnabled
+      - version
+      - destinationConfig
+      - syncOptions
+      - projectId
+      - subscriberId
+      - connectionId
+      - createdAt
+      - updatedAt
+      - syncStatus
+      - lastSyncJobId
+      - lastSyncMessage
+      - lastSyncedAt
+      - importStatus
+      - lastImportJobId
+      - lastImportMessage
+      - lastImportedAt
+      - removeStatus
+      - lastRemoveJobId
+      - lastRemoveMessage
+      - lastRemovedAt
+
+  - name: project_environments
+    source: public.project_environments
+    columns:
+      - id
+      - name
+      - slug
+      - position
+      - projectId
+      - createdAt
+      - updatedAt
+
+  - name: project_gateways
+    source: public.project_gateways
+    columns:
+      - id
+      - projectId
+      - gatewayId
+      - createdAt
+      - updatedAt
+
+  - name: project_microsoft_teams_configs
+    source: public.project_microsoft_teams_configs
+    columns:
+      - id
+      - projectId
+      - microsoftTeamsIntegrationId
+      - isAccessRequestNotificationEnabled
+      - isSecretRequestNotificationEnabled
+      - accessRequestChannels
+      - secretRequestChannels
+      - createdAt
+      - updatedAt
+
+  - name: project_slack_configs
+    source: public.project_slack_configs
+    columns:
+      - id
+      - projectId
+      - slackIntegrationId
+      - isAccessRequestNotificationEnabled
+      - accessRequestChannels
+      - isSecretRequestNotificationEnabled
+      - secretRequestChannels
+      - createdAt
+      - updatedAt
+      - isSecretSyncErrorNotificationEnabled
+      - secretSyncErrorChannels
+
+  - name: project_templates
+    source: public.project_templates
+    columns:
+      - id
+      - name
+      - description
+      - roles
+      - environments
+      - orgId
+      - createdAt
+      - updatedAt
+      - type
+
+  - name: projects
+    source: public.projects
+    columns:
+      - id
+      - name
+      - slug
+      - autoCapitalization
+      - orgId
+      - createdAt
+      - updatedAt
+      - version
+      - upgradeStatus
+      - pitVersionLimit
+      - auditLogsRetentionDays
+      - description
+      - type
+      - enforceCapitalization
+      - hasDeleteProtection
+      - secretSharing
+      - showSnapshotsLegacy
+      - defaultProduct
+      - secretDetectionIgnoreValues
+
+  - name: rate_limit
+    source: public.rate_limit
+    columns:
+      - id
+      - readRateLimit
+      - writeRateLimit
+      - secretsRateLimit
+      - authRateLimit
+      - inviteUserRateLimit
+      - mfaRateLimit
+      - publicEndpointLimit
+      - createdAt
+      - updatedAt
+
+  - name: relays
+    source: public.relays
+    columns:
+      - id
+      - createdAt
+      - updatedAt
+      - orgId
+      - identityId
+      - name
+      - host
+      - heartbeat
+      - healthAlertedAt
+
+  - name: reminders
+    source: public.reminders
+    columns:
+      - id
+      - secretId
+      - message
+      - repeatDays
+      - nextReminderDate
+      - createdAt
+      - updatedAt
+      - fromDate
+
+  - name: roles
+    source: public.roles
+    columns:
+      - id
+      - name
+      - description
+      - slug
+      - permissions
+      - orgId
+      - projectId
+      - namespaceId
+      - createdAt
+      - updatedAt
+
+  - name: saml_configs
+    source: public.saml_configs
+    columns:
+      - id
+      - authProvider
+      - isActive
+      - createdAt
+      - updatedAt
+      - orgId
+      - lastUsed
+      - enableGroupSync
+
+  - name: secret_approval_policies
+    source: public.secret_approval_policies
+    columns:
+      - id
+      - name
+      - secretPath
+      - approvals
+      - envId
+      - createdAt
+      - updatedAt
+      - enforcementLevel
+      - deletedAt
+      - allowedSelfApprovals
+
+  - name: secret_approval_requests
+    source: public.secret_approval_requests
+    columns:
+      - id
+      - policyId
+      - hasMerged
+      - status
+      - conflicts
+      - slug
+      - folderId
+      - createdAt
+      - updatedAt
+      - isReplicated
+      - committerUserId
+      - statusChangedByUserId
+      - bypassReason
+
+  - name: secret_folders
+    source: public.secret_folders
+    columns:
+      - id
+      - name
+      - version
+      - createdAt
+      - updatedAt
+      - envId
+      - parentId
+      - isReserved
+      - description
+      - lastSecretModified
+
+  - name: secret_imports
+    source: public.secret_imports
+    columns:
+      - id
+      - version
+      - importPath
+      - importEnv
+      - position
+      - createdAt
+      - updatedAt
+      - folderId
+      - isReplication
+      - isReplicationSuccess
+      - replicationStatus
+      - lastReplicated
+      - isReserved
+
+  - name: secret_rotations
+    source: public.secret_rotations
+    columns:
+      - id
+      - provider
+      - secretPath
+      - interval
+      - lastRotatedAt
+      - status
+      - statusMessage
+      - algorithm
+      - keyEncoding
+      - envId
+      - createdAt
+      - updatedAt
+
+  - name: secret_rotations_v2
+    source: public.secret_rotations_v2
+    columns:
+      - id
+      - name
+      - description
+      - type
+      - parameters
+      - secretsMapping
+      - isAutoRotationEnabled
+      - activeIndex
+      - folderId
+      - connectionId
+      - createdAt
+      - updatedAt
+      - rotationInterval
+      - rotateAtUtc
+      - rotationStatus
+      - lastRotationAttemptedAt
+      - lastRotatedAt
+      - nextRotationAt
+      - isLastRotationManual
+
+  - name: secret_scanning_data_sources
+    source: public.secret_scanning_data_sources
+    columns:
+      - id
+      - externalId
+      - name
+      - description
+      - type
+      - config
+      - connectionId
+      - isAutoScanEnabled
+      - projectId
+      - createdAt
+      - updatedAt
+      - isDisconnected
+
+  - name: secret_scanning_findings
+    source: public.secret_scanning_findings
+    columns:
+      - id
+      - dataSourceName
+      - dataSourceType
+      - resourceName
+      - resourceType
+      - rule
+      - severity
+      - status
+      - remarks
+      - fingerprint
+      - details
+      - projectId
+      - scanId
+      - createdAt
+      - updatedAt
+
+  - name: secret_scanning_git_risks
+    source: public.secret_scanning_git_risks
+    columns:
+      - id
+      - description
+      - entropy
+      - date
+      - message
+      - tags
+      - ruleID
+      - isFalsePositive
+      - isResolved
+      - riskOwner
+      - pusherName
+      - pusherEmail
+      - status
+      - orgId
+      - createdAt
+      - updatedAt
+
+  - name: secret_scanning_resources
+    source: public.secret_scanning_resources
+    columns:
+      - id
+      - externalId
+      - name
+      - type
+      - dataSourceId
+      - createdAt
+      - updatedAt
+
+  - name: secret_sharing
+    source: public.secret_sharing
+    columns:
+      - id
+      - hashedHex
+      - expiresAt
+      - userId
+      - orgId
+      - createdAt
+      - updatedAt
+      - expiresAfterViews
+      - accessType
+      - name
+      - lastViewedAt
+      - identifier
+      - type
+      - authorizedEmails
+
+  - name: secret_syncs
+    source: public.secret_syncs
+    columns:
+      - id
+      - name
+      - description
+      - destination
+      - isAutoSyncEnabled
+      - version
+      - destinationConfig
+      - syncOptions
+      - projectId
+      - folderId
+      - connectionId
+      - createdAt
+      - updatedAt
+      - syncStatus
+      - lastSyncJobId
+      - lastSyncMessage
+      - lastSyncedAt
+      - importStatus
+      - lastImportJobId
+      - lastImportMessage
+      - lastImportedAt
+      - removeStatus
+      - lastRemoveJobId
+      - lastRemoveMessage
+      - lastRemovedAt
+
+  - name: secret_tags
+    source: public.secret_tags
+    columns:
+      - id
+      - slug
+      - color
+      - createdAt
+      - updatedAt
+      - createdBy
+      - projectId
+      - createdByActorType
+
+  - name: secrets
+    source: public.secrets
+    columns:
+      - id
+      - version
+      - type
+      - secretBlindIndex
+      - secretReminderNote
+      - secretReminderRepeatDays
+      - skipMultilineEncoding
+      - algorithm
+      - keyEncoding
+      - metadata
+      - userId
+      - folderId
+      - createdAt
+      - updatedAt
+
+  - name: secrets_v2
+    source: public.secrets_v2
+    columns:
+      - id
+      - version
+      - type
+      - key
+      - reminderNote
+      - reminderRepeatDays
+      - skipMultilineEncoding
+      - metadata
+      - userId
+      - folderId
+      - createdAt
+      - updatedAt
+
+  - name: service_tokens
+    source: public.service_tokens
+    columns:
+      - id
+      - name
+      - scopes
+      - lastUsed
+      - expiresAt
+      - createdAt
+      - updatedAt
+      - createdBy
+      - projectId
+      - expiryNotificationSent
+
+  - name: ssh_certificate_authorities
+    source: public.ssh_certificate_authorities
+    columns:
+      - id
+      - createdAt
+      - updatedAt
+      - projectId
+      - status
+      - friendlyName
+      - keyAlgorithm
+      - keySource
+
+  - name: ssh_certificates
+    source: public.ssh_certificates
+    columns:
+      - id
+      - createdAt
+      - updatedAt
+      - sshCaId
+      - sshCertificateTemplateId
+      - serialNumber
+      - certType
+      - principals
+      - keyId
+      - notBefore
+      - notAfter
+      - sshHostId
+
+  - name: ssh_host_groups
+    source: public.ssh_host_groups
+    columns:
+      - id
+      - createdAt
+      - updatedAt
+      - projectId
+      - name
+
+  - name: ssh_hosts
+    source: public.ssh_hosts
+    columns:
+      - id
+      - createdAt
+      - updatedAt
+      - projectId
+      - hostname
+      - userCertTtl
+      - hostCertTtl
+      - userSshCaId
+      - hostSshCaId
+      - alias
+
+  - name: user_group_membership
+    source: public.user_group_membership
+    columns:
+      - id
+      - userId
+      - groupId
+      - createdAt
+      - updatedAt
+      - isPending
+
+  - name: users
+    source: public.users
+    columns:
+      - id
+      - email
+      - authMethods
+      - superAdmin
+      - firstName
+      - lastName
+      - isAccepted
+      - isMfaEnabled
+      - mfaMethods
+      - devices
+      - createdAt
+      - updatedAt
+      - isGhost
+      - username
+      - isEmailVerified
+      - consecutiveFailedMfaAttempts
+      - isLocked
+      - temporaryLockDateEnd
+      - consecutiveFailedPasswordAttempts
+      - selectedMfaMethod
+
+  - name: webhooks
+    source: public.webhooks
+    columns:
+      - id
+      - secretPath
+      - lastStatus
+      - lastRunErrorMessage
+      - isDisabled
+      - createdAt
+      - updatedAt
+      - envId
+      - type
+      - url

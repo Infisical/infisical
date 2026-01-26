@@ -97,7 +97,7 @@ export type TOAuthFinalizeDTO = {
   codeChallenge: string;
   codeChallengeMethod: string;
   redirectUri: string;
-  resource: string;
+  resource?: string;
   responseType: string;
   path?: string;
   expiry: string;

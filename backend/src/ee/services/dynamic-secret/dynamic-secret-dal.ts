@@ -64,7 +64,7 @@ export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory
           mapper: ({ metadataKey, metadataValue, metadataId }) => ({
             id: metadataId,
             key: metadataKey,
-            value: metadataValue
+            value: metadataValue || ""
           })
         }
       ]
@@ -109,7 +109,7 @@ export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory
           mapper: ({ metadataKey, metadataValue, metadataId }) => ({
             id: metadataId,
             key: metadataKey,
-            value: metadataValue
+            value: metadataValue || ""
           })
         }
       ]
@@ -170,7 +170,7 @@ export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory
             mapper: ({ metadataKey, metadataValue, metadataId }) => ({
               id: metadataId,
               key: metadataKey,
-              value: metadataValue
+              value: metadataValue || ""
             })
           }
         ]

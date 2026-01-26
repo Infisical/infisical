@@ -153,7 +153,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     pathLength,
     caCertObj
   }: {
-    basicConstraints?: { maxPathLength?: number } | null;
+    basicConstraints?: { isCA: boolean; pathLength?: number } | null;
     pathLength?: number | null;
     caCertObj: x509.X509Certificate;
   }): x509.BasicConstraintsExtension => {
@@ -164,7 +164,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     // Validate against policy's maxPathLength
-    const policyMaxPathLength = basicConstraints.maxPathLength;
+    const policyMaxPathLength = basicConstraints.pathLength;
     if (policyMaxPathLength !== undefined && policyMaxPathLength !== null && policyMaxPathLength !== -1) {
       if (pathLength === undefined || pathLength === null) {
         throw new BadRequestError({
@@ -1311,11 +1311,14 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     if (!internal) {
+      if (!actor || !actorId || !actorOrgId) {
+        throw new BadRequestError({ message: "Actor is required" });
+      }
       const { permission } = await permissionService.getProjectPermission({
         actor,
         actorId,
         projectId: ca.projectId,
-        actorAuthMethod,
+        actorAuthMethod: actorAuthMethod || null,
         actorOrgId,
         actionProjectType: ActionProjectType.CertificateManager
       });
@@ -1397,7 +1400,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const keyGenAlg = keyAlgorithmToAlgCfg(effectiveKeyAlgorithm);
     const leafKeys = await crypto.nativeCrypto.subtle.generateKey(keyGenAlg, true, ["sign", "verify"]);
 
-    if (signatureAlgorithm) {
+    if (signatureAlgorithm && ca.internalCa.keyAlgorithm) {
       $checkSignature(ca.internalCa.keyAlgorithm, signatureAlgorithm.split("-")[0], signatureAlgorithm);
     }
 
@@ -1787,7 +1790,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       throw new BadRequestError({ message: "notAfter date is after CA certificate's notAfter date" });
     }
 
-    if (signatureAlgorithm) {
+    if (signatureAlgorithm && ca.internalCa.keyAlgorithm) {
       $checkSignature(ca.internalCa.keyAlgorithm, signatureAlgorithm.split("-")[0], signatureAlgorithm);
     }
 

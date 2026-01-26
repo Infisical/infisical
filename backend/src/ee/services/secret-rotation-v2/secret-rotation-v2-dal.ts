@@ -257,6 +257,7 @@ export const secretRotationV2DALFactory = (
           db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
           db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
           db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue"),
+          db.ref("encryptedValue").withSchema(TableName.ResourceMetadata).as("metadataEncryptedValue"),
           db.raw(`DENSE_RANK() OVER (ORDER BY ${TableName.SecretRotationV2}."createdAt" DESC) as rank`)
         );
 
@@ -352,10 +353,11 @@ export const secretRotationV2DALFactory = (
               {
                 key: "metadataId",
                 label: "secretMetadata" as const,
-                mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+                mapper: ({ metadataKey, metadataValue, metadataEncryptedValue, metadataId }) => ({
                   id: metadataId,
                   key: metadataKey,
-                  value: metadataValue
+                  value: metadataValue,
+                  encryptedValue: metadataEncryptedValue
                 })
               }
             ]

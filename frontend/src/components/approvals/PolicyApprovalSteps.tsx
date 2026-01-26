@@ -10,10 +10,10 @@ import { getMemberLabel } from "@app/helpers/members";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api";
 import { ApproverType } from "@app/hooks/api/approvalPolicies";
 
-import { TPolicyForm } from "../PolicySchema";
+import { TFormWithApprovalSteps } from "./ApprovalStepsSchema";
 
 export const PolicyApprovalSteps = () => {
-  const { control } = useFormContext<TPolicyForm>();
+  const { control } = useFormContext<TFormWithApprovalSteps>();
 
   const { currentProject } = useProject();
   const projectId = currentProject?.id || "";
