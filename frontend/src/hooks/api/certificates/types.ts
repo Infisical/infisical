@@ -14,12 +14,6 @@ export type TCertificateFingerprints = {
   sha1: string;
 };
 
-export type TRenewalChainCertificate = {
-  id: string;
-  serialNumber: string;
-  commonName: string;
-};
-
 export type TCertificate = {
   id: string;
   caId: string;
@@ -51,8 +45,6 @@ export type TCertificate = {
   };
   caName?: string | null;
   profileName?: string | null;
-  renewedFromCertificate?: TRenewalChainCertificate | null;
-  renewedByCertificate?: TRenewalChainCertificate | null;
 };
 
 export type TCertificateByIdResponse = {

@@ -465,12 +465,6 @@ export const certificateDALFactory = (db: TDbClient) => {
   type TCertificateWithRequestDetails = TCertificates & {
     caName?: string | null;
     profileName?: string | null;
-    renewedFromId?: string | null;
-    renewedFromSerialNumber?: string | null;
-    renewedFromCommonName?: string | null;
-    renewedById?: string | null;
-    renewedBySerialNumber?: string | null;
-    renewedByCommonName?: string | null;
   };
 
   // Flexible lookup filter for certificate queries - either id or serialNumber, not both
@@ -493,25 +487,9 @@ export const certificateDALFactory = (db: TDbClient) => {
           `${TableName.Certificate}.profileId`,
           `${TableName.PkiCertificateProfile}.id`
         )
-        .leftJoin(
-          `${TableName.Certificate} as renewedFrom`,
-          `${TableName.Certificate}.renewedFromCertificateId`,
-          `renewedFrom.id`
-        )
-        .leftJoin(
-          `${TableName.Certificate} as renewedBy`,
-          `${TableName.Certificate}.renewedByCertificateId`,
-          `renewedBy.id`
-        )
         .select(selectAllTableCols(TableName.Certificate))
         .select(db.ref("name").withSchema(TableName.CertificateAuthority).as("caName"))
-        .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
-        .select(db.raw(`"renewedFrom"."id" as "renewedFromId"`))
-        .select(db.raw(`"renewedFrom"."serialNumber" as "renewedFromSerialNumber"`))
-        .select(db.raw(`"renewedFrom"."commonName" as "renewedFromCommonName"`))
-        .select(db.raw(`"renewedBy"."id" as "renewedById"`))
-        .select(db.raw(`"renewedBy"."serialNumber" as "renewedBySerialNumber"`))
-        .select(db.raw(`"renewedBy"."commonName" as "renewedByCommonName"`));
+        .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"));
 
       // Dynamic where clause based on filter
       if (filter.id) {

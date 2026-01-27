@@ -131,17 +131,7 @@ export const certificateServiceFactory = ({
     );
 
     // Extract additional details from the joined result while creating clean cert object
-    const {
-      caName,
-      profileName,
-      renewedFromId,
-      renewedFromSerialNumber,
-      renewedFromCommonName,
-      renewedById,
-      renewedBySerialNumber,
-      renewedByCommonName,
-      ...cert
-    } = certWithDetails;
+    const { caName, profileName, ...cert } = certWithDetails;
 
     // Extract subject, fingerprints, and basicConstraints
     let certSubject: TCertificateSubject | undefined;
@@ -205,23 +195,6 @@ export const certificateServiceFactory = ({
       }
     }
 
-    // Build renewal chain objects
-    const renewedFromCertificate = renewedFromId
-      ? {
-          id: renewedFromId,
-          serialNumber: renewedFromSerialNumber ?? "",
-          commonName: renewedFromCommonName ?? ""
-        }
-      : null;
-
-    const renewedByCertificate = renewedById
-      ? {
-          id: renewedById,
-          serialNumber: renewedBySerialNumber ?? "",
-          commonName: renewedByCommonName ?? ""
-        }
-      : null;
-
     return {
       cert: {
         ...cert,
@@ -229,9 +202,7 @@ export const certificateServiceFactory = ({
         fingerprints,
         basicConstraints,
         caName,
-        profileName,
-        renewedFromCertificate,
-        renewedByCertificate
+        profileName
       }
     };
   };

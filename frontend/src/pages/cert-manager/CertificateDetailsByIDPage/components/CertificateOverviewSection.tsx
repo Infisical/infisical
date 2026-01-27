@@ -162,7 +162,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                 {certificate.profileName || <span className="text-muted">—</span>}
               </DetailValue>
             </Detail>
-            {certificate.renewedFromCertificate && (
+            {certificate.renewedFromCertificateId && (
               <Detail>
                 <DetailLabel>Renewed From</DetailLabel>
                 <DetailValue>
@@ -171,17 +171,17 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                     params={{
                       orgId,
                       projectId,
-                      certificateId: certificate.renewedFromCertificate.id
+                      certificateId: certificate.renewedFromCertificateId
                     }}
                     className="inline-flex items-center gap-1 underline"
                   >
-                    {certificate.renewedFromCertificate.commonName}
+                    {certificate.commonName}
                     <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
                   </Link>
                 </DetailValue>
               </Detail>
             )}
-            {certificate.renewedByCertificate && (
+            {certificate.renewedByCertificateId && (
               <Detail>
                 <DetailLabel>Renewed By</DetailLabel>
                 <DetailValue>
@@ -190,11 +190,11 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                     params={{
                       orgId,
                       projectId,
-                      certificateId: certificate.renewedByCertificate.id
+                      certificateId: certificate.renewedByCertificateId
                     }}
                     className="inline-flex items-center gap-1 underline"
                   >
-                    {certificate.renewedByCertificate.commonName}
+                    {certificate.commonName}
                     <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
                   </Link>
                 </DetailValue>
