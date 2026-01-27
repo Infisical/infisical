@@ -200,8 +200,13 @@ export type TCertificateFingerprints = {
   sha1: string;
 };
 
+export type TCertificateBasicConstraints = {
+  isCA: boolean;
+  pathLength?: number;
+};
+
 export type TParsedCertificateBody = {
   subject?: TCertificateSubject;
   fingerprints?: TCertificateFingerprints;
-  basicConstraints?: { isCA: boolean; pathLength?: number };
+  basicConstraints?: TCertificateBasicConstraints;
 };

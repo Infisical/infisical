@@ -30,6 +30,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { expandInternalCa, getCaCertChain, rebuildCaCrl } from "../certificate-authority/certificate-authority-fns";
 import {
+  extractCertificateFields,
   generatePkcs12FromCertificate,
   getCertificateCredentials,
   parseCertificateBody,
@@ -42,6 +43,9 @@ import {
   CertExtendedKeyUsageOIDToName,
   CertKeyUsage,
   CertStatus,
+  TCertificateBasicConstraints,
+  TCertificateFingerprints,
+  TCertificateSubject,
   TDeleteCertDTO,
   TGetCertBodyDTO,
   TGetCertBundleDTO,
@@ -139,32 +143,66 @@ export const certificateServiceFactory = ({
       ...cert
     } = certWithDetails;
 
-    // Extract subject, fingerprints, and basicConstraints from certificate body
-    let certSubject;
-    let fingerprints;
-    let basicConstraints;
+    // Extract subject, fingerprints, and basicConstraints
+    let certSubject: TCertificateSubject | undefined;
+    let fingerprints: TCertificateFingerprints | undefined;
+    let basicConstraints: TCertificateBasicConstraints | undefined;
 
-    const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
-    if (certBody?.encryptedCertificate) {
-      const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
-        projectId: cert.projectId,
-        projectDAL,
-        kmsService
-      });
+    // NEW: Try to read from database columns first (avoids KMS decryption)
+    // Check if any parsed field exists (indicates new certificate with stored data)
+    const hasParsedData = cert.fingerprintSha256 || cert.isCA !== null;
 
-      const kmsDecryptor = await kmsService.decryptWithKmsKey({
-        kmsId: certificateManagerKeyId
-      });
+    if (hasParsedData) {
+      // Build subject from individual columns
+      certSubject = {
+        commonName: cert.commonName,
+        organization: cert.subjectOrganization || undefined,
+        organizationalUnit: cert.subjectOrganizationalUnit || undefined,
+        country: cert.subjectCountry || undefined,
+        state: cert.subjectState || undefined,
+        locality: cert.subjectLocality || undefined
+      };
 
-      const decryptedCert = await kmsDecryptor({
-        cipherTextBlob: certBody.encryptedCertificate
-      });
+      // Build fingerprints from columns
+      if (cert.fingerprintSha256 && cert.fingerprintSha1) {
+        fingerprints = {
+          sha256: cert.fingerprintSha256,
+          sha1: cert.fingerprintSha1
+        };
+      }
 
-      // Use helper to parse the decrypted certificate
-      const parsed = parseCertificateBody(decryptedCert);
-      certSubject = parsed.subject;
-      fingerprints = parsed.fingerprints;
-      basicConstraints = parsed.basicConstraints;
+      // Build basic constraints
+      if (cert.isCA !== null && cert.isCA !== undefined) {
+        basicConstraints = {
+          isCA: cert.isCA,
+          pathLength: cert.pathLength !== null ? cert.pathLength : undefined
+        };
+      }
+    }
+
+    // BACKWARD COMPATIBILITY: Fallback to on-demand parsing for old certificates
+    if (!hasParsedData) {
+      const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
+      if (certBody?.encryptedCertificate) {
+        const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
+          projectId: cert.projectId,
+          projectDAL,
+          kmsService
+        });
+
+        const kmsDecryptor = await kmsService.decryptWithKmsKey({
+          kmsId: certificateManagerKeyId
+        });
+
+        const decryptedCert = await kmsDecryptor({
+          cipherTextBlob: certBody.encryptedCertificate
+        });
+
+        const parsed = parseCertificateBody(decryptedCert);
+        certSubject = parsed.subject;
+        fingerprints = parsed.fingerprints;
+        basicConstraints = parsed.basicConstraints;
+      }
     }
 
     // Build renewal chain objects
@@ -622,6 +660,9 @@ export const certificateServiceFactory = ({
 
     const cert = await certificateDAL.transaction(async (tx) => {
       try {
+        // Extract certificate fields for storage
+        const parsedFields = extractCertificateFields(Buffer.from(certificatePem));
+
         const txCert = await certificateDAL.create(
           {
             status: CertStatus.ACTIVE,
@@ -633,7 +674,8 @@ export const certificateServiceFactory = ({
             notAfter,
             projectId,
             keyUsages,
-            extendedKeyUsages
+            extendedKeyUsages,
+            ...parsedFields
           },
           tx
         );

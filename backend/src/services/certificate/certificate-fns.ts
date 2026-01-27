@@ -207,3 +207,28 @@ export const parseCertificateBody = (decryptedCertificate: Buffer): TParsedCerti
     return {};
   }
 };
+
+/**
+ * Extract certificate fields including subject attributes, fingerprints, and basic constraints.
+ * Returns all parsed fields as separate properties.
+ */
+export const extractCertificateFields = (decryptedCertificate: Buffer) => {
+  const parsed = parseCertificateBody(decryptedCertificate);
+
+  return {
+    // Subject attributes
+    subjectOrganization: parsed.subject?.organization ?? null,
+    subjectOrganizationalUnit: parsed.subject?.organizationalUnit ?? null,
+    subjectCountry: parsed.subject?.country ?? null,
+    subjectState: parsed.subject?.state ?? null,
+    subjectLocality: parsed.subject?.locality ?? null,
+
+    // Fingerprints
+    fingerprintSha256: parsed.fingerprints?.sha256 ?? null,
+    fingerprintSha1: parsed.fingerprints?.sha1 ?? null,
+
+    // Basic constraints
+    isCA: parsed.basicConstraints?.isCA ?? null,
+    pathLength: parsed.basicConstraints?.pathLength ?? null
+  };
+};
