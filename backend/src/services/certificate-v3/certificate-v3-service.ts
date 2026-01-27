@@ -700,6 +700,13 @@ export const certificateV3ServiceFactory = ({
       const policySteps = await approvalPolicyDAL.findStepsByPolicyId(approvalPolicy.id);
       const { requesterName, requesterEmail } = await resolveRequesterInfo(actor, actorId, EnrollmentType.API);
 
+      const resolvedTtl = resolveEffectiveTtl({
+        requestTtl: certificateRequest.validity.ttl || undefined,
+        profileDefaultTtlDays: profile.defaultTtlDays,
+        policyMaxValidity: policy?.validity?.max,
+        flowDefaultTtl: ""
+      });
+
       const { certRequestId, approvalRequestId } = await certificateRequestDAL.transaction(async (tx) => {
         const certRequest = await certificateRequestDAL.create(
           {
@@ -713,7 +720,7 @@ export const certificateV3ServiceFactory = ({
             notAfter: certificateRequest.notAfter || null,
             keyAlgorithm: certificateRequest.keyAlgorithm || null,
             signatureAlgorithm: certificateRequest.signatureAlgorithm || null,
-            ttl: certificateRequest.validity.ttl,
+            ttl: resolvedTtl,
             status: CertificateRequestStatus.PENDING_APPROVAL,
             organization: certificateRequest.organization || null,
             organizationalUnit: certificateRequest.organizationalUnit || null,
@@ -855,6 +862,13 @@ export const certificateV3ServiceFactory = ({
     const issuerType = profile?.issuerType || (profile?.caId ? IssuerType.CA : IssuerType.SELF_SIGNED);
 
     if (issuerType === IssuerType.SELF_SIGNED) {
+      const resolvedTtl = resolveEffectiveTtl({
+        requestTtl: certificateRequest.validity.ttl || undefined,
+        profileDefaultTtlDays: profile.defaultTtlDays,
+        policyMaxValidity: policy?.validity?.max,
+        flowDefaultTtl: ""
+      });
+
       const result = await certificateDAL.transaction(async (tx) => {
         const effectiveAlgorithms = getEffectiveAlgorithms(effectiveSignatureAlgorithm, effectiveKeyAlgorithm);
 
@@ -889,7 +903,7 @@ export const certificateV3ServiceFactory = ({
           signatureAlgorithm: effectiveSignatureAlgorithm,
           status: CertificateRequestStatus.ISSUED,
           certificateId: processResult.certificateData.id,
-          ttl: certificateRequest.validity.ttl,
+          ttl: resolvedTtl,
           enrollmentType: EnrollmentType.API,
           organization: certificateRequest.organization,
           organizationalUnit: certificateRequest.organizationalUnit,
@@ -900,7 +914,7 @@ export const certificateV3ServiceFactory = ({
 
         const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
           profile,
-          certificateRequest.validity.ttl,
+          resolvedTtl,
           processResult.selfSignedResult.notAfter
         );
 
