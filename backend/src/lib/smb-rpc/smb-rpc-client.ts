@@ -2,6 +2,7 @@ import { spawn } from "child_process";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
+import RE2 from "re2";
 
 import { logger } from "@app/lib/logger";
 
@@ -93,7 +94,7 @@ const executeCommand = (
  * Parse NT_STATUS errors from command output
  */
 const parseNtStatusError = (output: string): string | null => {
-  const match = output.match(/NT_STATUS_[A-Z_]+/);
+  const match = new RE2(/NT_STATUS_[A-Z_]+/).exec(output);
   return match ? match[0] : null;
 };
 
@@ -157,7 +158,7 @@ const testSmbConnection = async (config: SmbRpcConfig): Promise<void> => {
  * The password is wrapped in single quotes, with internal single quotes escaped
  */
 const escapePasswordForRpc = (password: string): string => {
-  return password.replace(/'/g, "'\\''");
+  return new RE2(/'/g).replace(password, "'\\''");
 };
 
 /**

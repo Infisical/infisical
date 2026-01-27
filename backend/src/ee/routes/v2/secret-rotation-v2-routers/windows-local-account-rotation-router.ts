@@ -38,7 +38,7 @@ export const registerWindowsLocalAccountRotationRouter = async (server: FastifyZ
       hide: false,
       tags: [ApiDocsTags.SecretRotations],
       description:
-        "Reconcile Windows Local Account rotation credentials. This operation uses the SSH app connection credentials to reset the password when credentials are out of sync.",
+        "Reconcile Windows Local Account rotation credentials. This operation uses the Windows App Connection's administrator credentials to reset the password when credentials are out of sync.",
       params: z.object({
         rotationId: z.string().uuid().describe(SecretRotations.RECONCILE.rotationId)
       }),
