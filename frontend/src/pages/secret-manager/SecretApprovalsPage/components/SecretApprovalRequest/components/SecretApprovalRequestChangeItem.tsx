@@ -84,14 +84,22 @@ const renderSingleLineDiffForApproval = (
   newText: string,
   isOldVersion: boolean
 ): JSX.Element => {
-  // If completely new or deleted, or no common words, show as single block
+  // If completely new or deleted, or no common words, show as single block with full highlight
   const wordDiffs = computeWordDiff(oldText, newText);
   const shouldShowAsBlock =
     (oldText === "" && newText !== "") || (oldText !== "" && newText === "") || wordDiffs === null;
 
   if (shouldShowAsBlock) {
     const value = isOldVersion ? oldText : newText;
-    return <div className="font-mono text-sm break-words">{value}</div>;
+    // Apply highlight to the entire value when showing as block
+    const highlightClass = isOldVersion
+      ? "bg-red-600/70 rounded px-0.5"
+      : "bg-green-600/70 rounded px-0.5";
+    return (
+      <div className="font-mono text-sm break-words">
+        {value && <span className={highlightClass}>{value}</span>}
+      </div>
+    );
   }
 
   // Show word-by-word diff when there are common words
