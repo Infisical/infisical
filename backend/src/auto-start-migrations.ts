@@ -379,7 +379,6 @@ export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs
     }
 
     // Use startup lock to ensure only one instance runs migrations at a time
-    // Workflow: drop views → run migrations → recreate views → grant access
     await withStartupLock(applicationDb, logger, async () => {
       if (generateSanitizedSchema) await dropSanitizedSchema({ db: applicationDb, logger });
       await applicationDb.migrate.latest(migrationConfig);
