@@ -28,7 +28,7 @@ export const SelectRecoveryMethodStep = ({ email, onSelect, hasEmailAuthEnabled 
       label: "Domain or SSO change",
       description:
         "Lost access to your Google/SSO account due to a company domain change? Enable email sign-in to regain access.",
-      info: "Use this if you only signed in with Google and can no longer access that Google account",
+      info: "Use this if you only signed in with an SSO provider and can no longer access that account",
       onSelect: () => onSelect(RecoveryMethod.DomainOrSSOChange),
       isDisabled: hasEmailAuthEnabled,
       disabledReason: "You already have email sign-in enabled."
@@ -89,7 +89,7 @@ export const SelectRecoveryMethodStep = ({ email, onSelect, hasEmailAuthEnabled 
         <p className="font-medium text-gray-300">Not sure which to choose?</p>
         <p className="mt-2 text-sm text-gray-500">
           If your company changed email domains (e.g., from @oldcompany.com to @newcompany.com) and
-          you used Google sign-in, select{" "}
+          you used SSO sign-in, select{" "}
           <span className="font-medium text-gray-300">&quot;Domain or SSO change&quot;</span>. This
           will let you set up a password so you can sign in with your new email.
         </p>
