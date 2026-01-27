@@ -105,6 +105,13 @@ export const RotationsBrowser = () => {
       description: "Learn how to automatically rotate MongoDB credentials.",
       category: "Databases",
     },
+    {
+      name: "Windows Local Account",
+      slug: "windows-local-account",
+      path: "/documentation/platform/secret-rotation/windows-local-account",
+      description: "Learn how to automatically rotate Windows local account passwords.",
+      category: "Networking & DNS",
+    },
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });

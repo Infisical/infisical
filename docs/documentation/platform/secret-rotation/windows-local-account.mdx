@@ -117,10 +117,6 @@ description: "Learn how to automatically rotate Windows local account passwords 
         }'
         ```
 
-        <Note>
-            Due to Windows Local Account Rotations rotating a single credential set, auto-rotation may result in service interruptions. If you need to ensure service continuity, we recommend disabling this option.
-        </Note>
-
         ### Sample response
 
         ```bash Response
@@ -187,33 +183,3 @@ description: "Learn how to automatically rotate Windows local account passwords 
         ```
     </Tab>
 </Tabs>
-
-## Troubleshooting
-
-### Common Issues
-
-**Connection failed (NT_STATUS_UNSUCCESSFUL)**
-- Verify SMB is enabled on the target server: `Get-SmbServerConfiguration`
-- Check that the firewall allows connections on port 445
-- Ensure SMB3 protocol is supported (Windows Server 2012+)
-
-**Authentication failed (NT_STATUS_LOGON_FAILURE)**
-- Verify the username and password are correct
-- Check if the account is locked or disabled
-- For domain accounts, ensure the domain name is correct in the Windows Connection
-
-**Access denied (NT_STATUS_ACCESS_DENIED)**
-- Ensure the Windows Connection credentials have administrator privileges
-- For "Login as Root" method, the connection user must have rights to change other users' passwords
-- Verify the target user account exists and is not locked
-
-**Password policy violations (NT_STATUS_PASSWORD_RESTRICTION)**
-- Adjust the Password Requirements in Infisical to meet your Windows Server password policy
-- Check Windows Server password policy using: `net accounts`
-- Ensure generated passwords meet minimum length and complexity requirements
-
-**Host unreachable**
-- Verify network connectivity to the Windows server
-- Check DNS resolution if using a hostname
-- Ensure there are no network firewalls blocking port 445
-- Consider using the Infisical Gateway for private network access
