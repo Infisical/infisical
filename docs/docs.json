@@ -151,6 +151,7 @@
                       "integrations/app-connections/terraform-cloud",
                       "integrations/app-connections/vercel",
                       "integrations/app-connections/windmill",
+                      "integrations/app-connections/windows",
                       "integrations/app-connections/zabbix"
                     ]
                   }
@@ -452,6 +453,7 @@
                       "documentation/platform/secret-rotation/databricks-service-principal-secret",
                       "documentation/platform/secret-rotation/ldap-password",
                       "documentation/platform/secret-rotation/unix-linux-local-account",
+                      "documentation/platform/secret-rotation/windows-local-account",
                       "documentation/platform/secret-rotation/mongodb-credentials",
                       "documentation/platform/secret-rotation/mssql-credentials",
                       "documentation/platform/secret-rotation/mysql-credentials",
@@ -1613,6 +1615,18 @@
                     ]
                   },
                   {
+                    "group": "Windows (SMB)",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/smb/list",
+                      "api-reference/endpoints/app-connections/smb/available",
+                      "api-reference/endpoints/app-connections/smb/get-by-id",
+                      "api-reference/endpoints/app-connections/smb/get-by-name",
+                      "api-reference/endpoints/app-connections/smb/create",
+                      "api-reference/endpoints/app-connections/smb/update",
+                      "api-reference/endpoints/app-connections/smb/delete"
+                    ]
+                  },
+                  {
                     "group": "TeamCity",
                     "pages": [
                       "api-reference/endpoints/app-connections/teamcity/list",
@@ -2028,6 +2042,20 @@
                       "api-reference/endpoints/secret-rotations/unix-linux-local-account/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/unix-linux-local-account/update",
                       "api-reference/endpoints/secret-rotations/unix-linux-local-account/reconcile"
+                    ]
+                  },
+                  {
+                    "group": "Windows Local Account",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/windows-local-account/create",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/delete",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/get-by-id",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/get-by-name",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/list",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/update",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/reconcile"
                     ]
                   },
                   {
