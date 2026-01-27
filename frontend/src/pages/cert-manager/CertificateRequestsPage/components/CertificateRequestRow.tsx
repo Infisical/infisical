@@ -43,7 +43,7 @@ export const CertificateRequestRow = ({ request, onViewCertificates }: Props) =>
           <Tooltip
             position="top"
             content={errorMessage || "Certificate request failed"}
-            className="max-w-sm"
+            className="max-w-sm break-words"
           >
             <div>
               <Badge variant="danger">Failed</Badge>
