@@ -45,6 +45,7 @@ export type TCertificate = {
   };
   caName?: string | null;
   profileName?: string | null;
+  caType?: "internal" | "external" | null;
 };
 
 export type TCertificateByIdResponse = {

@@ -23,8 +23,22 @@ type Props = {
   certificateId: string;
 };
 
+// Preserve list for key usage terms that need special formatting
+// These terms have acronyms or specific capitalization that shouldn't be converted from camelCase
+const KEY_USAGE_DISPLAY_MAP: Record<string, string> = {
+  cRLSign: "CRL Sign"
+};
+
 export const CertificateDetailsSection = ({ certificateId }: Props) => {
   const { data, isLoading } = useGetCertificateById(certificateId);
+
+  // Format key usage names, checking preserve list first
+  const formatKeyUsage = (usage: string): string => {
+    if (KEY_USAGE_DISPLAY_MAP[usage]) {
+      return KEY_USAGE_DISPLAY_MAP[usage];
+    }
+    return toTitleCase(camelCaseToSpaces(usage));
+  };
 
   if (isLoading) {
     return (
@@ -165,7 +179,7 @@ export const CertificateDetailsSection = ({ certificateId }: Props) => {
                   <div className="flex flex-wrap gap-1">
                     {certificate.keyUsages.map((usage) => (
                       <Badge key={usage} variant="neutral">
-                        {toTitleCase(camelCaseToSpaces(usage))}
+                        {formatKeyUsage(usage)}
                       </Badge>
                     ))}
                   </div>
@@ -181,7 +195,7 @@ export const CertificateDetailsSection = ({ certificateId }: Props) => {
                   <div className="flex flex-wrap gap-1">
                     {certificate.extendedKeyUsages.map((usage) => (
                       <Badge key={usage} variant="neutral">
-                        {toTitleCase(camelCaseToSpaces(usage))}
+                        {formatKeyUsage(usage)}
                       </Badge>
                     ))}
                   </div>

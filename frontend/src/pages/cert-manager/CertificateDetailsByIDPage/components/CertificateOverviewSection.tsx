@@ -60,6 +60,8 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
     certificate.notAfter
   );
 
+  const showCaLink = certificate.caId && certificate.caName && certificate.caType === "internal";
+
   return (
     <div className="flex w-full flex-col gap-5 lg:max-w-[24rem]">
       <UnstableCard>
@@ -142,7 +144,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
             <Detail>
               <DetailLabel>Certificate Authority</DetailLabel>
               <DetailValue>
-                {certificate.caId && certificate.caName ? (
+                {showCaLink && (
                   <Link
                     to="/organizations/$orgId/projects/cert-manager/$projectId/ca/$caId"
                     params={{ orgId, projectId, caId: certificate.caId }}
@@ -151,9 +153,8 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                     {certificate.caName}
                     <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
                   </Link>
-                ) : (
-                  <span className="text-muted">—</span>
                 )}
+                {!showCaLink && (certificate.caName || <span className="text-muted">—</span>)}
               </DetailValue>
             </Detail>
             <Detail>

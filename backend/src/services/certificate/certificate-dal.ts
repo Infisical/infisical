@@ -465,6 +465,7 @@ export const certificateDALFactory = (db: TDbClient) => {
   type TCertificateWithRequestDetails = TCertificates & {
     caName?: string | null;
     profileName?: string | null;
+    caType?: "internal" | "external" | null;
   };
 
   // Flexible lookup filter for certificate queries - either id or serialNumber, not both
@@ -487,9 +488,15 @@ export const certificateDALFactory = (db: TDbClient) => {
           `${TableName.Certificate}.profileId`,
           `${TableName.PkiCertificateProfile}.id`
         )
+        .leftJoin(
+          TableName.InternalCertificateAuthority,
+          `${TableName.CertificateAuthority}.id`,
+          `${TableName.InternalCertificateAuthority}.caId`
+        )
         .select(selectAllTableCols(TableName.Certificate))
         .select(db.ref("name").withSchema(TableName.CertificateAuthority).as("caName"))
-        .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"));
+        .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
+        .select(db.ref("id").withSchema(TableName.InternalCertificateAuthority).as("internalCaId"));
 
       // Dynamic where clause based on filter
       if (filter.id) {
@@ -498,9 +505,22 @@ export const certificateDALFactory = (db: TDbClient) => {
         query = query.where(`${TableName.Certificate}.serialNumber`, filter.serialNumber);
       }
 
-      const result = (await query.first()) as TCertificateWithRequestDetails | undefined;
+      const result = (await query.first()) as
+        | (TCertificateWithRequestDetails & { internalCaId?: string | null })
+        | undefined;
 
-      return result;
+      if (!result) {
+        return undefined;
+      }
+
+      const { internalCaId, ...rest } = result;
+
+      let caType: "internal" | "external" | null = null;
+      if (result.caId) {
+        caType = internalCaId ? "internal" : "external";
+      }
+
+      return { ...rest, caType } as TCertificateWithRequestDetails;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificate with full details" });
     }
