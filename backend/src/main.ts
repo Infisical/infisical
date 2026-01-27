@@ -1,5 +1,6 @@
 // Note(Daniel): Do not rename this import, as it is strictly removed from FIPS standalone builds to avoid FIPS mode issues.
 // If you rename the import, update the Dockerfile.fips.standalone-infisical file as well.
+// eslint-disable-next-line simple-import-sort/imports
 import "./lib/telemetry/instrumentation";
 
 import axios from "axios";
@@ -10,8 +11,8 @@ import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 
 import { runMigrations } from "./auto-start-migrations";
 import { initAuditLogDbConnection, initDbConnection } from "./db";
-import { hsmServiceFactory } from "./ee/services/hsm/hsm-service";
 import { keyStoreFactory } from "./keystore/keystore";
+import { hsmServiceFactory } from "./ee/services/hsm/hsm-service";
 import { formatSmtpConfig, getDatabaseCredentials, getHsmConfig, initEnvConfig } from "./lib/config/env";
 import { buildRedisFromConfig } from "./lib/config/redis";
 import { axiosResponseInterceptor } from "./lib/config/request";
