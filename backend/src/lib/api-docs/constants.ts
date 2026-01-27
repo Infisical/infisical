@@ -199,13 +199,14 @@ export const IDENTITIES = {
   }
 } as const;
 
-const IDENTITY_AUTH_SUB_ORGANIZATION_NAME = "sub-organization name to scope the token to";
+const IDENTITY_AUTH_SUB_ORGANIZATION_NAME =
+  "Scopes the login session to the specified sub-organization. If not provided, the session defaults to the organization from which the identity originated.";
 
 export const UNIVERSAL_AUTH = {
   LOGIN: {
     clientId: "Your Machine Identity Client ID.",
     clientSecret: "Your Machine Identity Client Secret.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -280,7 +281,7 @@ export const LDAP_AUTH = {
     identityId: "The ID of the machine identity to login.",
     username: "The username of the LDAP user to login.",
     password: "The password of the LDAP user to login.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     templateId: "The ID of the identity auth template to attach the configuration onto.",
@@ -346,7 +347,7 @@ export const ALICLOUD_AUTH = {
     SignatureVersion: "The signature version. For STS GetCallerIdentity, this should be '1.0'.",
     SignatureNonce: "A unique random string to prevent replay attacks.",
     Signature: "The signature string calculated based on the request parameters and AccessKey Secret.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -375,7 +376,7 @@ export const ALICLOUD_AUTH = {
 export const TLS_CERT_AUTH = {
   LOGIN: {
     identityId: "The ID of the machine identity to login.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -414,7 +415,7 @@ export const AWS_AUTH = {
     iamRequestBody:
       "The base64-encoded body of the signed request. Most likely, the base64-encoding of Action=GetCallerIdentity&Version=2011-06-15.",
     iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -453,7 +454,7 @@ export const OCI_AUTH = {
     identityId: "The ID of the machine identity to login.",
     userOcid: "The OCID of the user attempting login.",
     headers: "The headers of the signed request.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -486,7 +487,7 @@ export const OCI_AUTH = {
 export const AZURE_AUTH = {
   LOGIN: {
     identityId: "The ID of the machine identity to login.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -521,7 +522,7 @@ export const AZURE_AUTH = {
 export const GCP_AUTH = {
   LOGIN: {
     identityId: "The ID of the machine identity to login.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -560,7 +561,7 @@ export const GCP_AUTH = {
 export const KUBERNETES_AUTH = {
   LOGIN: {
     identityId: "The ID of the machine identity to login.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -641,7 +642,7 @@ export const TOKEN_AUTH = {
   CREATE_TOKEN: {
     identityId: "The ID of the machine identity to create the token for.",
     name: "The name of the token to create.",
-    subOrganizationName: "The sub organization name to scope the token to."
+    organizationSlug: "The sub organization name to scope the token to."
   },
   UPDATE_TOKEN: {
     tokenId: "The ID of the token to update metadata for.",
@@ -655,7 +656,7 @@ export const TOKEN_AUTH = {
 export const OIDC_AUTH = {
   LOGIN: {
     identityId: "The ID of the machine identity to login.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -696,7 +697,7 @@ export const OIDC_AUTH = {
 export const JWT_AUTH = {
   LOGIN: {
     identityId: "The ID of the machine identity to login.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
