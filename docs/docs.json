@@ -2886,15 +2886,15 @@
           }
         ]
       },
-      {
-        "tab": "Changelog",
-        "groups": [
-          {
-            "group": "Overview",
-            "pages": ["changelog/overview"]
-          }
-        ]
-      }
+            {
+              "tab": "Changelog",
+              "groups": [
+                {
+                  "group": "Overview",
+                  "pages": ["changelog/overview", "changelog"]
+                }
+              ]
+            }
     ]
   },
   "logo": {
