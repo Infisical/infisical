@@ -146,7 +146,7 @@
     "@fastify/swagger-ui": "^3.1.0",
     "@gitbeaker/rest": "^42.5.0",
     "@google-cloud/kms": "^4.5.0",
-    "@infisical/pg-view-generator": "^1.0.0",
+    "@infisical/pg-view-generator": "^1.1.0",
     "@infisical/quic": "^1.0.8",
     "@modelcontextprotocol/sdk": "^1.24.3",
     "@node-saml/passport-saml": "^5.1.0",

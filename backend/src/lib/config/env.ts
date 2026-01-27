@@ -89,6 +89,9 @@ const envSchema = z
     GENERATE_SANITIZED_SCHEMA: zodStrBool
       .default("false")
       .describe("Generate sanitized schema with views after migrations"),
+    SANITIZED_SCHEMA_ROLE: zpStr(
+      z.string().describe("PostgreSQL role to grant read access to the sanitized schema").optional()
+    ),
     MAX_LEASE_LIMIT: z.coerce.number().default(10000),
     DB_ROOT_CERT: zpStr(z.string().describe("Postgres database base64-encoded CA cert").optional()),
     DB_HOST: zpStr(z.string().describe("Postgres database host").optional()),
