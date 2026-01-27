@@ -873,7 +873,10 @@ export const certificateV3ServiceFactory = ({
         const effectiveAlgorithms = getEffectiveAlgorithms(effectiveSignatureAlgorithm, effectiveKeyAlgorithm);
 
         const processResult = await processSelfSignedCertificate({
-          certificateRequest,
+          certificateRequest: {
+            ...certificateRequest,
+            validity: { ttl: resolvedTtl }
+          },
           policy,
           profile,
           effectiveAlgorithms,
