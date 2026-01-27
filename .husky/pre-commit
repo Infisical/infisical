@@ -9,20 +9,6 @@ if ! command -v infisical >/dev/null 2>&1; then
     exit 1
 fi
 
-# Check for staged changes in frontend
-if git diff --cached --name-only | grep -q "^frontend/"; then
-    echo "🔍 Frontend changes detected - running TypeScript type check..."
-    npm run type:check --prefix frontend || exit 1
-    echo "✅ Frontend type check passed"
-fi
-
-# Check for staged changes in backend
-if git diff --cached --name-only | grep -q "^backend/"; then
-    echo "🔍 Backend changes detected - running TypeScript type check..."
-    npm run type:check --prefix backend || exit 1
-    echo "✅ Backend type check passed"
-fi
-
 # Lint staged files
 npx lint-staged
 

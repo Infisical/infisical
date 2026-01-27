@@ -18,7 +18,7 @@
       "bash -c 'cd frontend && npx eslint --fix ${@#frontend/}' _"
     ],
     "./backend/**/*.{js,jsx,ts,tsx}": [
-      "eslint --fix --config backend/.eslintrc.js"
+      "bash -c 'cd backend && npx eslint --fix ${@#backend/}' _"
     ]
   },
   "devDependencies": {
