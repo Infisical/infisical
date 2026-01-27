@@ -10,7 +10,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { booleanSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { commitChangesResponseSchema, resourceChangeSchema } from "@app/services/folder-commit/folder-commit-schemas";
-import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
+import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 const commitHistoryItemSchema = z.object({
   id: z.string(),
@@ -446,7 +446,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
                   secretComment: z.string().trim().optional().default(""),
                   skipMultilineEncoding: z.boolean().optional(),
                   metadata: z.record(z.string()).optional(),
-                  secretMetadata: ResourceMetadataSchema.optional(),
+                  secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
                   tagIds: z.string().array().optional()
                 })
               )
@@ -466,7 +466,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
                     .nullish()
                     .transform((val) => (val === null ? false : val)),
                   metadata: z.record(z.string()).optional(),
-                  secretMetadata: ResourceMetadataSchema.optional(),
+                  secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
                   tagIds: z.string().array().optional()
                 })
               )

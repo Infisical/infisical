@@ -4,6 +4,7 @@ export {
   ApprovalGrantStatus,
   type PamAccessGrantAttributes,
   type TApprovalGrant,
+  type TApprovalGrantAttributes,
   type TGetApprovalGrantByIdDTO,
   type TListApprovalGrantsDTO,
   type TRevokeApprovalGrantDTO

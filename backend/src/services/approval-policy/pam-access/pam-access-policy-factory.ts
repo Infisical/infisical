@@ -7,6 +7,7 @@ import {
   TApprovalRequestFactoryCanAccess,
   TApprovalRequestFactoryMatchPolicy,
   TApprovalRequestFactoryPostApprovalRoutine,
+  TApprovalRequestFactoryPostRejectionRoutine,
   TApprovalRequestFactoryValidateConstraints,
   TApprovalResourceFactory
 } from "../approval-policy-types";
@@ -111,7 +112,8 @@ export const pamAccessPolicyFactory: TApprovalResourceFactory<
   };
 
   const postApprovalRoutine: TApprovalRequestFactoryPostApprovalRoutine = async (approvalRequestGrantsDAL, request) => {
-    const inputs = request.requestData.requestData;
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    const inputs = request.requestData.requestData as TPamAccessRequestData;
     const durationMs = ms(inputs.accessDuration);
     const expiresAt = new Date(Date.now() + durationMs);
 
@@ -126,10 +128,13 @@ export const pamAccessPolicyFactory: TApprovalResourceFactory<
     });
   };
 
+  const postRejectionRoutine: TApprovalRequestFactoryPostRejectionRoutine = async () => {};
+
   return {
     matchPolicy,
     canAccess,
     validateConstraints,
-    postApprovalRoutine
+    postApprovalRoutine,
+    postRejectionRoutine
   };
 };

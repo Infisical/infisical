@@ -14,11 +14,11 @@ import { OrgPermissionCan } from "@app/components/permissions";
 import { Tooltip } from "@app/components/v2";
 import {
   Badge,
+  Button,
   Detail,
   DetailGroup,
   DetailLabel,
   DetailValue,
-  UnstableButton,
   UnstableButtonGroup,
   UnstableCard,
   UnstableCardAction,
@@ -261,7 +261,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
           serverDetails?.emailConfigured && (
             <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Member}>
               {(isAllowed) => (
-                <UnstableButton
+                <Button
                   isDisabled={!isAllowed}
                   className="mt-4 w-full"
                   variant="org"
@@ -269,7 +269,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
                   onClick={onResendInvite}
                 >
                   Resend Invite
-                </UnstableButton>
+                </Button>
               )}
             </OrgPermissionCan>
           )}

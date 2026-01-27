@@ -94,7 +94,7 @@ export const GenericCreateSecretSyncFieldsSchema = <T extends AnyZodObject | und
   merge?: T
 ) =>
   z.object({
-    name: slugSchema({ field: "name" }).describe(SecretSyncs.CREATE(destination).name),
+    name: slugSchema({ field: "name", max: 256 }).describe(SecretSyncs.CREATE(destination).name),
     projectId: z.string().trim().min(1, "Project ID required").describe(SecretSyncs.CREATE(destination).projectId),
     description: z
       .string()
@@ -120,7 +120,7 @@ export const GenericUpdateSecretSyncFieldsSchema = <T extends AnyZodObject | und
   merge?: T
 ) =>
   z.object({
-    name: slugSchema({ field: "name" }).describe(SecretSyncs.UPDATE(destination).name).optional(),
+    name: slugSchema({ field: "name", max: 256 }).describe(SecretSyncs.UPDATE(destination).name).optional(),
     connectionId: z.string().uuid().describe(SecretSyncs.UPDATE(destination).connectionId).optional(),
     description: z
       .string()

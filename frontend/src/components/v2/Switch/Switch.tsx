@@ -24,10 +24,12 @@ export const Switch = ({
   ...props
 }: SwitchProps): JSX.Element => (
   <div className={twMerge("flex items-center font-inter text-bunker-300", containerClassName)}>
-    <label className="text-sm" htmlFor={id}>
-      {children}
-      {isRequired && <span className="pl-1 text-red">*</span>}
-    </label>
+    {children && (
+      <label className="text-sm" htmlFor={id}>
+        {children}
+        {isRequired && <span className="pl-1 text-red">*</span>}
+      </label>
+    )}
     <SwitchPrimitive.Root
       {...props}
       required={isRequired}

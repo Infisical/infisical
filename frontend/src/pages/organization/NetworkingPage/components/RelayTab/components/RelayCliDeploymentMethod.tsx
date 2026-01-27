@@ -27,7 +27,7 @@ import {
   useGetIdentityMembershipOrgs,
   useGetIdentityTokenAuth
 } from "@app/hooks/api";
-import { slugSchema } from "@app/lib/schemas";
+import { safeJWTSchema, slugSchema } from "@app/lib/schemas";
 
 const baseFormSchema = z.object({
   name: slugSchema({ field: "name" }),
@@ -48,7 +48,7 @@ const formSchemaWithIdentity = baseFormSchema.extend({
 });
 
 const formSchemaWithToken = baseFormSchema.extend({
-  identityToken: z.string().min(1, "Token is required")
+  identityToken: safeJWTSchema
 });
 
 export const RelayCliDeploymentMethod = () => {

@@ -10,6 +10,8 @@ import {
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
 
+import { CertificateRequestStatus } from "./certificate-request-types";
+
 type TCertificateRequestWithCertificate = TCertificateRequests & {
   certificate: TCertificates | null;
   profileName: string | null;
@@ -147,7 +149,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
         query = query.where((builder) => {
           void builder
             .whereILike(`${TableName.CertificateRequests}.commonName`, `%${sanitizedSearch}%`)
-            .orWhereILike(`${TableName.CertificateRequests}.altNames`, `%${sanitizedSearch}%`);
+            .orWhereRaw(`"${TableName.CertificateRequests}"."altNames"::text ILIKE ?`, [`%${sanitizedSearch}%`]);
         });
       }
 
@@ -215,7 +217,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
         query = query.where((builder) => {
           void builder
             .whereILike(`${TableName.CertificateRequests}.commonName`, `%${sanitizedSearch}%`)
-            .orWhereILike(`${TableName.CertificateRequests}.altNames`, `%${sanitizedSearch}%`);
+            .orWhereRaw(`"${TableName.CertificateRequests}"."altNames"::text ILIKE ?`, [`%${sanitizedSearch}%`]);
         });
       }
 
@@ -306,7 +308,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
         query = query.where((builder) => {
           void builder
             .whereILike(`${TableName.CertificateRequests}.commonName`, `%${sanitizedSearch}%`)
-            .orWhereILike(`${TableName.CertificateRequests}.altNames`, `%${sanitizedSearch}%`);
+            .orWhereRaw(`"${TableName.CertificateRequests}"."altNames"::text ILIKE ?`, [`%${sanitizedSearch}%`]);
         });
       }
 
@@ -357,6 +359,23 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
     }
   };
 
+  const markExpiredApprovalRequests = async (expiredApprovalRequestIds: string[]): Promise<number> => {
+    try {
+      if (expiredApprovalRequestIds.length === 0) {
+        return 0;
+      }
+
+      const result = await db(TableName.CertificateRequests)
+        .whereIn("approvalRequestId", expiredApprovalRequestIds)
+        .where("status", CertificateRequestStatus.PENDING_APPROVAL)
+        .update({ status: CertificateRequestStatus.REJECTED, errorMessage: "Approval request expired" });
+
+      return result;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Mark certificate requests with expired approval" });
+    }
+  };
+
   return {
     ...certificateRequestOrm,
     findByIdWithCertificate,
@@ -365,6 +384,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
     attachCertificate,
     findByProjectId,
     countByProjectId,
-    findByProjectIdWithCertificate
+    findByProjectIdWithCertificate,
+    markExpiredApprovalRequests
   };
 };

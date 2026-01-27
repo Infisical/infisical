@@ -16,7 +16,8 @@ export const ProjectTemplatesSchema = z.object({
   orgId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  type: z.string().default("secret-manager")
+  type: z.string().default("secret-manager"),
+  projectManagedIdentities: z.unknown().nullable().optional()
 });
 
 export type TProjectTemplates = z.infer<typeof ProjectTemplatesSchema>;

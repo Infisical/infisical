@@ -4,7 +4,7 @@ import { PlusIcon } from "lucide-react";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  UnstableButton,
+  Button,
   UnstableCard,
   UnstableCardAction,
   UnstableCardContent,
@@ -55,7 +55,7 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
                   })}
                 >
                   {(isAllowed) => (
-                    <UnstableButton
+                    <Button
                       variant="outline"
                       isFullWidth
                       size="xs"
@@ -70,7 +70,7 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
                     >
                       <PlusIcon />
                       Add Auth Method
-                    </UnstableButton>
+                    </Button>
                   )}
                 </ProjectPermissionCan>
               </UnstableCardAction>
@@ -102,7 +102,7 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
                   })}
                 >
                   {(isAllowed) => (
-                    <UnstableButton
+                    <Button
                       variant="project"
                       size="xs"
                       isDisabled={!isAllowed}
@@ -116,7 +116,7 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
                     >
                       <PlusIcon />
                       Add Auth Method
-                    </UnstableButton>
+                    </Button>
                   )}
                 </ProjectPermissionCan>
               </UnstableEmptyContent>

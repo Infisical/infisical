@@ -236,6 +236,7 @@ export const useUpdateProject = () => {
       projectId: projectID,
       newProjectName,
       hasDeleteProtection,
+      enforceEncryptedSecretManagerSecretMetadata,
       newProjectDescription,
       newSlug,
       secretSharing,
@@ -255,7 +256,8 @@ export const useUpdateProject = () => {
           secretDetectionIgnoreValues,
           autoCapitalization,
           pitVersionLimit,
-          hasDeleteProtection
+          hasDeleteProtection,
+          enforceEncryptedSecretManagerSecretMetadata
         }
       );
       return data.project;

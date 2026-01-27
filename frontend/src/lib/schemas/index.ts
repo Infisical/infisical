@@ -18,3 +18,12 @@ export const SecretNameSchema = BaseSecretNameSchema.refine(
   (el) => !el.includes(" "),
   "Secret name cannot contain spaces."
 ).refine((el) => !el.includes(":"), "Secret name cannot contain colon.");
+
+export const safeJWTSchema = z
+  .string()
+  .trim()
+  .min(1, { message: "Token is required" })
+  .regex(
+    /^[a-zA-Z0-9._-]+$/,
+    "Token contains invalid characters. Only letters, numbers, dots, hyphens, and underscores are allowed."
+  );

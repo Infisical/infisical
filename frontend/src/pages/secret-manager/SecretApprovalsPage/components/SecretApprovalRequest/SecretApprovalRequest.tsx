@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   faCheck,
   faCheckCircle,
@@ -8,7 +8,7 @@ import {
   faSearch
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useSearch } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
 import { GitMergeIcon, XIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -55,13 +55,15 @@ import {
 
 export const SecretApprovalRequest = () => {
   const { currentProject, projectId } = useProject();
-  const [selectedApprovalId, setSelectedApprovalId] = useState<string | null>(null);
+
+  const navigate = useNavigate({
+    from: ROUTE_PATHS.SecretManager.ApprovalPage.path
+  });
 
   // filters
   const [statusFilter, setStatusFilter] = useState<"open" | "close">("open");
   const [envFilter, setEnvFilter] = useState<string>();
   const [committerFilter, setCommitterFilter] = useState<string>();
-  const [usingUrlRequestId, setUsingUrlRequestId] = useState(false);
 
   const {
     debouncedSearch: debouncedSearchFilter,
@@ -114,18 +116,11 @@ export const SecretApprovalRequest = () => {
 
   const { permission } = useProjectPermission();
   const { data: members } = useGetWorkspaceUsers(projectId, true);
-  const isSecretApprovalScreen = Boolean(selectedApprovalId);
   const { requestId } = search;
-
-  useEffect(() => {
-    if (!requestId || usingUrlRequestId) return;
-
-    setSelectedApprovalId(requestId as string);
-    setUsingUrlRequestId(true);
-  }, [requestId]);
+  const isSecretApprovalScreen = Boolean(requestId);
 
   const handleGoBackSecretRequestDetail = () => {
-    setSelectedApprovalId(null);
+    navigate({ search: { requestId: "" } });
     refetch();
   };
 
@@ -135,7 +130,7 @@ export const SecretApprovalRequest = () => {
 
   return isSecretApprovalScreen ? (
     <SecretApprovalRequestChanges
-      approvalRequestId={selectedApprovalId || ""}
+      approvalRequestId={requestId || ""}
       onGoBack={handleGoBackSecretRequestDetail}
     />
   ) : (
@@ -286,9 +281,9 @@ export const SecretApprovalRequest = () => {
               className="flex border-b border-mineshaft-600 px-8 py-3 last:border-b-0 hover:bg-mineshaft-700"
               role="button"
               tabIndex={0}
-              onClick={() => setSelectedApprovalId(secretApproval.id)}
+              onClick={() => navigate({ search: { requestId: secretApproval.id } })}
               onKeyDown={(evt) => {
-                if (evt.key === "Enter") setSelectedApprovalId(secretApproval.id);
+                if (evt.key === "Enter") navigate({ search: { requestId: secretApproval.id } });
               }}
             >
               <div className="flex flex-col">

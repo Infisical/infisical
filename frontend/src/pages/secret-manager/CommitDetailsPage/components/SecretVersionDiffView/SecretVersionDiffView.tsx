@@ -516,10 +516,7 @@ export const SecretVersionDiffView = ({
     const cleanOldVersion = cleanVersionForComparison(oldVersion);
     const cleanNewVersion = cleanVersionForComparison(newVersion);
     diffPaths = getDiffPaths(cleanOldVersion, cleanNewVersion);
-
-    if (diffPaths.size === 0) {
-      return null;
-    }
+    const hasNoChanges = diffPaths.size === 0;
 
     oldVersionContent = (
       <div className="w-fit min-w-full font-mono text-sm">
@@ -538,7 +535,17 @@ export const SecretVersionDiffView = ({
       </div>
     );
     newVersionContent = (
-      <div className="w-fit min-w-full font-mono text-sm">
+      <div
+        className={twMerge(
+          "relative w-fit min-w-full font-mono text-sm",
+          hasNoChanges && "[&>*+*]:opacity-0" // still want to render json to make container equivalent size to old version
+        )}
+      >
+        {hasNoChanges && (
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-mineshaft-400">
+            <span>No changes</span>
+          </div>
+        )}
         {renderJsonWithDiffs(
           cleanNewVersion,
           diffPaths,

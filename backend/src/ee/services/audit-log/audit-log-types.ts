@@ -81,7 +81,8 @@ export type TCreateAuditLogDTO = {
     | UnknownUserActor
     | KmipClientActor
     | AcmeProfileActor
-    | AcmeAccountActor;
+    | AcmeAccountActor
+    | EstAccountActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -682,6 +683,10 @@ interface AcmeAccountActorMetadata {
   accountId: string;
 }
 
+interface EstAccountActorMetadata {
+  profileId: string;
+}
+
 interface UnknownUserActorMetadata {}
 
 export interface UserActor {
@@ -729,6 +734,10 @@ export interface AcmeAccountActor {
   metadata: AcmeAccountActorMetadata;
 }
 
+export interface EstAccountActor {
+  type: ActorType.EST_ACCOUNT;
+  metadata: EstAccountActorMetadata;
+}
 export type Actor =
   | UserActor
   | ServiceActor
@@ -737,7 +746,8 @@ export type Actor =
   | PlatformActor
   | KmipClientActor
   | AcmeProfileActor
-  | AcmeAccountActor;
+  | AcmeAccountActor
+  | EstAccountActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -4580,7 +4590,9 @@ interface McpEndpointUpdateEvent {
     name?: string;
     description?: string;
     serverIds?: string[];
-    piiFiltering?: boolean;
+    piiRequestFiltering?: boolean;
+    piiResponseFiltering?: boolean;
+    piiEntityTypes?: string;
   };
 }
 

@@ -354,7 +354,7 @@ export const SecretDetailSidebar = ({
       >
         <DrawerContent
           title={`Secret – ${secret?.key}`}
-          className="h-full thin-scrollbar"
+          className="h-full thin-scrollbar w-md"
           cardBodyClassName="pb-0"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
@@ -484,7 +484,7 @@ export const SecretDetailSidebar = ({
                         <Switch
                           id="skipmultiencoding-option"
                           onCheckedChange={(isChecked) => onChange(isChecked)}
-                          isChecked={value}
+                          isChecked={value ?? false}
                           onBlur={onBlur}
                           isDisabled={!isAllowed}
                           className="items-center justify-between"
@@ -658,6 +658,33 @@ export const SecretDetailSidebar = ({
                             )}
                           />
                         </div>
+                        <div>
+                          {i === 0 && (
+                            <FormLabel label="Encrypt" className="text-xs text-mineshaft-400" />
+                          )}
+                          <Controller
+                            control={control}
+                            defaultValue={
+                              currentProject.enforceEncryptedSecretManagerSecretMetadata
+                            }
+                            name={`secretMetadata.${i}.isEncrypted`}
+                            render={({ field, fieldState: { error } }) => (
+                              <FormControl
+                                isError={Boolean(error?.message)}
+                                errorText={error?.message}
+                                className="mb-0 w-12"
+                              >
+                                <Switch
+                                  id="metadata-is-encrypted-checkbox"
+                                  isChecked={field.value}
+                                  defaultChecked={field.value}
+                                  onCheckedChange={field.onChange}
+                                  className="mt-1.5 mb-2 ml-1"
+                                />
+                              </FormControl>
+                            )}
+                          />
+                        </div>
                         <IconButton
                           ariaLabel="delete key"
                           className="bottom-0.5 max-h-8"
@@ -674,7 +701,9 @@ export const SecretDetailSidebar = ({
                         variant="outline_bg"
                         size="xs"
                         className="rounded-md"
-                        onClick={() => metadataFormFields.append({ key: "", value: "" })}
+                        onClick={() =>
+                          metadataFormFields.append({ key: "", value: "", isEncrypted: false })
+                        }
                       >
                         <FontAwesomeIcon icon={faPlus} />
                       </IconButton>

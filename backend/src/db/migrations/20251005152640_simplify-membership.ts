@@ -201,6 +201,8 @@ const createAdditionalPrivilegeTable = async (knex: Knex) => {
 };
 
 const migrateMembershipData = async (knex: Knex) => {
+  await knex(TableName.OrgMembership).whereNull("userId").del();
+
   await knex
     .insert(
       knex(TableName.OrgMembership).select(
@@ -237,6 +239,11 @@ const migrateMembershipData = async (knex: Knex) => {
         "scope"
       ])
     );
+
+  // clear orphaned identity project memberships
+  await knex(TableName.IdentityOrgMembership)
+    .whereNotIn("identityId", knex.select("id").from(TableName.Identity))
+    .del();
 
   await knex
     .insert(
@@ -306,6 +313,11 @@ const migrateMembershipData = async (knex: Knex) => {
         "scope"
       ])
     );
+
+  // clear orphaned identity project memberships
+  await knex(TableName.IdentityProjectMembership)
+    .whereNotIn("identityId", knex.select("id").from(TableName.Identity))
+    .del();
 
   await knex
     .insert(

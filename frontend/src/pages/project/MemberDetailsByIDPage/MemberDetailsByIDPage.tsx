@@ -18,7 +18,7 @@ import {
 } from "@app/components/v2";
 import {
   Badge,
-  UnstableButton,
+  Button,
   UnstableDropdownMenu,
   UnstableDropdownMenuContent,
   UnstableDropdownMenuItem,
@@ -168,10 +168,10 @@ export const Page = () => {
             ) : (
               <UnstableDropdownMenu>
                 <UnstableDropdownMenuTrigger asChild>
-                  <UnstableButton variant="outline">
+                  <Button variant="outline">
                     Options
                     <EllipsisIcon />
-                  </UnstableButton>
+                  </Button>
                 </UnstableDropdownMenuTrigger>
                 <UnstableDropdownMenuContent align="end">
                   <UnstableDropdownMenuItem

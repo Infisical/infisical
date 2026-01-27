@@ -22,7 +22,8 @@ export const ApprovalRequestsSchema = z.object({
   requestData: z.unknown(),
   expiresAt: z.date().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  machineIdentityId: z.string().uuid().nullable().optional()
 });
 
 export type TApprovalRequests = z.infer<typeof ApprovalRequestsSchema>;

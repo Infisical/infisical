@@ -39,8 +39,7 @@ export const formSchema = z.object({
     ),
   overrideAction: z.string().trim().optional(),
   comment: z.string().trim().optional(),
-  skipMultilineEncoding: z.boolean().optional(),
-
+  skipMultilineEncoding: z.boolean().nullish(),
   reminderRepeatDays: z
     .number()
     .min(1, { message: "Days must be between 1 and 365" })
@@ -52,7 +51,8 @@ export const formSchema = z.object({
   secretMetadata: z
     .object({
       key: z.string().trim().min(1),
-      value: z.string().trim().default("")
+      value: z.string().trim().default(""),
+      isEncrypted: z.boolean().optional()
     })
     .array()
     .optional(),

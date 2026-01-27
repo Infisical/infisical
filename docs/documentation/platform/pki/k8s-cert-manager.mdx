@@ -168,6 +168,8 @@ The following steps show how to install cert-manager (using `kubectl`) and obtai
         duration: 48h
         # cert-manager will attempt renewal 12 hours before expiry
         renewBefore: 12h
+        # set to true to issue a CA certificate (policy must allow/require CA)
+        isCA: false
         privateKey:
             algorithm: ECDSA
             # uses NIST P-256 curve
@@ -184,6 +186,10 @@ The following steps show how to install cert-manager (using `kubectl`) and obtai
     <Note>
       The `enableDurationFeature: true` flag in the Issuer configuration (Step 4) is required for cert-manager to honor the `duration` field. Without it, certificates default to 47 days regardless of what you specify. This flag is disabled by default in cert-manager because public ACME servers like Let's Encrypt don't support custom durations.
     </Note>
+
+    <Info>
+      cert-manager does not currently support specifying a `pathLen` in the Certificate resource. When issuing CA certificates with `isCA: true`, ensure your Infisical certificate policy does not set a **Maximum Allowed Path Length** restriction, otherwise the request will fail validation.
+    </Info>
 
     You can check that the certificate was created successfully by running the following command:
 

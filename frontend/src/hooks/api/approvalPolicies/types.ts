@@ -1,5 +1,6 @@
 export enum ApprovalPolicyType {
-  PamAccess = "pam-access"
+  PamAccess = "pam-access",
+  CertRequest = "cert-request"
 }
 
 export enum ApproverType {
@@ -28,6 +29,12 @@ export type PamAccessPolicyConstraints = {
   };
 };
 
+export type CertRequestPolicyConditions = {
+  profileNames: string[];
+}[];
+
+export type CertRequestPolicyConstraints = Record<string, never>;
+
 export type TApprovalPolicy = {
   id: string;
   projectId: string;
@@ -36,13 +43,14 @@ export type TApprovalPolicy = {
   type: ApprovalPolicyType;
   conditions: {
     version: number;
-    conditions: PamAccessPolicyConditions;
+    conditions: PamAccessPolicyConditions | CertRequestPolicyConditions;
   };
   constraints: {
     version: number;
-    constraints: PamAccessPolicyConstraints;
+    constraints: PamAccessPolicyConstraints | CertRequestPolicyConstraints;
   };
   steps: ApprovalPolicyStep[];
+  bypassForMachineIdentities?: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -52,9 +60,10 @@ export type TCreateApprovalPolicyDTO = {
   projectId: string;
   name: string;
   maxRequestTtl?: string | null;
-  conditions: PamAccessPolicyConditions;
-  constraints: PamAccessPolicyConstraints;
+  conditions: PamAccessPolicyConditions | CertRequestPolicyConditions;
+  constraints: PamAccessPolicyConstraints | CertRequestPolicyConstraints;
   steps: ApprovalPolicyStep[];
+  bypassForMachineIdentities?: boolean;
 };
 
 export type TUpdateApprovalPolicyDTO = {
@@ -62,9 +71,10 @@ export type TUpdateApprovalPolicyDTO = {
   policyId: string;
   name?: string;
   maxRequestTtl?: string | null;
-  conditions?: PamAccessPolicyConditions;
-  constraints?: PamAccessPolicyConstraints;
+  conditions?: PamAccessPolicyConditions | CertRequestPolicyConditions;
+  constraints?: PamAccessPolicyConstraints | CertRequestPolicyConstraints;
   steps?: ApprovalPolicyStep[];
+  bypassForMachineIdentities?: boolean;
 };
 
 export type TGetApprovalPolicyByIdDTO = {
@@ -85,7 +95,7 @@ export type TDeleteApprovalPolicyDTO = {
 export type TCheckPolicyMatchDTO = {
   policyType: ApprovalPolicyType;
   projectId: string;
-  inputs: { accountPath: string };
+  inputs: { accountPath: string } | { profileName: string };
 };
 
 export type TCheckPolicyMatchResult = {

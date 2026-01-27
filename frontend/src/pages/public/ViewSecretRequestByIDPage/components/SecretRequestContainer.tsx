@@ -4,7 +4,7 @@ import { ArrowRightIcon } from "lucide-react";
 import { z } from "zod";
 
 import { FormControl, TextArea } from "@app/components/v2";
-import { UnstableButton } from "@app/components/v3";
+import { Button } from "@app/components/v3";
 import { useSetSecretRequestValue } from "@app/hooks/api";
 
 import { BrandingTheme } from "../../ViewSharedSecretByIDPage/ViewSharedSecretByIDPage";
@@ -83,7 +83,7 @@ export const SecretRequestContainer = ({ brandingTheme, onSuccess, secretRequest
               </div>
             )}
           />
-          <UnstableButton
+          <Button
             isPending={isPending}
             isDisabled={isPending}
             variant="neutral"
@@ -93,7 +93,7 @@ export const SecretRequestContainer = ({ brandingTheme, onSuccess, secretRequest
           >
             Share Secret
             <ArrowRightIcon />
-          </UnstableButton>
+          </Button>
         </div>
       </form>
     </FormProvider>

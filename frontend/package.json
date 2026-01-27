@@ -73,6 +73,7 @@
     "clsx": "^2.1.1",
     "cva": "npm:class-variance-authority@^0.7.1",
     "date-fns": "^4.1.0",
+    "diff": "^8.0.3",
     "dompurify": "^3.2.4",
     "file-saver": "^2.0.5",
     "framer-motion": "^11.14.1",
