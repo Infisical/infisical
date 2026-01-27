@@ -107,6 +107,10 @@ import {
 } from "@app/services/app-connection/octopus-deploy";
 import { OktaConnectionListItemSchema, SanitizedOktaConnectionSchema } from "@app/services/app-connection/okta";
 import {
+  OpenRouterConnectionListItemSchema,
+  SanitizedOpenRouterConnectionSchema
+} from "@app/services/app-connection/open-router";
+import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
 } from "@app/services/app-connection/postgres";
@@ -187,7 +191,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedChefConnectionSchema.options,
   ...SanitizedDNSMadeEasyConnectionSchema.options,
   ...SanitizedOctopusDeployConnectionSchema.options,
-  ...SanitizedSshConnectionSchema.options
+  ...SanitizedSshConnectionSchema.options,
+  ...SanitizedOpenRouterConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -236,7 +241,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   ChefConnectionListItemSchema,
   DNSMadeEasyConnectionListItemSchema,
   OctopusDeployConnectionListItemSchema,
-  SshConnectionListItemSchema
+  SshConnectionListItemSchema,
+  OpenRouterConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

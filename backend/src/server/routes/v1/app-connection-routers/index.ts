@@ -46,6 +46,7 @@ import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router
 import { registerVercelConnectionRouter } from "./vercel-connection-router";
 import { registerWindmillConnectionRouter } from "./windmill-connection-router";
 import { registerZabbixConnectionRouter } from "./zabbix-connection-router";
+import { registerOpenRouterConnectionRouter } from "./open-router-connection-router";
 
 export * from "./app-connection-router";
 
@@ -96,5 +97,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.MongoDB]: registerMongoDBConnectionRouter,
     [AppConnection.Chef]: registerChefConnectionRouter,
     [AppConnection.OctopusDeploy]: registerOctopusDeployConnectionRouter,
-    [AppConnection.SSH]: registerSshConnectionRouter
+    [AppConnection.SSH]: registerSshConnectionRouter,
+    [AppConnection.OpenRouter]: registerOpenRouterConnectionRouter
   };

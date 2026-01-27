@@ -61,6 +61,7 @@ import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/rai
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
 import { SshConnectionMethod } from "@app/hooks/api/appConnections/types/ssh-connection";
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
+import { OpenRouterConnectionMethod } from "@app/hooks/api/appConnections/types/open-router-connection";
 
 export const APP_CONNECTION_MAP: Record<
   AppConnection,
@@ -140,7 +141,8 @@ export const APP_CONNECTION_MAP: Record<
   },
   [AppConnection.Chef]: { name: "Chef", image: "Chef.png", enterprise: true },
   [AppConnection.OctopusDeploy]: { name: "Octopus Deploy", image: "Octopus Deploy.png" },
-  [AppConnection.SSH]: { name: "SSH", image: "SSH.png" }
+  [AppConnection.SSH]: { name: "SSH", image: "SSH.png" },
+  [AppConnection.OpenRouter]: { name: "OpenRouter", image: "OpenRouter.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -213,6 +215,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Project Token", icon: faKey };
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
+    case OpenRouterConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     case ChefConnectionMethod.UserKey:
       return { name: "User Key", icon: faKey };

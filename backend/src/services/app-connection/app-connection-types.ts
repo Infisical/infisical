@@ -205,6 +205,12 @@ import {
   TValidateOktaConnectionCredentialsSchema
 } from "./okta";
 import {
+  TOpenRouterConnection,
+  TOpenRouterConnectionConfig,
+  TOpenRouterConnectionInput,
+  TValidateOpenRouterConnectionCredentialsSchema
+} from "./open-router";
+import {
   TPostgresConnection,
   TPostgresConnectionInput,
   TValidatePostgresConnectionCredentialsSchema
@@ -317,6 +323,7 @@ export type TAppConnection = { id: string } & (
   | TChefConnection
   | TOctopusDeployConnection
   | TSshConnection
+  | TOpenRouterConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -370,6 +377,7 @@ export type TAppConnectionInput = { id: string } & (
   | TChefConnectionInput
   | TOctopusDeployConnectionInput
   | TSshConnectionInput
+  | TOpenRouterConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -440,7 +448,8 @@ export type TAppConnectionConfig =
   | TMongoDBConnectionConfig
   | TChefConnectionConfig
   | TOctopusDeployConnectionConfig
-  | TSshConnectionConfig;
+  | TSshConnectionConfig
+  | TOpenRouterConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -488,7 +497,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateMongoDBConnectionCredentialsSchema
   | TValidateChefConnectionCredentialsSchema
   | TValidateOctopusDeployConnectionCredentialsSchema
-  | TValidateSshConnectionCredentialsSchema;
+  | TValidateSshConnectionCredentialsSchema
+  | TValidateOpenRouterConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

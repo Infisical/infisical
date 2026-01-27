@@ -46,7 +46,8 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Chef]: "Chef",
   [AppConnection.Northflank]: "Northflank",
   [AppConnection.OctopusDeploy]: "Octopus Deploy",
-  [AppConnection.SSH]: "SSH"
+  [AppConnection.SSH]: "SSH",
+  [AppConnection.OpenRouter]: "OpenRouter"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -95,5 +96,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Chef]: AppConnectionPlanType.Enterprise,
   [AppConnection.Northflank]: AppConnectionPlanType.Regular,
   [AppConnection.OctopusDeploy]: AppConnectionPlanType.Regular,
-  [AppConnection.SSH]: AppConnectionPlanType.Regular
+  [AppConnection.SSH]: AppConnectionPlanType.Regular,
+  [AppConnection.OpenRouter]: AppConnectionPlanType.Regular
 };

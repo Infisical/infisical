@@ -135,6 +135,11 @@ import {
   validateOctopusDeployConnectionCredentials
 } from "./octopus-deploy";
 import { getOktaConnectionListItem, OktaConnectionMethod, validateOktaConnectionCredentials } from "./okta";
+import {
+  getOpenRouterConnectionListItem,
+  OpenRouterConnectionMethod,
+  validateOpenRouterConnectionCredentials
+} from "./open-router";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
 import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } from "./railway";
 import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnectionCredentials } from "./redis";
@@ -234,7 +239,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getRedisConnectionListItem(),
     getMongoDBConnectionListItem(),
     getChefConnectionListItem(),
-    getSshConnectionListItem()
+    getSshConnectionListItem(),
+    getOpenRouterConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -370,7 +376,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Redis]: validateRedisConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.MongoDB]: validateMongoDBConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OctopusDeploy]: validateOctopusDeployConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.SSH]: validateSshConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.SSH]: validateSshConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.OpenRouter]: validateOpenRouterConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -445,6 +452,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
     case OctopusDeployConnectionMethod.ApiKey:
+    case OpenRouterConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
@@ -527,7 +535,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.LaravelForge]: platformManagedCredentialsNotSupported,
   [AppConnection.Chef]: platformManagedCredentialsNotSupported,
   [AppConnection.OctopusDeploy]: platformManagedCredentialsNotSupported,
-  [AppConnection.SSH]: platformManagedCredentialsNotSupported
+  [AppConnection.SSH]: platformManagedCredentialsNotSupported,
+  [AppConnection.OpenRouter]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (
