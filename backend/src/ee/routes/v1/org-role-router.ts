@@ -4,10 +4,12 @@ import { z } from "zod";
 import { AccessScope, OrgMembershipRole, OrgRolesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { OrgPermissionSchema, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { ApiDocsTags, ORG_ROLE } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { SanitizedOrgRoleSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 const INVALID_SUBORG_PERMISSIONS = [
@@ -35,30 +37,37 @@ const validateSubOrganizationSubjects = (permissions: unknown) => {
 export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
-    url: "/:organizationId/roles",
+    url: "/roles",
     config: {
       rateLimit: writeLimit
     },
     schema: {
-      params: z.object({
-        organizationId: z.string().trim()
-      }),
+      hide: false,
+      tags: [ApiDocsTags.OrganizationRoles],
+      description: "Create an organization role",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       body: z.object({
-        slug: slugSchema({ min: 1, max: 64 }).refine(
-          (val) => !Object.values(OrgMembershipRole).includes(val as OrgMembershipRole),
-          "Please choose a different slug, the slug you have entered is reserved"
-        ),
-        name: z.string().trim(),
-        description: z.string().trim().nullish(),
-        permissions: OrgPermissionSchema.array()
+        slug: slugSchema({ min: 1, max: 64 })
+          .refine(
+            (val) => !Object.values(OrgMembershipRole).includes(val as OrgMembershipRole),
+            "Please choose a different slug, the slug you have entered is reserved"
+          )
+          .describe(ORG_ROLE.CREATE.slug),
+        name: z.string().min(1).trim().describe(ORG_ROLE.CREATE.name),
+        description: z.string().trim().nullish().describe(ORG_ROLE.CREATE.description),
+        permissions: OrgPermissionSchema.array().describe(ORG_ROLE.CREATE.permissions)
       }),
       response: {
         200: z.object({
-          role: OrgRolesSchema
+          role: SanitizedOrgRoleSchema
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const isSubOrganization = req.permission.rootOrgId !== req.permission.orgId;
       if (isSubOrganization) {
@@ -70,7 +79,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         permission: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
-          orgId: req.params.organizationId
+          orgId: req.permission.orgId
         },
         data: {
           ...req.body,
@@ -99,28 +108,35 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:organizationId/roles/:roleId",
+    url: "/roles/:roleId",
     config: {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.OrganizationRoles],
+      description: "Get an organization role",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
-        organizationId: z.string().trim(),
-        roleId: z.string().trim()
+        roleId: z.string().trim().describe(ORG_ROLE.GET.roleId)
       }),
       response: {
         200: z.object({
-          role: OrgRolesSchema
+          role: SanitizedOrgRoleSchema
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const role = await server.services.role.getRoleById({
         permission: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
-          orgId: req.params.organizationId
+          orgId: req.permission.orgId
         },
         selector: {
           id: req.params.roleId
@@ -132,34 +148,41 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "PATCH",
-    url: "/:organizationId/roles/:roleId",
+    url: "/roles/:roleId",
     config: {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.OrganizationRoles],
+      description: "Update an organization role",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
-        organizationId: z.string().trim(),
-        roleId: z.string().trim()
+        roleId: z.string().trim().describe(ORG_ROLE.UPDATE.roleId)
       }),
       body: z.object({
-        // TODO: Switch to slugSchema after verifying correct methods with Akhil - Omar 11/24
         slug: slugSchema({ min: 1, max: 64 })
           .refine(
-            (val) => !Object.keys(OrgMembershipRole).includes(val),
-            "Please choose a different slug, the slug you have entered is reserved."
+            (val) => !Object.values(OrgMembershipRole).includes(val as OrgMembershipRole),
+            "Please choose a different slug, the slug you have entered is reserved"
           )
-          .optional(),
-        name: z.string().trim().optional(),
-        description: z.string().trim().nullish(),
-        permissions: OrgPermissionSchema.array().optional()
+          .optional()
+          .describe(ORG_ROLE.UPDATE.slug),
+        name: z.string().trim().optional().describe(ORG_ROLE.UPDATE.name),
+        description: z.string().trim().nullish().describe(ORG_ROLE.UPDATE.description),
+        permissions: OrgPermissionSchema.array().optional().describe(ORG_ROLE.UPDATE.permissions)
       }),
       response: {
         200: z.object({
-          role: OrgRolesSchema
+          role: SanitizedOrgRoleSchema
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const isSubOrganization = req.permission.rootOrgId !== req.permission.orgId;
       if (isSubOrganization && req.body.permissions) {
@@ -171,7 +194,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         permission: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
-          orgId: req.params.organizationId
+          orgId: req.permission.orgId
         },
         selector: {
           id: req.params.roleId
@@ -203,28 +226,35 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "DELETE",
-    url: "/:organizationId/roles/:roleId",
+    url: "/roles/:roleId",
     config: {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.OrganizationRoles],
+      description: "Delete an organization role",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
-        organizationId: z.string().trim(),
-        roleId: z.string().trim()
+        roleId: z.string().trim().describe(ORG_ROLE.DELETE.roleId)
       }),
       response: {
         200: z.object({
-          role: OrgRolesSchema
+          role: SanitizedOrgRoleSchema
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const role = await server.services.role.deleteRole({
         permission: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
-          orgId: req.params.organizationId
+          orgId: req.permission.orgId
         },
         selector: {
           id: req.params.roleId
@@ -246,23 +276,26 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:organizationId/roles",
+    url: "/roles",
     config: {
       rateLimit: readLimit
     },
     schema: {
-      params: z.object({
-        organizationId: z.string().trim()
-      }),
+      hide: false,
+      tags: [ApiDocsTags.OrganizationRoles],
+      description: "List organization roles",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       response: {
         200: z.object({
-          data: z.object({
-            roles: OrgRolesSchema.omit({ permissions: true }).array()
-          })
+          roles: OrgRolesSchema.omit({ permissions: true }).array()
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { roles } = await server.services.role.listRoles({
         permission: req.permission,
@@ -272,24 +305,58 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         },
         data: {}
       });
-      return {
-        data: {
-          roles: roles.map((el) => ({ ...el, orgId: el.orgId as string }))
-        }
-      };
+      return { roles: roles.map((el) => ({ ...el, orgId: el.orgId as string })) };
     }
   });
 
   server.route({
     method: "GET",
-    url: "/:organizationId/permissions",
+    url: "/roles/slug/:roleSlug",
     config: {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.OrganizationRoles],
+      description: "Get an organization role by slug",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
-        organizationId: z.string().trim()
+        roleSlug: z.string().trim().describe(ORG_ROLE.GET_ROLE_BY_SLUG.roleSlug)
       }),
+      response: {
+        200: z.object({
+          role: SanitizedOrgRoleSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const role = await server.services.role.getRoleBySlug({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Organization,
+          orgId: req.permission.orgId
+        },
+        selector: {
+          slug: req.params.roleSlug
+        }
+      });
+
+      return { role: { ...role, orgId: role.orgId as string } };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/permissions",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
       response: {
         200: z.object({
           memberships: z

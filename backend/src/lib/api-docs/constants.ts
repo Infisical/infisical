@@ -33,6 +33,7 @@ export enum ApiDocsTags {
   LdapAuth = "LDAP Auth",
   Groups = "Groups",
   Organizations = "Organizations",
+  OrganizationRoles = "Organization Roles",
   OrgIdentityMembership = "Organization Identity Membership",
   SubOrganizations = "Sub Organizations",
   Projects = "Projects",
@@ -2249,6 +2250,32 @@ export const PROJECT_ROLE = {
     projectSlug: "The slug of the project to list the roles of.",
     projectId: "The ID of the project."
   }
+};
+
+export const ORG_ROLE = {
+  CREATE: {
+    slug: "The slug of the role.",
+    name: "The name of the role.",
+    description: "The description for the role.",
+    permissions: "The permissions assigned to the role."
+  },
+  UPDATE: {
+    roleId: "The ID of the role to update.",
+    slug: "The slug of the role.",
+    name: "The name of the role.",
+    description: "The description for the role.",
+    permissions: "The permissions assigned to the role."
+  },
+  DELETE: {
+    roleId: "The ID of the role to delete."
+  },
+  GET: {
+    roleId: "The ID of the role to get."
+  },
+  GET_ROLE_BY_SLUG: {
+    roleSlug: "The slug of the role to get details."
+  },
+  LIST: {}
 };
 
 export const KMS = {
