@@ -567,8 +567,8 @@ export const SecretApprovalRequestChangeItem = ({
   // Scroll to first change when diff is rendered
   useEffect(() => {
     const timeout = setTimeout(() => {
-      scrollToFirstChange(oldDiffContainerRef.current);
-      scrollToFirstChange(newDiffContainerRef.current);
+      if (oldDiffContainerRef.current) scrollToFirstChange(oldDiffContainerRef.current);
+      if (newDiffContainerRef.current) scrollToFirstChange(newDiffContainerRef.current);
     }, 100);
     return () => clearTimeout(timeout);
   }, [secretVersion?.secretValue, newVersion?.secretValue]);
