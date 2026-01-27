@@ -122,6 +122,51 @@ ingress:
     #   hosts:
     #     - some.domain.com
 
+gateway:
+  # -- Enable or disable the gateway configuration entirely
+  enabled: false
+
+  # -- Hostname for gateway access (required for routing)
+  #    Example: app.example.com
+  hostName: ""
+
+  # -- GatewayClass to use for this Gateway
+  #    Useful when multiple Gateway implementations exist (e.g., nginx, istio)
+  gatewayClassName: nginx
+
+  # -- Custom annotations for the Gateway resource
+  #    Example: cert-manager issuer for TLS certificate automation
+  gatewayAnnotations: {}
+    # cert-manager.io/cluster-issuer: cloudflare-issuer
+
+  # -- Custom annotations for the HTTPRoute resource
+  #    Allows adding route-specific annotations
+  routeAnnotations: {}
+
+  # -- List of listeners to enable on the Gateway
+  #    Can include "http", "https", or both
+  listeners: [http, https]
+
+  # -- Control which namespaces routes are allowed to come from
+  allowedRoutes:
+    namespaces:
+      # "Same" restricts routes to the same namespace as the Gateway
+      # "All" allows routes from any namespace
+      from: Same
+
+  tls:
+    # -- Enable or disable TLS termination on the Gateway
+    enabled: true
+
+    # -- TLS mode for the Gateway listener
+    #    Terminate: Gateway decrypts HTTPS traffic and forwards as plain HTTP
+    #    Passthrough: Gateway forwards encrypted traffic directly to backend
+    mode: Terminate
+
+    # -- Name of the Kubernetes Secret containing TLS certificates
+    #    Required if TLS is enabled
+    secretName: infisical-tls-secret
+
 postgresql:
   # -- Enables an in-cluster PostgreSQL deployment. To achieve HA for Postgres, we recommend deploying https://github.com/zalando/postgres-operator instead.
   enabled: true

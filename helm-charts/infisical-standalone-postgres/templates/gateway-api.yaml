@@ -1,0 +1,59 @@
+{{- include "check.ingressOrGateway" . }}
+{{- $gateway := .Values.gateway}}
+{{ if $gateway.enabled }}
+{{- if and $gateway.gatewayClassName (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
+  {{- if not (hasKey $gateway.annotations "kubernetes.io/gateway.class") }}
+  {{- $_ := set $gateway.annotations "kubernetes.io/gateway.class" $gateway.gatewayClassName}}
+  {{- end }}
+{{- end }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: infisical-gateway
+  {{- with $gateway.gatewayAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if and $gateway.gatewayClassName (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
+  gatewayClassName: {{ $gateway.gatewayClassName | default "nginx" }}
+  {{- end }}
+  {{- if $gateway.listeners }}
+  listeners:
+  {{- range $gateway.listeners }}
+    - name: {{ . | lower }}
+      protocol: {{ upper . }}   # HTTP or HTTPS
+      port: {{ if eq . "https" }}443{{ else }}80{{ end }}
+      hostname: {{ $gateway.hostName }}
+      {{- if eq . "https" }}
+      tls:
+        mode: {{ $gateway.tls.mode | default "Terminate" }}
+        certificateRefs:
+          - kind: Secret
+            name: {{ $gateway.tls.secretName }}
+      {{- end }}
+  {{- end }}
+{{- end }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: infisical-httproute
+  {{- with $gateway.routeAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  parentRefs:
+  - name: infisical-gateway
+  hostnames:
+  - {{ $gateway.hostName}}
+  rules:
+  - matches:
+      - path:
+          type: PathPrefix
+          value: /
+    backendRefs:
+    - name: {{ include "infisical.fullname" . }}
+      port: 8080
+{{ end }}

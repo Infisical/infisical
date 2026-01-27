@@ -1,3 +1,4 @@
+{{- include "check.ingressOrGateway" . }}
 {{ if .Values.ingress.enabled }}
 {{- $ingress := .Values.ingress }}
 {{- if and $ingress.ingressClassName (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
@@ -32,13 +33,6 @@ spec:
         paths:
         - path: /
           pathType: Prefix
-          backend:
-            service:
-              name: {{ include "infisical.fullname" . }}
-              port:
-                number: 8080
-        - path: /ss-webhook
-          pathType: Exact
           backend:
             service:
               name: {{ include "infisical.fullname" . }}
