@@ -14,7 +14,7 @@
     "prepare": "husky install"
   },
   "lint-staged": {
-    "./{frontend/backend}/**/*.{js,jsx,ts,tsx}": [
+    "./{frontend,backend}/**/*.{js,jsx,ts,tsx}": [
       "eslint --fix"
     ]
   },
