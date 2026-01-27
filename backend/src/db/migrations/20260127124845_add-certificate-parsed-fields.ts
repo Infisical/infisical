@@ -26,7 +26,9 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasColumn(TableName.Certificate, "isCA")) {
+  const hasIsCA = await knex.schema.hasColumn(TableName.Certificate, "isCA");
+
+  if (hasIsCA) {
     await knex.schema.alterTable(TableName.Certificate, (t) => {
       t.dropColumn("isCA");
       t.dropColumn("pathLength");
