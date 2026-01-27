@@ -73,7 +73,7 @@ export const useCreateOrgRole = () => {
     mutationFn: async ({ orgId, ...dto }: TCreateOrgRoleDTO) => {
       const {
         data: { role }
-      } = await apiRequest.post(`/api/v1/organization/${orgId}/roles`, dto);
+      } = await apiRequest.post("/api/v1/organization/roles", dto);
 
       return role;
     },
@@ -90,7 +90,7 @@ export const useUpdateOrgRole = () => {
     mutationFn: async ({ id, orgId, ...dto }: TUpdateOrgRoleDTO) => {
       const {
         data: { role }
-      } = await apiRequest.patch(`/api/v1/organization/${orgId}/roles/${id}`, dto);
+      } = await apiRequest.patch(`/api/v1/organization/roles/${id}`, dto);
 
       return role;
     },
@@ -108,7 +108,7 @@ export const useDeleteOrgRole = () => {
     mutationFn: async ({ orgId, id }: TDeleteOrgRoleDTO) => {
       const {
         data: { role }
-      } = await apiRequest.delete(`/api/v1/organization/${orgId}/roles/${id}`, {
+      } = await apiRequest.delete(`/api/v1/organization/roles/${id}`, {
         data: { orgId }
       });
 
