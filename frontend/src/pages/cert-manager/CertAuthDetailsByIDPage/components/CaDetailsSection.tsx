@@ -16,7 +16,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 type Props = {
   caId: string;
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["ca", "renewCa", "installCaCert"]>,
+    popUpName: keyof UsePopUpState<["ca", "renewCa", "installCaCert", "generateRootCaCert"]>,
     data?: object
   ) => void;
 };
@@ -158,7 +158,7 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
         </div>
         {ca.status === CaStatus.ACTIVE && (
           <ProjectPermissionCan
-            I={ProjectPermissionCertificateAuthorityActions.Renew}
+            I={ProjectPermissionCertificateAuthorityActions.IssueCACertificate}
             a={subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })}
           >
             {(isAllowed) => {
@@ -198,6 +198,23 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
             a={subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })}
           >
             {(isAllowed) => {
+              if (ca.configuration.type === InternalCaType.ROOT) {
+                return (
+                  <Button
+                    isDisabled={!isAllowed}
+                    className="mt-4 w-full"
+                    colorSchema="primary"
+                    type="submit"
+                    onClick={() => {
+                      handlePopUpOpen("generateRootCaCert", {
+                        caId: ca.id
+                      });
+                    }}
+                  >
+                    Generate Certificate
+                  </Button>
+                );
+              }
               return (
                 <Button
                   isDisabled={!isAllowed}

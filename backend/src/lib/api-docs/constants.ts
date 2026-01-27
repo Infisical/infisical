@@ -1944,6 +1944,17 @@ export const CERTIFICATE_AUTHORITIES = {
     serialNumber: "The serial number of the CA certificate.",
     version: "The version of the CA certificate. The version is incremented for each CA renewal operation."
   },
+  GENERATE_CA_CERTIFICATE: {
+    caId: "The ID of the CA to generate a certificate for.",
+    parentCaId: "The ID of the parent CA to sign the intermediate certificate with. Not required for root CAs.",
+    notBefore: "The date and time when the CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format.",
+    notAfter: "The date and time when the CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format.",
+    maxPathLength:
+      "The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.",
+    certificate: "The generated CA certificate.",
+    certificateChain: "The certificate chain of the CA.",
+    serialNumber: "The serial number of the CA certificate."
+  },
   SIGN_INTERMEDIATE: {
     caId: "The ID of the CA to sign the intermediate certificate with.",
     csr: "The pem-encoded CSR to sign with the CA.",
