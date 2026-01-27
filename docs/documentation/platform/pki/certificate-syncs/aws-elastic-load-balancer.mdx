@@ -1,0 +1,197 @@
+---
+title: "AWS Elastic Load Balancer"
+description: "Learn how to configure an AWS Elastic Load Balancer Certificate Sync for Infisical PKI."
+---
+
+**Prerequisites:**
+
+- Create an [AWS Connection](/integrations/app-connections/aws)
+
+<Note>
+  The AWS Elastic Load Balancer Certificate Sync requires the following IAM permissions for Infisical to sync certificates to your load balancers:
+
+  **ACM Permissions:** `acm:ListCertificates`, `acm:DescribeCertificate`, `acm:ImportCertificate`, `acm:DeleteCertificate`, `acm:ListTagsForCertificate`
+
+  **ELB Permissions:** `elasticloadbalancing:DescribeLoadBalancers`, `elasticloadbalancing:DescribeListeners`, `elasticloadbalancing:DescribeListenerCertificates`, `elasticloadbalancing:AddListenerCertificates`, `elasticloadbalancing:RemoveListenerCertificates`, `elasticloadbalancing:ModifyListener`
+
+  These permissions allow Infisical to import certificates to ACM and attach them to your load balancer listeners.
+</Note>
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. Navigate to **Project** > **Integrations** > **Certificate Syncs** and press **Add Sync**.
+        ![Certificate Syncs Tab](/images/platform/pki/certificate-syncs/general/create-certificate-sync.png)
+
+        2. Select the **AWS Elastic Load Balancer** option.
+        ![Select ELB](/images/platform/pki/certificate-syncs/aws-elastic-load-balancer/select-elb-option.png)
+
+        3. Configure the **Destination** to where certificates should be deployed, then click **Next**.
+        ![Configure Destination](/images/platform/pki/certificate-syncs/aws-elastic-load-balancer/elb-destination.png)
+
+        - **AWS Connection**: The AWS Connection to authenticate with.
+        - **AWS Region**: The AWS region where your load balancer is located.
+        - **Load Balancer**: Select the Elastic Load Balancer to attach certificates to.
+        - **Listeners**: Select one or more HTTPS/TLS listeners to attach certificates to.
+
+        4. Configure the **Sync Options** to specify how certificates should be synced, then click **Next**.
+        ![Configure Options](/images/platform/pki/certificate-syncs/aws-elastic-load-balancer/elb-options.png)
+
+        - **Enable Removal of Expired/Revoked Certificates**: If enabled, Infisical will remove certificates from listeners and delete them from ACM when they are no longer active in Infisical.
+        - **Preserve ARN on Renewal**: If enabled, Infisical will sync renewed certificates to ACM under the same ARN as the original synced certificate instead of creating a new certificate with a new ARN.
+        - **Include Root CA**: If enabled, the Root CA certificate will be included in the certificate chain when syncing to ACM. If disabled, only intermediate certificates will be included.
+        - **Certificate Name Schema** (Optional): Customize how certificate tags are generated in ACM. Must include `{{certificateId}}` as a placeholder for the certificate ID to ensure proper certificate identification and management. If not specified, defaults to `Infisical-{{certificateId}}`.
+        - **Auto-Sync Enabled**: If enabled, certificates will automatically be synced when changes occur. Disable to enforce manual syncing only.
+
+        5. Configure the **Details** of your AWS Elastic Load Balancer Certificate Sync, then click **Next**.
+        ![Configure Details](/images/platform/pki/certificate-syncs/aws-elastic-load-balancer/elb-details.png)
+
+            - **Name**: The name of your sync. Must be slug-friendly.
+            - **Description**: An optional description for your sync.
+
+        6. Select which certificates should be synced to AWS Elastic Load Balancer.
+        ![Select Certificates](/images/platform/pki/certificate-syncs/aws-elastic-load-balancer/elb-certificates.png)
+
+        7. Review your AWS Elastic Load Balancer Certificate Sync configuration, then click **Create Sync**.
+        ![Confirm Configuration](/images/platform/pki/certificate-syncs/aws-elastic-load-balancer/elb-review.png)
+
+        8. If enabled, your AWS Elastic Load Balancer Certificate Sync will begin syncing your certificates to ACM and attaching them to your listeners.
+        ![Sync Certificates](/images/platform/pki/certificate-syncs/aws-elastic-load-balancer/elb-synced.png)
+    </Tab>
+    <Tab title="API">
+        To create an **AWS Elastic Load Balancer Certificate Sync**, make an API request to the [Create AWS Elastic Load Balancer Certificate Sync](/api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/create) API endpoint.
+
+        ### Sample request
+
+        <Note>
+          You can optionally specify `certificateIds` during sync creation to immediately add certificates to the sync.
+          If not provided, you can add certificates later using the certificate management endpoints.
+        </Note>
+
+        ```bash Request
+        curl --request POST \
+        --url https://app.infisical.com/api/v1/cert-manager/syncs/aws-elastic-load-balancer \
+        --header 'Authorization: Bearer <access-token>' \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-elb-cert-sync",
+            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "description": "an example ELB certificate sync",
+            "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "destination": "aws-elastic-load-balancer",
+            "isAutoSyncEnabled": true,
+            "certificateIds": [
+                "550e8400-e29b-41d4-a716-446655440000"
+            ],
+            "syncOptions": {
+                "canRemoveCertificates": true,
+                "preserveArn": true,
+                "includeRootCa": false,
+                "certificateNameSchema": "myapp-{{certificateId}}"
+            },
+            "destinationConfig": {
+                "region": "us-east-1",
+                "loadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-alb/50dc6c495c0c9188",
+                "listeners": [
+                    {
+                        "listenerArn": "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/my-alb/50dc6c495c0c9188/f2f7dc8efc522ab2",
+                        "port": 443,
+                        "protocol": "HTTPS",
+                        "setAsDefault": true
+                    }
+                ]
+            }
+        }'
+        ```
+
+        ### Sample response
+
+        ```json Response
+        {
+            "pkiSync": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-elb-cert-sync",
+                "description": "an example ELB certificate sync",
+                "destination": "aws-elastic-load-balancer",
+                "isAutoSyncEnabled": true,
+                "destinationConfig": {
+                    "region": "us-east-1",
+                    "loadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-alb/50dc6c495c0c9188",
+                    "listeners": [
+                        {
+                            "listenerArn": "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/my-alb/50dc6c495c0c9188/f2f7dc8efc522ab2",
+                            "port": 443,
+                            "protocol": "HTTPS",
+                            "setAsDefault": true
+                        }
+                    ]
+                },
+                "syncOptions": {
+                    "canRemoveCertificates": true,
+                    "preserveArn": true,
+                    "includeRootCa": false,
+                    "certificateNameSchema": "myapp-{{certificateId}}"
+                },
+                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2023-01-01T00:00:00.000Z",
+                "updatedAt": "2023-01-01T00:00:00.000Z"
+            }
+        }
+        ```
+    </Tab>
+</Tabs>
+
+## Certificate Management
+
+Your AWS Elastic Load Balancer Certificate Sync will:
+
+- **Automatic Deployment**: Deploy certificates to ACM and attach them to your configured listeners.
+- **Certificate Updates**: Update certificates in ACM and on listeners when renewals occur.
+- **Expiration Handling**: Optionally remove expired certificates from listeners and ACM (if enabled).
+- **Tagging**: Automatically tag certificates in ACM with an InfisicalCertificate tag for easy identification and management.
+
+## Setting Default Certificates
+
+You can set a certificate as the default for all configured listeners. The default certificate is used when a client connects without specifying a hostname via SNI (Server Name Indication).
+
+<Tabs>
+    <Tab title="Infisical UI">
+        You can set a certificate as the default directly from the certificates table in the sync details page. Click the **Set as Default** button next to the certificate you want to use as the default.
+        ![Set Default Certificate](/images/platform/pki/certificate-syncs/aws-elastic-load-balancer/elb-set-default.png)
+    </Tab>
+    <Tab title="API">
+        To set a certificate as the default, make an API request to the Set Default Certificate endpoint:
+
+        ```bash Request
+        curl --request POST \
+        --url https://app.infisical.com/api/v1/cert-manager/syncs/aws-elastic-load-balancer/{pkiSyncId}/certificates/{certificateId}/set-default \
+        --header 'Authorization: Bearer <access-token>'
+        ```
+
+        To clear the default certificate:
+
+        ```bash Request
+        curl --request DELETE \
+        --url https://app.infisical.com/api/v1/cert-manager/syncs/aws-elastic-load-balancer/{pkiSyncId}/default-certificate \
+        --header 'Authorization: Bearer <access-token>'
+        ```
+    </Tab>
+</Tabs>
+
+## Manual Certificate Sync
+
+You can manually trigger certificate synchronization to AWS Elastic Load Balancer using the sync certificates functionality. This is useful for:
+
+- Initial setup when you have existing certificates to deploy
+- One-time sync of specific certificates
+- Testing certificate sync configurations
+- Force sync after making changes
+
+To manually sync certificates, use the [Sync Certificates](/api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/sync-certificates) API endpoint or the manual sync option in the Infisical UI.
+
+<Note>
+  AWS Elastic Load Balancer does not support importing certificates back into
+  Infisical due to security limitations where private keys cannot be extracted
+  from AWS Certificate Manager. Only certificates managed by Infisical can be
+  synced to your load balancers.
+</Note>

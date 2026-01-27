@@ -16,7 +16,9 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
 
   const findByPkiSyncId = async (pkiSyncId: string, tx?: Knex) => {
     try {
-      const docs = await (tx || db.replicaNode())(TableName.CertificateSync)
+      // Use primary node to avoid replication lag issues during sync operations
+      // This ensures we always see the latest externalIdentifier values
+      const docs = await (tx || db)(TableName.CertificateSync)
         .where({ pkiSyncId })
         .select(selectAllTableCols(TableName.CertificateSync));
       return docs;
@@ -38,7 +40,8 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
 
   const findByPkiSyncAndCertificate = async (pkiSyncId: string, certificateId: string, tx?: Knex) => {
     try {
-      const doc = await (tx || db.replicaNode())(TableName.CertificateSync)
+      // Use primary node to avoid replication lag issues during sync operations
+      const doc = await (tx || db)(TableName.CertificateSync)
         .where({ pkiSyncId, certificateId })
         .select(selectAllTableCols(TableName.CertificateSync))
         .first();
@@ -169,6 +172,49 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
     }
   };
 
+  const updateSyncMetadata = async (
+    pkiSyncId: string,
+    certificateId: string,
+    metadata: Record<string, unknown> | null,
+    tx?: Knex
+  ): Promise<TCertificateSyncs | undefined> => {
+    try {
+      const docs = await (tx || db)(TableName.CertificateSync)
+        .where({ pkiSyncId, certificateId })
+        .update({ syncMetadata: metadata ? JSON.stringify(metadata) : null })
+        .returning("*");
+
+      return docs[0];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "UpdateSyncMetadata" });
+    }
+  };
+
+  const clearSyncMetadataFlag = async (pkiSyncId: string, flag: string, tx?: Knex): Promise<void> => {
+    try {
+      // Get all certificate syncs for this pki sync
+      const syncRecords = await (tx || db)(TableName.CertificateSync).where({ pkiSyncId }).select("*");
+
+      // Update each record to remove the flag
+      for (const record of syncRecords) {
+        if (record.syncMetadata && typeof record.syncMetadata === "object") {
+          const metadata = record.syncMetadata as Record<string, unknown>;
+          if (flag in metadata) {
+            delete metadata[flag];
+            // eslint-disable-next-line no-await-in-loop
+            await (tx || db)(TableName.CertificateSync)
+              .where({ id: record.id })
+              .update({
+                syncMetadata: Object.keys(metadata).length > 0 ? JSON.stringify(metadata) : null
+              });
+          }
+        }
+      }
+    } catch (error) {
+      throw new DatabaseError({ error, name: "ClearSyncMetadataFlag" });
+    }
+  };
+
   const findWithDetails = async (
     options: {
       filter?: CertificateSyncFindFilter;
@@ -267,6 +313,8 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
     removeAllCertificatesFromSync,
     updateSyncStatus,
     bulkUpdateSyncStatus,
+    updateSyncMetadata,
+    clearSyncMetadataFlag,
     findWithDetails
   };
 };

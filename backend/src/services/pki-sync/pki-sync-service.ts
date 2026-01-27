@@ -14,6 +14,7 @@ import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subsc
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "../certificate-sync/certificate-sync-enums";
+import { TSyncMetadata } from "../certificate-sync/certificate-sync-schemas";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { PkiSync, PkiSyncStatus } from "./pki-sync-enums";
 import { enterprisePkiSyncCheck, getPkiSyncProviderCapabilities, listPkiSyncOptions } from "./pki-sync-fns";
@@ -21,6 +22,7 @@ import { PKI_SYNC_CONNECTION_MAP, PKI_SYNC_NAME_MAP } from "./pki-sync-maps";
 import { TPkiSyncQueueFactory } from "./pki-sync-queue";
 import {
   TAddCertificatesToPkiSyncDTO,
+  TClearDefaultCertificateDTO,
   TCreatePkiSyncDTO,
   TDeletePkiSyncDTO,
   TFindPkiSyncByIdDTO,
@@ -29,6 +31,7 @@ import {
   TPkiSync,
   TPkiSyncCertificate,
   TRemoveCertificatesFromPkiSyncDTO,
+  TSetCertificateAsDefaultDTO,
   TTriggerPkiSyncImportCertificatesByIdDTO,
   TTriggerPkiSyncRemoveCertificatesByIdDTO,
   TTriggerPkiSyncSyncCertificatesByIdDTO,
@@ -55,11 +58,14 @@ type TPkiSyncServiceFactoryDep = {
     TCertificateSyncDALFactory,
     | "findByPkiSyncId"
     | "findByCertificateId"
+    | "findByPkiSyncAndCertificate"
     | "findCertificateIdsByPkiSyncId"
     | "addCertificates"
     | "removeCertificates"
     | "removeAllCertificatesFromSync"
     | "findWithDetails"
+    | "updateSyncMetadata"
+    | "clearSyncMetadataFlag"
   >;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
@@ -690,7 +696,8 @@ export const pkiSyncServiceFactory = ({
         : undefined,
       certificateRenewalError: detail.certificateRenewalError || undefined,
       pkiSyncName: detail.pkiSyncName || undefined,
-      pkiSyncDestination: detail.pkiSyncDestination || undefined
+      pkiSyncDestination: detail.pkiSyncDestination || undefined,
+      syncMetadata: detail.syncMetadata as TSyncMetadata
     }));
 
     return {
@@ -701,6 +708,101 @@ export const pkiSyncServiceFactory = ({
         destination: pkiSync.destination,
         name: pkiSync.name
       }
+    };
+  };
+
+  const setCertificateAsDefault = async (
+    { pkiSyncId, certificateId }: Omit<TSetCertificateAsDefaultDTO, "auditLogInfo">,
+    actor: OrgServiceActor
+  ): Promise<{ message: string; pkiSyncInfo: { projectId: string; name: string } }> => {
+    const pkiSync = await pkiSyncDAL.findById(pkiSyncId);
+    if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.CertificateManager,
+      projectId: pkiSync.projectId
+    });
+
+    let pkiSyncSubscriber;
+    if (pkiSync.subscriberId) {
+      pkiSyncSubscriber = await pkiSubscriberDAL.findById(pkiSync.subscriberId);
+    }
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionPkiSyncActions.Edit,
+      subject(ProjectPermissionSub.PkiSyncs, {
+        subscriberName: pkiSyncSubscriber?.name,
+        name: pkiSync.name
+      })
+    );
+
+    // Verify the certificate belongs to this sync
+    const certificateSync = await certificateSyncDAL.findByPkiSyncAndCertificate(pkiSyncId, certificateId);
+    if (!certificateSync) {
+      throw new BadRequestError({ message: "Certificate is not part of this PKI sync" });
+    }
+
+    // Clear isDefault from all certificates in this sync
+    await certificateSyncDAL.clearSyncMetadataFlag(pkiSyncId, "isDefault");
+
+    // Set isDefault on the specified certificate
+    const existingMetadata = (certificateSync.syncMetadata as Record<string, unknown>) || {};
+    await certificateSyncDAL.updateSyncMetadata(pkiSyncId, certificateId, {
+      ...existingMetadata,
+      isDefault: true
+    });
+
+    // Trigger sync immediately (regardless of auto-sync setting)
+    await pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: pkiSyncId });
+
+    return {
+      message: "Certificate set as default and sync triggered",
+      pkiSyncInfo: { projectId: pkiSync.projectId, name: pkiSync.name }
+    };
+  };
+
+  const clearDefaultCertificate = async (
+    { pkiSyncId }: Omit<TClearDefaultCertificateDTO, "auditLogInfo">,
+    actor: OrgServiceActor
+  ): Promise<{ message: string; pkiSyncInfo: { projectId: string; name: string } }> => {
+    const pkiSync = await pkiSyncDAL.findById(pkiSyncId);
+    if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.CertificateManager,
+      projectId: pkiSync.projectId
+    });
+
+    let pkiSyncSubscriber;
+    if (pkiSync.subscriberId) {
+      pkiSyncSubscriber = await pkiSubscriberDAL.findById(pkiSync.subscriberId);
+    }
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionPkiSyncActions.Edit,
+      subject(ProjectPermissionSub.PkiSyncs, {
+        subscriberName: pkiSyncSubscriber?.name,
+        name: pkiSync.name
+      })
+    );
+
+    // Clear isDefault from all certificates in this sync
+    await certificateSyncDAL.clearSyncMetadataFlag(pkiSyncId, "isDefault");
+
+    // Trigger sync immediately (regardless of auto-sync setting)
+    await pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: pkiSyncId });
+
+    return {
+      message: "Default certificate cleared and sync triggered",
+      pkiSyncInfo: { projectId: pkiSync.projectId, name: pkiSync.name }
     };
   };
 
@@ -716,6 +818,8 @@ export const pkiSyncServiceFactory = ({
     getPkiSyncOptions,
     addCertificatesToPkiSync,
     removeCertificatesFromPkiSync,
-    listPkiSyncCertificates
+    listPkiSyncCertificates,
+    setCertificateAsDefault,
+    clearDefaultCertificate
   };
 };

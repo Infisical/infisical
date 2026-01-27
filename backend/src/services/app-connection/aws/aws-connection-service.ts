@@ -1,10 +1,12 @@
 import AWS from "aws-sdk";
 
 import { OrgServiceActor } from "@app/lib/types";
-import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import {
   TListAwsConnectionIamUsers,
-  TListAwsConnectionKmsKeys
+  TListAwsConnectionKmsKeys,
+  TListAwsConnectionListeners,
+  TListAwsConnectionLoadBalancers
 } from "@app/services/app-connection/app-connection-types";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
@@ -90,6 +92,126 @@ const listAwsIamUsers = async (appConnection: TAwsConnection) => {
   return userEntries;
 };
 
+export type TAwsLoadBalancerInfo = {
+  loadBalancerArn: string;
+  loadBalancerName: string;
+  type: "application" | "network" | "gateway";
+  scheme: string;
+  state: string;
+  vpcId?: string;
+  dnsName?: string;
+};
+
+export type TAwsListenerInfo = {
+  listenerArn: string;
+  port: number;
+  protocol: string;
+  loadBalancerArn: string;
+  sslPolicy?: string;
+  certificates?: Array<{
+    certificateArn: string;
+    isDefault: boolean;
+  }>;
+};
+
+const listAwsLoadBalancers = async (
+  appConnection: TAwsConnection,
+  { region }: { region: AWSRegion }
+): Promise<TAwsLoadBalancerInfo[]> => {
+  const { credentials } = await getAwsConnectionConfig(appConnection, region);
+
+  const elbClient = new AWS.ELBv2({
+    credentials,
+    region
+  });
+
+  const loadBalancers: TAwsLoadBalancerInfo[] = [];
+  let marker: string | undefined;
+
+  do {
+    // eslint-disable-next-line no-await-in-loop
+    const response = await elbClient
+      .describeLoadBalancers({
+        Marker: marker
+      })
+      .promise();
+
+    if (response.LoadBalancers) {
+      for (const lb of response.LoadBalancers) {
+        if (lb.LoadBalancerArn && lb.LoadBalancerName && lb.Type) {
+          if (lb.Type === "application" || lb.Type === "network") {
+            loadBalancers.push({
+              loadBalancerArn: lb.LoadBalancerArn,
+              loadBalancerName: lb.LoadBalancerName,
+              type: lb.Type as "application" | "network",
+              scheme: lb.Scheme || "unknown",
+              state: lb.State?.Code || "unknown",
+              vpcId: lb.VpcId,
+              dnsName: lb.DNSName
+            });
+          }
+        }
+      }
+    }
+
+    marker = response.NextMarker;
+  } while (marker);
+
+  return loadBalancers;
+};
+
+const listAwsListeners = async (
+  appConnection: TAwsConnection,
+  { region, loadBalancerArn }: { region: AWSRegion; loadBalancerArn: string }
+): Promise<TAwsListenerInfo[]> => {
+  const { credentials } = await getAwsConnectionConfig(appConnection, region);
+
+  const elbClient = new AWS.ELBv2({
+    credentials,
+    region
+  });
+
+  const listeners: TAwsListenerInfo[] = [];
+  let marker: string | undefined;
+
+  do {
+    // eslint-disable-next-line no-await-in-loop
+    const response = await elbClient
+      .describeListeners({
+        LoadBalancerArn: loadBalancerArn,
+        Marker: marker
+      })
+      .promise();
+
+    if (response.Listeners) {
+      for (const listener of response.Listeners) {
+        if (
+          listener.ListenerArn &&
+          listener.Port &&
+          listener.Protocol &&
+          (listener.Protocol === "HTTPS" || listener.Protocol === "TLS")
+        ) {
+          listeners.push({
+            listenerArn: listener.ListenerArn,
+            port: listener.Port,
+            protocol: listener.Protocol,
+            loadBalancerArn,
+            sslPolicy: listener.SslPolicy,
+            certificates: listener.Certificates?.map((cert) => ({
+              certificateArn: cert.CertificateArn || "",
+              isDefault: cert.IsDefault || false
+            }))
+          });
+        }
+      }
+    }
+
+    marker = response.NextMarker;
+  } while (marker);
+
+  return listeners;
+};
+
 export const awsConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
   const listKmsKeys = async (
     { connectionId, region, destination }: TListAwsConnectionKmsKeys,
@@ -110,8 +232,32 @@ export const awsConnectionService = (getAppConnection: TGetAppConnectionFunc) =>
     return iamUsers;
   };
 
+  const listLoadBalancers = async (
+    { connectionId, region }: TListAwsConnectionLoadBalancers,
+    actor: OrgServiceActor
+  ) => {
+    const appConnection = await getAppConnection(AppConnection.AWS, connectionId, actor);
+
+    const loadBalancers = await listAwsLoadBalancers(appConnection, { region });
+
+    return loadBalancers;
+  };
+
+  const listListeners = async (
+    { connectionId, region, loadBalancerArn }: TListAwsConnectionListeners,
+    actor: OrgServiceActor
+  ) => {
+    const appConnection = await getAppConnection(AppConnection.AWS, connectionId, actor);
+
+    const listeners = await listAwsListeners(appConnection, { region, loadBalancerArn });
+
+    return listeners;
+  };
+
   return {
     listKmsKeys,
-    listIamUsers
+    listIamUsers,
+    listLoadBalancers,
+    listListeners
   };
 };
