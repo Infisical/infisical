@@ -18,29 +18,6 @@ import {
   useBatchModeActions
 } from "../../SecretMainPage.store";
 
-// Normalize secret value to match backend behavior:
-// - Trim whitespace
-// - If value ends with \n, preserve it (but trim everything else)
-// This matches the backend transform: (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())
-const normalizeSecretValue = (value: string | null | undefined): string => {
-  if (!value || typeof value !== "string") return "";
-  // If value ends with \n, preserve it after trimming
-  if (value.at(-1) === "\n") {
-    return `${value.trim()}\n`;
-  }
-  return value.trim();
-};
-
-// Compare normalized values to determine if they're actually different
-const areValuesEqual = (
-  oldValue: string | null | undefined,
-  newValue: string | null | undefined
-): boolean => {
-  const normalizedOld = normalizeSecretValue(oldValue);
-  const normalizedNew = normalizeSecretValue(newValue);
-  return normalizedOld === normalizedNew;
-};
-
 interface CommitFormProps {
   onCommit: (changes: PendingChanges, commitMessage: string) => Promise<void>;
   isCommitting?: boolean;
@@ -93,7 +70,7 @@ const RenderSecretChanges = ({ onDiscard, change }: RenderResourceProps) => {
     const { existingSecret } = change;
 
     const hasKeyChange = change.newSecretName && change.secretKey !== change.newSecretName;
-    const hasValueChange = !areValuesEqual(change.secretValue, change.originalValue);
+    const hasValueChange = change.secretValue !== change.originalValue;
     const hasCommentChange = change.secretComment !== change.originalComment;
     const hasMultilineChange =
       change.skipMultilineEncoding !== change.originalSkipMultilineEncoding;

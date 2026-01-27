@@ -46,56 +46,21 @@ const isArray = (obj: JsonValue): obj is JsonArray => {
   return Array.isArray(obj);
 };
 
-// Normalize secret value to match backend behavior:
-// - Trim whitespace
-// - If value ends with \n, preserve it (but trim everything else)
-// This matches the backend transform: (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())
-const normalizeSecretValue = (value: string | null | undefined): string => {
-  if (!value || typeof value !== "string") return "";
-  // If value ends with \n, preserve it after trimming
-  if (value.at(-1) === "\n") {
-    return `${value.trim()}\n`;
-  }
-  return value.trim();
-};
+const deepEqual = (a: JsonValue, b: JsonValue): boolean => {
+  if (a === b) return true;
+  if (a == null || b == null) return false;
+  if (typeof a !== typeof b) return false;
 
-// Normalize a JSON value for comparison - specifically handles secretValue strings
-const normalizeValueForComparison = (value: JsonValue, key?: string, path?: string): JsonValue => {
-  // Check if this is a secretValue field - either by key name or path
-  const isSecretValue =
-    key === "secretValue" || path?.endsWith(".secretValue") || path === "secretValue";
-
-  // Only normalize secretValue strings
-  if (isSecretValue && typeof value === "string") {
-    return normalizeSecretValue(value);
-  }
-  return value;
-};
-
-const deepEqual = (a: JsonValue, b: JsonValue, key?: string, path?: string): boolean => {
-  const normalizedA = normalizeValueForComparison(a, key, path);
-  const normalizedB = normalizeValueForComparison(b, key, path);
-
-  if (normalizedA === normalizedB) return true;
-  if (normalizedA == null || normalizedB == null) return false;
-  if (typeof normalizedA !== typeof normalizedB) return false;
-
-  if (isArray(normalizedA) && isArray(normalizedB)) {
-    if (normalizedA.length !== normalizedB.length) return false;
-    return normalizedA.every((item: JsonValue, index: number) =>
-      deepEqual(item, normalizedB[index], undefined, path)
-    );
+  if (isArray(a) && isArray(b)) {
+    if (a.length !== b.length) return false;
+    return a.every((item: JsonValue, index: number) => deepEqual(item, b[index]));
   }
 
-  if (isObject(normalizedA) && isObject(normalizedB)) {
-    const keysA = Object.keys(normalizedA);
-    const keysB = Object.keys(normalizedB);
+  if (isObject(a) && isObject(b)) {
+    const keysA = Object.keys(a);
+    const keysB = Object.keys(b);
     if (keysA.length !== keysB.length) return false;
-    const currentPath = path ? `${path}.${key || ""}` : key || "";
-    return keysA.every((k) => {
-      const nestedPath = currentPath ? `${currentPath}.${k}` : k;
-      return keysB.includes(k) && deepEqual(normalizedA[k], normalizedB[k], k, nestedPath);
-    });
+    return keysA.every((key) => keysB.includes(key) && deepEqual(a[key], b[key]));
   }
 
   return false;
@@ -103,29 +68,25 @@ const deepEqual = (a: JsonValue, b: JsonValue, key?: string, path?: string): boo
 
 const getDiffPaths = (oldObj: JsonValue, newObj: JsonValue, path: string = ""): Set<string> => {
   const diffPaths = new Set<string>();
-  const pathParts = path.split(".");
-  const currentKey = pathParts[pathParts.length - 1] || "";
-  const normalizedOld = normalizeValueForComparison(oldObj, currentKey, path);
-  const normalizedNew = normalizeValueForComparison(newObj, currentKey, path);
 
-  if (normalizedOld === normalizedNew) return diffPaths;
+  if (oldObj === newObj) return diffPaths;
 
-  if (normalizedOld == null || normalizedNew == null) {
+  if (oldObj == null || newObj == null) {
     diffPaths.add(path || "root");
     return diffPaths;
   }
 
-  if (typeof normalizedOld !== typeof normalizedNew) {
+  if (typeof oldObj !== typeof newObj) {
     diffPaths.add(path || "root");
     return diffPaths;
   }
 
-  if (isArray(normalizedOld) && isArray(normalizedNew)) {
+  if (isArray(oldObj) && isArray(newObj)) {
     return diffPaths;
   }
 
-  if (isObject(normalizedOld) && isObject(normalizedNew)) {
-    const allKeys = new Set([...Object.keys(normalizedOld), ...Object.keys(normalizedNew)]);
+  if (isObject(oldObj) && isObject(newObj)) {
+    const allKeys = new Set([...Object.keys(oldObj), ...Object.keys(newObj)]);
 
     allKeys.forEach((key) => {
       const currentPath = path ? `${path}.${key}` : key;
@@ -134,20 +95,16 @@ const getDiffPaths = (oldObj: JsonValue, newObj: JsonValue, path: string = ""): 
         return;
       }
 
-      if (
-        !(key in normalizedOld) ||
-        !(key in normalizedNew) ||
-        !deepEqual(normalizedOld[key], normalizedNew[key], key, currentPath)
-      ) {
+      if (!(key in oldObj) || !(key in newObj) || !deepEqual(oldObj[key], newObj[key])) {
         diffPaths.add(currentPath);
 
         if (
-          key in normalizedOld &&
-          key in normalizedNew &&
-          (isObject(normalizedOld[key]) || isArray(normalizedOld[key])) &&
-          (isObject(normalizedNew[key]) || isArray(normalizedNew[key]))
+          key in oldObj &&
+          key in newObj &&
+          (isObject(oldObj[key]) || isArray(oldObj[key])) &&
+          (isObject(newObj[key]) || isArray(newObj[key]))
         ) {
-          const nestedDiffs = getDiffPaths(normalizedOld[key], normalizedNew[key], currentPath);
+          const nestedDiffs = getDiffPaths(oldObj[key], newObj[key], currentPath);
           nestedDiffs.forEach((p) => diffPaths.add(p));
         }
       }
@@ -155,8 +112,7 @@ const getDiffPaths = (oldObj: JsonValue, newObj: JsonValue, path: string = ""): 
     return diffPaths;
   }
 
-  // For primitive values (strings, numbers, booleans), compare normalized values
-  if (normalizedOld !== normalizedNew) {
+  if (oldObj !== newObj) {
     diffPaths.add(path || "root");
   }
 

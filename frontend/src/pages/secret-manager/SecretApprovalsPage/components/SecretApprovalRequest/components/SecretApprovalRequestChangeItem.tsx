@@ -14,17 +14,14 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
+import { diffLines, diffWords } from "diff";
+import type { Change } from "diff";
+
 import { SecretInput, Tag, Tooltip } from "@app/components/v2";
 import { CommitType, SecretV3Raw, TSecretApprovalSecChange, WsTag } from "@app/hooks/api/types";
 import { useRenderNewVersionDiffLine } from "@app/hooks/useRenderNewVersionDiffLine";
 
 // ===== MULTILINE DIFF FUNCTIONS =====
-const DIFF_TYPE = {
-  ADDED: "added",
-  DELETED: "deleted",
-  UNCHANGED: "unchanged",
-  MODIFIED: "modified"
-} as const;
 
 // Normalize secret value to match backend behavior:
 // - Trim whitespace
@@ -54,187 +51,39 @@ const isSingleLine = (str: string | null | undefined): boolean => {
   return !str.includes("\n");
 };
 
-type DiffLine = {
-  type: (typeof DIFF_TYPE)[keyof typeof DIFF_TYPE];
-  oldLine?: string;
-  newLine?: string;
-};
-
-type WordDiff = {
-  type: typeof DIFF_TYPE.ADDED | typeof DIFF_TYPE.DELETED | typeof DIFF_TYPE.UNCHANGED;
-  text: string;
-};
-
-// Simple line-by-line diff algorithm
-// Normalizes lines by trimming trailing whitespace before comparison
-const computeLineDiff = (oldText: string, newText: string): DiffLine[] => {
-  // Normalize the texts before splitting
+// Use jsdiff for line-by-line diffing - returns Change[] directly
+const computeLineDiff = (oldText: string, newText: string): Change[] => {
+  // Normalize the texts before diffing
   const normalizedOld = normalizeSecretValue(oldText);
   const normalizedNew = normalizeSecretValue(newText);
 
-  const oldLines = normalizedOld.split("\n");
-  const newLines = normalizedNew.split("\n");
-  const result: DiffLine[] = [];
-
-  let oldIndex = 0;
-  let newIndex = 0;
-
-  while (oldIndex < oldLines.length || newIndex < newLines.length) {
-    if (oldIndex >= oldLines.length) {
-      result.push({
-        type: DIFF_TYPE.ADDED,
-        newLine: newLines[newIndex]
-      });
-      newIndex += 1;
-    } else if (newIndex >= newLines.length) {
-      result.push({
-        type: DIFF_TYPE.DELETED,
-        oldLine: oldLines[oldIndex]
-      });
-      oldIndex += 1;
-    } else {
-      // Trim trailing whitespace from lines for comparison (but preserve leading whitespace)
-      const oldLineTrimmed = oldLines[oldIndex].replace(/\s+$/, "");
-      const newLineTrimmed = newLines[newIndex].replace(/\s+$/, "");
-
-      if (oldLineTrimmed === "" && newLineTrimmed !== "") {
-        result.push({
-          type: DIFF_TYPE.ADDED,
-          newLine: newLines[newIndex]
-        });
-        newIndex += 1;
-      } else if (newLineTrimmed === "" && oldLineTrimmed !== "") {
-        result.push({
-          type: DIFF_TYPE.DELETED,
-          oldLine: oldLines[oldIndex]
-        });
-        oldIndex += 1;
-      } else if (oldLineTrimmed === newLineTrimmed) {
-        result.push({
-          type: DIFF_TYPE.UNCHANGED,
-          oldLine: oldLines[oldIndex],
-          newLine: newLines[newIndex]
-        });
-        oldIndex += 1;
-        newIndex += 1;
-      } else {
-        const currentOldIndex = oldIndex;
-        const currentNewIndex = newIndex;
-        const currentOldLine = oldLines[currentOldIndex];
-        const currentNewLine = newLines[currentNewIndex];
-
-        const nextOldMatch = newLines.findIndex(
-          (line, idx) =>
-            idx >= currentNewIndex &&
-            line.replace(/\s+$/, "") === currentOldLine.replace(/\s+$/, "")
-        );
-        const nextNewMatch = oldLines.findIndex(
-          (line, idx) =>
-            idx >= currentOldIndex &&
-            line.replace(/\s+$/, "") === currentNewLine.replace(/\s+$/, "")
-        );
-
-        if (nextOldMatch === -1 && nextNewMatch === -1) {
-          result.push({
-            type: DIFF_TYPE.MODIFIED,
-            oldLine: currentOldLine,
-            newLine: currentNewLine
-          });
-          oldIndex += 1;
-          newIndex += 1;
-        } else if (nextOldMatch !== -1 && (nextNewMatch === -1 || nextOldMatch < nextNewMatch)) {
-          while (newIndex < nextOldMatch) {
-            result.push({
-              type: DIFF_TYPE.ADDED,
-              newLine: newLines[newIndex]
-            });
-            newIndex += 1;
-          }
-        } else {
-          while (oldIndex < nextNewMatch) {
-            result.push({
-              type: DIFF_TYPE.DELETED,
-              oldLine: oldLines[oldIndex]
-            });
-            oldIndex += 1;
-          }
-        }
-      }
-    }
-  }
-
-  return result;
+  // Use jsdiff's diffLines
+  return diffLines(normalizedOld, normalizedNew, {
+    ignoreWhitespace: false,
+    newlineIsToken: false
+  });
 };
 
-// Word-level diff for modified lines
-// Normalizes texts before computing word diff to ignore whitespace-only changes
-// If there are no common words, returns null to indicate entire line should be highlighted
-const computeWordDiff = (oldText: string, newText: string): WordDiff[] | null => {
-  // Normalize the texts before computing word diff
+// Use jsdiff for word-level diffing - returns Change[] directly or null
+const computeWordDiff = (oldText: string, newText: string): Change[] | null => {
+  // Normalize the texts before diffing
   const normalizedOld = normalizeSecretValue(oldText);
   const normalizedNew = normalizeSecretValue(newText);
 
-  const wordRegex = /(\s+|[^\s\w]+|\w+)/g;
-  const oldWords = normalizedOld.match(wordRegex) || [];
-  const newWords = normalizedNew.match(wordRegex) || [];
+  // Use jsdiff's diffWords
+  const changes = diffWords(normalizedOld, normalizedNew);
 
   // Check if there are any common words (excluding whitespace and punctuation)
-  const oldWordSet = new Set(oldWords.filter((w) => /\w/.test(w)));
-  const newWordSet = new Set(newWords.filter((w) => /\w/.test(w)));
-  const hasCommonWords = [...oldWordSet].some((word) => newWordSet.has(word));
+  const hasCommonWords = changes.some(
+    (change) => !change.added && !change.removed && /\w/.test(change.value)
+  );
 
   // If no common words, return null to indicate entire line should be highlighted
-  if (!hasCommonWords && oldWords.length > 0 && newWords.length > 0) {
+  if (!hasCommonWords && normalizedOld.trim() !== "" && normalizedNew.trim() !== "") {
     return null;
   }
 
-  const result: WordDiff[] = [];
-  let oldIdx = 0;
-  let newIdx = 0;
-
-  while (oldIdx < oldWords.length || newIdx < newWords.length) {
-    if (oldIdx >= oldWords.length) {
-      result.push({ type: DIFF_TYPE.ADDED, text: newWords[newIdx] });
-      newIdx += 1;
-    } else if (newIdx >= newWords.length) {
-      result.push({ type: DIFF_TYPE.DELETED, text: oldWords[oldIdx] });
-      oldIdx += 1;
-    } else if (oldWords[oldIdx] === newWords[newIdx]) {
-      result.push({ type: DIFF_TYPE.UNCHANGED, text: oldWords[oldIdx] });
-      oldIdx += 1;
-      newIdx += 1;
-    } else {
-      const currentOldIdx = oldIdx;
-      const currentNewIdx = newIdx;
-      const currentOldWord = oldWords[currentOldIdx];
-      const currentNewWord = newWords[currentNewIdx];
-
-      const nextOldMatch = newWords.findIndex(
-        (word, idx) => idx >= currentNewIdx && word === currentOldWord
-      );
-      const nextNewMatch = oldWords.findIndex(
-        (word, idx) => idx >= currentOldIdx && word === currentNewWord
-      );
-
-      if (nextOldMatch === -1 && nextNewMatch === -1) {
-        result.push({ type: DIFF_TYPE.DELETED, text: currentOldWord });
-        result.push({ type: DIFF_TYPE.ADDED, text: currentNewWord });
-        oldIdx += 1;
-        newIdx += 1;
-      } else if (nextOldMatch !== -1 && (nextNewMatch === -1 || nextOldMatch < nextNewMatch)) {
-        while (newIdx < nextOldMatch) {
-          result.push({ type: DIFF_TYPE.ADDED, text: newWords[newIdx] });
-          newIdx += 1;
-        }
-      } else {
-        while (oldIdx < nextNewMatch) {
-          result.push({ type: DIFF_TYPE.DELETED, text: oldWords[oldIdx] });
-          oldIdx += 1;
-        }
-      }
-    }
-  }
-  return result;
+  return changes;
 };
 
 // Render single-line diff (just word highlighting, no container/+/-)
@@ -261,21 +110,20 @@ const renderSingleLineDiffForApproval = (
   // Show word-by-word diff when there are common words
   return (
     <div className="font-mono text-sm break-words">
-      {wordDiffs.map((wordDiff, wordIdx) => {
-        if (isOldVersion && wordDiff.type === DIFF_TYPE.ADDED) return null;
-        if (!isOldVersion && wordDiff.type === DIFF_TYPE.DELETED) return null;
+      {wordDiffs.map((change, wordIdx) => {
+        if (isOldVersion && change.added) return null;
+        if (!isOldVersion && change.removed) return null;
 
         const wordKey = `singleline-word-${wordIdx}`;
-        const wordClass =
-          wordDiff.type === DIFF_TYPE.DELETED
-            ? "bg-red-600/70 rounded px-0.5"
-            : wordDiff.type === DIFF_TYPE.ADDED
-              ? "bg-green-600/70 rounded px-0.5"
-              : "";
+        const wordClass = change.removed
+          ? "bg-red-600/70 rounded px-0.5"
+          : change.added
+            ? "bg-green-600/70 rounded px-0.5"
+            : "";
 
         return (
           <span key={wordKey} className={wordClass}>
-            {wordDiff.text}
+            {change.value}
           </span>
         );
       })}
@@ -289,44 +137,86 @@ const renderMultilineDiffForApproval = (
   newText: string,
   isOldVersion: boolean,
   renderNewVersionDiffLine?: (params: {
-    diffLine: DiffLine;
+    change: Change;
+    nextChange: Change | undefined;
     lineKey: string;
     isFirstChanged: boolean;
     lineClass: string;
-    computeWordDiff: (oldText: string, newText: string) => WordDiff[] | null;
+    computeWordDiff: (oldText: string, newText: string) => Change[] | null;
   }) => JSX.Element | null
 ): JSX.Element => {
-  const diffLines = computeLineDiff(oldText, newText);
+  const lineChanges = computeLineDiff(oldText, newText);
 
   // Find the first changed line index
-  const firstChangedIndex = diffLines.findIndex((line) =>
-    isOldVersion
-      ? line.type === DIFF_TYPE.DELETED || line.type === DIFF_TYPE.MODIFIED
-      : line.type === DIFF_TYPE.ADDED || line.type === DIFF_TYPE.MODIFIED
-  );
+  let firstChangedIndex = -1;
+  let lineIndex = 0;
+  for (let i = 0; i < lineChanges.length; i++) {
+    const change = lineChanges[i];
+    const lines = change.value.split("\n");
+    if (!change.value.endsWith("\n") && lines.length > 0 && lines[lines.length - 1] === "") {
+      lines.pop();
+    }
+
+    const isChanged = isOldVersion ? change.removed : change.added;
+    if (isChanged && firstChangedIndex === -1) {
+      firstChangedIndex = lineIndex;
+      break;
+    }
+    lineIndex += lines.length;
+  }
+
+  let currentLineIndex = 0;
+  let firstChangedFound = false;
 
   return (
     <div className="min-w-full font-mono text-sm break-words whitespace-pre-wrap">
-      {diffLines.map((diffLine, lineIndex) => {
-        const lineKey = `multiline-${lineIndex}-${diffLine.type}`;
-        const isFirstChanged = lineIndex === firstChangedIndex;
+      {lineChanges.map((change, changeIdx) => {
+        const nextChange = lineChanges[changeIdx + 1];
+        const lines = change.value.split("\n");
+        if (!change.value.endsWith("\n") && lines.length > 0 && lines[lines.length - 1] === "") {
+          lines.pop();
+        }
 
-        if (isOldVersion) {
-          // Render old version
-          if (diffLine.type === DIFF_TYPE.ADDED) {
-            return null; // Skip added lines in old version
-          }
+        return lines.map((line, lineIdx) => {
+          const lineKey = `multiline-${changeIdx}-${lineIdx}`;
+          const isFirstChanged = !firstChangedFound && currentLineIndex === firstChangedIndex;
+          if (isFirstChanged) firstChangedFound = true;
+          currentLineIndex += 1;
 
-          const isChanged =
-            diffLine.type === DIFF_TYPE.DELETED || diffLine.type === DIFF_TYPE.MODIFIED;
-          const lineClass = isChanged
-            ? "flex min-w-full bg-red-500/70 rounded-xs text-red-300"
-            : "flex min-w-full";
+          if (isOldVersion) {
+            // Render old version
+            if (change.added) {
+              return null; // Skip added lines in old version
+            }
 
-          if (diffLine.type === DIFF_TYPE.MODIFIED && diffLine.oldLine) {
-            const wordDiffs = computeWordDiff(diffLine.oldLine, diffLine.newLine || "");
-            // If no common words, just show the line with line-level background (no extra inner highlight)
-            if (wordDiffs === null) {
+            const isChanged = change.removed;
+            const lineClass = isChanged
+              ? "flex min-w-full bg-red-500/70 rounded-xs text-red-300"
+              : "flex min-w-full";
+
+            // If this is a removed line followed by an added line, it's a modification
+            if (change.removed && nextChange?.added) {
+              const nextLines = nextChange.value.split("\n");
+              if (!nextChange.value.endsWith("\n") && nextLines.length > 0 && nextLines[nextLines.length - 1] === "") {
+                nextLines.pop();
+              }
+              const newLine = nextLines[lineIdx] ?? "";
+              const wordDiffs = computeWordDiff(line, newLine);
+              
+              // If no common words, just show the line with line-level background
+              if (wordDiffs === null) {
+                return (
+                  <div
+                    key={lineKey}
+                    className={lineClass}
+                    data-first-change={isFirstChanged ? "true" : undefined}
+                  >
+                    <div className="w-4 shrink-0">-</div>
+                    <div className="min-w-0 flex-1 break-words">{line}</div>
+                  </div>
+                );
+              }
+              
               return (
                 <div
                   key={lineKey}
@@ -334,26 +224,101 @@ const renderMultilineDiffForApproval = (
                   data-first-change={isFirstChanged ? "true" : undefined}
                 >
                   <div className="w-4 shrink-0">-</div>
-                  <div className="min-w-0 flex-1 break-words">{diffLine.oldLine}</div>
+                  <div className="min-w-0 flex-1 break-words">
+                    {wordDiffs.map((wordChange, wordIdx) => {
+                      if (wordChange.added) return null;
+                      const wordKey = `${lineKey}-word-${wordIdx}`;
+                      const wordClass = wordChange.removed ? "bg-red-600/70 rounded px-0.5" : "";
+                      return (
+                        <span key={wordKey} className={wordClass}>
+                          {wordChange.value}
+                        </span>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             }
+
             return (
               <div
                 key={lineKey}
                 className={lineClass}
                 data-first-change={isFirstChanged ? "true" : undefined}
               >
-                <div className="w-4 shrink-0">-</div>
+                <div className="w-4 shrink-0">{isChanged ? "-" : " "}</div>
+                <div className="min-w-0 flex-1 break-words">{line}</div>
+              </div>
+            );
+          }
+
+          // Render new version
+          if (change.removed) {
+            return null; // Skip deleted lines in new version
+          }
+
+          // Check if previous change was removed (modification case)
+          const prevChange = changeIdx > 0 ? lineChanges[changeIdx - 1] : undefined;
+          const isModification = prevChange?.removed && change.added;
+
+          const isChanged = change.added;
+          const lineClass = isChanged
+            ? "flex min-w-full bg-green-500/70 rounded-xs text-green-300"
+            : "flex min-w-full";
+
+          // If this is a modification, show word-level diff
+          if (isModification && prevChange) {
+            const prevLines = prevChange.value.split("\n");
+            if (!prevChange.value.endsWith("\n") && prevLines.length > 0 && prevLines[prevLines.length - 1] === "") {
+              prevLines.pop();
+            }
+            const oldLine = prevLines[lineIdx] ?? "";
+            const wordDiffs = computeWordDiff(oldLine, line);
+            
+            // If no common words, just show the line with line-level background
+            if (wordDiffs === null) {
+              return (
+                <div
+                  key={lineKey}
+                  className={lineClass}
+                  data-first-change={isFirstChanged ? "true" : undefined}
+                >
+                  <div className="w-4 shrink-0">+</div>
+                  <div className="min-w-0 flex-1 break-words">{line}</div>
+                </div>
+              );
+            }
+
+            // Use the hook to render new version diff lines with word highlighting
+            if (renderNewVersionDiffLine) {
+              const rendered = renderNewVersionDiffLine({
+                change,
+                nextChange,
+                lineKey,
+                isFirstChanged,
+                lineClass,
+                computeWordDiff
+              });
+              if (rendered !== null) {
+                return rendered;
+              }
+            }
+
+            return (
+              <div
+                key={lineKey}
+                className={lineClass}
+                data-first-change={isFirstChanged ? "true" : undefined}
+              >
+                <div className="w-4 shrink-0">+</div>
                 <div className="min-w-0 flex-1 break-words">
-                  {wordDiffs.map((wordDiff, wordIdx) => {
-                    if (wordDiff.type === DIFF_TYPE.ADDED) return null;
+                  {wordDiffs.map((wordChange, wordIdx) => {
+                    if (wordChange.removed) return null;
                     const wordKey = `${lineKey}-word-${wordIdx}`;
-                    const wordClass =
-                      wordDiff.type === DIFF_TYPE.DELETED ? "bg-red-600/70 rounded px-0.5" : "";
+                    const wordClass = wordChange.added ? "bg-green-600/70 rounded px-0.5" : "";
                     return (
                       <span key={wordKey} className={wordClass}>
-                        {wordDiff.text}
+                        {wordChange.value}
                       </span>
                     );
                   })}
@@ -362,52 +327,32 @@ const renderMultilineDiffForApproval = (
             );
           }
 
+          // Use the hook to render new version diff lines
+          if (renderNewVersionDiffLine) {
+            const rendered = renderNewVersionDiffLine({
+              change,
+              nextChange,
+              lineKey,
+              isFirstChanged,
+              lineClass,
+              computeWordDiff
+            });
+            if (rendered !== null) {
+              return rendered;
+            }
+          }
+
           return (
             <div
               key={lineKey}
               className={lineClass}
               data-first-change={isFirstChanged ? "true" : undefined}
             >
-              <div className="w-4 shrink-0">{isChanged ? "-" : " "}</div>
-              <div className="min-w-0 flex-1 break-words">{diffLine.oldLine}</div>
+              <div className="w-4 shrink-0">{isChanged ? "+" : " "}</div>
+              <div className="min-w-0 flex-1 break-words">{line}</div>
             </div>
           );
-        }
-
-        // Render new version
-        if (diffLine.type === DIFF_TYPE.DELETED) {
-          return null; // Skip deleted lines in new version
-        }
-
-        const isChanged = diffLine.type === DIFF_TYPE.ADDED || diffLine.type === DIFF_TYPE.MODIFIED;
-        const lineClass = isChanged
-          ? "flex min-w-full bg-green-500/70 rounded-xs text-green-300"
-          : "flex min-w-full";
-
-        // Use the hook to render new version diff lines
-        if (renderNewVersionDiffLine) {
-          const rendered = renderNewVersionDiffLine({
-            diffLine,
-            lineKey,
-            isFirstChanged,
-            lineClass,
-            computeWordDiff
-          });
-          if (rendered !== null) {
-            return rendered;
-          }
-        }
-
-        return (
-          <div
-            key={lineKey}
-            className={lineClass}
-            data-first-change={isFirstChanged ? "true" : undefined}
-          >
-            <div className="w-4 shrink-0">{isChanged ? "+" : " "}</div>
-            <div className="min-w-0 flex-1 break-words">{diffLine.newLine}</div>
-          </div>
-        );
+        });
       })}
     </div>
   );
@@ -471,11 +416,12 @@ const renderOldSecretValue = ({
   newValue: string;
   oldDiffContainerRef: React.RefObject<HTMLDivElement>;
   renderNewVersionDiffLine: (params: {
-    diffLine: DiffLine;
+    change: Change;
+    nextChange: Change | undefined;
     lineKey: string;
     isFirstChanged: boolean;
     lineClass: string;
-    computeWordDiff: (oldText: string, newText: string) => WordDiff[] | null;
+    computeWordDiff: (oldText: string, newText: string) => Change[] | null;
   }) => JSX.Element | null;
 }) => {
   if (isRotatedSecret) {
@@ -576,11 +522,12 @@ const renderNewSecretValue = ({
   newValue: string;
   newDiffContainerRef: React.RefObject<HTMLDivElement>;
   renderNewVersionDiffLine: (params: {
-    diffLine: DiffLine;
+    change: Change;
+    nextChange: Change | undefined;
     lineKey: string;
     isFirstChanged: boolean;
     lineClass: string;
-    computeWordDiff: (oldText: string, newText: string) => WordDiff[] | null;
+    computeWordDiff: (oldText: string, newText: string) => Change[] | null;
   }) => JSX.Element | null;
 }) => {
   if (isRotatedSecret) {
@@ -743,7 +690,7 @@ export const SecretApprovalRequestChangeItem = ({
       <div>
         <div className="flex flex-col space-y-4 space-x-0 xl:flex-row xl:space-y-0 xl:space-x-4">
           {op === CommitType.UPDATE || op === CommitType.DELETE ? (
-            <div className="flex w-full cursor-default flex-col rounded-md border border-red-600/60 bg-red-600/10 p-4 xl:w-1/2">
+            <div className="flex w-full cursor-default flex-col rounded-lg border border-red-600/60 bg-red-600/10 p-4 xl:w-1/2">
               <div className="mb-4 flex flex-row justify-between">
                 <span className="text-md font-medium">Previous Secret</span>
                 <div className="rounded-full bg-red px-2 pt-[0.2rem] pb-[0.14rem] text-xs font-medium">
@@ -857,7 +804,7 @@ export const SecretApprovalRequestChangeItem = ({
             </div>
           )}
           {op === CommitType.UPDATE || op === CommitType.CREATE ? (
-            <div className="flex w-full cursor-default flex-col rounded-md border border-green-600/60 bg-green-600/10 p-4 xl:w-1/2">
+            <div className="flex w-full cursor-default flex-col rounded-lg border border-green-600/60 bg-green-600/10 p-4 xl:w-1/2">
               <div className="mb-4 flex flex-row justify-between">
                 <span className="text-md font-medium">New Secret</span>
                 <div className="rounded-full bg-green-600 px-2 pt-[0.2rem] pb-[0.14rem] text-xs font-medium">
