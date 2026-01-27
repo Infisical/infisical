@@ -12,14 +12,12 @@ import {
   faKey
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { twMerge } from "tailwind-merge";
-
-import { diffLines, diffWords } from "diff";
 import type { Change } from "diff";
+import { diffLines, diffWords } from "diff";
+import { twMerge } from "tailwind-merge";
 
 import { SecretInput, Tag, Tooltip } from "@app/components/v2";
 import { CommitType, SecretV3Raw, TSecretApprovalSecChange, WsTag } from "@app/hooks/api/types";
-import { useRenderNewVersionDiffLine } from "@app/hooks/useRenderNewVersionDiffLine";
 
 // ===== MULTILINE DIFF FUNCTIONS =====
 
@@ -131,31 +129,30 @@ const renderSingleLineDiffForApproval = (
   );
 };
 
+// Helper to split change value into lines, removing trailing empty string from split
+const splitChangeIntoLines = (value: string): string[] => {
+  const lines = value.split("\n");
+  // Remove trailing empty string (artifact of split when value ends with newline)
+  if (lines.length > 0 && lines[lines.length - 1] === "") {
+    lines.pop();
+  }
+  return lines;
+};
+
 // Render multiline diff for approval screen (side-by-side view)
 const renderMultilineDiffForApproval = (
   oldText: string,
   newText: string,
-  isOldVersion: boolean,
-  renderNewVersionDiffLine?: (params: {
-    change: Change;
-    nextChange: Change | undefined;
-    lineKey: string;
-    isFirstChanged: boolean;
-    lineClass: string;
-    computeWordDiff: (oldText: string, newText: string) => Change[] | null;
-  }) => JSX.Element | null
+  isOldVersion: boolean
 ): JSX.Element => {
   const lineChanges = computeLineDiff(oldText, newText);
 
   // Find the first changed line index
   let firstChangedIndex = -1;
   let lineIndex = 0;
-  for (let i = 0; i < lineChanges.length; i++) {
+  for (let i = 0; i < lineChanges.length; i += 1) {
     const change = lineChanges[i];
-    const lines = change.value.split("\n");
-    if (!change.value.endsWith("\n") && lines.length > 0 && lines[lines.length - 1] === "") {
-      lines.pop();
-    }
+    const lines = splitChangeIntoLines(change.value);
 
     const isChanged = isOldVersion ? change.removed : change.added;
     if (isChanged && firstChangedIndex === -1) {
@@ -172,10 +169,7 @@ const renderMultilineDiffForApproval = (
     <div className="min-w-full font-mono text-sm break-words whitespace-pre-wrap">
       {lineChanges.map((change, changeIdx) => {
         const nextChange = lineChanges[changeIdx + 1];
-        const lines = change.value.split("\n");
-        if (!change.value.endsWith("\n") && lines.length > 0 && lines[lines.length - 1] === "") {
-          lines.pop();
-        }
+        const lines = splitChangeIntoLines(change.value);
 
         return lines.map((line, lineIdx) => {
           const lineKey = `multiline-${changeIdx}-${lineIdx}`;
@@ -196,13 +190,10 @@ const renderMultilineDiffForApproval = (
 
             // If this is a removed line followed by an added line, it's a modification
             if (change.removed && nextChange?.added) {
-              const nextLines = nextChange.value.split("\n");
-              if (!nextChange.value.endsWith("\n") && nextLines.length > 0 && nextLines[nextLines.length - 1] === "") {
-                nextLines.pop();
-              }
+              const nextLines = splitChangeIntoLines(nextChange.value);
               const newLine = nextLines[lineIdx] ?? "";
               const wordDiffs = computeWordDiff(line, newLine);
-              
+
               // If no common words, just show the line with line-level background
               if (wordDiffs === null) {
                 return (
@@ -216,7 +207,7 @@ const renderMultilineDiffForApproval = (
                   </div>
                 );
               }
-              
+
               return (
                 <div
                   key={lineKey}
@@ -268,13 +259,10 @@ const renderMultilineDiffForApproval = (
 
           // If this is a modification, show word-level diff
           if (isModification && prevChange) {
-            const prevLines = prevChange.value.split("\n");
-            if (!prevChange.value.endsWith("\n") && prevLines.length > 0 && prevLines[prevLines.length - 1] === "") {
-              prevLines.pop();
-            }
+            const prevLines = splitChangeIntoLines(prevChange.value);
             const oldLine = prevLines[lineIdx] ?? "";
             const wordDiffs = computeWordDiff(oldLine, line);
-            
+
             // If no common words, just show the line with line-level background
             if (wordDiffs === null) {
               return (
@@ -287,21 +275,6 @@ const renderMultilineDiffForApproval = (
                   <div className="min-w-0 flex-1 break-words">{line}</div>
                 </div>
               );
-            }
-
-            // Use the hook to render new version diff lines with word highlighting
-            if (renderNewVersionDiffLine) {
-              const rendered = renderNewVersionDiffLine({
-                change,
-                nextChange,
-                lineKey,
-                isFirstChanged,
-                lineClass,
-                computeWordDiff
-              });
-              if (rendered !== null) {
-                return rendered;
-              }
             }
 
             return (
@@ -325,21 +298,6 @@ const renderMultilineDiffForApproval = (
                 </div>
               </div>
             );
-          }
-
-          // Use the hook to render new version diff lines
-          if (renderNewVersionDiffLine) {
-            const rendered = renderNewVersionDiffLine({
-              change,
-              nextChange,
-              lineKey,
-              isFirstChanged,
-              lineClass,
-              computeWordDiff
-            });
-            if (rendered !== null) {
-              return rendered;
-            }
           }
 
           return (
@@ -402,8 +360,7 @@ const renderOldSecretValue = ({
   isBothSingleLine,
   oldValue,
   newValue,
-  oldDiffContainerRef,
-  renderNewVersionDiffLine
+  oldDiffContainerRef
 }: {
   isRotatedSecret?: boolean;
   isValueHidden?: boolean;
@@ -415,19 +372,9 @@ const renderOldSecretValue = ({
   oldValue: string;
   newValue: string;
   oldDiffContainerRef: React.RefObject<HTMLDivElement>;
-  renderNewVersionDiffLine: (params: {
-    change: Change;
-    nextChange: Change | undefined;
-    lineKey: string;
-    isFirstChanged: boolean;
-    lineClass: string;
-    computeWordDiff: (oldText: string, newText: string) => Change[] | null;
-  }) => JSX.Element | null;
 }) => {
   if (isRotatedSecret) {
-    return (
-      <span className="text-mineshaft-400">Rotated Secret value will not be affected</span>
-    );
+    return <span className="text-mineshaft-400">Rotated Secret value will not be affected</span>;
   }
 
   if (isValueHidden) {
@@ -452,7 +399,10 @@ const renderOldSecretValue = ({
   if (hasValueChanges) {
     if (isBothSingleLine) {
       return (
-        <div className="relative rounded-lg border border-mineshaft-600 p-2" style={{ backgroundColor: "#120808" }}>
+        <div
+          className="relative rounded-lg border border-mineshaft-600 p-2"
+          style={{ backgroundColor: "#120808" }}
+        >
           {renderSingleLineDiffForApproval(oldValue, newValue, true)}
         </div>
       );
@@ -461,11 +411,11 @@ const renderOldSecretValue = ({
     return (
       <div
         ref={oldDiffContainerRef}
-        className="relative max-h-96 overflow-x-auto overflow-y-auto rounded-lg border border-mineshaft-600 p-2 thin-scrollbar"
+        className="relative max-h-96 thin-scrollbar overflow-x-auto overflow-y-auto rounded-lg border border-mineshaft-600 p-2"
         style={{ backgroundColor: "#120808" }}
       >
         <div className="min-w-max">
-          {renderMultilineDiffForApproval(oldValue, newValue, true, renderNewVersionDiffLine)}
+          {renderMultilineDiffForApproval(oldValue, newValue, true)}
         </div>
       </div>
     );
@@ -507,8 +457,7 @@ const renderNewSecretValue = ({
   isBothSingleLine,
   oldValue,
   newValue,
-  newDiffContainerRef,
-  renderNewVersionDiffLine
+  newDiffContainerRef
 }: {
   isRotatedSecret?: boolean;
   isValueHidden?: boolean;
@@ -521,19 +470,9 @@ const renderNewSecretValue = ({
   oldValue: string;
   newValue: string;
   newDiffContainerRef: React.RefObject<HTMLDivElement>;
-  renderNewVersionDiffLine: (params: {
-    change: Change;
-    nextChange: Change | undefined;
-    lineKey: string;
-    isFirstChanged: boolean;
-    lineClass: string;
-    computeWordDiff: (oldText: string, newText: string) => Change[] | null;
-  }) => JSX.Element | null;
 }) => {
   if (isRotatedSecret) {
-    return (
-      <span className="text-mineshaft-400">Rotated Secret value will not be affected</span>
-    );
+    return <span className="text-mineshaft-400">Rotated Secret value will not be affected</span>;
   }
 
   if (isValueHidden) {
@@ -558,7 +497,10 @@ const renderNewSecretValue = ({
   if (hasValueChanges) {
     if (isBothSingleLine) {
       return (
-        <div className="relative rounded-lg border border-mineshaft-600 p-2" style={{ backgroundColor: "#081208" }}>
+        <div
+          className="relative rounded-lg border border-mineshaft-600 p-2"
+          style={{ backgroundColor: "#081208" }}
+        >
           {renderSingleLineDiffForApproval(oldValue, newValue, false)}
         </div>
       );
@@ -567,11 +509,11 @@ const renderNewSecretValue = ({
     return (
       <div
         ref={newDiffContainerRef}
-        className="relative max-h-96 overflow-x-auto overflow-y-auto rounded-lg border border-mineshaft-600 p-2 thin-scrollbar"
+        className="relative max-h-96 thin-scrollbar overflow-x-auto overflow-y-auto rounded-lg border border-mineshaft-600 p-2"
         style={{ backgroundColor: "#081208" }}
       >
         <div className="min-w-max">
-          {renderMultilineDiffForApproval(oldValue, newValue, false, renderNewVersionDiffLine)}
+          {renderMultilineDiffForApproval(oldValue, newValue, false)}
         </div>
       </div>
     );
@@ -618,7 +560,6 @@ export const SecretApprovalRequestChangeItem = ({
   const [isNewSecretValueVisible, setIsNewSecretValueVisible] = useState(false);
   const oldDiffContainerRef = useRef<HTMLDivElement>(null);
   const newDiffContainerRef = useRef<HTMLDivElement>(null);
-  const renderNewVersionDiffLine = useRenderNewVersionDiffLine();
 
   // Compute conditions for secret value comparisons
   const oldSecretValue = secretVersion?.secretValue ?? "";
@@ -627,7 +568,8 @@ export const SecretApprovalRequestChangeItem = ({
   const hasValueChanges = !areValuesEqual(oldSecretValue, newSecretValue);
   const hasValueChangesForNew = !areValuesEqual(oldSecretValue, newSecretValueForComparison);
   const isBothSingleLine = isSingleLine(oldSecretValue) && isSingleLine(newSecretValue);
-  const isBothSingleLineForNew = isSingleLine(oldSecretValue) && isSingleLine(newSecretValueForComparison);
+  const isBothSingleLineForNew =
+    isSingleLine(oldSecretValue) && isSingleLine(newSecretValueForComparison);
 
   // Scroll to first change when diff is rendered
   useEffect(() => {
@@ -715,8 +657,7 @@ export const SecretApprovalRequestChangeItem = ({
                     isBothSingleLine,
                     oldValue: oldSecretValue,
                     newValue: newSecretValue,
-                    oldDiffContainerRef,
-                    renderNewVersionDiffLine
+                    oldDiffContainerRef
                   })}
                 </div>
               </div>
@@ -830,8 +771,7 @@ export const SecretApprovalRequestChangeItem = ({
                     isBothSingleLine: isBothSingleLineForNew,
                     oldValue: oldSecretValue,
                     newValue: newSecretValueForComparison,
-                    newDiffContainerRef,
-                    renderNewVersionDiffLine
+                    newDiffContainerRef
                   })}
                 </div>
               </div>
