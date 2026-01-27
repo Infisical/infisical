@@ -19,9 +19,7 @@ export const acquireSanitizedSchemaLock = async ({ db, logger }: TArgs): Promise
   if (res?.rows[0]?.lock_acquired) {
     logger.info("Acquired sanitized schema generation lock");
   } else {
-    logger.info(
-      "Skipping sanitized schema generation: another instance is currently generating the schema"
-    );
+    logger.info("Skipping sanitized schema generation: another instance is currently generating the schema");
   }
   return res?.rows[0]?.lock_acquired;
 };
