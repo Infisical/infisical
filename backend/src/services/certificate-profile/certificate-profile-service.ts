@@ -89,28 +89,6 @@ const validateTemplateByExternalCaType = (
   }
 };
 
-const validateDefaultTtlDaysAgainstPolicy = async (
-  defaultTtlDays: number | undefined | null,
-  certificatePolicyId: string,
-  certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">
-) => {
-  if (!defaultTtlDays) return; // No defaultTtlDays to validate
-
-  const policy = await certificatePolicyDAL.findById(certificatePolicyId);
-  if (!policy) return; // Policy validation happens elsewhere
-
-  if (!policy.validity?.max) return; // No max constraint
-
-  const defaultTtlMs = defaultTtlDays * 24 * 60 * 60 * 1000;
-  const maxTtlMs = ms(policy.validity.max);
-
-  if (defaultTtlMs > maxTtlMs) {
-    throw new BadRequestError({
-      message: `Default TTL (${defaultTtlDays} days) exceeds the policy's maximum validity (${policy.validity.max})`
-    });
-  }
-};
-
 const validateExternalConfigs = async (
   externalConfigs: Record<string, unknown> | null | undefined,
   caId: string | null,
@@ -295,6 +273,27 @@ export const certificateProfileServiceFactory = ({
   kmsService,
   projectDAL
 }: TCertificateProfileServiceFactoryDep) => {
+  const validateDefaultTtlDaysAgainstPolicy = async (
+    defaultTtlDays: number | undefined | null,
+    certificatePolicyId: string
+  ) => {
+    if (!defaultTtlDays) return; // No defaultTtlDays to validate
+
+    const policy = await certificatePolicyDAL.findById(certificatePolicyId);
+    if (!policy) return; // Policy validation happens elsewhere
+
+    if (!policy.validity?.max) return; // No max constraint
+
+    const defaultTtlMs = defaultTtlDays * 24 * 60 * 60 * 1000;
+    const maxTtlMs = ms(policy.validity.max);
+
+    if (defaultTtlMs > maxTtlMs) {
+      throw new BadRequestError({
+        message: `Default TTL (${defaultTtlDays} days) exceeds the policy's maximum validity (${policy.validity.max})`
+      });
+    }
+  };
+
   const createProfile = async ({
     actor,
     actorId,
@@ -354,7 +353,7 @@ export const certificateProfileServiceFactory = ({
     validateIssuerTypeConstraints(data.issuerType, data.enrollmentType, data.caId ?? null);
 
     // Validate defaultTtlDays against policy constraints
-    await validateDefaultTtlDaysAgainstPolicy(data.defaultTtlDays, data.certificatePolicyId, certificatePolicyDAL);
+    await validateDefaultTtlDaysAgainstPolicy(data.defaultTtlDays, data.certificatePolicyId);
 
     // Validate external configs
     await validateExternalConfigs(
@@ -528,7 +527,7 @@ export const certificateProfileServiceFactory = ({
     // Validate defaultTtlDays against policy constraints if provided
     if (data.defaultTtlDays !== undefined) {
       const policyId = data.certificatePolicyId || existingProfile.certificatePolicyId;
-      await validateDefaultTtlDaysAgainstPolicy(data.defaultTtlDays, policyId, certificatePolicyDAL);
+      await validateDefaultTtlDaysAgainstPolicy(data.defaultTtlDays, policyId);
     }
 
     const updatedData =

@@ -96,6 +96,6 @@ export const resolveEffectiveTtl = ({
 
   // No TTL source available - throw error for API flows
   throw new BadRequestError({
-    message: "TTL is required. Either pass a TTL in the request or set a default TTL on the certificate profile."
+    message: "Certificate issuance requires a valid TTL"
   });
 };
