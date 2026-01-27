@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 import path from "path";
 import { Logger } from "pino";
+import RE2 from "re2";
 
 import { PgSqlLock } from "@app/keystore/keystore";
 
@@ -70,7 +71,8 @@ type TGrantArgs = TArgs & {
 
 export const grantSanitizedSchemaAccess = async ({ db, logger, role }: TGrantArgs): Promise<void> => {
   // Validate role name to prevent SQL injection
-  if (!/^[a-zA-Z0-9_-]+$/.test(role)) {
+  const roleNameRegex = new RE2("^[a-zA-Z0-9_-]+$");
+  if (!roleNameRegex.test(role)) {
     throw new Error(
       `SANITIZED_SCHEMA_SECURITY_VIOLATION: Invalid role name. Only alphanumeric characters, underscores, and hyphens are allowed. Got: ${role}`
     );
@@ -82,5 +84,4 @@ export const grantSanitizedSchemaAccess = async ({ db, logger, role }: TGrantArg
   const sql = generateGrantReadAccessSQL(SANITIZED_SCHEMA, role);
   await db.raw(sql);
   logger.info(`Granted read access on sanitized schema to role: ${role}`);
-};
 };
