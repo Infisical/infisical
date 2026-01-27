@@ -191,32 +191,32 @@ export const SecretRotationItem = ({
               (secretRotation.type === SecretRotation.WindowsLocalAccount &&
                 secretRotation.parameters.rotationMethod ===
                   WindowsLocalAccountRotationMethod.LoginAsTarget)) && (
-                <ProjectPermissionCan
-                  I={ProjectPermissionSecretRotationActions.RotateSecrets}
-                  a={subject(ProjectPermissionSub.SecretRotation, {
-                    environment: environment.slug,
-                    secretPath: folder.path
-                  })}
-                  renderTooltip
-                  allowedLabel="Reconcile Secret"
-                >
-                  {(isAllowed) => (
-                    <IconButton
-                      ariaLabel="Reconcile secret"
-                      variant="plain"
-                      size="sm"
-                      isDisabled={!isAllowed}
-                      className="w-0 overflow-hidden p-0 group-hover:w-5"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onReconcile();
-                      }}
-                    >
-                      <FontAwesomeIcon icon={faHandshake} />
-                    </IconButton>
-                  )}
-                </ProjectPermissionCan>
-              )}
+              <ProjectPermissionCan
+                I={ProjectPermissionSecretRotationActions.RotateSecrets}
+                a={subject(ProjectPermissionSub.SecretRotation, {
+                  environment: environment.slug,
+                  secretPath: folder.path
+                })}
+                renderTooltip
+                allowedLabel="Reconcile Secret"
+              >
+                {(isAllowed) => (
+                  <IconButton
+                    ariaLabel="Reconcile secret"
+                    variant="plain"
+                    size="sm"
+                    isDisabled={!isAllowed}
+                    className="w-0 overflow-hidden p-0 group-hover:w-5"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onReconcile();
+                    }}
+                  >
+                    <FontAwesomeIcon icon={faHandshake} />
+                  </IconButton>
+                )}
+              </ProjectPermissionCan>
+            )}
           </div>
         </div>
         <AnimatePresence mode="wait">
