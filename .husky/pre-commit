@@ -1,13 +1,30 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
+
 echo "🔥 Pre-commit hook is running!"
 
 # Check if infisical is installed
 if ! command -v infisical >/dev/null 2>&1; then
-    echo "\nError: Infisical CLI is not installed. Please install the Infisical CLI before comitting.\n You can refer to the documentation at https://infisical.com/docs/cli/overview\n\n"
+    echo "\nError: Infisical CLI is not installed. Please install the Infisical CLI before committing.\n You can refer to the documentation at https://infisical.com/docs/cli/overview\n\n"
     exit 1
 fi
 
+# Check for staged changes in frontend
+if git diff --cached --name-only | grep -q "^frontend/"; then
+    echo "🔍 Frontend changes detected - running TypeScript type check..."
+    npm run type:check --prefix frontend || exit 1
+    echo "✅ Frontend type check passed"
+fi
+
+# Check for staged changes in backend
+if git diff --cached --name-only | grep -q "^backend/"; then
+    echo "🔍 Backend changes detected - running TypeScript type check..."
+    npm run type:check --prefix backend || exit 1
+    echo "✅ Backend type check passed"
+fi
+
+# Lint staged files
 npx lint-staged
 
+# Scan for secrets
 infisical scan git-changes --staged -v
