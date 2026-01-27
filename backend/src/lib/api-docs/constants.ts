@@ -200,7 +200,7 @@ export const IDENTITIES = {
 } as const;
 
 const IDENTITY_AUTH_SUB_ORGANIZATION_NAME =
-  "Scopes the login session to the specified sub-organization. If not provided, the session defaults to the organization from which the identity originated.";
+  "When set, this will scope the login session to the specified organization the machine identity has access to. If omitted, the session defaults to the organization where the machine identity was created in.";
 
 export const UNIVERSAL_AUTH = {
   LOGIN: {
