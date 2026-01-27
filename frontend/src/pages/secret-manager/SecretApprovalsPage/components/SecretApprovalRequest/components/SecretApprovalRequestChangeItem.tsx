@@ -19,29 +19,33 @@ import { twMerge } from "tailwind-merge";
 import { SecretInput, Tag, Tooltip } from "@app/components/v2";
 import { CommitType, SecretV3Raw, TSecretApprovalSecChange, WsTag } from "@app/hooks/api/types";
 
-// ===== MULTILINE DIFF FUNCTIONS =====
+// Scrolls a container to center the first changed element if it's not visible
+const scrollToFirstChange = (container: HTMLDivElement | null) => {
+  if (!container) return;
 
-// Normalize secret value to match backend behavior:
-// - Trim whitespace
-// - If value ends with \n, preserve it (but trim everything else)
-// This matches the backend transform: (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())
-const normalizeSecretValue = (value: string | null | undefined): string => {
-  if (!value || typeof value !== "string") return "";
-  // If value ends with \n, preserve it after trimming
-  if (value.at(-1) === "\n") {
-    return `${value.trim()}\n`;
+  const firstChange = container.querySelector('[data-first-change="true"]') as HTMLElement;
+  if (!firstChange) return;
+
+  const elementTop = firstChange.offsetTop;
+  const containerHeight = container.clientHeight;
+  const elementHeight = firstChange.offsetHeight;
+
+  const isVisible =
+    elementTop >= container.scrollTop &&
+    elementTop + elementHeight <= container.scrollTop + containerHeight;
+
+  if (!isVisible) {
+    const targetScrollTop = elementTop - containerHeight / 2 + elementHeight / 2;
+    container.scrollTo({ top: Math.max(0, targetScrollTop), behavior: "smooth" });
   }
-  return value.trim();
 };
 
-// Compare normalized values to determine if they're actually different
+// Compare values to determine if they're actually different
 const areValuesEqual = (
   oldValue: string | null | undefined,
   newValue: string | null | undefined
 ): boolean => {
-  const normalizedOld = normalizeSecretValue(oldValue);
-  const normalizedNew = normalizeSecretValue(newValue);
-  return normalizedOld === normalizedNew;
+  return (oldValue ?? "") === (newValue ?? "");
 };
 
 const isSingleLine = (str: string | null | undefined): boolean => {
@@ -51,12 +55,7 @@ const isSingleLine = (str: string | null | undefined): boolean => {
 
 // Use jsdiff for line-by-line diffing - returns Change[] directly
 const computeLineDiff = (oldText: string, newText: string): Change[] => {
-  // Normalize the texts before diffing
-  const normalizedOld = normalizeSecretValue(oldText);
-  const normalizedNew = normalizeSecretValue(newText);
-
-  // Use jsdiff's diffLines
-  return diffLines(normalizedOld, normalizedNew, {
+  return diffLines(oldText, newText, {
     ignoreWhitespace: false,
     newlineIsToken: false
   });
@@ -64,12 +63,7 @@ const computeLineDiff = (oldText: string, newText: string): Change[] => {
 
 // Use jsdiff for word-level diffing - returns Change[] directly or null
 const computeWordDiff = (oldText: string, newText: string): Change[] | null => {
-  // Normalize the texts before diffing
-  const normalizedOld = normalizeSecretValue(oldText);
-  const normalizedNew = normalizeSecretValue(newText);
-
-  // Use jsdiff's diffWords
-  const changes = diffWords(normalizedOld, normalizedNew);
+  const changes = diffWords(oldText, newText);
 
   // Check if there are any common words (excluding whitespace and punctuation)
   const hasCommonWords = changes.some(
@@ -77,7 +71,7 @@ const computeWordDiff = (oldText: string, newText: string): Change[] | null => {
   );
 
   // If no common words, return null to indicate entire line should be highlighted
-  if (!hasCommonWords && normalizedOld.trim() !== "" && normalizedNew.trim() !== "") {
+  if (!hasCommonWords && oldText.trim() !== "" && newText.trim() !== "") {
     return null;
   }
 
@@ -90,18 +84,13 @@ const renderSingleLineDiffForApproval = (
   newText: string,
   isOldVersion: boolean
 ): JSX.Element => {
-  const normalizedOld = normalizeSecretValue(oldText);
-  const normalizedNew = normalizeSecretValue(newText);
-
   // If completely new or deleted, or no common words, show as single block
   const wordDiffs = computeWordDiff(oldText, newText);
   const shouldShowAsBlock =
-    (normalizedOld === "" && normalizedNew !== "") ||
-    (normalizedOld !== "" && normalizedNew === "") ||
-    wordDiffs === null;
+    (oldText === "" && newText !== "") || (oldText !== "" && newText === "") || wordDiffs === null;
 
   if (shouldShowAsBlock) {
-    const value = isOldVersion ? normalizedOld : normalizedNew;
+    const value = isOldVersion ? oldText : newText;
     return <div className="font-mono text-sm break-words">{value}</div>;
   }
 
@@ -414,9 +403,7 @@ const renderOldSecretValue = ({
         className="relative max-h-96 thin-scrollbar overflow-x-auto overflow-y-auto rounded-lg border border-mineshaft-600 p-2"
         style={{ backgroundColor: "#120808" }}
       >
-        <div className="min-w-max">
-          {renderMultilineDiffForApproval(oldValue, newValue, true)}
-        </div>
+        <div className="min-w-max">{renderMultilineDiffForApproval(oldValue, newValue, true)}</div>
       </div>
     );
   }
@@ -512,9 +499,7 @@ const renderNewSecretValue = ({
         className="relative max-h-96 thin-scrollbar overflow-x-auto overflow-y-auto rounded-lg border border-mineshaft-600 p-2"
         style={{ backgroundColor: "#081208" }}
       >
-        <div className="min-w-max">
-          {renderMultilineDiffForApproval(oldValue, newValue, false)}
-        </div>
+        <div className="min-w-max">{renderMultilineDiffForApproval(oldValue, newValue, false)}</div>
       </div>
     );
   }
@@ -573,40 +558,10 @@ export const SecretApprovalRequestChangeItem = ({
 
   // Scroll to first change when diff is rendered
   useEffect(() => {
-    const scrollToFirstChange = (container: HTMLDivElement | null) => {
-      if (!container) return;
-
-      const firstChange = container.querySelector('[data-first-change="true"]') as HTMLElement;
-      if (firstChange) {
-        // Calculate the element's position relative to the container's scrollable area
-        const elementTop = firstChange.offsetTop;
-        const containerScrollTop = container.scrollTop;
-        const containerHeight = container.clientHeight;
-        const elementHeight = firstChange.offsetHeight;
-
-        // Check if element is visible in the container viewport
-        const isVisible =
-          elementTop >= containerScrollTop &&
-          elementTop + elementHeight <= containerScrollTop + containerHeight;
-
-        // If element is not visible, scroll the container (not the page)
-        if (!isVisible) {
-          // Scroll to center the element in the container
-          const targetScrollTop = elementTop - containerHeight / 2 + elementHeight / 2;
-          container.scrollTo({
-            top: Math.max(0, targetScrollTop),
-            behavior: "smooth"
-          });
-        }
-      }
-    };
-
-    // Small delay to ensure DOM is rendered
     const timeout = setTimeout(() => {
       scrollToFirstChange(oldDiffContainerRef.current);
       scrollToFirstChange(newDiffContainerRef.current);
     }, 100);
-
     return () => clearTimeout(timeout);
   }, [secretVersion?.secretValue, newVersion?.secretValue]);
 
