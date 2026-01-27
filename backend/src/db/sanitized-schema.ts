@@ -4,7 +4,7 @@ import { Logger } from "pino";
 
 import { PgSqlLock } from "@app/keystore/keystore";
 
-const SANITIZED_SCHEMA = "infisical-sanitized";
+const SANITIZED_SCHEMA = "analytics";
 
 type TArgs = {
   db: Knex;
@@ -64,4 +64,17 @@ export const createSanitizedSchema = async ({ db, logger }: TArgs): Promise<void
 
   await db.raw(sql);
   logger.info("Created sanitized schema and views");
+};
+
+type TGrantArgs = TArgs & {
+  role: string;
+};
+
+export const grantSanitizedSchemaAccess = async ({ db, logger, role }: TGrantArgs): Promise<void> => {
+  // eslint-disable-next-line import/no-extraneous-dependencies
+  const { generateGrantReadAccessSQL } = await import("@infisical/pg-view-generator");
+
+  const sql = generateGrantReadAccessSQL(SANITIZED_SCHEMA, role);
+  await db.raw(sql);
+  logger.info(`Granted read access on sanitized schema to role: ${role}`);
 };
