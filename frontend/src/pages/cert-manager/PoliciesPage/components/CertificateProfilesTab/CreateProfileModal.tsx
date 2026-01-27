@@ -804,10 +804,14 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                     }
                     onChange(value);
                   }}
-                  placeholder="Select a certificate policy"
+                  placeholder={
+                    certificatePolicies.length === 0
+                      ? "No certificate policies available"
+                      : "Select a certificate policy"
+                  }
                   className="w-full"
                   position="popper"
-                  isDisabled={Boolean(isEdit)}
+                  isDisabled={Boolean(isEdit) || certificatePolicies.length === 0}
                 >
                   {certificatePolicies.map((policy) => (
                     <SelectItem key={policy.id} value={policy.id}>
