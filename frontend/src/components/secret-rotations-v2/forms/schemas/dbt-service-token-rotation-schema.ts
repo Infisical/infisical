@@ -34,35 +34,133 @@ export enum DbtPermissionsSet {
   WebhooksOnly = "webhooks_only"
 }
 
-export const DBT_PERMISSION_SET_MAP: Record<DbtPermissionsSet, string> = {
-  [DbtPermissionsSet.AccountAdmin]: "Account Admin",
-  [DbtPermissionsSet.AccountViewer]: "Account Viewer",
-  [DbtPermissionsSet.Admin]: "Admin",
-  [DbtPermissionsSet.Analyst]: "Analyst",
-  [DbtPermissionsSet.BillingAdmin]: "Billing Admin",
-  [DbtPermissionsSet.CostInsightsAdmin]: "Cost Insights Admin",
-  [DbtPermissionsSet.ConstInsightViewer]: "Cost Insights Viewer",
-  [DbtPermissionsSet.CostManagementAdmin]: "Cost Management Admin",
-  [DbtPermissionsSet.CostManagementViewer]: "Cost Management Viewer",
-  [DbtPermissionsSet.DatabaseAdmin]: "Database Admin",
-  [DbtPermissionsSet.Developer]: "Developer",
-  [DbtPermissionsSet.FusionAdmin]: "Fusion Admin",
-  [DbtPermissionsSet.GitAdmin]: "Git Admin",
-  [DbtPermissionsSet.JobAdmin]: "Job Admin",
-  [DbtPermissionsSet.JobRunner]: "Job Runner",
-  [DbtPermissionsSet.JobViewer]: "Job Viewer",
-  [DbtPermissionsSet.ManageMarketplaceApps]: "Manage Marketplace Apps",
-  [DbtPermissionsSet.Member]: "Member",
-  [DbtPermissionsSet.MetadataOnly]: "Metadata Only",
-  [DbtPermissionsSet.Owner]: "Owner",
-  [DbtPermissionsSet.ProjectCreator]: "Project Creator",
-  [DbtPermissionsSet.Readonly]: "Readonly",
-  [DbtPermissionsSet.ScimOnly]: "SCIM Only",
-  [DbtPermissionsSet.SecurityAdmin]: "Security Admin",
-  [DbtPermissionsSet.SemanticLayerOnly]: "Semantic Layer Only",
-  [DbtPermissionsSet.Stakeholder]: "Stakeholder",
-  [DbtPermissionsSet.TeamAdmin]: "Team Admin",
-  [DbtPermissionsSet.WebhooksOnly]: "Webhooks Only"
+export const DBT_PERMISSION_SET_MAP: Record<
+  DbtPermissionsSet,
+  {
+    label: string;
+    isEnterpriseOnly: boolean;
+  }
+> = {
+  [DbtPermissionsSet.AccountAdmin]: {
+    label: "Account Admin",
+    isEnterpriseOnly: false
+  },
+  [DbtPermissionsSet.JobAdmin]: {
+    label: "Job Admin",
+    isEnterpriseOnly: false
+  },
+
+  [DbtPermissionsSet.Member]: {
+    label: "Member",
+    isEnterpriseOnly: false
+  },
+
+  [DbtPermissionsSet.MetadataOnly]: {
+    label: "Metadata Only",
+    isEnterpriseOnly: false
+  },
+  [DbtPermissionsSet.Readonly]: {
+    label: "Readonly",
+    isEnterpriseOnly: false
+  },
+  [DbtPermissionsSet.SemanticLayerOnly]: {
+    label: "Semantic Layer Only",
+    isEnterpriseOnly: false
+  },
+
+  [DbtPermissionsSet.Owner]: {
+    label: "Owner",
+    isEnterpriseOnly: true
+  },
+
+  [DbtPermissionsSet.AccountViewer]: {
+    label: "Account Viewer",
+    isEnterpriseOnly: true
+  },
+  [DbtPermissionsSet.Admin]: {
+    label: "Admin",
+    isEnterpriseOnly: true
+  },
+  [DbtPermissionsSet.Analyst]: {
+    label: "Analyst",
+    isEnterpriseOnly: true
+  },
+  [DbtPermissionsSet.BillingAdmin]: {
+    label: "Billing Admin",
+    isEnterpriseOnly: true
+  },
+  [DbtPermissionsSet.CostInsightsAdmin]: {
+    label: "Cost Insights Admin",
+    isEnterpriseOnly: true
+  },
+  [DbtPermissionsSet.ConstInsightViewer]: {
+    label: "Cost Insights Viewer",
+    isEnterpriseOnly: true
+  },
+  [DbtPermissionsSet.CostManagementAdmin]: {
+    label: "Cost Management Admin",
+    isEnterpriseOnly: true
+  },
+  [DbtPermissionsSet.CostManagementViewer]: {
+    label: "Cost Management Viewer",
+    isEnterpriseOnly: true
+  },
+  [DbtPermissionsSet.DatabaseAdmin]: {
+    label: "Database Admin",
+    isEnterpriseOnly: true
+  },
+  [DbtPermissionsSet.Developer]: {
+    label: "Developer",
+    isEnterpriseOnly: true
+  },
+  [DbtPermissionsSet.FusionAdmin]: {
+    label: "Fusion Admin",
+    isEnterpriseOnly: true
+  },
+  [DbtPermissionsSet.GitAdmin]: {
+    label: "Git Admin",
+    isEnterpriseOnly: true
+  },
+
+  [DbtPermissionsSet.JobRunner]: {
+    label: "Job Runner",
+    isEnterpriseOnly: true
+  },
+  [DbtPermissionsSet.JobViewer]: {
+    label: "Job Viewer",
+    isEnterpriseOnly: true
+  },
+  [DbtPermissionsSet.ManageMarketplaceApps]: {
+    label: "Manage Marketplace Apps",
+    isEnterpriseOnly: true
+  },
+
+  [DbtPermissionsSet.ProjectCreator]: {
+    label: "Project Creator",
+    isEnterpriseOnly: true
+  },
+
+  [DbtPermissionsSet.ScimOnly]: {
+    label: "SCIM Only",
+    isEnterpriseOnly: true
+  },
+  [DbtPermissionsSet.SecurityAdmin]: {
+    label: "Security Admin",
+    isEnterpriseOnly: true
+  },
+
+  [DbtPermissionsSet.Stakeholder]: {
+    label: "Stakeholder",
+    isEnterpriseOnly: true
+  },
+  [DbtPermissionsSet.TeamAdmin]: {
+    label: "Team Admin",
+    isEnterpriseOnly: true
+  },
+  [DbtPermissionsSet.WebhooksOnly]: {
+    label: "Webhooks Only",
+    isEnterpriseOnly: true
+  }
 };
 
 export const DbtTokenPermissionsSchema = z.object({

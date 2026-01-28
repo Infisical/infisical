@@ -23,7 +23,7 @@ export const DbtServiceTokenRotationReviewFields = () => {
         {parameters.permissionGrants.map((grant, i) => (
           <GenericFieldLabel key={`grant-${i + 1}`} label={`Permission Grant ${i + 1}`}>
             <div className="flex items-center gap-2">
-              <span>{DBT_PERMISSION_SET_MAP[grant.permissionSet]}</span>
+              <span>{DBT_PERMISSION_SET_MAP[grant.permissionSet].label}</span>
               <Badge variant={grant.projectId ? "neutral" : "info"}>
                 {grant.projectId ? `Project: ${grant.projectId}` : "All Projects"}
               </Badge>

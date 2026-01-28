@@ -14,6 +14,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { TDbtProject, useDbtConnectionListProjects } from "@app/hooks/api/appConnections/dbt";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
@@ -68,7 +69,7 @@ export const DbtServiceTokenRotationParametersFields = () => {
 
   return (
     <>
-      <FormLabel label="Roles" />
+      <FormLabel label="Permission Grants" />
       <div className="mb-3 flex w-full flex-col space-y-2">
         {permissionGrantsFields.fields.map(({ id: roleFieldId }, i) => (
           <div key={roleFieldId} className="flex items-end space-x-2">
@@ -84,11 +85,16 @@ export const DbtServiceTokenRotationParametersFields = () => {
                     className="mb-0"
                   >
                     <Select className="w-72" value={field.value} onValueChange={field.onChange}>
-                      {Object.entries(DBT_PERMISSION_SET_MAP).map(([permissionSet, label]) => (
-                        <SelectItem key={permissionSet} value={permissionSet}>
-                          {label}
-                        </SelectItem>
-                      ))}
+                      {Object.entries(DBT_PERMISSION_SET_MAP).map(
+                        ([permissionSet, { label, isEnterpriseOnly }]) => (
+                          <SelectItem key={permissionSet} value={permissionSet}>
+                            <div className="flex items-center gap-2">
+                              {label}
+                              {isEnterpriseOnly && <Badge variant="info">DBT Enterprise</Badge>}
+                            </div>
+                          </SelectItem>
+                        )
+                      )}
                     </Select>
                   </FormControl>
                 )}
