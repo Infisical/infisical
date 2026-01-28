@@ -29,6 +29,8 @@ The following are minimum requirements for running Infisical with Docker Compose
 
 These requirements include resources for Infisical, PostgreSQL, and Redis containers. For larger deployments with many secrets or users, increase resources accordingly.
 
+## Deployment Steps
+
 <Tabs>
   <Tab title="Docker Compose">
 
@@ -45,7 +47,7 @@ These requirements include resources for Infisical, PostgreSQL, and Redis contai
   </Step>
 
   <Step title="Download the Docker Compose file">
-    Download the Infisical production Docker Compose file:
+    You can obtain the Infisical docker compose file by using a command-line downloader such as `wget` or `curl`. If your system doesn't have either of these, you can use an equivalent command that works with your machine.
 
     <Tabs>
       <Tab title="curl">
@@ -62,7 +64,7 @@ These requirements include resources for Infisical, PostgreSQL, and Redis contai
   </Step>
 
   <Step title="Configure environment variables">
-    Download the example environment file and configure it for your deployment:
+    Infisical requires a set of credentials used for connecting to dependent services such as Postgres, Redis, etc. The default credentials can be downloaded using one of the commands listed below.
 
     <Tabs>
       <Tab title="curl">
@@ -77,16 +79,7 @@ These requirements include resources for Infisical, PostgreSQL, and Redis contai
       </Tab>
     </Tabs>
 
-    Open the `.env` file in your preferred editor and configure the following required values:
-
-    | Variable | Description | How to Generate |
-    |----------|-------------|-----------------|
-    | `ENCRYPTION_KEY` | Key used to encrypt secrets in the database | `openssl rand -hex 16` |
-    | `AUTH_SECRET` | Secret used for JWT signing | `openssl rand -base64 32` |
-    | `POSTGRES_PASSWORD` | Password for the PostgreSQL database | Use a strong, unique password |
-    | `SITE_URL` | URL where Infisical will be accessed | e.g., `https://secrets.example.com` |
-
-    Other fields (e.g., `POSTGRES_USER`, `POSTGRES_DB`, and `REDIS_URL`) can remain as default for basic usage.
+    Once downloaded, the credentials file will be saved to your working directory as `.env` file. View all available configurations [here](/self-hosting/configuration/envars).
 
     <Warning>
       The `.env` file contains secrets that control the security of your deployment. Do not commit it to version control, and protect access to it:
@@ -149,6 +142,8 @@ Podman Compose is an alternative way to run Infisical using Podman as a replacem
   </Step>
 
   <Step title="Download the Docker Compose file">
+    You can obtain the Infisical docker compose file by using a command-line downloader such as `wget` or `curl`. If your system doesn't have either of these, you can use an equivalent command that works with your machine.
+
     <Tabs>
       <Tab title="curl">
         ```bash
@@ -164,6 +159,8 @@ Podman Compose is an alternative way to run Infisical using Podman as a replacem
   </Step>
 
   <Step title="Configure environment variables">
+    Infisical requires a set of credentials used for connecting to dependent services such as Postgres, Redis, etc. The default credentials can be downloaded using one of the commands listed below.
+
     <Tabs>
       <Tab title="curl">
         ```bash
@@ -177,7 +174,7 @@ Podman Compose is an alternative way to run Infisical using Podman as a replacem
       </Tab>
     </Tabs>
 
-    Edit the `.env` file and configure `ENCRYPTION_KEY`, `AUTH_SECRET`, `POSTGRES_PASSWORD`, and `SITE_URL` as described in the Docker Compose tab.
+    Once downloaded, the credentials file will be saved to your working directory as `.env` file. View all available configurations [here](/self-hosting/configuration/envars).
   </Step>
 
   <Step title="Set up Podman">
