@@ -1675,7 +1675,6 @@ export const secretApprovalRequestServiceFactory = ({
             reminderRepeatDays,
             reminderNote,
             secretComment,
-            metadata,
             skipMultilineEncoding,
             secretMetadata
           }) => {
@@ -1684,8 +1683,9 @@ export const secretApprovalRequestServiceFactory = ({
               commitTagIds[newSecretName ?? secretKey] = tagIds || existingTagIds[secretKey];
             }
 
+            const { metadata, ...el } = latestSecretVersions[secretId];
             return {
-              ...latestSecretVersions[secretId],
+              ...el,
               secretMetadata: JSON.stringify(
                 (secretMetadata || [])?.map((meta) => ({
                   key: meta.key,
@@ -1707,7 +1707,6 @@ export const secretApprovalRequestServiceFactory = ({
               ),
               reminderRepeatDays,
               reminderNote,
-              metadata,
               skipMultilineEncoding,
               op: SecretOperations.Update as const,
               secret: secretId,
@@ -1769,9 +1768,11 @@ export const secretApprovalRequestServiceFactory = ({
       commits.push(
         ...deletedSecrets.map(({ secretKey }) => {
           const secretId = secretsGroupedByKey[secretKey][0].id;
+          const { metadata, ...el } = latestSecretVersions[secretId];
           return {
             op: SecretOperations.Delete as const,
-            ...latestSecretVersions[secretId],
+            ...el,
+            secretMetadata: JSON.stringify(metadata || []),
             key: secretKey,
             secret: secretId,
             secretVersion: latestSecretVersions[secretId].id
