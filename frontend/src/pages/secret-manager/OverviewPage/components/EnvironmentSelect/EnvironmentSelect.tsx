@@ -1,4 +1,4 @@
-import { SetStateAction, useState } from "react";
+import { SetStateAction, useEffect, useRef, useState } from "react";
 import { CheckIcon, ChevronsUpDownIcon } from "lucide-react";
 
 import {
@@ -11,11 +11,45 @@ import {
   CommandList,
   Popover,
   PopoverContent,
-  PopoverTrigger
+  PopoverTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import { useProject } from "@app/context";
 import { ProjectEnv } from "@app/hooks/api/types";
+
+const TruncatedText = ({ text }: { text: string }) => {
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (el) {
+      setIsOverflowing(el.scrollWidth > el.clientWidth);
+    }
+  }, [text]);
+
+  if (!isOverflowing) {
+    return (
+      <span ref={ref} className="truncate">
+        {text}
+      </span>
+    );
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span ref={ref} className="truncate">
+          {text}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="right">{text}</TooltipContent>
+    </Tooltip>
+  );
+};
 
 type Props = {
   selectedEnvs: ProjectEnv[];
@@ -73,7 +107,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs }: Props) {
             <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[200px] p-0">
+        <PopoverContent align="start" className="w-[200px] p-0">
           <Command>
             <CommandInput
               value={inputValue}
@@ -107,7 +141,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs }: Props) {
                         selectedEnvs.map((e) => e.id).includes(env.id) ? "opacity-100" : "opacity-0"
                       )}
                     />
-                    <span className="truncate">{env.name}</span>
+                    <TruncatedText text={env.name} />
                   </CommandItem>
                 ))}
               </CommandGroup>
