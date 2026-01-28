@@ -1032,7 +1032,33 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          certificate: CertificatesSchema
+          certificate: CertificatesSchema.extend({
+            subject: z
+              .object({
+                commonName: z.string().optional(),
+                organization: z.string().optional(),
+                organizationalUnit: z.string().optional(),
+                country: z.string().optional(),
+                state: z.string().optional(),
+                locality: z.string().optional()
+              })
+              .optional(),
+            fingerprints: z
+              .object({
+                sha256: z.string(),
+                sha1: z.string()
+              })
+              .optional(),
+            basicConstraints: z
+              .object({
+                isCA: z.boolean(),
+                pathLength: z.number().optional()
+              })
+              .optional(),
+            caName: z.string().nullable().optional(),
+            caType: z.enum(["internal", "external"]).nullable().optional(),
+            profileName: z.string().nullable().optional()
+          })
         })
       }
     },

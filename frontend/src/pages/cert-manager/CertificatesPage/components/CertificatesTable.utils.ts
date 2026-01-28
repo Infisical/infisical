@@ -1,5 +1,12 @@
 import ms from "ms";
 
+export const isExpiringWithinOneDay = (notAfter: string): boolean => {
+  const expiryDate = new Date(notAfter);
+  const now = new Date();
+  const oneDayFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  return expiryDate <= oneDayFromNow;
+};
+
 export const getCertValidUntilBadgeDetails = (notAfter: string) => {
   const currentDate = new Date().getTime();
   const notAfterDate = new Date(notAfter).getTime();

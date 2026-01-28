@@ -30,6 +30,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityCrlDALFactory } from "../../../ee/services/certificate-authority-crl/certificate-authority-crl-dal";
+import { extractCertificateFields } from "../../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../../certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -1780,6 +1781,10 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     const executeIssueCertOperations = async (transaction: Knex) => {
+      // Extract certificate fields for storage
+      const certificatePem = leafCert.toString("pem");
+      const parsedFields = extractCertificateFields(Buffer.from(certificatePem));
+
       const cert = await certificateDAL.create(
         {
           caId: (ca as TCertificateAuthorities).id,
@@ -1796,7 +1801,8 @@ export const internalCertificateAuthorityServiceFactory = ({
           extendedKeyUsages: selectedExtendedKeyUsages,
           projectId: ca!.projectId,
           keyAlgorithm: effectiveKeyAlgorithm,
-          signatureAlgorithm: signatureAlgorithm || ca!.internalCa!.keyAlgorithm
+          signatureAlgorithm: signatureAlgorithm || ca!.internalCa!.keyAlgorithm,
+          ...parsedFields
         },
         transaction
       );
@@ -2218,6 +2224,10 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     const createSignedCert = async (transaction: Knex) => {
+      // Extract certificate fields for storage
+      const certificatePem = leafCert.toString("pem");
+      const parsedFields = extractCertificateFields(Buffer.from(certificatePem));
+
       const newCert = await certificateDAL.create(
         {
           caId: (ca as TCertificateAuthorities).id,
@@ -2234,7 +2244,8 @@ export const internalCertificateAuthorityServiceFactory = ({
           extendedKeyUsages: selectedExtendedKeyUsages,
           projectId: ca!.projectId,
           keyAlgorithm: keyAlgorithm || ca!.internalCa!.keyAlgorithm,
-          signatureAlgorithm: signatureAlgorithm || ca!.internalCa!.keyAlgorithm
+          signatureAlgorithm: signatureAlgorithm || ca!.internalCa!.keyAlgorithm,
+          ...parsedFields
         },
         transaction
       );

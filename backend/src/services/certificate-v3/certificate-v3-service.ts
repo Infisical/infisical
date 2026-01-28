@@ -24,6 +24,7 @@ import {
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { extractCertificateFields } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -405,10 +406,14 @@ const createSelfSignedCertificateRecord = async ({
         }
       : {};
 
+  // Extract certificate fields for storage
+  const parsedFields = extractCertificateFields(selfSignedResult.certificate);
+
   return certificateDAL.create(
     {
       ...baseRecord,
-      ...renewalRecord
+      ...renewalRecord,
+      ...parsedFields
     },
     tx
   );
@@ -1053,6 +1058,11 @@ export const certificateV3ServiceFactory = ({
         signatureAlgorithm: effectiveSignatureAlgorithm,
         keyAlgorithm: effectiveKeyAlgorithm,
         isFromProfile: true,
+        organization: certificateRequest.organization,
+        organizationalUnit: certificateRequest.organizationalUnit,
+        country: certificateRequest.country,
+        state: certificateRequest.state,
+        locality: certificateRequest.locality,
         tx
       };
 
