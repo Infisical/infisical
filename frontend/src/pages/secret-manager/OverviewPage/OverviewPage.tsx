@@ -1027,7 +1027,7 @@ export const OverviewPage = () => {
                         />
                       </UnstableTableHead>
                       <UnstableTableHead
-                        className="sticky left-10 z-10 min-w-96 border-r bg-container"
+                        className="sticky left-10 z-10 max-w-60 min-w-60 border-r bg-container lg:max-w-none lg:min-w-96"
                         onClick={() =>
                           setOrderDirection((prev) =>
                             prev === OrderByDirection.ASC
