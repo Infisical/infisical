@@ -51,6 +51,7 @@ import {
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
+import { resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -828,6 +829,8 @@ export const pkiAcmeServiceFactory = ({
     tx?: Knex;
   }): Promise<{ certificateId?: string; certIssuanceJobData?: TIssueCertificateFromProfileJobData }> => {
     if (caType === CaType.INTERNAL) {
+      const internalPolicy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
+
       const result = await certificateV3Service.signCertificateFromProfile({
         actor: ActorType.ACME_ACCOUNT,
         actorId: accountId,
@@ -839,9 +842,12 @@ export const pkiAcmeServiceFactory = ({
         notAfter: finalizingOrder.notAfter ? new Date(finalizingOrder.notAfter) : undefined,
         validity: !finalizingOrder.notAfter
           ? {
-              // 47 days, the default TTL comes with Let's Encrypt
-              // TODO: read config from the profile to get the expiration time instead
-              ttl: `${47}d`
+              ttl: resolveEffectiveTtl({
+                requestTtl: undefined,
+                profileDefaultTtlDays: profile.defaultTtlDays,
+                policyMaxValidity: internalPolicy?.validity?.max,
+                flowDefaultTtl: "47d"
+              })
             }
           : // ttl is not used if notAfter is provided
             ({ ttl: "0d" } as const),
@@ -857,6 +863,12 @@ export const pkiAcmeServiceFactory = ({
 
     const { keyAlgorithm: extractedKeyAlgorithm, signatureAlgorithm: extractedSignatureAlgorithm } =
       extractAlgorithmsFromCSR(csr);
+
+    const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
+    if (!policy) {
+      throw new NotFoundError({ message: "Certificate policy not found" });
+    }
+
     const updatedCertificateRequest = {
       ...certificateRequest,
       keyAlgorithm: extractedKeyAlgorithm,
@@ -869,13 +881,15 @@ export const pkiAcmeServiceFactory = ({
             const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
             return { ttl: `${diffDays}d` };
           })()
-        : certificateRequest.validity
+        : {
+            ttl: resolveEffectiveTtl({
+              requestTtl: certificateRequest.validity?.ttl,
+              profileDefaultTtlDays: profile.defaultTtlDays,
+              policyMaxValidity: policy?.validity?.max,
+              flowDefaultTtl: "47d"
+            })
+          }
     };
-
-    const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
-    if (!policy) {
-      throw new NotFoundError({ message: "Certificate policy not found" });
-    }
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       policy.id,
       updatedCertificateRequest
@@ -914,7 +928,7 @@ export const pkiAcmeServiceFactory = ({
         certificateId: orderId,
         profileId: profile.id,
         caId: profile.caId || "",
-        ttl: updatedCertificateRequest.validity?.ttl || "1y",
+        ttl: updatedCertificateRequest.validity?.ttl || "47d",
         signatureAlgorithm: updatedCertificateRequest.signatureAlgorithm || "",
         keyAlgorithm: updatedCertificateRequest.keyAlgorithm || "",
         commonName: updatedCertificateRequest.commonName || "",
@@ -1039,7 +1053,12 @@ export const pkiAcmeServiceFactory = ({
                 const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
                 return `${diffDays}d`;
               })()
-            : "47d"; // Default 47 days
+            : resolveEffectiveTtl({
+                requestTtl: undefined,
+                profileDefaultTtlDays: profile.defaultTtlDays,
+                policyMaxValidity: policy?.validity?.max,
+                flowDefaultTtl: "47d"
+              });
 
           const altNames = certificateRequest.subjectAlternativeNames?.map((san) => ({
             type: san.type,

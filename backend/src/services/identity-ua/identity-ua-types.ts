@@ -4,7 +4,7 @@ export type TLoginUaDTO = {
   clientId: string;
   clientSecret: string;
   ip: string;
-  subOrganizationName?: string;
+  organizationSlug?: string;
 };
 
 export type TAttachUaDTO = {
