@@ -5,7 +5,13 @@ import * as path from "path";
 import RE2 from "re2";
 
 import { logger } from "@app/lib/logger";
-import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
+import {
+  SMB_VALIDATION_LIMITS,
+  validateDomain,
+  validateHostname,
+  validateSmbPassword,
+  validateWindowsUsername
+} from "@app/lib/validator/validate-smb";
 
 export interface SmbRpcConfig {
   host: string;
@@ -17,36 +23,6 @@ export interface SmbRpcConfig {
 
 const SMB3_SECURITY_OPTIONS = ["--option=client min protocol=SMB3", "--option=client smb encrypt=required"];
 
-// Validation functions using RE2-based characterValidator for security (prevents ReDoS attacks)
-const validateHostname = characterValidator([CharacterType.AlphaNumeric, CharacterType.Period, CharacterType.Hyphen]);
-
-const validateDomain = characterValidator([
-  CharacterType.AlphaNumeric,
-  CharacterType.Period,
-  CharacterType.Hyphen,
-  CharacterType.Underscore
-]);
-
-const validateUsername = characterValidator([
-  CharacterType.AlphaNumeric,
-  CharacterType.Hyphen,
-  CharacterType.Underscore,
-  CharacterType.Period
-]);
-
-const MAX_USERNAME_LENGTH = 20;
-const MAX_ADMIN_USERNAME_LENGTH = 104;
-const MAX_HOST_LENGTH = 253;
-const MAX_DOMAIN_LENGTH = 255;
-
-// Dangerous characters that could enable command/RPC injection
-// These are blocked to prevent:
-// - Command separators: ; | &
-// - Command substitution: ` $ ( )
-// - Newlines: \n \r (auth file directive injection)
-// - Null bytes: \0 (string termination attacks)
-const DANGEROUS_PASSWORD_CHARS = [";", "|", "&", "`", "$", "(", ")", "\n", "\r", "\0"];
-
 /**
  * Validate host to prevent command injection
  */
@@ -54,7 +30,7 @@ const validateHost = (host: string): void => {
   if (!host || host.length === 0) {
     throw new Error("Host is required");
   }
-  if (host.length > MAX_HOST_LENGTH) {
+  if (host.length > SMB_VALIDATION_LIMITS.MAX_HOST_LENGTH) {
     throw new Error("Host too long");
   }
   if (!validateHostname(host)) {
@@ -71,7 +47,7 @@ const validateHost = (host: string): void => {
 const validateDomainInput = (domain: string | undefined): void => {
   if (!domain) return;
 
-  if (domain.length > MAX_DOMAIN_LENGTH) {
+  if (domain.length > SMB_VALIDATION_LIMITS.MAX_DOMAIN_LENGTH) {
     throw new Error("Domain too long");
   }
   if (!validateDomain(domain)) {
@@ -98,10 +74,10 @@ const validateAdminUsername = (username: string): void => {
   if (!username || username.length === 0) {
     throw new Error("Admin username is required");
   }
-  if (username.length > MAX_ADMIN_USERNAME_LENGTH) {
+  if (username.length > SMB_VALIDATION_LIMITS.MAX_ADMIN_USERNAME_LENGTH) {
     throw new Error("Admin username too long");
   }
-  if (!validateUsername(username)) {
+  if (!validateWindowsUsername(username)) {
     throw new Error("Admin username can only contain alphanumeric characters, underscores, hyphens, and periods");
   }
   if (username.startsWith("-") || username.startsWith(".") || username.endsWith(".")) {
@@ -116,8 +92,7 @@ const validatePassword = (password: string): void => {
   if (!password || password.length === 0) {
     throw new Error("Password is required");
   }
-  // Disallow dangerous characters that could enable injection attacks
-  if (DANGEROUS_PASSWORD_CHARS.some((char) => password.includes(char))) {
+  if (!validateSmbPassword(password)) {
     throw new Error("Password cannot contain dangerous characters: ; | & ` $ ( ) or newlines");
   }
 };
@@ -290,14 +265,14 @@ const escapePasswordForRpc = (password: string): string => {
  * - Max 20 characters for local accounts
  */
 export const isValidWindowsUsername = (username: string): boolean => {
-  if (!username || username.length === 0 || username.length > MAX_USERNAME_LENGTH) {
+  if (!username || username.length === 0 || username.length > SMB_VALIDATION_LIMITS.MAX_WINDOWS_USERNAME_LENGTH) {
     return false;
   }
   // Cannot start with period or hyphen, cannot end with period
   if (username.startsWith(".") || username.startsWith("-") || username.endsWith(".")) {
     return false;
   }
-  return validateUsername(username);
+  return validateWindowsUsername(username);
 };
 
 /**

@@ -8,7 +8,11 @@ import {
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-schemas";
 import { PasswordRequirementsSchema } from "@app/ee/services/secret-rotation-v2/shared/general";
 import { SecretRotations } from "@app/lib/api-docs";
-import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
+import {
+  containsDangerousSmbChars,
+  SMB_VALIDATION_LIMITS,
+  validateWindowsUsername
+} from "@app/lib/validator/validate-smb";
 import { SecretNameSchema } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -26,28 +30,12 @@ export const WindowsLocalAccountRotationGeneratedCredentialsSchema = z
   .min(1)
   .max(2);
 
-// Username validation for Windows local accounts
-const validateWindowsUsername = characterValidator([
-  CharacterType.AlphaNumeric,
-  CharacterType.Hyphen,
-  CharacterType.Underscore,
-  CharacterType.Period
-]);
-
-// Dangerous characters that could enable command/RPC injection in Windows/SMB context
-// These are blocked to prevent security issues when executing SMB/RPC commands:
-// - Command separators: ; | &
-// - Command substitution: ` $ ( )
-// - Newlines: \n \r (auth file directive injection)
-// - Null bytes: \0 (string termination attacks)
-const DANGEROUS_SMB_PASSWORD_CHARS = [";", "|", "&", "`", "$", "(", ")", "\n", "\r", "\0"];
-
 // Windows-specific password requirements schema that validates allowedSymbols
 // doesn't contain dangerous characters that could cause command injection
 const WindowsPasswordRequirementsSchema = PasswordRequirementsSchema.refine(
   (data) => {
     if (!data.allowedSymbols) return true;
-    return !DANGEROUS_SMB_PASSWORD_CHARS.some((char) => data.allowedSymbols?.includes(char));
+    return !containsDangerousSmbChars(data.allowedSymbols);
   },
   {
     message: "Allowed symbols cannot contain dangerous characters: ; | & ` $ ( )",
@@ -60,7 +48,10 @@ const WindowsLocalAccountRotationParametersSchema = z.object({
     .string()
     .trim()
     .min(1, "Username required")
-    .max(20, "Username too long - Windows local accounts are limited to 20 characters")
+    .max(
+      SMB_VALIDATION_LIMITS.MAX_WINDOWS_USERNAME_LENGTH,
+      "Username too long - Windows local accounts are limited to 20 characters"
+    )
     .refine((val) => validateWindowsUsername(val), {
       message: "Username can only contain alphanumeric characters, underscores, hyphens, and periods"
     })
