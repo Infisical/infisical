@@ -14,6 +14,7 @@ import { TChecklyConnection } from "./checkly-connection";
 import { TChefConnection } from "./chef-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TDatabricksConnection } from "./databricks-connection";
+import { TDbtConnection } from "./dbt-connection";
 import { TDigitalOceanConnection } from "./digital-ocean";
 import { TDNSMadeEasyConnection } from "./dns-made-easy-connection";
 import { TFlyioConnection } from "./flyio-connection";
@@ -61,6 +62,7 @@ export * from "./checkly-connection";
 export * from "./chef-connection";
 export * from "./cloudflare-connection";
 export * from "./databricks-connection";
+export * from "./dbt-connection";
 export * from "./dns-made-easy-connection";
 export * from "./flyio-connection";
 export * from "./gcp-connection";
@@ -139,7 +141,8 @@ export type TAppConnection =
   | TMongoDBConnection
   | TChefConnection
   | TDNSMadeEasyConnection
-  | TSshConnection;
+  | TSshConnection
+  | TDbtConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

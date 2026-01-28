@@ -101,6 +101,12 @@ import {
   TValidateDatabricksConnectionCredentialsSchema
 } from "./databricks";
 import {
+  TDbtConnection,
+  TDbtConnectionConfig,
+  TDbtConnectionInput,
+  TValidateDbtConnectionCredentialsSchema
+} from "./dbt";
+import {
   TDigitalOceanConnection,
   TDigitalOceanConnectionConfig,
   TDigitalOceanConnectionInput,
@@ -317,6 +323,7 @@ export type TAppConnection = { id: string } & (
   | TChefConnection
   | TOctopusDeployConnection
   | TSshConnection
+  | TDbtConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -370,6 +377,7 @@ export type TAppConnectionInput = { id: string } & (
   | TChefConnectionInput
   | TOctopusDeployConnectionInput
   | TSshConnectionInput
+  | TDbtConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -440,7 +448,8 @@ export type TAppConnectionConfig =
   | TMongoDBConnectionConfig
   | TChefConnectionConfig
   | TOctopusDeployConnectionConfig
-  | TSshConnectionConfig;
+  | TSshConnectionConfig
+  | TDbtConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -488,7 +497,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateMongoDBConnectionCredentialsSchema
   | TValidateChefConnectionCredentialsSchema
   | TValidateOctopusDeployConnectionCredentialsSchema
-  | TValidateSshConnectionCredentialsSchema;
+  | TValidateSshConnectionCredentialsSchema
+  | TValidateDbtConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

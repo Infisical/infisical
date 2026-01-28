@@ -7,6 +7,7 @@ import { Auth0ClientSecretRotationSecretsMappingFields } from "./Auth0ClientSecr
 import { AwsIamUserSecretRotationSecretsMappingFields } from "./AwsIamUserSecretRotationSecretsMappingFields";
 import { AzureClientSecretRotationSecretsMappingFields } from "./AzureClientSecretRotationSecretsMappingFields";
 import { DatabricksServicePrincipalSecretRotationSecretsMappingFields } from "./DatabricksServicePrincipalSecretRotationSecretsMappingFields";
+import { DbtServiceTokenRotationSecretsMappingFields } from "./DbtServiceTokenRotationSecretsMappingFields";
 import { LdapPasswordRotationSecretsMappingFields } from "./LdapPasswordRotationSecretsMappingFields";
 import { OktaClientSecretRotationSecretsMappingFields } from "./OktaClientSecretRotationSecretsMappingFields";
 import { RedisCredentialsRotationSecretsMappingFields } from "./RedisCredentialsRotationSecretsMappingFields";
@@ -27,7 +28,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.MongoDBCredentials]: SqlCredentialsRotationSecretsMappingFields,
   [SecretRotation.DatabricksServicePrincipalSecret]:
     DatabricksServicePrincipalSecretRotationSecretsMappingFields,
-  [SecretRotation.UnixLinuxLocalAccount]: UnixLinuxLocalAccountRotationSecretsMappingFields
+  [SecretRotation.UnixLinuxLocalAccount]: UnixLinuxLocalAccountRotationSecretsMappingFields,
+  [SecretRotation.DbtServiceToken]: DbtServiceTokenRotationSecretsMappingFields
 };
 
 export const SecretRotationV2SecretsMappingFields = () => {

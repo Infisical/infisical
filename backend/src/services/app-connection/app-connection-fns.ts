@@ -83,6 +83,7 @@ import {
   getDatabricksConnectionListItem,
   validateDatabricksConnectionCredentials
 } from "./databricks";
+import { DbtConnectionMethod, getDbtConnectionListItem, validateDbtConnectionCredentials } from "./dbt";
 import {
   DigitalOceanConnectionMethod,
   getDigitalOceanConnectionListItem,
@@ -234,7 +235,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getRedisConnectionListItem(),
     getMongoDBConnectionListItem(),
     getChefConnectionListItem(),
-    getSshConnectionListItem()
+    getSshConnectionListItem(),
+    getDbtConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -370,7 +372,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Redis]: validateRedisConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.MongoDB]: validateMongoDBConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OctopusDeploy]: validateOctopusDeployConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.SSH]: validateSshConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.SSH]: validateSshConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Dbt]: validateDbtConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -415,6 +418,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case NorthflankConnectionMethod.ApiToken:
     case OktaConnectionMethod.ApiToken:
     case LaravelForgeConnectionMethod.ApiToken:
+    case DbtConnectionMethod.ApiToken:
       return "API Token";
     case DNSMadeEasyConnectionMethod.APIKeySecret:
       return "API Key & Secret";
@@ -527,7 +531,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.LaravelForge]: platformManagedCredentialsNotSupported,
   [AppConnection.Chef]: platformManagedCredentialsNotSupported,
   [AppConnection.OctopusDeploy]: platformManagedCredentialsNotSupported,
-  [AppConnection.SSH]: platformManagedCredentialsNotSupported
+  [AppConnection.SSH]: platformManagedCredentialsNotSupported,
+  [AppConnection.Dbt]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

@@ -57,6 +57,7 @@ import {
   DatabricksConnectionListItemSchema,
   SanitizedDatabricksConnectionSchema
 } from "@app/services/app-connection/databricks";
+import { DbtConnectionListItemSchema, SanitizedDbtConnectionSchema } from "@app/services/app-connection/dbt";
 import {
   DigitalOceanConnectionListItemSchema,
   SanitizedDigitalOceanConnectionSchema
@@ -187,7 +188,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedChefConnectionSchema.options,
   ...SanitizedDNSMadeEasyConnectionSchema.options,
   ...SanitizedOctopusDeployConnectionSchema.options,
-  ...SanitizedSshConnectionSchema.options
+  ...SanitizedSshConnectionSchema.options,
+  ...SanitizedDbtConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -236,7 +238,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   ChefConnectionListItemSchema,
   DNSMadeEasyConnectionListItemSchema,
   OctopusDeployConnectionListItemSchema,
-  SshConnectionListItemSchema
+  SshConnectionListItemSchema,
+  DbtConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

@@ -37,6 +37,10 @@ import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { DiscriminativePick } from "@app/types";
 
 import {
+  TDbtServiceTokenRotationGeneratedCredentialsResponse,
+  TDbtServiceTokenRotationOption
+} from "./dbt-service-token-rotation";
+import {
   TMongoDBCredentialsRotation,
   TMongoDBCredentialsRotationGeneratedCredentialsResponse,
   TMongoDBCredentialsRotationOption
@@ -93,7 +97,8 @@ export type TSecretRotationV2Option =
   | TRedisCredentialsRotationOption
   | TMongoDBCredentialsRotationOption
   | TDatabricksServicePrincipalSecretRotationOption
-  | TUnixLinuxLocalAccountRotationOption;
+  | TUnixLinuxLocalAccountRotationOption
+  | TDbtServiceTokenRotationOption;
 
 export type TListSecretRotationV2Options = { secretRotationOptions: TSecretRotationV2Option[] };
 
@@ -112,7 +117,8 @@ export type TViewSecretRotationGeneratedCredentialsResponse =
   | TRedisCredentialsRotationGeneratedCredentialsResponse
   | TMongoDBCredentialsRotationGeneratedCredentialsResponse
   | TDatabricksServicePrincipalSecretRotationGeneratedCredentialsResponse
-  | TUnixLinuxLocalAccountRotationGeneratedCredentialsResponse;
+  | TUnixLinuxLocalAccountRotationGeneratedCredentialsResponse
+  | TDbtServiceTokenRotationGeneratedCredentialsResponse;
 
 export type TCreateSecretRotationV2DTO = DiscriminativePick<
   TSecretRotationV2,
@@ -169,6 +175,7 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.MongoDBCredentials]: TMongoDBCredentialsRotationOption;
   [SecretRotation.DatabricksServicePrincipalSecret]: TDatabricksServicePrincipalSecretRotationOption;
   [SecretRotation.UnixLinuxLocalAccount]: TUnixLinuxLocalAccountRotationOption;
+  [SecretRotation.DbtServiceToken]: TDbtServiceTokenRotationOption;
 };
 
 export type TSecretRotationGeneratedCredentialsResponseMap = {
@@ -185,6 +192,7 @@ export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.MongoDBCredentials]: TMongoDBCredentialsRotationGeneratedCredentialsResponse;
   [SecretRotation.DatabricksServicePrincipalSecret]: TDatabricksServicePrincipalSecretRotationGeneratedCredentialsResponse;
   [SecretRotation.UnixLinuxLocalAccount]: TUnixLinuxLocalAccountRotationGeneratedCredentialsResponse;
+  [SecretRotation.DbtServiceToken]: TDbtServiceTokenRotationGeneratedCredentialsResponse;
 };
 
 export type TReconcileUnixLinuxLocalAccountRotationDTO = {

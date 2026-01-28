@@ -23,6 +23,7 @@ import { ChecklyConnectionForm } from "./ChecklyConnectionForm";
 import { ChefConnectionForm } from "./ChefConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
+import { DbtConnectionForm } from "./DbtConnectionForm";
 import { DigitalOceanConnectionForm } from "./DigitalOceanConnectionForm";
 import { DNSMadeEasyConnectionForm } from "./DNSMadeEasyConnectionForm";
 import { FlyioConnectionForm } from "./FlyioConnectionForm";
@@ -182,6 +183,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       return <OctopusDeployConnectionForm onSubmit={onSubmit} />;
     case AppConnection.SSH:
       return <SshConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Dbt:
+      return <DbtConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -346,6 +349,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <OctopusDeployConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.SSH:
       return <SshConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Dbt:
+      return <DbtConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

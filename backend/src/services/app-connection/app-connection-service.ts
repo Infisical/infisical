@@ -73,6 +73,8 @@ import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/clou
 import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-service";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
+import { ValidateDbtConnectionCredentialsSchema } from "./dbt";
+import { dbtConnectionService } from "./dbt/dbt-connection-service";
 import { ValidateDigitalOceanConnectionCredentialsSchema } from "./digital-ocean";
 import { digitalOceanAppPlatformConnectionService } from "./digital-ocean/digital-ocean-connection-service";
 import { ValidateDNSMadeEasyConnectionCredentialsSchema } from "./dns-made-easy/dns-made-easy-connection-schema";
@@ -187,7 +189,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.MongoDB]: ValidateMongoDBConnectionCredentialsSchema,
   [AppConnection.Chef]: ValidateChefConnectionCredentialsSchema,
   [AppConnection.OctopusDeploy]: ValidateOctopusDeployConnectionCredentialsSchema,
-  [AppConnection.SSH]: ValidateSshConnectionCredentialsSchema
+  [AppConnection.SSH]: ValidateSshConnectionCredentialsSchema,
+  [AppConnection.Dbt]: ValidateDbtConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -905,6 +908,7 @@ export const appConnectionServiceFactory = ({
     okta: oktaConnectionService(connectAppConnectionById),
     laravelForge: laravelForgeConnectionService(connectAppConnectionById),
     chef: chefConnectionService(connectAppConnectionById, licenseService),
-    octopusDeploy: octopusDeployConnectionService(connectAppConnectionById)
+    octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),
+    dbt: dbtConnectionService(connectAppConnectionById)
   };
 };

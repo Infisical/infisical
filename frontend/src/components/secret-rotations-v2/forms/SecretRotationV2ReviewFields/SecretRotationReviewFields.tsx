@@ -10,6 +10,7 @@ import { Auth0ClientSecretRotationReviewFields } from "./Auth0ClientSecretRotati
 import { AwsIamUserSecretRotationReviewFields } from "./AwsIamUserSecretRotationReviewFields";
 import { AzureClientSecretRotationReviewFields } from "./AzureClientSecretRotationReviewFields";
 import { DatabricksServicePrincipalSecretRotationReviewFields } from "./DatabricksServicePrincipalSecretRotationReviewFields";
+import { DbtServiceTokenRotationReviewFields } from "./DbtServiceTokenRotationReviewFields";
 import { LdapPasswordRotationReviewFields } from "./LdapPasswordRotationReviewFields";
 import { OktaClientSecretRotationReviewFields } from "./OktaClientSecretRotationReviewFields";
 import { RedisCredentialsRotationReviewFields } from "./RedisCredentialsRotationReviewFields";
@@ -30,7 +31,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.MongoDBCredentials]: SqlCredentialsRotationReviewFields,
   [SecretRotation.DatabricksServicePrincipalSecret]:
     DatabricksServicePrincipalSecretRotationReviewFields,
-  [SecretRotation.UnixLinuxLocalAccount]: UnixLinuxLocalAccountRotationReviewFields
+  [SecretRotation.UnixLinuxLocalAccount]: UnixLinuxLocalAccountRotationReviewFields,
+  [SecretRotation.DbtServiceToken]: DbtServiceTokenRotationReviewFields
 };
 
 export const SecretRotationV2ReviewFields = () => {

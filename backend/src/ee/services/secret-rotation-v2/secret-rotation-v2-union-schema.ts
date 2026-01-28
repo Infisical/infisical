@@ -14,6 +14,8 @@ import { PostgresCredentialsRotationSchema } from "@app/ee/services/secret-rotat
 import { RedisCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/redis-credentials";
 import { UnixLinuxLocalAccountRotationSchema } from "@app/ee/services/secret-rotation-v2/unix-linux-local-account-rotation";
 
+import { DbtServiceTokenRotationSchema } from "./dbt-service-token";
+
 export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   PostgresCredentialsRotationSchema,
   MsSqlCredentialsRotationSchema,
@@ -27,5 +29,6 @@ export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   RedisCredentialsRotationSchema,
   MongoDBCredentialsRotationSchema,
   DatabricksServicePrincipalSecretRotationSchema,
-  UnixLinuxLocalAccountRotationSchema
+  UnixLinuxLocalAccountRotationSchema,
+  DbtServiceTokenRotationSchema
 ]);

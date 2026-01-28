@@ -44,7 +44,8 @@ export enum AppConnection {
   Chef = "chef",
   Northflank = "northflank",
   OctopusDeploy = "octopus-deploy",
-  SSH = "ssh"
+  SSH = "ssh",
+  Dbt = "dbt"
 }
 
 export enum AWSRegion {

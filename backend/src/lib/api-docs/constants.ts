@@ -2625,6 +2625,11 @@ export const AppConnections = {
       password: "The password for SSH authentication (required when authMethod is 'password').",
       privateKey: "The private key in PEM format for SSH authentication (required when authMethod is 'ssh-key').",
       passphrase: "The passphrase for the private key, if encrypted (optional, only for 'ssh-key' authMethod)."
+    },
+    DBT: {
+      apiToken: "The API token used to authenticate with DBT.",
+      accountId: "The account ID of your DBT account.",
+      instanceUrl: "The base URL of your DBT instance."
     }
   }
 };
@@ -3011,6 +3016,9 @@ export const SecretRotations = {
       servicePrincipalId: "The ID of the Databricks Service Principal to rotate the OAuth secret for.",
       servicePrincipalName: "The name of the Databricks Service Principal to rotate the OAuth secret for.",
       clientId: "The client ID of the Databricks Service Principal to rotate the OAuth secret for."
+    },
+    DBT_SERVICE_TOKEN: {
+      permissionGrants: "The permission grants to apply to the service token."
     }
   },
   SECRETS_MAPPING: {
@@ -3057,6 +3065,9 @@ export const SecretRotations = {
     DATABRICKS_SERVICE_ACCOUNT_SECRET: {
       clientId: "The name of the secret that the client ID will be mapped to.",
       clientSecret: "The name of the secret that the rotated OAuth client secret will be mapped to."
+    },
+    DBT_SERVICE_TOKEN: {
+      serviceToken: "The name of the secret that the service token will be mapped to."
     }
   }
 };
