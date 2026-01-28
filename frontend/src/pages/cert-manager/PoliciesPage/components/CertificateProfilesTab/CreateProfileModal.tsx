@@ -4,6 +4,7 @@ import { SingleValue } from "react-select";
 import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -439,6 +440,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["createPolicy"] as const);
+  const queryClient = useQueryClient();
 
   const canCreatePolicy = permission.can(
     ProjectPermissionCertificatePolicyActions.Create,
@@ -485,6 +487,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
 
   const { control, handleSubmit, reset, watch, setValue, setError, formState } = useForm<FormData>({
     resolver: zodResolver(isEdit ? editSchema : createSchema),
+    mode: "onChange",
     defaultValues: isEdit
       ? {
           slug: profile.slug,
@@ -538,9 +541,6 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
           apiConfig: {
             autoRenew: false,
             renewBeforeDays: 30
-          },
-          acmeConfig: {
-            skipDnsOwnershipVerification: false
           },
           externalConfigs: undefined,
           defaultTtl: {
@@ -923,7 +923,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                 errorText={error?.message}
               >
                 <FilterableSelect
-                  value={certificatePolicies.find((p) => p.id === value) || null}
+                  value={certificatePolicies.find((p) => p.id === value) ?? null}
                   onChange={(newValue) => {
                     const selected = newValue as SingleValue<PolicyOption>;
                     if (selected?.id === "_create") {
@@ -1292,8 +1292,11 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
         <CreatePolicyModal
           isOpen={popUp.createPolicy.isOpen}
           onClose={() => handlePopUpToggle("createPolicy", false)}
-          onComplete={(createdPolicy) => {
-            setValue("certificatePolicyId", createdPolicy.id);
+          onComplete={async (createdPolicy) => {
+            await queryClient.refetchQueries({
+              queryKey: ["list-certificate-policies", currentProject?.id]
+            });
+            setValue("certificatePolicyId", createdPolicy.id, { shouldValidate: true });
             handlePopUpToggle("createPolicy", false);
           }}
         />
