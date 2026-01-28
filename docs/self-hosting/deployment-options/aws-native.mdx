@@ -78,6 +78,10 @@ Running Infisical on AWS incurs costs for the following services. Estimates are 
   | RDS SG | 5432 from ECS Tasks SG | Allow PostgreSQL from ECS |
   | Redis SG | 6379 from ECS Tasks SG | Allow Redis from ECS |
 
+  <Note>
+    For additional security, consider placing CloudFront in front of the ALB, using AWS WAF for web application firewall protection, or restricting the ALB security group to specific IP ranges if your users access Infisical from known networks.
+  </Note>
+
   **Verify:** After creating the VPC, confirm you have:
   - At least 2 public subnets and 2 private subnets across different AZs
   - A NAT Gateway with an Elastic IP
@@ -273,6 +277,10 @@ Running Infisical on AWS incurs costs for the following services. Estimates are 
     ]
   }
   ```
+
+  <Note>
+    For production environments, scope down the KMS `Resource` to specific key ARNs used by SSM Parameter Store in your account instead of using `"*"`. You can find your KMS key ARN in the AWS KMS console or by running `aws kms list-keys`.
+  </Note>
 
   Create the task role:
   ```bash
@@ -1022,11 +1030,11 @@ After completing the above steps, your Infisical instance should be running on A
     }
 
     # ECS Service (simplified - full implementation requires task definition, ALB, etc.)
-    # See full Terraform module at: https://github.com/Infisical/infisical-terraform-aws
+    # Expand this example with ECS task definitions, services, ALB, and target groups
     ```
 
     <Note>
-      For a complete, production-ready Terraform module, see the [Infisical AWS Terraform Module](https://github.com/Infisical/infisical-terraform-aws) (if available) or adapt the example above.
+      This is a simplified example to get you started. For a complete deployment, you'll need to add ECS task definitions, services, ALB configuration, and target groups. Consider using community Terraform modules for ECS or adapting this example to your infrastructure standards.
     </Note>
   </Accordion>
 
