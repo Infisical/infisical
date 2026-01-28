@@ -145,6 +145,8 @@ export const pitServiceFactory = ({
     };
   };
 
+  console.log("test");
+
   const getCommitChanges = async ({
     actor,
     actorId,
