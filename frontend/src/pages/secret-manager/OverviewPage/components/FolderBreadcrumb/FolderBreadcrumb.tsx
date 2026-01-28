@@ -29,10 +29,7 @@ type Measurements = {
   separatorWidth: number;
 };
 
-export function FolderBreadcrumb({
-  secretPath = "/backend/api/services/datadog/apm/config/telemetry/grafana/prometheus/poseidon/persephone",
-  onResetSearch
-}: Props) {
+export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
   const navigate = useNavigate({
     from: "/organizations/$orgId/projects/secret-management/$projectId/overview"
   });
