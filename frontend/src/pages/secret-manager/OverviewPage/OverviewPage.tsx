@@ -368,7 +368,7 @@ export const OverviewPage = () => {
   ] as const);
 
   const handleFolderCreate = async (folderName: string, description: string | null) => {
-    const promises = userAvailableEnvs
+    const promises = visibleEnvs
       .map((env) => {
         const environment = env.slug;
         const isFolderPresent = isFolderPresentInEnv(folderName, environment);
