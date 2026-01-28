@@ -268,7 +268,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                               fallback="Unknown"
                             />
                             {supportsDefaultCertificate && isDefaultCertificate && (
-                              <span className="text-xs text-mineshaft-400">(default)</span>
+                              <Badge variant="neutral">Default</Badge>
                             )}
                           </div>
                         </Td>
