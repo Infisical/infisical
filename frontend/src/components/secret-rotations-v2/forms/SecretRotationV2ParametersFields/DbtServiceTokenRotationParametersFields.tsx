@@ -63,10 +63,6 @@ export const DbtServiceTokenRotationParametersFields = () => {
     }
   }, []);
 
-  const permissionGrants = watch("parameters.permissionGrants");
-
-  console.log(permissionGrants);
-
   return (
     <>
       <FormLabel label="Permission Grants" />
