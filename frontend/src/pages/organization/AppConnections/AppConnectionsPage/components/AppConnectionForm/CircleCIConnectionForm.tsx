@@ -71,7 +71,8 @@ export const CircleCIConnectionForm = ({ appConnection, onSubmit }: Props) => {
             <FormControl
               errorText={error?.message}
               isError={Boolean(error?.message)}
-              label="Host"
+              label="Instance Hostname"
+              isOptional
               tooltipText="The host URL of your CircleCI instance. This is used to connect to your CircleCI instance. If not specified, the default value of 'circleci.com' will be used."
             >
               <Input
