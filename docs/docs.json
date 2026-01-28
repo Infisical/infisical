@@ -504,15 +504,16 @@
                     "group": "AWS",
                     "pages": ["integrations/platforms/aws/lambda"]
                   },
-                  {
-                    "group": "Kubernetes Operator",
-                    "pages": [
-                      "integrations/platforms/kubernetes/overview",
-                      "integrations/platforms/kubernetes/infisical-secret-crd",
-                      "integrations/platforms/kubernetes/infisical-push-secret-crd",
-                      "integrations/platforms/kubernetes/infisical-dynamic-secret-crd"
-                    ]
-                  },
+                                    {
+                                      "group": "Kubernetes Operator",
+                                      "pages": [
+                                        "integrations/platforms/kubernetes/overview",
+                                        "integrations/platforms/kubernetes/infisical-secret-crd",
+                                        "integrations/platforms/kubernetes/infisical-push-secret-crd",
+                                        "integrations/platforms/kubernetes/infisical-dynamic-secret-crd",
+                                        "integrations/platforms/kubernetes/external-secrets-operator"
+                                      ]
+                                    },
                   "integrations/platforms/kubernetes-injector",
                   "integrations/platforms/kubernetes-csi",
                   "integrations/platforms/infisical-proxy",
