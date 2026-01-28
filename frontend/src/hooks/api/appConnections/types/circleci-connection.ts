@@ -9,5 +9,6 @@ export type TCircleCIConnection = TRootAppConnection & { app: AppConnection.Circ
   method: CircleCIConnectionMethod.ApiToken;
   credentials: {
     apiToken: string;
+    host?: string;
   };
 };

@@ -2,6 +2,7 @@ import { AxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { CircleCIConnectionMethod } from "./circleci-connection-enums";
@@ -11,8 +12,6 @@ import {
   TCircleCIOrganization,
   TCircleCIProject
 } from "./circleci-connection-types";
-
-export const CIRCLECI_API_URL = "https://circleci.com/api";
 
 type TCircleCICollaboration = {
   id?: string;
@@ -27,6 +26,30 @@ type TCircleCIProjectV1Response = {
   vcs_url: string;
 };
 
+export const getCircleCIApiUrl = async (config: {
+  credentials: Pick<TCircleCIConnectionConfig["credentials"], "host">;
+}) => {
+  const rawHost = config.credentials.host?.trim() || "circleci.com";
+
+  let hostname: string;
+  try {
+    // add protocol if missing to make it parseable
+    const urlString = rawHost.includes("://") ? rawHost : `https://${rawHost}`;
+    const url = new URL(urlString);
+    hostname = url.hostname;
+  } catch {
+    throw new BadRequestError({ message: `Invalid CircleCI host: ${rawHost}` });
+  }
+
+  const baseUrl = `https://${hostname}`;
+  await blockLocalAndPrivateIpAddresses(baseUrl);
+
+  const apiUrl = `${baseUrl}/api`;
+
+  console.log("apiUrl", apiUrl);
+  return apiUrl;
+};
+
 export const getCircleCIConnectionListItem = () => {
   return {
     name: "CircleCI" as const,
@@ -39,8 +62,10 @@ export const validateCircleCIConnectionCredentials = async (config: TCircleCICon
   const { credentials } = config;
 
   try {
+    const apiUrl = await getCircleCIApiUrl(config);
+
     // Validate the API token by calling the /me endpoint
-    await request.get(`${CIRCLECI_API_URL}/v2/me`, {
+    await request.get(`${apiUrl}/v2/me`, {
       headers: {
         "Circle-Token": credentials.apiToken
       }
@@ -66,19 +91,18 @@ export const listCircleCIOrganizations = async (
   const { apiToken } = credentials;
 
   try {
+    const apiUrl = await getCircleCIApiUrl(appConnection);
+
     // Fetch organizations the user has access to (same as legacy integration)
-    const { data: collaborations } = await request.get<TCircleCICollaboration[]>(
-      `${CIRCLECI_API_URL}/v2/me/collaborations`,
-      {
-        headers: {
-          "Circle-Token": apiToken,
-          "Accept-Encoding": "application/json"
-        }
+    const { data: collaborations } = await request.get<TCircleCICollaboration[]>(`${apiUrl}/v2/me/collaborations`, {
+      headers: {
+        "Circle-Token": apiToken,
+        "Accept-Encoding": "application/json"
       }
-    );
+    });
 
     // Fetch all followed projects using the v1.1 API (same as legacy integration)
-    const { data: allProjects } = await request.get<TCircleCIProjectV1Response[]>(`${CIRCLECI_API_URL}/v1.1/projects`, {
+    const { data: allProjects } = await request.get<TCircleCIProjectV1Response[]>(`${apiUrl}/v1.1/projects`, {
       headers: {
         "Circle-Token": apiToken,
         "Accept-Encoding": "application/json"

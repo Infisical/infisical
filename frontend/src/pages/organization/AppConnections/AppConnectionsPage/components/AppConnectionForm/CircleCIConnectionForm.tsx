@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   Button,
   FormControl,
+  Input,
   ModalClose,
   SecretInput,
   Select,
@@ -32,6 +33,7 @@ const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
     method: z.literal(CircleCIConnectionMethod.ApiToken),
     credentials: z.object({
+      host: z.string().trim().optional(),
       apiToken: z.string().trim().min(1, "API Token required")
     })
   })
@@ -60,6 +62,28 @@ export const CircleCIConnectionForm = ({ appConnection, onSubmit }: Props) => {
     <FormProvider {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
         {!isUpdate && <GenericAppConnectionsFields />}
+
+        <Controller
+          name="credentials.host"
+          control={control}
+          shouldUnregister
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl
+              errorText={error?.message}
+              isError={Boolean(error?.message)}
+              label="Host"
+              tooltipText="The host URL of your CircleCI instance. This is used to connect to your CircleCI instance. If not specified, the default value of 'circleci.com' will be used."
+            >
+              <Input
+                defaultValue="circleci.com"
+                placeholder="circleci.com"
+                value={value || ""}
+                onChange={(e) => onChange(e.target.value)}
+              />
+            </FormControl>
+          )}
+        />
+
         <Controller
           name="method"
           control={control}
@@ -91,6 +115,7 @@ export const CircleCIConnectionForm = ({ appConnection, onSubmit }: Props) => {
             </FormControl>
           )}
         />
+
         <Controller
           name="credentials.apiToken"
           control={control}

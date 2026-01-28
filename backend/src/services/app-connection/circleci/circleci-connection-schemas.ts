@@ -12,7 +12,8 @@ import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { CircleCIConnectionMethod } from "./circleci-connection-enums";
 
 export const CircleCIConnectionAccessTokenCredentialsSchema = z.object({
-  apiToken: z.string().trim().min(1, "API Token required")
+  apiToken: z.string().trim().min(1, "API Token required"),
+  host: z.string().trim().optional()
 });
 
 const BaseCircleCIConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.CircleCI) });
@@ -25,7 +26,7 @@ export const CircleCIConnectionSchema = BaseCircleCIConnectionSchema.extend({
 export const SanitizedCircleCIConnectionSchema = z.discriminatedUnion("method", [
   BaseCircleCIConnectionSchema.extend({
     method: z.literal(CircleCIConnectionMethod.ApiToken),
-    credentials: CircleCIConnectionAccessTokenCredentialsSchema.pick({})
+    credentials: CircleCIConnectionAccessTokenCredentialsSchema.pick({ host: true })
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.CircleCI]} (Personal Access Token)` }))
 ]);
 
