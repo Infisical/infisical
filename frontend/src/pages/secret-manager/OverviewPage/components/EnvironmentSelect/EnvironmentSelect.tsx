@@ -103,11 +103,11 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs }: Props) {
                   >
                     <CheckIcon
                       className={cn(
-                        "mr-2 h-4 w-4",
+                        "mr-2 h-4 w-4 shrink-0",
                         selectedEnvs.map((e) => e.id).includes(env.id) ? "opacity-100" : "opacity-0"
                       )}
                     />
-                    {env.name}
+                    <span className="truncate">{env.name}</span>
                   </CommandItem>
                 ))}
               </CommandGroup>
