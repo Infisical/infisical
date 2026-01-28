@@ -137,7 +137,7 @@ For production deployments with many users or secrets, increase these values acc
     --enable-autorepair \
     --enable-autoupgrade \
     --enable-workload-identity \
-    --workload-pool=PROJECT_ID.svc.id.goog
+    --workload-pool=<YOUR_PROJECT_ID>.svc.id.goog
   ```
 
   **Connect to the cluster:**
@@ -335,15 +335,15 @@ For production deployments with many users or secrets, increase these values acc
   # Grant access to secrets
   for secret in infisical-encryption-key infisical-auth-secret infisical-db-uri infisical-redis-url; do
     gcloud secrets add-iam-policy-binding $secret \
-      --member="serviceAccount:infisical-gsa@PROJECT_ID.iam.gserviceaccount.com" \
+      --member="serviceAccount:infisical-gsa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com" \
       --role="roles/secretmanager.secretAccessor"
   done
 
   # Bind to Kubernetes service account
   gcloud iam service-accounts add-iam-policy-binding \
-    infisical-gsa@PROJECT_ID.iam.gserviceaccount.com \
+    infisical-gsa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com \
     --role roles/iam.workloadIdentityUser \
-    --member "serviceAccount:PROJECT_ID.svc.id.goog[infisical/infisical]"
+    --member "serviceAccount:<YOUR_PROJECT_ID>.svc.id.goog[infisical/infisical]"
   ```
 </Step>
 
@@ -436,7 +436,7 @@ For production deployments with many users or secrets, increase these values acc
     create: true
     name: infisical
     annotations:
-      iam.gke.io/gcp-service-account: infisical-gsa@PROJECT_ID.iam.gserviceaccount.com
+      iam.gke.io/gcp-service-account: infisical-gsa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com
 
   podSecurityContext:
     fsGroup: 1000
@@ -870,7 +870,7 @@ After completing the above steps, your Infisical instance should be up and runni
     done
 
     # Delete service account
-    gcloud iam service-accounts delete infisical-gsa@PROJECT_ID.iam.gserviceaccount.com
+    gcloud iam service-accounts delete infisical-gsa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com
     ```
 
     <Warning>
