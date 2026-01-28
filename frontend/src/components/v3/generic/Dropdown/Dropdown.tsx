@@ -37,7 +37,7 @@ function UnstableDropdownMenuContent({
         className={cn(
           "max-h-(--radix-dropdown-menu-content-available-height) origin-(--radix-dropdown-menu-content-transform-origin)",
           "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
-          "z-50 overflow-x-hidden overflow-y-auto rounded-[6px] border border-border bg-popover p-1 text-xs text-foreground shadow-md",
+          "z-50 overflow-x-hidden overflow-y-auto rounded-[6px] border border-border bg-popover p-1.5 text-sm text-foreground shadow-md",
           className
         )}
         {...props}
@@ -52,35 +52,37 @@ function UnstableDropdownMenuGroup({
   return <DropdownMenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />;
 }
 
-function UnstableDropdownMenuItem({
-  className,
-  inset,
-  variant = "default",
-  isDisabled,
-  ...props
-}: Omit<React.ComponentProps<typeof DropdownMenuPrimitive.Item>, "disabled"> & {
+type DropdownMenuProps = Omit<
+  React.ComponentProps<typeof DropdownMenuPrimitive.Item>,
+  "disabled"
+> & {
   inset?: boolean;
   variant?: "default" | "danger";
   isDisabled?: boolean;
-}) {
-  return (
-    <DropdownMenuPrimitive.Item
-      data-slot="dropdown-menu-item"
-      data-inset={inset}
-      data-variant={variant}
-      className={cn(
-        "text-xs",
-        "data-[variant=danger]:text-danger data-[variant=danger]:focus:bg-danger/10 data-[variant=danger]:*:[svg]:!text-danger",
-        "relative flex cursor-pointer items-center gap-2 rounded-sm px-2 pt-2 pb-1.5 outline-0 select-none focus:bg-foreground/10",
-        "data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8",
-        "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3",
-        className
-      )}
-      disabled={isDisabled}
-      {...props}
-    />
-  );
-}
+};
+
+const UnstableDropdownMenuItem = React.forwardRef<HTMLDivElement, DropdownMenuProps>(
+  ({ className, inset, variant = "default", isDisabled, ...props }, ref): JSX.Element => {
+    return (
+      <DropdownMenuPrimitive.Item
+        ref={ref}
+        data-slot="dropdown-menu-item"
+        data-inset={inset}
+        data-variant={variant}
+        className={cn(
+          "text-sm",
+          "data-[variant=danger]:text-danger data-[variant=danger]:focus:bg-danger/10 data-[variant=danger]:*:[svg]:!text-danger",
+          "relative flex cursor-pointer items-center gap-2 rounded-sm px-3 py-2 outline-0 select-none focus:bg-foreground/5",
+          "data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8",
+          "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+          className
+        )}
+        disabled={isDisabled}
+        {...props}
+      />
+    );
+  }
+);
 
 function UnstableDropdownMenuCheckboxItem({
   className,
@@ -92,19 +94,18 @@ function UnstableDropdownMenuCheckboxItem({
     <DropdownMenuPrimitive.CheckboxItem
       data-slot="dropdown-menu-checkbox-item"
       className={cn(
-        "relative flex cursor-pointer items-center gap-2 rounded-sm pt-2 pr-8 pb-1.5 pl-2 text-xs outline-0 select-none",
-        "focus:bg-foreground/10",
+        "relative flex cursor-pointer items-center gap-2.5 rounded-sm py-2 pr-10 pl-2 text-sm outline-0 select-none",
+        "focus:bg-foreground/5",
         "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-        "[&_svg]:pointer-events-none [&_svg]:mb-0.5 [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
-
+        "[&_svg]:pointer-events-none [&_svg]:mb-0.5 [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}
       checked={checked}
       {...props}
     >
-      <span className="pointer-events-none absolute right-2 flex size-3.5 items-center justify-center">
+      <span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center">
         <DropdownMenuPrimitive.ItemIndicator>
-          <CheckIcon className="size-3.5" />
+          <CheckIcon className="size-4" />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>
       {children}
@@ -127,7 +128,7 @@ function UnstableDropdownMenuRadioItem({
     <DropdownMenuPrimitive.RadioItem
       data-slot="dropdown-menu-radio-item"
       className={cn(
-        "relative flex cursor-pointer items-center gap-2 rounded-sm pt-2 pr-8 pb-1.5 pl-2 text-xs outline-0 select-none",
+        "relative flex cursor-pointer items-center gap-2 rounded-sm pt-2 pr-8 pb-1.5 pl-2 text-sm outline-0 select-none",
         "focus:bg-foreground/10",
         "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         "[&_svg]:pointer-events-none [&_svg]:mb-0.5 [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
@@ -179,7 +180,7 @@ function UnstableDropdownMenuShortcut({ className, ...props }: React.ComponentPr
   return (
     <span
       data-slot="dropdown-menu-shortcut"
-      className={cn("ml-auto text-xs tracking-widest text-accent", className)}
+      className={cn("ml-auto text-sm tracking-widest text-accent", className)}
       {...props}
     />
   );
@@ -204,7 +205,7 @@ function UnstableDropdownMenuSubTrigger({
       data-slot="dropdown-menu-sub-trigger"
       data-inset={inset}
       className={cn(
-        "flex cursor-default items-center rounded-sm px-2 py-1.5 text-xs outline-0 select-none focus:bg-foreground/10 data-[inset]:pl-8 data-[state=open]:bg-foreground/10",
+        "flex cursor-default items-center rounded-sm px-2 py-1.5 text-sm outline-0 select-none focus:bg-foreground/10 data-[inset]:pl-8 data-[state=open]:bg-foreground/10",
         className
       )}
       {...props}
