@@ -21,6 +21,7 @@ import {
   ModalContent,
   Select,
   SelectItem,
+  TextArea,
   Tooltip
 } from "@app/components/v2";
 import { useOrganization, useProject } from "@app/context";
@@ -42,9 +43,31 @@ import { SubjectAltNamesField } from "./SubjectAltNamesField";
 import { SubjectAttributesField } from "./SubjectAttributesField";
 import { useCertificatePolicy } from "./useCertificatePolicy";
 
-const createSchema = (shouldShowSubjectSection: boolean) => {
+enum RequestMethod {
+  MANAGED = "managed",
+  CSR = "csr"
+}
+
+const createSchema = (shouldShowSubjectSection: boolean, requestMethod: RequestMethod) => {
+  if (requestMethod === RequestMethod.CSR) {
+    return z.object({
+      profileId: z.string().min(1, "Profile is required"),
+      csr: z.string().min(1, "CSR is required"),
+      ttl: z.string().trim().min(1, "TTL is required"),
+      // Optional fields to satisfy form types
+      subjectAttributes: z.array(z.any()).optional(),
+      subjectAltNames: z.array(z.any()).optional(),
+      basicConstraints: z.any().optional(),
+      signatureAlgorithm: z.string().optional(),
+      keyAlgorithm: z.string().optional(),
+      keyUsages: z.any().optional(),
+      extendedKeyUsages: z.any().optional()
+    });
+  }
+
   return z.object({
     profileId: z.string().min(1, "Profile is required"),
+    csr: z.string().optional(),
     subjectAttributes: shouldShowSubjectSection
       ? z
           .array(
@@ -136,9 +159,11 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
 
   const { mutateAsync: issueCertificate } = useUnifiedCertificateIssuance();
 
+  const [requestMethod, setRequestMethod] = useState<RequestMethod>(RequestMethod.MANAGED);
+
   const formResolver = useMemo(() => {
-    return zodResolver(createSchema(shouldShowSubjectSection));
-  }, [shouldShowSubjectSection]);
+    return zodResolver(createSchema(shouldShowSubjectSection, requestMethod));
+  }, [shouldShowSubjectSection, requestMethod]);
 
   const {
     control,
@@ -152,6 +177,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
     resolver: formResolver,
     defaultValues: {
       profileId: profileId || "",
+      csr: "",
       subjectAttributes: [],
       subjectAltNames: [],
       basicConstraints: {
@@ -200,6 +226,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
 
   const resetAllState = useCallback(() => {
     setShouldShowSubjectSection(true);
+    setRequestMethod(RequestMethod.MANAGED);
     resetConstraints();
     reset();
   }, [reset, resetConstraints]);
@@ -248,6 +275,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
   const onFormSubmit = useCallback(
     async ({
       profileId: formProfileId,
+      csr,
       subjectAttributes,
       subjectAltNames,
       basicConstraints,
@@ -273,8 +301,49 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
         return;
       }
 
+      const handleIssuanceResponse = (response: Awaited<ReturnType<typeof issueCertificate>>) => {
+        if ("certificate" in response && response.certificate) {
+          createNotification({ text: "Successfully created certificate", type: "success" });
+          handlePopUpToggle("issueCertificate", false);
+          if (currentOrg?.id && currentProject?.id && response.certificate.certificateId) {
+            navigate({
+              to: "/organizations/$orgId/projects/cert-manager/$projectId/certificates/$certificateId",
+              params: {
+                orgId: currentOrg.id,
+                projectId: currentProject.id,
+                certificateId: response.certificate.certificateId
+              }
+            });
+          }
+        } else if ("status" in response && response.status === "pending_approval") {
+          createNotification({
+            text: "Certificate request submitted successfully. Approval is required before the certificate can be issued.",
+            type: "success"
+          });
+          handlePopUpToggle("issueCertificate", false);
+        } else {
+          createNotification({
+            text: `Certificate request submitted successfully. This may take a few minutes to process. Certificate Request ID: ${response.certificateRequestId}`,
+            type: "success"
+          });
+          handlePopUpToggle("issueCertificate", false);
+        }
+      };
+
       try {
-        // Prepare unified request
+        if (requestMethod === RequestMethod.CSR) {
+          const response = await issueCertificate({
+            profileId: formProfileId,
+            projectSlug: currentProject.slug,
+            projectId: currentProject.id,
+            csr,
+            attributes: { ttl }
+          });
+
+          handleIssuanceResponse(response);
+          return;
+        }
+
         const request: any = {
           profileId: formProfileId,
           projectSlug: currentProject.slug,
@@ -354,44 +423,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
         }
 
         const response = await issueCertificate(request);
-
-        // Handle certificate issuance response
-
-        if ("certificate" in response && response.certificate) {
-          const certData = response.certificate;
-
-          createNotification({
-            text: "Successfully created certificate",
-            type: "success"
-          });
-
-          // Close modal and redirect to certificate details page
-          handlePopUpToggle("issueCertificate", false);
-
-          if (currentOrg?.id && currentProject?.id && certData.certificateId) {
-            navigate({
-              to: "/organizations/$orgId/projects/cert-manager/$projectId/certificates/$certificateId",
-              params: {
-                orgId: currentOrg.id,
-                projectId: currentProject.id,
-                certificateId: certData.certificateId
-              }
-            });
-          }
-        } else if ("status" in response && response.status === "pending_approval") {
-          createNotification({
-            text: "Certificate request submitted successfully. Approval is required before the certificate can be issued.",
-            type: "success"
-          });
-          handlePopUpToggle("issueCertificate", false);
-        } else {
-          // Certificate request - async processing
-          createNotification({
-            text: `Certificate request submitted successfully. This may take a few minutes to process. Certificate Request ID: ${response.certificateRequestId}`,
-            type: "success"
-          });
-          handlePopUpToggle("issueCertificate", false);
-        }
+        handleIssuanceResponse(response);
       } catch (error) {
         createNotification({
           text: `Failed to request certificate: ${(error as Error)?.message || "Unknown error"}`,
@@ -404,6 +436,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
       currentProject?.id,
       currentOrg?.id,
       issueCertificate,
+      requestMethod,
       constraints.shouldShowSubjectSection,
       constraints.shouldShowSanSection,
       constraints.templateAllowsCA,
@@ -447,6 +480,41 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
         )}
         {!cert && (
           <form onSubmit={handleSubmit(onFormSubmit)}>
+            <FormControl
+              label={
+                <FormLabel
+                  label="Request Method"
+                  icon={
+                    <Tooltip
+                      content={
+                        <div className="space-y-2">
+                          <p>
+                            <strong>Managed:</strong> We generate and manage the private key for
+                            you.
+                          </p>
+                          <p>
+                            <strong>CSR:</strong> Provide your own Certificate Signing Request. Use
+                            this when you need to manage your own private key.
+                          </p>
+                        </div>
+                      }
+                    >
+                      <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
+                    </Tooltip>
+                  }
+                />
+              }
+            >
+              <Select
+                value={requestMethod}
+                onValueChange={(val) => setRequestMethod(val as RequestMethod)}
+                className="w-full"
+              >
+                <SelectItem value={RequestMethod.MANAGED}>Managed</SelectItem>
+                <SelectItem value={RequestMethod.CSR}>Certificate Signing Request (CSR)</SelectItem>
+              </Select>
+            </FormControl>
+
             {!profileId && (
               <Controller
                 control={control}
@@ -500,15 +568,52 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
 
             {(actualSelectedProfile || profileId) && (
               <>
-                {constraints.shouldShowSubjectSection && (
-                  <SubjectAttributesField
+                {requestMethod === RequestMethod.CSR && (
+                  <Controller
                     control={control}
-                    allowedAttributeTypes={constraints.allowedSubjectAttributeTypes}
-                    error={formState.errors.subjectAttributes?.message}
+                    name="csr"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="Certificate Signing Request (CSR)"
+                        isRequired
+                        errorText={error?.message}
+                        isError={Boolean(error)}
+                      >
+                        <TextArea
+                          {...field}
+                          spellCheck={false}
+                          placeholder={
+                            "-----BEGIN CERTIFICATE REQUEST-----\n" +
+                            "MIIByDCCAU4CAQAwfjELMAkGA1UEBhMCVVMxEzARBgNVBAgMCkNhbGlmb3JuaWEx\n" +
+                            "FjAUBgNVBAcMDVNhbiBGcmFuY2lzY28xEjAQBgNVBAoMCURlbW8gQ29ycDEUMBIG\n" +
+                            "A1UECwwLRW5naW5lZXJpbmcxGDAWBgNVBAMMD2FwcC5leGFtcGxlLmNvbTB2MBAG\n" +
+                            "ByqGSM49AgEGBSuBBAAiA2IABDHV5yengUugeBcpjsw+iAaxSkCr16LMr3ITyvlM\n" +
+                            "lDv+AE0Ddc6FsFXJicBfTalM3AKl5F14OCBRfI2jugWJOGCLcKYqRDTDevxQmgCI\n" +
+                            "IfpRM6+jzPkqe0PsuLhYiRfbFKBRME8GCSqGSIb3DQEJDjFCMEAwPgYDVR0RBDcw\n" +
+                            "NYIPYXBwLmV4YW1wbGUuY29tghEqLmFwcC5leGFtcGxlLmNvbYIJbG9jYWxob3N0\n" +
+                            "hwR/AAABMAoGCCqGSM49BAMCA2gAMGUCMGQQYs4lTSc3r/5MlabDx4m+sWaAtDhO\n" +
+                            "17c3TaoDZOMG6r45mgUskPGTripXV9ItTQIxAJypXNlHnMvks7MO4LmicPqku4MF\n" +
+                            "IeFqqXMFzC9uAO3iQ8/ji6ukvT6a9A3DE9LLIg==\n" +
+                            "-----END CERTIFICATE REQUEST-----"
+                          }
+                          rows={13}
+                          className="w-full font-mono text-xs"
+                        />
+                      </FormControl>
+                    )}
                   />
                 )}
 
-                {constraints.shouldShowSanSection && (
+                {requestMethod === RequestMethod.MANAGED &&
+                  constraints.shouldShowSubjectSection && (
+                    <SubjectAttributesField
+                      control={control}
+                      allowedAttributeTypes={constraints.allowedSubjectAttributeTypes}
+                      error={formState.errors.subjectAttributes?.message}
+                    />
+                  )}
+
+                {requestMethod === RequestMethod.MANAGED && constraints.shouldShowSanSection && (
                   <SubjectAltNamesField
                     control={control}
                     allowedSanTypes={constraints.allowedSanTypes}
@@ -531,145 +636,154 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                   )}
                 />
 
-                <AlgorithmSelectors
-                  control={control}
-                  availableSignatureAlgorithms={availableSignatureAlgorithms}
-                  availableKeyAlgorithms={availableKeyAlgorithms}
-                  signatureError={formState.errors.signatureAlgorithm?.message}
-                  keyError={formState.errors.keyAlgorithm?.message}
-                />
+                {requestMethod === RequestMethod.MANAGED && (
+                  <>
+                    <AlgorithmSelectors
+                      control={control}
+                      availableSignatureAlgorithms={availableSignatureAlgorithms}
+                      availableKeyAlgorithms={availableKeyAlgorithms}
+                      signatureError={formState.errors.signatureAlgorithm?.message}
+                      keyError={formState.errors.keyAlgorithm?.message}
+                    />
 
-                <Accordion type="single" collapsible className="w-full">
-                  <KeyUsageSection
-                    control={control}
-                    title="Key Usages"
-                    accordionValue="key-usages"
-                    namePrefix="keyUsages"
-                    options={filteredKeyUsages}
-                    requiredUsages={constraints.requiredKeyUsages}
-                  />
-                  <KeyUsageSection
-                    control={control}
-                    title="Extended Key Usages"
-                    accordionValue="extended-key-usages"
-                    namePrefix="extendedKeyUsages"
-                    options={filteredExtendedKeyUsages}
-                    requiredUsages={constraints.requiredExtendedKeyUsages}
-                  />
-                  {constraints.templateAllowsCA && (
-                    <AccordionItem value="basic-constraints">
-                      <AccordionTrigger>Basic Constraints</AccordionTrigger>
-                      <AccordionContent>
-                        <div className="space-y-4 pl-2">
-                          <Controller
-                            control={control}
-                            name="basicConstraints.isCA"
-                            render={({ field: { value, onChange } }) => (
-                              <div className="flex items-center gap-3">
-                                <Checkbox
-                                  id="isCA"
-                                  isChecked={constraints.templateRequiresCA || value || false}
-                                  isDisabled={constraints.templateRequiresCA}
-                                  onCheckedChange={(checked) => {
-                                    if (!constraints.templateRequiresCA) {
-                                      onChange(checked);
-                                      if (!checked) {
-                                        setValue("basicConstraints.pathLength", undefined);
-                                      }
-                                    }
-                                  }}
-                                />
-                                <div className="space-y-1">
-                                  <FormLabel
-                                    id="isCA"
-                                    className="cursor-pointer text-sm font-medium text-mineshaft-100"
-                                    label="Issue as Certificate Authority"
-                                  />
-                                  <p className="text-xs text-bunker-300">
-                                    This certificate will be issued with the CA:TRUE extension
-                                  </p>
-                                </div>
-                              </div>
-                            )}
-                          />
-
-                          {watchedIsCA && (
-                            <Controller
-                              control={control}
-                              name="basicConstraints.pathLength"
-                              render={({ field, fieldState: { error } }) => {
-                                const isPathLengthRequired =
-                                  typeof constraints.maxPathLength === "number" &&
-                                  constraints.maxPathLength !== -1;
-                                return (
-                                  <FormControl
-                                    label={
-                                      <div>
-                                        <FormLabel
-                                          isRequired={isPathLengthRequired}
-                                          label="Path Length"
-                                          icon={
-                                            <Tooltip
-                                              content={
-                                                <div className="max-w-xs">
-                                                  <p className="font-medium">Values:</p>
-                                                  <ul className="mt-1 list-disc pl-4 text-xs">
-                                                    <li>
-                                                      <strong>Empty</strong> = Unlimited depth
-                                                    </li>
-                                                    <li>
-                                                      <strong>0</strong> = Can only sign end-entity
-                                                      certs
-                                                    </li>
-                                                    <li>
-                                                      <strong>1+</strong> = CA levels allowed
-                                                      beneath
-                                                    </li>
-                                                  </ul>
-                                                </div>
-                                              }
-                                            >
-                                              <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
-                                            </Tooltip>
+                    <Accordion type="single" collapsible className="w-full">
+                      <KeyUsageSection
+                        control={control}
+                        title="Key Usages"
+                        accordionValue="key-usages"
+                        namePrefix="keyUsages"
+                        options={filteredKeyUsages}
+                        requiredUsages={constraints.requiredKeyUsages}
+                      />
+                      <KeyUsageSection
+                        control={control}
+                        title="Extended Key Usages"
+                        accordionValue="extended-key-usages"
+                        namePrefix="extendedKeyUsages"
+                        options={filteredExtendedKeyUsages}
+                        requiredUsages={constraints.requiredExtendedKeyUsages}
+                      />
+                      {constraints.templateAllowsCA && (
+                        <AccordionItem value="basic-constraints">
+                          <AccordionTrigger>Basic Constraints</AccordionTrigger>
+                          <AccordionContent>
+                            <div className="space-y-4 pl-2">
+                              <Controller
+                                control={control}
+                                name="basicConstraints.isCA"
+                                render={({ field: { value, onChange } }) => (
+                                  <div className="flex items-center gap-3">
+                                    <Checkbox
+                                      id="isCA"
+                                      isChecked={constraints.templateRequiresCA || value || false}
+                                      isDisabled={constraints.templateRequiresCA}
+                                      onCheckedChange={(checked) => {
+                                        if (!constraints.templateRequiresCA) {
+                                          onChange(checked);
+                                          if (!checked) {
+                                            setValue("basicConstraints.pathLength", undefined);
                                           }
-                                        />
-                                      </div>
-                                    }
-                                    isError={Boolean(error)}
-                                    errorText={error?.message}
-                                    helperText="Sets the pathLen for this CA certificate. Controls how many levels of sub-CAs can exist below."
-                                  >
-                                    <Input
-                                      {...field}
-                                      type="number"
-                                      min={0}
-                                      placeholder={
-                                        isPathLengthRequired
-                                          ? "Enter path length (required)"
-                                          : "Leave empty for no constraint"
-                                      }
-                                      className="w-full"
-                                      value={field.value ?? ""}
-                                      onChange={(e) => {
-                                        const val = e.target.value;
-                                        if (val === "") {
-                                          field.onChange(undefined);
-                                        } else {
-                                          const numVal = parseInt(val, 10);
-                                          field.onChange(Number.isNaN(numVal) ? undefined : numVal);
                                         }
                                       }}
                                     />
-                                  </FormControl>
-                                );
-                              }}
-                            />
-                          )}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  )}
-                </Accordion>
+                                    <div className="space-y-1">
+                                      <FormLabel
+                                        id="isCA"
+                                        className="cursor-pointer text-sm font-medium text-mineshaft-100"
+                                        label="Issue as Certificate Authority"
+                                      />
+                                      <p className="text-xs text-bunker-300">
+                                        This certificate will be issued with the CA:TRUE extension
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+                              />
+
+                              {watchedIsCA && (
+                                <Controller
+                                  control={control}
+                                  name="basicConstraints.pathLength"
+                                  render={({ field, fieldState: { error } }) => {
+                                    const isPathLengthRequired =
+                                      typeof constraints.maxPathLength === "number" &&
+                                      constraints.maxPathLength !== -1;
+                                    return (
+                                      <FormControl
+                                        label={
+                                          <div>
+                                            <FormLabel
+                                              isRequired={isPathLengthRequired}
+                                              label="Path Length"
+                                              icon={
+                                                <Tooltip
+                                                  content={
+                                                    <div className="max-w-xs">
+                                                      <p className="font-medium">Values:</p>
+                                                      <ul className="mt-1 list-disc pl-4 text-xs">
+                                                        <li>
+                                                          <strong>Empty</strong> = Unlimited depth
+                                                        </li>
+                                                        <li>
+                                                          <strong>0</strong> = Can only sign
+                                                          end-entity certs
+                                                        </li>
+                                                        <li>
+                                                          <strong>1+</strong> = CA levels allowed
+                                                          beneath
+                                                        </li>
+                                                      </ul>
+                                                    </div>
+                                                  }
+                                                >
+                                                  <FontAwesomeIcon
+                                                    icon={faQuestionCircle}
+                                                    size="sm"
+                                                  />
+                                                </Tooltip>
+                                              }
+                                            />
+                                          </div>
+                                        }
+                                        isError={Boolean(error)}
+                                        errorText={error?.message}
+                                        helperText="Sets the pathLen for this CA certificate. Controls how many levels of sub-CAs can exist below."
+                                      >
+                                        <Input
+                                          {...field}
+                                          type="number"
+                                          min={0}
+                                          placeholder={
+                                            isPathLengthRequired
+                                              ? "Enter path length (required)"
+                                              : "Leave empty for no constraint"
+                                          }
+                                          className="w-full"
+                                          value={field.value ?? ""}
+                                          onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (val === "") {
+                                              field.onChange(undefined);
+                                            } else {
+                                              const numVal = parseInt(val, 10);
+                                              field.onChange(
+                                                Number.isNaN(numVal) ? undefined : numVal
+                                              );
+                                            }
+                                          }}
+                                        />
+                                      </FormControl>
+                                    );
+                                  }}
+                                />
+                              )}
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      )}
+                    </Accordion>
+                  </>
+                )}
               </>
             )}
 
@@ -688,6 +802,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                 variant="plain"
                 onClick={() => {
                   handlePopUpToggle("issueCertificate", false);
+                  resetAllState();
                 }}
               >
                 Cancel
