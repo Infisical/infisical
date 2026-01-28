@@ -1,9 +1,11 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+echo "🔥 Pre-commit hook is running!"
+
 # Check if infisical is installed
 if ! command -v infisical >/dev/null 2>&1; then
-    echo "\nError: Infisical CLI is not installed. Please install the Infisical CLI before comitting.\n You can refer to the documentation at https://infisical.com/docs/cli/overview\n\n"
+    echo "\nError: Infisical CLI is not installed. Please install the Infisical CLI before committing.\n You can refer to the documentation at https://infisical.com/docs/cli/overview\n\n"
     exit 1
 fi
 
