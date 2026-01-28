@@ -12,11 +12,11 @@ import {
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { SmbConnectionMethod } from "./smb-connection-enums";
 
-// Hostname validation: alphanumeric, dots, hyphens (cannot start with hyphen)
+// Hostname validation: alphanumeric, dots, hyphens (cannot start with hyphen or period)
 // Supports: hostnames (server.domain.com), IPv4 (192.168.1.1)
 const validateHostname = characterValidator([CharacterType.AlphaNumeric, CharacterType.Period, CharacterType.Hyphen]);
 
-// Domain validation: alphanumeric, dots, hyphens, underscores (cannot start with hyphen)
+// Domain validation: alphanumeric, dots, hyphens, underscores (cannot start with hyphen or period)
 const validateDomain = characterValidator([
   CharacterType.AlphaNumeric,
   CharacterType.Period,
@@ -25,7 +25,7 @@ const validateDomain = characterValidator([
 ]);
 
 // Username validation for SMB admin user
-// Windows usernames: alphanumeric, underscores, hyphens, periods (cannot start with period or hyphen)
+// Windows usernames: alphanumeric, underscores, hyphens, periods (cannot start with period or hyphen, cannot end with period)
 const validateSmbUsername = characterValidator([
   CharacterType.AlphaNumeric,
   CharacterType.Hyphen,
@@ -35,7 +35,7 @@ const validateSmbUsername = characterValidator([
 
 // Dangerous characters that could enable command/RPC injection
 // These are blocked to prevent:
-// - Command separators: ; | & 
+// - Command separators: ; | &
 // - Command substitution: ` $ ( )
 // - Newlines: \n \r (auth file directive injection)
 // - Null bytes: \0 (string termination attacks)
@@ -54,11 +54,8 @@ export const SmbConnectionCredentialsSchema = z.object({
     .refine((val) => validateHostname(val), {
       message: "Host can only contain alphanumeric characters, dots, and hyphens"
     })
-    .refine((val) => !val.startsWith("-"), {
-      message: "Host cannot start with a hyphen"
-    })
-    .refine((val) => !val.startsWith("."), {
-      message: "Host cannot start with a period"
+    .refine((val) => !val.startsWith("-") && !val.startsWith("."), {
+      message: "Host cannot start with a hyphen or period"
     })
     .describe(AppConnections.CREDENTIALS.SMB.host),
   port: z.coerce.number().int().min(1).max(65535).describe(AppConnections.CREDENTIALS.SMB.port),
@@ -69,8 +66,8 @@ export const SmbConnectionCredentialsSchema = z.object({
     .refine((val) => val === "" || validateDomain(val), {
       message: "Domain can only contain alphanumeric characters, dots, hyphens, and underscores"
     })
-    .refine((val) => val === "" || !val.startsWith("-"), {
-      message: "Domain cannot start with a hyphen"
+    .refine((val) => val === "" || (!val.startsWith("-") && !val.startsWith(".")), {
+      message: "Domain cannot start with a hyphen or period"
     })
     .optional()
     .describe(AppConnections.CREDENTIALS.SMB.domain),
@@ -82,16 +79,12 @@ export const SmbConnectionCredentialsSchema = z.object({
     .refine((val) => validateSmbUsername(val), {
       message: "Username can only contain alphanumeric characters, underscores, hyphens, and periods"
     })
-    .refine((val) => !val.startsWith("-"), {
-      message: "Username cannot start with a hyphen"
-    })
-    .refine((val) => !val.startsWith("."), {
-      message: "Username cannot start with a period"
+    .refine((val) => !val.startsWith("-") && !val.startsWith(".") && !val.endsWith("."), {
+      message: "Username cannot start with a hyphen or period, and cannot end with a period"
     })
     .describe(AppConnections.CREDENTIALS.SMB.username),
   password: z
     .string()
-    .trim()
     .min(1, "Password required")
     .refine((val) => validateSmbPassword(val), {
       message: "Password cannot contain the following characters: ; | & ` $ ( ) or newlines"

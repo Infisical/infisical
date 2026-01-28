@@ -31,15 +31,62 @@ type Props = {
   onSubmit: (formData: FormData) => Promise<void>;
 };
 
+// Character validation regex patterns (must match backend validation)
+const HOSTNAME_REGEX = /^[a-zA-Z0-9.-]+$/;
+const DOMAIN_REGEX = /^[a-zA-Z0-9._-]+$/;
+const USERNAME_REGEX = /^[a-zA-Z0-9._-]+$/;
+
+// Dangerous characters that could enable command/RPC injection
+const DANGEROUS_PASSWORD_CHARS = [";", "|", "&", "`", "$", "(", ")", "\n", "\r", "\0"];
+
+const validatePassword = (password: string): boolean => {
+  return !DANGEROUS_PASSWORD_CHARS.some((char) => password.includes(char));
+};
+
 const formSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.SMB),
   method: z.literal(SmbConnectionMethod.Credentials),
   credentials: z.object({
-    host: z.string().trim().min(1, "Host required"),
+    host: z
+      .string()
+      .trim()
+      .min(1, "Host required")
+      .max(253, "Host too long")
+      .refine((val) => HOSTNAME_REGEX.test(val), {
+        message: "Host can only contain alphanumeric characters, dots, and hyphens"
+      })
+      .refine((val) => !val.startsWith("-") && !val.startsWith("."), {
+        message: "Host cannot start with a hyphen or period"
+      }),
     port: z.coerce.number().int().min(1).max(65535, "Port must be between 1 and 65535"),
-    domain: z.string().trim().optional(),
-    username: z.string().trim().min(1, "Username required"),
-    password: z.string().trim().min(1, "Password required")
+    domain: z
+      .string()
+      .trim()
+      .max(255, "Domain too long")
+      .refine((val) => val === "" || DOMAIN_REGEX.test(val), {
+        message: "Domain can only contain alphanumeric characters, dots, hyphens, and underscores"
+      })
+      .refine((val) => val === "" || (!val.startsWith("-") && !val.startsWith(".")), {
+        message: "Domain cannot start with a hyphen or period"
+      })
+      .optional(),
+    username: z
+      .string()
+      .trim()
+      .min(1, "Username required")
+      .max(104, "Username too long")
+      .refine((val) => USERNAME_REGEX.test(val), {
+        message: "Username can only contain alphanumeric characters, underscores, hyphens, and periods"
+      })
+      .refine((val) => !val.startsWith("-") && !val.startsWith(".") && !val.endsWith("."), {
+        message: "Username cannot start with a hyphen or period, and cannot end with a period"
+      }),
+    password: z
+      .string()
+      .min(1, "Password required")
+      .refine((val) => validatePassword(val), {
+        message: "Password cannot contain the following characters: ; | & ` $ ( ) or newlines"
+      })
   })
 });
 

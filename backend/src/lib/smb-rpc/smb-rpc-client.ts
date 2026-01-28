@@ -60,11 +60,8 @@ const validateHost = (host: string): void => {
   if (!validateHostname(host)) {
     throw new Error("Host can only contain alphanumeric characters, dots, and hyphens");
   }
-  if (host.startsWith("-")) {
-    throw new Error("Host cannot start with a hyphen");
-  }
-  if (host.startsWith(".")) {
-    throw new Error("Host cannot start with a period");
+  if (host.startsWith("-") || host.startsWith(".")) {
+    throw new Error("Host cannot start with a hyphen or period");
   }
 };
 
@@ -80,8 +77,8 @@ const validateDomainInput = (domain: string | undefined): void => {
   if (!validateDomain(domain)) {
     throw new Error("Domain can only contain alphanumeric characters, dots, hyphens, and underscores");
   }
-  if (domain.startsWith("-")) {
-    throw new Error("Domain cannot start with a hyphen");
+  if (domain.startsWith("-") || domain.startsWith(".")) {
+    throw new Error("Domain cannot start with a hyphen or period");
   }
 };
 
@@ -107,11 +104,8 @@ const validateAdminUsername = (username: string): void => {
   if (!validateUsername(username)) {
     throw new Error("Admin username can only contain alphanumeric characters, underscores, hyphens, and periods");
   }
-  if (username.startsWith("-")) {
-    throw new Error("Admin username cannot start with a hyphen");
-  }
-  if (username.startsWith(".")) {
-    throw new Error("Admin username cannot start with a period");
+  if (username.startsWith("-") || username.startsWith(".") || username.endsWith(".")) {
+    throw new Error("Admin username cannot start with a hyphen or period, and cannot end with a period");
   }
 };
 
@@ -291,6 +285,7 @@ const escapePasswordForRpc = (password: string): string => {
  * Validate that a target username contains only safe characters to prevent command injection
  * Windows local account username validation:
  * - Cannot start with a period or hyphen (prevents flag injection and Windows rules)
+ * - Cannot end with a period (Windows rule)
  * - Can contain alphanumeric, underscore, hyphen, and period
  * - Max 20 characters for local accounts
  */
@@ -298,8 +293,8 @@ export const isValidWindowsUsername = (username: string): boolean => {
   if (!username || username.length === 0 || username.length > MAX_USERNAME_LENGTH) {
     return false;
   }
-  // Cannot start with period or hyphen (period is Windows rule, hyphen prevents flag injection)
-  if (username.startsWith(".") || username.startsWith("-")) {
+  // Cannot start with period or hyphen, cannot end with period
+  if (username.startsWith(".") || username.startsWith("-") || username.endsWith(".")) {
     return false;
   }
   return validateUsername(username);
@@ -318,7 +313,7 @@ export const changeWindowsPassword = async (
 
   if (!isValidWindowsUsername(targetUser)) {
     throw new Error(
-      "Invalid username format - must be 1-20 characters, only alphanumeric characters, underscores, hyphens, and periods allowed, and cannot start with a period or hyphen"
+      "Invalid username format - must be 1-20 characters, only alphanumeric characters, underscores, hyphens, and periods allowed, and cannot start or end with a period or start with a hyphen"
     );
   }
 
