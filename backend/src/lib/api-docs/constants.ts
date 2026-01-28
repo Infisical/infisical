@@ -2850,8 +2850,8 @@ export const SecretSyncs = {
       secretGroupName: "The name of the Northflank secret group to sync secrets to."
     },
     CIRCLECI: {
-      projectSlug:
-        "The CircleCI project slug to sync secrets to.",
+      orgName: "The CircleCI organization name to sync secrets to.",
+      projectId: "The CircleCI project ID to sync secrets to.",
       projectName: "The CircleCI project name to sync secrets to."
     }
   }

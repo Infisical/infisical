@@ -46,7 +46,6 @@ export const getCircleCIApiUrl = async (config: {
 
   const apiUrl = `${baseUrl}/api`;
 
-  console.log("apiUrl", apiUrl);
   return apiUrl;
 };
 

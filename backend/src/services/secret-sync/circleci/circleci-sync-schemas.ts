@@ -19,11 +19,16 @@ const CircleCISyncDestinationConfigSchema = z.object({
 });
 
 const CreateCircleCISyncDestinationConfigSchema = CircleCISyncDestinationConfigSchema.extend({
-  orgName: z.string().min(1, "Organization name is required"),
+  orgName: z.string().min(1, "Organization name is required").describe(SecretSyncs.DESTINATION_CONFIG.CIRCLECI.orgName),
   projectName: z
     .string()
     .min(1, "Project name is required")
-    .describe(SecretSyncs.DESTINATION_CONFIG.CIRCLECI.projectName)
+    .describe(SecretSyncs.DESTINATION_CONFIG.CIRCLECI.projectName),
+  projectId: z
+    .string()
+    .trim()
+    .min(1, "Project ID is required")
+    .describe(SecretSyncs.DESTINATION_CONFIG.CIRCLECI.projectId)
 });
 
 const CircleCISyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
