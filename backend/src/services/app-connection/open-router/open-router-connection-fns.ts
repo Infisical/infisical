@@ -5,7 +5,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { OpenRouterConnectionMethod } from "./open-router-connection-enums";
 import { TOpenRouterConnectionConfig } from "./open-router-connection-types";
 
-const OPEN_ROUTER_API_BASE_URL = "https://openrouter.ai/api/v1";
+export const OPEN_ROUTER_API_BASE_URL = "https://openrouter.ai/api/v1";
 
 export const getOpenRouterConnectionListItem = () => {
   return {

@@ -9,6 +9,7 @@ import { MongoDBCredentialsRotationSchema } from "@app/ee/services/secret-rotati
 import { MsSqlCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/mssql-credentials";
 import { MySqlCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/mysql-credentials";
 import { OktaClientSecretRotationSchema } from "@app/ee/services/secret-rotation-v2/okta-client-secret";
+import { OpenRouterApiKeyRotationSchema } from "@app/ee/services/secret-rotation-v2/open-router-api-key";
 import { OracleDBCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/oracledb-credentials";
 import { PostgresCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/postgres-credentials";
 import { RedisCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/redis-credentials";
@@ -27,5 +28,6 @@ export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   RedisCredentialsRotationSchema,
   MongoDBCredentialsRotationSchema,
   DatabricksServicePrincipalSecretRotationSchema,
-  UnixLinuxLocalAccountRotationSchema
+  UnixLinuxLocalAccountRotationSchema,
+  OpenRouterApiKeyRotationSchema
 ]);

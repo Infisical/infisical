@@ -14,6 +14,7 @@ import { MONGODB_CREDENTIALS_ROTATION_LIST_OPTION } from "./mongodb-credentials"
 import { MSSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mssql-credentials";
 import { MYSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mysql-credentials";
 import { OKTA_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./okta-client-secret";
+import { OPEN_ROUTER_API_KEY_ROTATION_LIST_OPTION } from "./open-router-api-key";
 import { ORACLEDB_CREDENTIALS_ROTATION_LIST_OPTION } from "./oracledb-credentials";
 import { POSTGRES_CREDENTIALS_ROTATION_LIST_OPTION } from "./postgres-credentials";
 import { REDIS_CREDENTIALS_ROTATION_LIST_OPTION } from "./redis-credentials";
@@ -46,7 +47,8 @@ const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2List
   [SecretRotation.RedisCredentials]: REDIS_CREDENTIALS_ROTATION_LIST_OPTION,
   [SecretRotation.MongoDBCredentials]: MONGODB_CREDENTIALS_ROTATION_LIST_OPTION,
   [SecretRotation.DatabricksServicePrincipalSecret]: DATABRICKS_SERVICE_PRINCIPAL_SECRET_ROTATION_LIST_OPTION,
-  [SecretRotation.UnixLinuxLocalAccount]: UNIX_LINUX_LOCAL_ACCOUNT_ROTATION_LIST_OPTION
+  [SecretRotation.UnixLinuxLocalAccount]: UNIX_LINUX_LOCAL_ACCOUNT_ROTATION_LIST_OPTION,
+  [SecretRotation.OpenRouterApiKey]: OPEN_ROUTER_API_KEY_ROTATION_LIST_OPTION
 };
 
 export const listSecretRotationOptions = () => {
