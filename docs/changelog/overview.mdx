@@ -1,19 +1,23 @@
 ---
 title: "Changelog"
+description: "Updates and new features"
+rss: true
 ---
 
 The changelog below reflects new product developments and updates on a monthly basis.
 
-
+<Update label="July 2025" description="Monthly Update">
 ## July 2025
+
 - Improved speed performance of audit log filtering. 
 - Revamped password reset flow pages.
 - Added support for [Bitbucket for Secret Scanning](https://infisical.com/docs/documentation/platform/secret-scanning/bitbucket).  
 - Released Secret Sync for [Zabbix](https://infisical.com/docs/integrations/secret-syncs/zabbix).
+</Update>
 
-
-
+<Update label="June 2025" description="Monthly Update">
 ## June 2025
+
 - Released Secret Sync for [1Password](https://infisical.com/docs/integrations/secret-syncs/1password), [Heroku](https://infisical.com/docs/integrations/secret-syncs/heroku), [Fly.io](https://infisical.com/docs/integrations/secret-syncs/flyio), and [Render](https://infisical.com/docs/integrations/secret-syncs/render). 
 - Added support for [Kubernetes dynamic secrets](https://infisical.com/docs/documentation/platform/dynamic-secrets/kubernetes) to generate service account tokens
 - Released Secret Rotation for [MySQL](https://infisical.com/docs/documentation/platform/secret-rotation/mysql-credentials) and [OracleDB](https://infisical.com/docs/documentation/platform/secret-rotation/oracledb-credentials) as well as Dynamic Secrets for [Vertica](https://infisical.com/docs/documentation/platform/dynamic-secrets/vertica) and [GitHub App Tokens](https://infisical.com/docs/documentation/platform/dynamic-secrets/github). 
@@ -27,9 +31,11 @@ The changelog below reflects new product developments and updates on a monthly b
 - Released [TLS Certificate Authentication method](https://infisical.com/docs/documentation/platform/identities/tls-cert-auth). 
 - Added ability to copy session tokens in the Infisical Dashboard.
 - Expanded resource support for [Infisical Terraform Provider](https://registry.terraform.io/providers/Infisical/infisical/latest/docs).
+</Update>
 
-
+<Update label="May 2025" description="Monthly Update">
 ## May 2025
+
 - Added support for [Microsoft Teams integration](https://infisical.com/docs/documentation/platform/workflow-integrations/microsoft-teams-integration).
 - Released [Infisical Gateway](https://infisical.com/docs/documentation/platform/gateways/overview) for accessing private network resources from Infisical. 
 - Added support for [Host Groups](https://infisical.com/docs/documentation/platform/ssh/host-groups) in Infisical SSH.
@@ -41,8 +47,9 @@ The changelog below reflects new product developments and updates on a monthly b
 - [Access requests](https://infisical.com/docs/documentation/platform/access-controls/access-requests) now support "break-glass" policies.
 - Updated [Point-in-time Recovery](https://infisical.com/docs/documentation/platform/pit-recovery) UI/UX.
 - Redesigned [Approval Workflows and Change Requests](https://infisical.com/docs/documentation/platform/pr-workflows) user interface. 
+</Update>
 
-
+<Update label="April 2025" description="Monthly Update">
 ## April 2025
 
 - Released ability to [request access to projects](https://infisical.com/docs/documentation/platform/access-controls/project-access-requests#project-access-requests). 
@@ -57,8 +64,9 @@ The changelog below reflects new product developments and updates on a monthly b
 - Added Infisical [Linux binary](https://infisical.com/docs/self-hosting/reference-architectures/linux-deployment-ha#linux-ha). 
 - Released ability to perform user impersonation. 
 - Added support for [LDAP password rotation](https://infisical.com/docs/documentation/platform/secret-rotation/ldap-password). 
+</Update>
 
-
+<Update label="March 2025" description="Monthly Update">
 ## March 2025
 
 - Released [Infisical Gateway](https://infisical.com/docs/documentation/platform/gateways/overview) for secure access to private resources without needing direct inbound connections to private networks.
@@ -67,7 +75,7 @@ The changelog below reflects new product developments and updates on a monthly b
 - UI and UX updates: Improved secret import interface on the overview page, password reset without backup PDF.
 - CLI enhancements: Various improvements including multiline secret support and ability to pass headers.
 - Kubernetes operator updates: Auto-reloading for DaemonSets and StatefulSets (previously only Deployments), added support for ConfigMaps.
-- Implemented powerful [Access Control](https://infisical.com/docs/documentation/platform/access-controls/overview#access-controls) updates including \"**Grant Privileges**\" feature for designating specific users for policy management, **Access Tree** visualization for simulating permissions, and ability to restrict scope of secret sharing within organizations.
+- Implemented powerful [Access Control](https://infisical.com/docs/documentation/platform/access-controls/overview#access-controls) updates including "**Grant Privileges**" feature for designating specific users for policy management, **Access Tree** visualization for simulating permissions, and ability to restrict scope of secret sharing within organizations.
 - Released new **Secret Requests** feature under Secret Share, added support for reminders with webhook triggers and implementing password policies for dynamic secrets. 
 - Enhanced secret version history to show who made changes.
 - New integrations and syncs: **Crossplane** provider, **Humanitec** secret sync, **Airflow** system integration
@@ -75,18 +83,22 @@ The changelog below reflects new product developments and updates on a monthly b
 - Enhanced security features with ability to add custom instance banners (useful for regulated industries), short-lived tokens for Kubernetes auth, and OIDC claim passing from machine identity login to permissions.
 - [Golang SDK](https://infisical.com/docs/sdks/languages/go#infisical-go-sdk): New API added for enhanced functionality
 - Added capability to programmatically configure an Infisical instance from start to finish without UI interaction.
+</Update>
 
+<Update label="February 2025" description="Monthly Update">
 ## February 2025
 
 - Released [KMIP integration](https://infisical.com/docs/documentation/platform/kms/kmip) with PKI structure, auth model integration with machine identities, complete set of client operations, and client certificate authentication flow.
 - Added new [AWS App Connection](https://infisical.com/docs/integrations/app-connections/aws) and [Secret Sync](https://infisical.com/docs/integrations/secret-syncs/aws-secrets-manager) functionality for enhanced AWS integration.
 - Released new [Azure Key Vault App Connection](https://infisical.com/docs/integrations/app-connections/azure-key-vault) and [Secret Sync](https://infisical.com/docs/integrations/secret-syncs/azure-key-vault), plus Terraform provider support.
 - Introduced more comprehensive logging with detailed records for secret sharing and metadata in audit logs.
-- Introduced new [permission types](https://infisical.com/docs/internals/permissions/project-permissions#subject-secrets): \"View Value\" vs \"Describe Value\" for more granular access control over secrets.
+- Introduced new [permission types](https://infisical.com/docs/internals/permissions/project-permissions#subject-secrets): "View Value" vs "Describe Value" for more granular access control over secrets.
 - Updated encryption logic with unified approach for all platform data, ensuring consistency across the system.
 - Added support for [OIDC group mapping](https://infisical.com/docs/documentation/platform/sso/general-oidc) to automatically map groups to Infisical for role-based access control.
 - Added [Terraform Cloud support for OIDC](https://infisical.com/docs/documentation/platform/identities/oidc-auth/terraform-cloud#terraform-cloud).
+</Update>
 
+<Update label="January 2025" description="Monthly Update">
 ## January 2025
 
 - Released new integration architecture with decoupled authentication, replacing native integrations with [App Connections](https://infisical.com/docs/integrations/app-connections/overview) and [Secret Syncs](https://infisical.com/docs/integrations/secret-syncs/overview). Initial support for AWS Parameter Store, GitHub, and GCP Secret Manager with improved API and Terraform integration capabilities.
@@ -97,8 +109,11 @@ The changelog below reflects new product developments and updates on a monthly b
 - Released [.NET provider](https://github.com/Infisical/infisical-dotnet-configuration) with first-party Azure authentication support and Azure CLI integration.
 - Implemented secret Access Visibility allowing users to view all entities with access to specific secrets in the secret side panel.
 - Added secret filtering by metadata and SSH assigned certificates (Version 1).
+</Update>
 
+<Update label="December 2024" description="Monthly Update">
 ## December 2024
+
 - Added [GCP KMS](https://infisical.com/docs/documentation/platform/kms/overview) integration support.
 - Added support for [K8s CSI integration](https://infisical.com/docs/integrations/platforms/kubernetes-csi) and ability to point K8s operator to specific secret versions.
 - Fixed [Java SDK](https://github.com/Infisical/java-sdk) compatibility issues with Alpine Linux.
@@ -108,8 +123,11 @@ The changelog below reflects new product developments and updates on a monthly b
 - Added ability to copy full path of nested folders.
 - Added custom templating support for K8s operator, allowing flexible secret key mapping and additional fields.
 - Optimized secrets versions table performance.
+</Update>
 
+<Update label="November 2024" description="Monthly Update">
 ## November 2024
+
 - Improved EnvKey migration functionality with support for Blocks, Inheritance, and Branches.
 - Added [Hardware Security Module (HSM) Encryption](https://infisical.com/docs/documentation/platform/kms/hsm-integration) support.
 - Updated permissions handling in [Infisical Terraform Provider](https://registry.terraform.io/providers/Infisical/infisical/latest/docs) to use lists instead of sets.
@@ -119,8 +137,11 @@ The changelog below reflects new product developments and updates on a monthly b
 - Added AWS Parameter Store integration sync improvements.
 - Added new screen and API for managing additional privileges.
 - Added Dynamic Secrets support for SQL Server.
+</Update>
 
+<Update label="October 2024" description="Monthly Update">
 ## October 2024
+
 - Significantly improved performance of audit log operations in UI. 
 - Released [Databricks integration](https://infisical.com/docs/integrations/cloud/databricks). 
 - Added ability to enforce 2FA organization-wide.
@@ -129,8 +150,11 @@ The changelog below reflects new product developments and updates on a monthly b
 - Added support for [LDAP dynamic secrets](https://infisical.com/docs/documentation/platform/ldap/overview).
 - Enabled changing auth methods for machine identities in the UI.
 - Launched [Infisical EU Cloud](https://eu.infisical.com). 
+</Update>
 
+<Update label="September 2024" description="Monthly Update">
 ## September 2024
+
 - Improved paginations for identities and secrets. 
 - Significant improvements to the [Infisical Terraform Provider](https://registry.terraform.io/providers/Infisical/infisical/latest/docs). 
 - Created [Slack Integration](https://infisical.com/docs/documentation/platform/workflow-integrations/slack-integration#slack-integration) for Access Requests and Approval Workflows. 
@@ -140,8 +164,11 @@ The changelog below reflects new product developments and updates on a monthly b
 - Added support for secret referencing in the Terraform Provider. 
 - Released support for [older versions of .NET](https://www.nuget.org/packages/Infisical.Sdk#supportedframeworks-body-tab) via SDK.
 - Released Infisical PKI Issuer which works alongside `cert-manager` to manage certificates in Kubernetes.
+</Update>
 
+<Update label="August 2024" description="Monthly Update">
 ## August 2024
+
 - Added [Azure DevOps integration](https://infisical.com/docs/integrations/cloud/azure-devops).
 - Released ability to hot-reload variables in CLI ([--watch flag](https://infisical.com/docs/cli/commands/run#infisical-run:watch)).
 - Added Dynamic Secrets for [Redis](https://infisical.com/docs/documentation/platform/dynamic-secrets/redis). 
@@ -150,8 +177,11 @@ The changelog below reflects new product developments and updates on a monthly b
 - Approval workflows now have email notifications. 
 - Access requests are now integrated with User Groups. 
 - Released ability to use IAM Roles for AWS Integrations. 
+</Update>
 
+<Update label="July 2024" description="Monthly Update">
 ## July 2024
+
 - Released the official [Ruby SDK](https://infisical.com/docs/sdks/languages/ruby). 
 - Increased the speed and efficiency of secret operations.
 - Released AWS KMS wrapping (bring your own key).
@@ -162,8 +192,11 @@ The changelog below reflects new product developments and updates on a monthly b
 - Added the ability to move secrets/folders to another location. 
 - Added [OIDC](https://infisical.com/docs/documentation/platform/identities/oidc-auth/general) support to CLI, Go SDK, and more. 
 - Released [Linux installer for Infisical](https://infisical.com/docs/self-hosting/deployment-options/native/standalone-binary).
+</Update>
 
+<Update label="June 2024" description="Monthly Update">
 ## June 2024
+
 - Released [Infisical PKI](https://infisical.com/docs/documentation/platform/pki/overview). 
 - Released the official [Go SDK](https://infisical.com/docs/sdks/languages/go). 
 - Released [OIDC Authentication method](https://infisical.com/docs/documentation/platform/identities/oidc-auth/general). 
@@ -174,8 +207,11 @@ The changelog below reflects new product developments and updates on a monthly b
 - Added list view for projects in the dashboard. 
 - Fixed offline coding mode in CLI. 
 - Users are now able to leave a particular project themselves.
+</Update>
 
+<Update label="May 2024" description="Monthly Update">
 ## May 2024
+
 - Released [AWS](https://infisical.com/docs/documentation/platform/identities/aws-auth), [GCP](https://infisical.com/docs/documentation/platform/identities/gcp-auth), [Azure](https://infisical.com/docs/documentation/platform/identities/azure-auth), and [Kubernetes](https://infisical.com/docs/documentation/platform/identities/kubernetes-auth) Native Auth Methods.
 - Added [Secret Sharing](https://infisical.com/docs/documentation/platform/secret-sharing) functionality for sharing sensitive data through encrypted links – within and outside of an organization.
 - Updated [Secret Referencing](https://infisical.com/docs/documentation/platform/secret-reference) to be supported in all Infisical clients. Infisical UI is now able to provide automatic reference suggestions when typing. 
@@ -185,16 +221,25 @@ The changelog below reflects new product developments and updates on a monthly b
 - Added [Dynamic Secret template for AWS IAM](https://infisical.com/docs/documentation/platform/dynamic-secrets/aws-iam). 
 - Added support for syncing tags and custom KMS keys to [AWS Secrets Manager](https://infisical.com/docs/integrations/cloud/aws-secret-manager) and [Parameter Store](https://infisical.com/docs/integrations/cloud/aws-parameter-store) Integrations.
 - Officially released Infisical on [AWS Marketplace](https://infisical.com/blog/infisical-launches-on-aws-marketplace).
+</Update>
 
+<Update label="April 2024" description="Monthly Update">
 ## April 2024
+
 - Added [Access Requests](https://infisical.com/docs/documentation/platform/access-controls/access-requests) as part of self-serve secrets management workflows. 
 - Added [Temporary Access Provisioning](https://infisical.com/docs/documentation/platform/access-controls/temporary-access) for roles and additional privileges. 
+</Update>
 
+<Update label="March 2024" description="Monthly Update">
 ## March 2024
+
 - Released support for [Dynamic Secrets](https://infisical.com/docs/documentation/platform/dynamic-secrets/overview).
 - Released the concept of [Additional Privileges](https://infisical.com/docs/documentation/platform/access-controls/additional-privileges) on top of user/machine roles. 
+</Update>
 
-## Feb 2024
+<Update label="February 2024" description="Monthly Update">
+## February 2024
+
 - Added org-scoped authentication enforcement for SAML
 - Added support for [SCIM](https://infisical.com/docs/documentation/platform/scim/overview) along with instructions for setting it up with [Okta](https://infisical.com/docs/documentation/platform/scim/okta), [Azure](https://infisical.com/docs/documentation/platform/scim/azure), and [JumpCloud](https://infisical.com/docs/documentation/platform/scim/jumpcloud).
 - Pushed out project update for non-E2EE w/ new endpoints like for project creation and member invitation.
@@ -207,8 +252,11 @@ The changelog below reflects new product developments and updates on a monthly b
 - Released [Postgres-based Infisical helm chart](https://cloudsmith.io/~infisical/repos/helm-charts/packages/detail/helm/infisical-standalone/).
 - Added checks to ensure that breaking API changes don't get released.
 - Automated API reference documentation to be inline with latest releases of Infisical.
+</Update>
 
-## Jan 2024
+<Update label="January 2024" description="Monthly Update">
+## January 2024
+
 - Completed Postgres migration initiative with restructed Fastify-based backend.
 - Reduced size of Infisical Node.js SDK by ≈90%.
 - Added secret fallback support to all SDK's.
@@ -216,22 +264,28 @@ The changelog below reflects new product developments and updates on a monthly b
 - Released [.NET SDK](https://infisical.com/docs/sdks/languages/csharp).
 - Added symmetric encryption support to all SDK's.
 - Fixed secret reminders bug, where reminders were not being updated correctly.
+</Update>
 
-## Dec 2023
+<Update label="December 2023" description="Monthly Update">
+## December 2023
 
 - Released [(machine) identities](https://infisical.com/docs/documentation/platform/identities/overview) and [universal auth](https://infisical.com/docs/documentation/platform/identities/universal-auth) features.
 - Created new cross-language SDKs for [Python](https://infisical.com/docs/sdks/languages/python), [Node](https://infisical.com/docs/sdks/languages/node), and [Java](https://infisical.com/docs/sdks/languages/java). 
 - Released first version of the [Infisical Agent](https://infisical.com/docs/infisical-agent/overview)
 - Added ability to [manage folders via CLI](https://infisical.com/docs/cli/commands/secrets).  
+</Update>
 
-## Nov 2023
+<Update label="November 2023" description="Monthly Update">
+## November 2023
 
 - Replaced internal [Winston](https://github.com/winstonjs/winston) with [Pino](https://github.com/pinojs/pino) logging library with external logging to AWS CloudWatch
 - Added admin panel to self-hosting experience.
 - Released [secret rotation](https://infisical.com/docs/documentation/platform/secret-rotation/overview) feature with preliminary support for rotating [SendGrid](https://infisical.com/docs/documentation/platform/secret-rotation/sendgrid), [PostgreSQL/CockroachDB](https://infisical.com/docs/documentation/platform/secret-rotation/postgres-credentials), and [MySQL/MariaDB](https://infisical.com/docs/documentation/platform/secret-rotation/mysql) credentials.
 - Released secret reminders feature.
+</Update>
 
-## Oct 2023
+<Update label="October 2023" description="Monthly Update">
+## October 2023
 
 - Added support for [GitLab SSO](https://infisical.com/docs/documentation/platform/sso/gitlab).
 - Became SOC 2 (Type II) certified.
@@ -239,23 +293,29 @@ The changelog below reflects new product developments and updates on a monthly b
 - Compacted Infisical into 1 Docker image.
 - Added native [Hasura Cloud integration](https://infisical.com/docs/integrations/cloud/hasura-cloud).
 - Updated resource deletion logic for user, organization, and project deletion.
+</Update>
 
-## Sep 2023
+<Update label="September 2023" description="Monthly Update">
+## September 2023
 
 - Released [secret approvals](https://infisical.com/docs/documentation/platform/pr-workflows) feature.
 - Released an update to access controls; every user role now clearly defines and enforces a certain set of conditions across Infisical.
 - Updated UI/UX for integrations. 
 - Added a native integration with [Qovery](https://infisical.com/docs/integrations/cloud/qovery).
 - Added service token generation capability for the CLI.
+</Update>
 
-## Aug 2023
+<Update label="August 2023" description="Monthly Update">
+## August 2023
 
 - Release Audit Logs V2.
 - Add support for [GitHub SSO](https://infisical.com/docs/documentation/platform/sso/github).
 - Enable users to opt in for multiple authentication methods.
 - Improved password requirements including check against [Have I Been Pwnd Password API](https://haveibeenpwned.com/Passwords).
 - Added native [GCP Secret Manager integration](https://infisical.com/docs/integrations/cloud/gcp-secret-manager)
+</Update>
 
+<Update label="July 2023" description="Monthly Update">
 ## July 2023
 
 - Released [secret referencing and importing](https://infisical.com/docs/documentation/platform/secret-reference) across folders and environments.
@@ -273,7 +333,9 @@ The changelog below reflects new product developments and updates on a monthly b
 - Added support for [Okta](https://infisical.com/docs/documentation/platform/sso/okta), [Azure AD](https://infisical.com/docs/documentation/platform/sso/azure), and [JumpCloud](https://infisical.com/docs/documentation/platform/sso/jumpcloud) [SAML](https://infisical.com/docs/documentation/platform/saml) authentication.
 - Released [folders / path-based secret storage](https://infisical.com/docs/documentation/platform/folder).
 - Released [webhooks](https://infisical.com/docs/documentation/platform/webhooks).
+</Update>
 
+<Update label="June 2023" description="Monthly Update">
 ## June 2023
 
 - Released the [Terraform Provider](https://registry.terraform.io/providers/Infisical/infisical/latest/docs).
@@ -281,7 +343,9 @@ The changelog below reflects new product developments and updates on a monthly b
 - Added native integrations with [Checkly](https://infisical.com/docs/integrations/cloud/checkly), [Hashicorp Vault](https://infisical.com/docs/integrations/cloud/hashicorp-vault), and [Cloudflare Pages](https://infisical.com/docs/integrations/cloud/cloudflare-pages).
 - Completed a penetration test with a `very good` result.
 - Added support for multi-line secrets.
+</Update>
 
+<Update label="May 2023" description="Monthly Update">
 ## May 2023
 
 - Released secret scanning capability for the CLI.
@@ -290,7 +354,9 @@ The changelog below reflects new product developments and updates on a monthly b
 - Released new landing page.
 - Started SOC 2 (Type II) compliance certification preparation.
 - Released new deployment options for Fly.io, Digital Ocean and Render.
+</Update>
 
+<Update label="April 2023" description="Monthly Update">
 ## April 2023
 
 - Upgraded secret-handling to include blind-indexing (can be thought of as a fingerprint).
@@ -302,7 +368,9 @@ The changelog below reflects new product developments and updates on a monthly b
 - Improved dashboard speed / performance.
 - Released the Secrets Overview page for users to view and identify missing environment secrets within one dashboard.
 - Updated documentation to include quickstarts and guides; also updated `README.md`.
+</Update>
 
+<Update label="March 2023" description="Monthly Update">
 ## March 2023
 
 - Added support for global configs to the Kubernetes operator.
@@ -310,8 +378,10 @@ The changelog below reflects new product developments and updates on a monthly b
 - Added native Azure Key Vault integration.
 - Released one-click AWS EC2 deployment method.
 - Released preliminary Node SDK.
+</Update>
 
-## Feb 2023
+<Update label="February 2023" description="Monthly Update">
+## February 2023
 
 - Upgraded private key encryption/decryption mechanism to use Argon2id and 256-bit protected keys.
 - Added preliminary email-based 2FA capability.
@@ -327,8 +397,10 @@ The changelog below reflects new product developments and updates on a monthly b
 - Added secret tagging capability for enhanced organizational structure/grouping.
 - Released new dashboard design allowing more actions to be performed within the dashboard itself.
 - Added capability to generate `.env.example` file.
+</Update>
 
-## Jan 2023
+<Update label="January 2023" description="Monthly Update">
+## January 2023
 
 - Added preliminary audit logging capability covering CRUD secret operations.
 - Added secret overriding capability for team members to have their own branch of a secret.
@@ -343,15 +415,19 @@ The changelog below reflects new product developments and updates on a monthly b
 - Added a public-facing API.
 - Added preliminary access control capability for users to be provisioned read/write access to environments.
 - Performed various web UI optimizations.
+</Update>
 
-## Nov 2022
+<Update label="November 2022" description="Monthly Update">
+## November 2022
 
 - Infisical is open sourced.
 - Added Infisical CLI support for Docker and Docker Compose.
 - Rewrote the Infisical CLI in Golang to be platform-agnostic.
 - Rewrote the documentation.
+</Update>
 
-## Oct 2022
+<Update label="October 2022" description="Monthly Update">
+## October 2022
 
 - Added support for organizations; projects now belong to organizations.
 - Improved speed / performance of dashboard by 25x.
@@ -360,8 +436,10 @@ The changelog below reflects new product developments and updates on a monthly b
 - Added password recovery emergency kit with automatic download enforcement upon account creation.
 - Added capability to copy-to-clipboard capabilities.
 - Released first native integration between Infisical and Heroku; environment variables can now be sent and kept in sync with Heroku.
+</Update>
 
-## Sep 2022
+<Update label="September 2022" description="Monthly Update">
+## September 2022
 
 - Added capability to change user roles in projects.
 - Added capability to delete projects.
@@ -375,8 +453,10 @@ The changelog below reflects new product developments and updates on a monthly b
 - Improved account password validation and enforce minimum requirements.
 - Added sorting capability to sort keys by name alphabetically in dashboard.
 - Added downloading secrets back as `.env` file capability.
+</Update>
 
-## Aug 2022
+<Update label="August 2022" description="Monthly Update">
+## August 2022
 
 - Released first version of the Infisical platform with push/pull capability and end-to-end encryption.
 - Improved security handling of authentication tokens by storing refresh tokens in HttpOnly cookies.
@@ -385,3 +465,4 @@ The changelog below reflects new product developments and updates on a monthly b
 - Added capability to rename a project.
 - Added user roles for projects.
 - Added incident contacts.
+</Update>
