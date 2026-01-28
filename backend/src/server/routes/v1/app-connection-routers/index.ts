@@ -35,6 +35,7 @@ import { registerNetlifyConnectionRouter } from "./netlify-connection-router";
 import { registerNorthflankConnectionRouter } from "./northflank-connection-router";
 import { registerOctopusDeployConnectionRouter } from "./octopus-deploy-connection-router";
 import { registerOktaConnectionRouter } from "./okta-connection-router";
+import { registerOpenRouterConnectionRouter } from "./open-router-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerRailwayConnectionRouter } from "./railway-connection-router";
 import { registerRedisConnectionRouter } from "./redis-connection-router";
@@ -46,7 +47,6 @@ import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router
 import { registerVercelConnectionRouter } from "./vercel-connection-router";
 import { registerWindmillConnectionRouter } from "./windmill-connection-router";
 import { registerZabbixConnectionRouter } from "./zabbix-connection-router";
-import { registerOpenRouterConnectionRouter } from "./open-router-connection-router";
 
 export * from "./app-connection-router";
 

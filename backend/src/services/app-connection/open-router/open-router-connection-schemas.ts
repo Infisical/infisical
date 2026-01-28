@@ -12,11 +12,7 @@ import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { OpenRouterConnectionMethod } from "./open-router-connection-enums";
 
 export const OpenRouterConnectionApiKeyCredentialsSchema = z.object({
-  apiKey: z
-    .string()
-    .trim()
-    .min(1, "API Key required")
-    .describe(AppConnections.CREDENTIALS.OPEN_ROUTER.apiKey)
+  apiKey: z.string().trim().min(1, "API Key required").describe(AppConnections.CREDENTIALS.OPEN_ROUTER.apiKey)
 });
 
 const BaseOpenRouterConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.OpenRouter) });
