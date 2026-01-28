@@ -27,6 +27,7 @@ export interface TOpenRouterApiKeyRotationParameters {
   name: string;
   limit?: number | null;
   limitReset?: "daily" | "weekly" | "monthly" | null;
+  includeByokInLimit?: boolean | null;
 }
 
 export interface TOpenRouterApiKeyRotationSecretsMapping {

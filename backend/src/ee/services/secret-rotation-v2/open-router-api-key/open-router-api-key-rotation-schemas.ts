@@ -32,7 +32,12 @@ const OpenRouterApiKeyRotationParametersSchema = z.object({
     .nativeEnum(OpenRouterLimitReset)
     .optional()
     .nullable()
-    .describe(SecretRotations.PARAMETERS.OPEN_ROUTER_API_KEY.limitReset)
+    .describe(SecretRotations.PARAMETERS.OPEN_ROUTER_API_KEY.limitReset),
+  includeByokInLimit: z
+    .boolean()
+    .optional()
+    .nullable()
+    .describe(SecretRotations.PARAMETERS.OPEN_ROUTER_API_KEY.includeByokInLimit)
 });
 
 const OpenRouterApiKeyRotationSecretsMappingSchema = z.object({

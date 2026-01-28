@@ -35,6 +35,7 @@ description: "Learn how to automatically rotate OpenRouter API keys."
         - **Key name** – Display name for the key in OpenRouter (required).
         - **Limit** (optional) – Spending limit in USD for this key.
         - **Limit reset** (optional) – How often the limit resets: daily, weekly, or monthly.
+        - **Include BYOK in limit** (optional) – When enabled, usage from your own provider keys ([BYOK](https://openrouter.ai/docs/guides/overview/auth/byok)—Bring Your Own Key) counts toward this key’s spending limit. When disabled, only OpenRouter credits are counted. See [OpenRouter BYOK](https://openrouter.ai/docs/guides/overview/auth/byok) for details.
 
         5. Specify the secret name that the rotated API key will be mapped to. Then click **Next**.
 
@@ -82,7 +83,8 @@ description: "Learn how to automatically rotate OpenRouter API keys."
             "parameters": {
               "name": "my-app-key",
               "limit": 100,
-              "limitReset": "monthly"
+              "limitReset": "monthly",
+              "includeByokInLimit": false
             },
             "secretsMapping": {
               "apiKey": "OPEN_ROUTER_API_KEY"
@@ -110,13 +112,23 @@ description: "Learn how to automatically rotate OpenRouter API keys."
             "parameters": {
               "name": "my-app-key",
               "limit": 100,
-              "limitReset": "monthly"
+              "limitReset": "monthly",
+              "includeByokInLimit": false
             }
           }
         }
         ```
     </Tab>
 </Tabs>
+
+## Include BYOK in limit (optional)
+
+**BYOK** (Bring Your Own Key) on OpenRouter lets you use your own provider API keys (e.g. OpenAI, Anthropic) so you pay providers directly; OpenRouter charges a small fee on those requests. The **Include BYOK in limit** option controls whether that BYOK usage counts toward this key’s spending limit:
+
+- **Enabled (Yes)** – Usage from your own provider keys is included in the limit. Once the limit is reached, the key is subject to OpenRouter’s rate limits until the next reset.
+- **Disabled (No)** – Only OpenRouter credit usage counts toward the limit. BYOK usage is tracked separately and does not consume the limit.
+
+This is optional; if you don’t use BYOK or don’t set a limit, you can leave it off. For more details, see [OpenRouter BYOK](https://openrouter.ai/docs/guides/overview/auth/byok) and [OpenRouter limits](https://openrouter.ai/docs/api/reference/limits).
 
 ## How It Works
 

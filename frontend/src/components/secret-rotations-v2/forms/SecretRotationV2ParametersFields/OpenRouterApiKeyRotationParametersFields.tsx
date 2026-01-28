@@ -1,7 +1,7 @@
 import { Controller, useFormContext } from "react-hook-form";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
-import { FormControl, Input, Select, SelectItem } from "@app/components/v2";
+import { FormControl, Input, Select, SelectItem, Switch } from "@app/components/v2";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { OpenRouterLimitReset } from "@app/hooks/api/secretRotationsV2/types/open-router-api-key-rotation";
 
@@ -85,6 +85,29 @@ export const OpenRouterApiKeyRotationParametersFields = () => {
                 </SelectItem>
               ))}
             </Select>
+          </FormControl>
+        )}
+      />
+      <Controller
+        name="parameters.includeByokInLimit"
+        control={control}
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <FormControl
+            isError={Boolean(error)}
+            errorText={error?.message}
+            label="Include BYOK in limit"
+            isOptional
+            tooltipText="When enabled, usage from your own provider keys (BYOK - Bring Your Own Key) counts toward this key's spending limit. When disabled, only OpenRouter credits are counted. See OpenRouter BYOK docs for details."
+          >
+            <Switch
+              className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+              id="include-byok-in-limit"
+              thumbClassName="bg-mineshaft-800"
+              onCheckedChange={(checked) => onChange(checked)}
+              isChecked={value ?? false}
+            >
+              <p className="w-[9.6rem]">{value ? "Yes" : "No"}</p>
+            </Switch>
           </FormControl>
         )}
       />

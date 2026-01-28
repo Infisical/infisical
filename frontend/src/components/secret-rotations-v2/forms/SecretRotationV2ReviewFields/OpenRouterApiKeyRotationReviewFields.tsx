@@ -33,6 +33,11 @@ export const OpenRouterApiKeyRotationReviewFields = () => {
             {LIMIT_RESET_LABELS[parameters.limitReset] || parameters.limitReset}
           </GenericFieldLabel>
         )}
+        {parameters.includeByokInLimit != null && (
+          <GenericFieldLabel label="Include BYOK in limit">
+            {parameters.includeByokInLimit ? "Yes" : "No"}
+          </GenericFieldLabel>
+        )}
       </SecretRotationReviewSection>
       <SecretRotationReviewSection label="Secrets Mapping">
         <GenericFieldLabel label="API Key">{apiKey}</GenericFieldLabel>

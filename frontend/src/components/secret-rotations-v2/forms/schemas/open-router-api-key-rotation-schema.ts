@@ -10,7 +10,8 @@ export const OpenRouterApiKeyRotationSchema = z
     parameters: z.object({
       name: z.string().trim().min(1, "Key name required"),
       limit: z.number().positive().optional().nullable(),
-      limitReset: z.nativeEnum(OpenRouterLimitReset).optional().nullable()
+      limitReset: z.nativeEnum(OpenRouterLimitReset).optional().nullable(),
+      includeByokInLimit: z.boolean().optional().nullable()
     }),
     secretsMapping: z.object({
       apiKey: z.string().trim().min(1, "API Key secret name required")

@@ -44,7 +44,7 @@ export const openRouterApiKeyRotationFactory: TRotationFactory<
 > = (secretRotation) => {
   const {
     connection,
-    parameters: { name, limit, limitReset },
+    parameters: { name, limit, limitReset, includeByokInLimit },
     secretsMapping
   } = secretRotation;
 
@@ -59,6 +59,7 @@ export const openRouterApiKeyRotationFactory: TRotationFactory<
         name: string;
         limit?: number | null;
         limit_reset?: string | null;
+        include_byok_in_limit?: boolean | null;
       } = { name };
 
       if (limit !== undefined && limit !== null) {
@@ -66,6 +67,9 @@ export const openRouterApiKeyRotationFactory: TRotationFactory<
       }
       if (limitReset !== undefined && limitReset !== null) {
         requestBody.limit_reset = limitReset;
+      }
+      if (includeByokInLimit !== undefined && includeByokInLimit !== null) {
+        requestBody.include_byok_in_limit = includeByokInLimit;
       }
 
       const { data } = await request.post<TOpenRouterApiKeyCreateResponse>(

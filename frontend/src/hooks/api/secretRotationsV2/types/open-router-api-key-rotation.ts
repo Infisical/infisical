@@ -17,6 +17,7 @@ export type TOpenRouterApiKeyRotation = TSecretRotationV2Base & {
     name: string;
     limit?: number | null;
     limitReset?: OpenRouterLimitReset | null;
+    includeByokInLimit?: boolean | null;
   };
   secretsMapping: {
     apiKey: string;
