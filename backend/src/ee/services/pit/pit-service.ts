@@ -169,6 +169,8 @@ export const pitServiceFactory = ({
       commitId
     });
 
+    console.log("test");
+
     const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(projectId, [changes.folderId]);
 
     for (const change of changes.changes) {

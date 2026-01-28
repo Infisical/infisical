@@ -162,7 +162,6 @@ const Content = ({
       })
     );
 
-    // eslint-disable-next-line no-restricted-syntax
     for await (const environment of environments) {
       const envSlug = environment.slug;
 
@@ -172,7 +171,6 @@ const Content = ({
         moveSecretsEligibility[envSlug].missingPermissions ||
         moveSecretsEligibility[envSlug].missingPath
       ) {
-        // eslint-disable-next-line no-continue
         continue;
       }
 
