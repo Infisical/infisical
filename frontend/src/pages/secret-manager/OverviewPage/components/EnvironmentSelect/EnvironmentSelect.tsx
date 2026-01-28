@@ -9,6 +9,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -116,18 +117,23 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs }: Props) {
             />
             <CommandList>
               <CommandEmpty>No environment found.</CommandEmpty>
+              {Boolean(projectEnvs.length) && !inputValue && (
+                <>
+                  <CommandGroup>
+                    <CommandItem forceMount keywords={[]} onSelect={handleSelectAll}>
+                      <CheckIcon
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          !selectedEnvs.length ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      All Environments
+                    </CommandItem>
+                  </CommandGroup>
+                  <CommandSeparator />
+                </>
+              )}
               <CommandGroup>
-                {Boolean(projectEnvs.length) && !inputValue && (
-                  <CommandItem onSelect={handleSelectAll}>
-                    <CheckIcon
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        !selectedEnvs.length ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                    All Environments
-                  </CommandItem>
-                )}
                 {projectEnvs.map((env) => (
                   <CommandItem
                     key={env.id}
