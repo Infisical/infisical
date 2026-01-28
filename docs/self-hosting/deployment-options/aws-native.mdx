@@ -29,30 +29,6 @@ The following are minimum requirements for running Infisical on AWS ECS:
 
 For production deployments with many users or secrets, increase these values accordingly.
 
-## Cost Considerations
-
-Running Infisical on AWS incurs costs for the following services. Estimates are based on US East (N. Virginia) region pricing as of 2024:
-
-| Service | Configuration | Estimated Monthly Cost |
-|---------|---------------|------------------------|
-| ECS Fargate | 2 tasks, 1 vCPU, 2GB each | ~$60 |
-| RDS PostgreSQL | db.t3.small, Multi-AZ | ~$50 |
-| ElastiCache Redis | cache.t3.small, Multi-AZ | ~$50 |
-| Application Load Balancer | 1 ALB + data processing | ~$25 |
-| NAT Gateway | 1 NAT Gateway + data | ~$35 |
-| CloudWatch Logs | Log storage and ingestion | ~$5 |
-| **Total (Production HA)** | | **~$225/month** |
-
-<Note>
-  For development or testing, you can reduce costs significantly by using single-AZ deployments, smaller instance sizes, and fewer ECS tasks. A minimal setup can cost as little as ~$50/month.
-</Note>
-
-**Cost optimization tips:**
-- Use Reserved Instances or Savings Plans for RDS and ElastiCache (up to 60% savings)
-- Consider using NAT Instance instead of NAT Gateway for lower traffic environments
-- Set CloudWatch Logs retention policies to avoid indefinite storage costs
-- Use Spot capacity for non-production ECS tasks
-
 ## Deployment Steps
 
 <Steps>
