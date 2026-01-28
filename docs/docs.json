@@ -313,7 +313,9 @@
                   "self-hosting/deployment-options/standalone-infisical",
                   "self-hosting/deployment-options/docker-swarm",
                   "self-hosting/deployment-options/docker-compose",
-                  "self-hosting/deployment-options/kubernetes-helm"
+                  "self-hosting/deployment-options/kubernetes-helm",
+                  "self-hosting/deployment-options/aws-native",
+                  "self-hosting/deployment-options/gcp-native"
                 ]
               },
               {
