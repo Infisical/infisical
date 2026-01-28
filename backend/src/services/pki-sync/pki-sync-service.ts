@@ -740,7 +740,6 @@ export const pkiSyncServiceFactory = ({
       })
     );
 
-    // Verify the certificate belongs to this sync
     const certificateSync = await certificateSyncDAL.findByPkiSyncAndCertificate(pkiSyncId, certificateId);
     if (!certificateSync) {
       throw new BadRequestError({ message: "Certificate is not part of this PKI sync" });
@@ -756,11 +755,12 @@ export const pkiSyncServiceFactory = ({
       isDefault: true
     });
 
-    // Trigger sync immediately (regardless of auto-sync setting)
-    await pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: pkiSyncId });
+    if (pkiSync.isAutoSyncEnabled) {
+      await pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: pkiSyncId });
+    }
 
     return {
-      message: "Certificate set as default and sync triggered",
+      message: "Certificate set as default",
       pkiSyncInfo: { projectId: pkiSync.projectId, name: pkiSync.name }
     };
   };
@@ -794,14 +794,14 @@ export const pkiSyncServiceFactory = ({
       })
     );
 
-    // Clear isDefault from all certificates in this sync
     await certificateSyncDAL.clearSyncMetadataFlag(pkiSyncId, "isDefault");
 
-    // Trigger sync immediately (regardless of auto-sync setting)
-    await pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: pkiSyncId });
+    if (pkiSync.isAutoSyncEnabled) {
+      await pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: pkiSyncId });
+    }
 
     return {
-      message: "Default certificate cleared and sync triggered",
+      message: "Default certificate cleared",
       pkiSyncInfo: { projectId: pkiSync.projectId, name: pkiSync.name }
     };
   };

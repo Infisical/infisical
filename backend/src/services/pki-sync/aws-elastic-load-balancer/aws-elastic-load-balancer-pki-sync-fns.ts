@@ -245,8 +245,6 @@ export const awsElasticLoadBalancerPkiSyncFactory = ({
     const destinationConfig = pkiSync.destinationConfig as TAwsElasticLoadBalancerPkiSyncConfig;
     const { region, listeners } = destinationConfig;
 
-    // Sync certificates to ACM first
-    // Disable ACM's cleanup - we handle it here to remove from listeners before ACM
     const existingSyncOptions = pkiSync.syncOptions || {};
     const acmPkiSync = {
       ...pkiSync,
@@ -256,7 +254,6 @@ export const awsElasticLoadBalancerPkiSyncFactory = ({
 
     const acmResult = await acmFactory.syncCertificates(acmPkiSync, certificateMap);
 
-    // Get sync records to find ACM ARNs for listener attachment
     const syncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
     const syncRecordsByCertId = new Map<string, TCertificateSyncs>();
     syncRecords.forEach((record) => {
@@ -265,9 +262,7 @@ export const awsElasticLoadBalancerPkiSyncFactory = ({
       }
     });
 
-    // Build list of certificates to attach to listeners
     const certificatesToAttach: Array<{ certName: string; certificateArn: string; isDefault: boolean }> = [];
-    let hasDefaultCertificate = false;
 
     for (const [certName, certData] of Object.entries(certificateMap)) {
       const { certificateId } = certData;
@@ -276,7 +271,6 @@ export const awsElasticLoadBalancerPkiSyncFactory = ({
         if (syncRecord?.externalIdentifier) {
           const syncMetadata = syncRecord.syncMetadata as { isDefault?: boolean } | null;
           const isDefault = syncMetadata?.isDefault === true;
-          if (isDefault) hasDefaultCertificate = true;
 
           certificatesToAttach.push({
             certName,
@@ -296,24 +290,12 @@ export const awsElasticLoadBalancerPkiSyncFactory = ({
     const listenerAttachmentErrors: Array<{ name: string; error: string }> = [];
     let attachedCount = 0;
 
-    // Legacy default behavior: use listener.setAsDefault if no certificate has syncMetadata.isDefault
-    const useLegacyDefaultBehavior = !hasDefaultCertificate && listeners.some((l) => l.setAsDefault);
-
     for (const { certName, certificateArn, isDefault } of certificatesToAttach) {
       const listenerResults = await executeWithConcurrencyLimit(
         listeners,
         async (listener) => {
           try {
-            const shouldSetAsDefault = hasDefaultCertificate
-              ? isDefault
-              : useLegacyDefaultBehavior && listener.setAsDefault === true;
-            await attachCertificateToListener(
-              elbClient,
-              listener.listenerArn,
-              certificateArn,
-              shouldSetAsDefault,
-              pkiSync.id
-            );
+            await attachCertificateToListener(elbClient, listener.listenerArn, certificateArn, isDefault, pkiSync.id);
             return { success: true, listenerArn: listener.listenerArn };
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -341,7 +323,6 @@ export const awsElasticLoadBalancerPkiSyncFactory = ({
       });
     }
 
-    // Cleanup orphaned certificates (removed from listeners first, then ACM)
     let removedCount = 0;
     let failedRemovalCount = 0;
     const removalErrors: Array<{ name: string; error: string }> = [];
@@ -441,7 +422,6 @@ export const awsElasticLoadBalancerPkiSyncFactory = ({
       }
     }
 
-    // Build result
     const details = { ...acmResult.details };
     if (listenerAttachmentErrors.length > 0) {
       details.failedUploads = [...(details.failedUploads || []), ...listenerAttachmentErrors];
@@ -450,22 +430,12 @@ export const awsElasticLoadBalancerPkiSyncFactory = ({
       details.failedRemovals = [...(details.failedRemovals || []), ...removalErrors];
     }
 
-    const hasListenerErrors = listenerAttachmentErrors.length > 0;
-
-    let uploadedCount: number;
-    if (hasListenerErrors) {
-      uploadedCount = 0;
-    } else if (acmResult.uploaded > 0) {
-      uploadedCount = acmResult.uploaded;
-    } else {
-      uploadedCount = attachedCount;
-    }
+    const uploadedCount = acmResult.uploaded > 0 ? acmResult.uploaded : attachedCount;
 
     return {
       uploaded: uploadedCount,
       removed: acmResult.removed + removedCount,
-      failedRemovals:
-        acmResult.failedRemovals + failedRemovalCount + (hasListenerErrors ? listenerAttachmentErrors.length : 0),
+      failedRemovals: acmResult.failedRemovals + failedRemovalCount,
       skipped: acmResult.skipped,
       details: Object.keys(details).length > 0 ? details : undefined
     };

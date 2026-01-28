@@ -273,9 +273,8 @@ export const awsCertificateManagerPkiSyncFactory = ({
           CertificateStatuses: ["ISSUED"],
           NextToken: nextToken,
           MaxItems: 100,
-          // IMPORTANT: By default, listCertificates only returns RSA_1024 and RSA_2048 certificates.
+          // By default, listCertificates only returns RSA_1024 and RSA_2048 certificates.
           // We must explicitly include all key types to get all certificates.
-          // See: https://docs.aws.amazon.com/acm/latest/APIReference/API_ListCertificates.html
           Includes: {
             keyTypes: ["RSA_1024", "RSA_2048", "RSA_3072", "RSA_4096", "EC_prime256v1", "EC_secp384r1", "EC_secp521r1"]
           }

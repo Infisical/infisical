@@ -125,7 +125,6 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
     }
   });
 
-  // Per-certificate default setting routes (specific to AWS ELB)
   server.route({
     method: "POST",
     url: "/:pkiSyncId/certificates/:certificateId/set-default",

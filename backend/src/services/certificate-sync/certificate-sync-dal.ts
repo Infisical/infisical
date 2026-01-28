@@ -16,8 +16,6 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
 
   const findByPkiSyncId = async (pkiSyncId: string, tx?: Knex) => {
     try {
-      // Use primary node to avoid replication lag issues during sync operations
-      // This ensures we always see the latest externalIdentifier values
       const docs = await (tx || db)(TableName.CertificateSync)
         .where({ pkiSyncId })
         .select(selectAllTableCols(TableName.CertificateSync));
@@ -40,7 +38,6 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
 
   const findByPkiSyncAndCertificate = async (pkiSyncId: string, certificateId: string, tx?: Knex) => {
     try {
-      // Use primary node to avoid replication lag issues during sync operations
       const doc = await (tx || db)(TableName.CertificateSync)
         .where({ pkiSyncId, certificateId })
         .select(selectAllTableCols(TableName.CertificateSync))
@@ -192,24 +189,16 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
 
   const clearSyncMetadataFlag = async (pkiSyncId: string, flag: string, tx?: Knex): Promise<void> => {
     try {
-      // Get all certificate syncs for this pki sync
-      const syncRecords = await (tx || db)(TableName.CertificateSync).where({ pkiSyncId }).select("*");
-
-      // Update each record to remove the flag
-      for (const record of syncRecords) {
-        if (record.syncMetadata && typeof record.syncMetadata === "object") {
-          const metadata = record.syncMetadata as Record<string, unknown>;
-          if (flag in metadata) {
-            delete metadata[flag];
-            // eslint-disable-next-line no-await-in-loop
-            await (tx || db)(TableName.CertificateSync)
-              .where({ id: record.id })
-              .update({
-                syncMetadata: Object.keys(metadata).length > 0 ? JSON.stringify(metadata) : null
-              });
-          }
-        }
-      }
+      await (tx || db)(TableName.CertificateSync)
+        .where({ pkiSyncId })
+        .whereNotNull("syncMetadata")
+        .whereRaw(`"syncMetadata" \\? ?`, [flag])
+        .update({
+          syncMetadata: db.raw(`CASE WHEN "syncMetadata" - ? = '{}'::jsonb THEN NULL ELSE "syncMetadata" - ? END`, [
+            flag,
+            flag
+          ])
+        });
     } catch (error) {
       throw new DatabaseError({ error, name: "ClearSyncMetadataFlag" });
     }
@@ -271,6 +260,9 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
           db.ref("renewalError").withSchema(TableName.Certificate).as("certificateRenewalError"),
           db.ref("name").withSchema(TableName.PkiSync).as("pkiSyncName"),
           db.ref("destination").withSchema(TableName.PkiSync).as("pkiSyncDestination")
+        )
+        .orderByRaw(
+          `CASE WHEN "${TableName.CertificateSync}"."syncMetadata"->>'isDefault' = 'true' THEN 0 ELSE 1 END ASC`
         )
         .orderBy(`${TableName.CertificateSync}.createdAt`, "desc");
 

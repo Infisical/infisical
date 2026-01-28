@@ -5,7 +5,6 @@ import {
   faClockRotateLeft,
   faEdit,
   faEllipsisV,
-  faStar,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -148,7 +147,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
       await refetchSyncCertificates();
 
       createNotification({
-        text: "Certificate set as default. Sync triggered.",
+        text: "Certificate set as default.",
         type: "success"
       });
     } catch {
@@ -169,7 +168,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
       await refetchSyncCertificates();
 
       createNotification({
-        text: "Default certificate cleared. Sync triggered.",
+        text: "Default certificate cleared.",
         type: "success"
       });
     } catch {
@@ -269,12 +268,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                               fallback="Unknown"
                             />
                             {supportsDefaultCertificate && isDefaultCertificate && (
-                              <Tooltip content="Default certificate">
-                                <div className="flex items-center gap-1 rounded bg-yellow-500/20 px-1.5 py-0.5 text-xs text-yellow-400">
-                                  <FontAwesomeIcon icon={faStar} size="xs" />
-                                  <span>Default</span>
-                                </div>
-                              </Tooltip>
+                              <span className="text-xs text-mineshaft-400">(default)</span>
                             )}
                           </div>
                         </Td>
@@ -346,16 +340,12 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                                   {supportsDefaultCertificate && !isDefaultCertificate && (
                                     <DropdownMenuItem
                                       onClick={() => handleSetAsDefault(syncCert.certificateId)}
-                                      icon={<FontAwesomeIcon icon={faStar} />}
                                     >
                                       Set as Default
                                     </DropdownMenuItem>
                                   )}
                                   {supportsDefaultCertificate && isDefaultCertificate && (
-                                    <DropdownMenuItem
-                                      onClick={handleClearDefault}
-                                      icon={<FontAwesomeIcon icon={faStar} />}
-                                    >
+                                    <DropdownMenuItem onClick={handleClearDefault}>
                                       Unset Default
                                     </DropdownMenuItem>
                                   )}
