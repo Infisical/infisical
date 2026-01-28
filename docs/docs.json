@@ -141,6 +141,7 @@
                       "integrations/app-connections/oci",
                       "integrations/app-connections/octopus-deploy",
                       "integrations/app-connections/okta",
+                      "integrations/app-connections/open-router",
                       "integrations/app-connections/oracledb",
                       "integrations/app-connections/postgres",
                       "integrations/app-connections/railway",
@@ -458,7 +459,8 @@
                       "documentation/platform/secret-rotation/okta-client-secret",
                       "documentation/platform/secret-rotation/oracledb-credentials",
                       "documentation/platform/secret-rotation/postgres-credentials",
-                      "documentation/platform/secret-rotation/redis-credentials"
+                      "documentation/platform/secret-rotation/redis-credentials",
+                      "documentation/platform/secret-rotation/open-router-api-key"
                     ]
                   },
                   {
