@@ -121,14 +121,14 @@ export const dbtServiceTokenRotationFactory: TRotationFactory<
   };
 
   /**
-   * Revokes a client secret from the Okta app using its secretId.
-   * First checks if the credential exists before attempting revocation.
+   * Revokes a service token from the DBT account using its tokenId.
+   * First checks if the service token exists before attempting revocation.
    */
   const revokeCredential = async (tokenId: number) => {
     // Check if credential exists before attempting revocation
     const exists = await tokenExists(tokenId);
     if (!exists) {
-      return; // Credential doesn't exist, nothing to revoke
+      return; // Service token doesn't exist, nothing to revoke
     }
 
     const instanceUrl = await getDbtUrl(connection);
