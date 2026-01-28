@@ -95,8 +95,8 @@ export const OpenRouterApiKeyRotationParametersFields = () => {
           <FormControl
             helperText={
               (value ?? false)
-                ? "Usage from your own provider keys (BYOK - Bring Your Own Key) will count toward this key's spending limit."
-                : "Only OpenRouter credits will count toward the spending limit. BYOK usage will be tracked separately."
+                ? "BYOK (Bring Your Own Key) usage will count toward this key's spending limit."
+                : "Only OpenRouter credits count toward the limit. BYOK usage is tracked separately."
             }
             isError={Boolean(error)}
             errorText={error?.message}
@@ -108,7 +108,7 @@ export const OpenRouterApiKeyRotationParametersFields = () => {
               onCheckedChange={(checked) => onChange(checked)}
               isChecked={value ?? false}
             >
-              <p className="w-[9.6rem]">Include BYOK {(value ?? false) ? "Enabled" : "Disabled"}</p>
+              <span className="whitespace-nowrap">Include BYOK</span>
             </Switch>
           </FormControl>
         )}
