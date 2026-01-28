@@ -1,0 +1,104 @@
+---
+title: "CircleCI Connection"
+description: "Learn how to configure a CircleCI Connection for Infisical."
+---
+
+Infisical supports the use of [API Tokens](https://app.circleci.com/settings/user/tokens) to connect with CircleCI.
+<Note>
+  CircleCI requires the account user to have Read/Write or Admin permissions
+</Note>
+
+## Create a CircleCI API Token
+
+<Steps>
+  <Step title="Click the profile image in the top-right corner and select 'User Settings'">
+    ![Dashboard Page](/images/app-connections/circleci/circleci-dashboard.png)
+  </Step>
+  <Step title="In the user settings sidebar, select 'Personal API Tokens'">
+
+    Click the "**Create new token**" button to create a new personal API token.
+    ![User Settings Page](/images/app-connections/circleci/circleci-settings.png)
+  </Step>
+   <Step title="Set a name for the token and click 'Add API Token'">
+    After creating the token, save the shown token value as it will not be shown again.
+    You will need this token to configure your Infisical connection
+
+    ![Api Keys Page](/images/app-connections/circleci/circleci-create-new-token.png)
+  </Step>
+</Steps>
+
+## Create a CircleCI Connection in Infisical
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Navigate to App Connections">
+        In your Infisical dashboard, navigate to the **App Connections** page in the desired project.
+
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+      </Step>
+      <Step title="Select CircleCI Connection">
+        Click **+ Add Connection** and choose **CircleCI Connection** from the list of integrations.
+
+        ![Select CircleCI Connection](/images/app-connections/circleci/circleci-app-connection-option.png)
+      </Step>
+      <Step title="Fill out the CircleCI Connection form">
+        Complete the form by providing:
+        - A descriptive name for the connection
+        - An optional description
+        - The API Token value from the previous step
+
+        ![CircleCI Connection Modal](/images/app-connections/circleci/circleci-app-connection-form.png)
+      </Step>
+      <Step title="Connection created">
+        After submitting the form, your **CircleCI Connection** will be successfully created and ready to use with your Infisical project.
+
+        ![CircleCI Connection Created](/images/app-connections/circleci/circleci-app-connection-generated.png)
+      </Step>
+    </Steps>
+
+  </Tab>
+
+  <Tab title="API">
+    To create a CircleCI Connection via API, send a request to the [Create CircleCI Connection](/api-reference/endpoints/app-connections/circleci/create) endpoint.
+
+    ### Sample request
+
+    ```bash Request
+    curl    --request POST \
+            --url https://app.infisical.com/api/v1/app-connections/circleci \
+            --header 'Content-Type: application/json' \
+            --data '{
+                "name": "my-circleci-connection",
+                "method": "api-token",
+                "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+                "credentials": {
+                    "apiToken": "[API TOKEN]"
+                }
+            }'
+    ```
+
+    ### Sample response
+
+    ```bash Response
+    {
+      "appConnection": {
+          "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
+          "name": "my-circleci-connection",
+          "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+          "description": null,
+          "version": 1,
+          "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+          "createdAt": "2025-04-23T19:46:34.831Z",
+          "updatedAt": "2025-04-23T19:46:34.831Z",
+          "isPlatformManagedCredentials": false,
+          "credentialsHash": "7c2d371dec195f82a6a0d5b41c970a229cfcaf88e894a5b6395e2dbd0280661f",
+          "app": "circleci",
+          "method": "api-token",
+          "credentials": {}
+      }
+    }
+    ```
+
+  </Tab>
+</Tabs>

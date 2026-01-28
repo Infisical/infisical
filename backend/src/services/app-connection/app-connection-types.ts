@@ -89,6 +89,12 @@ import {
   TValidateChecklyConnectionCredentialsSchema
 } from "./checkly";
 import {
+  TCircleCIConnection,
+  TCircleCIConnectionConfig,
+  TCircleCIConnectionInput,
+  TValidateCircleCIConnectionCredentialsSchema
+} from "./circleci";
+import {
   TCloudflareConnection,
   TCloudflareConnectionConfig,
   TCloudflareConnectionInput,
@@ -324,6 +330,7 @@ export type TAppConnection = { id: string } & (
   | TOctopusDeployConnection
   | TSshConnection
   | TOpenRouterConnection
+  | TCircleCIConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -378,6 +385,7 @@ export type TAppConnectionInput = { id: string } & (
   | TOctopusDeployConnectionInput
   | TSshConnectionInput
   | TOpenRouterConnectionInput
+  | TCircleCIConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -449,7 +457,8 @@ export type TAppConnectionConfig =
   | TChefConnectionConfig
   | TOctopusDeployConnectionConfig
   | TSshConnectionConfig
-  | TOpenRouterConnectionConfig;
+  | TOpenRouterConnectionConfig
+  | TCircleCIConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -498,7 +507,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateChefConnectionCredentialsSchema
   | TValidateOctopusDeployConnectionCredentialsSchema
   | TValidateSshConnectionCredentialsSchema
-  | TValidateOpenRouterConnectionCredentialsSchema;
+  | TValidateOpenRouterConnectionCredentialsSchema
+  | TValidateCircleCIConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

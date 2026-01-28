@@ -21,6 +21,7 @@ import { BitbucketConnectionForm } from "./BitbucketConnectionForm";
 import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { ChecklyConnectionForm } from "./ChecklyConnectionForm";
 import { ChefConnectionForm } from "./ChefConnectionForm";
+import { CircleCIConnectionForm } from "./CircleCIConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { DigitalOceanConnectionForm } from "./DigitalOceanConnectionForm";
@@ -185,6 +186,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       return <SshConnectionForm onSubmit={onSubmit} />;
     case AppConnection.OpenRouter:
       return <OpenRouterConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.CircleCI:
+      return <CircleCIConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -351,6 +354,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <SshConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.OpenRouter:
       return <OpenRouterConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.CircleCI:
+      return <CircleCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }
