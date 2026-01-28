@@ -7,6 +7,11 @@ description: "Learn how to configure a CircleCI Sync for Infisical."
 
 - Create a [CircleCI Connection](/integrations/app-connections/circleci)
 
+<Note>
+    Secrets with empty values will not be synced to CircleCI. This is due to CircleCI not supporting environment variables with empty values.
+</Note>
+
+
 <Tabs>
     <Tab title="Infisical UI">
         <Steps>
