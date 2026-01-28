@@ -1,4 +1,4 @@
-import { SetStateAction, useEffect, useRef, useState } from "react";
+import { SetStateAction, useState } from "react";
 import { CheckIcon, ChevronsUpDownIcon } from "lucide-react";
 
 import {

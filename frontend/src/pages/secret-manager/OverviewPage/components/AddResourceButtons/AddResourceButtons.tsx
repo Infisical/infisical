@@ -50,14 +50,19 @@ export function AddResourceButtons({
             a={ProjectPermissionSub.SecretFolders}
           >
             {(isAllowed) => (
-              <UnstableDropdownMenuItem onClick={onAddFolder} isDisabled={!isAllowed}>
-                <FolderIcon className="text-folder" />
-                Add Folder
-              </UnstableDropdownMenuItem>
+              <Tooltip open={!isAllowed ? undefined : false}>
+                <TooltipTrigger className="block w-full">
+                  <UnstableDropdownMenuItem onClick={onAddFolder} isDisabled={!isAllowed}>
+                    <FolderIcon className="text-folder" />
+                    Add Folder
+                  </UnstableDropdownMenuItem>
+                </TooltipTrigger>
+                <TooltipContent side="left">Access Restricted</TooltipContent>
+              </Tooltip>
             )}
           </ProjectPermissionCan>
           <Tooltip open={!isDyanmicSecretAvailable ? undefined : false}>
-            <TooltipTrigger>
+            <TooltipTrigger className="block w-full">
               <UnstableDropdownMenuItem
                 onClick={onAddDyanamicSecret}
                 isDisabled={!isDyanmicSecretAvailable}
@@ -69,7 +74,7 @@ export function AddResourceButtons({
             <TooltipContent side="left">Access restricted</TooltipContent>
           </Tooltip>
           <Tooltip open={!isSecretRotationAvailable ? undefined : false}>
-            <TooltipTrigger asChild>
+            <TooltipTrigger className="block w-full">
               <UnstableDropdownMenuItem
                 onClick={onAddSecretRotation}
                 isDisabled={!isSecretRotationAvailable}
