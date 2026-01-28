@@ -1,4 +1,3 @@
-// eslint-disable-next-line
 /* eslint-disable no-console */
 import "ts-node/register";
 
