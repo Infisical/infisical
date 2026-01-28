@@ -152,8 +152,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
               ttl: z
                 .string()
                 .trim()
-                .min(1, "TTL cannot be empty")
-                .refine((val) => ms(val) > 0, "TTL must be a positive number"),
+                .refine((val) => !val || ms(val) > 0, "TTL must be a positive number")
+                .optional(),
               notBefore: validateCaDateField.optional(),
               notAfter: validateCaDateField.optional(),
               basicConstraints: z

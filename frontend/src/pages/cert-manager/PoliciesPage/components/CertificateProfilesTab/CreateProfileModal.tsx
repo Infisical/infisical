@@ -87,7 +87,24 @@ const createSchema = z
       .object({
         template: z.string().min(1, "Azure ADCS template is required")
       })
+      .optional(),
+    defaultTtl: z
+      .object({
+        value: z.number().min(1, "Duration must be at least 1").nullable().optional(),
+        unit: z.enum(["days", "months", "years"]).optional()
+      })
+      .nullable()
       .optional()
+      .refine(
+        (data) => {
+          // If value is provided, unit must also be provided
+          if (data?.value != null && !data?.unit) return false;
+          // If unit is provided (checkbox checked), value must also be provided
+          if (data?.unit && data?.value == null) return false;
+          return true;
+        },
+        { message: "Please enter a valid TTL duration" }
+      )
   })
   .refine(
     (data) => {
@@ -231,7 +248,24 @@ const editSchema = z
       .object({
         template: z.string().optional()
       })
+      .optional(),
+    defaultTtl: z
+      .object({
+        value: z.number().min(1, "Duration must be at least 1").nullable().optional(),
+        unit: z.enum(["days", "months", "years"]).optional()
+      })
+      .nullable()
       .optional()
+      .refine(
+        (data) => {
+          // If value is provided, unit must also be provided
+          if (data?.value != null && !data?.unit) return false;
+          // If unit is provided (checkbox checked), value must also be provided
+          if (data?.unit && data?.value == null) return false;
+          return true;
+        },
+        { message: "Please enter a valid TTL duration" }
+      )
   })
   .refine(
     (data) => {
@@ -335,6 +369,56 @@ const editSchema = z
 
 export type FormData = z.infer<typeof createSchema>;
 
+// Convert stored days (number) to form object for display
+const parseDaysToTtl = (
+  days: number | null | undefined
+): { value: number; unit: "days" } | undefined => {
+  if (!days) return undefined;
+  return { value: days, unit: "days" };
+};
+
+// Convert form object to days (number) for storage
+const convertTtlToDays = (
+  ttl: { value?: number | null; unit?: "days" | "months" | "years" } | null | undefined
+): number | undefined => {
+  if (!ttl?.value || !ttl?.unit) return undefined;
+  switch (ttl.unit) {
+    case "days":
+      return ttl.value;
+    case "months":
+      return ttl.value * 30;
+    case "years":
+      return ttl.value * 365;
+    default:
+      return undefined;
+  }
+};
+
+// Convert days to ms for comparison with policy
+const daysToMs = (days: number | undefined): number | null => {
+  if (!days) return null;
+  return days * 24 * 60 * 60 * 1000;
+};
+
+// Parse policy max validity string (like "365d") to ms
+const parsePolicyValidityToMs = (validity: string | undefined | null): number | null => {
+  if (!validity) return null;
+  const match = validity.match(/^(\d+)([dmy])$/);
+  if (!match) return null;
+  const value = parseInt(match[1], 10);
+  const msPerDay = 24 * 60 * 60 * 1000;
+  switch (match[2]) {
+    case "d":
+      return value * msPerDay;
+    case "m":
+      return value * 30 * msPerDay;
+    case "y":
+      return value * 365 * msPerDay;
+    default:
+      return null;
+  }
+};
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -374,7 +458,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
     }
   };
 
-  const { control, handleSubmit, reset, watch, setValue, formState } = useForm<FormData>({
+  const { control, handleSubmit, reset, watch, setValue, setError, formState } = useForm<FormData>({
     resolver: zodResolver(isEdit ? editSchema : createSchema),
     defaultValues: isEdit
       ? {
@@ -416,7 +500,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                     ? profile.externalConfigs.template
                     : ""
               }
-            : undefined
+            : undefined,
+          defaultTtl: parseDaysToTtl(profile.defaultTtlDays)
         }
       : {
           slug: "",
@@ -432,7 +517,11 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
           acmeConfig: {
             skipDnsOwnershipVerification: false
           },
-          externalConfigs: undefined
+          externalConfigs: undefined,
+          defaultTtl: {
+            value: 365,
+            unit: "days"
+          }
         }
   });
 
@@ -494,7 +583,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                   ? profile.externalConfigs.template
                   : ""
             }
-          : undefined
+          : undefined,
+        defaultTtl: parseDaysToTtl(profile.defaultTtlDays)
       });
     }
   }, [isEdit, profile, reset, allCaData]);
@@ -532,6 +622,24 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
       return;
     }
 
+    // Validate defaultTtl against policy's max validity
+    if (data.defaultTtl?.value && data.defaultTtl?.unit) {
+      const selectedPolicy = certificatePolicies.find((p) => p.id === data.certificatePolicyId);
+      if (selectedPolicy?.validity?.max) {
+        const defaultTtlDays = convertTtlToDays(data.defaultTtl);
+        const defaultTtlMs = daysToMs(defaultTtlDays);
+        const maxValidityMs = parsePolicyValidityToMs(selectedPolicy.validity.max);
+
+        if (defaultTtlMs && maxValidityMs && defaultTtlMs > maxValidityMs) {
+          setError("defaultTtl.value", {
+            type: "manual",
+            message: "Exceeds the selected policy's maximum validity"
+          });
+          return;
+        }
+      }
+    }
+
     if (isEdit) {
       const updateData: TUpdateCertificateProfileDTO = {
         profileId: profile.id,
@@ -551,6 +659,11 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
       // Add external configs if present
       if (data.externalConfigs) {
         updateData.externalConfigs = data.externalConfigs;
+      }
+
+      // Add defaultTtlDays if present (or null to clear it)
+      if (data.defaultTtl !== undefined) {
+        updateData.defaultTtlDays = convertTtlToDays(data.defaultTtl) || null;
       }
 
       await updateProfile.mutateAsync(updateData);
@@ -587,6 +700,12 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
       // Add external configs if present
       if (data.externalConfigs) {
         createData.externalConfigs = data.externalConfigs;
+      }
+
+      // Add defaultTtlDays if present
+      const ttlDays = convertTtlToDays(data.defaultTtl);
+      if (ttlDays) {
+        createData.defaultTtlDays = ttlDays;
       }
 
       await createProfile.mutateAsync(createData);
@@ -875,6 +994,80 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
             )}
           />
 
+          <div className="mb-4 space-y-4">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="enableDefaultTtl"
+                isChecked={watch("defaultTtl")?.unit !== undefined}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    setValue("defaultTtl.value", 365);
+                    setValue("defaultTtl.unit", "days");
+                  } else {
+                    setValue("defaultTtl", null, { shouldValidate: true });
+                  }
+                }}
+              >
+                Set default certificate TTL
+              </Checkbox>
+              <Tooltip content="Fallback validity period used when not explicitly specified in certificate request">
+                <FontAwesomeIcon
+                  icon={faQuestionCircle}
+                  className="cursor-help text-mineshaft-400 hover:text-mineshaft-300"
+                  size="sm"
+                />
+              </Tooltip>
+            </div>
+
+            {watch("defaultTtl")?.unit !== undefined && (
+              <div className="ml-3 border-l-2 border-mineshaft-500 pl-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <Controller
+                    control={control}
+                    name="defaultTtl.value"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="Duration"
+                        isError={Boolean(error)}
+                        errorText={error?.message}
+                      >
+                        <Input
+                          {...field}
+                          type="number"
+                          placeholder="365"
+                          value={field.value == null ? "" : field.value}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            field.onChange(val === "" ? null : Number(val));
+                          }}
+                        />
+                      </FormControl>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="defaultTtl.unit"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl label="Unit" isError={Boolean(error)} errorText={error?.message}>
+                        <Select
+                          {...field}
+                          value={field.value ?? "days"}
+                          onValueChange={field.onChange}
+                          className="w-full"
+                          position="popper"
+                        >
+                          <SelectItem value="days">Days</SelectItem>
+                          <SelectItem value="months">Months</SelectItem>
+                          <SelectItem value="years">Years</SelectItem>
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* EST Configuration */}
           {watchedEnrollmentType === "est" && (
             <div className="mb-4 space-y-4">
@@ -1059,7 +1252,10 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
             </Button>
             <Button
               variant="outline_bg"
-              onClick={onClose}
+              onClick={() => {
+                reset();
+                onClose();
+              }}
               disabled={isEdit ? updateProfile.isPending : createProfile.isPending}
             >
               Cancel
