@@ -21,9 +21,9 @@ import { BitbucketSyncDestinationSection } from "./BitbucketSyncDestinationSecti
 import { CamundaSyncDestinationSection } from "./CamundaSyncDestinationSection";
 import { ChecklySyncDestinationSection } from "./ChecklySyncDestinationSection";
 import { ChefSyncDestinationSection } from "./ChefSyncDestinationSection";
+import { CircleCISyncDestinationSection } from "./CircleCISyncDestinationSection";
 import { CloudflarePagesSyncDestinationSection } from "./CloudflarePagesSyncDestinationSection";
 import { CloudflareWorkersSyncDestinationSection } from "./CloudflareWorkersSyncDestinationSection";
-import { CircleCISyncDestinationSection } from "./CircleCISyncDestinationSection";
 import { DatabricksSyncDestinationSection } from "./DatabricksSyncDestinationSection";
 import { DigitalOceanAppPlatformSyncDestinationSection } from "./DigitalOceanAppPlatformSyncDestinationSection";
 import { FlyioSyncDestinationSection } from "./FlyioSyncDestinationSection";
