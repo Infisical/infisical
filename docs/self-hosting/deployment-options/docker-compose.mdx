@@ -104,7 +104,7 @@ These requirements include resources for Infisical, PostgreSQL, and Redis contai
     ```
 
     This command starts three containers:
-    - **infisical**: The main Infisical application (port 80)
+    - **backend**: The main Infisical application (exposed on host port 80, internal port 8080)
     - **db**: PostgreSQL database for storing encrypted secrets
     - **redis**: Redis for caching and job queues
   </Step>
@@ -227,7 +227,7 @@ docker compose -f docker-compose.prod.yml up -d
 To restart a specific service (e.g., after configuration changes):
 
 ```bash
-docker compose -f docker-compose.prod.yml restart infisical
+docker compose -f docker-compose.prod.yml restart backend
 ```
 
 ### Data Persistence and Volumes
@@ -236,17 +236,17 @@ The Docker Compose configuration uses named volumes to persist data:
 
 | Volume | Purpose | Data Stored |
 |--------|---------|-------------|
-| `postgres-data` | PostgreSQL data | All encrypted secrets, users, projects, and configuration |
-| `redis-data` | Redis data | Cache and job queue data (can be regenerated) |
+| `pg_data` | PostgreSQL data | All encrypted secrets, users, projects, and configuration |
+| `redis_data` | Redis data | Cache and job queue data (can be regenerated) |
 
 <Warning>
-  **Critical**: The `postgres-data` volume contains all your encrypted secrets. Never delete this volume unless you intend to lose all data. Always back up before any maintenance operations.
+  **Critical**: The `pg_data` volume contains all your encrypted secrets. Never delete this volume unless you intend to lose all data. Always back up before any maintenance operations.
 </Warning>
 
 To view volumes:
 
 ```bash
-docker volume ls | grep -E "postgres-data|redis-data"
+docker volume ls | grep -E "pg_data|redis_data"
 ```
 
 To back up the PostgreSQL volume:
@@ -266,7 +266,7 @@ docker compose -f docker-compose.prod.yml logs -f
 To view logs from a specific service:
 
 ```bash
-docker compose -f docker-compose.prod.yml logs -f infisical
+docker compose -f docker-compose.prod.yml logs -f backend
 docker compose -f docker-compose.prod.yml logs -f db
 docker compose -f docker-compose.prod.yml logs -f redis
 ```
@@ -274,7 +274,7 @@ docker compose -f docker-compose.prod.yml logs -f redis
 To view the last 100 lines of logs:
 
 ```bash
-docker compose -f docker-compose.prod.yml logs --tail=100 infisical
+docker compose -f docker-compose.prod.yml logs --tail=100 backend
 ```
 
 Logs are also available directly from Docker:
@@ -381,7 +381,7 @@ docker logs <container_name> --since 1h
     After updating the `.env` file, restart Infisical:
 
     ```bash
-    docker compose -f docker-compose.prod.yml restart infisical
+    docker compose -f docker-compose.prod.yml restart backend
     ```
   </Accordion>
 
@@ -412,7 +412,7 @@ docker logs <container_name> --since 1h
         - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
         - ./nginx/certs:/etc/nginx/certs:ro
       depends_on:
-        - infisical
+        - backend
     ```
 
     **4. Create `./nginx/nginx.conf`:**
@@ -434,7 +434,7 @@ docker logs <container_name> --since 1h
         ssl_certificate_key /etc/nginx/certs/privkey.pem;
 
         location / {
-          proxy_pass http://infisical:8080;
+          proxy_pass http://backend:8080;
           proxy_set_header Host $host;
           proxy_set_header X-Real-IP $remote_addr;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -503,7 +503,7 @@ docker logs <container_name> --since 1h
     OTEL_EXPORT_TYPE=prometheus
     ```
 
-    **2. Expose port `9464` in `docker-compose.prod.yml`** by adding to the infisical service:
+    **2. Expose port `9464` in `docker-compose.prod.yml`** by adding to the backend service:
     ```yaml
     ports:
       - "80:8080"
@@ -533,7 +533,7 @@ docker logs <container_name> --since 1h
 
     **4. Verify the upgrade:**
     ```bash
-    docker compose -f docker-compose.prod.yml logs -f infisical
+    docker compose -f docker-compose.prod.yml logs -f backend
     ```
 
     Watch for successful database migration messages. See the [Upgrade Guide](/self-hosting/guides/upgrading-infisical) for more details.
@@ -575,7 +575,7 @@ docker logs <container_name> --since 1h
 
     **Check Infisical logs for connection errors:**
     ```bash
-    docker compose -f docker-compose.prod.yml logs infisical | grep -i "database\|postgres\|connection"
+    docker compose -f docker-compose.prod.yml logs backend | grep -i "database\|postgres\|connection"
     ```
 
     If the database was corrupted, you may need to restore from backup or recreate the volume:
@@ -611,12 +611,12 @@ docker logs <container_name> --since 1h
   <Accordion title="Email/SMTP not working">
     **Test SMTP connectivity:**
     ```bash
-    docker compose -f docker-compose.prod.yml exec infisical nc -zv smtp.example.com 587
+    docker compose -f docker-compose.prod.yml exec backend nc -zv smtp.example.com 587
     ```
 
     **Check Infisical logs for email errors:**
     ```bash
-    docker compose -f docker-compose.prod.yml logs infisical | grep -i "smtp\|email\|mail"
+    docker compose -f docker-compose.prod.yml logs backend | grep -i "smtp\|email\|mail"
     ```
 
     **Common issues:**
