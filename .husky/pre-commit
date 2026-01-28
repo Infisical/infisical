@@ -9,8 +9,5 @@ if ! command -v infisical >/dev/null 2>&1; then
     exit 1
 fi
 
-# Lint staged files
-npx lint-staged
-
 # Scan for secrets
 infisical scan git-changes --staged -v

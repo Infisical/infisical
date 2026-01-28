@@ -15,10 +15,10 @@
   },
   "lint-staged": {
     "./frontend/**/*.{js,jsx,ts,tsx}": [
-      "bash -c 'cd frontend && npx eslint --fix ${@#frontend/}' _"
+      "bash -c 'cd frontend && npx eslint --fix --max-warnings 0 ${@#frontend/}' _"
     ],
     "./backend/**/*.{js,jsx,ts,tsx}": [
-      "bash -c 'cd backend && npx eslint --fix ${@#backend/}' _"
+      "bash -c 'cd backend && npx eslint --fix --max-warnings 0 ${@#backend/}' _"
     ]
   },
   "devDependencies": {

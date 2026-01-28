@@ -1,0 +1,64 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🚀 Pre-push hook is running!"
+
+# Check if an upstream branch exists
+if ! git rev-parse --abbrev-ref @{u} >/dev/null 2>&1; then
+    echo "No upstream branch found. Skipping linting."
+    exit 0
+fi
+
+# Get changed files between upstream and HEAD
+# We use --name-status to filter out deleted files (D)
+changed_files=$(git diff --name-status @{u} HEAD | awk '$1 != "D" { print $2 }')
+
+if [ -z "$changed_files" ]; then
+    echo "No files changed. Skipping linting."
+    exit 0
+fi
+
+frontend_files=""
+backend_files=""
+
+for file in $changed_files; do
+    case "$file" in
+        frontend/src/*.ts|frontend/src/*.tsx|frontend/src/*.js|frontend/src/*.jsx|frontend/src/*)
+            case "$file" in
+                *.ts|*.tsx|*.js|*.jsx)
+                    # Strip 'frontend/' prefix for running eslint inside the frontend directory
+                    frontend_files="$frontend_files ${file#frontend/}"
+                    ;;
+            esac
+            ;;
+        backend/src/*.ts|backend/src/*.tsx|backend/src/*.js|backend/src/*.jsx|backend/src/*)
+            case "$file" in
+                *.ts|*.tsx|*.js|*.jsx)
+                    # Strip 'backend/' prefix for running eslint inside the backend directory
+                    backend_files="$backend_files ${file#backend/}"
+                    ;;
+            esac
+            ;;
+    esac
+done
+
+exit_code=0
+
+if [ -n "$frontend_files" ]; then
+    echo "Linting frontend files..."
+    # We don't use --fix here because we are in pre-push; 
+    # the user should fix and commit if there are errors.
+    (cd frontend && npx eslint --max-warnings 0 $frontend_files) || exit_code=1
+fi
+
+if [ -n "$backend_files" ]; then
+    echo "Linting backend files..."
+    (cd backend && npx eslint --max-warnings 0 $backend_files) || exit_code=1
+fi
+
+if [ $exit_code -ne 0 ]; then
+    echo "❌ Linting failed. Please fix the errors before pushing."
+    exit 1
+fi
+
+echo "✅ Linting passed!"

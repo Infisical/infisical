@@ -1,1 +1,1 @@
-export { useOrganization } from "./OrganizationContext";
+export { useOrganization } from "./OrganizationContext"
