@@ -384,10 +384,10 @@ export const AppConnectionsBrowser = () => {
       category: "DevOps Tools",
     },
     {
-      name: "Windows",
-      slug: "windows",
-      path: "/integrations/app-connections/windows",
-      description: "Learn how to connect to Windows servers via SMB for password rotation.",
+      name: "SMB",
+      slug: "smb",
+      path: "/integrations/app-connections/smb",
+      description: "Learn how to connect to Windows servers via SMB.",
       category: "Networking & DNS",
     }
   ].sort(function (a, b) {

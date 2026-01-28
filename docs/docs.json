@@ -151,7 +151,7 @@
                       "integrations/app-connections/terraform-cloud",
                       "integrations/app-connections/vercel",
                       "integrations/app-connections/windmill",
-                      "integrations/app-connections/windows",
+                      "integrations/app-connections/smb",
                       "integrations/app-connections/zabbix"
                     ]
                   }
@@ -1663,7 +1663,7 @@
                     ]
                   },
                   {
-                    "group": "Windows (SMB)",
+                    "group": "SMB",
                     "pages": [
                       "api-reference/endpoints/app-connections/smb/list",
                       "api-reference/endpoints/app-connections/smb/available",

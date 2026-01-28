@@ -13,7 +13,7 @@ description: "Learn how to automatically rotate Windows local account passwords 
 ## Prerequisites
 
 - **Windows Server** with SMB3 support enabled
-- Create a [Windows Connection](/integrations/app-connections/windows) with administrator credentials
+- Create an [SMB Connection](/integrations/app-connections/smb) with administrator credentials
 - Ensure your network security policies allow SMB connections from Infisical to this rotation provider
 
 <Accordion title="Open firewall on Windows Defender for SMB connection">
@@ -40,10 +40,10 @@ description: "Learn how to automatically rotate Windows local account passwords 
         2. Select the **Windows Local Account** option.
         ![Select Windows Local Account](/images/secret-rotations-v2/windows-local-account/select-windows-local-account-option.png)
 
-        3. Select the **Windows Connection** to use and configure the rotation behavior. Then click **Next**.
+        3. Select the **SMB Connection** to use and configure the rotation behavior. Then click **Next**.
         ![Rotation Configuration](/images/secret-rotations-v2/windows-local-account/windows-local-account-configuration.png)
 
-            - **Windows Connection** - the connection that will perform the rotation of the configured user's password.
+            - **SMB Connection** - the connection that will perform the rotation of the configured user's password.
             - **Rotation Interval** - the interval, in days, that once elapsed will trigger a rotation.
             - **Rotate At** - the local time of day when rotation should occur once the interval has elapsed.
             - **Auto-Rotation Enabled** - whether secrets should automatically be rotated once the rotation interval has elapsed. Disable this option to manually rotate secrets or pause secret rotation.
@@ -57,7 +57,7 @@ description: "Learn how to automatically rotate Windows local account passwords 
 
         - **Rotation Method** - The method to use when rotating the target user's password.
             - **Login as Target** - Infisical will use the target user's current credentials to authenticate and rotate its own password. The target user must have administrator privileges on the Windows machine to be able to rotate its own password.
-            - **Login as Root** - Infisical will use the administrator credentials provided in the Windows Connection to rotate the target user's password.
+            - **Login as Root** - Infisical will use the administrator credentials provided in the SMB Connection to rotate the target user's password.
         - **Username** - The target Windows username whose password will be rotated.
         - **Current Password** - The current password of the target user (required when **Rotation Method** is set to **Login as Target**).
         - **Password Requirements** - The constraints to apply when generating new passwords.
@@ -158,7 +158,7 @@ description: "Learn how to automatically rotate Windows local account passwords 
                 "connection": {
                     "app": "smb",
                     "name": "my-windows-connection",
-                    "description": "Windows SMB connection",
+                    "description": "SMB connection",
                     "credentials": {}
                 },
                 "folder": {
