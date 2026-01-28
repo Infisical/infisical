@@ -113,6 +113,7 @@
                       "integrations/app-connections/azure-adcs",
                       "integrations/app-connections/azure-client-secrets",
                       "integrations/app-connections/azure-devops",
+                      "integrations/app-connections/azure-dns",
                       "integrations/app-connections/azure-key-vault",
                       "integrations/app-connections/bitbucket",
                       "integrations/app-connections/camunda",
