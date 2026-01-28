@@ -72,7 +72,6 @@ openssl req -in request.csr -noout -text
 Your CSR must meet the following requirements:
 
 - **Format**: PEM-encoded PKCS#10 Certificate Signing Request
-- **Maximum size**: 4096 characters
 - **Required header**: `-----BEGIN CERTIFICATE REQUEST-----`
 - **Required footer**: `-----END CERTIFICATE REQUEST-----`
 
@@ -164,7 +163,6 @@ Your CSR must meet the following requirements:
         When sending the CSR via API:
         - Replace actual newlines in the PEM content with `\n` in the JSON string
         - Include the full PEM headers (`-----BEGIN CERTIFICATE REQUEST-----`) and footers (`-----END CERTIFICATE REQUEST-----`)
-        - Ensure the CSR does not exceed 4096 characters
       </Tab>
     </Tabs>
   </Step>
@@ -234,7 +232,6 @@ If your CSR doesn't comply with the policy, you'll receive an error message indi
     - Starts with `-----BEGIN CERTIFICATE REQUEST-----`
     - Ends with `-----END CERTIFICATE REQUEST-----`
     - Contains valid base64-encoded content
-    - Does not exceed 4096 characters
 
     The UI accepts multiline PEM format directly—you can paste your CSR as-is from the file without any formatting changes.
 
@@ -245,7 +242,6 @@ If your CSR doesn't comply with the policy, you'll receive an error message indi
   </Accordion>
 
   <Accordion title="Why am I getting a CSR format error via API?">
-    **Error**: "CSR cannot be empty" or "CSR cannot exceed 4096 characters"
 
     **Solution**: When sending CSR via API JSON:
     - Replace actual newlines with `\n` in the JSON string
