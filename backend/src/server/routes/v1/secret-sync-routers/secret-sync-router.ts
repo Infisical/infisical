@@ -24,6 +24,7 @@ import { AzureDevOpsSyncListItemSchema, AzureDevOpsSyncSchema } from "@app/servi
 import { AzureKeyVaultSyncListItemSchema, AzureKeyVaultSyncSchema } from "@app/services/secret-sync/azure-key-vault";
 import { BitbucketSyncListItemSchema, BitbucketSyncSchema } from "@app/services/secret-sync/bitbucket";
 import { CamundaSyncListItemSchema, CamundaSyncSchema } from "@app/services/secret-sync/camunda";
+import { CircleCISyncListItemSchema, CircleCISyncSchema } from "@app/services/secret-sync/circleci";
 import { ChecklySyncListItemSchema, ChecklySyncSchema } from "@app/services/secret-sync/checkly/checkly-sync-schemas";
 import {
   CloudflarePagesSyncListItemSchema,
@@ -92,7 +93,8 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   BitbucketSyncSchema,
   LaravelForgeSyncSchema,
   ChefSyncSchema,
-  OctopusDeploySyncSchema
+  OctopusDeploySyncSchema,
+  CircleCISyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -129,7 +131,8 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   BitbucketSyncListItemSchema,
   LaravelForgeSyncListItemSchema,
   ChefSyncListItemSchema,
-  OctopusDeploySyncListItemSchema
+  OctopusDeploySyncListItemSchema,
+  CircleCISyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {

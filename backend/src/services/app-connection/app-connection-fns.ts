@@ -72,6 +72,11 @@ import {
   validateBitbucketConnectionCredentials
 } from "./bitbucket";
 import { CamundaConnectionMethod, getCamundaConnectionListItem, validateCamundaConnectionCredentials } from "./camunda";
+import {
+  CircleCIConnectionMethod,
+  getCircleCIConnectionListItem,
+  validateCircleCIConnectionCredentials
+} from "./circleci";
 import { ChecklyConnectionMethod, getChecklyConnectionListItem, validateChecklyConnectionCredentials } from "./checkly";
 import { CloudflareConnectionMethod } from "./cloudflare/cloudflare-connection-enum";
 import {
@@ -234,7 +239,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getRedisConnectionListItem(),
     getMongoDBConnectionListItem(),
     getChefConnectionListItem(),
-    getSshConnectionListItem()
+    getSshConnectionListItem(),
+    getCircleCIConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -370,7 +376,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Redis]: validateRedisConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.MongoDB]: validateMongoDBConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OctopusDeploy]: validateOctopusDeployConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.SSH]: validateSshConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.SSH]: validateSshConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -415,6 +422,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case NorthflankConnectionMethod.ApiToken:
     case OktaConnectionMethod.ApiToken:
     case LaravelForgeConnectionMethod.ApiToken:
+    case CircleCIConnectionMethod.ApiToken:
       return "API Token";
     case DNSMadeEasyConnectionMethod.APIKeySecret:
       return "API Key & Secret";
@@ -527,7 +535,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.LaravelForge]: platformManagedCredentialsNotSupported,
   [AppConnection.Chef]: platformManagedCredentialsNotSupported,
   [AppConnection.OctopusDeploy]: platformManagedCredentialsNotSupported,
-  [AppConnection.SSH]: platformManagedCredentialsNotSupported
+  [AppConnection.SSH]: platformManagedCredentialsNotSupported,
+  [AppConnection.CircleCI]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

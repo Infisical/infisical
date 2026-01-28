@@ -12,6 +12,7 @@ import { TBitbucketConnection } from "./bitbucket-connection";
 import { TCamundaConnection } from "./camunda-connection";
 import { TChecklyConnection } from "./checkly-connection";
 import { TChefConnection } from "./chef-connection";
+import { TCircleCIConnection } from "./circleci-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TDigitalOceanConnection } from "./digital-ocean";
@@ -59,6 +60,7 @@ export * from "./bitbucket-connection";
 export * from "./camunda-connection";
 export * from "./checkly-connection";
 export * from "./chef-connection";
+export * from "./circleci-connection";
 export * from "./cloudflare-connection";
 export * from "./databricks-connection";
 export * from "./dns-made-easy-connection";
@@ -139,7 +141,8 @@ export type TAppConnection =
   | TMongoDBConnection
   | TChefConnection
   | TDNSMadeEasyConnection
-  | TSshConnection;
+  | TSshConnection
+  | TCircleCIConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

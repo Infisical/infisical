@@ -228,6 +228,14 @@ export const AppConnectionsBrowser = () => {
       category: "Cloud Providers",
     },
     {
+      name: "CircleCI",
+      slug: "circleci",
+      path: "/integrations/app-connections/circleci",
+      description:
+        "Learn how to connect your CircleCI application to pull secrets from Infisical.",
+      category: "CI/CD",
+    },
+    {
       name: "Databricks",
       slug: "databricks",
       path: "/integrations/app-connections/databricks",

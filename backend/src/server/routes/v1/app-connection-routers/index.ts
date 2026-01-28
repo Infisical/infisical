@@ -13,6 +13,7 @@ import { registerAzureDevOpsConnectionRouter } from "./azure-devops-connection-r
 import { registerAzureKeyVaultConnectionRouter } from "./azure-key-vault-connection-router";
 import { registerBitbucketConnectionRouter } from "./bitbucket-connection-router";
 import { registerCamundaConnectionRouter } from "./camunda-connection-router";
+import { registerCircleCIConnectionRouter } from "./circleci-connection-router";
 import { registerChecklyConnectionRouter } from "./checkly-connection-router";
 import { registerCloudflareConnectionRouter } from "./cloudflare-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
@@ -96,5 +97,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.MongoDB]: registerMongoDBConnectionRouter,
     [AppConnection.Chef]: registerChefConnectionRouter,
     [AppConnection.OctopusDeploy]: registerOctopusDeployConnectionRouter,
-    [AppConnection.SSH]: registerSshConnectionRouter
+    [AppConnection.SSH]: registerSshConnectionRouter,
+    [AppConnection.CircleCI]: registerCircleCIConnectionRouter
   };

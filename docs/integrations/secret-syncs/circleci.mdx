@@ -1,0 +1,171 @@
+---
+title: "CircleCI Sync"
+description: "Learn how to configure a CircleCI Sync for Infisical."
+---
+
+**Prerequisites:**
+
+- Create a [CircleCI Connection](/integrations/app-connections/circleci)
+
+<Note>
+    Secrets with empty values will not be synced to CircleCI. This is due to CircleCI not supporting environment variables with empty values.
+</Note>
+
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Add Sync">
+                Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Click on the **Add Sync** button.
+
+                ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
+            </Step>
+            <Step title="Select 'CircleCI'">
+                ![Select CircleCI](/images/secret-syncs/circleci/select-option.png)
+            </Step>
+            <Step title="Configure source">
+                Configure the **Source** from where secrets should be retrieved, then click **Next**.
+
+                ![Configure Source](/images/secret-syncs/circleci/sync-source.png)
+
+                - **Environment**: The project environment to retrieve secrets from.
+                - **Secret Path**: The folder path to retrieve secrets from.
+
+                <Tip>
+                    If you need to sync secrets from multiple folder locations, check out [secret imports](/documentation/platform/secret-reference#secret-imports).
+                </Tip>
+            </Step>
+            <Step title="Configure destination">
+                Configure the **Destination** to where secrets should be deployed, then click **Next**.
+
+                ![Configure Destination](/images/secret-syncs/circleci/sync-destination.png)
+
+                - **CircleCI Connection**: The CircleCI Connection to authenticate with.
+                - **Organization**: The CircleCI organization to sync secrets to.
+                - **Project**: The CircleCI project to sync secrets to.
+            </Step>
+            <Step title="Configure Sync Options">
+                Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
+
+                ![Configure Options](/images/secret-syncs/circleci/sync-options.png)
+
+                - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync.
+                    - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
+                    <Note>
+                        CircleCI does not support importing secrets.
+                    </Note>
+                - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment.
+                <Note>
+                    We highly recommend using a Key Schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
+                </Note>
+                - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
+                - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
+            </Step>
+            <Step title="Configure details">
+                Configure the **Details** of your CircleCI Sync, then click **Next**.
+
+                ![Configure Details](/images/secret-syncs/circleci/sync-details.png)
+
+                - **Name**: The name of your sync. Must be slug-friendly.
+                - **Description**: An optional description for your sync.
+            </Step>
+            <Step title="Review configuration">
+                Review your CircleCI Sync configuration, then click **Create Sync**.
+
+                ![Review Configuration](/images/secret-syncs/circleci/sync-review.png)
+            </Step>
+            <Step title="Sync created">
+                If enabled, your CircleCI Sync will begin syncing your secrets to the destination endpoint.
+
+                ![Sync Created](/images/secret-syncs/circleci/sync-created.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create a **CircleCI Sync**, make an API request to the [Create CircleCI Sync](/api-reference/endpoints/secret-syncs/circleci/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+                --url https://app.infisical.com/api/v1/secret-syncs/circleci \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-circleci-sync",
+                    "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "description": "an example sync",
+                    "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "environment": "dev",
+                    "secretPath": "/my-secrets",
+                    "isEnabled": true,
+                    "syncOptions": {
+                        "initialSyncBehavior": "overwrite-destination",
+                        "autoSyncEnabled": true,
+                        "disableSecretDeletion": false
+                    },
+                    "destinationConfig": {
+                        "orgName": "my-circleci-org",
+                        "projectId": "<circleci-project-id>",
+                        "projectName": "<circleci-project-name>"
+                    }
+                }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+            "secretSync": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-circleci-sync",
+                "description": "an example sync",
+                "isEnabled": true,
+                "version": 1,
+                "folderId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2023-11-07T05:31:56Z",
+                "updatedAt": "2023-11-07T05:31:56Z",
+                "syncStatus": "succeeded",
+                "lastSyncJobId": "123",
+                "lastSyncMessage": null,
+                "lastSyncedAt": "2023-11-07T05:31:56Z",
+                "importStatus": null,
+                "lastImportJobId": null,
+                "lastImportMessage": null,
+                "lastImportedAt": null,
+                "removeStatus": null,
+                "lastRemoveJobId": null,
+                "lastRemoveMessage": null,
+                "lastRemovedAt": null,
+                "syncOptions": {
+                    "initialSyncBehavior": "overwrite-destination",
+                    "autoSyncEnabled": true,
+                    "disableSecretDeletion": false
+                },
+                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connection": {
+                    "app": "circleci",
+                    "name": "my-circleci-connection",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "environment": {
+                    "slug": "dev",
+                    "name": "Development",
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+                },
+                "folder": {
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "path": "/my-secrets"
+                },
+                "destination": "circleci",
+                "destinationConfig": {
+                    "orgName": "my-circleci-org",
+                    "projectName": "<circleci-project-name>",
+                    "projectId": "<circleci-project-id>"
+                }
+            }
+        }
+        ```
+    </Tab>
+
+</Tabs>

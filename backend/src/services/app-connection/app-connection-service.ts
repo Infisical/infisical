@@ -67,6 +67,8 @@ import { ValidateBitbucketConnectionCredentialsSchema } from "./bitbucket";
 import { bitbucketConnectionService } from "./bitbucket/bitbucket-connection-service";
 import { ValidateCamundaConnectionCredentialsSchema } from "./camunda";
 import { camundaConnectionService } from "./camunda/camunda-connection-service";
+import { ValidateCircleCIConnectionCredentialsSchema } from "./circleci";
+import { circleciConnectionService } from "./circleci/circleci-connection-service";
 import { ValidateChecklyConnectionCredentialsSchema } from "./checkly";
 import { checklyConnectionService } from "./checkly/checkly-connection-service";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
@@ -187,7 +189,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.MongoDB]: ValidateMongoDBConnectionCredentialsSchema,
   [AppConnection.Chef]: ValidateChefConnectionCredentialsSchema,
   [AppConnection.OctopusDeploy]: ValidateOctopusDeployConnectionCredentialsSchema,
-  [AppConnection.SSH]: ValidateSshConnectionCredentialsSchema
+  [AppConnection.SSH]: ValidateSshConnectionCredentialsSchema,
+  [AppConnection.CircleCI]: ValidateCircleCIConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -905,6 +908,7 @@ export const appConnectionServiceFactory = ({
     okta: oktaConnectionService(connectAppConnectionById),
     laravelForge: laravelForgeConnectionService(connectAppConnectionById),
     chef: chefConnectionService(connectAppConnectionById, licenseService),
-    octopusDeploy: octopusDeployConnectionService(connectAppConnectionById)
+    octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),
+    circleci: circleciConnectionService(connectAppConnectionById)
   };
 };
