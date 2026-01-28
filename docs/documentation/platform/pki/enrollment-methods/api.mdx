@@ -7,6 +7,18 @@ sidebarTitle: "API"
 
 The API enrollment method allows you to issue certificates against a specific [certificate profile](/documentation/platform/pki/certificates/profiles) over Web UI or by making an API request to Infisical.
 
+### Issuance Methods
+
+The API enrollment method supports two ways to issue certificates:
+
+- **Server-Generated Key**: Infisical generates the private key and certificate for you. This is the simplest approach where Infisical handles key generation, and you receive both the certificate and private key in the response.
+
+- **CSR-Based Issuance**: You generate and maintain your own private key externally, create a Certificate Signing Request (CSR), and submit it to Infisical. Infisical signs the CSR and returns only the certificate. This approach is ideal for workflows where remote teams need to maintain control of their private keys.
+
+<Info>
+  **Using CSR-Based Issuance**: If your workflow requires you to generate and maintain your own private keys (for example, when remote teams submit CSRs for certificate issuance), you can include a PEM-encoded CSR in your certificate request. See the [CSR-Based Issuance](#csr-based-issuance) section below for details.
+</Info>
+
 ## Guide to Certificate Enrollment via API
 
 In the following steps, we explore how to issue a X.509 certificate using the API enrollment method.
@@ -102,7 +114,13 @@ Here, select the certificate profile from step 1 that will be used to issue the 
 
     To issue a certificate against the certificate profile, make an API request to the [Issue Certificate](/api-reference/endpoints/certificates/create-certificate) API endpoint.
 
-    ### Sample request
+    You can issue certificates using one of two methods:
+
+    #### Server-Generated Key
+
+    With this method, Infisical generates the private key for you. You'll receive both the certificate and private key in the response.
+
+    **Sample request**
 
     ```bash Request
     curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/certificates' \
@@ -131,7 +149,7 @@ Here, select the certificate profile from step 1 that will be used to issue the 
       }'
     ```
 
-    ### Sample response
+    **Sample response**
 
     ```bash Response
     {
@@ -151,9 +169,13 @@ Here, select the certificate profile from step 1 that will be used to issue the 
       Note: If the certificate is available to be issued immediately, the `certificate` field in the response will contain the certificate data. If issuance is delayed (for example, due to pending approval or additional processing), the `certificate` field will be `null` and you can use the `certificateRequestId` to poll for status or retrieve the certificate when it is ready using the [Get Certificate Request](/api-reference/endpoints/certificates/certificate-request) API endpoint.
     </Note>
 
-    If you have an external private key, you can also issue a certificate by making an API request containing a pem-encoded CSR (Certificate Signing Request) to the same [Issue Certificate](/api-reference/endpoints/certificates/create-certificate) API endpoint.
+    #### CSR-Based Issuance
 
-     ### Sample request
+    If you have an external private key and want to maintain control of it, you can submit a PEM-encoded Certificate Signing Request (CSR) to the same API endpoint. This workflow is ideal for remote teams that generate and maintain their own private keys and submit CSRs for certificate issuance.
+
+    With CSR-based issuance, you generate your private key and CSR locally, then submit only the CSR to Infisical. Infisical signs the CSR and returns the certificate, but never has access to your private key.
+
+    **Sample request**
 
     ```bash Request
     curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/certificates' \
@@ -168,7 +190,7 @@ Here, select the certificate profile from step 1 that will be used to issue the 
       }'
     ```
 
-    ### Sample response
+    **Sample response**
 
     ```bash Response
     {
@@ -182,6 +204,18 @@ Here, select the certificate profile from step 1 that will be used to issue the 
       "certificateRequestId": "..."
     }
     ```
+
+    <Tip>
+      **Generating a CSR**: You can generate a private key and CSR using OpenSSL:
+      ```bash
+      # Generate a private key
+      openssl genrsa -out private.key 2048
+
+      # Generate a CSR using the private key
+      openssl req -new -key private.key -out request.csr -subj "/CN=service.acme.com"
+      ```
+      The CSR file contents can then be included in the `csr` field of your API request.
+    </Tip>
 
   </Step>
 </Steps>
