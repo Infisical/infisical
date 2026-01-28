@@ -3,15 +3,19 @@
 
 echo "🚀 Pre-push hook is running!"
 
-# Check if an upstream branch exists
-if ! git rev-parse --abbrev-ref @{u} >/dev/null 2>&1; then
-    echo "No upstream branch found. Skipping linting."
-    exit 0
+# Determine the base branch to compare against
+if git rev-parse --abbrev-ref @{u} >/dev/null 2>&1; then
+    # Use upstream if it exists
+    base_ref="@{u}"
+else
+    # Fall back to origin/main for new branches
+    echo "No upstream branch found. Comparing against origin/main..."
+    base_ref="origin/main"
 fi
 
-# Get changed files between upstream and HEAD
-# We use --name-status to filter out deleted files (D)
-changed_files=$(git diff --name-status @{u} HEAD | awk '$1 != "D" { print $2 }')
+# Get changed files between base and HEAD
+# We use --diff-filter=d to exclude deleted files (lowercase = exclude)
+changed_files=$(git diff --name-only --diff-filter=d "$base_ref" HEAD)
 
 if [ -z "$changed_files" ]; then
     echo "No files changed. Skipping linting."
