@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
@@ -257,11 +258,22 @@ export const SecretEditTableRow = ({
     }
   }, [onSecretDelete, environment, secretName, secretId, reset, setIsDeleting]);
 
+  const canCreate = permission.can(
+    ProjectPermissionSecretActions.Create,
+    subject(ProjectPermissionSub.Secrets, {
+      environment,
+      secretPath,
+      secretName,
+      secretTags: ["*"]
+    })
+  );
+
   const isReadOnly =
     isImportedSecret ||
     (isRotatedSecret && !isOverride) ||
     isFetchingSecretValue ||
-    isErrorFetchingSecretValue;
+    isErrorFetchingSecretValue ||
+    (isCreatable ? !canCreate : !canEditSecretValue);
 
   return (
     <div className="flex w-full cursor-text items-center space-x-2">
@@ -278,7 +290,7 @@ export const SecretEditTableRow = ({
             <EyeOffIcon className="size-4 text-secret" />
           </TooltipTrigger>
           <TooltipContent>
-            You do not have access to view the current value$
+            You do not have access to view the current value
             {canEditSecretValue && !isRotatedSecret ? ", but you can set a new one" : "."}
           </TooltipContent>
         </Tooltip>
@@ -367,7 +379,11 @@ export const SecretEditTableRow = ({
               <Tooltip>
                 <TooltipTrigger>
                   <UnstableIconButton
-                    isDisabled={isImportedSecret || (isRotatedSecret && !isOverride)}
+                    isDisabled={
+                      isImportedSecret ||
+                      (isRotatedSecret && !isOverride) ||
+                      (isCreatable ? !canCreate : !canEditSecretValue)
+                    }
                     onClick={() => {
                       setFocus("value", { shouldSelect: true });
                     }}
@@ -378,12 +394,13 @@ export const SecretEditTableRow = ({
                   </UnstableIconButton>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {/* eslint-disable-next-line no-nested-ternary */}
                   {isImportedSecret
                     ? "Cannot Edit Imported Secret"
                     : isRotatedSecret && !isOverride
                       ? "Cannot Edit Rotated Secret"
-                      : "Edit Value"}
+                      : (isCreatable ? !canCreate : !canEditSecretValue)
+                        ? "Access Denied"
+                        : "Edit Value"}
                 </TooltipContent>
               </Tooltip>
             </div>
