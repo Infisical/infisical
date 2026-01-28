@@ -6,6 +6,7 @@ import {
   CopyIcon,
   EditIcon,
   EyeOffIcon,
+  MessageSquareIcon,
   SaveIcon,
   TrashIcon,
   Undo2Icon,
@@ -41,6 +42,7 @@ type Props = {
   isCreatable?: boolean;
   isVisible?: boolean;
   isImportedSecret: boolean;
+  comment?: string;
   environment: string;
   secretValueHidden: boolean;
   secretPath: string;
@@ -51,7 +53,8 @@ type Props = {
     value: string,
     secretValueHidden: boolean,
     type?: SecretType,
-    secretId?: string
+    secretId?: string,
+    comment?: string
   ) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
   isRotatedSecret?: boolean;
@@ -93,7 +96,8 @@ export const SecretEditTableRow = ({
   importedBy,
   importedSecret,
   isEmpty,
-  isSecretPresent
+  isSecretPresent,
+  comment
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret"
@@ -373,86 +377,98 @@ export const SecretEditTableRow = ({
             </div>
           </>
         ) : (
-          <>
-            <div className="opacity-0 transition-opacity duration-75 group-hover:opacity-100">
-              <Tooltip>
-                <TooltipTrigger>
-                  <UnstableIconButton
-                    isDisabled={
-                      isImportedSecret ||
-                      (isRotatedSecret && !isOverride) ||
-                      (isCreatable ? !canCreate : !canEditSecretValue)
-                    }
-                    onClick={() => {
-                      setFocus("value", { shouldSelect: true });
-                    }}
-                    variant="ghost"
-                    size="xs"
-                  >
-                    <EditIcon />
-                  </UnstableIconButton>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {isImportedSecret
-                    ? "Cannot Edit Imported Secret"
-                    : isRotatedSecret && !isOverride
-                      ? "Cannot Edit Rotated Secret"
-                      : (isCreatable ? !canCreate : !canEditSecretValue)
-                        ? "Access Denied"
-                        : "Edit Value"}
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            <div className="opacity-0 group-hover:opacity-100">
-              <Tooltip>
-                <TooltipTrigger>
-                  <UnstableIconButton
-                    isDisabled={!canFetchValue}
-                    onClick={handleCopySecretToClipboard}
-                    variant="ghost"
-                    size="xs"
-                  >
-                    <CopyIcon />
-                  </UnstableIconButton>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {canFetchValue
-                    ? "Copy Secret"
-                    : canReadSecretValue
-                      ? "No Secret Value"
-                      : "Access Denied"}
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            <div className="opacity-0 group-hover:opacity-100">
-              <Modal>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <ModalTrigger asChild>
-                      <UnstableIconButton
-                        variant="ghost"
-                        size="xs"
-                        isDisabled={!canReadSecretValue || !secretId || isEmpty}
-                      >
-                        <WorkflowIcon />
-                      </UnstableIconButton>
-                    </ModalTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>Secret Reference Tree</TooltipContent>
-                </Tooltip>
-                <ModalContent
-                  title="Secret Reference Details"
-                  subTitle="Visual breakdown of secrets referenced by this secret."
-                  onOpenAutoFocus={(e) => e.preventDefault()} // prevents secret input from displaying value on open
+          <div className="flex items-center space-x-1.5 transition-all duration-500">
+            <Tooltip>
+              <TooltipTrigger>
+                <UnstableIconButton
+                  isDisabled={
+                    isImportedSecret ||
+                    (isRotatedSecret && !isOverride) ||
+                    (isCreatable ? !canCreate : !canEditSecretValue)
+                  }
+                  onClick={() => {
+                    setFocus("value", { shouldSelect: true });
+                  }}
+                  variant="ghost"
+                  size="xs"
+                  className="w-0 overflow-hidden opacity-0 group-hover:w-7 group-hover:opacity-100"
                 >
-                  <SecretReferenceTree
-                    secretPath={secretPath}
-                    environment={environment}
-                    secretKey={secretName}
-                  />
-                </ModalContent>
-              </Modal>
-            </div>
+                  <EditIcon />
+                </UnstableIconButton>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isImportedSecret
+                  ? "Cannot Edit Imported Secret"
+                  : isRotatedSecret && !isOverride
+                    ? "Cannot Edit Rotated Secret"
+                    : (isCreatable ? !canCreate : !canEditSecretValue)
+                      ? "Access Denied"
+                      : "Edit Value"}
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger>
+                <UnstableIconButton
+                  isDisabled={!canFetchValue}
+                  onClick={handleCopySecretToClipboard}
+                  variant="ghost"
+                  size="xs"
+                  className="w-0 overflow-hidden opacity-0 group-hover:w-7 group-hover:opacity-100"
+                >
+                  <CopyIcon />
+                </UnstableIconButton>
+              </TooltipTrigger>
+              <TooltipContent>
+                {canFetchValue
+                  ? "Copy Secret"
+                  : canReadSecretValue
+                    ? "No Secret Value"
+                    : "Access Denied"}
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger>
+                <UnstableIconButton
+                  variant="ghost"
+                  size="xs"
+                  className={twMerge(
+                    comment ? "w-7 text-project opacity-100" : "w-0 opacity-0",
+                    "overflow-hidden group-hover:w-7 group-hover:opacity-100"
+                  )}
+                >
+                  <MessageSquareIcon />
+                </UnstableIconButton>
+              </TooltipTrigger>
+              <TooltipContent>Comment</TooltipContent>
+            </Tooltip>
+            <Modal>
+              <Tooltip>
+                <TooltipTrigger>
+                  <ModalTrigger asChild>
+                    <UnstableIconButton
+                      variant="ghost"
+                      size="xs"
+                      className="w-0 overflow-hidden opacity-0 group-hover:w-7 group-hover:opacity-100"
+                      isDisabled={!canReadSecretValue || !secretId || isEmpty}
+                    >
+                      <WorkflowIcon />
+                    </UnstableIconButton>
+                  </ModalTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Secret Reference Tree</TooltipContent>
+              </Tooltip>
+              <ModalContent
+                title="Secret Reference Details"
+                subTitle="Visual breakdown of secrets referenced by this secret."
+                onOpenAutoFocus={(e) => e.preventDefault()} // prevents secret input from displaying value on open
+              >
+                <SecretReferenceTree
+                  secretPath={secretPath}
+                  environment={environment}
+                  secretKey={secretName}
+                />
+              </ModalContent>
+            </Modal>
 
             <ProjectPermissionCan
               I={ProjectPermissionActions.Delete}
@@ -464,13 +480,13 @@ export const SecretEditTableRow = ({
               })}
             >
               {(isAllowed) => (
-                <div className="opacity-0 group-hover:opacity-100">
+                <div className="overflow-hidden opacity-0 group-hover:opacity-100">
                   <Tooltip>
                     <TooltipTrigger>
                       <UnstableIconButton
                         variant="ghost"
                         size="xs"
-                        className="hover:text-danger"
+                        className="w-0 overflow-hidden opacity-0 group-hover:w-7 group-hover:opacity-100"
                         onClick={toggleModal}
                         isDisabled={isDeleting || !isAllowed || isRotatedSecret || isImportedSecret}
                       >
@@ -489,7 +505,7 @@ export const SecretEditTableRow = ({
                 </div>
               )}
             </ProjectPermissionCan>
-          </>
+          </div>
         )}
       </div>
       <DeleteActionModal
