@@ -1,10 +1,6 @@
 import { spawn } from "child_process";
-import * as fs from "fs";
-import * as os from "os";
-import * as path from "path";
 import RE2 from "re2";
 
-import { logger } from "@app/lib/logger";
 import {
   SMB_VALIDATION_LIMITS,
   validateDomain,
@@ -123,29 +119,28 @@ const buildPortArgs = (config: SmbRpcConfig): string[] => {
 };
 
 /**
- * Create a temporary authentication file for Samba tools
- * Format: username = value, password = value, domain = value (optional)
- * Returns the file path
+ * Build authentication args for SMB commands using --user and --workgroup flags
+ * Password is passed via PASSWD environment variable
  */
-const createAuthFile = (config: SmbRpcConfig): string => {
-  const authFilePath = path.join(os.tmpdir(), `smb-auth-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+const buildAuthArgs = (config: SmbRpcConfig): string[] => {
+  const args = [`--user=${config.adminUser}`, ...SMB3_SECURITY_OPTIONS];
 
-  let content = `username = ${config.adminUser}\npassword = ${config.adminPassword}\n`;
   if (config.domain) {
-    content += `domain = ${config.domain}\n`;
+    args.push(`--workgroup=${config.domain}`);
   }
 
-  // Write with restrictive permissions (owner read/write only)
-  fs.writeFileSync(authFilePath, content, { mode: 0o600 });
-
-  return authFilePath;
+  return args;
 };
 
 /**
- * Helper to build common auth args for SMB commands using authentication file
+ * Build environment variables for SMB commands
+ * Password is passed via PASSWD environment variable to avoid command-line exposure
  */
-const buildAuthArgs = (authFilePath: string): string[] => {
-  return ["-A", authFilePath, ...SMB3_SECURITY_OPTIONS];
+const buildAuthEnv = (config: SmbRpcConfig): NodeJS.ProcessEnv => {
+  return {
+    ...process.env,
+    PASSWD: config.adminPassword
+  };
 };
 
 /**
@@ -153,11 +148,13 @@ const buildAuthArgs = (authFilePath: string): string[] => {
  */
 const executeCommand = (
   command: string,
-  args: string[]
+  args: string[],
+  env?: NodeJS.ProcessEnv
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> => {
   return new Promise((resolve) => {
     const proc = spawn(command, args, {
-      stdio: ["pipe", "pipe", "pipe"]
+      stdio: ["pipe", "pipe", "pipe"],
+      env
     });
 
     let stdout = "";
@@ -223,28 +220,19 @@ const testSmbConnection = async (config: SmbRpcConfig): Promise<void> => {
   // Validate all inputs before use to prevent command injection
   validateConfig(config);
 
-  const authFilePath = createAuthFile(config);
+  const args = ["-L", buildTarget(config), ...buildPortArgs(config), ...buildAuthArgs(config)];
+  const env = buildAuthEnv(config);
 
-  try {
-    const args = ["-L", buildTarget(config), ...buildPortArgs(config), ...buildAuthArgs(authFilePath)];
+  const { stdout, stderr, exitCode } = await executeCommand("smbclient", args, env);
+  const combinedOutput = stdout + stderr;
 
-    const { stdout, stderr, exitCode } = await executeCommand("smbclient", args);
-    const combinedOutput = stdout + stderr;
+  const ntStatus = parseNtStatusError(combinedOutput);
+  if (ntStatus) {
+    throw new Error(getNtStatusMessage(ntStatus));
+  }
 
-    const ntStatus = parseNtStatusError(combinedOutput);
-    if (ntStatus) {
-      throw new Error(getNtStatusMessage(ntStatus));
-    }
-
-    if (exitCode !== 0) {
-      throw new Error(`SMB connection failed: ${combinedOutput || "Unknown error"}`);
-    }
-  } finally {
-    try {
-      fs.unlinkSync(authFilePath);
-    } catch (err) {
-      logger.warn({ err, authFilePath }, "Failed to cleanup SMB auth file");
-    }
+  if (exitCode !== 0) {
+    throw new Error(`SMB connection failed: ${combinedOutput || "Unknown error"}`);
   }
 };
 
@@ -292,31 +280,22 @@ export const changeWindowsPassword = async (
     );
   }
 
-  const authFilePath = createAuthFile(config);
+  const escapedPassword = escapePasswordForRpc(newPassword);
+  const rpcCommand = `setuserinfo2 ${targetUser} 23 '${escapedPassword}'`;
 
-  try {
-    const escapedPassword = escapePasswordForRpc(newPassword);
-    const rpcCommand = `setuserinfo2 ${targetUser} 23 '${escapedPassword}'`;
+  const args = [buildTarget(config), ...buildPortArgs(config), ...buildAuthArgs(config), "-c", rpcCommand];
+  const env = buildAuthEnv(config);
 
-    const args = [buildTarget(config), ...buildPortArgs(config), ...buildAuthArgs(authFilePath), "-c", rpcCommand];
+  const { stdout, stderr, exitCode } = await executeCommand("rpcclient", args, env);
+  const combinedOutput = stdout + stderr;
 
-    const { stdout, stderr, exitCode } = await executeCommand("rpcclient", args);
-    const combinedOutput = stdout + stderr;
+  const ntStatus = parseNtStatusError(combinedOutput);
+  if (ntStatus) {
+    throw new Error(getNtStatusMessage(ntStatus));
+  }
 
-    const ntStatus = parseNtStatusError(combinedOutput);
-    if (ntStatus) {
-      throw new Error(getNtStatusMessage(ntStatus));
-    }
-
-    if (exitCode !== 0) {
-      throw new Error(`Password change failed: ${combinedOutput || "Unknown error"}`);
-    }
-  } finally {
-    try {
-      fs.unlinkSync(authFilePath);
-    } catch (err) {
-      logger.warn({ err, authFilePath }, "Failed to cleanup SMB auth file");
-    }
+  if (exitCode !== 0) {
+    throw new Error(`Password change failed: ${combinedOutput || "Unknown error"}`);
   }
 };
 

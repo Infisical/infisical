@@ -5,10 +5,14 @@ import { PasswordRequirementsSchema } from "@app/components/secret-rotations-v2/
 import {
   containsDangerousSmbChars,
   SMB_USERNAME_REGEX,
-  SMB_VALIDATION_LIMITS
+  SMB_VALIDATION_LIMITS,
+  validateSmbPassword
 } from "@app/helpers/smb";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { WindowsLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/windows-local-account-rotation";
+
+// Built-in Windows accounts that should never have their passwords rotated
+const WINDOWS_PRIVILEGED_ACCOUNTS = ["administrator", "system", "guest", "defaultaccount"];
 
 // Windows-specific password requirements schema that filters dangerous characters from allowedSymbols
 const WindowsPasswordRequirementsSchema = PasswordRequirementsSchema.refine(
@@ -40,6 +44,10 @@ export const WindowsLocalAccountRotationSchema = z
         })
         .refine((val) => !val.startsWith("-") && !val.startsWith(".") && !val.endsWith("."), {
           message: "Username cannot start with a hyphen or period, and cannot end with a period"
+        })
+        .refine((val) => !WINDOWS_PRIVILEGED_ACCOUNTS.includes(val.toLowerCase()), {
+          message:
+            "Cannot rotate passwords for privileged system accounts (Administrator, SYSTEM, Guest, DefaultAccount)"
         }),
       passwordRequirements: WindowsPasswordRequirementsSchema.optional(),
       rotationMethod: z.nativeEnum(WindowsLocalAccountRotationMethod).optional()
@@ -50,7 +58,12 @@ export const WindowsLocalAccountRotationSchema = z
     }),
     temporaryParameters: z
       .object({
-        password: z.string().optional()
+        password: z
+          .string()
+          .refine((val) => !val || validateSmbPassword(val), {
+            message: "Password cannot contain the following characters: ; | & ` $ ( ) or newlines"
+          })
+          .optional()
       })
       .optional()
   })

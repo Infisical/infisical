@@ -11,6 +11,7 @@ import { SecretRotations } from "@app/lib/api-docs";
 import {
   containsDangerousSmbChars,
   SMB_VALIDATION_LIMITS,
+  validateSmbPassword,
   validateWindowsUsername
 } from "@app/lib/validator/validate-smb";
 import { SecretNameSchema } from "@app/server/lib/schemas";
@@ -43,6 +44,9 @@ const WindowsPasswordRequirementsSchema = PasswordRequirementsSchema.refine(
   }
 );
 
+// Built-in Windows accounts that should never have their passwords rotated
+const WINDOWS_PRIVILEGED_ACCOUNTS = ["administrator", "system", "guest", "defaultaccount"];
+
 const WindowsLocalAccountRotationParametersSchema = z.object({
   username: z
     .string()
@@ -57,6 +61,9 @@ const WindowsLocalAccountRotationParametersSchema = z.object({
     })
     .refine((val) => !val.startsWith("-") && !val.startsWith(".") && !val.endsWith("."), {
       message: "Username cannot start with a hyphen or period, and cannot end with a period"
+    })
+    .refine((val) => !WINDOWS_PRIVILEGED_ACCOUNTS.includes(val.toLowerCase()), {
+      message: "Cannot rotate passwords for privileged system accounts (Administrator, SYSTEM, Guest, DefaultAccount)"
     })
     .describe(SecretRotations.PARAMETERS.WINDOWS_LOCAL_ACCOUNT.username),
   passwordRequirements: WindowsPasswordRequirementsSchema.optional(),
@@ -92,7 +99,13 @@ export const CreateWindowsLocalAccountRotationSchema = BaseCreateSecretRotationS
     secretsMapping: WindowsLocalAccountRotationSecretsMappingSchema,
     temporaryParameters: z
       .object({
-        password: z.string().optional().describe(SecretRotations.PARAMETERS.WINDOWS_LOCAL_ACCOUNT.password)
+        password: z
+          .string()
+          .refine((val) => !val || validateSmbPassword(val), {
+            message: "Password cannot contain dangerous characters: ; | & ` $ ( ) or newlines"
+          })
+          .optional()
+          .describe(SecretRotations.PARAMETERS.WINDOWS_LOCAL_ACCOUNT.password)
       })
       .optional()
   })

@@ -16,6 +16,20 @@ description: "Learn how to automatically rotate Windows local account passwords 
 - Create a [Windows Connection](/integrations/app-connections/windows) with administrator credentials
 - Ensure your network security policies allow SMB connections from Infisical to this rotation provider
 
+<Accordion title="Open firewall on Windows Defender for SMB connection">
+    Run the following PowerShell command as Administrator on the Windows server to allow inbound SMB connections:
+
+    ```powershell
+    New-NetFirewallRule -DisplayName "Allow SMB Inbound" -Direction Inbound -Protocol TCP -LocalPort 445 -Action Allow
+    ```
+
+    To verify the rule was created:
+
+    ```powershell
+    Get-NetFirewallRule -DisplayName "Allow SMB Inbound"
+    ```
+</Accordion>
+
 ## Create a Windows Local Account Rotation in Infisical
 
 <Tabs>

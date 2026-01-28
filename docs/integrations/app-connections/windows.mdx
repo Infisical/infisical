@@ -20,6 +20,20 @@ You will need the following information to establish a Windows connection:
 - **SMB3 Support** - This connection uses SMB3 with encryption enabled for secure communication with Windows servers.
 - **Firewall Configuration** - The server must be accessible from Infisical or from the Infisical Gateway if using it.
 
+<Accordion title="Open firewall on Windows Defender for SMB connection">
+    Run the following PowerShell command as Administrator on the Windows server to allow inbound SMB connections:
+
+    ```powershell
+    New-NetFirewallRule -DisplayName "Allow SMB Inbound" -Direction Inbound -Protocol TCP -LocalPort 445 -Action Allow
+    ```
+
+    To verify the rule was created:
+
+    ```powershell
+    Get-NetFirewallRule -DisplayName "Allow SMB Inbound"
+    ```
+</Accordion>
+
 ## Setup Windows Connection in Infisical
 
 <Tabs>
