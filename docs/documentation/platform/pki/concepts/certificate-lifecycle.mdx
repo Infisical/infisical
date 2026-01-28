@@ -27,6 +27,21 @@ Common approaches to certificate enrollment include:
 
 Enrollment can be manually completed via API or fully automated using protocols like EST or ACME. The choice of enrollment method depends on security requirements, operational constraints, and integration context.
 
+## Approval
+
+Certificate approval is an optional workflow that adds a human review step before certificates are issued. When an [approval policy](/documentation/platform/pki/approvals) is configured for a [certificate profile](/documentation/platform/pki/certificates/profiles), certificate requests are placed in a pending state until the required approvers review and approve them.
+
+Approval workflows help organizations:
+
+- Enforce separation of duties between certificate requesters and approvers
+- Add oversight for certificates issued to sensitive domains or systems
+- Meet compliance requirements that mandate review before certificate issuance
+- Prevent unauthorized certificate issuance
+
+Approval policies can be configured with multiple sequential steps, each requiring a specified number of approvals from designated users or groups. [Machine identities](/documentation/platform/identities/machine-identities) can optionally bypass approval when automated certificate issuance is required for workloads.
+
+Once all approval steps are completed, the certificate is automatically issued and made available to the requester. If rejected, the request is closed and no certificate is issued.
+
 ## Deployment
 
 Certificate deployment involves installing the issued certificate on the appropriate systems and services, such as web servers, load balancers, or internal endpoints. It can also include distributing or [synchronizing certificates](/documentation/platform/pki/certificate-syncs/overview) to external systems like cloud key stores (e.g., AWS Secrets Manager, Google Secret Manager, Azure Key Vault) so they can be securely consumed by workloads running in the cloud.

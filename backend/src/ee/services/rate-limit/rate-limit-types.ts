@@ -8,6 +8,8 @@ export type TRateLimitUpdateDTO = {
   inviteUserRateLimit: number;
   mfaRateLimit: number;
   publicEndpointLimit: number;
+  identityCreationLimit: number;
+  projectCreationLimit: number;
 };
 
 export type TRateLimit = {
@@ -24,6 +26,8 @@ export type RateLimitConfiguration = {
   authRateLimit: number;
   inviteUserRateLimit: number;
   mfaRateLimit: number;
+  identityCreationLimit: number;
+  projectCreationLimit: number;
 };
 
 export type TRateLimitServiceFactory = {

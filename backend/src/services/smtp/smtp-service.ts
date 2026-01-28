@@ -41,6 +41,7 @@ import {
   SecretSyncFailedTemplate,
   ServiceTokenExpiryNoticeTemplate,
   SignupEmailVerificationTemplate,
+  SignupExistingAccountTemplate,
   SubOrganizationInvitationTemplate,
   UnlockAccountTemplate
 } from "./emails";
@@ -57,6 +58,7 @@ export type TSmtpService = ReturnType<typeof smtpServiceFactory>;
 
 export enum SmtpTemplates {
   SignupEmailVerification = "signupEmailVerification",
+  SignupExistingAccount = "signupExistingAccount",
   EmailVerification = "emailVerification",
   SecretReminder = "secretReminder",
   EmailMfa = "emailMfa",
@@ -112,6 +114,7 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.OrgAssignment]: OrganizationAssignmentTemplate,
   [SmtpTemplates.NewDeviceJoin]: NewDeviceLoginTemplate,
   [SmtpTemplates.SignupEmailVerification]: SignupEmailVerificationTemplate,
+  [SmtpTemplates.SignupExistingAccount]: SignupExistingAccountTemplate,
   [SmtpTemplates.EmailMfa]: EmailMfaTemplate,
   [SmtpTemplates.AccessApprovalRequest]: AccessApprovalRequestTemplate,
   [SmtpTemplates.AccessApprovalRequestUpdated]: AccessApprovalRequestUpdatedTemplate,

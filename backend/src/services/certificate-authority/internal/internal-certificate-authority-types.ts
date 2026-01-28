@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TProjectPermission } from "@app/lib/types";
+import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import {
   CertExtendedKeyUsage,
@@ -89,6 +90,13 @@ export type TDeleteCaDTO = {
   caId: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TGenerateRootCaCertificateDTO = {
+  caId: string;
+  notBefore: string;
+  notAfter: string;
+  maxPathLength?: number | null;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TGetCaCsrDTO = {
   caId: string;
 } & Omit<TProjectPermission, "projectId">;
@@ -107,25 +115,66 @@ export type TGetCaCertDTO = {
   caId: string;
 } & Omit<TProjectPermission, "projectId">;
 
-export type TSignIntermediateDTO = {
+export type TGetCaCertByIdDTO = {
   caId: string;
-  csr: string;
-  notBefore?: string;
-  notAfter: string;
-  maxPathLength: number;
+  certId: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TSignIntermediateDTO = {
+  isInternal?: boolean;
+} & (
+  | {
+      isInternal: true;
+      caId: string;
+      csr: string;
+      notBefore?: string;
+      notAfter: string;
+      maxPathLength: number;
+      actorId?: undefined;
+      actorAuthMethod?: undefined;
+      actor?: undefined;
+      actorOrgId?: undefined;
+    }
+  | ({
+      isInternal?: false;
+      caId: string;
+      csr: string;
+      notBefore?: string;
+      notAfter: string;
+      maxPathLength: number;
+    } & Omit<TProjectPermission, "projectId">)
+);
 
 export type TImportCertToCaDTO = {
-  caId: string;
-  certificate: string;
-  certificateChain: string;
-} & Omit<TProjectPermission, "projectId">;
+  isInternal?: boolean;
+  parentCaId?: string;
+} & (
+  | {
+      isInternal: true;
+      caId: string;
+      certificate: string;
+      certificateChain: string;
+      parentCaId?: string | undefined;
+      actorId?: undefined;
+      actorAuthMethod?: undefined;
+      actor?: undefined;
+      actorOrgId?: undefined;
+    }
+  | ({
+      isInternal?: false;
+      caId: string;
+      certificate: string;
+      certificateChain: string;
+      parentCaId?: string;
+    } & Omit<TProjectPermission, "projectId">)
+);
 
 export type TBasicConstraints = {
-  maxPathLength?: number;
+  isCA: boolean;
+  pathLength?: number;
 } | null;
 
-export type TIssueCertFromCaDTO = {
+type TIssueCertFromCaBaseDTO = {
   caId?: string;
   certificateTemplateId?: string;
   pkiCollectionId?: string;
@@ -141,7 +190,6 @@ export type TIssueCertFromCaDTO = {
   keyAlgorithm?: CertKeyAlgorithm;
   isFromProfile?: boolean;
   profileId?: string;
-  internal?: boolean;
   basicConstraints?: TBasicConstraints;
   pathLength?: number | null;
   organization?: string;
@@ -150,7 +198,19 @@ export type TIssueCertFromCaDTO = {
   locality?: string;
   ou?: string;
   tx?: Knex;
-} & Omit<TProjectPermission, "projectId">;
+};
+
+export type TIssueCertFromCaDTO =
+  | (TIssueCertFromCaBaseDTO & {
+      internal: true;
+      actor?: ActorType;
+      actorId?: string;
+      actorAuthMethod?: ActorAuthMethod;
+      actorOrgId?: string;
+    })
+  | (TIssueCertFromCaBaseDTO & {
+      internal?: false;
+    } & Omit<TProjectPermission, "projectId">);
 
 export type TSignCertFromCaDTO =
   | {

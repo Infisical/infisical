@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 
-import { OrganizationActionScope, ProjectType, TProjectTemplates } from "@app/db/schemas";
+import { OrganizationActionScope, ProjectMembershipRole, ProjectType, TProjectTemplates } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -9,23 +9,44 @@ import { ProjectTemplateDefaultEnvironments } from "@app/ee/services/project-tem
 import { getDefaultProjectTemplate } from "@app/ee/services/project-template/project-template-fns";
 import {
   TProjectTemplateEnvironment,
+  TProjectTemplateGroup,
+  TProjectTemplateOrgManagedIdentity,
+  TProjectTemplateProjectManagedIdentity,
   TProjectTemplateRole,
   TProjectTemplateServiceFactory,
+  TProjectTemplateUser,
   TUnpackedPermission
 } from "@app/ee/services/project-template/project-template-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { getPredefinedRoles } from "@app/services/project-role/project-role-fns";
 
+import { TGroupDALFactory } from "../group/group-dal";
 import { TProjectTemplateDALFactory } from "./project-template-dal";
+import { TProjectTemplateGroupMembershipDALFactory } from "./project-template-group-membership-dal";
+import { TProjectTemplateIdentityMembershipDALFactory } from "./project-template-identity-membership-dal";
+import { TProjectTemplateUserMembershipDALFactory } from "./project-template-user-membership-dal";
 
 type TProjectTemplatesServiceFactoryDep = {
   licenseService: TLicenseServiceFactory;
   permissionService: TPermissionServiceFactory;
   projectTemplateDAL: TProjectTemplateDALFactory;
+  projectTemplateUserMembershipDAL: TProjectTemplateUserMembershipDALFactory;
+  projectTemplateGroupMembershipDAL: TProjectTemplateGroupMembershipDALFactory;
+  projectTemplateIdentityMembershipDAL: TProjectTemplateIdentityMembershipDALFactory;
+  orgMembershipDAL: TOrgMembershipDALFactory;
+  groupDAL: Pick<TGroupDALFactory, "find">;
+  identityDAL: Pick<TIdentityDALFactory, "find">;
 };
 
-const $unpackProjectTemplate = ({ roles, environments, ...rest }: TProjectTemplates) => ({
+const $unpackProjectTemplate = (
+  { roles, environments, projectManagedIdentities, ...rest }: TProjectTemplates,
+  users: TProjectTemplateUser[],
+  groups: TProjectTemplateGroup[],
+  identities: TProjectTemplateOrgManagedIdentity[]
+) => ({
   ...rest,
   environments: environments as TProjectTemplateEnvironment[],
   roles: [
@@ -40,14 +61,54 @@ const $unpackProjectTemplate = ({ roles, environments, ...rest }: TProjectTempla
       ...role,
       permissions: unpackPermissions(role.permissions)
     }))
-  ]
+  ],
+  users,
+  groups,
+  identities,
+  projectManagedIdentities: (projectManagedIdentities as TProjectTemplateProjectManagedIdentity[]) || null
 });
 
 export const projectTemplateServiceFactory = ({
   licenseService,
   permissionService,
-  projectTemplateDAL
+  orgMembershipDAL,
+  projectTemplateDAL,
+  projectTemplateUserMembershipDAL,
+  projectTemplateGroupMembershipDAL,
+  projectTemplateIdentityMembershipDAL,
+  groupDAL,
+  identityDAL
 }: TProjectTemplatesServiceFactoryDep): TProjectTemplateServiceFactory => {
+  // Helper to convert membership records to TProjectTemplateUser format
+  const $membershipToUsers = (
+    memberships: Awaited<ReturnType<typeof projectTemplateUserMembershipDAL.findByTemplateId>>
+  ): TProjectTemplateUser[] => {
+    return memberships.map((m) => ({
+      username: m.username,
+      roles: m.roles
+    }));
+  };
+
+  // Helper to convert group membership records to TProjectTemplateGroup format
+  const $membershipToGroups = (
+    memberships: Awaited<ReturnType<typeof projectTemplateGroupMembershipDAL.findByTemplateId>>
+  ): TProjectTemplateGroup[] => {
+    return memberships.map((m) => ({
+      groupSlug: m.groupSlug,
+      roles: m.roles
+    }));
+  };
+
+  // Helper to convert identity membership records to TProjectTemplateOrgManagedIdentity format
+  const $membershipToIdentities = (
+    memberships: Awaited<ReturnType<typeof projectTemplateIdentityMembershipDAL.findByTemplateId>>
+  ): TProjectTemplateOrgManagedIdentity[] => {
+    return memberships.map((m) => ({
+      identityId: m.identityId,
+      roles: m.roles
+    }));
+  };
+
   const listProjectTemplatesByOrg: TProjectTemplateServiceFactory["listProjectTemplatesByOrg"] = async (
     actor,
     type
@@ -75,6 +136,22 @@ export const projectTemplateServiceFactory = ({
       ...(type ? { type } : {})
     });
 
+    const templatesWithMembers = await Promise.all(
+      projectTemplates.map(async (template) => {
+        const [userMemberships, groupMemberships, identityMemberships] = await Promise.all([
+          projectTemplateUserMembershipDAL.findByTemplateId(template.id),
+          projectTemplateGroupMembershipDAL.findByTemplateId(template.id),
+          projectTemplateIdentityMembershipDAL.findByTemplateId(template.id)
+        ]);
+        return $unpackProjectTemplate(
+          template,
+          $membershipToUsers(userMemberships),
+          $membershipToGroups(groupMemberships),
+          $membershipToIdentities(identityMemberships)
+        );
+      })
+    );
+
     return [
       ...(type && type !== ProjectType.SSH
         ? [getDefaultProjectTemplate(actor.orgId, type)]
@@ -82,7 +159,7 @@ export const projectTemplateServiceFactory = ({
             // Filter out SSH since we're deprecating
             .filter((projectType) => projectType !== ProjectType.SSH)
             .map((projectType) => getDefaultProjectTemplate(actor.orgId, projectType))),
-      ...projectTemplates.map((template) => $unpackProjectTemplate(template))
+      ...templatesWithMembers
     ];
   };
 
@@ -112,8 +189,17 @@ export const projectTemplateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
 
+    const [userMemberships, groupMemberships, identityMemberships] = await Promise.all([
+      projectTemplateUserMembershipDAL.findByTemplateId(projectTemplate.id),
+      projectTemplateGroupMembershipDAL.findByTemplateId(projectTemplate.id),
+      projectTemplateIdentityMembershipDAL.findByTemplateId(projectTemplate.id)
+    ]);
+    const users = $membershipToUsers(userMemberships);
+    const groups = $membershipToGroups(groupMemberships);
+    const identities = $membershipToIdentities(identityMemberships);
+
     return {
-      ...$unpackProjectTemplate(projectTemplate),
+      ...$unpackProjectTemplate(projectTemplate, users, groups, identities),
       packedRoles: projectTemplate.roles as TProjectTemplateRole[] // preserve packed for when applying template
     };
   };
@@ -141,14 +227,23 @@ export const projectTemplateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
 
+    const [userMemberships, groupMemberships, identityMemberships] = await Promise.all([
+      projectTemplateUserMembershipDAL.findByTemplateId(projectTemplate.id),
+      projectTemplateGroupMembershipDAL.findByTemplateId(projectTemplate.id),
+      projectTemplateIdentityMembershipDAL.findByTemplateId(projectTemplate.id)
+    ]);
+    const users = $membershipToUsers(userMemberships);
+    const groups = $membershipToGroups(groupMemberships);
+    const identities = $membershipToIdentities(identityMemberships);
+
     return {
-      ...$unpackProjectTemplate(projectTemplate),
+      ...$unpackProjectTemplate(projectTemplate, users, groups, identities),
       packedRoles: projectTemplate.roles as TProjectTemplateRole[] // preserve packed for when applying template
     };
   };
 
   const createProjectTemplate: TProjectTemplateServiceFactory["createProjectTemplate"] = async (
-    { roles, environments, type, ...params },
+    { roles, environments, users, groups, identities, projectManagedIdentities, type, ...params },
     actor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
@@ -192,25 +287,196 @@ export const projectTemplateServiceFactory = ({
         message: `A project template with the name "${params.name}" already exists.`
       });
 
+    // Validate that users exist and are members of the organization
+    let validatedUsers: { membershipId: string; roles: string[] }[] = [];
+    if (users?.length) {
+      const orgMembers = await orgMembershipDAL.findOrgMembershipsWithUsersByOrgId(actor.orgId);
+      const orgMemberUsernames = new Map(orgMembers.map((m) => [m.user.username.toLowerCase(), m] as const));
+
+      const invalidUsers = users.filter((u) => !orgMemberUsernames.has(u.username.toLowerCase()));
+      if (invalidUsers.length) {
+        throw new BadRequestError({
+          message: `The following users are not members of this organization: ${invalidUsers.map((u) => u.username).join(", ")}`
+        });
+      }
+
+      const availableRoleSlugs = new Set([...Object.values(ProjectMembershipRole), ...roles.map((r) => r.slug)]);
+
+      users.forEach((user) => {
+        user.roles.forEach((roleSlug) => {
+          if (!availableRoleSlugs.has(roleSlug)) {
+            throw new BadRequestError({
+              message: `User "${user.username}" references invalid role slug "${roleSlug}". Role must be a predefined role or defined in the template roles.`
+            });
+          }
+        });
+      });
+
+      validatedUsers = users.map((u) => {
+        const member = orgMemberUsernames.get(u.username.toLowerCase());
+        return { membershipId: member!.id, roles: u.roles };
+      });
+    }
+
+    // Validate groups exist in the organization
+    let validatedGroups: { groupId: string; roles: string[] }[] = [];
+    if (groups?.length) {
+      const groupSlugs = groups.map((g) => g.groupSlug.toLowerCase());
+      const foundGroups = await groupDAL.find({
+        orgId: actor.orgId,
+        $in: { slug: groupSlugs }
+      });
+
+      if (foundGroups.length !== groups.length) {
+        const foundGroupSlugs = new Set(foundGroups.map((g) => g.slug.toLowerCase()));
+        const invalidGroups = groups.filter((g) => !foundGroupSlugs.has(g.groupSlug.toLowerCase()));
+
+        if (invalidGroups.length) {
+          throw new BadRequestError({
+            message: `The following groups do not exist in this organization: ${invalidGroups.map((g) => g.groupSlug).join(", ")}`
+          });
+        }
+      }
+
+      const availableRoleSlugs = new Set([...Object.values(ProjectMembershipRole), ...roles.map((r) => r.slug)]);
+
+      groups.forEach((group) => {
+        group.roles.forEach((roleSlug) => {
+          if (!availableRoleSlugs.has(roleSlug)) {
+            throw new BadRequestError({
+              message: `Group "${group.groupSlug}" references invalid role slug "${roleSlug}". Role must be a predefined role or defined in the template roles.`
+            });
+          }
+        });
+      });
+
+      const groupSlugToId = new Map(foundGroups.map((g) => [g.slug.toLowerCase(), g.id]));
+      validatedGroups = groups.map((g) => ({
+        groupId: groupSlugToId.get(g.groupSlug.toLowerCase())!,
+        roles: g.roles
+      }));
+    }
+
+    // Validate org-managed identities exist in the organization
+    let validatedIdentities: { identityId: string; roles: string[] }[] = [];
+    if (identities?.length) {
+      const identityIds = identities.map((i) => i.identityId);
+      const foundIdentities = await identityDAL.find({
+        orgId: actor.orgId,
+        $in: { id: identityIds }
+      });
+
+      if (foundIdentities.length !== identities.length) {
+        const foundIdentityIds = new Set(foundIdentities.map((i) => i.id));
+        const invalidIdentities = identities.filter((i) => !foundIdentityIds.has(i.identityId));
+
+        if (invalidIdentities.length) {
+          throw new BadRequestError({
+            message: `The following identities do not exist in this organization: ${invalidIdentities.map((i) => i.identityId).join(", ")}`
+          });
+        }
+      }
+
+      const availableRoleSlugs = new Set([...Object.values(ProjectMembershipRole), ...roles.map((r) => r.slug)]);
+
+      identities.forEach((identity) => {
+        identity.roles.forEach((roleSlug) => {
+          if (!availableRoleSlugs.has(roleSlug)) {
+            throw new BadRequestError({
+              message: `Identity "${identity.identityId}" references invalid role slug "${roleSlug}". Role must be a predefined role or defined in the template roles.`
+            });
+          }
+        });
+      });
+
+      validatedIdentities = identities.map((i) => ({
+        identityId: i.identityId,
+        roles: i.roles
+      }));
+    }
+
+    // Validate project-managed identities have unique names
+    if (projectManagedIdentities?.length) {
+      const names = projectManagedIdentities.map((i) => i.name.toLowerCase());
+      if (new Set(names).size !== names.length) {
+        throw new BadRequestError({
+          message: "Project-managed identity names must be unique within the template"
+        });
+      }
+    }
+
     const projectTemplateEnvironments =
       type === ProjectType.SecretManager && environments === undefined
         ? ProjectTemplateDefaultEnvironments
         : environments;
 
-    const projectTemplate = await projectTemplateDAL.create({
-      ...params,
-      roles: JSON.stringify(roles.map((role) => ({ ...role, permissions: packRules(role.permissions) }))),
-      environments: JSON.stringify(projectTemplateEnvironments),
-      orgId: actor.orgId,
-      type
+    const projectTemplate = await projectTemplateDAL.transaction(async (tx) => {
+      const template = await projectTemplateDAL.create(
+        {
+          ...params,
+          roles: JSON.stringify(roles.map((role) => ({ ...role, permissions: packRules(role.permissions) }))),
+          environments: JSON.stringify(projectTemplateEnvironments),
+          projectManagedIdentities: projectManagedIdentities?.length
+            ? JSON.stringify(projectManagedIdentities)
+            : undefined,
+          orgId: actor.orgId,
+          type
+        },
+        tx
+      );
+
+      if (validatedUsers.length) {
+        await projectTemplateUserMembershipDAL.insertMany(
+          validatedUsers.map((user) => ({
+            projectTemplateId: template.id,
+            membershipId: user.membershipId,
+            roles: user.roles
+          })),
+          tx
+        );
+      }
+
+      if (validatedGroups.length) {
+        await projectTemplateGroupMembershipDAL.insertMany(
+          validatedGroups.map((group) => ({
+            projectTemplateId: template.id,
+            groupId: group.groupId,
+            roles: group.roles
+          })),
+          tx
+        );
+      }
+
+      if (validatedIdentities.length) {
+        await projectTemplateIdentityMembershipDAL.insertMany(
+          validatedIdentities.map((identity) => ({
+            projectTemplateId: template.id,
+            identityId: identity.identityId,
+            roles: identity.roles
+          })),
+          tx
+        );
+      }
+
+      return template;
     });
 
-    return $unpackProjectTemplate(projectTemplate);
+    const [userMemberships, groupMemberships, identityMemberships] = await Promise.all([
+      projectTemplateUserMembershipDAL.findByTemplateId(projectTemplate.id),
+      projectTemplateGroupMembershipDAL.findByTemplateId(projectTemplate.id),
+      projectTemplateIdentityMembershipDAL.findByTemplateId(projectTemplate.id)
+    ]);
+    return $unpackProjectTemplate(
+      projectTemplate,
+      $membershipToUsers(userMemberships),
+      $membershipToGroups(groupMemberships),
+      $membershipToIdentities(identityMemberships)
+    );
   };
 
   const updateProjectTemplateById: TProjectTemplateServiceFactory["updateProjectTemplateById"] = async (
     id,
-    { roles, environments, ...params },
+    { roles, environments, users, groups, identities, projectManagedIdentities, ...params },
     actor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
@@ -247,6 +513,185 @@ export const projectTemplateServiceFactory = ({
       });
     }
 
+    // Validate that roles being removed are not in use by users, groups, or identities
+    if (roles) {
+      const currentRoles = projectTemplate.roles as TProjectTemplateRole[];
+      const newRoleSlugs = new Set(roles.map((r) => r.slug));
+      const removedRoleSlugs = currentRoles.filter((r) => !newRoleSlugs.has(r.slug)).map((r) => r.slug);
+
+      if (removedRoleSlugs.length > 0) {
+        const [currentUserMemberships, currentGroupMemberships, currentIdentityMemberships] = await Promise.all([
+          projectTemplateUserMembershipDAL.findByTemplateId(id),
+          projectTemplateGroupMembershipDAL.findByTemplateId(id),
+          projectTemplateIdentityMembershipDAL.findByTemplateId(id)
+        ]);
+
+        const currentProjectManagedIdentities =
+          (projectTemplate.projectManagedIdentities as TProjectTemplateProjectManagedIdentity[]) || [];
+
+        for (const roleSlug of removedRoleSlugs) {
+          const usersWithRole = currentUserMemberships.filter((u) => u.roles.includes(roleSlug));
+          const groupsWithRole = currentGroupMemberships.filter((g) => g.roles.includes(roleSlug));
+          const identitiesWithRole = currentIdentityMemberships.filter((i) => i.roles.includes(roleSlug));
+          const projectManagedIdentitiesWithRole = currentProjectManagedIdentities.filter((i) =>
+            i.roles.includes(roleSlug)
+          );
+
+          const usageMessages: string[] = [];
+          if (usersWithRole.length > 0)
+            usageMessages.push(`${usersWithRole.length} user${usersWithRole.length === 1 ? "" : "s"}`);
+          if (groupsWithRole.length > 0)
+            usageMessages.push(`${groupsWithRole.length} group${groupsWithRole.length === 1 ? "" : "s"}`);
+          if (identitiesWithRole.length > 0 || projectManagedIdentitiesWithRole.length > 0) {
+            const totalIdentities = identitiesWithRole.length + projectManagedIdentitiesWithRole.length;
+            usageMessages.push(`${totalIdentities} identit${totalIdentities === 1 ? "y" : "ies"}`);
+          }
+
+          if (usageMessages.length > 0) {
+            throw new BadRequestError({
+              message: `Cannot remove role "${roleSlug}" because it is assigned to ${usageMessages.join(", ")}`
+            });
+          }
+        }
+      }
+    }
+
+    // Validate that users exist and are members of the organization
+    let validatedUsers: { membershipId: string; roles: string[] }[] | undefined;
+    if (users) {
+      const orgMembers = await orgMembershipDAL.findOrgMembershipsWithUsersByOrgId(projectTemplate.orgId);
+      const orgMemberUsernames = new Map(orgMembers.map((m) => [m.user.username.toLowerCase(), m] as const));
+
+      const invalidUsers = users.filter((u) => !orgMemberUsernames.has(u.username.toLowerCase()));
+      if (invalidUsers.length) {
+        throw new BadRequestError({
+          message: `The following users are not members of this organization: ${invalidUsers.map((u) => u.username).join(", ")}`
+        });
+      }
+
+      const templateRoles = roles ?? (projectTemplate.roles as TProjectTemplateRole[]);
+      const availableRoleSlugs = new Set([
+        ...Object.values(ProjectMembershipRole),
+        ...templateRoles.map((r) => r.slug)
+      ]);
+
+      users.forEach((user) => {
+        user.roles.forEach((roleSlug) => {
+          if (!availableRoleSlugs.has(roleSlug)) {
+            throw new BadRequestError({
+              message: `User "${user.username}" references invalid role slug "${roleSlug}". Role must be a predefined role or defined in the template roles.`
+            });
+          }
+        });
+      });
+
+      validatedUsers = users.map((u) => {
+        const member = orgMemberUsernames.get(u.username.toLowerCase());
+        return { membershipId: member!.id, roles: u.roles };
+      });
+    } else if (users === null) {
+      validatedUsers = [];
+    }
+
+    // Validate that groups exist in the organization
+    let validatedGroups: { groupId: string; roles: string[] }[] | undefined;
+    if (groups) {
+      const groupSlugs = groups.map((g) => g.groupSlug.toLowerCase());
+      const foundGroups = await groupDAL.find({
+        orgId: projectTemplate.orgId,
+        $in: { slug: groupSlugs }
+      });
+
+      if (foundGroups.length !== groups.length) {
+        const foundGroupSlugs = new Set(foundGroups.map((g) => g.slug.toLowerCase()));
+        const invalidGroups = groups.filter((g) => !foundGroupSlugs.has(g.groupSlug.toLowerCase()));
+
+        if (invalidGroups.length) {
+          throw new BadRequestError({
+            message: `The following groups do not exist in this organization: ${invalidGroups.map((g) => g.groupSlug).join(", ")}`
+          });
+        }
+      }
+
+      const templateRoles = roles ?? (projectTemplate.roles as TProjectTemplateRole[]);
+      const availableRoleSlugs = new Set([
+        ...Object.values(ProjectMembershipRole),
+        ...templateRoles.map((r) => r.slug)
+      ]);
+
+      groups.forEach((group) => {
+        group.roles.forEach((roleSlug) => {
+          if (!availableRoleSlugs.has(roleSlug)) {
+            throw new BadRequestError({
+              message: `Group "${group.groupSlug}" references invalid role slug "${roleSlug}". Role must be a predefined role or defined in the template roles.`
+            });
+          }
+        });
+      });
+
+      const groupSlugToId = new Map(foundGroups.map((g) => [g.slug.toLowerCase(), g.id]));
+      validatedGroups = groups.map((g) => ({
+        groupId: groupSlugToId.get(g.groupSlug.toLowerCase())!,
+        roles: g.roles
+      }));
+    } else if (groups === null) {
+      validatedGroups = [];
+    }
+
+    // Validate org-managed identities exist in the organization
+    let validatedIdentities: { identityId: string; roles: string[] }[] | undefined;
+    if (identities) {
+      const identityIds = identities.map((i) => i.identityId);
+      const foundIdentities = await identityDAL.find({
+        orgId: projectTemplate.orgId,
+        $in: { id: identityIds }
+      });
+
+      if (foundIdentities.length !== identities.length) {
+        const foundIdentityIds = new Set(foundIdentities.map((i) => i.id));
+        const invalidIdentities = identities.filter((i) => !foundIdentityIds.has(i.identityId));
+
+        if (invalidIdentities.length) {
+          throw new BadRequestError({
+            message: `The following identities do not exist in this organization: ${invalidIdentities.map((i) => i.identityId).join(", ")}`
+          });
+        }
+      }
+
+      const templateRoles = roles ?? (projectTemplate.roles as TProjectTemplateRole[]);
+      const availableRoleSlugs = new Set([
+        ...Object.values(ProjectMembershipRole),
+        ...templateRoles.map((r) => r.slug)
+      ]);
+
+      identities.forEach((identity) => {
+        identity.roles.forEach((roleSlug) => {
+          if (!availableRoleSlugs.has(roleSlug)) {
+            throw new BadRequestError({
+              message: `Identity "${identity.identityId}" references invalid role slug "${roleSlug}". Role must be a predefined role or defined in the template roles.`
+            });
+          }
+        });
+      });
+
+      validatedIdentities = identities.map((i) => ({
+        identityId: i.identityId,
+        roles: i.roles
+      }));
+    } else if (identities === null) {
+      validatedIdentities = [];
+    }
+
+    // Validate project-managed identities have unique names
+    if (projectManagedIdentities) {
+      const names = projectManagedIdentities.map((i) => i.name.toLowerCase());
+      if (new Set(names).size !== names.length) {
+        throw new BadRequestError({
+          message: "Project-managed identity names must be unique within the template"
+        });
+      }
+    }
+
     if (params.name && projectTemplate.name !== params.name) {
       const isConflictingName = Boolean(
         await projectTemplateDAL.findOne({
@@ -261,15 +706,90 @@ export const projectTemplateServiceFactory = ({
         });
     }
 
-    const updatedProjectTemplate = await projectTemplateDAL.updateById(id, {
-      ...params,
-      roles: roles
-        ? JSON.stringify(roles.map((role) => ({ ...role, permissions: packRules(role.permissions) })))
-        : undefined,
-      environments: environments ? JSON.stringify(environments) : undefined
+    const updatedProjectTemplate = await projectTemplateDAL.transaction(async (tx) => {
+      const hasTemplateUpdates =
+        Object.keys(params).length > 0 ||
+        roles !== undefined ||
+        environments !== undefined ||
+        projectManagedIdentities !== undefined;
+
+      let template = projectTemplate;
+      if (hasTemplateUpdates) {
+        template = await projectTemplateDAL.updateById(
+          id,
+          {
+            ...params,
+            roles: roles
+              ? JSON.stringify(roles.map((role) => ({ ...role, permissions: packRules(role.permissions) })))
+              : undefined,
+            environments: environments ? JSON.stringify(environments) : undefined,
+            projectManagedIdentities: projectManagedIdentities
+              ? JSON.stringify(projectManagedIdentities)
+              : projectManagedIdentities
+          },
+          tx
+        );
+      }
+
+      if (validatedUsers !== undefined) {
+        await projectTemplateUserMembershipDAL.delete({ projectTemplateId: id }, tx);
+
+        if (validatedUsers.length) {
+          await projectTemplateUserMembershipDAL.insertMany(
+            validatedUsers.map((user) => ({
+              projectTemplateId: id,
+              membershipId: user.membershipId,
+              roles: user.roles
+            })),
+            tx
+          );
+        }
+      }
+
+      if (validatedGroups !== undefined) {
+        await projectTemplateGroupMembershipDAL.delete({ projectTemplateId: id }, tx);
+
+        if (validatedGroups.length) {
+          await projectTemplateGroupMembershipDAL.insertMany(
+            validatedGroups.map((group) => ({
+              projectTemplateId: id,
+              groupId: group.groupId,
+              roles: group.roles
+            })),
+            tx
+          );
+        }
+      }
+
+      if (validatedIdentities !== undefined) {
+        await projectTemplateIdentityMembershipDAL.delete({ projectTemplateId: id }, tx);
+
+        if (validatedIdentities.length) {
+          await projectTemplateIdentityMembershipDAL.insertMany(
+            validatedIdentities.map((identity) => ({
+              projectTemplateId: id,
+              identityId: identity.identityId,
+              roles: identity.roles
+            })),
+            tx
+          );
+        }
+      }
+
+      return template;
     });
 
-    return $unpackProjectTemplate(updatedProjectTemplate);
+    const [userMemberships, groupMemberships, identityMemberships] = await Promise.all([
+      projectTemplateUserMembershipDAL.findByTemplateId(updatedProjectTemplate.id),
+      projectTemplateGroupMembershipDAL.findByTemplateId(updatedProjectTemplate.id),
+      projectTemplateIdentityMembershipDAL.findByTemplateId(updatedProjectTemplate.id)
+    ]);
+    return $unpackProjectTemplate(
+      updatedProjectTemplate,
+      $membershipToUsers(userMemberships),
+      $membershipToGroups(groupMemberships),
+      $membershipToIdentities(identityMemberships)
+    );
   };
 
   const deleteProjectTemplateById: TProjectTemplateServiceFactory["deleteProjectTemplateById"] = async (id, actor) => {
@@ -295,9 +815,18 @@ export const projectTemplateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.ProjectTemplates);
 
+    const [userMemberships, groupMemberships, identityMemberships] = await Promise.all([
+      projectTemplateUserMembershipDAL.findByTemplateId(id),
+      projectTemplateGroupMembershipDAL.findByTemplateId(id),
+      projectTemplateIdentityMembershipDAL.findByTemplateId(id)
+    ]);
+    const users = $membershipToUsers(userMemberships);
+    const groups = $membershipToGroups(groupMemberships);
+    const identities = $membershipToIdentities(identityMemberships);
+
     const deletedProjectTemplate = await projectTemplateDAL.deleteById(id);
 
-    return $unpackProjectTemplate(deletedProjectTemplate);
+    return $unpackProjectTemplate(deletedProjectTemplate, users, groups, identities);
   };
 
   return {

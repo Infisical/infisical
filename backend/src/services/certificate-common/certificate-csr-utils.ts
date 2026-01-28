@@ -28,7 +28,7 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
   const certificateRequest: TCertificateRequest = {
     commonName: subject.commonName,
     organization: subject.organization,
-    organizationUnit: subject.ou,
+    organizationalUnit: subject.ou,
     locality: subject.locality,
     state: subject.province,
     country: subject.country

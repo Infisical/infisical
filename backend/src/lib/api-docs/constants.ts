@@ -16,6 +16,9 @@ import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "@app/services/certificate-auth
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 
+const IDENTITY_AUTH_SUB_ORGANIZATION_NAME =
+  "When set, this will scope the login session to the specified organization the machine identity has access to. If omitted, the session defaults to the organization where the machine identity was created in.";
+
 export enum ApiDocsTags {
   Identities = "Identities",
   IdentityTemplates = "Identity Templates",
@@ -33,6 +36,7 @@ export enum ApiDocsTags {
   LdapAuth = "LDAP Auth",
   Groups = "Groups",
   Organizations = "Organizations",
+  OrganizationRoles = "Organization Roles",
   OrgIdentityMembership = "Organization Identity Membership",
   SubOrganizations = "Sub Organizations",
   Projects = "Projects",
@@ -199,13 +203,11 @@ export const IDENTITIES = {
   }
 } as const;
 
-const IDENTITY_AUTH_SUB_ORGANIZATION_NAME = "sub-organization name to scope the token to";
-
 export const UNIVERSAL_AUTH = {
   LOGIN: {
     clientId: "Your Machine Identity Client ID.",
     clientSecret: "Your Machine Identity Client Secret.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -280,7 +282,7 @@ export const LDAP_AUTH = {
     identityId: "The ID of the machine identity to login.",
     username: "The username of the LDAP user to login.",
     password: "The password of the LDAP user to login.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     templateId: "The ID of the identity auth template to attach the configuration onto.",
@@ -346,7 +348,7 @@ export const ALICLOUD_AUTH = {
     SignatureVersion: "The signature version. For STS GetCallerIdentity, this should be '1.0'.",
     SignatureNonce: "A unique random string to prevent replay attacks.",
     Signature: "The signature string calculated based on the request parameters and AccessKey Secret.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -375,7 +377,7 @@ export const ALICLOUD_AUTH = {
 export const TLS_CERT_AUTH = {
   LOGIN: {
     identityId: "The ID of the machine identity to login.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -414,7 +416,7 @@ export const AWS_AUTH = {
     iamRequestBody:
       "The base64-encoded body of the signed request. Most likely, the base64-encoding of Action=GetCallerIdentity&Version=2011-06-15.",
     iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -453,7 +455,7 @@ export const OCI_AUTH = {
     identityId: "The ID of the machine identity to login.",
     userOcid: "The OCID of the user attempting login.",
     headers: "The headers of the signed request.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -486,7 +488,7 @@ export const OCI_AUTH = {
 export const AZURE_AUTH = {
   LOGIN: {
     identityId: "The ID of the machine identity to login.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -521,7 +523,7 @@ export const AZURE_AUTH = {
 export const GCP_AUTH = {
   LOGIN: {
     identityId: "The ID of the machine identity to login.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -560,7 +562,7 @@ export const GCP_AUTH = {
 export const KUBERNETES_AUTH = {
   LOGIN: {
     identityId: "The ID of the machine identity to login.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -641,7 +643,7 @@ export const TOKEN_AUTH = {
   CREATE_TOKEN: {
     identityId: "The ID of the machine identity to create the token for.",
     name: "The name of the token to create.",
-    subOrganizationName: "The sub organization name to scope the token to."
+    organizationSlug: "The sub organization name to scope the token to."
   },
   UPDATE_TOKEN: {
     tokenId: "The ID of the token to update metadata for.",
@@ -655,7 +657,7 @@ export const TOKEN_AUTH = {
 export const OIDC_AUTH = {
   LOGIN: {
     identityId: "The ID of the machine identity to login.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -696,7 +698,7 @@ export const OIDC_AUTH = {
 export const JWT_AUTH = {
   LOGIN: {
     identityId: "The ID of the machine identity to login.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -866,7 +868,9 @@ export const PROJECTS = {
     secretSharing: "Enable or disable secret sharing for the project.",
     showSnapshotsLegacy: "Enable or disable legacy snapshots for the project.",
     defaultProduct: "The default product in which the project will open",
-    secretDetectionIgnoreValues: "The list of secret values to ignore for secret detection."
+    secretDetectionIgnoreValues: "The list of secret values to ignore for secret detection.",
+    enforceEncryptedSecretManagerSecretMetadata:
+      "Enable or disable enforcement of encrypted secret metadata for the project."
   },
   GET_KEY: {
     projectId: "The ID of the project to get the key from."
@@ -1164,7 +1168,7 @@ export const RAW_SECRETS = {
     includeImports: "Weather to include imported secrets or not.",
     tagSlugs: "The comma separated tag slugs to filter secrets.",
     metadataFilter:
-      "The secret metadata key-value pairs to filter secrets by. When querying for multiple metadata pairs, the query is treated as an AND operation. Secret metadata format is key=value1,value=value2|key=value3,value=value4."
+      "Unencrypted secret metadata key–value pairs used to filter secrets. Only metadata with unencrypted values is supported. When querying for multiple metadata pairs, the query is treated as an AND operation. Secret metadata format is key=value1,value=value2|key=value3,value=value4."
   },
   CREATE: {
     secretName: "The name of the secret to create.",
@@ -1942,6 +1946,17 @@ export const CERTIFICATE_AUTHORITIES = {
     serialNumber: "The serial number of the CA certificate.",
     version: "The version of the CA certificate. The version is incremented for each CA renewal operation."
   },
+  GENERATE_CA_CERTIFICATE: {
+    caId: "The ID of the CA to generate a certificate for.",
+    parentCaId: "The ID of the parent CA to sign the intermediate certificate with. Not required for root CAs.",
+    notBefore: "The date and time when the CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format.",
+    notAfter: "The date and time when the CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format.",
+    maxPathLength:
+      "The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.",
+    certificate: "The generated CA certificate.",
+    certificateChain: "The certificate chain of the CA.",
+    serialNumber: "The serial number of the CA certificate."
+  },
   SIGN_INTERMEDIATE: {
     caId: "The ID of the CA to sign the intermediate certificate with.",
     csr: "The pem-encoded CSR to sign with the CA.",
@@ -2249,6 +2264,32 @@ export const PROJECT_ROLE = {
   }
 };
 
+export const ORG_ROLE = {
+  CREATE: {
+    slug: "The slug of the role.",
+    name: "The name of the role.",
+    description: "The description for the role.",
+    permissions: "The permissions assigned to the role."
+  },
+  UPDATE: {
+    roleId: "The ID of the role to update.",
+    slug: "The slug of the role.",
+    name: "The name of the role.",
+    description: "The description for the role.",
+    permissions: "The permissions assigned to the role."
+  },
+  DELETE: {
+    roleId: "The ID of the role to delete."
+  },
+  GET: {
+    roleId: "The ID of the role to get."
+  },
+  GET_ROLE_BY_SLUG: {
+    roleSlug: "The slug of the role to get details."
+  },
+  LIST: {}
+};
+
 export const KMS = {
   CREATE_KEY: {
     projectId: "The ID of the project to create the key in.",
@@ -2326,14 +2367,30 @@ export const ProjectTemplates = {
     type: "The type of project template to be created.",
     description: "An optional description of the project template.",
     roles: "The roles to be created when the template is applied to a project.",
-    environments: "The environments to be created when the template is applied to a project."
+    environments: "The environments to be created when the template is applied to a project.",
+    users:
+      "The users to be automatically added to projects created from this template. Each user is identified by username and assigned one or more roles.",
+    groups:
+      "The groups to be automatically added to projects created from this template. Each group is identified by slug and assigned one or more roles.",
+    identities:
+      "The organization-owned identities to be automatically added to projects created from this template. Each identity is identified by ID and assigned one or more roles.",
+    projectManagedIdentities:
+      "The project-owned identities to be automatically created for projects created from this template. Each identity is identified by name and assigned one or more roles."
   },
   UPDATE: {
     templateId: "The ID of the project template to be updated.",
     name: "The updated name of the project template. Must be slug-friendly.",
     description: "The updated description of the project template.",
     roles: "The updated roles to be created when the template is applied to a project.",
-    environments: "The updated environments to be created when the template is applied to a project."
+    environments: "The updated environments to be created when the template is applied to a project.",
+    users:
+      "The updated users to be automatically added to projects created from this template. Each user is identified by username and assigned one or more roles.",
+    groups:
+      "The updated groups to be automatically added to projects created from this template. Each group is identified by slug and assigned one or more roles.",
+    identities:
+      "The updated organization-owned identities to be automatically added to projects created from this template. Each identity is identified by ID and assigned one or more roles.",
+    projectManagedIdentities:
+      "The updated project-owned identities to be automatically created for projects created from this template. Each identity is identified by name and assigned one or more roles."
   },
   DELETE: {
     templateId: "The ID of the project template to be deleted."

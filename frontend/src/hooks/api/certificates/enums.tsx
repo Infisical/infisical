@@ -44,3 +44,11 @@ export enum CertExtendedKeyUsage {
   TIMESTAMPING = "time_stamping",
   OCSP_SIGNING = "ocsp_signing"
 }
+
+export enum CertificateRequestStatus {
+  PENDING_APPROVAL = "pending_approval",
+  PENDING = "pending",
+  ISSUED = "issued",
+  FAILED = "failed",
+  REJECTED = "rejected"
+}

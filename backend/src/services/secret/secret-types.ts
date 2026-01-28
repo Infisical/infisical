@@ -17,7 +17,7 @@ import { ActorType } from "../auth/auth-type";
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
-import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
+import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { SecretUpdateMode } from "../secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
@@ -250,7 +250,7 @@ export type TCreateSecretRawDTO = TProjectPermission & {
   skipMultilineEncoding?: boolean;
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
-  secretMetadata?: ResourceMetadataDTO;
+  secretMetadata?: ResourceMetadataWithEncryptionDTO;
 };
 
 export type TUpdateSecretRawDTO = TProjectPermission & {
@@ -269,7 +269,7 @@ export type TUpdateSecretRawDTO = TProjectPermission & {
   metadata?: {
     source?: string;
   };
-  secretMetadata?: ResourceMetadataDTO;
+  secretMetadata?: ResourceMetadataWithEncryptionDTO;
 };
 
 export type TDeleteSecretRawDTO = TProjectPermission & {
@@ -290,7 +290,7 @@ export type TCreateManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
     secretComment?: string;
     skipMultilineEncoding?: boolean;
     tagIds?: string[];
-    secretMetadata?: ResourceMetadataDTO;
+    secretMetadata?: ResourceMetadataWithEncryptionDTO;
     metadata?: {
       source?: string;
     };
@@ -310,7 +310,7 @@ export type TUpdateManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
     secretComment?: string;
     skipMultilineEncoding?: boolean;
     tagIds?: string[];
-    secretMetadata?: ResourceMetadataDTO;
+    secretMetadata?: ResourceMetadataWithEncryptionDTO;
     secretReminderRepeatDays?: number | null;
     secretReminderNote?: string | null;
     secretPath?: string;
@@ -344,7 +344,7 @@ export type TFnSecretBulkInsert = {
     Omit<TSecretsInsert, "folderId"> & {
       tags?: string[];
       references?: TSecretReference[];
-      secretMetadata?: ResourceMetadataDTO;
+      secretMetadata?: ResourceMetadataWithEncryptionDTO;
     }
   >;
   secretDAL: Pick<TSecretDALFactory, "insertMany" | "upsertSecretReferences">;
@@ -561,7 +561,7 @@ export type TProcessNewCommitRawDTO = {
       secretComment?: string;
       skipMultilineEncoding?: boolean;
       tagIds?: string[];
-      secretMetadata?: ResourceMetadataDTO;
+      secretMetadata?: ResourceMetadataWithEncryptionDTO;
       metadata?: { source?: string };
     }[];
     update?: {
@@ -571,7 +571,7 @@ export type TProcessNewCommitRawDTO = {
       secretComment?: string;
       skipMultilineEncoding?: boolean;
       tagIds?: string[];
-      secretMetadata?: ResourceMetadataDTO;
+      secretMetadata?: ResourceMetadataWithEncryptionDTO;
       metadata?: { source?: string };
     }[];
     delete?: { secretKey: string }[];

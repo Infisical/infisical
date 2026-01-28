@@ -10,6 +10,7 @@ import {
 } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
@@ -66,6 +67,7 @@ type TAuthLoginServiceFactoryDep = {
   membershipUserDAL: TMembershipUserDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
 };
 
 export type TAuthLoginFactory = ReturnType<typeof authLoginServiceFactory>;
@@ -78,7 +80,8 @@ export const authLoginServiceFactory = ({
   auditLogService,
   notificationService,
   membershipUserDAL,
-  membershipRoleDAL
+  membershipRoleDAL,
+  keyStore
 }: TAuthLoginServiceFactoryDep) => {
   /*
    * Private
@@ -899,20 +902,43 @@ export const authLoginServiceFactory = ({
       const updatedUser = await processFailedMfaAttempt(userId);
       if (updatedUser.isLocked) {
         if (updatedUser.email) {
-          const unlockToken = await tokenService.createTokenForUser({
-            type: TokenType.TOKEN_USER_UNLOCK,
-            userId: updatedUser.id
-          });
+          // Use a keystore lock to prevent sending duplicate unlock emails during concurrent requests
+          let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
+          try {
+            lock = await keyStore.acquireLock([KeyStorePrefixes.UserMfaLockoutLock(userId)], 3000, {
+              retryCount: 0
+            });
 
-          await smtpService.sendMail({
-            template: SmtpTemplates.UnlockAccount,
-            subjectLine: "Unlock your Infisical account",
-            recipients: [updatedUser.email],
-            substitutions: {
-              token: unlockToken,
-              callback_url: `${appCfg.SITE_URL}/api/v1/user/${updatedUser.id}/unlock`
+            // Check if an unlock email was already sent recently (within 5 minutes)
+            const emailAlreadySent = await keyStore.getItem(KeyStorePrefixes.UserMfaUnlockEmailSent(userId));
+            if (!emailAlreadySent) {
+              const unlockToken = await tokenService.createTokenForUser({
+                type: TokenType.TOKEN_USER_UNLOCK,
+                userId: updatedUser.id
+              });
+
+              await smtpService.sendMail({
+                template: SmtpTemplates.UnlockAccount,
+                subjectLine: "Unlock your Infisical account",
+                recipients: [updatedUser.email],
+                substitutions: {
+                  token: unlockToken,
+                  callback_url: `${appCfg.SITE_URL}/api/v1/user/${updatedUser.id}/unlock`
+                }
+              });
+
+              // Mark that an unlock email was sent, expires after 5 minutes
+              await keyStore.setItemWithExpiry(KeyStorePrefixes.UserMfaUnlockEmailSent(userId), 300, "1");
             }
-          });
+          } catch (lockErr) {
+            if (lock) {
+              logger.error(lockErr, "Failed to send unlock email");
+            }
+          } finally {
+            if (lock) {
+              await lock.release();
+            }
+          }
         }
       }
 

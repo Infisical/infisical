@@ -13,6 +13,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
+import { isDisposableEmail } from "@app/lib/validator";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { AuthMethod } from "../auth/auth-type";
@@ -202,6 +203,13 @@ export const membershipUserServiceFactory = ({
     if (isInvalidTemporaryRole) {
       throw new BadRequestError({
         message: "Temporary role must have access start time and range"
+      });
+    }
+
+    const isEmailInvalid = await isDisposableEmail(data.usernames);
+    if (isEmailInvalid) {
+      throw new BadRequestError({
+        message: "Disposable emails are not allowed"
       });
     }
 

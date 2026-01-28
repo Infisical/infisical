@@ -23,6 +23,7 @@ export type TCertificateProfile = {
   createdAt: string;
   updatedAt: string;
   externalConfigs?: Record<string, unknown> | null;
+  defaultTtlDays?: number | null;
   certificateAuthority?: {
     id: string;
     projectId?: string;
@@ -89,6 +90,7 @@ export type TCreateCertificateProfileDTO = {
     skipEabBinding?: boolean;
   };
   externalConfigs?: Record<string, unknown> | null;
+  defaultTtlDays?: number;
 };
 
 export type TUpdateCertificateProfileDTO = {
@@ -111,6 +113,7 @@ export type TUpdateCertificateProfileDTO = {
     skipEabBinding?: boolean;
   };
   externalConfigs?: Record<string, unknown> | null;
+  defaultTtlDays?: number | null;
 };
 
 export type TDeleteCertificateProfileDTO = {

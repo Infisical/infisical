@@ -81,7 +81,8 @@ export type TCreateAuditLogDTO = {
     | UnknownUserActor
     | KmipClientActor
     | AcmeProfileActor
-    | AcmeAccountActor;
+    | AcmeAccountActor
+    | EstAccountActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -327,6 +328,7 @@ export enum EventType {
   SIGN_INTERMEDIATE = "sign-intermediate",
   IMPORT_CA_CERT = "import-certificate-authority-cert",
   GET_CA_CRLS = "get-certificate-authority-crls",
+  GENERATE_CA_CERTIFICATE = "generate-ca-certificate",
   ISSUE_CERT = "issue-cert",
   IMPORT_CERT = "import-cert",
   SIGN_CERT = "sign-cert",
@@ -682,6 +684,10 @@ interface AcmeAccountActorMetadata {
   accountId: string;
 }
 
+interface EstAccountActorMetadata {
+  profileId: string;
+}
+
 interface UnknownUserActorMetadata {}
 
 export interface UserActor {
@@ -729,6 +735,10 @@ export interface AcmeAccountActor {
   metadata: AcmeAccountActorMetadata;
 }
 
+export interface EstAccountActor {
+  type: ActorType.EST_ACCOUNT;
+  metadata: EstAccountActorMetadata;
+}
 export type Actor =
   | UserActor
   | ServiceActor
@@ -737,7 +747,8 @@ export type Actor =
   | PlatformActor
   | KmipClientActor
   | AcmeProfileActor
-  | AcmeAccountActor;
+  | AcmeAccountActor
+  | EstAccountActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -2400,6 +2411,16 @@ interface GetCaCrls {
   metadata: {
     caId: string;
     dn: string;
+  };
+}
+
+interface GenerateCaCertificate {
+  type: EventType.GENERATE_CA_CERTIFICATE;
+  metadata: {
+    caId: string;
+    dn: string;
+    serialNumber: string;
+    parentCaId?: string;
   };
 }
 
@@ -5062,6 +5083,7 @@ export type Event =
   | SignIntermediate
   | ImportCaCert
   | GetCaCrls
+  | GenerateCaCertificate
   | IssueCert
   | ImportCert
   | SignCert

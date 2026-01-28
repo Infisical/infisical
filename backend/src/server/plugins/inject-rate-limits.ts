@@ -32,7 +32,9 @@ export const injectRateLimits = fp(async (server) => {
       publicEndpointLimit: instanceRateLimiterConfig.publicEndpointLimit,
       authRateLimit: instanceRateLimiterConfig.authRateLimit,
       inviteUserRateLimit: instanceRateLimiterConfig.inviteUserRateLimit,
-      mfaRateLimit: instanceRateLimiterConfig.mfaRateLimit
+      mfaRateLimit: instanceRateLimiterConfig.mfaRateLimit,
+      identityCreationLimit: instanceRateLimiterConfig.identityCreationLimit,
+      projectCreationLimit: instanceRateLimiterConfig.projectCreationLimit
     };
   });
 });

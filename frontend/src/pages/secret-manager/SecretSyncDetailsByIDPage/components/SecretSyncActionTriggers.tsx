@@ -126,7 +126,7 @@ export const SecretSyncActionTriggers = ({ secretSync }: Props) => {
 
   return (
     <>
-      <div className="mt-4 ml-auto flex flex-wrap items-center justify-end gap-2">
+      <div className="mt-4 ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
         <SecretSyncImportStatusBadge secretSync={secretSync} />
         <SecretSyncRemoveStatusBadge secretSync={secretSync} />
         {secretSync.isAutoSyncEnabled ? (

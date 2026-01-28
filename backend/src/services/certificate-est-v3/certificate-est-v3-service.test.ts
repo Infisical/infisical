@@ -4,10 +4,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable no-bitwise */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 
 import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
 import { certificateEstV3ServiceFactory, TCertificateEstV3ServiceFactory } from "./certificate-est-v3-service";
@@ -18,7 +18,9 @@ vi.mock("@peculiar/x509", () => ({
   GeneralNames: vi.fn(),
   KeyUsagesExtension: vi.fn(),
   ExtendedKeyUsageExtension: vi.fn(),
-  X509Certificate: vi.fn(),
+  X509Certificate: vi.fn().mockImplementation(() => ({
+    rawData: new ArrayBuffer(0)
+  })),
   KeyUsageFlags: {
     digitalSignature: 1,
     nonRepudiation: 2,
@@ -32,117 +34,44 @@ vi.mock("@peculiar/x509", () => ({
   }
 }));
 
-// Mock other dependencies
+vi.mock("@app/lib/certificates/extract-certificate", () => ({
+  extractX509CertFromChain: vi.fn(() => ["mock-cert"])
+}));
+
+vi.mock("@app/services/certificate/certificate-fns", () => ({
+  isCertChainValid: vi.fn(() => Promise.resolve(true))
+}));
+
 vi.mock("@app/services/certificate-authority/certificate-authority-fns", () => ({
-  parseDistinguishedName: vi.fn((subject: string) => {
-    const parts = subject.split(",");
-    const result: any = {};
-    parts.forEach((part) => {
-      const [key, value] = part.split("=");
-      switch (key.trim()) {
-        case "CN":
-          result.commonName = value;
-          break;
-        case "O":
-          result.organization = value;
-          break;
-        case "OU":
-          result.ou = value;
-          break;
-        case "L":
-          result.locality = value;
-          break;
-        case "ST":
-          result.province = value;
-          break;
-        case "C":
-          result.country = value;
-          break;
-        default:
-          break;
+  getCaCertChain: vi.fn(() =>
+    Promise.resolve({
+      caCert: "mock-ca-cert",
+      caCertChain: "mock-ca-chain"
+    })
+  ),
+  getCaCertChains: vi.fn(() =>
+    Promise.resolve([
+      {
+        certificate: "mock-cert",
+        certificateChain: "mock-chain"
       }
-    });
-    return result;
-  })
+    ])
+  )
 }));
 
-vi.mock("@app/services/certificate-authority/certificate-authority-validators", () => ({
-  validateAndMapAltNameType: vi.fn((value: string) => {
-    if (value.includes(".") && !value.match(/^\d+\.\d+\.\d+\.\d+$/)) {
-      return { type: "dns", value };
-    }
-    if (value.match(/^\d+\.\d+\.\d+\.\d+$/)) {
-      return { type: "ip", value };
-    }
-    return null;
-  })
-}));
-
-vi.mock("@app/services/certificate/certificate-types", () => ({
-  mapLegacyAltNameType: vi.fn((type: string) => {
-    const mapping: Record<string, string> = {
-      dns: "dns_name",
-      ip: "ip_address",
-      email: "rfc822_name",
-      url: "uniform_resource_identifier"
-    };
-    return mapping[type] || type;
-  }),
-  TAltNameType: {
-    EMAIL: "email",
-    DNS: "dns",
-    IP: "ip",
-    URL: "url"
-  },
-  CertExtendedKeyUsageOIDToName: {
-    "1.3.6.1.5.5.7.3.1": "serverAuth",
-    "1.3.6.1.5.5.7.3.2": "clientAuth",
-    "1.3.6.1.5.5.7.3.3": "codeSigning"
-  },
-  CertKeyUsage: {
-    DIGITAL_SIGNATURE: "digitalSignature",
-    KEY_ENCIPHERMENT: "keyEncipherment",
-    KEY_CERT_SIGN: "keyCertSign",
-    NON_REPUDIATION: "nonRepudiation",
-    DATA_ENCIPHERMENT: "dataEncipherment",
-    KEY_AGREEMENT: "keyAgreement",
-    CRL_SIGN: "cRLSign",
-    ENCIPHER_ONLY: "encipherOnly",
-    DECIPHER_ONLY: "decipherOnly"
-  },
-  CertExtendedKeyUsage: {
-    CLIENT_AUTH: "clientAuth",
-    SERVER_AUTH: "serverAuth",
-    CODE_SIGNING: "codeSigning"
-  }
-}));
-
-vi.mock("@app/services/certificate-common/certificate-utils", () => ({
-  mapEnumsForValidation: vi.fn((req: any) => req)
+vi.mock("@app/services/project/project-fns", () => ({
+  getProjectKmsCertificateKeyId: vi.fn(() => Promise.resolve("mock-kms-id"))
 }));
 
 vi.mock("../../ee/services/certificate-est/certificate-est-fns", () => ({
   convertRawCertsToPkcs7: vi.fn(() => "mocked-pkcs7-response")
 }));
 
-describe("CertificateEstV3Service Security Fix", () => {
+describe("CertificateEstV3Service", () => {
   let service: TCertificateEstV3ServiceFactory;
 
-  const mockInternalCertificateAuthorityService = {
-    signCertFromCa: vi.fn()
-  };
-
-  const mockCertificatePolicyService = {
-    validateCertificateRequest: vi.fn()
-  };
-
-  const mockCertificatePolicyDAL = {
-    findById: vi.fn().mockResolvedValue({
-      id: "policy-123",
-      basicConstraints: null,
-      subject: [],
-      sans: []
-    })
+  const mockCertificateV3Service = {
+    signCertificateFromProfile: vi.fn()
   };
 
   const mockCertificateAuthorityDAL = {
@@ -162,7 +91,7 @@ describe("CertificateEstV3Service Security Fix", () => {
   };
 
   const mockKmsService = {
-    decryptWithKmsKey: vi.fn(),
+    decryptWithKmsKey: vi.fn().mockResolvedValue(vi.fn(() => Promise.resolve(Buffer.from("mock-decrypted")))),
     generateKmsKey: vi.fn()
   };
 
@@ -175,6 +104,10 @@ describe("CertificateEstV3Service Security Fix", () => {
   };
 
   const mockEstEnrollmentConfigDAL = {
+    findById: vi.fn()
+  };
+
+  const mockCertificatePolicyDAL = {
     findById: vi.fn()
   };
 
@@ -193,7 +126,11 @@ describe("CertificateEstV3Service Security Fix", () => {
 
   const mockEstConfig = {
     id: "est-config-123",
-    disableBootstrapCaValidation: true
+    disableBootstrapCaValidation: true,
+    encryptedCaChain: null,
+    hashedPassphrase: "hashed",
+    createdAt: new Date(),
+    updatedAt: new Date()
   };
 
   const mockProject = {
@@ -205,430 +142,97 @@ describe("CertificateEstV3Service Security Fix", () => {
     pkiEst: true
   };
 
-  beforeEach(async () => {
-    const { Pkcs10CertificateRequest, GeneralNames } = await import("@peculiar/x509");
+  const mockPolicy = {
+    id: "policy-123",
+    validity: { max: "90d" }
+  };
 
+  beforeEach(async () => {
     service = certificateEstV3ServiceFactory({
-      internalCertificateAuthorityService: mockInternalCertificateAuthorityService,
-      certificatePolicyService: mockCertificatePolicyService,
-      certificatePolicyDAL: mockCertificatePolicyDAL,
+      certificateV3Service: mockCertificateV3Service,
       certificateAuthorityDAL: mockCertificateAuthorityDAL,
       certificateAuthorityCertDAL: mockCertificateAuthorityCertDAL,
       projectDAL: mockProjectDAL,
       kmsService: mockKmsService,
       licenseService: mockLicenseService,
       certificateProfileDAL: mockCertificateProfileDAL,
-      estEnrollmentConfigDAL: mockEstEnrollmentConfigDAL
+      estEnrollmentConfigDAL: mockEstEnrollmentConfigDAL,
+      certificatePolicyDAL: mockCertificatePolicyDAL
     });
 
     mockCertificateProfileDAL.findByIdWithConfigs.mockResolvedValue(mockProfile);
     mockEstEnrollmentConfigDAL.findById.mockResolvedValue(mockEstConfig);
     mockProjectDAL.findOne.mockResolvedValue(mockProject);
     mockLicenseService.getPlan.mockResolvedValue(mockPlan);
-
-    // Set up the default CSR parsing behavior
-    (Pkcs10CertificateRequest as any).mockImplementation((csr: string) => {
-      const parsed = JSON.parse(csr);
-      const mockExtensions: any[] = [];
-
-      if (parsed.sans && parsed.sans.length > 0) {
-        mockExtensions.push({ type: "2.5.29.17", value: "mock-san-value" });
-      }
-
-      return {
-        subject: parsed.subject,
-        extensions: mockExtensions,
-        getExtension: vi.fn((oid: string) => {
-          if (oid === "2.5.29.15" && parsed.keyUsages && parsed.keyUsages.length > 0) {
-            // Calculate usages as bitwise OR of key usage flags
-            let usages = 0;
-            parsed.keyUsages.forEach((usage: string) => {
-              switch (usage) {
-                case "digital_signature":
-                  usages |= 1; // KeyUsageFlags.digitalSignature
-                  break;
-                case "key_encipherment":
-                  usages |= 4; // KeyUsageFlags.keyEncipherment
-                  break;
-                case "key_cert_sign":
-                  usages |= 32; // KeyUsageFlags.keyCertSign
-                  break;
-                default:
-                  break;
-              }
-            });
-            return { usages };
-          }
-          if (oid === "2.5.29.37" && parsed.extendedKeyUsages && parsed.extendedKeyUsages.length > 0) {
-            const ekuOids = parsed.extendedKeyUsages.map((eku: string) => {
-              switch (eku) {
-                case "client_auth":
-                  return "1.3.6.1.5.5.7.3.2";
-                case "server_auth":
-                  return "1.3.6.1.5.5.7.3.1";
-                case "code_signing":
-                  return "1.3.6.1.5.5.7.3.3";
-                default:
-                  return "1.3.6.1.5.5.7.3.1";
-              }
-            });
-            return { usages: ekuOids };
-          }
-          return undefined;
-        })
-      };
-    });
-
-    (GeneralNames as any).mockImplementation(() => ({
-      items: [
-        { type: "dns", value: "test.example.com" },
-        { type: "ip", value: "192.168.1.1" }
-      ]
-    }));
+    mockCertificatePolicyDAL.findById.mockResolvedValue(mockPolicy);
   });
 
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  const createMockCSR = (
-    options: {
-      subject?: string;
-      keyUsages?: string[];
-      extendedKeyUsages?: string[];
-      sans?: Array<{ type: string; value: string }>;
-    } = {}
-  ) => {
-    const {
-      subject = "CN=test.example.com,O=Test Org,C=US",
-      keyUsages = [],
-      extendedKeyUsages = [],
-      sans = []
-    } = options;
-
-    return JSON.stringify({
-      subject,
-      keyUsages,
-      extendedKeyUsages,
-      sans
-    });
-  };
-
-  describe("CSR Extraction and Template Validation", () => {
-    it("should extract subject attributes from CSR", async () => {
-      const csr = createMockCSR({
-        subject: "CN=test.example.com,O=Test Organization,OU=IT Department,L=San Francisco,ST=California,C=US"
+  describe("simpleEnrollByProfile", () => {
+    it("should successfully enroll and return PKCS7 response", async () => {
+      mockCertificateV3Service.signCertificateFromProfile.mockResolvedValue({
+        status: CertificateRequestStatus.ISSUED,
+        certificate: "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
+        certificateId: "cert-123"
       });
 
-      mockCertificatePolicyService.validateCertificateRequest.mockResolvedValue({
-        isValid: true,
-        errors: [],
-        warnings: []
-      });
-
-      mockInternalCertificateAuthorityService.signCertFromCa.mockResolvedValue({
-        certificate: { rawData: new ArrayBuffer(0) }
-      });
-
-      await service.simpleEnrollByProfile({
-        csr,
+      const result = await service.simpleEnrollByProfile({
+        csr: "mock-csr",
         profileId: "profile-123",
         sslClientCert: ""
       });
 
-      expect(mockCertificatePolicyService.validateCertificateRequest).toHaveBeenCalledWith(
-        "policy-123",
+      expect(result).toBe("mocked-pkcs7-response");
+      expect(mockCertificateV3Service.signCertificateFromProfile).toHaveBeenCalledWith(
         expect.objectContaining({
-          commonName: "test.example.com",
-          organization: "Test Organization",
-          organizationUnit: "IT Department",
-          locality: "San Francisco",
-          state: "California",
-          country: "US"
+          profileId: "profile-123",
+          csr: "mock-csr",
+          enrollmentType: EnrollmentType.EST,
+          validity: { ttl: "90d" }
         })
       );
     });
 
-    it("should extract key usages from CSR", async () => {
-      const csr = createMockCSR({
-        keyUsages: ["digital_signature", "key_encipherment"]
-      });
-
-      mockCertificatePolicyService.validateCertificateRequest.mockResolvedValue({
-        isValid: true,
-        errors: [],
-        warnings: []
-      });
-
-      mockInternalCertificateAuthorityService.signCertFromCa.mockResolvedValue({
-        certificate: { rawData: new ArrayBuffer(0) }
-      });
-
-      await service.simpleEnrollByProfile({
-        csr,
-        profileId: "profile-123",
-        sslClientCert: ""
-      });
-
-      expect(mockCertificatePolicyService.validateCertificateRequest).toHaveBeenCalledWith(
-        "policy-123",
-        expect.objectContaining({
-          keyUsages: expect.arrayContaining(["digital_signature", "key_encipherment"])
-        })
-      );
-    });
-
-    it("should extract extended key usages from CSR", async () => {
-      const csr = createMockCSR({
-        extendedKeyUsages: ["client_auth", "server_auth"]
-      });
-
-      mockCertificatePolicyService.validateCertificateRequest.mockResolvedValue({
-        isValid: true,
-        errors: [],
-        warnings: []
-      });
-
-      mockInternalCertificateAuthorityService.signCertFromCa.mockResolvedValue({
-        certificate: { rawData: new ArrayBuffer(0) }
-      });
-
-      await service.simpleEnrollByProfile({
-        csr,
-        profileId: "profile-123",
-        sslClientCert: ""
-      });
-
-      expect(mockCertificatePolicyService.validateCertificateRequest).toHaveBeenCalledWith(
-        "policy-123",
-        expect.objectContaining({
-          extendedKeyUsages: expect.arrayContaining(["client_auth", "server_auth"])
-        })
-      );
-    });
-
-    it("should extract Subject Alternative Names from CSR", async () => {
-      const { GeneralNames } = await import("@peculiar/x509");
-
-      const csr = createMockCSR({
-        sans: [
-          { type: "dns", value: "test.example.com" },
-          { type: "ip", value: "192.168.1.1" }
-        ]
-      });
-
-      (GeneralNames as any).mockImplementation(() => ({
-        items: [
-          { type: "dns", value: "test.example.com" },
-          { type: "ip", value: "192.168.1.1" }
-        ]
-      }));
-
-      mockCertificatePolicyService.validateCertificateRequest.mockResolvedValue({
-        isValid: true,
-        errors: [],
-        warnings: []
-      });
-
-      mockInternalCertificateAuthorityService.signCertFromCa.mockResolvedValue({
-        certificate: { rawData: new ArrayBuffer(0) }
-      });
-
-      await service.simpleEnrollByProfile({
-        csr,
-        profileId: "profile-123",
-        sslClientCert: ""
-      });
-
-      expect(mockCertificatePolicyService.validateCertificateRequest).toHaveBeenCalledWith(
-        "policy-123",
-        expect.objectContaining({
-          subjectAlternativeNames: expect.arrayContaining([
-            expect.objectContaining({
-              type: "dns_name",
-              value: "test.example.com"
-            }),
-            expect.objectContaining({
-              type: "ip_address",
-              value: "192.168.1.1"
-            })
-          ])
-        })
-      );
-    });
-  });
-
-  describe("Template Validation Enforcement", () => {
-    const basicCSR = createMockCSR();
-
-    it("should enforce template validation and reject invalid requests", async () => {
-      mockCertificatePolicyService.validateCertificateRequest.mockResolvedValue({
-        isValid: false,
-        errors: ["Common name 'test.example.com' is not allowed", "Key usage 'digital_signature' is denied"],
-        warnings: []
+    it("should throw error when approval is required", async () => {
+      mockCertificateV3Service.signCertificateFromProfile.mockResolvedValue({
+        status: CertificateRequestStatus.PENDING_APPROVAL,
+        certificateRequestId: "req-123",
+        message: "Requires approval"
       });
 
       await expect(
         service.simpleEnrollByProfile({
-          csr: basicCSR,
+          csr: "mock-csr",
           profileId: "profile-123",
           sslClientCert: ""
         })
       ).rejects.toThrow(BadRequestError);
 
-      expect(mockInternalCertificateAuthorityService.signCertFromCa).not.toHaveBeenCalled();
-    });
-
-    it("should allow valid requests that pass template validation", async () => {
-      mockCertificatePolicyService.validateCertificateRequest.mockResolvedValue({
-        isValid: true,
-        errors: [],
-        warnings: []
-      });
-
-      mockInternalCertificateAuthorityService.signCertFromCa.mockResolvedValue({
-        certificate: { rawData: new ArrayBuffer(0) }
-      });
-
-      await service.simpleEnrollByProfile({
-        csr: basicCSR,
-        profileId: "profile-123",
-        sslClientCert: ""
-      });
-
-      expect(mockCertificatePolicyService.validateCertificateRequest).toHaveBeenCalledWith(
-        "policy-123",
-        expect.any(Object)
-      );
-      expect(mockInternalCertificateAuthorityService.signCertFromCa).toHaveBeenCalledWith({
-        isInternal: true,
-        caId: "ca-123",
-        csr: basicCSR,
-        isFromProfile: true,
-        basicConstraints: undefined
-      });
-    });
-
-    it("should validate template for both simpleEnrollByProfile and simpleReenrollByProfile", async () => {
-      mockCertificatePolicyService.validateCertificateRequest.mockResolvedValue({
-        isValid: false,
-        errors: ["SAN value 'evil.com' is denied"],
-        warnings: []
-      });
-
       await expect(
         service.simpleEnrollByProfile({
-          csr: basicCSR,
+          csr: "mock-csr",
           profileId: "profile-123",
           sslClientCert: ""
         })
-      ).rejects.toThrow(BadRequestError);
-
-      expect(mockCertificatePolicyService.validateCertificateRequest).toHaveBeenCalled();
-      expect(mockInternalCertificateAuthorityService.signCertFromCa).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("Policy Bypass Prevention", () => {
-    const maliciousCSR = createMockCSR({
-      subject: "CN=evil.com,O=Evil Corp,C=XX",
-      keyUsages: ["key_cert_sign"],
-      sans: [
-        { type: "dns", value: "*.example.com" },
-        { type: "ip", value: "127.0.0.1" }
-      ]
+      ).rejects.toThrow(/requires approval/i);
     });
 
-    it("should block attempts to bypass subject attribute policies", async () => {
-      mockCertificatePolicyService.validateCertificateRequest.mockResolvedValue({
-        isValid: false,
-        errors: ["Organization 'Evil Corp' is denied", "Country 'XX' is not allowed"],
-        warnings: []
-      });
-
-      await expect(
-        service.simpleEnrollByProfile({
-          csr: maliciousCSR,
-          profileId: "profile-123",
-          sslClientCert: ""
-        })
-      ).rejects.toThrow(BadRequestError);
-
-      expect(mockCertificatePolicyService.validateCertificateRequest).toHaveBeenCalledWith(
-        "policy-123",
-        expect.objectContaining({
-          commonName: "evil.com",
-          organization: "Evil Corp",
-          country: "XX"
-        })
-      );
-    });
-
-    it("should block attempts to bypass key usage policies", async () => {
-      mockCertificatePolicyService.validateCertificateRequest.mockResolvedValue({
-        isValid: false,
-        errors: ["Key usage 'key_cert_sign' is denied - certificate authority privileges not allowed"],
-        warnings: []
-      });
-
-      await expect(
-        service.simpleEnrollByProfile({
-          csr: maliciousCSR,
-          profileId: "profile-123",
-          sslClientCert: ""
-        })
-      ).rejects.toThrow(BadRequestError);
-
-      expect(mockCertificatePolicyService.validateCertificateRequest).toHaveBeenCalledWith(
-        "policy-123",
-        expect.objectContaining({
-          keyUsages: expect.arrayContaining(["key_cert_sign"])
-        })
-      );
-    });
-
-    it("should block attempts to bypass SAN policies", async () => {
-      const { GeneralNames } = await import("@peculiar/x509");
-
-      (GeneralNames as any).mockImplementation(() => ({
-        items: [
-          { type: "dns", value: "*.example.com" },
-          { type: "ip", value: "127.0.0.1" }
-        ]
-      }));
-
-      mockCertificatePolicyService.validateCertificateRequest.mockResolvedValue({
-        isValid: false,
-        errors: ["SAN value '*.example.com' matches denied wildcard pattern", "SAN value '127.0.0.1' is denied"],
-        warnings: []
-      });
-
-      await expect(
-        service.simpleEnrollByProfile({
-          csr: maliciousCSR,
-          profileId: "profile-123",
-          sslClientCert: ""
-        })
-      ).rejects.toThrow(BadRequestError);
-    });
-  });
-
-  describe("Error Handling", () => {
-    const basicCSR = createMockCSR();
-
-    it("should handle profile not found", async () => {
+    it("should throw error when profile not found", async () => {
       mockCertificateProfileDAL.findByIdWithConfigs.mockResolvedValue(null);
 
       await expect(
         service.simpleEnrollByProfile({
-          csr: basicCSR,
+          csr: "mock-csr",
           profileId: "nonexistent",
           sslClientCert: ""
         })
       ).rejects.toThrow(NotFoundError);
     });
 
-    it("should handle non-EST enrollment type", async () => {
+    it("should throw error when profile is not configured for EST", async () => {
       mockCertificateProfileDAL.findByIdWithConfigs.mockResolvedValue({
         ...mockProfile,
         enrollmentType: EnrollmentType.API
@@ -636,83 +240,218 @@ describe("CertificateEstV3Service Security Fix", () => {
 
       await expect(
         service.simpleEnrollByProfile({
-          csr: basicCSR,
+          csr: "mock-csr",
           profileId: "profile-123",
           sslClientCert: ""
         })
       ).rejects.toThrow(BadRequestError);
     });
 
-    it("should handle template validation service errors", async () => {
-      mockCertificatePolicyService.validateCertificateRequest.mockRejectedValue(
-        new Error("Template validation service unavailable")
-      );
+    it("should throw error when EST config not found", async () => {
+      mockEstEnrollmentConfigDAL.findById.mockResolvedValue(null);
 
       await expect(
         service.simpleEnrollByProfile({
-          csr: basicCSR,
+          csr: "mock-csr",
           profileId: "profile-123",
           sslClientCert: ""
         })
-      ).rejects.toThrow("Template validation service unavailable");
+      ).rejects.toThrow(NotFoundError);
+    });
+
+    it("should throw error when PKI EST is not available in plan", async () => {
+      mockLicenseService.getPlan.mockResolvedValue({ pkiEst: false });
+
+      await expect(
+        service.simpleEnrollByProfile({
+          csr: "mock-csr",
+          profileId: "profile-123",
+          sslClientCert: ""
+        })
+      ).rejects.toThrow(BadRequestError);
+    });
+
+    it("should throw error when certificate is not returned", async () => {
+      mockCertificateV3Service.signCertificateFromProfile.mockResolvedValue({
+        status: CertificateRequestStatus.ISSUED,
+        certificate: null,
+        certificateId: "cert-123"
+      });
+
+      await expect(
+        service.simpleEnrollByProfile({
+          csr: "mock-csr",
+          profileId: "profile-123",
+          sslClientCert: ""
+        })
+      ).rejects.toThrow(BadRequestError);
+    });
+
+    it("should use flow default TTL when profile has no defaultTtlDays", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue({
+        id: "policy-123",
+        validity: { max: "30d" }
+      });
+
+      mockCertificateV3Service.signCertificateFromProfile.mockResolvedValue({
+        status: CertificateRequestStatus.ISSUED,
+        certificate: "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
+        certificateId: "cert-123"
+      });
+
+      await service.simpleEnrollByProfile({
+        csr: "mock-csr",
+        profileId: "profile-123",
+        sslClientCert: ""
+      });
+
+      expect(mockCertificateV3Service.signCertificateFromProfile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          validity: { ttl: "90d" }
+        })
+      );
+    });
+
+    it("should use default 90d TTL when policy has no validity", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue({
+        id: "policy-123",
+        validity: null
+      });
+
+      mockCertificateV3Service.signCertificateFromProfile.mockResolvedValue({
+        status: CertificateRequestStatus.ISSUED,
+        certificate: "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
+        certificateId: "cert-123"
+      });
+
+      await service.simpleEnrollByProfile({
+        csr: "mock-csr",
+        profileId: "profile-123",
+        sslClientCert: ""
+      });
+
+      expect(mockCertificateV3Service.signCertificateFromProfile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          validity: { ttl: "90d" }
+        })
+      );
     });
   });
 
-  describe("Integration with existing flow", () => {
-    const basicCSR = createMockCSR();
+  describe("simpleReenrollByProfile", () => {
+    beforeEach(async () => {
+      const { Pkcs10CertificateRequest, X509Certificate, GeneralNames } = await import("@peculiar/x509");
 
-    beforeEach(() => {
-      mockCertificatePolicyService.validateCertificateRequest.mockResolvedValue({
-        isValid: true,
-        errors: [],
-        warnings: []
-      });
+      (Pkcs10CertificateRequest as any).mockImplementation(() => ({
+        subject: "CN=test.example.com",
+        extensions: []
+      }));
+
+      (X509Certificate as any).mockImplementation(() => ({
+        subject: "CN=test.example.com",
+        extensions: [],
+        rawData: new ArrayBuffer(0)
+      }));
+
+      (GeneralNames as any).mockImplementation(() => ({
+        items: []
+      }));
     });
 
-    it("should call internal CA service with correct parameters after validation", async () => {
-      mockInternalCertificateAuthorityService.signCertFromCa.mockResolvedValue({
-        certificate: { rawData: new ArrayBuffer(0) }
+    it("should successfully re-enroll and return PKCS7 response", async () => {
+      mockCertificateV3Service.signCertificateFromProfile.mockResolvedValue({
+        status: CertificateRequestStatus.ISSUED,
+        certificate: "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
+        certificateId: "cert-123"
       });
 
-      await service.simpleEnrollByProfile({
-        csr: basicCSR,
+      const result = await service.simpleReenrollByProfile({
+        csr: "mock-csr",
         profileId: "profile-123",
-        sslClientCert: ""
+        sslClientCert: encodeURIComponent("-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----")
       });
 
-      expect(mockInternalCertificateAuthorityService.signCertFromCa).toHaveBeenCalledWith({
-        isInternal: true,
-        caId: "ca-123",
-        isFromProfile: true,
-        csr: basicCSR,
-        basicConstraints: undefined
-      });
+      expect(result).toBe("mocked-pkcs7-response");
     });
 
-    it("should use profile's CA ID instead of template ID to avoid v1/v2 mismatch", async () => {
-      mockInternalCertificateAuthorityService.signCertFromCa.mockResolvedValue({
-        certificate: { rawData: new ArrayBuffer(0) }
+    it("should throw error when subjects do not match", async () => {
+      const { Pkcs10CertificateRequest, X509Certificate } = await import("@peculiar/x509");
+
+      (Pkcs10CertificateRequest as any).mockImplementation(() => ({
+        subject: "CN=different.example.com",
+        extensions: []
+      }));
+
+      (X509Certificate as any).mockImplementation(() => ({
+        subject: "CN=test.example.com",
+        extensions: [],
+        rawData: new ArrayBuffer(0)
+      }));
+
+      await expect(
+        service.simpleReenrollByProfile({
+          csr: "mock-csr",
+          profileId: "profile-123",
+          sslClientCert: encodeURIComponent("-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----")
+        })
+      ).rejects.toThrow(BadRequestError);
+    });
+
+    it("should throw error when approval is required for re-enrollment", async () => {
+      mockCertificateV3Service.signCertificateFromProfile.mockResolvedValue({
+        status: CertificateRequestStatus.PENDING_APPROVAL,
+        certificateRequestId: "req-123",
+        message: "Requires approval"
       });
 
-      await service.simpleEnrollByProfile({
-        csr: basicCSR,
-        profileId: "profile-123",
-        sslClientCert: ""
+      await expect(
+        service.simpleReenrollByProfile({
+          csr: "mock-csr",
+          profileId: "profile-123",
+          sslClientCert: encodeURIComponent("-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----")
+        })
+      ).rejects.toThrow(/requires approval/i);
+    });
+  });
+
+  describe("getCaCertsByProfile", () => {
+    it("should return CA certificates in PKCS7 format", async () => {
+      mockCertificateAuthorityDAL.findByIdWithAssociatedCa.mockResolvedValue({
+        id: "ca-123",
+        internalCa: {
+          id: "internal-ca-123",
+          activeCaCertId: "ca-cert-123"
+        }
       });
 
-      // Verify it uses caId from profile, not certificatePolicyId
-      expect(mockInternalCertificateAuthorityService.signCertFromCa).toHaveBeenCalledWith(
-        expect.objectContaining({
-          caId: "ca-123"
-        })
-      );
+      const result = await service.getCaCertsByProfile({
+        profileId: "profile-123"
+      });
 
-      // Verify it does NOT pass certificatePolicyId to avoid v1/v2 confusion
-      expect(mockInternalCertificateAuthorityService.signCertFromCa).toHaveBeenCalledWith(
-        expect.not.objectContaining({
-          certificatePolicyId: expect.anything()
+      expect(result).toBe("mocked-pkcs7-response");
+    });
+
+    it("should throw error when profile not found", async () => {
+      mockCertificateProfileDAL.findByIdWithConfigs.mockResolvedValue(null);
+
+      await expect(
+        service.getCaCertsByProfile({
+          profileId: "nonexistent"
         })
-      );
+      ).rejects.toThrow(NotFoundError);
+    });
+
+    it("should throw error when profile is not configured for EST", async () => {
+      mockCertificateProfileDAL.findByIdWithConfigs.mockResolvedValue({
+        ...mockProfile,
+        enrollmentType: EnrollmentType.API
+      });
+
+      await expect(
+        service.getCaCertsByProfile({
+          profileId: "profile-123"
+        })
+      ).rejects.toThrow(BadRequestError);
     });
   });
 });

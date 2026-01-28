@@ -117,11 +117,13 @@ export const RequestGrantTab = () => {
 
     // Apply search filter
     if (search) {
-      filtered = filtered.filter(
-        (grant) =>
+      filtered = filtered.filter((grant) => {
+        if (grant.type !== ApprovalPolicyType.PamAccess) return false;
+        return (
           grant.attributes.accountPath.toLowerCase().includes(search.toLowerCase()) ||
           grant.id.toLowerCase().includes(search.toLowerCase())
-      );
+        );
+      });
     }
 
     return filtered.filter((grant) => grant.status === filter);
@@ -283,6 +285,7 @@ export const RequestGrantTab = () => {
               {isGrantsLoading && <TableSkeleton columns={7} innerKey="access-grants" />}
               {!isGrantsLoading &&
                 paginatedGrants.map((grant) => {
+                  if (grant.type !== ApprovalPolicyType.PamAccess) return null;
                   const isActive = grant.status === ApprovalGrantStatus.Active;
 
                   return (

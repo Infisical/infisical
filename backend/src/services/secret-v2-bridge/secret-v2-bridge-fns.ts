@@ -10,7 +10,7 @@ import { logger } from "@app/lib/logger";
 import { ActorType } from "../auth/auth-type";
 import { CommitType } from "../folder-commit/folder-commit-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
-import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
+import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretReminderRecipient } from "../secret-reminder-recipients/secret-reminder-recipients-types";
@@ -87,7 +87,6 @@ export const fnSecretBulkInsert = async ({
       userId,
       encryptedComment,
       version,
-      metadata,
       reminderNote,
       encryptedValue,
       reminderRepeatDays
@@ -98,7 +97,6 @@ export const fnSecretBulkInsert = async ({
       userId,
       encryptedComment,
       version,
-      metadata,
       reminderNote,
       encryptedValue,
       reminderRepeatDays
@@ -110,7 +108,7 @@ export const fnSecretBulkInsert = async ({
   const actorType = actor?.type || ActorType.PLATFORM;
 
   const newSecrets = await secretDAL.insertMany(
-    sanitizedInputSecrets.map(({ metadata, ...el }) => ({ ...el, folderId })),
+    sanitizedInputSecrets.map((el) => ({ ...el, folderId })),
     tx
   );
 
@@ -123,13 +121,21 @@ export const fnSecretBulkInsert = async ({
   );
 
   const secretVersions = await secretVersionDAL.insertMany(
-    sanitizedInputSecrets.map((el) => ({
+    sanitizedInputSecrets.map((el, index) => ({
       ...el,
       folderId,
       userActorId,
       identityActorId,
       actorType,
-      metadata: el.metadata ? JSON.stringify(el.metadata) : [],
+      metadata: inputSecrets?.[index]?.secretMetadata
+        ? JSON.stringify(
+            inputSecrets?.[index]?.secretMetadata?.map((meta) => ({
+              key: meta.key,
+              value: meta?.value,
+              encryptedValue: meta?.encryptedValue?.toString("base64")
+            }))
+          )
+        : null,
       secretId: newSecretGroupedByKeyName[el.key][0].id
     })),
     tx
@@ -174,9 +180,10 @@ export const fnSecretBulkInsert = async ({
   await resourceMetadataDAL.insertMany(
     inputSecrets.flatMap(({ key: secretKey, secretMetadata }) => {
       if (secretMetadata) {
-        return secretMetadata.map(({ key, value }) => ({
+        return secretMetadata.map(({ key, value, encryptedValue }) => ({
           key,
           value,
+          encryptedValue,
           secretId: newSecretGroupedByKeyName[secretKey][0].id,
           orgId
         }));
@@ -229,10 +236,7 @@ export const fnSecretBulkUpdate = async ({
   const actorType = actor?.type || ActorType.PLATFORM;
 
   const sanitizedInputSecrets = inputSecrets.map(
-    ({
-      filter,
-      data: { skipMultilineEncoding, type, key, encryptedValue, userId, encryptedComment, metadata, secretMetadata }
-    }) => ({
+    ({ filter, data: { skipMultilineEncoding, type, key, encryptedValue, userId, encryptedComment } }) => ({
       filter: { ...filter, folderId },
       data: {
         skipMultilineEncoding,
@@ -240,7 +244,6 @@ export const fnSecretBulkUpdate = async ({
         key,
         userId,
         encryptedComment,
-        metadata: JSON.stringify(metadata || secretMetadata || []),
         encryptedValue
       }
     })
@@ -249,24 +252,24 @@ export const fnSecretBulkUpdate = async ({
   const newSecrets = await secretDAL.bulkUpdate(sanitizedInputSecrets, tx);
   const secretVersions = await secretVersionDAL.insertMany(
     newSecrets.map(
-      ({
+      (
+        { skipMultilineEncoding, type, key, userId, encryptedComment, version, encryptedValue, id: secretId },
+        index
+      ) => ({
         skipMultilineEncoding,
         type,
         key,
         userId,
         encryptedComment,
         version,
-        metadata,
-        encryptedValue,
-        id: secretId
-      }) => ({
-        skipMultilineEncoding,
-        type,
-        key,
-        userId,
-        encryptedComment,
-        version,
-        metadata: metadata ? JSON.stringify(metadata) : [],
+        metadata:
+          JSON.stringify(
+            inputSecrets?.[index]?.data?.secretMetadata?.map((meta) => ({
+              key: meta.key,
+              value: meta?.value,
+              encryptedValue: meta?.encryptedValue?.toString("base64")
+            }))
+          ) || null,
         encryptedValue,
         folderId,
         secretId,
@@ -328,9 +331,10 @@ export const fnSecretBulkUpdate = async ({
   await resourceMetadataDAL.insertMany(
     inputSecrets.flatMap(({ filter: { id }, data: { secretMetadata } }) => {
       if (secretMetadata) {
-        return secretMetadata.map(({ key, value }) => ({
+        return secretMetadata.map(({ key, value, encryptedValue }) => ({
           key,
           value,
+          encryptedValue,
           secretId: id,
           orgId
         }));
@@ -802,7 +806,7 @@ export const reshapeBridgeSecret = (
       color?: string | null;
       name: string;
     }[];
-    secretMetadata?: ResourceMetadataDTO;
+    secretMetadata?: ResourceMetadataWithEncryptionDTO;
     isRotatedSecret?: boolean;
     rotationId?: string;
     secretReminderRecipients?: TSecretReminderRecipient[];
