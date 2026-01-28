@@ -48,7 +48,7 @@ export const ProfileList = ({
               <Th>Name</Th>
               <Th>Enrollment Method</Th>
               <Th>Issuing CA</Th>
-              <Th>Certificate Template</Th>
+              <Th>Certificate Policy</Th>
               <Th className="w-5" />
             </Tr>
           </THead>
@@ -72,7 +72,7 @@ export const ProfileList = ({
             <Th>Name</Th>
             <Th>Enrollment Method</Th>
             <Th>Issuing CA</Th>
-            <Th>Certificate Template</Th>
+            <Th>Certificate Policy</Th>
             <Th className="w-5" />
           </Tr>
         </THead>

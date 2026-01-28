@@ -154,7 +154,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         identityId: z.string().trim().uuid("Identity ID must be a valid UUID").describe(LDAP_AUTH.LOGIN.identityId),
         username: z.string().trim().nonempty("Username is required").describe(LDAP_AUTH.LOGIN.username),
         password: z.string().trim().nonempty("Password is required").describe(LDAP_AUTH.LOGIN.password),
-        subOrganizationName: slugSchema().optional().describe(LDAP_AUTH.LOGIN.subOrganizationName)
+        organizationSlug: slugSchema().optional().describe(LDAP_AUTH.LOGIN.organizationSlug)
       }),
       response: {
         200: z.object({
@@ -186,7 +186,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
 
       const { accessToken, identityLdapAuth, identity } = await server.services.identityLdapAuth.login({
         identityId: authIdentityId,
-        subOrganizationName: req.body.subOrganizationName
+        organizationSlug: req.body.organizationSlug
       });
 
       await server.services.auditLog.createAuditLog({

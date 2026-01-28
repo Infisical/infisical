@@ -929,6 +929,17 @@
                 ]
               },
               {
+                "group": "Organization Roles",
+                "pages": [
+                  "api-reference/endpoints/organization-roles/create",
+                  "api-reference/endpoints/organization-roles/update",
+                  "api-reference/endpoints/organization-roles/delete",
+                  "api-reference/endpoints/organization-roles/get",
+                  "api-reference/endpoints/organization-roles/get-by-slug",
+                  "api-reference/endpoints/organization-roles/list"
+                ]
+              },
+              {
                 "group": "OIDC SSO",
                 "pages": [
                   "api-reference/endpoints/organizations/oidc-sso/get-oidc-config",

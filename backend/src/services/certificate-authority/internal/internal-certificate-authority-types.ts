@@ -90,6 +90,13 @@ export type TDeleteCaDTO = {
   caId: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TGenerateRootCaCertificateDTO = {
+  caId: string;
+  notBefore: string;
+  notAfter: string;
+  maxPathLength?: number | null;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TGetCaCsrDTO = {
   caId: string;
 } & Omit<TProjectPermission, "projectId">;
@@ -108,19 +115,59 @@ export type TGetCaCertDTO = {
   caId: string;
 } & Omit<TProjectPermission, "projectId">;
 
-export type TSignIntermediateDTO = {
+export type TGetCaCertByIdDTO = {
   caId: string;
-  csr: string;
-  notBefore?: string;
-  notAfter: string;
-  maxPathLength: number;
+  certId: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TSignIntermediateDTO = {
+  isInternal?: boolean;
+} & (
+  | {
+      isInternal: true;
+      caId: string;
+      csr: string;
+      notBefore?: string;
+      notAfter: string;
+      maxPathLength: number;
+      actorId?: undefined;
+      actorAuthMethod?: undefined;
+      actor?: undefined;
+      actorOrgId?: undefined;
+    }
+  | ({
+      isInternal?: false;
+      caId: string;
+      csr: string;
+      notBefore?: string;
+      notAfter: string;
+      maxPathLength: number;
+    } & Omit<TProjectPermission, "projectId">)
+);
+
 export type TImportCertToCaDTO = {
-  caId: string;
-  certificate: string;
-  certificateChain: string;
-} & Omit<TProjectPermission, "projectId">;
+  isInternal?: boolean;
+  parentCaId?: string;
+} & (
+  | {
+      isInternal: true;
+      caId: string;
+      certificate: string;
+      certificateChain: string;
+      parentCaId?: string | undefined;
+      actorId?: undefined;
+      actorAuthMethod?: undefined;
+      actor?: undefined;
+      actorOrgId?: undefined;
+    }
+  | ({
+      isInternal?: false;
+      caId: string;
+      certificate: string;
+      certificateChain: string;
+      parentCaId?: string;
+    } & Omit<TProjectPermission, "projectId">)
+);
 
 export type TBasicConstraints = {
   isCA: boolean;

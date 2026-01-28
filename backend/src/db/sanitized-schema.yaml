@@ -1358,3 +1358,20 @@ tables:
       - envId
       - type
       - url
+  - name: audit_logs
+    source: public.audit_logs
+    columns:
+      - id
+      - actor
+      - actorMetadata
+      - ipAddress
+      - eventType
+      - eventMetadata
+      - userAgent
+      - userAgentType
+      - expiresAt
+      - createdAt
+      - updatedAt
+      - orgId
+      - projectId
+      - projectName

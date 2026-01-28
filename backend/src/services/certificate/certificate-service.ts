@@ -30,8 +30,10 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { expandInternalCa, getCaCertChain, rebuildCaCrl } from "../certificate-authority/certificate-authority-fns";
 import {
+  extractCertificateFields,
   generatePkcs12FromCertificate,
   getCertificateCredentials,
+  parseCertificateBody,
   revocationReasonToCrlCode,
   splitPemChain
 } from "./certificate-fns";
@@ -41,6 +43,9 @@ import {
   CertExtendedKeyUsageOIDToName,
   CertKeyUsage,
   CertStatus,
+  TCertificateBasicConstraints,
+  TCertificateFingerprints,
+  TCertificateSubject,
   TDeleteCertDTO,
   TGetCertBodyDTO,
   TGetCertBundleDTO,
@@ -54,7 +59,7 @@ import {
 type TCertificateServiceFactoryDep = {
   certificateDAL: Pick<
     TCertificateDALFactory,
-    "findOne" | "deleteById" | "update" | "find" | "transaction" | "create" | "findById"
+    "findOne" | "deleteById" | "update" | "find" | "transaction" | "create" | "findById" | "findWithFullDetails"
   >;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
@@ -95,12 +100,22 @@ export const certificateServiceFactory = ({
    * Return details for certificate with serial number [serialNumber]
    */
   const getCert = async ({ id, serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertDTO) => {
-    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
+    // Validation: require either id or serialNumber
+    if (!id && !serialNumber) {
+      throw new BadRequestError({ message: "Either id or serialNumber must be provided" });
+    }
+
+    // Unified lookup - consistent response for both id and serialNumber
+    const certWithDetails = await certificateDAL.findWithFullDetails(id ? { id } : { serialNumber: serialNumber! });
+
+    if (!certWithDetails) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      projectId: cert.projectId,
+      projectId: certWithDetails.projectId,
       actorAuthMethod,
       actorOrgId,
       actionProjectType: ActionProjectType.CertificateManager
@@ -109,14 +124,86 @@ export const certificateServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Read,
       subject(ProjectPermissionSub.Certificates, {
-        commonName: cert.commonName,
-        altNames: cert.altNames ?? undefined,
-        serialNumber: cert.serialNumber
+        commonName: certWithDetails.commonName,
+        altNames: certWithDetails.altNames ?? undefined,
+        serialNumber: certWithDetails.serialNumber
       })
     );
 
+    // Extract additional details from the joined result while creating clean cert object
+    const { caName, profileName, ...cert } = certWithDetails;
+
+    // Extract subject, fingerprints, and basicConstraints
+    let certSubject: TCertificateSubject | undefined;
+    let fingerprints: TCertificateFingerprints | undefined;
+    let basicConstraints: TCertificateBasicConstraints | undefined;
+
+    // NEW: Try to read from database columns first (avoids KMS decryption)
+    // Check if any parsed field exists (indicates new certificate with stored data)
+    const hasParsedData = cert.fingerprintSha256 || cert.isCA !== null;
+
+    if (hasParsedData) {
+      // Build subject from individual columns
+      certSubject = {
+        commonName: cert.commonName,
+        organization: cert.subjectOrganization || undefined,
+        organizationalUnit: cert.subjectOrganizationalUnit || undefined,
+        country: cert.subjectCountry || undefined,
+        state: cert.subjectState || undefined,
+        locality: cert.subjectLocality || undefined
+      };
+
+      // Build fingerprints from columns
+      if (cert.fingerprintSha256 && cert.fingerprintSha1) {
+        fingerprints = {
+          sha256: cert.fingerprintSha256,
+          sha1: cert.fingerprintSha1
+        };
+      }
+
+      // Build basic constraints
+      if (cert.isCA !== null && cert.isCA !== undefined) {
+        basicConstraints = {
+          isCA: cert.isCA,
+          pathLength: cert.pathLength !== null ? cert.pathLength : undefined
+        };
+      }
+    }
+
+    // BACKWARD COMPATIBILITY: Fallback to on-demand parsing for old certificates
+    if (!hasParsedData) {
+      const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
+      if (certBody?.encryptedCertificate) {
+        const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
+          projectId: cert.projectId,
+          projectDAL,
+          kmsService
+        });
+
+        const kmsDecryptor = await kmsService.decryptWithKmsKey({
+          kmsId: certificateManagerKeyId
+        });
+
+        const decryptedCert = await kmsDecryptor({
+          cipherTextBlob: certBody.encryptedCertificate
+        });
+
+        const parsed = parseCertificateBody(decryptedCert);
+        certSubject = parsed.subject;
+        fingerprints = parsed.fingerprints;
+        basicConstraints = parsed.basicConstraints;
+      }
+    }
+
     return {
-      cert
+      cert: {
+        ...cert,
+        subject: certSubject,
+        fingerprints,
+        basicConstraints,
+        caName,
+        profileName
+      }
     };
   };
 
@@ -544,6 +631,9 @@ export const certificateServiceFactory = ({
 
     const cert = await certificateDAL.transaction(async (tx) => {
       try {
+        // Extract certificate fields for storage
+        const parsedFields = extractCertificateFields(Buffer.from(certificatePem));
+
         const txCert = await certificateDAL.create(
           {
             status: CertStatus.ACTIVE,
@@ -555,7 +645,8 @@ export const certificateServiceFactory = ({
             notAfter,
             projectId,
             keyUsages,
-            extendedKeyUsages
+            extendedKeyUsages,
+            ...parsedFields
           },
           tx
         );

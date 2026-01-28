@@ -56,7 +56,8 @@ export const registerCertificateProfilesRouter = async (
               skipDnsOwnershipVerification: z.boolean().optional()
             })
             .optional(),
-          externalConfigs: ExternalConfigUnionSchema
+          externalConfigs: ExternalConfigUnionSchema,
+          defaultTtlDays: z.number().int().positive().optional()
         })
         .refine(
           (data) => {
@@ -452,7 +453,8 @@ export const registerCertificateProfilesRouter = async (
               skipDnsOwnershipVerification: z.boolean().optional()
             })
             .optional(),
-          externalConfigs: ExternalConfigUnionSchema
+          externalConfigs: ExternalConfigUnionSchema,
+          defaultTtlDays: z.number().int().positive().nullable().optional()
         })
         .refine(
           (data) => {

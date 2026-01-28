@@ -1,10 +1,11 @@
 import { Knex } from "knex";
 import path from "path";
 import { Logger } from "pino";
+import RE2 from "re2";
 
 import { PgSqlLock } from "@app/keystore/keystore";
 
-const SANITIZED_SCHEMA = "infisical-sanitized";
+const SANITIZED_SCHEMA = "analytics";
 
 type TArgs = {
   db: Knex;
@@ -52,14 +53,41 @@ const validateGeneratedSQL = (sql: string): void => {
 };
 
 export const createSanitizedSchema = async ({ db, logger }: TArgs): Promise<void> => {
-  // eslint-disable-next-line import/no-extraneous-dependencies
+  // eslint-disable-next-line import/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment
   const { loadConfig, generateSQL } = await import("@infisical/pg-view-generator");
 
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
   const config = await loadConfig(path.join(__dirname, "sanitized-schema.yaml"));
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
   const sql = generateSQL(config, { targetSchema: SANITIZED_SCHEMA });
 
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   validateGeneratedSQL(sql);
 
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   await db.raw(sql);
   logger.info("Created sanitized schema and views");
+};
+
+type TGrantArgs = TArgs & {
+  role: string;
+};
+
+export const grantSanitizedSchemaAccess = async ({ db, logger, role }: TGrantArgs): Promise<void> => {
+  // Validate role name to prevent SQL injection
+  const roleNameRegex = new RE2("^[a-zA-Z0-9_-]+$");
+  if (!roleNameRegex.test(role)) {
+    throw new Error(
+      `SANITIZED_SCHEMA_SECURITY_VIOLATION: Invalid role name. Only alphanumeric characters, underscores, and hyphens are allowed. Got: ${role}`
+    );
+  }
+
+  // eslint-disable-next-line import/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment
+  const { generateGrantReadAccessSQL } = await import("@infisical/pg-view-generator");
+
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+  const sql = generateGrantReadAccessSQL(SANITIZED_SCHEMA, role);
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  await db.raw(sql);
+  logger.info(`Granted read access on sanitized schema to role: ${role}`);
 };

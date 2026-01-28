@@ -5,7 +5,7 @@ export type TLoginAwsAuthDTO = {
   iamHttpRequestMethod: string;
   iamRequestBody: string;
   iamRequestHeaders: string;
-  subOrganizationName?: string;
+  organizationSlug?: string;
 };
 
 export type TAttachAwsAuthDTO = {

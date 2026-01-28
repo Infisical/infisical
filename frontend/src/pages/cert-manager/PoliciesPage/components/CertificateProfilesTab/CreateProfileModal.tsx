@@ -1,8 +1,10 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { SingleValue } from "react-select";
 import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -19,10 +21,15 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
+import {
+  ProjectPermissionCertificatePolicyActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import { usePopUp } from "@app/hooks";
 import { CaType } from "@app/hooks/api/ca/enums";
 import { useGetAzureAdcsTemplates, useListCasByProjectId } from "@app/hooks/api/ca/queries";
-import { useListCertificatePolicies } from "@app/hooks/api/certificatePolicies";
+import { TCertificatePolicy, useListCertificatePolicies } from "@app/hooks/api/certificatePolicies";
 import {
   EnrollmentType,
   IssuerType,
@@ -32,6 +39,9 @@ import {
   useCreateCertificateProfile,
   useUpdateCertificateProfile
 } from "@app/hooks/api/certificateProfiles";
+
+import { CreatePolicyModal } from "../CertificatePoliciesTab/CreatePolicyModal";
+import { CertificatePolicyOption } from "./CertificatePolicyOption";
 
 const createSchema = z
   .object({
@@ -87,7 +97,24 @@ const createSchema = z
       .object({
         template: z.string().min(1, "Azure ADCS template is required")
       })
+      .optional(),
+    defaultTtl: z
+      .object({
+        value: z.number().min(1, "Duration must be at least 1").nullable().optional(),
+        unit: z.enum(["days", "months", "years"]).optional()
+      })
+      .nullable()
       .optional()
+      .refine(
+        (data) => {
+          // If value is provided, unit must also be provided
+          if (data?.value != null && !data?.unit) return false;
+          // If unit is provided (checkbox checked), value must also be provided
+          if (data?.unit && data?.value == null) return false;
+          return true;
+        },
+        { message: "Please enter a valid TTL duration" }
+      )
   })
   .refine(
     (data) => {
@@ -231,7 +258,24 @@ const editSchema = z
       .object({
         template: z.string().optional()
       })
+      .optional(),
+    defaultTtl: z
+      .object({
+        value: z.number().min(1, "Duration must be at least 1").nullable().optional(),
+        unit: z.enum(["days", "months", "years"]).optional()
+      })
+      .nullable()
       .optional()
+      .refine(
+        (data) => {
+          // If value is provided, unit must also be provided
+          if (data?.value != null && !data?.unit) return false;
+          // If unit is provided (checkbox checked), value must also be provided
+          if (data?.unit && data?.value == null) return false;
+          return true;
+        },
+        { message: "Please enter a valid TTL duration" }
+      )
   })
   .refine(
     (data) => {
@@ -335,6 +379,56 @@ const editSchema = z
 
 export type FormData = z.infer<typeof createSchema>;
 
+// Convert stored days (number) to form object for display
+const parseDaysToTtl = (
+  days: number | null | undefined
+): { value: number; unit: "days" } | undefined => {
+  if (!days) return undefined;
+  return { value: days, unit: "days" };
+};
+
+// Convert form object to days (number) for storage
+const convertTtlToDays = (
+  ttl: { value?: number | null; unit?: "days" | "months" | "years" } | null | undefined
+): number | undefined => {
+  if (!ttl?.value || !ttl?.unit) return undefined;
+  switch (ttl.unit) {
+    case "days":
+      return ttl.value;
+    case "months":
+      return ttl.value * 30;
+    case "years":
+      return ttl.value * 365;
+    default:
+      return undefined;
+  }
+};
+
+// Convert days to ms for comparison with policy
+const daysToMs = (days: number | undefined): number | null => {
+  if (!days) return null;
+  return days * 24 * 60 * 60 * 1000;
+};
+
+// Parse policy max validity string (like "365d") to ms
+const parsePolicyValidityToMs = (validity: string | undefined | null): number | null => {
+  if (!validity) return null;
+  const match = validity.match(/^(\d+)([dmy])$/);
+  if (!match) return null;
+  const value = parseInt(match[1], 10);
+  const msPerDay = 24 * 60 * 60 * 1000;
+  switch (match[2]) {
+    case "d":
+      return value * msPerDay;
+    case "m":
+      return value * 30 * msPerDay;
+    case "y":
+      return value * 365 * msPerDay;
+    default:
+      return null;
+  }
+};
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -344,6 +438,14 @@ interface Props {
 
 export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }: Props) => {
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
+  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["createPolicy"] as const);
+  const queryClient = useQueryClient();
+
+  const canCreatePolicy = permission.can(
+    ProjectPermissionCertificatePolicyActions.Create,
+    ProjectPermissionSub.CertificatePolicies
+  );
 
   const { data: allCaData } = useListCasByProjectId(currentProject?.id || "");
   const { data: policyData } = useListCertificatePolicies({
@@ -363,6 +465,15 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
   }));
   const certificatePolicies = policyData?.certificatePolicies || [];
 
+  type PolicyOption = TCertificatePolicy | { id: "_create"; name: string };
+
+  const policyOptions: PolicyOption[] = [
+    ...(canCreatePolicy && !isEdit
+      ? [{ id: "_create" as const, name: "Add Certificate Policy" }]
+      : []),
+    ...certificatePolicies
+  ];
+
   const getGroupHeaderLabel = (groupType: "internal" | "external") => {
     switch (groupType) {
       case "internal":
@@ -374,7 +485,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
     }
   };
 
-  const { control, handleSubmit, reset, watch, setValue, formState } = useForm<FormData>({
+  const { control, handleSubmit, reset, watch, setValue, setError, formState } = useForm<FormData>({
     resolver: zodResolver(isEdit ? editSchema : createSchema),
     defaultValues: isEdit
       ? {
@@ -416,7 +527,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                     ? profile.externalConfigs.template
                     : ""
               }
-            : undefined
+            : undefined,
+          defaultTtl: parseDaysToTtl(profile.defaultTtlDays)
         }
       : {
           slug: "",
@@ -429,10 +541,11 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
             autoRenew: false,
             renewBeforeDays: 30
           },
-          acmeConfig: {
-            skipDnsOwnershipVerification: false
-          },
-          externalConfigs: undefined
+          externalConfigs: undefined,
+          defaultTtl: {
+            value: 365,
+            unit: "days"
+          }
         }
   });
 
@@ -494,7 +607,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                   ? profile.externalConfigs.template
                   : ""
             }
-          : undefined
+          : undefined,
+        defaultTtl: parseDaysToTtl(profile.defaultTtlDays)
       });
     }
   }, [isEdit, profile, reset, allCaData]);
@@ -532,6 +646,24 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
       return;
     }
 
+    // Validate defaultTtl against policy's max validity
+    if (data.defaultTtl?.value && data.defaultTtl?.unit) {
+      const selectedPolicy = certificatePolicies.find((p) => p.id === data.certificatePolicyId);
+      if (selectedPolicy?.validity?.max) {
+        const defaultTtlDays = convertTtlToDays(data.defaultTtl);
+        const defaultTtlMs = daysToMs(defaultTtlDays);
+        const maxValidityMs = parsePolicyValidityToMs(selectedPolicy.validity.max);
+
+        if (defaultTtlMs && maxValidityMs && defaultTtlMs > maxValidityMs) {
+          setError("defaultTtl.value", {
+            type: "manual",
+            message: "Exceeds the selected policy's maximum validity"
+          });
+          return;
+        }
+      }
+    }
+
     if (isEdit) {
       const updateData: TUpdateCertificateProfileDTO = {
         profileId: profile.id,
@@ -551,6 +683,11 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
       // Add external configs if present
       if (data.externalConfigs) {
         updateData.externalConfigs = data.externalConfigs;
+      }
+
+      // Add defaultTtlDays if present (or null to clear it)
+      if (data.defaultTtl !== undefined) {
+        updateData.defaultTtlDays = convertTtlToDays(data.defaultTtl) || null;
       }
 
       await updateProfile.mutateAsync(updateData);
@@ -587,6 +724,12 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
       // Add external configs if present
       if (data.externalConfigs) {
         createData.externalConfigs = data.externalConfigs;
+      }
+
+      // Add defaultTtlDays if present
+      const ttlDays = convertTtlToDays(data.defaultTtl);
+      if (ttlDays) {
+        createData.defaultTtlDays = ttlDays;
       }
 
       await createProfile.mutateAsync(createData);
@@ -771,16 +914,23 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
           <Controller
             control={control}
             name="certificatePolicyId"
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
               <FormControl
                 label="Certificate Policy"
                 isRequired
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
-                <Select
-                  {...field}
-                  onValueChange={(value) => {
+                <FilterableSelect
+                  value={certificatePolicies.find((p) => p.id === value) ?? null}
+                  onChange={(newValue) => {
+                    const selected = newValue as SingleValue<PolicyOption>;
+                    if (selected?.id === "_create") {
+                      handlePopUpOpen("createPolicy");
+                      return;
+                    }
+                    onChange(selected?.id || "");
+
                     if (watchedEnrollmentType === "est") {
                       setValue("apiConfig", undefined);
                       setValue("estConfig", {
@@ -802,19 +952,18 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                         skipDnsOwnershipVerification: false
                       });
                     }
-                    onChange(value);
                   }}
-                  placeholder="Select a certificate policy"
-                  className="w-full"
-                  position="popper"
+                  options={policyOptions}
+                  getOptionLabel={(option) => option.name}
+                  getOptionValue={(option) => option.id}
+                  placeholder={
+                    certificatePolicies.length === 0 && !canCreatePolicy
+                      ? "No certificate policies available"
+                      : "Select a certificate policy"
+                  }
                   isDisabled={Boolean(isEdit)}
-                >
-                  {certificatePolicies.map((policy) => (
-                    <SelectItem key={policy.id} value={policy.id}>
-                      {policy.name}
-                    </SelectItem>
-                  ))}
-                </Select>
+                  components={{ Option: CertificatePolicyOption }}
+                />
               </FormControl>
             )}
           />
@@ -870,6 +1019,80 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
               </FormControl>
             )}
           />
+
+          <div className="mb-4 space-y-4">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="enableDefaultTtl"
+                isChecked={watch("defaultTtl")?.unit !== undefined}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    setValue("defaultTtl.value", 365);
+                    setValue("defaultTtl.unit", "days");
+                  } else {
+                    setValue("defaultTtl", null, { shouldValidate: true });
+                  }
+                }}
+              >
+                Set default certificate TTL
+              </Checkbox>
+              <Tooltip content="Fallback validity period used when not explicitly specified in certificate request">
+                <FontAwesomeIcon
+                  icon={faQuestionCircle}
+                  className="cursor-help text-mineshaft-400 hover:text-mineshaft-300"
+                  size="sm"
+                />
+              </Tooltip>
+            </div>
+
+            {watch("defaultTtl")?.unit !== undefined && (
+              <div className="ml-3 border-l-2 border-mineshaft-500 pl-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <Controller
+                    control={control}
+                    name="defaultTtl.value"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="Duration"
+                        isError={Boolean(error)}
+                        errorText={error?.message}
+                      >
+                        <Input
+                          {...field}
+                          type="number"
+                          placeholder="365"
+                          value={field.value == null ? "" : field.value}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            field.onChange(val === "" ? null : Number(val));
+                          }}
+                        />
+                      </FormControl>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="defaultTtl.unit"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl label="Unit" isError={Boolean(error)} errorText={error?.message}>
+                        <Select
+                          {...field}
+                          value={field.value ?? "days"}
+                          onValueChange={field.onChange}
+                          className="w-full"
+                          position="popper"
+                        >
+                          <SelectItem value="days">Days</SelectItem>
+                          <SelectItem value="months">Months</SelectItem>
+                          <SelectItem value="years">Years</SelectItem>
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* EST Configuration */}
           {watchedEnrollmentType === "est" && (
@@ -1055,13 +1278,27 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
             </Button>
             <Button
               variant="outline_bg"
-              onClick={onClose}
+              onClick={() => {
+                reset();
+                onClose();
+              }}
               disabled={isEdit ? updateProfile.isPending : createProfile.isPending}
             >
               Cancel
             </Button>
           </div>
         </form>
+        <CreatePolicyModal
+          isOpen={popUp.createPolicy.isOpen}
+          onClose={() => handlePopUpToggle("createPolicy", false)}
+          onComplete={async (createdPolicy) => {
+            await queryClient.refetchQueries({
+              queryKey: ["list-certificate-policies", currentProject?.id]
+            });
+            setValue("certificatePolicyId", createdPolicy.id, { shouldValidate: true });
+            handlePopUpToggle("createPolicy", false);
+          }}
+        />
       </ModalContent>
     </Modal>
   );
