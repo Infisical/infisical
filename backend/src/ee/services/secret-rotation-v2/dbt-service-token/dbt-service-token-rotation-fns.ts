@@ -12,11 +12,10 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { getDbtUrl } from "@app/services/app-connection/dbt";
+import { createDbtError, getDbtUrl } from "@app/services/app-connection/dbt";
 
 import {
   TCreateDbtServiceTokenResponse,
-  TDbtErrorResponse,
   TDbtServiceTokenRotationGeneratedCredentials,
   TDbtServiceTokenRotationWithConnection,
   TGetDbtServiceTokenResponse
