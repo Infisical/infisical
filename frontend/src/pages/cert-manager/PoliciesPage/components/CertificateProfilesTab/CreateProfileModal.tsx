@@ -487,7 +487,6 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
 
   const { control, handleSubmit, reset, watch, setValue, setError, formState } = useForm<FormData>({
     resolver: zodResolver(isEdit ? editSchema : createSchema),
-    mode: "onChange",
     defaultValues: isEdit
       ? {
           slug: profile.slug,
