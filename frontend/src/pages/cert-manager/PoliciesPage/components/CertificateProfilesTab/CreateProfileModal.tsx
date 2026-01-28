@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { SingleValue } from "react-select";
 import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,10 +20,15 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
+import {
+  ProjectPermissionCertificatePolicyActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import { usePopUp } from "@app/hooks";
 import { CaType } from "@app/hooks/api/ca/enums";
 import { useGetAzureAdcsTemplates, useListCasByProjectId } from "@app/hooks/api/ca/queries";
-import { useListCertificatePolicies } from "@app/hooks/api/certificatePolicies";
+import { TCertificatePolicy, useListCertificatePolicies } from "@app/hooks/api/certificatePolicies";
 import {
   EnrollmentType,
   IssuerType,
@@ -32,6 +38,9 @@ import {
   useCreateCertificateProfile,
   useUpdateCertificateProfile
 } from "@app/hooks/api/certificateProfiles";
+
+import { CreatePolicyModal } from "../CertificatePoliciesTab/CreatePolicyModal";
+import { CertificatePolicyOption } from "./CertificatePolicyOption";
 
 const createSchema = z
   .object({
@@ -428,6 +437,13 @@ interface Props {
 
 export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }: Props) => {
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
+  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["createPolicy"] as const);
+
+  const canCreatePolicy = permission.can(
+    ProjectPermissionCertificatePolicyActions.Create,
+    ProjectPermissionSub.CertificatePolicies
+  );
 
   const { data: allCaData } = useListCasByProjectId(currentProject?.id || "");
   const { data: policyData } = useListCertificatePolicies({
@@ -446,6 +462,15 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
     groupType: ca.type === "internal" ? "internal" : "external"
   }));
   const certificatePolicies = policyData?.certificatePolicies || [];
+
+  type PolicyOption = TCertificatePolicy | { id: "_create"; name: string };
+
+  const policyOptions: PolicyOption[] = [
+    ...(canCreatePolicy && !isEdit
+      ? [{ id: "_create" as const, name: "Add Certificate Policy" }]
+      : []),
+    ...certificatePolicies
+  ];
 
   const getGroupHeaderLabel = (groupType: "internal" | "external") => {
     switch (groupType) {
@@ -890,16 +915,23 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
           <Controller
             control={control}
             name="certificatePolicyId"
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
               <FormControl
                 label="Certificate Policy"
                 isRequired
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
-                <Select
-                  {...field}
-                  onValueChange={(value) => {
+                <FilterableSelect
+                  value={certificatePolicies.find((p) => p.id === value) || null}
+                  onChange={(newValue) => {
+                    const selected = newValue as SingleValue<PolicyOption>;
+                    if (selected?.id === "_create") {
+                      handlePopUpOpen("createPolicy");
+                      return;
+                    }
+                    onChange(selected?.id || "");
+
                     if (watchedEnrollmentType === "est") {
                       setValue("apiConfig", undefined);
                       setValue("estConfig", {
@@ -921,23 +953,18 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                         skipDnsOwnershipVerification: false
                       });
                     }
-                    onChange(value);
                   }}
+                  options={policyOptions}
+                  getOptionLabel={(option) => option.name}
+                  getOptionValue={(option) => option.id}
                   placeholder={
-                    certificatePolicies.length === 0
+                    certificatePolicies.length === 0 && !canCreatePolicy
                       ? "No certificate policies available"
                       : "Select a certificate policy"
                   }
-                  className="w-full"
-                  position="popper"
-                  isDisabled={Boolean(isEdit) || certificatePolicies.length === 0}
-                >
-                  {certificatePolicies.map((policy) => (
-                    <SelectItem key={policy.id} value={policy.id}>
-                      {policy.name}
-                    </SelectItem>
-                  ))}
-                </Select>
+                  isDisabled={Boolean(isEdit)}
+                  components={{ Option: CertificatePolicyOption }}
+                />
               </FormControl>
             )}
           />
@@ -1262,6 +1289,14 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
             </Button>
           </div>
         </form>
+        <CreatePolicyModal
+          isOpen={popUp.createPolicy.isOpen}
+          onClose={() => handlePopUpToggle("createPolicy", false)}
+          onComplete={(createdPolicy) => {
+            setValue("certificatePolicyId", createdPolicy.id);
+            handlePopUpToggle("createPolicy", false);
+          }}
+        />
       </ModalContent>
     </Modal>
   );
