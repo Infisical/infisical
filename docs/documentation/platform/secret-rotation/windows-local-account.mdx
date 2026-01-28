@@ -56,7 +56,7 @@ description: "Learn how to automatically rotate Windows local account passwords 
         ![Rotation Parameters](/images/secret-rotations-v2/windows-local-account/windows-local-account-parameters.png)
 
         - **Rotation Method** - The method to use when rotating the target user's password.
-            - **Login as Target** - Infisical will use the target user's current credentials to authenticate and rotate its own password.
+            - **Login as Target** - Infisical will use the target user's current credentials to authenticate and rotate its own password. The target user must have administrator privileges on the Windows machine to be able to rotate its own password.
             - **Login as Root** - Infisical will use the administrator credentials provided in the Windows Connection to rotate the target user's password.
         - **Username** - The target Windows username whose password will be rotated.
         - **Current Password** - The current password of the target user (required when **Rotation Method** is set to **Login as Target**).
