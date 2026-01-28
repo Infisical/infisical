@@ -5,8 +5,7 @@ sidebarTitle: "API"
 
 ## Concept
 
-The API enrollment method allows you to issue certificates against a specific [certificate profile](/documentation/platform/pki/certificates/profiles) over Web UI or by making an API request to Infisical.
-
+The API enrollment method allows you to issue certificates against a specific [certificate profile](/documentation/platform/pki/certificates/profiles) over Web UI or by making an API request to InfisicalA bi
 ### Issuance Methods
 
 The API enrollment method supports two ways to issue certificates:
@@ -40,7 +39,7 @@ In the following steps, we explore how to issue a X.509 certificate using the AP
   </Step>
   <Step title="Issue a certificate">
   To create a certificate, head to your Project > Certificates > Certificates and press **Issue**.
-  
+
   ![pki certificates](/images/platform/pki/certificate/cert-issue.png)
 
 Here, select the certificate profile from step 1 that will be used to issue the certificate and fill out the rest of the details for the certificate to be issued.
@@ -50,7 +49,7 @@ Here, select the certificate profile from step 1 that will be used to issue the 
   </Step>
   <Step title="Download the certificate details">
   Once you have created the certificate from step 1, you'll be presented with the certificate details including the **Certificate Body**, **Certificate Chain**, and **Private Key**.
-  
+
   ![pki certificate body](/images/platform/pki/certificate/cert-body.png)
 
     <Note>
@@ -204,18 +203,6 @@ Here, select the certificate profile from step 1 that will be used to issue the 
       "certificateRequestId": "..."
     }
     ```
-
-    <Tip>
-      **Generating a CSR**: You can generate a private key and CSR using OpenSSL:
-      ```bash
-      # Generate a private key
-      openssl genrsa -out private.key 2048
-
-      # Generate a CSR using the private key
-      openssl req -new -key private.key -out request.csr -subj "/CN=service.acme.com"
-      ```
-      The CSR file contents can then be included in the `csr` field of your API request.
-    </Tip>
 
   </Step>
 </Steps>
