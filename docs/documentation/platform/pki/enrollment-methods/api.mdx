@@ -5,17 +5,18 @@ sidebarTitle: "API"
 
 ## Concept
 
-The API enrollment method allows you to issue certificates against a specific [certificate profile](/documentation/platform/pki/certificates/profiles) over Web UI or by making an API request to InfisicalA bi
+The API enrollment method allows you to issue certificates against a specific [certificate profile](/documentation/platform/pki/certificates/profiles) over Web UI or by making an API request to Infisical.
+
 ### Issuance Methods
 
 The API enrollment method supports two ways to issue certificates:
 
 - **Server-Generated Key**: Infisical generates the private key and certificate for you. This is the simplest approach where Infisical handles key generation, and you receive both the certificate and private key in the response.
 
-- **CSR-Based Issuance**: You generate and maintain your own private key externally, create a Certificate Signing Request (CSR), and submit it to Infisical. Infisical signs the CSR and returns only the certificate. This approach is ideal for workflows where remote teams need to maintain control of their private keys.
+- **CSR-Based Issuance**: You generate and maintain your own private key externally, create a Certificate Signing Request (CSR), and submit it to Infisical. Infisical signs the CSR and returns only the certificate. This approach is ideal when you need to maintain control of your private keys locally.
 
 <Info>
-  **Using CSR-Based Issuance**: If your workflow requires you to generate and maintain your own private keys (for example, when remote teams submit CSRs for certificate issuance), you can include a PEM-encoded CSR in your certificate request. See the [CSR-Based Issuance](#csr-based-issuance) section below for details.
+  **Using CSR-Based Issuance**: If your workflow requires you to generate and maintain your own private keys, you can include a PEM-encoded CSR in your certificate request. See the [CSR-Based Issuance](#csr-based-issuance) section below for details.
 </Info>
 
 ## Guide to Certificate Enrollment via API
@@ -170,7 +171,7 @@ Here, select the certificate profile from step 1 that will be used to issue the 
 
     #### CSR-Based Issuance
 
-    If you have an external private key and want to maintain control of it, you can submit a PEM-encoded Certificate Signing Request (CSR) to the same API endpoint. This workflow is ideal for remote teams that generate and maintain their own private keys and submit CSRs for certificate issuance.
+    If you have an external private key and want to maintain control of it, you can submit a PEM-encoded Certificate Signing Request (CSR) to the same API endpoint. This workflow is ideal for any workload that generates and maintains its own private keys locally.
 
     With CSR-based issuance, you generate your private key and CSR locally, then submit only the CSR to Infisical. Infisical signs the CSR and returns the certificate, but never has access to your private key.
 
