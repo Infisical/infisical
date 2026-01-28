@@ -5,6 +5,7 @@ import * as path from "path";
 import RE2 from "re2";
 
 import { logger } from "@app/lib/logger";
+import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 
 export interface SmbRpcConfig {
   host: string;
@@ -15,6 +16,128 @@ export interface SmbRpcConfig {
 }
 
 const SMB3_SECURITY_OPTIONS = ["--option=client min protocol=SMB3", "--option=client smb encrypt=required"];
+
+// Validation functions using RE2-based characterValidator for security (prevents ReDoS attacks)
+const validateHostname = characterValidator([CharacterType.AlphaNumeric, CharacterType.Period, CharacterType.Hyphen]);
+
+const validateDomain = characterValidator([
+  CharacterType.AlphaNumeric,
+  CharacterType.Period,
+  CharacterType.Hyphen,
+  CharacterType.Underscore
+]);
+
+const validateUsername = characterValidator([
+  CharacterType.AlphaNumeric,
+  CharacterType.Hyphen,
+  CharacterType.Underscore,
+  CharacterType.Period
+]);
+
+const MAX_USERNAME_LENGTH = 20;
+const MAX_ADMIN_USERNAME_LENGTH = 104;
+const MAX_HOST_LENGTH = 253;
+const MAX_DOMAIN_LENGTH = 255;
+
+// Dangerous characters that could enable command/RPC injection
+// These are blocked to prevent:
+// - Command separators: ; | &
+// - Command substitution: ` $ ( )
+// - Newlines: \n \r (auth file directive injection)
+// - Null bytes: \0 (string termination attacks)
+const DANGEROUS_PASSWORD_CHARS = [";", "|", "&", "`", "$", "(", ")", "\n", "\r", "\0"];
+
+/**
+ * Validate host to prevent command injection
+ */
+const validateHost = (host: string): void => {
+  if (!host || host.length === 0) {
+    throw new Error("Host is required");
+  }
+  if (host.length > MAX_HOST_LENGTH) {
+    throw new Error("Host too long");
+  }
+  if (!validateHostname(host)) {
+    throw new Error("Host can only contain alphanumeric characters, dots, and hyphens");
+  }
+  if (host.startsWith("-")) {
+    throw new Error("Host cannot start with a hyphen");
+  }
+  if (host.startsWith(".")) {
+    throw new Error("Host cannot start with a period");
+  }
+};
+
+/**
+ * Validate domain to prevent command injection
+ */
+const validateDomainInput = (domain: string | undefined): void => {
+  if (!domain) return;
+
+  if (domain.length > MAX_DOMAIN_LENGTH) {
+    throw new Error("Domain too long");
+  }
+  if (!validateDomain(domain)) {
+    throw new Error("Domain can only contain alphanumeric characters, dots, hyphens, and underscores");
+  }
+  if (domain.startsWith("-")) {
+    throw new Error("Domain cannot start with a hyphen");
+  }
+};
+
+/**
+ * Validate port is a safe integer
+ */
+const validatePort = (port: number): void => {
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error("Port must be a valid integer between 1 and 65535");
+  }
+};
+
+/**
+ * Validate admin username to prevent command injection
+ */
+const validateAdminUsername = (username: string): void => {
+  if (!username || username.length === 0) {
+    throw new Error("Admin username is required");
+  }
+  if (username.length > MAX_ADMIN_USERNAME_LENGTH) {
+    throw new Error("Admin username too long");
+  }
+  if (!validateUsername(username)) {
+    throw new Error("Admin username can only contain alphanumeric characters, underscores, hyphens, and periods");
+  }
+  if (username.startsWith("-")) {
+    throw new Error("Admin username cannot start with a hyphen");
+  }
+  if (username.startsWith(".")) {
+    throw new Error("Admin username cannot start with a period");
+  }
+};
+
+/**
+ * Validate password doesn't contain characters that could enable command/RPC injection
+ */
+const validatePassword = (password: string): void => {
+  if (!password || password.length === 0) {
+    throw new Error("Password is required");
+  }
+  // Disallow dangerous characters that could enable injection attacks
+  if (DANGEROUS_PASSWORD_CHARS.some((char) => password.includes(char))) {
+    throw new Error("Password cannot contain dangerous characters: ; | & ` $ ( ) or newlines");
+  }
+};
+
+/**
+ * Validate all config inputs before use
+ */
+const validateConfig = (config: SmbRpcConfig): void => {
+  validateHost(config.host);
+  validatePort(config.port);
+  validateAdminUsername(config.adminUser);
+  validatePassword(config.adminPassword);
+  validateDomainInput(config.domain);
+};
 
 /**
  * Build the target string (//host)
@@ -128,6 +251,9 @@ const getNtStatusMessage = (ntStatus: string): string => {
  * Uses smbclient to list shares and verify connectivity
  */
 const testSmbConnection = async (config: SmbRpcConfig): Promise<void> => {
+  // Validate all inputs before use to prevent command injection
+  validateConfig(config);
+
   const authFilePath = createAuthFile(config);
 
   try {
@@ -162,19 +288,21 @@ const escapePasswordForRpc = (password: string): string => {
 };
 
 /**
+ * Validate that a target username contains only safe characters to prevent command injection
  * Windows local account username validation:
- * - Must start with alphanumeric, underscore, or hyphen (not a period)
+ * - Cannot start with a period or hyphen (prevents flag injection and Windows rules)
  * - Can contain alphanumeric, underscore, hyphen, and period
  * - Max 20 characters for local accounts
  */
-const WINDOWS_USERNAME_REGEX = /^[a-zA-Z0-9_-][a-zA-Z0-9_.-]*$/;
-const MAX_USERNAME_LENGTH = 20;
-
-/**
- * Validate that a username contains only safe characters to prevent command injection
- */
 export const isValidWindowsUsername = (username: string): boolean => {
-  return WINDOWS_USERNAME_REGEX.test(username) && username.length > 0 && username.length <= MAX_USERNAME_LENGTH;
+  if (!username || username.length === 0 || username.length > MAX_USERNAME_LENGTH) {
+    return false;
+  }
+  // Cannot start with period or hyphen (period is Windows rule, hyphen prevents flag injection)
+  if (username.startsWith(".") || username.startsWith("-")) {
+    return false;
+  }
+  return validateUsername(username);
 };
 
 /**
@@ -186,9 +314,11 @@ export const changeWindowsPassword = async (
   targetUser: string,
   newPassword: string
 ): Promise<void> => {
+  validateConfig(config);
+
   if (!isValidWindowsUsername(targetUser)) {
     throw new Error(
-      "Invalid username format - only alphanumeric characters, underscores, hyphens, and periods allowed"
+      "Invalid username format - must be 1-20 characters, only alphanumeric characters, underscores, hyphens, and periods allowed, and cannot start with a period or hyphen"
     );
   }
 

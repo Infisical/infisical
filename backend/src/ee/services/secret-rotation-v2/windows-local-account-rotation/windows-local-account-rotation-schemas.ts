@@ -8,6 +8,7 @@ import {
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-schemas";
 import { PasswordRequirementsSchema } from "@app/ee/services/secret-rotation-v2/shared/general";
 import { SecretRotations } from "@app/lib/api-docs";
+import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { SecretNameSchema } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -25,12 +26,6 @@ export const WindowsLocalAccountRotationGeneratedCredentialsSchema = z
   .min(1)
   .max(2);
 
-// Windows local account username validation:
-// - Must start with alphanumeric, underscore, or hyphen (not a period)
-// - Can contain alphanumeric, underscore, hyphen, and period
-// - Max 20 characters for local accounts
-const WINDOWS_USERNAME_REGEX = /^[a-zA-Z0-9_-][a-zA-Z0-9_.-]*$/;
-
 const WindowsLocalAccountRotationParametersSchema = z.object({
   username: z
     .string()
@@ -38,9 +33,21 @@ const WindowsLocalAccountRotationParametersSchema = z.object({
     .min(1, "Username required")
     .max(20, "Username too long - Windows local accounts are limited to 20 characters")
     .refine(
-      (val) => WINDOWS_USERNAME_REGEX.test(val),
-      "Username must start with a letter, number, underscore, or hyphen, and can only contain alphanumeric characters, underscores, hyphens, and periods"
+      (val) =>
+        characterValidator([
+          CharacterType.AlphaNumeric,
+          CharacterType.Hyphen,
+          CharacterType.Underscore,
+          CharacterType.Period
+        ])(val),
+      "Username can only contain alphanumeric characters, underscores, hyphens, and periods"
     )
+    .refine((val) => !val.startsWith("."), {
+      message: "Username cannot start with a period"
+    })
+    .refine((val) => !val.startsWith("-"), {
+      message: "Username cannot start with a hyphen"
+    })
     .describe(SecretRotations.PARAMETERS.WINDOWS_LOCAL_ACCOUNT.username),
   passwordRequirements: PasswordRequirementsSchema.optional(),
   rotationMethod: z
