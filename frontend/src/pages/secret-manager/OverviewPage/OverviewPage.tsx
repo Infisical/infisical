@@ -1016,7 +1016,7 @@ export const OverviewPage = () => {
                 <UnstableTable ref={tableRef} className="border-separate border-spacing-0">
                   <UnstableTableHeader>
                     <UnstableTableRow className="h-10">
-                      <UnstableTableHead className="sticky left-0 z-10 max-w-[40px] min-w-[40px] bg-container">
+                      <UnstableTableHead className="sticky left-0 z-10 w-[40px] max-w-[40px] min-w-[40px] bg-container">
                         <Checkbox
                           variant="project"
                           isDisabled={totalCount === 0}
