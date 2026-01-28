@@ -304,8 +304,7 @@ export const SecretEditTableRow = ({
               {...field}
               isReadOnly={isReadOnly}
               value={
-                // eslint-disable-next-line no-nested-ternary
-                isFetchingSecretValue
+                (secretValueHidden && !isOverride) || isFetchingSecretValue
                   ? HIDDEN_SECRET_VALUE
                   : isErrorFetchingSecretValue
                     ? "Error fetching secret value..."
@@ -406,9 +405,9 @@ export const SecretEditTableRow = ({
             </div>
             <div className="opacity-0 group-hover:opacity-100">
               <Tooltip>
-                <TooltipTrigger asChild>
+                <TooltipTrigger>
                   <UnstableIconButton
-                    isDisabled={secretValueHidden}
+                    isDisabled={!canFetchValue}
                     onClick={handleCopySecretToClipboard}
                     variant="ghost"
                     size="xs"
@@ -416,7 +415,13 @@ export const SecretEditTableRow = ({
                     <CopyIcon />
                   </UnstableIconButton>
                 </TooltipTrigger>
-                <TooltipContent>Copy Secret</TooltipContent>
+                <TooltipContent>
+                  {canFetchValue
+                    ? "Copy Secret"
+                    : canReadSecretValue
+                      ? "No Secret Value"
+                      : "Access Denied"}
+                </TooltipContent>
               </Tooltip>
             </div>
             <div className="opacity-0 group-hover:opacity-100">
