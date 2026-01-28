@@ -1,0 +1,1396 @@
+---
+title: "AWS (ECS with Fargate)"
+description: "Deploy Infisical on AWS using ECS Fargate, RDS, ElastiCache, and ALB."
+---
+
+Learn how to deploy **Infisical** on Amazon Web Services using **Elastic Container Service (ECS)** with Fargate. This guide covers setting up Infisical in a production-ready AWS environment using **Amazon RDS** (PostgreSQL) for the database, **Amazon ElastiCache** (Redis) for caching, and an **Application Load Balancer (ALB)** for routing traffic.
+
+## Prerequisites
+
+- An AWS account with permissions to create VPCs, ECS clusters, RDS, ElastiCache, and ALB resources
+- Basic knowledge of AWS networking (VPC, subnets, security groups) and ECS concepts
+- [AWS CLI](https://aws.amazon.com/cli/) installed and configured (optional, for CLI examples)
+- An Infisical Docker image tag from [Docker Hub](https://hub.docker.com/r/infisical/infisical/tags)
+
+<Warning>
+  Do not use the `latest` tag in production. Always pin to a specific version to avoid unexpected changes during upgrades.
+</Warning>
+
+## System Requirements
+
+The following are minimum requirements for running Infisical on AWS ECS:
+
+| Component | Minimum | Recommended (Production) |
+|-----------|---------|--------------------------|
+| ECS Task vCPU | 0.25 vCPU | 1 vCPU |
+| ECS Task Memory | 512 MB | 2 GB |
+| RDS Instance | db.t3.micro | db.t3.small or larger |
+| ElastiCache Node | cache.t3.micro | cache.t3.small or larger |
+
+For production deployments with many users or secrets, increase these values accordingly.
+
+## Cost Considerations
+
+Running Infisical on AWS incurs costs for the following services. Estimates are based on US East (N. Virginia) region pricing as of 2024:
+
+| Service | Configuration | Estimated Monthly Cost |
+|---------|---------------|------------------------|
+| ECS Fargate | 2 tasks, 1 vCPU, 2GB each | ~$60 |
+| RDS PostgreSQL | db.t3.small, Multi-AZ | ~$50 |
+| ElastiCache Redis | cache.t3.small, Multi-AZ | ~$50 |
+| Application Load Balancer | 1 ALB + data processing | ~$25 |
+| NAT Gateway | 1 NAT Gateway + data | ~$35 |
+| CloudWatch Logs | Log storage and ingestion | ~$5 |
+| **Total (Production HA)** | | **~$225/month** |
+
+<Note>
+  For development or testing, you can reduce costs significantly by using single-AZ deployments, smaller instance sizes, and fewer ECS tasks. A minimal setup can cost as little as ~$50/month.
+</Note>
+
+**Cost optimization tips:**
+- Use Reserved Instances or Savings Plans for RDS and ElastiCache (up to 60% savings)
+- Consider using NAT Instance instead of NAT Gateway for lower traffic environments
+- Set CloudWatch Logs retention policies to avoid indefinite storage costs
+- Use Spot capacity for non-production ECS tasks
+
+## Deployment Steps
+
+<Steps>
+<Step title="Set up network infrastructure (VPC, subnets, security groups)">
+  Create an AWS Virtual Private Cloud (VPC) network for hosting Infisical:
+
+  **VPC and Subnets:**
+  - Create a VPC spanning at least two Availability Zones
+  - In each AZ, create one **public subnet** (for the ALB) and one **private subnet** (for ECS tasks, RDS, and Redis)
+  - Configure route tables: public subnets route to an Internet Gateway, private subnets route to a NAT Gateway
+
+  **NAT Gateway:**
+  - Deploy a NAT Gateway in a public subnet to allow outbound internet access from private subnets
+  - This is required for pulling container images and sending emails
+
+  **Security Groups:**
+  Create the following security groups:
+
+  | Security Group | Inbound Rules | Purpose |
+  |----------------|---------------|---------|
+  | ALB SG | 80, 443 from 0.0.0.0/0 | Allow HTTP/HTTPS from internet |
+  | ECS Tasks SG | 8080 from ALB SG | Allow traffic from ALB only |
+  | RDS SG | 5432 from ECS Tasks SG | Allow PostgreSQL from ECS |
+  | Redis SG | 6379 from ECS Tasks SG | Allow Redis from ECS |
+
+  **Verify:** After creating the VPC, confirm you have:
+  - At least 2 public subnets and 2 private subnets across different AZs
+  - A NAT Gateway with an Elastic IP
+  - Security groups with the rules described above
+
+  ```bash
+  # Verify VPC and subnets
+  aws ec2 describe-vpcs --filters "Name=tag:Name,Values=*infisical*"
+  aws ec2 describe-subnets --filters "Name=vpc-id,Values=<vpc-id>"
+  ```
+</Step>
+
+<Step title="Provision the database (PostgreSQL) and cache (Redis)">
+  Set up the persistence layers for Infisical:
+
+  **Amazon RDS (PostgreSQL):**
+  - Create a PostgreSQL 14+ database instance in the private subnets
+  - Enable **Multi-AZ** deployment for high availability
+  - Disable public accessibility
+  - Enable automated backups with at least 7-day retention
+  - Use the RDS security group created earlier
+
+  ```bash
+  aws rds create-db-instance \
+    --db-instance-identifier infisical-db \
+    --db-instance-class db.t3.small \
+    --engine postgres \
+    --engine-version 14 \
+    --master-username infisical \
+    --master-user-password <your-secure-password> \
+    --allocated-storage 20 \
+    --db-name infisical \
+    --vpc-security-group-ids <rds-sg-id> \
+    --db-subnet-group-name <db-subnet-group> \
+    --multi-az \
+    --backup-retention-period 7 \
+    --no-publicly-accessible
+  ```
+
+  **Amazon ElastiCache (Redis):**
+  - Create a Redis replication group in the private subnets
+  - Enable Multi-AZ with automatic failover
+  - Enable encryption in-transit and at-rest
+  - Use the Redis security group created earlier
+
+  ```bash
+  aws elasticache create-replication-group \
+    --replication-group-id infisical-redis \
+    --replication-group-description "Redis for Infisical" \
+    --engine redis \
+    --cache-node-type cache.t3.small \
+    --num-cache-clusters 2 \
+    --automatic-failover-enabled \
+    --multi-az-enabled \
+    --at-rest-encryption-enabled \
+    --transit-encryption-enabled \
+    --security-group-ids <redis-sg-id> \
+    --cache-subnet-group-name <cache-subnet-group>
+  ```
+
+  **Verify:** Wait for both services to become available:
+  ```bash
+  # Check RDS status
+  aws rds describe-db-instances --db-instance-identifier infisical-db --query 'DBInstances[0].DBInstanceStatus'
+
+  # Check ElastiCache status
+  aws elasticache describe-replication-groups --replication-group-id infisical-redis --query 'ReplicationGroups[0].Status'
+  ```
+
+  Note the connection endpoints:
+  - **Database URI:** `postgresql://infisical:<password>@<rds-endpoint>:5432/infisical`
+  - **Redis URI:** `redis://<elasticache-endpoint>:6379`
+</Step>
+
+<Step title="Securely store Infisical secrets and configuration">
+  Generate and store the required secrets using AWS Systems Manager Parameter Store or Secrets Manager:
+
+  **Generate secrets:**
+  ```bash
+  # Generate ENCRYPTION_KEY (16-byte hex string)
+  ENCRYPTION_KEY=$(openssl rand -hex 16)
+  echo "ENCRYPTION_KEY: $ENCRYPTION_KEY"
+
+  # Generate AUTH_SECRET (32-byte base64 string)
+  AUTH_SECRET=$(openssl rand -base64 32)
+  echo "AUTH_SECRET: $AUTH_SECRET"
+  ```
+
+  <Warning>
+    Store your `ENCRYPTION_KEY` securely outside of AWS as well. Without this key, you cannot decrypt your secrets even if you restore the database.
+  </Warning>
+
+  <Tabs>
+    <Tab title="Parameter Store (SSM)">
+      ```bash
+      # Store secrets in Parameter Store
+      aws ssm put-parameter --name "/infisical/ENCRYPTION_KEY" --value "$ENCRYPTION_KEY" --type "SecureString"
+      aws ssm put-parameter --name "/infisical/AUTH_SECRET" --value "$AUTH_SECRET" --type "SecureString"
+      aws ssm put-parameter --name "/infisical/DB_CONNECTION_URI" --value "postgresql://infisical:<password>@<rds-endpoint>:5432/infisical" --type "SecureString"
+      aws ssm put-parameter --name "/infisical/REDIS_URL" --value "redis://<elasticache-endpoint>:6379" --type "SecureString"
+      ```
+    </Tab>
+    <Tab title="Secrets Manager">
+      ```bash
+      # Store secrets in Secrets Manager
+      aws secretsmanager create-secret --name "infisical/ENCRYPTION_KEY" --secret-string "$ENCRYPTION_KEY"
+      aws secretsmanager create-secret --name "infisical/AUTH_SECRET" --secret-string "$AUTH_SECRET"
+      aws secretsmanager create-secret --name "infisical/DB_CONNECTION_URI" --secret-string "postgresql://infisical:<password>@<rds-endpoint>:5432/infisical"
+      aws secretsmanager create-secret --name "infisical/REDIS_URL" --secret-string "redis://<elasticache-endpoint>:6379"
+      ```
+    </Tab>
+  </Tabs>
+
+  **Verify:** Confirm secrets are stored:
+  ```bash
+  # For Parameter Store
+  aws ssm get-parameters --names "/infisical/ENCRYPTION_KEY" "/infisical/AUTH_SECRET" --with-decryption
+
+  # For Secrets Manager
+  aws secretsmanager list-secrets --filters Key=name,Values=infisical
+  ```
+</Step>
+
+<Step title="Set up IAM roles for ECS">
+  Create IAM roles with the necessary permissions for ECS tasks:
+
+  **Task Execution Role** (for ECS agent operations):
+  
+  Create a file named `ecs-task-execution-trust-policy.json`:
+  ```json
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Principal": {
+          "Service": "ecs-tasks.amazonaws.com"
+        },
+        "Action": "sts:AssumeRole"
+      }
+    ]
+  }
+  ```
+
+  Create the role and attach policies:
+  ```bash
+  # Create the execution role
+  aws iam create-role \
+    --role-name InfisicalECSExecutionRole \
+    --assume-role-policy-document file://ecs-task-execution-trust-policy.json
+
+  # Attach the managed policy
+  aws iam attach-role-policy \
+    --role-name InfisicalECSExecutionRole \
+    --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+  ```
+
+  **Task Role** (for application access to AWS services):
+
+  Create a file named `infisical-task-policy.json`:
+  ```json
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": [
+          "ssm:GetParameter",
+          "ssm:GetParameters",
+          "ssm:GetParametersByPath"
+        ],
+        "Resource": "arn:aws:ssm:*:*:parameter/infisical/*"
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "secretsmanager:GetSecretValue"
+        ],
+        "Resource": "arn:aws:secretsmanager:*:*:secret:infisical/*"
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "kms:Decrypt"
+        ],
+        "Resource": "*",
+        "Condition": {
+          "StringEquals": {
+            "kms:ViaService": "ssm.*.amazonaws.com"
+          }
+        }
+      }
+    ]
+  }
+  ```
+
+  Create the task role:
+  ```bash
+  # Create the task role
+  aws iam create-role \
+    --role-name InfisicalTaskRole \
+    --assume-role-policy-document file://ecs-task-execution-trust-policy.json
+
+  # Create and attach the custom policy
+  aws iam put-role-policy \
+    --role-name InfisicalTaskRole \
+    --policy-name InfisicalSecretsAccess \
+    --policy-document file://infisical-task-policy.json
+  ```
+
+  **Enable ECS Exec** (for container debugging):
+  
+  Add the following to the task role policy to enable `aws ecs execute-command`:
+  ```json
+  {
+    "Effect": "Allow",
+    "Action": [
+      "ssmmessages:CreateControlChannel",
+      "ssmmessages:CreateDataChannel",
+      "ssmmessages:OpenControlChannel",
+      "ssmmessages:OpenDataChannel"
+    ],
+    "Resource": "*"
+  }
+  ```
+
+  **Verify:** Confirm roles are created:
+  ```bash
+  aws iam get-role --role-name InfisicalECSExecutionRole
+  aws iam get-role --role-name InfisicalTaskRole
+  ```
+</Step>
+
+<Step title="Create the ECS cluster and task definition">
+  **Create ECS Cluster:**
+  ```bash
+  aws ecs create-cluster \
+    --cluster-name infisical-cluster \
+    --capacity-providers FARGATE FARGATE_SPOT \
+    --default-capacity-provider-strategy capacityProvider=FARGATE,weight=1
+  ```
+
+  **Create Task Definition:**
+
+  Create a file named `infisical-task-definition.json`:
+  ```json
+  {
+    "family": "infisical",
+    "networkMode": "awsvpc",
+    "requiresCompatibilities": ["FARGATE"],
+    "cpu": "1024",
+    "memory": "2048",
+    "executionRoleArn": "arn:aws:iam::<account-id>:role/InfisicalECSExecutionRole",
+    "taskRoleArn": "arn:aws:iam::<account-id>:role/InfisicalTaskRole",
+    "containerDefinitions": [
+      {
+        "name": "infisical",
+        "image": "infisical/infisical:v0.151.0",
+        "essential": true,
+        "portMappings": [
+          {
+            "containerPort": 8080,
+            "protocol": "tcp"
+          }
+        ],
+        "environment": [
+          { "name": "HOST", "value": "0.0.0.0" },
+          { "name": "SITE_URL", "value": "https://infisical.example.com" }
+        ],
+        "secrets": [
+          {
+            "name": "ENCRYPTION_KEY",
+            "valueFrom": "arn:aws:ssm:<region>:<account-id>:parameter/infisical/ENCRYPTION_KEY"
+          },
+          {
+            "name": "AUTH_SECRET",
+            "valueFrom": "arn:aws:ssm:<region>:<account-id>:parameter/infisical/AUTH_SECRET"
+          },
+          {
+            "name": "DB_CONNECTION_URI",
+            "valueFrom": "arn:aws:ssm:<region>:<account-id>:parameter/infisical/DB_CONNECTION_URI"
+          },
+          {
+            "name": "REDIS_URL",
+            "valueFrom": "arn:aws:ssm:<region>:<account-id>:parameter/infisical/REDIS_URL"
+          }
+        ],
+        "logConfiguration": {
+          "logDriver": "awslogs",
+          "options": {
+            "awslogs-group": "/ecs/infisical",
+            "awslogs-region": "<region>",
+            "awslogs-stream-prefix": "infisical",
+            "awslogs-create-group": "true"
+          }
+        },
+        "healthCheck": {
+          "command": ["CMD-SHELL", "wget -q --spider http://localhost:8080/api/status || exit 1"],
+          "interval": 30,
+          "timeout": 5,
+          "retries": 3,
+          "startPeriod": 60
+        }
+      }
+    ]
+  }
+  ```
+
+  Register the task definition:
+  ```bash
+  aws ecs register-task-definition --cli-input-json file://infisical-task-definition.json
+  ```
+
+  **Verify:** Confirm task definition is registered:
+  ```bash
+  aws ecs describe-task-definition --task-definition infisical
+  ```
+</Step>
+
+<Step title="Create the Application Load Balancer">
+  **Create ALB:**
+  ```bash
+  aws elbv2 create-load-balancer \
+    --name infisical-alb \
+    --subnets <public-subnet-1> <public-subnet-2> \
+    --security-groups <alb-sg-id> \
+    --scheme internet-facing \
+    --type application
+  ```
+
+  **Create Target Group:**
+  ```bash
+  aws elbv2 create-target-group \
+    --name infisical-tg \
+    --protocol HTTP \
+    --port 8080 \
+    --vpc-id <vpc-id> \
+    --target-type ip \
+    --health-check-path /api/status \
+    --health-check-interval-seconds 30 \
+    --healthy-threshold-count 2 \
+    --unhealthy-threshold-count 3
+  ```
+
+  **Create HTTP Listener:**
+  ```bash
+  aws elbv2 create-listener \
+    --load-balancer-arn <alb-arn> \
+    --protocol HTTP \
+    --port 80 \
+    --default-actions Type=forward,TargetGroupArn=<target-group-arn>
+  ```
+
+  **Verify:** Check ALB is active:
+  ```bash
+  aws elbv2 describe-load-balancers --names infisical-alb --query 'LoadBalancers[0].State.Code'
+  ```
+
+  Note the ALB DNS name for accessing Infisical:
+  ```bash
+  aws elbv2 describe-load-balancers --names infisical-alb --query 'LoadBalancers[0].DNSName' --output text
+  ```
+</Step>
+
+<Step title="Deploy the ECS service">
+  Create the ECS service with the ALB integration:
+
+  ```bash
+  aws ecs create-service \
+    --cluster infisical-cluster \
+    --service-name infisical-service \
+    --task-definition infisical \
+    --desired-count 2 \
+    --launch-type FARGATE \
+    --platform-version LATEST \
+    --network-configuration "awsvpcConfiguration={subnets=[<private-subnet-1>,<private-subnet-2>],securityGroups=[<ecs-tasks-sg-id>],assignPublicIp=DISABLED}" \
+    --load-balancers "targetGroupArn=<target-group-arn>,containerName=infisical,containerPort=8080" \
+    --enable-execute-command \
+    --deployment-configuration "minimumHealthyPercent=50,maximumPercent=200"
+  ```
+
+  **Verify deployment:**
+  ```bash
+  # Check service status
+  aws ecs describe-services --cluster infisical-cluster --services infisical-service --query 'services[0].status'
+
+  # Watch task status
+  aws ecs list-tasks --cluster infisical-cluster --service-name infisical-service
+  aws ecs describe-tasks --cluster infisical-cluster --tasks <task-arn>
+
+  # Check target health
+  aws elbv2 describe-target-health --target-group-arn <target-group-arn>
+  ```
+
+  Once tasks are running and healthy, access Infisical via the ALB DNS name:
+  ```bash
+  curl http://<alb-dns-name>/api/status
+  ```
+
+  <Tip>
+    For production, run at least **2 Infisical tasks** spread across different Availability Zones for high availability and zero-downtime deployments.
+  </Tip>
+</Step>
+</Steps>
+
+After completing the above steps, your Infisical instance should be running on AWS. Visit `http://<alb-dns-name>` to access the Infisical web interface and create your admin account.
+
+![self-hosted sign up](/images/self-hosting/applicable-to-all/selfhost-signup.png)
+
+---
+
+## Additional Configuration
+
+<AccordionGroup>
+  <Accordion title="Custom Domain with Route 53 and HTTPS">
+    Set up a custom domain with SSL/TLS using AWS Certificate Manager and Route 53:
+
+    **1. Request an SSL Certificate:**
+    ```bash
+    aws acm request-certificate \
+      --domain-name infisical.example.com \
+      --validation-method DNS \
+      --region <region>
+    ```
+
+    **2. Validate the certificate** by adding the CNAME record to your DNS (Route 53 or external DNS).
+
+    **3. Create HTTPS Listener:**
+    ```bash
+    aws elbv2 create-listener \
+      --load-balancer-arn <alb-arn> \
+      --protocol HTTPS \
+      --port 443 \
+      --ssl-policy ELBSecurityPolicy-TLS13-1-2-2021-06 \
+      --certificates CertificateArn=<acm-certificate-arn> \
+      --default-actions Type=forward,TargetGroupArn=<target-group-arn>
+    ```
+
+    **4. Redirect HTTP to HTTPS:**
+    ```bash
+    aws elbv2 modify-listener \
+      --listener-arn <http-listener-arn> \
+      --default-actions Type=redirect,RedirectConfig="{Protocol=HTTPS,Port=443,StatusCode=HTTP_301}"
+    ```
+
+    **5. Create Route 53 Record:**
+    ```bash
+    aws route53 change-resource-record-sets \
+      --hosted-zone-id <hosted-zone-id> \
+      --change-batch '{
+        "Changes": [{
+          "Action": "CREATE",
+          "ResourceRecordSet": {
+            "Name": "infisical.example.com",
+            "Type": "A",
+            "AliasTarget": {
+              "HostedZoneId": "<alb-hosted-zone-id>",
+              "DNSName": "<alb-dns-name>",
+              "EvaluateTargetHealth": true
+            }
+          }
+        }]
+      }'
+    ```
+
+    **6. Update SITE_URL** in your ECS task definition to use `https://infisical.example.com`.
+  </Accordion>
+
+  <Accordion title="SMTP/Email Configuration (AWS SES)">
+    Configure AWS SES for sending emails (invitations, password resets, etc.):
+
+    **1. Verify your domain in SES:**
+    ```bash
+    aws ses verify-domain-identity --domain example.com
+    ```
+
+    **2. Create SMTP credentials:**
+    - Go to AWS SES Console > SMTP Settings > Create SMTP Credentials
+    - Note the SMTP username and password
+
+    **3. Add SMTP environment variables** to your ECS task definition:
+    ```json
+    {
+      "environment": [
+        { "name": "SMTP_HOST", "value": "email-smtp.<region>.amazonaws.com" },
+        { "name": "SMTP_PORT", "value": "587" },
+        { "name": "SMTP_SECURE", "value": "false" },
+        { "name": "SMTP_FROM_ADDRESS", "value": "noreply@example.com" },
+        { "name": "SMTP_FROM_NAME", "value": "Infisical" }
+      ],
+      "secrets": [
+        { "name": "SMTP_USERNAME", "valueFrom": "arn:aws:ssm:<region>:<account-id>:parameter/infisical/SMTP_USERNAME" },
+        { "name": "SMTP_PASSWORD", "valueFrom": "arn:aws:ssm:<region>:<account-id>:parameter/infisical/SMTP_PASSWORD" }
+      ]
+    }
+    ```
+
+    **4. Request production access** if you're in the SES sandbox (limited to verified emails only).
+
+    | SMTP Provider | Host | Port |
+    |---------------|------|------|
+    | AWS SES | email-smtp.{region}.amazonaws.com | 587 |
+    | SendGrid | smtp.sendgrid.net | 587 |
+    | Mailgun | smtp.mailgun.org | 587 |
+  </Accordion>
+
+  <Accordion title="VPC Endpoints for ECR (Air-Gapped Environments)">
+    For environments without internet access, configure VPC endpoints to pull container images from ECR:
+
+    **Create VPC Endpoints:**
+    ```bash
+    # ECR API endpoint
+    aws ec2 create-vpc-endpoint \
+      --vpc-id <vpc-id> \
+      --service-name com.amazonaws.<region>.ecr.api \
+      --vpc-endpoint-type Interface \
+      --subnet-ids <private-subnet-1> <private-subnet-2> \
+      --security-group-ids <vpc-endpoint-sg>
+
+    # ECR Docker endpoint
+    aws ec2 create-vpc-endpoint \
+      --vpc-id <vpc-id> \
+      --service-name com.amazonaws.<region>.ecr.dkr \
+      --vpc-endpoint-type Interface \
+      --subnet-ids <private-subnet-1> <private-subnet-2> \
+      --security-group-ids <vpc-endpoint-sg>
+
+    # S3 Gateway endpoint (for ECR image layers)
+    aws ec2 create-vpc-endpoint \
+      --vpc-id <vpc-id> \
+      --service-name com.amazonaws.<region>.s3 \
+      --vpc-endpoint-type Gateway \
+      --route-table-ids <private-route-table-id>
+
+    # CloudWatch Logs endpoint
+    aws ec2 create-vpc-endpoint \
+      --vpc-id <vpc-id> \
+      --service-name com.amazonaws.<region>.logs \
+      --vpc-endpoint-type Interface \
+      --subnet-ids <private-subnet-1> <private-subnet-2> \
+      --security-group-ids <vpc-endpoint-sg>
+    ```
+
+    **Push Infisical image to ECR:**
+    ```bash
+    # Create ECR repository
+    aws ecr create-repository --repository-name infisical
+
+    # Login to ECR
+    aws ecr get-login-password --region <region> | docker login --username AWS --password-stdin <account-id>.dkr.ecr.<region>.amazonaws.com
+
+    # Pull and push image
+    docker pull infisical/infisical:v0.151.0
+    docker tag infisical/infisical:v0.151.0 <account-id>.dkr.ecr.<region>.amazonaws.com/infisical:v0.151.0
+    docker push <account-id>.dkr.ecr.<region>.amazonaws.com/infisical:v0.151.0
+    ```
+
+    Update your task definition to use the ECR image URL.
+  </Accordion>
+
+  <Accordion title="Database Migrations">
+    Infisical automatically runs database migrations on startup. For manual migration handling:
+
+    **Check migration status:**
+    ```bash
+    # Exec into a running container
+    aws ecs execute-command \
+      --cluster infisical-cluster \
+      --task <task-id> \
+      --container infisical \
+      --interactive \
+      --command "/bin/sh"
+
+    # Inside the container, check migration status
+    npm run migration:status
+    ```
+
+    **Run migrations manually:**
+    ```bash
+    # Inside the container
+    npm run migration:latest
+    ```
+
+    **Rollback migrations:**
+    ```bash
+    # Inside the container
+    npm run migration:rollback
+    ```
+
+    <Warning>
+      Always back up your database before running migrations manually. Take an RDS snapshot before any upgrade.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="Container Debugging (ECS Exec)">
+    Use ECS Exec to troubleshoot running containers:
+
+    **Prerequisites:**
+    - ECS service must have `--enable-execute-command` flag
+    - Task role must have SSM permissions (included in IAM setup above)
+    - AWS CLI Session Manager plugin installed locally
+
+    **Install Session Manager plugin:**
+    ```bash
+    # macOS
+    brew install session-manager-plugin
+
+    # Linux
+    curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "session-manager-plugin.deb"
+    sudo dpkg -i session-manager-plugin.deb
+    ```
+
+    **Exec into a container:**
+    ```bash
+    # Get task ID
+    TASK_ID=$(aws ecs list-tasks --cluster infisical-cluster --service-name infisical-service --query 'taskArns[0]' --output text | cut -d'/' -f3)
+
+    # Start interactive session
+    aws ecs execute-command \
+      --cluster infisical-cluster \
+      --task $TASK_ID \
+      --container infisical \
+      --interactive \
+      --command "/bin/sh"
+    ```
+
+    **Common debugging commands:**
+    ```bash
+    # Check environment variables
+    env | grep -E "DB_|REDIS_|SITE_"
+
+    # Test database connectivity
+    nc -zv <rds-endpoint> 5432
+
+    # Test Redis connectivity
+    nc -zv <elasticache-endpoint> 6379
+
+    # Check application logs
+    cat /app/logs/*.log
+    ```
+  </Accordion>
+
+  <Accordion title="Backup Strategy">
+    **Database Backups:**
+    - RDS automated backups are enabled by default (7-day retention recommended)
+    - Take manual snapshots before upgrades:
+    ```bash
+    aws rds create-db-snapshot \
+      --db-instance-identifier infisical-db \
+      --db-snapshot-identifier infisical-pre-upgrade-$(date +%Y%m%d)
+    ```
+
+    **Export to S3 (for cross-region DR):**
+    ```bash
+    aws rds start-export-task \
+      --export-task-identifier infisical-export-$(date +%Y%m%d) \
+      --source-arn arn:aws:rds:<region>:<account-id>:snapshot:infisical-snapshot \
+      --s3-bucket-name infisical-backups \
+      --iam-role-arn arn:aws:iam::<account-id>:role/RDSExportRole \
+      --kms-key-id <kms-key-id>
+    ```
+
+    **Encryption Key Backup:**
+    Store your `ENCRYPTION_KEY` in multiple secure locations:
+    - AWS Secrets Manager (already done)
+    - Offline secure storage (e.g., hardware security module, safe deposit box)
+    - Secondary AWS region
+
+    <Warning>
+      Without the `ENCRYPTION_KEY`, encrypted secrets cannot be recovered even with a database restore.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="Upgrade Instructions">
+    **1. Back up the database:**
+    ```bash
+    aws rds create-db-snapshot \
+      --db-instance-identifier infisical-db \
+      --db-snapshot-identifier infisical-pre-upgrade-$(date +%Y%m%d)
+    ```
+
+    **2. Update the task definition** with the new image tag:
+    ```bash
+    # Edit infisical-task-definition.json with new version
+    # Then register the new revision
+    aws ecs register-task-definition --cli-input-json file://infisical-task-definition.json
+    ```
+
+    **3. Update the service:**
+    ```bash
+    aws ecs update-service \
+      --cluster infisical-cluster \
+      --service infisical-service \
+      --task-definition infisical:<new-revision>
+    ```
+
+    **4. Monitor the deployment:**
+    ```bash
+    aws ecs describe-services --cluster infisical-cluster --services infisical-service --query 'services[0].deployments'
+    ```
+
+    **5. Verify health:**
+    ```bash
+    curl https://infisical.example.com/api/status
+    ```
+
+    **Rollback if needed:**
+    ```bash
+    aws ecs update-service \
+      --cluster infisical-cluster \
+      --service infisical-service \
+      --task-definition infisical:<previous-revision>
+    ```
+  </Accordion>
+
+  <Accordion title="Monitoring and Alerting">
+    **CloudWatch Logs:**
+    - Logs are automatically sent to `/ecs/infisical` log group
+    - Set retention policy:
+    ```bash
+    aws logs put-retention-policy --log-group-name /ecs/infisical --retention-in-days 30
+    ```
+
+    **CloudWatch Alarms:**
+    ```bash
+    # High CPU alarm
+    aws cloudwatch put-metric-alarm \
+      --alarm-name infisical-high-cpu \
+      --metric-name CPUUtilization \
+      --namespace AWS/ECS \
+      --statistic Average \
+      --period 300 \
+      --threshold 80 \
+      --comparison-operator GreaterThanThreshold \
+      --dimensions Name=ClusterName,Value=infisical-cluster Name=ServiceName,Value=infisical-service \
+      --evaluation-periods 2 \
+      --alarm-actions <sns-topic-arn>
+
+    # Unhealthy target alarm
+    aws cloudwatch put-metric-alarm \
+      --alarm-name infisical-unhealthy-targets \
+      --metric-name UnHealthyHostCount \
+      --namespace AWS/ApplicationELB \
+      --statistic Average \
+      --period 60 \
+      --threshold 1 \
+      --comparison-operator GreaterThanOrEqualToThreshold \
+      --dimensions Name=TargetGroup,Value=<target-group-arn-suffix> Name=LoadBalancer,Value=<alb-arn-suffix> \
+      --evaluation-periods 2 \
+      --alarm-actions <sns-topic-arn>
+    ```
+
+    **Enable Container Insights:**
+    ```bash
+    aws ecs update-cluster-settings \
+      --cluster infisical-cluster \
+      --settings name=containerInsights,value=enabled
+    ```
+  </Accordion>
+
+  <Accordion title="Auto Scaling">
+    Configure ECS Service Auto Scaling to handle load changes:
+
+    **Register scalable target:**
+    ```bash
+    aws application-autoscaling register-scalable-target \
+      --service-namespace ecs \
+      --scalable-dimension ecs:service:DesiredCount \
+      --resource-id service/infisical-cluster/infisical-service \
+      --min-capacity 2 \
+      --max-capacity 10
+    ```
+
+    **Create scaling policy (target tracking):**
+    ```bash
+    aws application-autoscaling put-scaling-policy \
+      --service-namespace ecs \
+      --scalable-dimension ecs:service:DesiredCount \
+      --resource-id service/infisical-cluster/infisical-service \
+      --policy-name infisical-cpu-scaling \
+      --policy-type TargetTrackingScaling \
+      --target-tracking-scaling-policy-configuration '{
+        "TargetValue": 70.0,
+        "PredefinedMetricSpecification": {
+          "PredefinedMetricType": "ECSServiceAverageCPUUtilization"
+        },
+        "ScaleOutCooldown": 60,
+        "ScaleInCooldown": 120
+      }'
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Infrastructure as Code
+
+<AccordionGroup>
+  <Accordion title="Terraform Example">
+    A basic Terraform configuration for deploying Infisical on AWS:
+
+    ```hcl
+    # main.tf
+    terraform {
+      required_providers {
+        aws = {
+          source  = "hashicorp/aws"
+          version = "~> 5.0"
+        }
+      }
+    }
+
+    provider "aws" {
+      region = var.aws_region
+    }
+
+    # Variables
+    variable "aws_region" {
+      default = "us-east-1"
+    }
+
+    variable "environment" {
+      default = "production"
+    }
+
+    # VPC
+    module "vpc" {
+      source  = "terraform-aws-modules/vpc/aws"
+      version = "~> 5.0"
+
+      name = "infisical-vpc"
+      cidr = "10.0.0.0/16"
+
+      azs             = ["${var.aws_region}a", "${var.aws_region}b"]
+      private_subnets = ["10.0.1.0/24", "10.0.2.0/24"]
+      public_subnets  = ["10.0.101.0/24", "10.0.102.0/24"]
+
+      enable_nat_gateway = true
+      single_nat_gateway = var.environment != "production"
+    }
+
+    # Security Groups
+    resource "aws_security_group" "alb" {
+      name_prefix = "infisical-alb-"
+      vpc_id      = module.vpc.vpc_id
+
+      ingress {
+        from_port   = 80
+        to_port     = 80
+        protocol    = "tcp"
+        cidr_blocks = ["0.0.0.0/0"]
+      }
+
+      ingress {
+        from_port   = 443
+        to_port     = 443
+        protocol    = "tcp"
+        cidr_blocks = ["0.0.0.0/0"]
+      }
+
+      egress {
+        from_port   = 0
+        to_port     = 0
+        protocol    = "-1"
+        cidr_blocks = ["0.0.0.0/0"]
+      }
+    }
+
+    resource "aws_security_group" "ecs_tasks" {
+      name_prefix = "infisical-ecs-"
+      vpc_id      = module.vpc.vpc_id
+
+      ingress {
+        from_port       = 8080
+        to_port         = 8080
+        protocol        = "tcp"
+        security_groups = [aws_security_group.alb.id]
+      }
+
+      egress {
+        from_port   = 0
+        to_port     = 0
+        protocol    = "-1"
+        cidr_blocks = ["0.0.0.0/0"]
+      }
+    }
+
+    # RDS PostgreSQL
+    module "rds" {
+      source  = "terraform-aws-modules/rds/aws"
+      version = "~> 6.0"
+
+      identifier = "infisical-db"
+
+      engine               = "postgres"
+      engine_version       = "14"
+      family               = "postgres14"
+      major_engine_version = "14"
+      instance_class       = "db.t3.small"
+
+      allocated_storage = 20
+      db_name           = "infisical"
+      username          = "infisical"
+      port              = 5432
+
+      multi_az               = var.environment == "production"
+      db_subnet_group_name   = module.vpc.database_subnet_group_name
+      vpc_security_group_ids = [aws_security_group.rds.id]
+
+      backup_retention_period = 7
+      deletion_protection     = var.environment == "production"
+    }
+
+    # ElastiCache Redis
+    resource "aws_elasticache_replication_group" "redis" {
+      replication_group_id = "infisical-redis"
+      description          = "Redis for Infisical"
+
+      node_type            = "cache.t3.small"
+      num_cache_clusters   = var.environment == "production" ? 2 : 1
+      parameter_group_name = "default.redis7"
+      port                 = 6379
+
+      automatic_failover_enabled = var.environment == "production"
+      multi_az_enabled           = var.environment == "production"
+
+      subnet_group_name  = aws_elasticache_subnet_group.redis.name
+      security_group_ids = [aws_security_group.redis.id]
+
+      at_rest_encryption_enabled = true
+      transit_encryption_enabled = true
+    }
+
+    # ECS Cluster
+    resource "aws_ecs_cluster" "infisical" {
+      name = "infisical-cluster"
+
+      setting {
+        name  = "containerInsights"
+        value = "enabled"
+      }
+    }
+
+    # ECS Service (simplified - full implementation requires task definition, ALB, etc.)
+    # See full Terraform module at: https://github.com/Infisical/infisical-terraform-aws
+    ```
+
+    <Note>
+      For a complete, production-ready Terraform module, see the [Infisical AWS Terraform Module](https://github.com/Infisical/infisical-terraform-aws) (if available) or adapt the example above.
+    </Note>
+  </Accordion>
+
+  <Accordion title="CloudFormation Example">
+    A CloudFormation template for deploying Infisical on AWS:
+
+    ```yaml
+    # infisical-cloudformation.yaml
+    AWSTemplateFormatVersion: '2010-09-09'
+    Description: 'Infisical on AWS ECS Fargate'
+
+    Parameters:
+      Environment:
+        Type: String
+        Default: production
+        AllowedValues: [development, staging, production]
+      
+      InfisicalVersion:
+        Type: String
+        Default: v0.151.0
+      
+      DomainName:
+        Type: String
+        Description: Domain name for Infisical (e.g., infisical.example.com)
+
+    Conditions:
+      IsProduction: !Equals [!Ref Environment, production]
+
+    Resources:
+      # VPC
+      VPC:
+        Type: AWS::EC2::VPC
+        Properties:
+          CidrBlock: 10.0.0.0/16
+          EnableDnsHostnames: true
+          EnableDnsSupport: true
+          Tags:
+            - Key: Name
+              Value: !Sub infisical-vpc-${Environment}
+
+      # Public Subnets
+      PublicSubnet1:
+        Type: AWS::EC2::Subnet
+        Properties:
+          VpcId: !Ref VPC
+          AvailabilityZone: !Select [0, !GetAZs '']
+          CidrBlock: 10.0.1.0/24
+          MapPublicIpOnLaunch: true
+
+      PublicSubnet2:
+        Type: AWS::EC2::Subnet
+        Properties:
+          VpcId: !Ref VPC
+          AvailabilityZone: !Select [1, !GetAZs '']
+          CidrBlock: 10.0.2.0/24
+          MapPublicIpOnLaunch: true
+
+      # Private Subnets
+      PrivateSubnet1:
+        Type: AWS::EC2::Subnet
+        Properties:
+          VpcId: !Ref VPC
+          AvailabilityZone: !Select [0, !GetAZs '']
+          CidrBlock: 10.0.10.0/24
+
+      PrivateSubnet2:
+        Type: AWS::EC2::Subnet
+        Properties:
+          VpcId: !Ref VPC
+          AvailabilityZone: !Select [1, !GetAZs '']
+          CidrBlock: 10.0.11.0/24
+
+      # Internet Gateway
+      InternetGateway:
+        Type: AWS::EC2::InternetGateway
+
+      AttachGateway:
+        Type: AWS::EC2::VPCGatewayAttachment
+        Properties:
+          VpcId: !Ref VPC
+          InternetGatewayId: !Ref InternetGateway
+
+      # NAT Gateway
+      NATGatewayEIP:
+        Type: AWS::EC2::EIP
+        DependsOn: AttachGateway
+
+      NATGateway:
+        Type: AWS::EC2::NatGateway
+        Properties:
+          AllocationId: !GetAtt NATGatewayEIP.AllocationId
+          SubnetId: !Ref PublicSubnet1
+
+      # ECS Cluster
+      ECSCluster:
+        Type: AWS::ECS::Cluster
+        Properties:
+          ClusterName: !Sub infisical-cluster-${Environment}
+          ClusterSettings:
+            - Name: containerInsights
+              Value: enabled
+
+      # ECS Task Definition
+      TaskDefinition:
+        Type: AWS::ECS::TaskDefinition
+        Properties:
+          Family: infisical
+          NetworkMode: awsvpc
+          RequiresCompatibilities: [FARGATE]
+          Cpu: '1024'
+          Memory: '2048'
+          ExecutionRoleArn: !GetAtt ECSExecutionRole.Arn
+          TaskRoleArn: !GetAtt ECSTaskRole.Arn
+          ContainerDefinitions:
+            - Name: infisical
+              Image: !Sub infisical/infisical:${InfisicalVersion}
+              Essential: true
+              PortMappings:
+                - ContainerPort: 8080
+                  Protocol: tcp
+              Environment:
+                - Name: HOST
+                  Value: '0.0.0.0'
+                - Name: SITE_URL
+                  Value: !Sub https://${DomainName}
+              Secrets:
+                - Name: ENCRYPTION_KEY
+                  ValueFrom: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/infisical/ENCRYPTION_KEY
+                - Name: AUTH_SECRET
+                  ValueFrom: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/infisical/AUTH_SECRET
+                - Name: DB_CONNECTION_URI
+                  ValueFrom: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/infisical/DB_CONNECTION_URI
+                - Name: REDIS_URL
+                  ValueFrom: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/infisical/REDIS_URL
+              LogConfiguration:
+                LogDriver: awslogs
+                Options:
+                  awslogs-group: !Ref LogGroup
+                  awslogs-region: !Ref AWS::Region
+                  awslogs-stream-prefix: infisical
+              HealthCheck:
+                Command: ['CMD-SHELL', 'wget -q --spider http://localhost:8080/api/status || exit 1']
+                Interval: 30
+                Timeout: 5
+                Retries: 3
+                StartPeriod: 60
+
+      # ECS Service
+      ECSService:
+        Type: AWS::ECS::Service
+        DependsOn: ALBListener
+        Properties:
+          ServiceName: infisical-service
+          Cluster: !Ref ECSCluster
+          TaskDefinition: !Ref TaskDefinition
+          DesiredCount: !If [IsProduction, 2, 1]
+          LaunchType: FARGATE
+          EnableExecuteCommand: true
+          NetworkConfiguration:
+            AwsvpcConfiguration:
+              AssignPublicIp: DISABLED
+              Subnets:
+                - !Ref PrivateSubnet1
+                - !Ref PrivateSubnet2
+              SecurityGroups:
+                - !Ref ECSSecurityGroup
+          LoadBalancers:
+            - ContainerName: infisical
+              ContainerPort: 8080
+              TargetGroupArn: !Ref TargetGroup
+
+      # Application Load Balancer
+      ALB:
+        Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+        Properties:
+          Name: !Sub infisical-alb-${Environment}
+          Scheme: internet-facing
+          Type: application
+          Subnets:
+            - !Ref PublicSubnet1
+            - !Ref PublicSubnet2
+          SecurityGroups:
+            - !Ref ALBSecurityGroup
+
+      # CloudWatch Log Group
+      LogGroup:
+        Type: AWS::Logs::LogGroup
+        Properties:
+          LogGroupName: !Sub /ecs/infisical-${Environment}
+          RetentionInDays: 30
+
+    Outputs:
+      ALBDNSName:
+        Description: ALB DNS Name
+        Value: !GetAtt ALB.DNSName
+      
+      ECSClusterName:
+        Description: ECS Cluster Name
+        Value: !Ref ECSCluster
+    ```
+
+    **Deploy the stack:**
+    ```bash
+    aws cloudformation create-stack \
+      --stack-name infisical-stack \
+      --template-body file://infisical-cloudformation.yaml \
+      --parameters ParameterKey=DomainName,ParameterValue=infisical.example.com \
+      --capabilities CAPABILITY_IAM
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="ECS tasks fail to start">
+    **Check task status and stopped reason:**
+    ```bash
+    aws ecs describe-tasks --cluster infisical-cluster --tasks <task-arn> --query 'tasks[0].stoppedReason'
+    ```
+
+    **View CloudWatch logs:**
+    ```bash
+    aws logs tail /ecs/infisical --follow
+    ```
+
+    **Common causes:**
+    - **Secrets not found:** Verify SSM parameters exist and task role has permissions
+    - **Image pull failed:** Check ECR permissions or Docker Hub rate limits
+    - **Insufficient resources:** Increase task CPU/memory or check Fargate capacity
+    - **Network issues:** Verify NAT Gateway is working and security groups allow egress
+  </Accordion>
+
+  <Accordion title="Database connection errors">
+    **Test connectivity from ECS task:**
+    ```bash
+    # Exec into container
+    aws ecs execute-command --cluster infisical-cluster --task <task-id> --container infisical --interactive --command "/bin/sh"
+
+    # Test database connection
+    nc -zv <rds-endpoint> 5432
+    ```
+
+    **Check security groups:**
+    - RDS security group must allow inbound 5432 from ECS tasks security group
+    - ECS tasks security group must allow outbound to RDS
+
+    **Verify connection string:**
+    ```bash
+    aws ssm get-parameter --name /infisical/DB_CONNECTION_URI --with-decryption
+    ```
+  </Accordion>
+
+  <Accordion title="ALB health checks failing">
+    **Check target health:**
+    ```bash
+    aws elbv2 describe-target-health --target-group-arn <target-group-arn>
+    ```
+
+    **Verify health check endpoint:**
+    ```bash
+    # From inside the container
+    curl http://localhost:8080/api/status
+    ```
+
+    **Common causes:**
+    - Health check path is wrong (should be `/api/status`)
+    - Security group doesn't allow ALB to reach ECS tasks on port 8080
+    - Application is crashing on startup (check logs)
+    - Health check timeout is too short (increase to 10 seconds)
+  </Accordion>
+
+  <Accordion title="Cannot access Infisical in browser">
+    **Check ALB is accessible:**
+    ```bash
+    curl -v http://<alb-dns-name>/api/status
+    ```
+
+    **Verify DNS resolution:**
+    ```bash
+    nslookup infisical.example.com
+    ```
+
+    **Check ALB security group:**
+    - Must allow inbound 80/443 from 0.0.0.0/0
+
+    **Check SITE_URL:**
+    - Must match the URL you're accessing (including protocol)
+  </Accordion>
+
+  <Accordion title="Emails not sending">
+    **Check SES sending status:**
+    ```bash
+    aws ses get-send-quota
+    ```
+
+    **Verify SMTP credentials:**
+    - Ensure SMTP username/password are correct
+    - Check if you're still in SES sandbox (can only send to verified emails)
+
+    **Test SMTP connectivity:**
+    ```bash
+    # From inside container
+    nc -zv email-smtp.<region>.amazonaws.com 587
+    ```
+
+    **Check application logs for email errors:**
+    ```bash
+    aws logs filter-log-events --log-group-name /ecs/infisical --filter-pattern "smtp OR email OR mail"
+    ```
+  </Accordion>
+
+  <Accordion title="Performance issues">
+    **Check ECS task metrics:**
+    ```bash
+    aws cloudwatch get-metric-statistics \
+      --namespace AWS/ECS \
+      --metric-name CPUUtilization \
+      --dimensions Name=ClusterName,Value=infisical-cluster Name=ServiceName,Value=infisical-service \
+      --start-time $(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ) \
+      --end-time $(date -u +%Y-%m-%dT%H:%M:%SZ) \
+      --period 300 \
+      --statistics Average
+    ```
+
+    **Check RDS metrics:**
+    ```bash
+    aws cloudwatch get-metric-statistics \
+      --namespace AWS/RDS \
+      --metric-name CPUUtilization \
+      --dimensions Name=DBInstanceIdentifier,Value=infisical-db \
+      --start-time $(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ) \
+      --end-time $(date -u +%Y-%m-%dT%H:%M:%SZ) \
+      --period 300 \
+      --statistics Average
+    ```
+
+    **Solutions:**
+    - Scale ECS tasks horizontally (increase desired count)
+    - Scale RDS vertically (larger instance class)
+    - Enable RDS Performance Insights for query analysis
+    - Consider connection pooling (PgBouncer)
+  </Accordion>
+
+  <Accordion title="ECS Exec not working">
+    **Verify prerequisites:**
+    ```bash
+    # Check service has execute-command enabled
+    aws ecs describe-services --cluster infisical-cluster --services infisical-service --query 'services[0].enableExecuteCommand'
+
+    # Check task role has SSM permissions
+    aws iam get-role-policy --role-name InfisicalTaskRole --policy-name InfisicalSecretsAccess
+    ```
+
+    **Check managed agent status:**
+    ```bash
+    aws ecs describe-tasks --cluster infisical-cluster --tasks <task-arn> --query 'tasks[0].containers[0].managedAgents'
+    ```
+
+    **Common fixes:**
+    - Ensure Session Manager plugin is installed locally
+    - Verify VPC has route to SSM endpoints (via NAT or VPC endpoint)
+    - Redeploy service after enabling execute-command
+  </Accordion>
+</AccordionGroup>
