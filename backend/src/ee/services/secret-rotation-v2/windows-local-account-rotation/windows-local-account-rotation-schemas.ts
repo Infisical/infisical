@@ -34,6 +34,27 @@ const validateWindowsUsername = characterValidator([
   CharacterType.Period
 ]);
 
+// Dangerous characters that could enable command/RPC injection in Windows/SMB context
+// These are blocked to prevent security issues when executing SMB/RPC commands:
+// - Command separators: ; | &
+// - Command substitution: ` $ ( )
+// - Newlines: \n \r (auth file directive injection)
+// - Null bytes: \0 (string termination attacks)
+const DANGEROUS_SMB_PASSWORD_CHARS = [";", "|", "&", "`", "$", "(", ")", "\n", "\r", "\0"];
+
+// Windows-specific password requirements schema that validates allowedSymbols
+// doesn't contain dangerous characters that could cause command injection
+const WindowsPasswordRequirementsSchema = PasswordRequirementsSchema.refine(
+  (data) => {
+    if (!data.allowedSymbols) return true;
+    return !DANGEROUS_SMB_PASSWORD_CHARS.some((char) => data.allowedSymbols?.includes(char));
+  },
+  {
+    message: "Allowed symbols cannot contain dangerous characters: ; | & ` $ ( )",
+    path: ["allowedSymbols"]
+  }
+);
+
 const WindowsLocalAccountRotationParametersSchema = z.object({
   username: z
     .string()
@@ -47,7 +68,7 @@ const WindowsLocalAccountRotationParametersSchema = z.object({
       message: "Username cannot start with a hyphen or period, and cannot end with a period"
     })
     .describe(SecretRotations.PARAMETERS.WINDOWS_LOCAL_ACCOUNT.username),
-  passwordRequirements: PasswordRequirementsSchema.optional(),
+  passwordRequirements: WindowsPasswordRequirementsSchema.optional(),
   rotationMethod: z
     .nativeEnum(WindowsLocalAccountRotationMethod)
     .optional()
