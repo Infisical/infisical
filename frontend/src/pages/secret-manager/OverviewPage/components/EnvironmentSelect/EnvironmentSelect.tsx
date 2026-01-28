@@ -31,6 +31,8 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs }: Props) {
 
   let label: string;
 
+  const [inputValue, setInputValue] = useState("");
+
   if (selectedEnvs.length === 1) {
     label = selectedEnvs[0].name;
   } else if (selectedEnvs.length > 0 && selectedEnvs.length < projectEnvs.length) {
@@ -73,11 +75,15 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs }: Props) {
         </PopoverTrigger>
         <PopoverContent className="w-[200px] p-0">
           <Command>
-            <CommandInput placeholder="Filter environments..." />
+            <CommandInput
+              value={inputValue}
+              onValueChange={setInputValue}
+              placeholder="Filter environments..."
+            />
             <CommandList>
               <CommandEmpty>No environment found.</CommandEmpty>
               <CommandGroup>
-                {Boolean(projectEnvs.length) && (
+                {Boolean(projectEnvs.length) && !inputValue && (
                   <CommandItem onSelect={handleSelectAll}>
                     <CheckIcon
                       className={cn(
