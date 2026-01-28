@@ -57,11 +57,11 @@ import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/type
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
 import { NorthflankConnectionMethod } from "@app/hooks/api/appConnections/types/northflank-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
+import { OpenRouterConnectionMethod } from "@app/hooks/api/appConnections/types/open-router-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
 import { SshConnectionMethod } from "@app/hooks/api/appConnections/types/ssh-connection";
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
-import { OpenRouterConnectionMethod } from "@app/hooks/api/appConnections/types/open-router-connection";
 
 export const APP_CONNECTION_MAP: Record<
   AppConnection,

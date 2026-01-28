@@ -14,6 +14,7 @@ import { LdapPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/typ
 import { UnixLinuxLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/unix-linux-local-account-rotation";
 
 import { OktaClientSecretRotationSchema } from "./okta-client-secret-rotation-schema";
+import { OpenRouterApiKeyRotationSchema } from "./open-router-api-key-rotation-schema";
 import { OracleDBCredentialsRotationSchema } from "./oracledb-credentials-rotation-schema";
 import { RedisCredentialsRotationSchema } from "./redis-credentials-rotation-schema";
 import { UnixLinuxLocalAccountRotationSchema } from "./unix-linux-local-account-rotation-schema";
@@ -34,7 +35,8 @@ export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
         RedisCredentialsRotationSchema,
         MongoDBCredentialsRotationSchema,
         DatabricksServicePrincipalSecretRotationSchema,
-        UnixLinuxLocalAccountRotationSchema
+        UnixLinuxLocalAccountRotationSchema,
+        OpenRouterApiKeyRotationSchema
       ]),
       z.object({ id: z.string().optional() })
     )
