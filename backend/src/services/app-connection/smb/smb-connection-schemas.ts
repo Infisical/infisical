@@ -60,7 +60,7 @@ export const SmbConnectionCredentialsSchema = z.object({
     .string()
     .min(1, "Password required")
     .refine((val) => validateSmbPassword(val), {
-      message: "Password cannot contain the following characters: ; | & ` $ ( ) or newlines"
+      message: "Password cannot contain: semicolons, spaces, quotes, or pipes"
     })
     .describe(AppConnections.CREDENTIALS.SMB.password)
 });

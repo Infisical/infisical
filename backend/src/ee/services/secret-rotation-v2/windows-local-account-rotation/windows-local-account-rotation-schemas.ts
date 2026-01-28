@@ -39,7 +39,7 @@ const WindowsPasswordRequirementsSchema = PasswordRequirementsSchema.refine(
     return !containsDangerousSmbChars(data.allowedSymbols);
   },
   {
-    message: "Allowed symbols cannot contain dangerous characters: ; | & ` $ ( )",
+    message: "Allowed symbols cannot contain: semicolons, spaces, quotes, or pipes",
     path: ["allowedSymbols"]
   }
 );
@@ -102,7 +102,7 @@ export const CreateWindowsLocalAccountRotationSchema = BaseCreateSecretRotationS
         password: z
           .string()
           .refine((val) => !val || validateSmbPassword(val), {
-            message: "Password cannot contain dangerous characters: ; | & ` $ ( ) or newlines"
+            message: "Password cannot contain: semicolons, spaces, quotes, or pipes"
           })
           .optional()
           .describe(SecretRotations.PARAMETERS.WINDOWS_LOCAL_ACCOUNT.password)

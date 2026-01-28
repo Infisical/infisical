@@ -17,11 +17,11 @@ export const SMB_USERNAME_REGEX = /^[a-zA-Z0-9_][a-zA-Z0-9._-]*$/;
 
 // Dangerous characters that could enable command/RPC injection in Windows/SMB context
 // These are blocked to prevent security issues:
-// - Command separators: ; | &
-// - Command substitution: ` $ ( )
-// - Newlines: \n \r (auth file directive injection)
-// - Null bytes: \0 (string termination attacks)
-export const DANGEROUS_SMB_CHARS = [";", "|", "&", "`", "$", "(", ")", "\n", "\r", "\0"];
+// - Semicolons: ; (command separator)
+// - Spaces: (argument separator)
+// - Quotes: ' " ` (string delimiters that could break parsing)
+// - Pipes: | (command chaining)
+export const DANGEROUS_SMB_CHARS = [";", " ", "'", '"', "`", "|"];
 
 /**
  * Validate password doesn't contain dangerous SMB characters

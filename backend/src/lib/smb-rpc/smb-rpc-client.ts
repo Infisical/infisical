@@ -89,7 +89,7 @@ const validatePassword = (password: string): void => {
     throw new Error("Password is required");
   }
   if (!validateSmbPassword(password)) {
-    throw new Error("Password cannot contain dangerous characters: ; | & ` $ ( ) or newlines");
+    throw new Error("Password cannot contain: semicolons, spaces, quotes, or pipes");
   }
 };
 
