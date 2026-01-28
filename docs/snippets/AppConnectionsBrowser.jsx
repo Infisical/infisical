@@ -148,6 +148,14 @@ export const AppConnectionsBrowser = () => {
       category: "Hosting",
     },
     {
+      name: "DBT",
+      slug: "dbt",
+      path: "/integrations/app-connections/dbt",
+      description:
+        "Learn how to connect your DBT application to pull secrets from Infisical.",
+      category: "Data Analytics",
+    },
+    {
       name: "DigitalOcean",
       slug: "digital-ocean",
       path: "/integrations/app-connections/digital-ocean",

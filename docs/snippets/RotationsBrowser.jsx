@@ -31,6 +31,13 @@ export const RotationsBrowser = () => {
       category: "Cloud Providers",
     },
     {
+      name: "DBT Service Token",
+      slug: "dbt-service-token",
+      path: "/documentation/platform/secret-rotation/dbt-service-token",
+      description: "Learn how to automatically rotate DBT service tokens.",
+      category: "Cloud Providers",
+    },
+    {
       name: "Auth0 Client Secret",
       slug: "auth0-client-secret",
       path: "/documentation/platform/secret-rotation/auth0-client-secret",
