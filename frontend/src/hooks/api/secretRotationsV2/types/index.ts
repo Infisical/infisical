@@ -37,6 +37,7 @@ import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { DiscriminativePick } from "@app/types";
 
 import {
+  TDbtServiceTokenRotation,
   TDbtServiceTokenRotationGeneratedCredentialsResponse,
   TDbtServiceTokenRotationOption
 } from "./dbt-service-token-rotation";
@@ -83,6 +84,7 @@ export type TSecretRotationV2 = (
   | TMongoDBCredentialsRotation
   | TDatabricksServicePrincipalSecretRotation
   | TUnixLinuxLocalAccountRotation
+  | TDbtServiceTokenRotation
 ) & {
   secrets: (SecretV3RawSanitized | null)[];
 };

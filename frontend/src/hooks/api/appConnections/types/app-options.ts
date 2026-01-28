@@ -200,6 +200,10 @@ export type TSshConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.SSH;
 };
 
+export type TDbtConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Dbt;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -246,7 +250,8 @@ export type TAppConnectionOption =
   | TChefConnectionOption
   | TDNSMadeEasyConnectionOption
   | TOctopusDeployConnectionOption
-  | TSshConnectionOption;
+  | TSshConnectionOption
+  | TDbtConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -295,4 +300,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Chef]: TChefConnectionOption;
   [AppConnection.OctopusDeploy]: TOctopusDeployConnectionOption;
   [AppConnection.SSH]: TSshConnectionOption;
+  [AppConnection.Dbt]: TDbtConnectionOption;
 };
