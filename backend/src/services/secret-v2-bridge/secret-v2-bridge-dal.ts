@@ -5,7 +5,6 @@ import { validate as uuidValidate } from "uuid";
 import { TDbClient } from "@app/db";
 import { ProjectType, SecretsV2Schema, SecretType, TableName, TSecretsV2, TSecretsV2Update } from "@app/db/schemas";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { getConfig } from "@app/lib/config/env";
 import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { applyJitter } from "@app/lib/dates";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
@@ -26,8 +25,7 @@ import type {
 
 export const SecretServiceCacheKeys = {
   get productKey() {
-    const { INFISICAL_PLATFORM_VERSION } = getConfig();
-    return `${ProjectType.SecretManager}:${INFISICAL_PLATFORM_VERSION || 0}`;
+    return `${ProjectType.SecretManager}`;
   },
   getSecretDalVersion: (projectId: string) => {
     return `${SecretServiceCacheKeys.productKey}:${projectId}:${TableName.SecretV2}-dal-version`;
