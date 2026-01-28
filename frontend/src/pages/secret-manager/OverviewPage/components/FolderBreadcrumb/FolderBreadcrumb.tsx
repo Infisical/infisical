@@ -10,6 +10,9 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   UnstableDropdownMenu,
   UnstableDropdownMenuContent,
   UnstableDropdownMenuItem,
@@ -207,7 +210,7 @@ export function FolderBreadcrumb({
     : [];
 
   return (
-    <div ref={containerRef} className="relative min-w-fit flex-1 overflow-hidden">
+    <div ref={containerRef} className="relative min-w-0 flex-1 overflow-hidden">
       {/* Hidden measurement container */}
       <div
         ref={measureContainerRef}
@@ -251,13 +254,17 @@ export function FolderBreadcrumb({
                 <SlashIcon className="size-3 -rotate-12" />
               </BreadcrumbSeparator>
               {!needsEllipsis && index === startSegments.length - 1 ? (
-                <BreadcrumbPage>{path}</BreadcrumbPage>
+                <BreadcrumbPage title={path} className="truncate">
+                  {path}
+                </BreadcrumbPage>
               ) : (
                 <BreadcrumbItem
                   onClick={() => onFolderCrumbClick(index + 1)}
                   onKeyDown={() => null}
                 >
-                  <BreadcrumbLink>{path}</BreadcrumbLink>
+                  <BreadcrumbLink title={path} className="truncate">
+                    {path}
+                  </BreadcrumbLink>
                 </BreadcrumbItem>
               )}
             </React.Fragment>
@@ -276,7 +283,10 @@ export function FolderBreadcrumb({
                       <BreadcrumbEllipsis className="size-6 cursor-pointer rounded hover:bg-foreground/10" />
                     </span>
                   </UnstableDropdownMenuTrigger>
-                  <UnstableDropdownMenuContent className="relative pl-3" align="start">
+                  <UnstableDropdownMenuContent
+                    className="relative max-w-[300px] pl-3"
+                    align="start"
+                  >
                     <div className="absolute top-3 bottom-[23px] left-[8px] w-px bg-muted/50" />
                     {hiddenSegments.map((segment, idx) => {
                       const originalIndex = startCount + idx;
@@ -285,11 +295,12 @@ export function FolderBreadcrumb({
                           key={`hidden-${originalIndex}`}
                           onClick={() => onFolderCrumbClick(originalIndex + 1)}
                           className="text-accent hover:text-foreground"
+                          title={segment}
                         >
                           <div className="absolute top-1/2 -left-[3px] h-px w-2 bg-muted/50 transition-colors" />
-                          {/* TODO: folder color */}
-                          <FolderIcon className="text-warning/50" />
-                          {segment}
+
+                          <FolderIcon className="text-folder" />
+                          <span className="truncate">{segment}</span>
                         </UnstableDropdownMenuItem>
                       );
                     })}
@@ -309,13 +320,17 @@ export function FolderBreadcrumb({
                   <SlashIcon className="size-3 -rotate-12" />
                 </BreadcrumbSeparator>
                 {isLast ? (
-                  <BreadcrumbPage>{path}</BreadcrumbPage>
+                  <BreadcrumbPage title={path} className="truncate">
+                    {path}
+                  </BreadcrumbPage>
                 ) : (
                   <BreadcrumbItem
                     onClick={() => onFolderCrumbClick(originalIndex + 1)}
                     onKeyDown={() => null}
                   >
-                    <BreadcrumbLink>{path}</BreadcrumbLink>
+                    <BreadcrumbLink title={path} className="truncate">
+                      {path}
+                    </BreadcrumbLink>
                   </BreadcrumbItem>
                 )}
               </React.Fragment>

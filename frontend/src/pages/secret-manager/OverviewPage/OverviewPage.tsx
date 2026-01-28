@@ -957,8 +957,8 @@ export const OverviewPage = () => {
         />
         <UnstableCard className="mt-8 mb-60">
           <UnstableCardHeader>
-            <div className="flex flex-wrap items-center gap-3 xl:flex-nowrap">
-              <div className="mr-auto flex flex-1 items-center gap-x-3 whitespace-nowrap">
+            <div className="flex flex-col gap-3 overflow-hidden lg:flex-row lg:items-center">
+              <div className="flex flex-1 items-center gap-x-3 overflow-hidden whitespace-nowrap lg:mr-auto">
                 <EnvironmentSelect selectedEnvs={filteredEnvs} setSelectedEnvs={setFilteredEnvs} />
                 <FolderBreadcrumb secretPath={secretPath} onResetSearch={handleResetSearch} />
               </div>

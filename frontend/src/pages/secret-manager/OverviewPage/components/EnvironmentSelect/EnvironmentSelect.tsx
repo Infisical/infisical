@@ -12,45 +12,11 @@ import {
   CommandSeparator,
   Popover,
   PopoverContent,
-  PopoverTrigger,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  PopoverTrigger
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import { useProject } from "@app/context";
 import { ProjectEnv } from "@app/hooks/api/types";
-
-const TruncatedText = ({ text }: { text: string }) => {
-  const [isOverflowing, setIsOverflowing] = useState(false);
-  const ref = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (el) {
-      setIsOverflowing(el.scrollWidth > el.clientWidth);
-    }
-  }, [text]);
-
-  if (!isOverflowing) {
-    return (
-      <span ref={ref} className="truncate">
-        {text}
-      </span>
-    );
-  }
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span ref={ref} className="truncate">
-          {text}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent side="right">{text}</TooltipContent>
-    </Tooltip>
-  );
-};
 
 type Props = {
   selectedEnvs: ProjectEnv[];
@@ -140,6 +106,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs }: Props) {
                     value={env.id}
                     onSelect={handleSelectEnv}
                     keywords={[env.name, env.slug]}
+                    title={env.name}
                   >
                     <CheckIcon
                       className={cn(
@@ -147,7 +114,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs }: Props) {
                         selectedEnvs.map((e) => e.id).includes(env.id) ? "opacity-100" : "opacity-0"
                       )}
                     />
-                    <TruncatedText text={env.name} />
+                    <span className="truncate">{env.name}</span>
                   </CommandItem>
                 ))}
               </CommandGroup>
