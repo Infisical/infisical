@@ -186,7 +186,7 @@ To view logs from Infisical pods:
 
 ```bash
 # View logs from all Infisical pods
-kubectl logs -n infisical -l app.kubernetes.io/name=infisical -f
+kubectl logs -n infisical -l component=infisical -f
 
 # View logs from a specific pod
 kubectl logs -n infisical <pod-name> -f
@@ -454,7 +454,7 @@ redis:
     spec:
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: infisical
+          component: infisical
       policyTypes:
         - Ingress
         - Egress
@@ -566,7 +566,7 @@ redis:
     spec:
       selector:
         matchLabels:
-          app.kubernetes.io/name: infisical
+          component: infisical
       endpoints:
         - port: metrics
           interval: 30s
@@ -593,7 +593,7 @@ redis:
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
-              app.kubernetes.io/name: infisical
+              component: infisical
     ```
 
     **2. Pod Disruption Budget:**
@@ -608,7 +608,7 @@ redis:
       minAvailable: 1
       selector:
         matchLabels:
-          app.kubernetes.io/name: infisical
+          component: infisical
     ```
 
     ```bash
