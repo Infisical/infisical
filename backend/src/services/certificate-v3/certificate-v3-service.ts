@@ -1520,7 +1520,10 @@ export const certificateV3ServiceFactory = ({
       };
     }
 
-    if (certificateRequest.basicConstraints?.isCA) {
+    // Check if this is a CA certificate request (either explicit basicConstraints or keyCertSign in key usages)
+    // Per RFC 5280, keyCertSign implies CA certificate. Some clients (like cert-manager) only send keyCertSign without basicConstraints.
+    const orderCsrHasKeyCertSign = certificateRequest.keyUsages?.includes(CertKeyUsageType.KEY_CERT_SIGN) ?? false;
+    if (certificateRequest.basicConstraints?.isCA || orderCsrHasKeyCertSign) {
       throw new BadRequestError({
         message: "CA certificate issuance is not supported for external certificate authorities."
       });
