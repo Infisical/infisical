@@ -275,7 +275,8 @@ export const secretRotationV2ServiceFactory = ({
             ProjectPermissionSecretRotationActions.Read,
             subject(ProjectPermissionSub.SecretRotation, {
               environment: rotation.environment.slug,
-              secretPath: rotation.folder.path
+              secretPath: rotation.folder.path,
+              connectionId: rotation.connection.id
             })
           )
         )
@@ -313,7 +314,8 @@ export const secretRotationV2ServiceFactory = ({
       ProjectPermissionSecretRotationActions.Read,
       subject(ProjectPermissionSub.SecretRotation, {
         environment: environment.slug,
-        secretPath: folder.path
+        secretPath: folder.path,
+        connectionId: connection.id
       })
     );
 
@@ -359,7 +361,8 @@ export const secretRotationV2ServiceFactory = ({
       ProjectPermissionSecretRotationActions.ReadGeneratedCredentials,
       subject(ProjectPermissionSub.SecretRotation, {
         environment: environment.slug,
-        secretPath: folder.path
+        secretPath: folder.path,
+        connectionId: connection.id
       })
     );
 
@@ -424,7 +427,8 @@ export const secretRotationV2ServiceFactory = ({
       ProjectPermissionSecretRotationActions.Read,
       subject(ProjectPermissionSub.SecretRotation, {
         environment,
-        secretPath
+        secretPath,
+        connectionId: connection.id
       })
     );
 
@@ -474,7 +478,11 @@ export const secretRotationV2ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretRotationActions.Create,
-      subject(ProjectPermissionSub.SecretRotation, { environment, secretPath })
+      subject(ProjectPermissionSub.SecretRotation, {
+        environment,
+        secretPath,
+        ...(payload.connectionId && { connectionId: payload.connectionId })
+      })
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
@@ -675,7 +683,8 @@ export const secretRotationV2ServiceFactory = ({
       ProjectPermissionSecretRotationActions.Edit,
       subject(ProjectPermissionSub.SecretRotation, {
         environment: environment.slug,
-        secretPath: folder.path
+        secretPath: folder.path,
+        connectionId: connection.id
       })
     );
 
@@ -825,7 +834,8 @@ export const secretRotationV2ServiceFactory = ({
       ProjectPermissionSecretRotationActions.Delete,
       subject(ProjectPermissionSub.SecretRotation, {
         environment: environment.slug,
-        secretPath: folder.path
+        secretPath: folder.path,
+        connectionId: connection.id
       })
     );
 
@@ -1159,7 +1169,8 @@ export const secretRotationV2ServiceFactory = ({
       ProjectPermissionSecretRotationActions.RotateSecrets,
       subject(ProjectPermissionSub.SecretRotation, {
         environment: environment.slug,
-        secretPath: folder.path
+        secretPath: folder.path,
+        connectionId: connection.id
       })
     );
 
@@ -1449,7 +1460,8 @@ export const secretRotationV2ServiceFactory = ({
       ProjectPermissionSecretRotationActions.RotateSecrets,
       subject(ProjectPermissionSub.SecretRotation, {
         environment: environment.slug,
-        secretPath: folder.path
+        secretPath: folder.path,
+        connectionId: connection.id
       })
     );
 

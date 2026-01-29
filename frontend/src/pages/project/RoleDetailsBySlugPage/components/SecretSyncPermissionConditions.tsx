@@ -15,7 +15,8 @@ export const SecretSyncPermissionConditions = ({ position = 0, isDisabled }: Pro
       position={position}
       selectOptions={[
         { value: "environment", label: "Environment Slug" },
-        { value: "secretPath", label: "Secret Path" }
+        { value: "secretPath", label: "Secret Path" },
+        { value: "connectionId", label: "Connection ID" }
       ]}
     />
   );

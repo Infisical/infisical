@@ -12,15 +12,24 @@ type Props = {
 };
 
 export const GeneralPermissionConditions = ({ position = 0, isDisabled, type }: Props) => {
+  const selectOptions =
+    type === ProjectPermissionSub.SecretRotation
+      ? [
+          { value: "environment", label: "Environment Slug" },
+          { value: "secretPath", label: "Secret Path" },
+          { value: "connectionId", label: "Connection ID" }
+        ]
+      : [
+          { value: "environment", label: "Environment Slug" },
+          { value: "secretPath", label: "Secret Path" }
+        ];
+
   return (
     <ConditionsFields
       isDisabled={isDisabled}
       subject={type}
       position={position}
-      selectOptions={[
-        { value: "environment", label: "Environment Slug" },
-        { value: "secretPath", label: "Secret Path" }
-      ]}
+      selectOptions={selectOptions}
     />
   );
 };
