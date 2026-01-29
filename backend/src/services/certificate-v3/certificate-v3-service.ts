@@ -1227,6 +1227,18 @@ export const certificateV3ServiceFactory = ({
     mappedCertificateRequest.signatureAlgorithm = extractedSignatureAlgorithm;
     mappedCertificateRequest.validity = validity;
 
+    // Determine effective basicConstraints early (before approval flow)
+    // so it's available for both the approval path and direct signing path.
+    // Per RFC 5280, keyCertSign in key usage implies CA certificate. We add this because some clients will not send basicConstraints in the CSR.
+    const csrHasKeyCertSign = certificateRequest.keyUsages?.includes(CertKeyUsageType.KEY_CERT_SIGN) ?? false;
+    const effectiveBasicConstraints = basicConstraints ?? certificateRequest.basicConstraints;
+    const shouldIssueAsCA = effectiveBasicConstraints?.isCA === true || csrHasKeyCertSign;
+
+    // Compute the final basicConstraints to store/use
+    const resolvedBasicConstraints = shouldIssueAsCA
+      ? { isCA: true, pathLength: effectiveBasicConstraints?.pathLength }
+      : effectiveBasicConstraints;
+
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
       mappedCertificateRequest
@@ -1274,7 +1286,7 @@ export const certificateV3ServiceFactory = ({
             ttl: validity.ttl,
             enrollmentType,
             status: CertificateRequestStatus.PENDING_APPROVAL,
-            basicConstraints: basicConstraints ? JSON.stringify(basicConstraints) : null
+            basicConstraints: resolvedBasicConstraints ? JSON.stringify(resolvedBasicConstraints) : null
           },
           tx
         );
@@ -1297,7 +1309,7 @@ export const certificateV3ServiceFactory = ({
             notAfter: notAfter?.toISOString(),
             signatureAlgorithm: extractedSignatureAlgorithm,
             keyAlgorithm: extractedKeyAlgorithm,
-            basicConstraints
+            basicConstraints: resolvedBasicConstraints
           },
           certificateRequestId: certRequest.id
         };
@@ -1354,7 +1366,6 @@ export const certificateV3ServiceFactory = ({
     const effectiveSignatureAlgorithm = extractedSignatureAlgorithm;
     const effectiveKeyAlgorithm = extractedKeyAlgorithm;
 
-    const shouldIssueAsCA = basicConstraints?.isCA === true;
     const policyIsCAState: CertPolicyState =
       (policy.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
 
@@ -1384,7 +1395,7 @@ export const certificateV3ServiceFactory = ({
           caId: ca.id,
           csr,
           basicConstraints: caBasicConstraints,
-          pathLength: basicConstraints?.pathLength,
+          pathLength: effectiveBasicConstraints?.pathLength,
           ttl: effectiveTtl,
           altNames: undefined,
           notBefore: normalizeDateForApi(notBefore),
@@ -1509,7 +1520,10 @@ export const certificateV3ServiceFactory = ({
       };
     }
 
-    if (certificateRequest.basicConstraints?.isCA) {
+    // Check if this is a CA certificate request (either explicit basicConstraints or keyCertSign in key usages)
+    // Per RFC 5280, keyCertSign implies CA certificate. Some clients (like cert-manager) only send keyCertSign without basicConstraints.
+    const orderCsrHasKeyCertSign = certificateRequest.keyUsages?.includes(CertKeyUsageType.KEY_CERT_SIGN) ?? false;
+    if (certificateRequest.basicConstraints?.isCA || orderCsrHasKeyCertSign) {
       throw new BadRequestError({
         message: "CA certificate issuance is not supported for external certificate authorities."
       });
