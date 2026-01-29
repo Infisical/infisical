@@ -1053,7 +1053,7 @@ export const folderCommitServiceFactory = ({
                 userId: secretVersion.userId,
                 actorType: actorInfo.actorType,
                 envId: secretVersion.envId,
-                metadata: JSON.stringify(metadata),
+                metadata: metadata ? JSON.stringify(metadata) : null,
                 ...(actorInfo.actorType === ActorType.IDENTITY && { identityActorId: actorInfo.actorId }),
                 ...(actorInfo.actorType === ActorType.USER && { userActorId: actorInfo.actorId })
               },

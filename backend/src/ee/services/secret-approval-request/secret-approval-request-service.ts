@@ -319,7 +319,7 @@ export const secretApprovalRequestServiceFactory = ({
         version: el.version,
         secretMetadata: (
           el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[]
-        ).map((meta) => ({
+        )?.map((meta) => ({
           key: meta.key,
           isEncrypted: Boolean(meta.encryptedValue),
           value: meta.encryptedValue
@@ -382,7 +382,7 @@ export const secretApprovalRequestServiceFactory = ({
                 ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedComment }).toString()
                 : "",
               tags: el.secretVersion.tags,
-              secretMetadata: el.oldSecretMetadata.map((meta) => ({
+              secretMetadata: el.oldSecretMetadata?.map((meta) => ({
                 key: meta.key,
                 isEncrypted: Boolean(meta.encryptedValue),
                 value: meta.encryptedValue
@@ -696,7 +696,7 @@ export const secretApprovalRequestServiceFactory = ({
                 key: el.key,
                 secretMetadata: (
                   el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[]
-                ).map((meta) => ({
+                )?.map((meta) => ({
                   key: meta.key,
                   [meta.encryptedValue ? "encryptedValue" : "value"]: meta.encryptedValue
                     ? Buffer.from(meta.encryptedValue, "base64")
@@ -753,7 +753,7 @@ export const secretApprovalRequestServiceFactory = ({
                     tags: el?.tags.map(({ id }) => id),
                     secretMetadata: (
                       el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[]
-                    ).map((meta) => ({
+                    )?.map((meta) => ({
                       key: meta.key,
                       [meta.encryptedValue ? "encryptedValue" : "value"]: meta.encryptedValue
                         ? Buffer.from(meta.encryptedValue, "base64")
