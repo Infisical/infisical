@@ -179,12 +179,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
         <div className="relative overflow-hidden">
           <pre aria-hidden className="pointer-events-none relative z-10 m-0">
             <code className={`inline-block w-full ${commonClassName}`}>
-              <span
-                className={twMerge(
-                  "whitespace-break-spaces",
-                  placeholder && !value && "text-gray-500/50"
-                )}
-              >
+              <span className={twMerge("whitespace-break-spaces", !value && "text-muted")}>
                 {syntaxHighlight(
                   value,
                   isVisible || (isSecretFocused && !valueAlwaysHidden),
