@@ -181,14 +181,14 @@ Supports conditions and permission inversion
 | `edit` | Modify secret imports |
 | `delete` | Remove secret imports |
 
-#### Subject: `secret-events`
+#### Subject: `secret-event-subscriptions`
 
 | Action                          | Description                                                   |
 | ------------------------------- | ------------------------------------------------------------- |
-| `subscribe-on-created`          | Subscribe to events when secrets are created                  |
-| `subscribe-on-updated`          | Subscribe to events when secrets are updated                  |
-| `subscribe-on-deleted`          | Subscribe to events when secrets are deleted                  |
-| `subscribe-on-import-mutations` | Subscribe to events when secrets are modified through imports |
+| `subscribe-to-creation-events`          | Subscribe to events when secrets are created                  |
+| `subscribe-to-update-events`          | Subscribe to events when secrets are updated                  |
+| `subscribe-to-deletion-events`          | Subscribe to events when secrets are deleted                  |
+| `subscribe-to-import-mutation-events` | Subscribe to events when secrets are modified through imports |
 
 #### Subject: `secret-rollback`
 

@@ -33,10 +33,10 @@ const CONNECTION_TTL_SECONDS = KeyStoreTtls.ProjectSSEConnectionTtlSeconds;
 
 // Map mutation type to permission action
 const MutationTypeToAction: Record<ProjectEvents, ProjectPermissionSecretEventActions> = {
-  [ProjectEvents.SecretCreate]: ProjectPermissionSecretEventActions.SubscribeCreated,
-  [ProjectEvents.SecretUpdate]: ProjectPermissionSecretEventActions.SubscribeUpdated,
-  [ProjectEvents.SecretDelete]: ProjectPermissionSecretEventActions.SubscribeDeleted,
-  [ProjectEvents.SecretImportMutation]: ProjectPermissionSecretEventActions.SubscribeImportMutations
+  [ProjectEvents.SecretCreate]: ProjectPermissionSecretEventActions.SubscribeToCreationEvents,
+  [ProjectEvents.SecretUpdate]: ProjectPermissionSecretEventActions.SubscribeToUpdateEvents,
+  [ProjectEvents.SecretDelete]: ProjectPermissionSecretEventActions.SubscribeToDeleteEvents,
+  [ProjectEvents.SecretImportMutation]: ProjectPermissionSecretEventActions.SubscribeToImportMutationEvents
 };
 
 const getBusEventToSubject = (type: ProjectEvents) => {
@@ -48,7 +48,7 @@ const getBusEventToSubject = (type: ProjectEvents) => {
       ProjectEvents.SecretImportMutation
     ].includes(type)
   ) {
-    return ProjectPermissionSub.SecretEvents;
+    return ProjectPermissionSub.SecretEventSubscriptions;
   }
   throw new Error("Unknown project event type");
 };
@@ -265,7 +265,7 @@ export const projectEventsSSEServiceFactory = ({
         secretPath: payload.secretPath
       };
 
-      return permissionCache.permission.can(action, subject(ProjectPermissionSub.SecretEvents, subjectFields));
+      return permissionCache.permission.can(action, subject(ProjectPermissionSub.SecretEventSubscriptions, subjectFields));
     });
   };
 

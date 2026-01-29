@@ -209,10 +209,10 @@ export enum ProjectPermissionSecretScanningConfigActions {
 }
 
 export enum ProjectPermissionSecretEventActions {
-  SubscribeCreated = "subscribe-on-created",
-  SubscribeUpdated = "subscribe-on-updated",
-  SubscribeDeleted = "subscribe-on-deleted",
-  SubscribeImportMutations = "subscribe-on-import-mutations"
+  SubscribeToCreationEvents = "subscribe-to-creation-events",
+  SubscribeToUpdateEvents = "subscribe-to-update-events",
+  SubscribeToDeleteEvents = "subscribe-to-deletion-events",
+  SubscribeToImportMutationEvents = "subscribe-to-import-mutation-events"
 }
 
 export enum ProjectPermissionAuditLogsActions {
@@ -294,7 +294,7 @@ export enum ProjectPermissionSub {
   SecretScanningDataSources = "secret-scanning-data-sources",
   SecretScanningFindings = "secret-scanning-findings",
   SecretScanningConfigs = "secret-scanning-configs",
-  SecretEvents = "secret-events",
+  SecretEventSubscriptions = "secret-event-subscriptions",
   AppConnections = "app-connections",
   PamFolders = "pam-folders",
   PamResources = "pam-resources",
@@ -514,7 +514,10 @@ export type ProjectPermissionSet =
   | [ProjectPermissionSecretScanningConfigActions, ProjectPermissionSub.SecretScanningConfigs]
   | [
       ProjectPermissionSecretEventActions,
-      ProjectPermissionSub.SecretEvents | (ForcedSubject<ProjectPermissionSub.SecretEvents> & SecretEventSubjectFields)
+      (
+        | ProjectPermissionSub.SecretEventSubscriptions
+        | (ForcedSubject<ProjectPermissionSub.SecretEventSubscriptions> & SecretEventSubjectFields)
+      )
     ]
   | [
       ProjectPermissionAppConnectionActions,
@@ -1371,7 +1374,9 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
     ).optional()
   }),
   z.object({
-    subject: z.literal(ProjectPermissionSub.SecretEvents).describe("The entity this permission pertains to."),
+    subject: z
+      .literal(ProjectPermissionSub.SecretEventSubscriptions)
+      .describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretEventActions).describe(
       "Describe what action an entity can take."
