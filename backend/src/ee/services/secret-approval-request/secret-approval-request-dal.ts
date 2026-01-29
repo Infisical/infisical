@@ -770,7 +770,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           : ((await (tx || db)
               .select("*")
               .from(innerQuery)
-              .whereIn(`${TableName.SecretApprovalRequest}.id`, pageIds)
+              .whereIn(`id`, pageIds)
               .orderBy("createdAt", "desc")) as Awaited<typeof query>[number][]);
 
       const formattedDoc = sqlNestRelationships({
