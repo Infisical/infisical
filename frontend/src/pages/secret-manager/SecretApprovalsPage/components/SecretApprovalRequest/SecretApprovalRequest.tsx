@@ -148,7 +148,7 @@ export const SecretApprovalRequest = () => {
         value={searchFilter}
         onChange={(e) => setSearchFilter(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search change requests by author, environment or policy path..."
+        placeholder="Search change requests by author, environment, path, policy path or secret name..."
         className="flex-1"
         containerClassName="mb-4"
       />

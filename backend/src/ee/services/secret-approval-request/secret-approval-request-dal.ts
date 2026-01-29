@@ -678,6 +678,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("projectId").withSchema(TableName.Environment),
           db.ref("slug").withSchema(TableName.Environment).as("environment"),
           db.ref("name").withSchema(TableName.Environment).as("environmentName"),
+          db.ref("name").withSchema(TableName.SecretFolder).as("requestFolderPath"),
           db.ref("id").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerId"),
           db.ref("reviewerUserId").withSchema(TableName.SecretApprovalRequestReviewer),
           db.ref("status").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerStatus"),
@@ -686,6 +687,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("op").withSchema(TableName.SecretApprovalRequestSecretV2).as("commitOp"),
           db.ref("secretId").withSchema(TableName.SecretApprovalRequestSecretV2).as("commitSecretId"),
           db.ref("id").withSchema(TableName.SecretApprovalRequestSecretV2).as("commitId"),
+          db.ref("key").withSchema(TableName.SecretApprovalRequestSecretV2).as("secretKey"),
           db.raw(
             `DENSE_RANK() OVER (PARTITION BY ${TableName.Environment}."projectId" ORDER BY ${TableName.SecretApprovalRequest}."createdAt" DESC) as rank`
           ),
@@ -721,7 +723,9 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             .orWhereRaw(`?? ilike ?`, [db.ref("committerUserEmail"), `%${search}%`])
             .orWhereILike(`environmentName`, `%${search}%`)
             .orWhereILike(`environment`, `%${search}%`)
-            .orWhereILike(`policySecretPath`, `%${search}%`);
+            .orWhereILike(`policySecretPath`, `%${search}%`)
+            .orWhereILike(`requestFolderPath`, `%${search}%`)
+            .orWhereILike(`secretKey`, `%${search}%`);
         });
       }
 
