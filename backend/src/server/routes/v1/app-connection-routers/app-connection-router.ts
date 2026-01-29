@@ -127,6 +127,7 @@ import {
   RenderConnectionListItemSchema,
   SanitizedRenderConnectionSchema
 } from "@app/services/app-connection/render/render-connection-schema";
+import { SanitizedSmbConnectionSchema, SmbConnectionListItemSchema } from "@app/services/app-connection/smb";
 import { SanitizedSshConnectionSchema, SshConnectionListItemSchema } from "@app/services/app-connection/ssh";
 import {
   SanitizedSupabaseConnectionSchema,
@@ -196,6 +197,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedChefConnectionSchema.options,
   ...SanitizedDNSMadeEasyConnectionSchema.options,
   ...SanitizedOctopusDeployConnectionSchema.options,
+  ...SanitizedSmbConnectionSchema.options,
   ...SanitizedSshConnectionSchema.options,
   ...SanitizedOpenRouterConnectionSchema.options
 ]);
@@ -247,6 +249,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   ChefConnectionListItemSchema,
   DNSMadeEasyConnectionListItemSchema,
   OctopusDeployConnectionListItemSchema,
+  SmbConnectionListItemSchema,
   SshConnectionListItemSchema,
   OpenRouterConnectionListItemSchema
 ]);

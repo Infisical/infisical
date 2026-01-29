@@ -31,6 +31,7 @@ import {
   TSecretRotationV2
 } from "@app/hooks/api/secretRotationsV2";
 import { UnixLinuxLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/unix-linux-local-account-rotation";
+import { WindowsLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/windows-local-account-rotation";
 import { getExpandedRowStyle } from "@app/pages/secret-manager/OverviewPage/components/utils";
 
 import { SecretOverviewRotationSecretRow } from "./SecretOverviewRotationSecretRow";
@@ -211,31 +212,34 @@ export const SecretOverviewSecretRotationRow = ({
                                   </IconButton>
                                 )}
                               </ProjectPermissionCan>
-                              {secretRotation.type === SecretRotation.UnixLinuxLocalAccount &&
+                              {((secretRotation.type === SecretRotation.UnixLinuxLocalAccount &&
                                 secretRotation.parameters.rotationMethod ===
-                                  UnixLinuxLocalAccountRotationMethod.LoginAsTarget && (
-                                  <ProjectPermissionCan
-                                    I={ProjectPermissionSecretRotationActions.RotateSecrets}
-                                    a={subject(ProjectPermissionSub.SecretRotation, {
-                                      environment: environment.slug,
-                                      secretPath: folder.path
-                                    })}
-                                    renderTooltip
-                                    allowedLabel="Reconcile Secret"
-                                  >
-                                    {(isAllowed) => (
-                                      <IconButton
-                                        ariaLabel="Reconcile secret"
-                                        variant="plain"
-                                        size="sm"
-                                        isDisabled={!isAllowed}
-                                        onClick={() => onReconcile(secretRotation)}
-                                      >
-                                        <FontAwesomeIcon icon={faHandshake} />
-                                      </IconButton>
-                                    )}
-                                  </ProjectPermissionCan>
-                                )}
+                                  UnixLinuxLocalAccountRotationMethod.LoginAsTarget) ||
+                                (secretRotation.type === SecretRotation.WindowsLocalAccount &&
+                                  secretRotation.parameters.rotationMethod ===
+                                    WindowsLocalAccountRotationMethod.LoginAsTarget)) && (
+                                <ProjectPermissionCan
+                                  I={ProjectPermissionSecretRotationActions.RotateSecrets}
+                                  a={subject(ProjectPermissionSub.SecretRotation, {
+                                    environment: environment.slug,
+                                    secretPath: folder.path
+                                  })}
+                                  renderTooltip
+                                  allowedLabel="Reconcile Secret"
+                                >
+                                  {(isAllowed) => (
+                                    <IconButton
+                                      ariaLabel="Reconcile secret"
+                                      variant="plain"
+                                      size="sm"
+                                      isDisabled={!isAllowed}
+                                      onClick={() => onReconcile(secretRotation)}
+                                    >
+                                      <FontAwesomeIcon icon={faHandshake} />
+                                    </IconButton>
+                                  )}
+                                </ProjectPermissionCan>
+                              )}
                               <ProjectPermissionCan
                                 I={ProjectPermissionSecretRotationActions.Edit}
                                 a={subject(ProjectPermissionSub.SecretRotation, {

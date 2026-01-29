@@ -399,6 +399,13 @@ export const AppConnectionsBrowser = () => {
       path: "/integrations/app-connections/octopus-deploy",
       description: "Learn how to connect your Octopus Deploy to pull secrets from Infisical.",
       category: "DevOps Tools",
+    },
+    {
+      name: "SMB",
+      slug: "smb",
+      path: "/integrations/app-connections/smb",
+      description: "Learn how to connect to Windows servers via SMB.",
+      category: "Networking & DNS",
     }
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());

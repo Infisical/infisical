@@ -153,6 +153,7 @@
                       "integrations/app-connections/terraform-cloud",
                       "integrations/app-connections/vercel",
                       "integrations/app-connections/windmill",
+                      "integrations/app-connections/smb",
                       "integrations/app-connections/zabbix"
                     ]
                   }
@@ -453,15 +454,16 @@
                       "documentation/platform/secret-rotation/azure-client-secret",
                       "documentation/platform/secret-rotation/databricks-service-principal-secret",
                       "documentation/platform/secret-rotation/ldap-password",
-                      "documentation/platform/secret-rotation/unix-linux-local-account",
                       "documentation/platform/secret-rotation/mongodb-credentials",
                       "documentation/platform/secret-rotation/mssql-credentials",
                       "documentation/platform/secret-rotation/mysql-credentials",
                       "documentation/platform/secret-rotation/okta-client-secret",
+                      "documentation/platform/secret-rotation/open-router-api-key",
                       "documentation/platform/secret-rotation/oracledb-credentials",
                       "documentation/platform/secret-rotation/postgres-credentials",
                       "documentation/platform/secret-rotation/redis-credentials",
-                      "documentation/platform/secret-rotation/open-router-api-key"
+                      "documentation/platform/secret-rotation/unix-linux-local-account",
+                      "documentation/platform/secret-rotation/windows-local-account"
                     ]
                   },
                   {
@@ -1687,6 +1689,18 @@
                     ]
                   },
                   {
+                    "group": "SMB",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/smb/list",
+                      "api-reference/endpoints/app-connections/smb/available",
+                      "api-reference/endpoints/app-connections/smb/get-by-id",
+                      "api-reference/endpoints/app-connections/smb/get-by-name",
+                      "api-reference/endpoints/app-connections/smb/create",
+                      "api-reference/endpoints/app-connections/smb/update",
+                      "api-reference/endpoints/app-connections/smb/delete"
+                    ]
+                  },
+                  {
                     "group": "Zabbix",
                     "pages": [
                       "api-reference/endpoints/app-connections/zabbix/list",
@@ -2043,20 +2057,6 @@
                     ]
                   },
                   {
-                    "group": "Unix/Linux Local Account",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/create",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/delete",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-by-id",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-by-name",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/list",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/update",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/reconcile"
-                    ]
-                  },
-                  {
                     "group": "Microsoft SQL Server Credentials",
                     "pages": [
                       "api-reference/endpoints/secret-rotations/mssql-credentials/create",
@@ -2145,6 +2145,34 @@
                       "api-reference/endpoints/secret-rotations/redis-credentials/list",
                       "api-reference/endpoints/secret-rotations/redis-credentials/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/redis-credentials/update"
+                    ]
+                  },
+                  {
+                    "group": "Unix/Linux Local Account",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/create",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/delete",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-by-id",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-by-name",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/list",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/update",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/reconcile"
+                    ]
+                  },
+                  {
+                    "group": "Windows Local Account",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/windows-local-account/create",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/delete",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/get-by-id",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/get-by-name",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/list",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/update",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/reconcile"
                     ]
                   }
                 ]

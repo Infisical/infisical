@@ -11,7 +11,7 @@ import { createNotification } from "@app/components/notifications";
 import { CreateSecretRotationV2Modal } from "@app/components/secret-rotations-v2";
 import { DeleteSecretRotationV2Modal } from "@app/components/secret-rotations-v2/DeleteSecretRotationV2Modal";
 import { EditSecretRotationV2Modal } from "@app/components/secret-rotations-v2/EditSecretRotationV2Modal";
-import { ReconcileUnixLinuxLocalAccountRotationModal } from "@app/components/secret-rotations-v2/ReconcileUnixLinuxLocalAccountRotationModal";
+import { ReconcileLocalAccountRotationModal } from "@app/components/secret-rotations-v2/ReconcileLocalAccountRotationModal";
 import { RotateSecretRotationV2Modal } from "@app/components/secret-rotations-v2/RotateSecretRotationV2Modal";
 import { ViewSecretRotationV2GeneratedCredentialsModal } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials";
 import { Lottie, Modal, ModalContent, PageHeader } from "@app/components/v2";
@@ -1284,11 +1284,13 @@ export const OverviewPage = () => {
         secretRotation={popUp.rotateSecretRotation.data as TSecretRotationV2}
         onOpenChange={(isOpen) => handlePopUpToggle("rotateSecretRotation", isOpen)}
       />
-      <ReconcileUnixLinuxLocalAccountRotationModal
+      <ReconcileLocalAccountRotationModal
         isOpen={
           popUp.reconcileSecretRotation.isOpen &&
-          (popUp.reconcileSecretRotation.data as TSecretRotationV2)?.type ===
-            SecretRotationV2.UnixLinuxLocalAccount
+          ((popUp.reconcileSecretRotation.data as TSecretRotationV2)?.type ===
+            SecretRotationV2.UnixLinuxLocalAccount ||
+            (popUp.reconcileSecretRotation.data as TSecretRotationV2)?.type ===
+              SecretRotationV2.WindowsLocalAccount)
         }
         secretRotation={popUp.reconcileSecretRotation.data as TSecretRotationV2}
         onOpenChange={(isOpen) => handlePopUpToggle("reconcileSecretRotation", isOpen)}

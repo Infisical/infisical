@@ -106,6 +106,13 @@ export const RotationsBrowser = () => {
       category: "Databases",
     },
     {
+      name: "Windows Local Account",
+      slug: "windows-local-account",
+      path: "/documentation/platform/secret-rotation/windows-local-account",
+      description: "Learn how to automatically rotate Windows local account passwords.",
+      category: "Networking & DNS",
+    },
+    {
       name: "OpenRouter API Key",
       slug: "open-router-api-key",
       path: "/documentation/platform/secret-rotation/open-router-api-key",
