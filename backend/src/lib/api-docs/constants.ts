@@ -2625,6 +2625,9 @@ export const AppConnections = {
       password: "The password for SSH authentication (required when authMethod is 'password').",
       privateKey: "The private key in PEM format for SSH authentication (required when authMethod is 'ssh-key').",
       passphrase: "The passphrase for the private key, if encrypted (optional, only for 'ssh-key' authMethod)."
+    },
+    OPEN_ROUTER: {
+      apiKey: "The OpenRouter Provisioning API key used to manage API keys."
     }
   }
 };
@@ -3016,6 +3019,13 @@ export const SecretRotations = {
       servicePrincipalId: "The ID of the Databricks Service Principal to rotate the OAuth secret for.",
       servicePrincipalName: "The name of the Databricks Service Principal to rotate the OAuth secret for.",
       clientId: "The client ID of the Databricks Service Principal to rotate the OAuth secret for."
+    },
+    OPEN_ROUTER_API_KEY: {
+      name: "The name for the generated OpenRouter API key.",
+      limit: "The optional spending limit in USD for the generated API key.",
+      limitReset: "The type of limit reset for the API key (daily, weekly, monthly, or null for no reset).",
+      includeByokInLimit:
+        "Whether to include BYOK (Bring Your Own Key) usage in the spending limit. When enabled, usage from your own provider keys counts toward this key's limit. See OpenRouter BYOK docs for details."
     }
   },
   SECRETS_MAPPING: {
@@ -3062,6 +3072,9 @@ export const SecretRotations = {
     DATABRICKS_SERVICE_ACCOUNT_SECRET: {
       clientId: "The name of the secret that the client ID will be mapped to.",
       clientSecret: "The name of the secret that the rotated OAuth client secret will be mapped to."
+    },
+    OPEN_ROUTER_API_KEY: {
+      apiKey: "The name of the secret that the rotated OpenRouter API key will be mapped to."
     }
   }
 };

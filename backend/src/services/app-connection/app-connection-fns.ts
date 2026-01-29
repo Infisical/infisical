@@ -72,12 +72,12 @@ import {
   validateBitbucketConnectionCredentials
 } from "./bitbucket";
 import { CamundaConnectionMethod, getCamundaConnectionListItem, validateCamundaConnectionCredentials } from "./camunda";
+import { ChecklyConnectionMethod, getChecklyConnectionListItem, validateChecklyConnectionCredentials } from "./checkly";
 import {
   CircleCIConnectionMethod,
   getCircleCIConnectionListItem,
   validateCircleCIConnectionCredentials
 } from "./circleci";
-import { ChecklyConnectionMethod, getChecklyConnectionListItem, validateChecklyConnectionCredentials } from "./checkly";
 import { CloudflareConnectionMethod } from "./cloudflare/cloudflare-connection-enum";
 import {
   getCloudflareConnectionListItem,
@@ -140,6 +140,11 @@ import {
   validateOctopusDeployConnectionCredentials
 } from "./octopus-deploy";
 import { getOktaConnectionListItem, OktaConnectionMethod, validateOktaConnectionCredentials } from "./okta";
+import {
+  getOpenRouterConnectionListItem,
+  OpenRouterConnectionMethod,
+  validateOpenRouterConnectionCredentials
+} from "./open-router";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
 import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } from "./railway";
 import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnectionCredentials } from "./redis";
@@ -240,6 +245,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getMongoDBConnectionListItem(),
     getChefConnectionListItem(),
     getSshConnectionListItem(),
+    getOpenRouterConnectionListItem(),
     getCircleCIConnectionListItem()
   ]
     .filter((option) => {
@@ -377,6 +383,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.MongoDB]: validateMongoDBConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OctopusDeploy]: validateOctopusDeployConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.SSH]: validateSshConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.OpenRouter]: validateOpenRouterConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
@@ -453,6 +460,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
     case OctopusDeployConnectionMethod.ApiKey:
+    case OpenRouterConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
@@ -536,6 +544,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Chef]: platformManagedCredentialsNotSupported,
   [AppConnection.OctopusDeploy]: platformManagedCredentialsNotSupported,
   [AppConnection.SSH]: platformManagedCredentialsNotSupported,
+  [AppConnection.OpenRouter]: platformManagedCredentialsNotSupported,
   [AppConnection.CircleCI]: platformManagedCredentialsNotSupported
 };
 

@@ -83,17 +83,17 @@ import {
   TValidateCamundaConnectionCredentialsSchema
 } from "./camunda";
 import {
-  TCircleCIConnection,
-  TCircleCIConnectionConfig,
-  TCircleCIConnectionInput,
-  TValidateCircleCIConnectionCredentialsSchema
-} from "./circleci";
-import {
   TChecklyConnection,
   TChecklyConnectionConfig,
   TChecklyConnectionInput,
   TValidateChecklyConnectionCredentialsSchema
 } from "./checkly";
+import {
+  TCircleCIConnection,
+  TCircleCIConnectionConfig,
+  TCircleCIConnectionInput,
+  TValidateCircleCIConnectionCredentialsSchema
+} from "./circleci";
 import {
   TCloudflareConnection,
   TCloudflareConnectionConfig,
@@ -211,6 +211,12 @@ import {
   TValidateOktaConnectionCredentialsSchema
 } from "./okta";
 import {
+  TOpenRouterConnection,
+  TOpenRouterConnectionConfig,
+  TOpenRouterConnectionInput,
+  TValidateOpenRouterConnectionCredentialsSchema
+} from "./open-router";
+import {
   TPostgresConnection,
   TPostgresConnectionInput,
   TValidatePostgresConnectionCredentialsSchema
@@ -323,6 +329,7 @@ export type TAppConnection = { id: string } & (
   | TChefConnection
   | TOctopusDeployConnection
   | TSshConnection
+  | TOpenRouterConnection
   | TCircleCIConnection
 );
 
@@ -377,6 +384,7 @@ export type TAppConnectionInput = { id: string } & (
   | TChefConnectionInput
   | TOctopusDeployConnectionInput
   | TSshConnectionInput
+  | TOpenRouterConnectionInput
   | TCircleCIConnectionInput
 );
 
@@ -449,6 +457,7 @@ export type TAppConnectionConfig =
   | TChefConnectionConfig
   | TOctopusDeployConnectionConfig
   | TSshConnectionConfig
+  | TOpenRouterConnectionConfig
   | TCircleCIConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
@@ -498,6 +507,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateChefConnectionCredentialsSchema
   | TValidateOctopusDeployConnectionCredentialsSchema
   | TValidateSshConnectionCredentialsSchema
+  | TValidateOpenRouterConnectionCredentialsSchema
   | TValidateCircleCIConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {

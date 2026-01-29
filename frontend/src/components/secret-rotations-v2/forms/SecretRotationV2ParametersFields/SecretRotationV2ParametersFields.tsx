@@ -10,6 +10,7 @@ import { DatabricksServicePrincipalSecretRotationParametersFields } from "./Data
 import { LdapPasswordRotationParametersFields } from "./LdapPasswordRotationParametersFields";
 import { MongoRotationParametersFields } from "./MongoRotationParametersFields";
 import { OktaClientSecretRotationParametersFields } from "./OktaClientSecretRotationParametersFields";
+import { OpenRouterApiKeyRotationParametersFields } from "./OpenRouterApiKeyRotationParametersFields";
 import { RedisCredentialsRotationParametersFields } from "./RedisCredentialsRotationParametersFields";
 import { SqlCredentialsRotationParametersFields } from "./shared";
 import { UnixLinuxLocalAccountRotationParametersFields } from "./UnixLinuxLocalAccountRotationParametersFields";
@@ -28,7 +29,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.MongoDBCredentials]: MongoRotationParametersFields,
   [SecretRotation.DatabricksServicePrincipalSecret]:
     DatabricksServicePrincipalSecretRotationParametersFields,
-  [SecretRotation.UnixLinuxLocalAccount]: UnixLinuxLocalAccountRotationParametersFields
+  [SecretRotation.UnixLinuxLocalAccount]: UnixLinuxLocalAccountRotationParametersFields,
+  [SecretRotation.OpenRouterApiKey]: OpenRouterApiKeyRotationParametersFields
 };
 
 export const SecretRotationV2ParametersFields = () => {

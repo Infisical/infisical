@@ -6,6 +6,7 @@ export const AppConnectionsBrowser = () => {
 
   const categories = [
     "All",
+    "AI & LLM",
     "Cloud Providers",
     "Databases",
     "CI/CD",
@@ -352,6 +353,14 @@ export const AppConnectionsBrowser = () => {
       description:
         "Learn how to connect your Okta to pull secrets from Infisical.",
       category: "Identity & Auth",
+    },
+    {
+      name: "OpenRouter",
+      slug: "open-router",
+      path: "/integrations/app-connections/open-router",
+      description:
+        "Learn how to connect OpenRouter (unified LLM router) to manage and rotate API keys with Infisical.",
+      category: "AI & LLM",
     },
     {
       name: "Laravel Forge",

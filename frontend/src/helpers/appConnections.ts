@@ -58,6 +58,7 @@ import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/type
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
 import { NorthflankConnectionMethod } from "@app/hooks/api/appConnections/types/northflank-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
+import { OpenRouterConnectionMethod } from "@app/hooks/api/appConnections/types/open-router-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
 import { SshConnectionMethod } from "@app/hooks/api/appConnections/types/ssh-connection";
@@ -142,6 +143,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Chef]: { name: "Chef", image: "Chef.png", enterprise: true },
   [AppConnection.OctopusDeploy]: { name: "Octopus Deploy", image: "Octopus Deploy.png" },
   [AppConnection.SSH]: { name: "SSH", image: "SSH.png" },
+  [AppConnection.OpenRouter]: { name: "OpenRouter", image: "OpenRouter.png" },
   [AppConnection.CircleCI]: { name: "CircleCI", image: "CircleCI.png" }
 };
 
@@ -216,6 +218,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Project Token", icon: faKey };
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
+    case OpenRouterConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     case ChefConnectionMethod.UserKey:
       return { name: "User Key", icon: faKey };

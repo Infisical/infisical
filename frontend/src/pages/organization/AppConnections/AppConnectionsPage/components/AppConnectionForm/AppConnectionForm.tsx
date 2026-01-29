@@ -44,6 +44,7 @@ import { NorthflankConnectionForm } from "./NorthflankConnectionForm";
 import { OCIConnectionForm } from "./OCIConnectionForm";
 import { OctopusDeployConnectionForm } from "./OctopusDeployConnectionForm";
 import { OktaConnectionForm } from "./OktaConnectionForm";
+import { OpenRouterConnectionForm } from "./OpenRouterConnectionForm";
 import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { RailwayConnectionForm } from "./RailwayConnectionForm";
@@ -183,6 +184,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       return <OctopusDeployConnectionForm onSubmit={onSubmit} />;
     case AppConnection.SSH:
       return <SshConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.OpenRouter:
+      return <OpenRouterConnectionForm onSubmit={onSubmit} />;
     case AppConnection.CircleCI:
       return <CircleCIConnectionForm onSubmit={onSubmit} />;
     default:
@@ -349,6 +352,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <OctopusDeployConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.SSH:
       return <SshConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.OpenRouter:
+      return <OpenRouterConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.CircleCI:
       return <CircleCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:

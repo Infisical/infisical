@@ -24,8 +24,8 @@ import { AzureDevOpsSyncListItemSchema, AzureDevOpsSyncSchema } from "@app/servi
 import { AzureKeyVaultSyncListItemSchema, AzureKeyVaultSyncSchema } from "@app/services/secret-sync/azure-key-vault";
 import { BitbucketSyncListItemSchema, BitbucketSyncSchema } from "@app/services/secret-sync/bitbucket";
 import { CamundaSyncListItemSchema, CamundaSyncSchema } from "@app/services/secret-sync/camunda";
-import { CircleCISyncListItemSchema, CircleCISyncSchema } from "@app/services/secret-sync/circleci";
 import { ChecklySyncListItemSchema, ChecklySyncSchema } from "@app/services/secret-sync/checkly/checkly-sync-schemas";
+import { CircleCISyncListItemSchema, CircleCISyncSchema } from "@app/services/secret-sync/circleci";
 import {
   CloudflarePagesSyncListItemSchema,
   CloudflarePagesSyncSchema

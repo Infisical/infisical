@@ -13,8 +13,8 @@ import { registerAzureDevOpsConnectionRouter } from "./azure-devops-connection-r
 import { registerAzureKeyVaultConnectionRouter } from "./azure-key-vault-connection-router";
 import { registerBitbucketConnectionRouter } from "./bitbucket-connection-router";
 import { registerCamundaConnectionRouter } from "./camunda-connection-router";
-import { registerCircleCIConnectionRouter } from "./circleci-connection-router";
 import { registerChecklyConnectionRouter } from "./checkly-connection-router";
+import { registerCircleCIConnectionRouter } from "./circleci-connection-router";
 import { registerCloudflareConnectionRouter } from "./cloudflare-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
 import { registerDigitalOceanConnectionRouter } from "./digital-ocean-connection-router";
@@ -36,6 +36,7 @@ import { registerNetlifyConnectionRouter } from "./netlify-connection-router";
 import { registerNorthflankConnectionRouter } from "./northflank-connection-router";
 import { registerOctopusDeployConnectionRouter } from "./octopus-deploy-connection-router";
 import { registerOktaConnectionRouter } from "./okta-connection-router";
+import { registerOpenRouterConnectionRouter } from "./open-router-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerRailwayConnectionRouter } from "./railway-connection-router";
 import { registerRedisConnectionRouter } from "./redis-connection-router";
@@ -98,5 +99,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Chef]: registerChefConnectionRouter,
     [AppConnection.OctopusDeploy]: registerOctopusDeployConnectionRouter,
     [AppConnection.SSH]: registerSshConnectionRouter,
+    [AppConnection.OpenRouter]: registerOpenRouterConnectionRouter,
     [AppConnection.CircleCI]: registerCircleCIConnectionRouter
   };

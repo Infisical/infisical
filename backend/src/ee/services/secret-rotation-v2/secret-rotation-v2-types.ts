@@ -68,6 +68,13 @@ import {
   TOktaClientSecretRotationWithConnection
 } from "./okta-client-secret";
 import {
+  TOpenRouterApiKeyRotation,
+  TOpenRouterApiKeyRotationGeneratedCredentials,
+  TOpenRouterApiKeyRotationInput,
+  TOpenRouterApiKeyRotationListItem,
+  TOpenRouterApiKeyRotationWithConnection
+} from "./open-router-api-key";
+import {
   TOracleDBCredentialsRotation,
   TOracleDBCredentialsRotationInput,
   TOracleDBCredentialsRotationListItem,
@@ -109,7 +116,8 @@ export type TSecretRotationV2 =
   | TRedisCredentialsRotation
   | TMongoDBCredentialsRotation
   | TDatabricksServicePrincipalSecretRotation
-  | TUnixLinuxLocalAccountRotation;
+  | TUnixLinuxLocalAccountRotation
+  | TOpenRouterApiKeyRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
@@ -124,7 +132,8 @@ export type TSecretRotationV2WithConnection =
   | TRedisCredentialsRotationWithConnection
   | TMongoDBCredentialsRotationWithConnection
   | TDatabricksServicePrincipalSecretRotationWithConnection
-  | TUnixLinuxLocalAccountRotationWithConnection;
+  | TUnixLinuxLocalAccountRotationWithConnection
+  | TOpenRouterApiKeyRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
@@ -135,7 +144,8 @@ export type TSecretRotationV2GeneratedCredentials =
   | TOktaClientSecretRotationGeneratedCredentials
   | TRedisCredentialsRotationGeneratedCredentials
   | TDatabricksServicePrincipalSecretRotationGeneratedCredentials
-  | TUnixLinuxLocalAccountRotationGeneratedCredentials;
+  | TUnixLinuxLocalAccountRotationGeneratedCredentials
+  | TOpenRouterApiKeyRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
@@ -150,7 +160,8 @@ export type TSecretRotationV2Input =
   | TRedisCredentialsRotationInput
   | TMongoDBCredentialsRotationInput
   | TDatabricksServicePrincipalSecretRotationInput
-  | TUnixLinuxLocalAccountRotationInput;
+  | TUnixLinuxLocalAccountRotationInput
+  | TOpenRouterApiKeyRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
@@ -165,7 +176,8 @@ export type TSecretRotationV2ListItem =
   | TRedisCredentialsRotationListItem
   | TMongoDBCredentialsRotationListItem
   | TDatabricksServicePrincipalSecretRotationListItem
-  | TUnixLinuxLocalAccountRotationListItem;
+  | TUnixLinuxLocalAccountRotationListItem
+  | TOpenRouterApiKeyRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters =
   | TLdapPasswordRotationInput["temporaryParameters"]
