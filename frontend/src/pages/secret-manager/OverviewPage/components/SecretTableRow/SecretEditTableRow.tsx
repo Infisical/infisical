@@ -19,7 +19,15 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { SecretReferenceTree } from "@app/components/secrets/SecretReferenceDetails";
 import { DeleteActionModal, Modal, ModalContent, ModalTrigger } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
-import { Tooltip, TooltipContent, TooltipTrigger, UnstableIconButton } from "@app/components/v3";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  UnstableIconButton
+} from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -33,6 +41,8 @@ import { ProjectEnv, SecretType, SecretV3RawSanitized } from "@app/hooks/api/typ
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
+
+import { SecretCommentForm } from "./SecretCommentForm";
 
 type Props = {
   defaultValue?: string | null;
@@ -160,6 +170,7 @@ export const SecretEditTableRow = ({
 
   const [isDeleting, setIsDeleting] = useToggle();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isCommentOpen, setIsCommentOpen] = useState(false);
 
   const toggleModal = useCallback(() => {
     setIsModalOpen((prev) => !prev);
@@ -279,6 +290,8 @@ export const SecretEditTableRow = ({
     isErrorFetchingSecretValue ||
     (isCreatable ? !canCreate : !canEditSecretValue);
 
+  const shouldStayExpanded = isCommentOpen;
+
   return (
     <div className="flex w-full cursor-text items-center space-x-2">
       <DeleteActionModal
@@ -330,7 +343,7 @@ export const SecretEditTableRow = ({
           )}
         />
       </div>
-      <div className={twMerge("flex w-32 justify-end space-x-2 pl-2 transition-all")}>
+      <div className={twMerge("flex w-fit justify-end space-x-2 pl-2 transition-all")}>
         {isDirty && !isImportedSecret ? (
           <>
             <ProjectPermissionCan
@@ -378,7 +391,7 @@ export const SecretEditTableRow = ({
           </>
         ) : (
           <div className="flex items-center space-x-1.5 transition-all duration-500">
-            <Tooltip>
+            <Tooltip delayDuration={300} disableHoverableContent>
               <TooltipTrigger>
                 <UnstableIconButton
                   isDisabled={
@@ -391,7 +404,10 @@ export const SecretEditTableRow = ({
                   }}
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden opacity-0 group-hover:w-7 group-hover:opacity-100"
+                  className={twMerge(
+                    "w-0 overflow-hidden opacity-0 group-hover:w-7 group-hover:opacity-100",
+                    shouldStayExpanded && "w-7 opacity-100"
+                  )}
                 >
                   <EditIcon />
                 </UnstableIconButton>
@@ -403,17 +419,20 @@ export const SecretEditTableRow = ({
                     ? "Cannot Edit Rotated Secret"
                     : (isCreatable ? !canCreate : !canEditSecretValue)
                       ? "Access Denied"
-                      : "Edit Value"}
+                      : `${isCreatable ? "Add" : "Edit"} Value`}
               </TooltipContent>
             </Tooltip>
-            <Tooltip>
+            <Tooltip delayDuration={300} disableHoverableContent>
               <TooltipTrigger>
                 <UnstableIconButton
                   isDisabled={!canFetchValue}
                   onClick={handleCopySecretToClipboard}
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden opacity-0 group-hover:w-7 group-hover:opacity-100"
+                  className={twMerge(
+                    "w-0 overflow-hidden opacity-0 group-hover:w-7 group-hover:opacity-100",
+                    shouldStayExpanded && "w-7 opacity-100"
+                  )}
                 >
                   <CopyIcon />
                 </UnstableIconButton>
@@ -426,29 +445,54 @@ export const SecretEditTableRow = ({
                     : "Access Denied"}
               </TooltipContent>
             </Tooltip>
-            <Tooltip>
-              <TooltipTrigger>
-                <UnstableIconButton
-                  variant="ghost"
-                  size="xs"
-                  className={twMerge(
-                    comment ? "w-7 text-project opacity-100" : "w-0 opacity-0",
-                    "overflow-hidden group-hover:w-7 group-hover:opacity-100"
-                  )}
-                >
-                  <MessageSquareIcon />
-                </UnstableIconButton>
-              </TooltipTrigger>
-              <TooltipContent>Comment</TooltipContent>
-            </Tooltip>
+            <Popover open={isCommentOpen} onOpenChange={setIsCommentOpen}>
+              <Tooltip delayDuration={300} disableHoverableContent>
+                <TooltipTrigger>
+                  <PopoverTrigger asChild>
+                    <UnstableIconButton
+                      variant="ghost"
+                      size="xs"
+                      isDisabled={isCreatable || isImportedSecret}
+                      className={twMerge(
+                        comment ? "w-7 text-project opacity-100" : "w-0 opacity-0",
+                        "overflow-hidden group-hover:w-7 group-hover:opacity-100",
+                        shouldStayExpanded && "w-7 opacity-100"
+                      )}
+                    >
+                      <MessageSquareIcon />
+                    </UnstableIconButton>
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isImportedSecret
+                    ? "Cannot Add Comment to Imported Secret"
+                    : isCreatable
+                      ? "Create Secret to Add Comment"
+                      : `${comment ? "View" : "Add"} Comment`}
+                </TooltipContent>
+              </Tooltip>
+              <PopoverContent className="w-80" align="end">
+                <SecretCommentForm
+                  comment={comment}
+                  secretKey={secretName}
+                  secretPath={secretPath}
+                  environment={environment}
+                  isOverride={isOverride}
+                  onClose={() => setIsCommentOpen(false)}
+                />
+              </PopoverContent>
+            </Popover>
             <Modal>
-              <Tooltip>
+              <Tooltip delayDuration={300} disableHoverableContent>
                 <TooltipTrigger>
                   <ModalTrigger asChild>
                     <UnstableIconButton
                       variant="ghost"
                       size="xs"
-                      className="w-0 overflow-hidden opacity-0 group-hover:w-7 group-hover:opacity-100"
+                      className={twMerge(
+                        "w-0 overflow-hidden opacity-0 group-hover:w-7 group-hover:opacity-100",
+                        shouldStayExpanded && "w-7 opacity-100"
+                      )}
                       isDisabled={!canReadSecretValue || !secretId || isEmpty}
                     >
                       <WorkflowIcon />
@@ -480,29 +524,38 @@ export const SecretEditTableRow = ({
               })}
             >
               {(isAllowed) => (
-                <div className="overflow-hidden opacity-0 group-hover:opacity-100">
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <UnstableIconButton
-                        variant="ghost"
-                        size="xs"
-                        className="w-0 overflow-hidden opacity-0 group-hover:w-7 group-hover:opacity-100"
-                        onClick={toggleModal}
-                        isDisabled={isDeleting || !isAllowed || isRotatedSecret || isImportedSecret}
-                      >
-                        <TrashIcon />
-                      </UnstableIconButton>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {/* eslint-disable-next-line no-nested-ternary */}
-                      {isRotatedSecret
+                <Tooltip delayDuration={300} disableHoverableContent>
+                  <TooltipTrigger>
+                    <UnstableIconButton
+                      variant="ghost"
+                      size="xs"
+                      className={twMerge(
+                        "w-0 overflow-hidden opacity-0 group-hover:w-7 group-hover:opacity-100",
+                        shouldStayExpanded && "w-7 opacity-100"
+                      )}
+                      onClick={toggleModal}
+                      isDisabled={
+                        isCreatable ||
+                        isDeleting ||
+                        !isAllowed ||
+                        isRotatedSecret ||
+                        isImportedSecret
+                      }
+                    >
+                      <TrashIcon />
+                    </UnstableIconButton>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {/* eslint-disable-next-line no-nested-ternary */}
+                    {isCreatable
+                      ? "No Secret to Delete"
+                      : isRotatedSecret
                         ? "Cannot Delete Rotated Secret"
                         : isImportedSecret
                           ? "Cannot Delete Imported Secret"
                           : "Delete"}
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
+                  </TooltipContent>
+                </Tooltip>
               )}
             </ProjectPermissionCan>
           </div>
