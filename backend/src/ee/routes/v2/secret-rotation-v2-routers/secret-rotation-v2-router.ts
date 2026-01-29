@@ -36,7 +36,7 @@ const SecretRotationV2OptionsSchema = z.discriminatedUnion("type", [
   MongoDBCredentialsRotationListItemSchema,
   DatabricksServicePrincipalSecretRotationListItemSchema,
   UnixLinuxLocalAccountRotationListItemSchema,
-  WindowsLocalAccountRotationListItemSchema
+  WindowsLocalAccountRotationListItemSchema,
   OpenRouterApiKeyRotationListItemSchema
 ]);
 

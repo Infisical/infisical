@@ -35,6 +35,6 @@ export const SECRET_ROTATION_REGISTER_ROUTER_MAP: Record<
   [SecretRotation.MongoDBCredentials]: registerMongoDBCredentialsRotationRouter,
   [SecretRotation.DatabricksServicePrincipalSecret]: registerDatabricksServicePrincipalSecretRotationRouter,
   [SecretRotation.UnixLinuxLocalAccount]: registerUnixLinuxLocalAccountRotationRouter,
-  [SecretRotation.WindowsLocalAccount]: registerWindowsLocalAccountRotationRouter
+  [SecretRotation.WindowsLocalAccount]: registerWindowsLocalAccountRotationRouter,
   [SecretRotation.OpenRouterApiKey]: registerOpenRouterApiKeyRotationRouter
 };
