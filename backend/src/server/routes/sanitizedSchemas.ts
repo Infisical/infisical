@@ -6,6 +6,7 @@ import {
   IdentityProjectAdditionalPrivilegeSchema,
   IntegrationAuthsSchema,
   InternalCertificateAuthoritiesSchema,
+  OrgRolesSchema,
   ProjectRolesSchema,
   ProjectsSchema,
   SecretApprovalPoliciesSchema,
@@ -209,6 +210,10 @@ export const SanitizedIdentityPrivilegeSchema = IdentityProjectAdditionalPrivile
         ].includes((caslRule?.subject as ProjectPermissionSub) || "")
     )
   )
+});
+
+export const SanitizedOrgRoleSchema = OrgRolesSchema.extend({
+  permissions: UnpackedPermissionSchema.array()
 });
 
 export const SanitizedRoleSchema = ProjectRolesSchema.omit({ version: true }).extend({

@@ -32,7 +32,8 @@ export const createCertificateProfileSchema = z
       .optional(),
     acmeConfig: z
       .object({
-        skipDnsOwnershipVerification: z.boolean().optional()
+        skipDnsOwnershipVerification: z.boolean().optional(),
+        skipEabBinding: z.boolean().optional()
       })
       .optional()
   })
@@ -104,6 +105,18 @@ export const createCertificateProfileSchema = z
   )
   .refine(
     (data) => {
+      if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
+        return !(data.acmeConfig.skipEabBinding && data.acmeConfig.skipDnsOwnershipVerification);
+      }
+      return true;
+    },
+    {
+      message:
+        "Cannot skip both External Account Binding (EAB) and DNS ownership verification at the same time for security reasons"
+    }
+  )
+  .refine(
+    (data) => {
       if (data.issuerType === IssuerType.CA) {
         return !!data.caId;
       }
@@ -162,7 +175,8 @@ export const updateCertificateProfileSchema = z
       .optional(),
     acmeConfig: z
       .object({
-        skipDnsOwnershipVerification: z.boolean().optional()
+        skipDnsOwnershipVerification: z.boolean().optional(),
+        skipEabBinding: z.boolean().optional()
       })
       .optional()
   })
@@ -186,6 +200,18 @@ export const updateCertificateProfileSchema = z
     },
     {
       message: "API enrollment type cannot have EST configuration"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.acmeConfig) {
+        return !(data.acmeConfig.skipEabBinding && data.acmeConfig.skipDnsOwnershipVerification);
+      }
+      return true;
+    },
+    {
+      message:
+        "Cannot skip both External Account Binding (EAB) and DNS ownership verification at the same time for security reasons"
     }
   )
   .refine(

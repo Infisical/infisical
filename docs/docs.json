@@ -117,6 +117,7 @@
                       "integrations/app-connections/bitbucket",
                       "integrations/app-connections/camunda",
                       "integrations/app-connections/checkly",
+                      "integrations/app-connections/circleci",
                       "integrations/app-connections/chef",
                       "integrations/app-connections/cloudflare",
                       "integrations/app-connections/databricks",
@@ -141,6 +142,7 @@
                       "integrations/app-connections/oci",
                       "integrations/app-connections/octopus-deploy",
                       "integrations/app-connections/okta",
+                      "integrations/app-connections/open-router",
                       "integrations/app-connections/oracledb",
                       "integrations/app-connections/postgres",
                       "integrations/app-connections/railway",
@@ -456,6 +458,7 @@
                       "documentation/platform/secret-rotation/mssql-credentials",
                       "documentation/platform/secret-rotation/mysql-credentials",
                       "documentation/platform/secret-rotation/okta-client-secret",
+                      "documentation/platform/secret-rotation/open-router-api-key",
                       "documentation/platform/secret-rotation/oracledb-credentials",
                       "documentation/platform/secret-rotation/postgres-credentials",
                       "documentation/platform/secret-rotation/redis-credentials",
@@ -557,6 +560,7 @@
                       "integrations/secret-syncs/bitbucket",
                       "integrations/secret-syncs/camunda",
                       "integrations/secret-syncs/checkly",
+                      "integrations/secret-syncs/circleci",
                       "integrations/secret-syncs/chef",
                       "integrations/secret-syncs/cloudflare-pages",
                       "integrations/secret-syncs/cloudflare-workers",
@@ -929,6 +933,17 @@
                 ]
               },
               {
+                "group": "Organization Roles",
+                "pages": [
+                  "api-reference/endpoints/organization-roles/create",
+                  "api-reference/endpoints/organization-roles/update",
+                  "api-reference/endpoints/organization-roles/delete",
+                  "api-reference/endpoints/organization-roles/get",
+                  "api-reference/endpoints/organization-roles/get-by-slug",
+                  "api-reference/endpoints/organization-roles/list"
+                ]
+              },
+              {
                 "group": "OIDC SSO",
                 "pages": [
                   "api-reference/endpoints/organizations/oidc-sso/get-oidc-config",
@@ -1263,6 +1278,17 @@
                       "api-reference/endpoints/app-connections/checkly/create",
                       "api-reference/endpoints/app-connections/checkly/update",
                       "api-reference/endpoints/app-connections/checkly/delete"
+                    ]
+                  },
+                  {
+                    "group": "CircleCI",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/circleci/list",
+                      "api-reference/endpoints/app-connections/circleci/get-by-id",
+                      "api-reference/endpoints/app-connections/circleci/get-by-name",
+                      "api-reference/endpoints/app-connections/circleci/create",
+                      "api-reference/endpoints/app-connections/circleci/update",
+                      "api-reference/endpoints/app-connections/circleci/delete"
                     ]
                   },
                   {
@@ -2278,6 +2304,19 @@
                       "api-reference/endpoints/secret-syncs/checkly/delete",
                       "api-reference/endpoints/secret-syncs/checkly/sync-secrets",
                       "api-reference/endpoints/secret-syncs/checkly/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "CircleCI",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/circleci/list",
+                      "api-reference/endpoints/secret-syncs/circleci/get-by-id",
+                      "api-reference/endpoints/secret-syncs/circleci/get-by-name",
+                      "api-reference/endpoints/secret-syncs/circleci/create",
+                      "api-reference/endpoints/secret-syncs/circleci/update",
+                      "api-reference/endpoints/secret-syncs/circleci/delete",
+                      "api-reference/endpoints/secret-syncs/circleci/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/circleci/remove-secrets"
                     ]
                   },
                   {

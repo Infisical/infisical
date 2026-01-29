@@ -14,6 +14,7 @@ import { extractX509CertFromChain } from "@app/lib/certificates/extract-certific
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { ms } from "@app/lib/ms";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
@@ -272,6 +273,27 @@ export const certificateProfileServiceFactory = ({
   kmsService,
   projectDAL
 }: TCertificateProfileServiceFactoryDep) => {
+  const validateDefaultTtlDaysAgainstPolicy = async (
+    defaultTtlDays: number | undefined | null,
+    certificatePolicyId: string
+  ) => {
+    if (!defaultTtlDays) return; // No defaultTtlDays to validate
+
+    const policy = await certificatePolicyDAL.findById(certificatePolicyId);
+    if (!policy) return; // Policy validation happens elsewhere
+
+    if (!policy.validity?.max) return; // No max constraint
+
+    const defaultTtlMs = defaultTtlDays * 24 * 60 * 60 * 1000;
+    const maxTtlMs = ms(policy.validity.max);
+
+    if (defaultTtlMs > maxTtlMs) {
+      throw new BadRequestError({
+        message: `Default TTL (${defaultTtlDays} days) exceeds the policy's maximum validity (${policy.validity.max})`
+      });
+    }
+  };
+
   const createProfile = async ({
     actor,
     actorId,
@@ -330,6 +352,9 @@ export const certificateProfileServiceFactory = ({
 
     validateIssuerTypeConstraints(data.issuerType, data.enrollmentType, data.caId ?? null);
 
+    // Validate defaultTtlDays against policy constraints
+    await validateDefaultTtlDaysAgainstPolicy(data.defaultTtlDays, data.certificatePolicyId);
+
     // Validate external configs
     await validateExternalConfigs(
       data.externalConfigs,
@@ -349,8 +374,13 @@ export const certificateProfileServiceFactory = ({
         message: "API enrollment requires API configuration"
       });
     }
-    // TODO: acme type currently doesn't require config obj, but add a check in the future if
-    //       we have options
+    if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
+      if (data.acmeConfig.skipEabBinding && data.acmeConfig.skipDnsOwnershipVerification) {
+        throw new ForbiddenRequestError({
+          message: "Cannot skip both External Account Binding (EAB) and DNS ownership verification at the same time."
+        });
+      }
+    }
 
     // Create enrollment configs and profile
     const profile = await certificateProfileDAL.transaction(async (tx) => {
@@ -397,6 +427,7 @@ export const certificateProfileServiceFactory = ({
         const acmeConfig = await acmeEnrollmentConfigDAL.create(
           {
             skipDnsOwnershipVerification: data.acmeConfig.skipDnsOwnershipVerification ?? false,
+            skipEabBinding: data.acmeConfig.skipEabBinding ?? false,
             encryptedEabSecret
           },
           tx
@@ -499,6 +530,26 @@ export const certificateProfileServiceFactory = ({
       );
     }
 
+    if (finalEnrollmentType === EnrollmentType.ACME && data.acmeConfig && existingProfile.acmeConfigId) {
+      const existingAcmeConfig = await acmeEnrollmentConfigDAL.findById(existingProfile.acmeConfigId);
+      if (existingAcmeConfig) {
+        const finalSkipEabBinding = data.acmeConfig.skipEabBinding ?? existingAcmeConfig.skipEabBinding;
+        const finalSkipDnsOwnershipVerification =
+          data.acmeConfig.skipDnsOwnershipVerification ?? existingAcmeConfig.skipDnsOwnershipVerification;
+
+        if (finalSkipEabBinding && finalSkipDnsOwnershipVerification) {
+          throw new ForbiddenRequestError({
+            message: "Cannot skip both External Account Binding (EAB) and DNS ownership verification at the same time."
+          });
+        }
+      }
+    }
+    // Validate defaultTtlDays against policy constraints if provided
+    if (data.defaultTtlDays !== undefined) {
+      const policyId = data.certificatePolicyId || existingProfile.certificatePolicyId;
+      await validateDefaultTtlDaysAgainstPolicy(data.defaultTtlDays, policyId);
+    }
+
     const updatedData =
       finalIssuerType === IssuerType.SELF_SIGNED && existingProfile.caId ? { ...data, caId: null } : data;
 
@@ -545,13 +596,16 @@ export const certificateProfileServiceFactory = ({
       }
 
       if (acmeConfig && existingProfile.acmeConfigId) {
-        await acmeEnrollmentConfigDAL.updateById(
-          existingProfile.acmeConfigId,
-          {
-            skipDnsOwnershipVerification: acmeConfig.skipDnsOwnershipVerification ?? false
-          },
-          tx
-        );
+        const acmeUpdateData: { skipDnsOwnershipVerification?: boolean; skipEabBinding?: boolean } = {};
+        if (acmeConfig.skipDnsOwnershipVerification !== undefined) {
+          acmeUpdateData.skipDnsOwnershipVerification = acmeConfig.skipDnsOwnershipVerification;
+        }
+        if (acmeConfig.skipEabBinding !== undefined) {
+          acmeUpdateData.skipEabBinding = acmeConfig.skipEabBinding;
+        }
+        if (Object.keys(acmeUpdateData).length > 0) {
+          await acmeEnrollmentConfigDAL.updateById(existingProfile.acmeConfigId, acmeUpdateData, tx);
+        }
       }
 
       const profileResult = await certificateProfileDAL.updateById(profileId, profileUpdateData, tx);

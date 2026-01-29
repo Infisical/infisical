@@ -47,7 +47,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
       body: z.object({
         identityId: z.string().trim().describe(KUBERNETES_AUTH.LOGIN.identityId),
         jwt: z.string().trim(),
-        subOrganizationName: slugSchema().optional().describe(KUBERNETES_AUTH.LOGIN.subOrganizationName)
+        organizationSlug: slugSchema().optional().describe(KUBERNETES_AUTH.LOGIN.organizationSlug)
       }),
       response: {
         200: z.object({

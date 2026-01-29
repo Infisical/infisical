@@ -173,6 +173,7 @@ import { TQueueServiceFactory } from "@app/queue";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { registerSecretScanningV2Webhooks } from "@app/server/plugins/secret-scanner-v2";
 import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue/access-token-queue";
+import { accountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { additionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
 import { apiKeyDALFactory } from "@app/services/api-key/api-key-dal";
@@ -955,7 +956,13 @@ export const registerRoutes = async (
     smtpService,
     authDAL,
     userDAL,
-    totpConfigDAL,
+    totpConfigDAL
+  });
+
+  const accountRecoveryService = accountRecoveryServiceFactory({
+    tokenService,
+    smtpService,
+    userDAL,
     membershipUserDAL
   });
 
@@ -1724,6 +1731,7 @@ export const registerRoutes = async (
     identityOrgMembershipDAL,
     identityProjectDAL,
     licenseService,
+    licenseDAL,
     identityMetadataDAL,
     keyStore,
     orgDAL,
@@ -2676,6 +2684,7 @@ export const registerRoutes = async (
   server.decorate<FastifyZodProvider["services"]>("services", {
     login: loginService,
     password: passwordService,
+    accountRecovery: accountRecoveryService,
     signup: signupService,
     user: userService,
     group: groupService,

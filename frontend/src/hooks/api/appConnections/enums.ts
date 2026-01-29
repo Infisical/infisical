@@ -45,5 +45,7 @@ export enum AppConnection {
   Chef = "chef",
   OctopusDeploy = "octopus-deploy",
   SSH = "ssh",
-  SMB = "smb"
+  SMB = "smb",
+  OpenRouter = "open-router",
+  CircleCI = "circleci"
 }

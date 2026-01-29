@@ -13,6 +13,7 @@ export enum SecretRotation {
   DatabricksServicePrincipalSecret = "databricks-service-principal-secret",
   UnixLinuxLocalAccount = "unix-linux-local-account",
   WindowsLocalAccount = "windows-local-account"
+  OpenRouterApiKey = "open-router-api-key"
 }
 
 export enum SecretRotationStatus {

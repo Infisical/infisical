@@ -51,6 +51,11 @@ import {
   TOktaClientSecretRotationOption
 } from "./okta-client-secret-rotation";
 import {
+  TOpenRouterApiKeyRotation,
+  TOpenRouterApiKeyRotationGeneratedCredentialsResponse,
+  TOpenRouterApiKeyRotationOption
+} from "./open-router-api-key-rotation";
+import {
   TOracleDBCredentialsRotation,
   TOracleDBCredentialsRotationGeneratedCredentialsResponse
 } from "./oracledb-credentials-rotation";
@@ -85,6 +90,7 @@ export type TSecretRotationV2 = (
   | TDatabricksServicePrincipalSecretRotation
   | TUnixLinuxLocalAccountRotation
   | TWindowsLocalAccountRotation
+  | TOpenRouterApiKeyRotation
 ) & {
   secrets: (SecretV3RawSanitized | null)[];
 };
@@ -100,7 +106,8 @@ export type TSecretRotationV2Option =
   | TMongoDBCredentialsRotationOption
   | TDatabricksServicePrincipalSecretRotationOption
   | TUnixLinuxLocalAccountRotationOption
-  | TWindowsLocalAccountRotationOption;
+  | TWindowsLocalAccountRotationOption
+  | TOpenRouterApiKeyRotationOption;
 
 export type TListSecretRotationV2Options = { secretRotationOptions: TSecretRotationV2Option[] };
 
@@ -120,7 +127,8 @@ export type TViewSecretRotationGeneratedCredentialsResponse =
   | TMongoDBCredentialsRotationGeneratedCredentialsResponse
   | TDatabricksServicePrincipalSecretRotationGeneratedCredentialsResponse
   | TUnixLinuxLocalAccountRotationGeneratedCredentialsResponse
-  | TWindowsLocalAccountRotationGeneratedCredentialsResponse;
+  | TWindowsLocalAccountRotationGeneratedCredentialsResponse
+  | TOpenRouterApiKeyRotationGeneratedCredentialsResponse;
 
 export type TCreateSecretRotationV2DTO = DiscriminativePick<
   TSecretRotationV2,
@@ -178,6 +186,7 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.DatabricksServicePrincipalSecret]: TDatabricksServicePrincipalSecretRotationOption;
   [SecretRotation.UnixLinuxLocalAccount]: TUnixLinuxLocalAccountRotationOption;
   [SecretRotation.WindowsLocalAccount]: TWindowsLocalAccountRotationOption;
+  [SecretRotation.OpenRouterApiKey]: TOpenRouterApiKeyRotationOption;
 };
 
 export type TSecretRotationGeneratedCredentialsResponseMap = {
@@ -195,6 +204,7 @@ export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.DatabricksServicePrincipalSecret]: TDatabricksServicePrincipalSecretRotationGeneratedCredentialsResponse;
   [SecretRotation.UnixLinuxLocalAccount]: TUnixLinuxLocalAccountRotationGeneratedCredentialsResponse;
   [SecretRotation.WindowsLocalAccount]: TWindowsLocalAccountRotationGeneratedCredentialsResponse;
+  [SecretRotation.OpenRouterApiKey]: TOpenRouterApiKeyRotationGeneratedCredentialsResponse;
 };
 
 // Unified type for local account reconciliation (Unix/Linux and Windows)

@@ -48,6 +48,7 @@ export type TCertificateProfileUpdate = Omit<
   };
   acmeConfig?: {
     skipDnsOwnershipVerification?: boolean;
+    skipEabBinding?: boolean;
   };
 };
 
@@ -86,6 +87,7 @@ export type TCertificateProfileWithConfigs = TCertificateProfile & {
     directoryUrl: string;
     encryptedEabSecret?: Buffer;
     skipDnsOwnershipVerification?: boolean;
+    skipEabBinding?: boolean;
   };
 };
 

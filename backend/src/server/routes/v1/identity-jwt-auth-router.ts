@@ -102,7 +102,7 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
       body: z.object({
         identityId: z.string().trim().describe(JWT_AUTH.LOGIN.identityId),
         jwt: z.string().trim(),
-        subOrganizationName: slugSchema().optional().describe(JWT_AUTH.LOGIN.subOrganizationName)
+        organizationSlug: slugSchema().optional().describe(JWT_AUTH.LOGIN.organizationSlug)
       }),
       response: {
         200: z.object({

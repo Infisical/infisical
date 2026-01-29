@@ -9,6 +9,7 @@ import { registerMongoDBCredentialsRotationRouter } from "./mongodb-credentials-
 import { registerMsSqlCredentialsRotationRouter } from "./mssql-credentials-rotation-router";
 import { registerMySqlCredentialsRotationRouter } from "./mysql-credentials-rotation-router";
 import { registerOktaClientSecretRotationRouter } from "./okta-client-secret-rotation-router";
+import { registerOpenRouterApiKeyRotationRouter } from "./open-router-api-key-rotation-router";
 import { registerOracleDBCredentialsRotationRouter } from "./oracledb-credentials-rotation-router";
 import { registerPostgresCredentialsRotationRouter } from "./postgres-credentials-rotation-router";
 import { registerRedisCredentialsRotationRouter } from "./redis-credentials-rotation-router";
@@ -35,4 +36,5 @@ export const SECRET_ROTATION_REGISTER_ROUTER_MAP: Record<
   [SecretRotation.DatabricksServicePrincipalSecret]: registerDatabricksServicePrincipalSecretRotationRouter,
   [SecretRotation.UnixLinuxLocalAccount]: registerUnixLinuxLocalAccountRotationRouter,
   [SecretRotation.WindowsLocalAccount]: registerWindowsLocalAccountRotationRouter
+  [SecretRotation.OpenRouterApiKey]: registerOpenRouterApiKeyRotationRouter
 };

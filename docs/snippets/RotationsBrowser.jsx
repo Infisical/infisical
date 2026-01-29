@@ -112,6 +112,14 @@ export const RotationsBrowser = () => {
       description: "Learn how to automatically rotate Windows local account passwords.",
       category: "Networking & DNS",
     },
+    {
+      name: "OpenRouter API Key",
+      slug: "open-router-api-key",
+      path: "/documentation/platform/secret-rotation/open-router-api-key",
+      description:
+        "Learn how to automatically rotate OpenRouter API keys.",
+      category: "AI & LLM",
+    },
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });

@@ -74,6 +74,11 @@ export const SECRET_ROTATION_MAP: Record<
     name: "Windows Local Account",
     image: "Windows.png",
     size: 50
+  },
+  [SecretRotation.OpenRouterApiKey]: {
+    name: "OpenRouter API Key",
+    image: "OpenRouter.png",
+    size: 50
   }
 };
 
@@ -91,7 +96,8 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.MongoDBCredentials]: AppConnection.MongoDB,
   [SecretRotation.DatabricksServicePrincipalSecret]: AppConnection.Databricks,
   [SecretRotation.UnixLinuxLocalAccount]: AppConnection.SSH,
-  [SecretRotation.WindowsLocalAccount]: AppConnection.SMB
+  [SecretRotation.WindowsLocalAccount]: AppConnection.SMB,
+  [SecretRotation.OpenRouterApiKey]: AppConnection.OpenRouter
 };
 
 // if a rotation can potentially have downtime due to rotating a single credential set this to false
@@ -109,7 +115,8 @@ export const IS_ROTATION_DUAL_CREDENTIALS: Record<SecretRotation, boolean> = {
   [SecretRotation.MongoDBCredentials]: true,
   [SecretRotation.DatabricksServicePrincipalSecret]: true,
   [SecretRotation.UnixLinuxLocalAccount]: false,
-  [SecretRotation.WindowsLocalAccount]: false
+  [SecretRotation.WindowsLocalAccount]: false,
+  [SecretRotation.OpenRouterApiKey]: true
 };
 
 export const getRotateAtLocal = ({ hours, minutes }: TSecretRotationV2["rotateAtUtc"]) => {

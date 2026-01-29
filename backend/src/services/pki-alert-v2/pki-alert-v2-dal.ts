@@ -376,7 +376,7 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
         ];
 
         if (needsProfileJoin) {
-          selectColumns.push("profile.name as profileName");
+          selectColumns.push("profile.slug as profileName");
         }
 
         let certificateQuery = (tx || db.replicaNode()).select(selectColumns).from(TableName.Certificate);

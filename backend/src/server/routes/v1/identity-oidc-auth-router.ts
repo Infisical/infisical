@@ -50,7 +50,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
       body: z.object({
         identityId: z.string().trim().describe(OIDC_AUTH.LOGIN.identityId),
         jwt: z.string().trim(),
-        subOrganizationName: slugSchema().optional().describe(OIDC_AUTH.LOGIN.subOrganizationName)
+        organizationSlug: slugSchema().optional().describe(OIDC_AUTH.LOGIN.organizationSlug)
       }),
       response: {
         200: z.object({

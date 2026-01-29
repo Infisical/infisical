@@ -69,6 +69,8 @@ import { ValidateCamundaConnectionCredentialsSchema } from "./camunda";
 import { camundaConnectionService } from "./camunda/camunda-connection-service";
 import { ValidateChecklyConnectionCredentialsSchema } from "./checkly";
 import { checklyConnectionService } from "./checkly/checkly-connection-service";
+import { ValidateCircleCIConnectionCredentialsSchema } from "./circleci";
+import { circleciConnectionService } from "./circleci/circleci-connection-service";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
 import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-service";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
@@ -107,6 +109,7 @@ import { ValidateOctopusDeployConnectionCredentialsSchema } from "./octopus-depl
 import { octopusDeployConnectionService } from "./octopus-deploy/octopus-deploy-connection-service";
 import { ValidateOktaConnectionCredentialsSchema } from "./okta";
 import { oktaConnectionService } from "./okta/okta-connection-service";
+import { ValidateOpenRouterConnectionCredentialsSchema } from "./open-router";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { ValidateRailwayConnectionCredentialsSchema } from "./railway";
 import { railwayConnectionService } from "./railway/railway-connection-service";
@@ -184,12 +187,14 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Netlify]: ValidateNetlifyConnectionCredentialsSchema,
   [AppConnection.Northflank]: ValidateNorthflankConnectionCredentialsSchema,
   [AppConnection.Okta]: ValidateOktaConnectionCredentialsSchema,
+  [AppConnection.OpenRouter]: ValidateOpenRouterConnectionCredentialsSchema,
   [AppConnection.Redis]: ValidateRedisConnectionCredentialsSchema,
   [AppConnection.MongoDB]: ValidateMongoDBConnectionCredentialsSchema,
   [AppConnection.Chef]: ValidateChefConnectionCredentialsSchema,
   [AppConnection.OctopusDeploy]: ValidateOctopusDeployConnectionCredentialsSchema,
   [AppConnection.SSH]: ValidateSshConnectionCredentialsSchema,
-  [AppConnection.SMB]: ValidateSmbConnectionCredentialsSchema
+  [AppConnection.SMB]: ValidateSmbConnectionCredentialsSchema,
+  [AppConnection.CircleCI]: ValidateCircleCIConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -907,6 +912,7 @@ export const appConnectionServiceFactory = ({
     okta: oktaConnectionService(connectAppConnectionById),
     laravelForge: laravelForgeConnectionService(connectAppConnectionById),
     chef: chefConnectionService(connectAppConnectionById, licenseService),
-    octopusDeploy: octopusDeployConnectionService(connectAppConnectionById)
+    octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),
+    circleci: circleciConnectionService(connectAppConnectionById)
   };
 };

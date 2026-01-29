@@ -1,0 +1,102 @@
+---
+title: "OpenRouter Connection"
+description: "Learn how to configure an OpenRouter (LLM router) connection for Infisical."
+---
+
+[OpenRouter](https://openrouter.ai/) is a unified LLM router that gives you access to hundreds of large language models through a single API. Infisical supports connecting to OpenRouter using an **API Key** (Provisioning API key). This connection is used to manage and rotate OpenRouter API keys via [Secret Rotation](/documentation/platform/secret-rotation/open-router-api-key).
+
+## Prerequisites
+
+You need a **Provisioning API key** from OpenRouter. Provisioning keys are used only for key management (create, list, delete keys)—they cannot be used for model completion requests.
+
+## Create an OpenRouter Provisioning API Key
+
+<Steps>
+    <Step title="Navigate to Provisioning Keys">
+        In [OpenRouter Settings](https://openrouter.ai/settings/provisioning-keys), go to **Provisioning API Keys** and click **Create New Key**.
+
+        ![OpenRouter Provisioning Keys](/images/app-connections/open-router/step-1.png)
+    </Step>
+    <Step title="Create and Copy Key">
+        Complete the key creation flow and copy the generated Provisioning API key. Store it securely—you will use it when creating the Infisical connection.
+
+        ![OpenRouter Key Created](/images/app-connections/open-router/step-2.png)
+    </Step>
+</Steps>
+
+<Tip>
+    For more details on Provisioning API keys and key management, see [OpenRouter's documentation](https://openrouter.ai/docs/guides/overview/auth/provisioning-api-keys).
+</Tip>
+
+## Create OpenRouter Connection in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Navigate to App Connections">
+                In your Infisical dashboard, go to **Organization Settings** → **App Connections** (or the **App Connections** page in your project).
+
+                ![App Connections Tab](/images/app-connections/general/add-connection.png)
+            </Step>
+            <Step title="Select OpenRouter Connection">
+                Click **Add Connection** and choose **OpenRouter** from the list of available connections.
+
+                ![Select OpenRouter Connection](/images/app-connections/open-router/open-router-app-connection-option.png)
+            </Step>
+            <Step title="Fill out Connection Form">
+                Complete the form with:
+                - A **name** for the connection (e.g. `open-router-prod`)
+                - An optional **description**
+                - Your **OpenRouter Provisioning API Key** (from the steps above)
+
+                ![OpenRouter Connection Form](/images/app-connections/open-router/open-router-app-connection-form.png)
+            </Step>
+            <Step title="Connection Created">
+                After clicking **Create**, Infisical validates the key against OpenRouter's API. Your **OpenRouter Connection** is then ready to use for [OpenRouter API Key Secret Rotation](/documentation/platform/secret-rotation/open-router-api-key).
+
+                ![OpenRouter Connection Created](/images/app-connections/open-router/open-router-app-connection-created.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        Create an OpenRouter connection via the [Create OpenRouter Connection](/api-reference/endpoints/app-connections/open-router/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl --request POST \
+          --url https://app.infisical.com/api/v1/app-connections/open-router \
+          --header 'Content-Type: application/json' \
+          --data '{
+            "name": "my-open-router-connection",
+            "method": "api-key",
+            "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+            "credentials": {
+              "apiKey": "<YOUR-PROVISIONING-API-KEY>"
+            }
+          }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+          "appConnection": {
+            "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
+            "name": "my-open-router-connection",
+            "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+            "description": null,
+            "version": 1,
+            "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+            "createdAt": "2025-04-23T19:46:34.831Z",
+            "updatedAt": "2025-04-23T19:46:34.831Z",
+            "isPlatformManagedCredentials": false,
+            "credentialsHash": "...",
+            "app": "open-router",
+            "method": "api-key",
+            "credentials": {}
+          }
+        }
+        ```
+    </Tab>
+</Tabs>

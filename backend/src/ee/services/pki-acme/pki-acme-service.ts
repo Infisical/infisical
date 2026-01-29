@@ -51,6 +51,7 @@ import {
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
+import { resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -419,12 +420,13 @@ export const pkiAcmeServiceFactory = ({
 
   const getAcmeDirectory = async (profileId: string): Promise<TGetAcmeDirectoryResponse> => {
     const profile = await validateAcmeProfile(profileId);
+    const skipEabBinding = profile.acmeConfig?.skipEabBinding ?? false;
     return {
       newNonce: buildUrl(profile.id, "/new-nonce"),
       newAccount: buildUrl(profile.id, "/new-account"),
       newOrder: buildUrl(profile.id, "/new-order"),
       meta: {
-        externalAccountRequired: true
+        externalAccountRequired: !skipEabBinding
       }
     };
   };
@@ -483,6 +485,9 @@ export const pkiAcmeServiceFactory = ({
       };
     }
 
+    // Check if EAB is required for this profile (EAB is required by default unless skipEabBinding is true)
+    const skipEabBinding = profile.acmeConfig?.skipEabBinding ?? false;
+
     // Note: We only check EAB for the new account request. This is a very special case for cert-manager.
     // There's a bug in their ACME client implementation, they don't take the account KID value they have
     // and relying on a '{"onlyReturnExisting": true}' new-account request to find out their KID value.
@@ -495,7 +500,7 @@ export const pkiAcmeServiceFactory = ({
     // It should be fine as we've already checked EAB when they created the account.
     // And the private key ownership indicating they are the same user.
     // ref: https://github.com/cert-manager/cert-manager/issues/7388#issuecomment-3535630925
-    if (!externalAccountBinding) {
+    if (!skipEabBinding && !externalAccountBinding) {
       throw new AcmeExternalAccountRequiredError({ message: "External account binding is required" });
     }
     if (existingAccount) {
@@ -530,54 +535,56 @@ export const pkiAcmeServiceFactory = ({
       };
     }
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: profile.projectId,
-      projectDAL,
-      kmsService
-    });
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
-      kmsId: certificateManagerKmsId
-    });
-    const eabSecret = await kmsDecryptor({ cipherTextBlob: profile.acmeConfig!.encryptedEabSecret! });
-    const { eabPayload, eabProtectedHeader } = await (async () => {
-      try {
-        const result = await flattenedVerify(externalAccountBinding, eabSecret);
-        return { eabPayload: result.payload, eabProtectedHeader: result.protectedHeader };
-      } catch (error) {
-        if (error instanceof errors.JWSSignatureVerificationFailed) {
-          throw new AcmeExternalAccountRequiredError({ message: "Invalid external account binding JWS signature" });
+    if (externalAccountBinding && !skipEabBinding) {
+      const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+        projectId: profile.projectId,
+        projectDAL,
+        kmsService
+      });
+      const kmsDecryptor = await kmsService.decryptWithKmsKey({
+        kmsId: certificateManagerKmsId
+      });
+      const eabSecret = await kmsDecryptor({ cipherTextBlob: profile.acmeConfig!.encryptedEabSecret! });
+      const { eabPayload, eabProtectedHeader } = await (async () => {
+        try {
+          const result = await flattenedVerify(externalAccountBinding, eabSecret);
+          return { eabPayload: result.payload, eabProtectedHeader: result.protectedHeader };
+        } catch (error) {
+          if (error instanceof errors.JWSSignatureVerificationFailed) {
+            throw new AcmeExternalAccountRequiredError({ message: "Invalid external account binding JWS signature" });
+          }
+          logger.error(error, "Unexpected error while verifying EAB JWS signature");
+          throw new AcmeServerInternalError({ message: "Failed to verify EAB JWS signature" });
         }
-        logger.error(error, "Unexpected error while verifying EAB JWS signature");
-        throw new AcmeServerInternalError({ message: "Failed to verify EAB JWS signature" });
+      })();
+
+      const { alg: eabAlg, kid: eabKid } = eabProtectedHeader!;
+      if (!["HS256", "HS384", "HS512"].includes(eabAlg!)) {
+        throw new AcmeExternalAccountRequiredError({
+          message: "Invalid algorithm for external account binding JWS payload"
+        });
       }
-    })();
+      // Make sure the KID in the EAB payload matches the profile ID
+      if (eabKid !== profile.id) {
+        throw new AcmeExternalAccountRequiredError({ message: "External account binding KID mismatch" });
+      }
 
-    const { alg: eabAlg, kid: eabKid } = eabProtectedHeader!;
-    if (!["HS256", "HS384", "HS512"].includes(eabAlg!)) {
-      throw new AcmeExternalAccountRequiredError({
-        message: "Invalid algorithm for external account binding JWS payload"
-      });
-    }
-    // Make sure the KID in the EAB payload matches the profile ID
-    if (eabKid !== profile.id) {
-      throw new AcmeExternalAccountRequiredError({ message: "External account binding KID mismatch" });
-    }
+      // Make sure the URL matches the expected URL
+      const url = eabProtectedHeader!.url!;
+      if (url !== buildUrl(profile.id, "/new-account")) {
+        throw new AcmeExternalAccountRequiredError({ message: "External account binding URL mismatch" });
+      }
 
-    // Make sure the URL matches the expected URL
-    const url = eabProtectedHeader!.url!;
-    if (url !== buildUrl(profile.id, "/new-account")) {
-      throw new AcmeExternalAccountRequiredError({ message: "External account binding URL mismatch" });
-    }
-
-    // Make sure the JWK in the EAB payload matches the one provided in the outer JWS payload
-    const decoder = new TextDecoder();
-    const decodedEabPayload = decoder.decode(eabPayload);
-    const eabJWK = JSON.parse(decodedEabPayload) as JsonWebKey;
-    const eabPayloadJwkThumbprint = await calculateJwkThumbprint(eabJWK, "sha256");
-    if (eabPayloadJwkThumbprint !== publicKeyThumbprint) {
-      throw new AcmeBadPublicKeyError({
-        message: "External account binding public key thumbprint or algorithm mismatch"
-      });
+      // Make sure the JWK in the EAB payload matches the one provided in the outer JWS payload
+      const decoder = new TextDecoder();
+      const decodedEabPayload = decoder.decode(eabPayload);
+      const eabJWK = JSON.parse(decodedEabPayload) as JsonWebKey;
+      const eabPayloadJwkThumbprint = await calculateJwkThumbprint(eabJWK, "sha256");
+      if (eabPayloadJwkThumbprint !== publicKeyThumbprint) {
+        throw new AcmeBadPublicKeyError({
+          message: "External account binding public key thumbprint or algorithm mismatch"
+        });
+      }
     }
 
     // TODO: handle unique constraint violation error, should be very very rare
@@ -828,6 +835,8 @@ export const pkiAcmeServiceFactory = ({
     tx?: Knex;
   }): Promise<{ certificateId?: string; certIssuanceJobData?: TIssueCertificateFromProfileJobData }> => {
     if (caType === CaType.INTERNAL) {
+      const internalPolicy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
+
       const result = await certificateV3Service.signCertificateFromProfile({
         actor: ActorType.ACME_ACCOUNT,
         actorId: accountId,
@@ -839,9 +848,12 @@ export const pkiAcmeServiceFactory = ({
         notAfter: finalizingOrder.notAfter ? new Date(finalizingOrder.notAfter) : undefined,
         validity: !finalizingOrder.notAfter
           ? {
-              // 47 days, the default TTL comes with Let's Encrypt
-              // TODO: read config from the profile to get the expiration time instead
-              ttl: `${47}d`
+              ttl: resolveEffectiveTtl({
+                requestTtl: undefined,
+                profileDefaultTtlDays: profile.defaultTtlDays,
+                policyMaxValidity: internalPolicy?.validity?.max,
+                flowDefaultTtl: "47d"
+              })
             }
           : // ttl is not used if notAfter is provided
             ({ ttl: "0d" } as const),
@@ -857,6 +869,12 @@ export const pkiAcmeServiceFactory = ({
 
     const { keyAlgorithm: extractedKeyAlgorithm, signatureAlgorithm: extractedSignatureAlgorithm } =
       extractAlgorithmsFromCSR(csr);
+
+    const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
+    if (!policy) {
+      throw new NotFoundError({ message: "Certificate policy not found" });
+    }
+
     const updatedCertificateRequest = {
       ...certificateRequest,
       keyAlgorithm: extractedKeyAlgorithm,
@@ -869,13 +887,15 @@ export const pkiAcmeServiceFactory = ({
             const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
             return { ttl: `${diffDays}d` };
           })()
-        : certificateRequest.validity
+        : {
+            ttl: resolveEffectiveTtl({
+              requestTtl: certificateRequest.validity?.ttl,
+              profileDefaultTtlDays: profile.defaultTtlDays,
+              policyMaxValidity: policy?.validity?.max,
+              flowDefaultTtl: "47d"
+            })
+          }
     };
-
-    const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
-    if (!policy) {
-      throw new NotFoundError({ message: "Certificate policy not found" });
-    }
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       policy.id,
       updatedCertificateRequest
@@ -914,7 +934,7 @@ export const pkiAcmeServiceFactory = ({
         certificateId: orderId,
         profileId: profile.id,
         caId: profile.caId || "",
-        ttl: updatedCertificateRequest.validity?.ttl || "1y",
+        ttl: updatedCertificateRequest.validity?.ttl || "47d",
         signatureAlgorithm: updatedCertificateRequest.signatureAlgorithm || "",
         keyAlgorithm: updatedCertificateRequest.keyAlgorithm || "",
         commonName: updatedCertificateRequest.commonName || "",
@@ -1039,7 +1059,12 @@ export const pkiAcmeServiceFactory = ({
                 const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
                 return `${diffDays}d`;
               })()
-            : "47d"; // Default 47 days
+            : resolveEffectiveTtl({
+                requestTtl: undefined,
+                profileDefaultTtlDays: profile.defaultTtlDays,
+                policyMaxValidity: policy?.validity?.max,
+                flowDefaultTtl: "47d"
+              });
 
           const altNames = certificateRequest.subjectAlternativeNames?.map((san) => ({
             type: san.type,

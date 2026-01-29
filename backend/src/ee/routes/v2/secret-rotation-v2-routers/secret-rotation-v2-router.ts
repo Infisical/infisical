@@ -10,6 +10,7 @@ import { MongoDBCredentialsRotationListItemSchema } from "@app/ee/services/secre
 import { MsSqlCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/mssql-credentials";
 import { MySqlCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/mysql-credentials";
 import { OktaClientSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/okta-client-secret";
+import { OpenRouterApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/open-router-api-key";
 import { OracleDBCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/oracledb-credentials";
 import { PostgresCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/postgres-credentials";
 import { RedisCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/redis-credentials";
@@ -36,6 +37,7 @@ const SecretRotationV2OptionsSchema = z.discriminatedUnion("type", [
   DatabricksServicePrincipalSecretRotationListItemSchema,
   UnixLinuxLocalAccountRotationListItemSchema,
   WindowsLocalAccountRotationListItemSchema
+  OpenRouterApiKeyRotationListItemSchema
 ]);
 
 export const registerSecretRotationV2Router = async (server: FastifyZodProvider) => {

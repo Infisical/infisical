@@ -19,19 +19,19 @@ const buttonVariants = cva(
         outline: "text-foreground hover:bg-foreground/10 border-border hover:border-foreground/20",
         ghost: "text-foreground hover:bg-foreground/10 border-transparent",
         neutral:
-          "border-neutral/25 bg-neutral/15 text-foreground hover:bg-neutral/30 hover:border-neutral/30",
+          "border-neutral/25 bg-neutral/10 text-foreground hover:bg-neutral/15 hover:border-neutral/30",
         project:
-          "border-project/25 bg-project/15 text-foreground hover:bg-project/30 hover:border-project/30",
-        org: "border-org/25 bg-org/15 text-foreground hover:bg-org/30 hover:border-org/30",
+          "border-project/25 bg-project/10 text-foreground hover:bg-project/15 hover:border-project/30",
+        org: "border-org/25 bg-org/10 text-foreground hover:bg-org/15 hover:border-org/30",
         "sub-org":
-          "border-sub-org/25 bg-sub-org/15 text-foreground hover:bg-sub-org/30 hover:border-sub-org/30",
+          "border-sub-org/25 bg-sub-org/10 text-foreground hover:bg-sub-org/15 hover:border-sub-org/30",
         success:
-          "border-success/25 bg-success/15 text-foreground hover:bg-success/30 hover:border-success/30",
-        info: "border-info/25 bg-info/15 text-foreground hover:bg-info/30 hover:border-info/30",
+          "border-success/25 bg-success/10 text-foreground hover:bg-success/15 hover:border-success/30",
+        info: "border-info/25 bg-info/10 text-foreground hover:bg-info/15 hover:border-info/30",
         warning:
-          "border-warning/25 bg-warning/15 text-foreground hover:bg-warning/30 hover:border-warning/30",
+          "border-warning/25 bg-warning/10 text-foreground hover:bg-warning/15 hover:border-warning/30",
         danger:
-          "border-danger/25 bg-danger/15 text-foreground hover:bg-danger/30 hover:border-danger/30"
+          "border-danger/25 bg-danger/10 text-foreground hover:bg-danger/15 hover:border-danger/30"
       },
       size: {
         xs: "h-7 px-2 text-xs rounded-sm [&>svg]:size-3 gap-1.5",

@@ -89,6 +89,12 @@ import {
   TValidateChecklyConnectionCredentialsSchema
 } from "./checkly";
 import {
+  TCircleCIConnection,
+  TCircleCIConnectionConfig,
+  TCircleCIConnectionInput,
+  TValidateCircleCIConnectionCredentialsSchema
+} from "./circleci";
+import {
   TCloudflareConnection,
   TCloudflareConnectionConfig,
   TCloudflareConnectionInput,
@@ -204,6 +210,12 @@ import {
   TOktaConnectionInput,
   TValidateOktaConnectionCredentialsSchema
 } from "./okta";
+import {
+  TOpenRouterConnection,
+  TOpenRouterConnectionConfig,
+  TOpenRouterConnectionInput,
+  TValidateOpenRouterConnectionCredentialsSchema
+} from "./open-router";
 import {
   TPostgresConnection,
   TPostgresConnectionInput,
@@ -324,6 +336,8 @@ export type TAppConnection = { id: string } & (
   | TOctopusDeployConnection
   | TSshConnection
   | TSmbConnection
+  | TOpenRouterConnection
+  | TCircleCIConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -378,6 +392,8 @@ export type TAppConnectionInput = { id: string } & (
   | TOctopusDeployConnectionInput
   | TSshConnectionInput
   | TSmbConnectionInput
+  | TOpenRouterConnectionInput
+  | TCircleCIConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -449,7 +465,9 @@ export type TAppConnectionConfig =
   | TChefConnectionConfig
   | TOctopusDeployConnectionConfig
   | TSshConnectionConfig
-  | TSmbConnectionConfig;
+  | TSmbConnectionConfig
+  | TOpenRouterConnectionConfig
+  | TCircleCIConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -498,7 +516,9 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateChefConnectionCredentialsSchema
   | TValidateOctopusDeployConnectionCredentialsSchema
   | TValidateSshConnectionCredentialsSchema
-  | TValidateSmbConnectionCredentialsSchema;
+  | TValidateSmbConnectionCredentialsSchema
+  | TValidateOpenRouterConnectionCredentialsSchema
+  | TValidateCircleCIConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

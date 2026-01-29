@@ -272,17 +272,16 @@ export const projectServiceFactory = ({
     const results = await (trx || projectDAL).transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(organization.id)]);
 
+      // Check workspace limit inside the transaction after acquiring the lock
+      // We count directly from the database to get the accurate count, not the cached plan value
       const plan = await licenseService.getPlan(organization.id);
-      if (
-        plan.workspaceLimit !== null &&
-        plan.workspacesUsed >= plan.workspaceLimit &&
-        type === ProjectType.SecretManager
-      ) {
-        // case: limit imposed on number of workspaces allowed
-        // case: number of workspaces used exceeds the number of workspaces allowed
-        throw new BadRequestError({
-          message: "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces."
-        });
+      if (plan.workspaceLimit !== null && type === ProjectType.SecretManager) {
+        const currentProjectCount = await projectDAL.countOfOrgProjects(organization.id, tx);
+        if (currentProjectCount >= plan.workspaceLimit) {
+          throw new BadRequestError({
+            message: "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces."
+          });
+        }
       }
 
       if (kmsKeyId) {

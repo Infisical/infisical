@@ -86,7 +86,7 @@ export const authSignupServiceFactory = ({
         substitutions: {
           email: sanitizedEmail,
           loginUrl: `${appCfg.SITE_URL}/login`,
-          resetPasswordUrl: `${appCfg.SITE_URL}/verify-email`
+          resetPasswordUrl: `${appCfg.SITE_URL}/account-recovery`
         }
       });
       return;

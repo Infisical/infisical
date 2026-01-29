@@ -3,6 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -22,7 +23,7 @@ import {
   SelectItem,
   Tooltip
 } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useGetCert } from "@app/hooks/api";
 import { useGetCertificatePolicyById } from "@app/hooks/api/certificatePolicies";
 import { EnrollmentType, useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
@@ -35,7 +36,6 @@ import {
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import { AlgorithmSelectors } from "./AlgorithmSelectors";
-import { CertificateContent } from "./CertificateContent";
 import { filterUsages, formatSubjectAltNames } from "./certificateUtils";
 import { KeyUsageSection } from "./KeyUsageSection";
 import { SubjectAltNamesField } from "./SubjectAltNamesField";
@@ -116,18 +116,11 @@ type Props = {
   profileId?: string;
 };
 
-type TCertificateDetails = {
-  serialNumber?: string;
-  certificate?: string;
-  certificateChain?: string;
-  privateKey?: string;
-  issuingCaCertificate?: string;
-};
-
 export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }: Props) => {
-  const [certificateDetails, setCertificateDetails] = useState<TCertificateDetails | null>(null);
   const [shouldShowSubjectSection, setShouldShowSubjectSection] = useState(true);
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
+  const navigate = useNavigate();
 
   const inputSerialNumber =
     (popUp?.issueCertificate?.data as { serialNumber: string })?.serialNumber || "";
@@ -206,7 +199,6 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
   );
 
   const resetAllState = useCallback(() => {
-    setCertificateDetails(null);
     setShouldShowSubjectSection(true);
     resetConstraints();
     reset();
@@ -367,20 +359,25 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
 
         if ("certificate" in response && response.certificate) {
           const certData = response.certificate;
-          const certificateDetailsToSet = {
-            serialNumber: certData.serialNumber || "",
-            certificate: certData.certificate || "",
-            certificateChain: certData.certificateChain || "",
-            privateKey: certData.privateKey || "",
-            issuingCaCertificate: certData.issuingCaCertificate || ""
-          };
-
-          setCertificateDetails(certificateDetailsToSet);
 
           createNotification({
             text: "Successfully created certificate",
             type: "success"
           });
+
+          // Close modal and redirect to certificate details page
+          handlePopUpToggle("issueCertificate", false);
+
+          if (currentOrg?.id && currentProject?.id && certData.certificateId) {
+            navigate({
+              to: "/organizations/$orgId/projects/cert-manager/$projectId/certificates/$certificateId",
+              params: {
+                orgId: currentOrg.id,
+                projectId: currentProject.id,
+                certificateId: certData.certificateId
+              }
+            });
+          }
         } else if ("status" in response && response.status === "pending_approval") {
           createNotification({
             text: "Certificate request submitted successfully. Approval is required before the certificate can be issued.",
@@ -405,22 +402,23 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
     [
       currentProject?.slug,
       currentProject?.id,
+      currentOrg?.id,
       issueCertificate,
       constraints.shouldShowSubjectSection,
       constraints.shouldShowSanSection,
       constraints.templateAllowsCA,
-      handlePopUpToggle
+      constraints.templateRequiresCA,
+      handlePopUpToggle,
+      navigate
     ]
   );
 
   const getModalTitle = () => {
-    if (certificateDetails) return "Certificate Created Successfully";
     if (cert) return "Certificate Details";
     return "Request New Certificate";
   };
 
   const getModalSubTitle = () => {
-    if (certificateDetails) return "Certificate has been successfully created and is ready for use";
     if (cert) return "View certificate information";
     return "Request a new certificate using a certificate profile";
   };
@@ -436,14 +434,6 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
       }}
     >
       <ModalContent title={getModalTitle()} subTitle={getModalSubTitle()}>
-        {certificateDetails && (
-          <CertificateContent
-            serialNumber={certificateDetails.serialNumber!}
-            certificate={certificateDetails.certificate!}
-            certificateChain={certificateDetails.certificateChain!}
-            privateKey={certificateDetails.privateKey!}
-          />
-        )}
         {cert && (
           <div className="space-y-4">
             <div>
@@ -455,7 +445,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
             </div>
           </div>
         )}
-        {!cert && !certificateDetails && (
+        {!cert && (
           <form onSubmit={handleSubmit(onFormSubmit)}>
             {!profileId && (
               <Controller

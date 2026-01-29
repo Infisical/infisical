@@ -204,6 +204,14 @@ export type TSmbConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.SMB;
 };
 
+export type TOpenRouterConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.OpenRouter;
+};
+
+export type TCircleCISyncConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.CircleCI;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -243,6 +251,8 @@ export type TAppConnectionOption =
   | TNetlifyConnectionOption
   | TNorthflankConnectionOption
   | TOktaConnectionOption
+  | TOpenRouterConnectionOption
+  | TCircleCISyncConnectionOption
   | TAzureAdCsConnectionOption
   | TLaravelForgeConnectionOption
   | TRedisConnectionOption
@@ -293,6 +303,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Netlify]: TNetlifyConnectionOption;
   [AppConnection.Northflank]: TNorthflankConnectionOption;
   [AppConnection.Okta]: TOktaConnectionOption;
+  [AppConnection.OpenRouter]: TOpenRouterConnectionOption;
   [AppConnection.AzureADCS]: TAzureAdCsConnectionOption;
   [AppConnection.Redis]: TRedisConnectionOption;
   [AppConnection.MongoDB]: TMongoDBConnectionOption;
@@ -301,4 +312,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.OctopusDeploy]: TOctopusDeployConnectionOption;
   [AppConnection.SSH]: TSshConnectionOption;
   [AppConnection.SMB]: TSmbConnectionOption;
+  [AppConnection.CircleCI]: TCircleCISyncConnectionOption;
 };

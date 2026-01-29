@@ -274,6 +274,7 @@ export const getCaCertChains = async ({
         certificate: caCertObj.toString("pem"),
         certificateChain: decryptedChain.toString("utf-8"),
         serialNumber: caCertObj.serialNumber,
+        certId: caCert.id,
         version: caCert.version
       };
     })
