@@ -725,21 +725,49 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         });
       }
 
-      const countQuery = (await (tx || db)
-        .select(db.raw("count(*) OVER() as total_count"))
-        .from(query.clone().as("outer"))) as Array<{
-        total_count: number;
-      }>;
-
+      // Phase 1: Get page of change request ids (one row per request) + total count
+      // Use createdAt DESC, id so DENSE_RANK is deterministic (no ties => exactly `limit` rows per page)
       const rankOffset = offset + 1;
-      const docs = await (tx || db)
-        .with("w", query)
-        .select("*")
-        .from<Awaited<typeof query>[number]>("w")
-        .where("w.rank", ">=", rankOffset)
-        .andWhere("w.rank", "<", rankOffset + limit);
+      const distinctRequestsSub = query
+        .clone()
+        .clearSelect()
+        .clearOrder()
+        .select(db.raw('DISTINCT ON (id) id, "createdAt"'))
+        .orderBy("id")
+        .orderBy("createdAt", "desc");
+      const rankedSub = (tx || db)
+        .select(
+          db.raw('id, "createdAt", DENSE_RANK() OVER (ORDER BY "createdAt" DESC, id) as r, COUNT(*) OVER () as total')
+        )
+        .from(distinctRequestsSub.as("dr"));
+      const pageIdsResult = (await (tx || db)
+        .select("id", "r", "total")
+        .from(rankedSub.as("ranked"))
+        .where("r", ">=", rankOffset)
+        .where("r", "<", rankOffset + limit)
+        .orderBy("r", "asc")
+        .limit(limit)) as Array<{ id: string; r: number; total: string }>;
 
-      const totalCount = Number(countQuery[0]?.total_count || 0);
+      const pageIds = pageIdsResult.map((row) => row.id).slice(0, limit);
+      let totalCount = pageIdsResult.length > 0 ? Number(pageIdsResult[0]?.total ?? 0) : 0;
+
+      if (pageIdsResult.length === 0) {
+        const countResult = (await (tx || db)
+          .select(db.raw("COUNT(DISTINCT id) as total_count"))
+          .from(query.clone().as("count_query"))
+          .first()) as { total_count: string } | undefined;
+        totalCount = Number(countResult?.total_count ?? 0);
+      }
+
+      // Phase 2: Full data for this page's request ids (all commit rows for display)
+      const docs =
+        pageIds.length === 0
+          ? []
+          : ((await (tx || db)
+              .select("*")
+              .from(innerQuery)
+              .whereIn("id", pageIds)
+              .orderBy("createdAt", "desc")) as Awaited<typeof query>[number][]);
 
       const formattedDoc = sqlNestRelationships({
         data: docs,
@@ -808,13 +836,12 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           }
         ]
       });
-      return {
-        approvals: formattedDoc.map((el) => ({
-          ...el,
-          policy: { ...el.policy, approvers: el.approvers, bypassers: el.bypassers }
-        })),
-        totalCount
-      };
+      const capped = formattedDoc.slice(0, limit);
+      const approvals = capped.map((el) => ({
+        ...el,
+        policy: { ...el.policy, approvers: el.approvers, bypassers: el.bypassers }
+      }));
+      return { approvals, totalCount };
     } catch (error) {
       throw new DatabaseError({ error, name: "FindSAR" });
     }
