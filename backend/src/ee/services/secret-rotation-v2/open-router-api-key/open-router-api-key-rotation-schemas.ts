@@ -25,8 +25,19 @@ export enum OpenRouterLimitReset {
   Monthly = "monthly"
 }
 
+/** Max length for OpenRouter API key name. OpenRouter docs only require >=1 char; we cap at 255 for sanity checks. */
+export const OPEN_ROUTER_API_KEY_NAME_MAX_LENGTH = 255;
+
 const OpenRouterApiKeyRotationParametersSchema = z.object({
-  name: z.string().trim().min(1, "Key name required").describe(SecretRotations.PARAMETERS.OPEN_ROUTER_API_KEY.name),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Key name required")
+    .max(
+      OPEN_ROUTER_API_KEY_NAME_MAX_LENGTH,
+      `Key name must be ${OPEN_ROUTER_API_KEY_NAME_MAX_LENGTH} characters or fewer`
+    )
+    .describe(SecretRotations.PARAMETERS.OPEN_ROUTER_API_KEY.name),
   limit: z.number().positive().optional().nullable().describe(SecretRotations.PARAMETERS.OPEN_ROUTER_API_KEY.limit),
   limitReset: z
     .nativeEnum(OpenRouterLimitReset)

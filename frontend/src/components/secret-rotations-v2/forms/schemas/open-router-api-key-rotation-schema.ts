@@ -4,11 +4,21 @@ import { BaseSecretRotationSchema } from "@app/components/secret-rotations-v2/fo
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { OpenRouterLimitReset } from "@app/hooks/api/secretRotationsV2/types/open-router-api-key-rotation";
 
+/** Max length for OpenRouter API key name (sanity check; OpenRouter docs only require >=1 char). */
+const OPEN_ROUTER_API_KEY_NAME_MAX_LENGTH = 255;
+
 export const OpenRouterApiKeyRotationSchema = z
   .object({
     type: z.literal(SecretRotation.OpenRouterApiKey),
     parameters: z.object({
-      name: z.string().trim().min(1, "Key name required"),
+      name: z
+        .string()
+        .trim()
+        .min(1, "Key name required")
+        .max(
+          OPEN_ROUTER_API_KEY_NAME_MAX_LENGTH,
+          `Key name must be ${OPEN_ROUTER_API_KEY_NAME_MAX_LENGTH} characters or fewer`
+        ),
       limit: z.number().positive().optional().nullable(),
       limitReset: z.nativeEnum(OpenRouterLimitReset).optional().nullable(),
       includeByokInLimit: z.boolean().optional().nullable()
