@@ -1,7 +1,6 @@
 import { FilterIcon, FingerprintIcon, FolderIcon, KeyIcon, RefreshCwIcon } from "lucide-react";
 
 import {
-  Badge,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -24,7 +23,7 @@ export function ResourceFilter({ onToggleRowType, rowTypeFilter }: Props) {
 
   return (
     <UnstableDropdownMenu>
-      <UnstableDropdownMenuTrigger>
+      <UnstableDropdownMenuTrigger className="outline-0">
         <Tooltip>
           <TooltipTrigger asChild>
             <UnstableIconButton
@@ -33,11 +32,12 @@ export function ResourceFilter({ onToggleRowType, rowTypeFilter }: Props) {
               variant={filterCount ? "project" : "outline"}
             >
               <FilterIcon />
-              {Boolean(filterCount) && (
+              {/* TODO: scott figure out how to not clip with the required overflow */}
+              {/* {Boolean(filterCount) && (
                 <Badge className="absolute -top-2 -right-2" isSquare>
                   {filterCount}
                 </Badge>
-              )}
+              )} */}
             </UnstableIconButton>
           </TooltipTrigger>
           <TooltipContent>Filter resources</TooltipContent>
