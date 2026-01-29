@@ -111,7 +111,7 @@ export const RotationsBrowser = () => {
       path: "/documentation/platform/secret-rotation/open-router-api-key",
       description:
         "Learn how to automatically rotate OpenRouter API keys.",
-      category: "Identity & Auth",
+      category: "AI & LLM",
     },
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());

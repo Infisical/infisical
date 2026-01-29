@@ -8,7 +8,7 @@ import { OpenRouterLimitReset } from "@app/hooks/api/secretRotationsV2/types/ope
 const NO_RESET_VALUE = "none";
 
 /** Max length for OpenRouter API key name (matches backend schema). */
-const OPEN_ROUTER_API_KEY_NAME_MAX_LENGTH = 255;
+const OPEN_ROUTER_API_KEY_NAME_MAX_LENGTH = 100;
 
 const LIMIT_RESET_OPTIONS = [
   { label: "No Reset", value: NO_RESET_VALUE },

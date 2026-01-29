@@ -129,17 +129,3 @@ description: "Learn how to automatically rotate OpenRouter API keys."
 - **Disabled (No)** – Only OpenRouter credit usage counts toward the limit. BYOK usage is tracked separately and does not consume the limit.
 
 This is optional; if you don’t use BYOK or don’t set a limit, you can leave it off. For more details, see [OpenRouter BYOK](https://openrouter.ai/docs/guides/overview/auth/byok) and [OpenRouter limits](https://openrouter.ai/docs/api/reference/limits).
-
-## How It Works
-
-Infisical uses OpenRouter’s [Provisioning API](https://openrouter.ai/docs/guides/overview/auth/provisioning-api-keys) to:
-
-1. **Create** new API keys with the name, optional spending limit, and limit reset schedule you configure.
-2. **Store** the new key in Infisical as the active secret at your mapped path.
-3. **Revoke** the previous key after the new one is active, so existing clients can finish using the old key during the overlap period.
-
-This follows the same [credential lifecycle](/documentation/platform/secret-rotation/overview#how-rotation-works) as other Infisical rotations: active → inactive → revoked, with zero-downtime rotation.
-
-<Tip>
-    For more on OpenRouter key management and limits, see [OpenRouter’s API key documentation](https://openrouter.ai/docs/api-reference/api-keys/create-keys).
-</Tip>
