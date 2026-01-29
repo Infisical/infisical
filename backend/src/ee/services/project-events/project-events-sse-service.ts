@@ -265,7 +265,10 @@ export const projectEventsSSEServiceFactory = ({
         secretPath: payload.secretPath
       };
 
-      return permissionCache.permission.can(action, subject(ProjectPermissionSub.SecretEventSubscriptions, subjectFields));
+      return permissionCache.permission.can(
+        action,
+        subject(ProjectPermissionSub.SecretEventSubscriptions, subjectFields)
+      );
     });
   };
 
