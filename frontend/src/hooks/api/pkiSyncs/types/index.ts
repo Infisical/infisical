@@ -4,6 +4,7 @@ import { TAwsCertificateManagerPkiSync } from "./aws-certificate-manager-sync";
 import { TAwsSecretsManagerPkiSync } from "./aws-secrets-manager-sync";
 import { TAzureKeyVaultPkiSync } from "./azure-key-vault-sync";
 import { TChefPkiSync } from "./chef-sync";
+import { TCloudflareCustomCertificatePkiSync } from "./cloudflare-custom-certificate-sync";
 
 export type TPkiSyncOption = {
   name: string;
@@ -22,7 +23,8 @@ export type TPkiSync =
   | TAzureKeyVaultPkiSync
   | TAwsCertificateManagerPkiSync
   | TAwsSecretsManagerPkiSync
-  | TChefPkiSync;
+  | TChefPkiSync
+  | TCloudflareCustomCertificatePkiSync;
 
 export type TListPkiSyncs = { pkiSyncs: TPkiSync[] };
 
@@ -61,6 +63,7 @@ export type TCreatePkiSyncDTO = TCreatePkiSyncDTOBase & {
     vaultBaseUrl?: string;
     region?: string;
     dataBagName?: string;
+    zoneId?: string;
   };
 };
 
@@ -97,4 +100,5 @@ export * from "./aws-certificate-manager-sync";
 export * from "./aws-secrets-manager-sync";
 export * from "./azure-key-vault-sync";
 export * from "./chef-sync";
+export * from "./cloudflare-custom-certificate-sync";
 export * from "./common";

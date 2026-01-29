@@ -1,0 +1,146 @@
+---
+title: "Cloudflare Custom SSL"
+description: "Learn how to configure a Cloudflare Custom SSL Certificate Sync for Infisical PKI."
+---
+
+**Prerequisites:**
+
+- Create a [Cloudflare Connection](/integrations/app-connections/cloudflare)
+
+<Warning>
+  **Custom Certificate Quota**: Cloudflare has a default quota of **one custom certificate per zone** on most plans.
+  Enterprise plans may have higher quotas. If you attempt to sync more certificates than your quota allows,
+  only one certificate will be successfully uploaded. Check your Cloudflare plan's certificate quota before
+  configuring the sync, or contact Cloudflare to increase your quota.
+</Warning>
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. Navigate to **Project** > **Integrations** > **Certificate Syncs** and press **Add Sync**.
+        ![Certificate Syncs Tab](/images/platform/pki/certificate-syncs/general/create-certificate-sync.png)
+
+        2. Select the **Cloudflare Custom SSL** option.
+        ![Select Cloudflare](/images/platform/pki/certificate-syncs/cloudflare-custom-ssl/select-cloudflare-option.png)
+
+        3. Configure the **Destination** to where certificates should be deployed, then click **Next**.
+        ![Configure Destination](/images/platform/pki/certificate-syncs/cloudflare-custom-ssl/cloudflare-destination.png)
+
+        - **Cloudflare Connection**: The Cloudflare Connection to authenticate with.
+        - **Zone**: The Cloudflare zone (domain) where certificates should be uploaded.
+
+        4. Configure the **Sync Options** to specify how certificates should be synced, then click **Next**.
+        ![Configure Options](/images/platform/pki/certificate-syncs/cloudflare-custom-ssl/cloudflare-options.png)
+
+        - **Enable Removal of Expired/Revoked Certificates**: If enabled, Infisical will remove certificates from the destination if they are no longer active in Infisical.
+        - **Certificate Name Schema** (Optional): Customize how certificate names are generated. Must include `{{certificateId}}` as a placeholder. If not specified, defaults to `Infisical-{{certificateId}}`.
+        - **Auto-Sync Enabled**: If enabled, certificates will automatically be synced when changes occur. Disable to enforce manual syncing only.
+
+        5. Configure the **Details** of your Cloudflare Custom SSL Certificate Sync, then click **Next**.
+        ![Configure Details](/images/platform/pki/certificate-syncs/cloudflare-custom-ssl/cloudflare-details.png)
+
+            - **Name**: The name of your sync. Must be slug-friendly.
+            - **Description**: An optional description for your sync.
+
+        6. Select which certificates should be synced to Cloudflare.
+        ![Select Certificates](/images/platform/pki/certificate-syncs/cloudflare-custom-ssl/cloudflare-certificates.png)
+
+        7. Review your Cloudflare Custom SSL Certificate Sync configuration, then click **Create Sync**.
+        ![Confirm Configuration](/images/platform/pki/certificate-syncs/cloudflare-custom-ssl/cloudflare-review.png)
+
+        8. If enabled, your Cloudflare Custom SSL Certificate Sync will begin syncing your certificates to the destination endpoint.
+        ![Sync Certificates](/images/platform/pki/certificate-syncs/cloudflare-custom-ssl/cloudflare-synced.png)
+    </Tab>
+    <Tab title="API">
+        To create a **Cloudflare Custom SSL Certificate Sync**, make an API request to the [Create Cloudflare Custom SSL Certificate Sync](/api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/create) API endpoint.
+
+        ### Sample request
+
+        <Note>
+          You can optionally specify `certificateIds` during sync creation to immediately add certificates to the sync.
+          If not provided, you can add certificates later using the certificate management endpoints.
+        </Note>
+
+        ```bash Request
+        curl --request POST \
+        --url https://app.infisical.com/api/v1/cert-manager/syncs/cloudflare-custom-certificate \
+        --header 'Authorization: Bearer <access-token>' \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-cloudflare-cert-sync",
+            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "description": "an example certificate sync",
+            "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "destination": "cloudflare-custom-certificate",
+            "isAutoSyncEnabled": true,
+            "certificateIds": [
+                "550e8400-e29b-41d4-a716-446655440000",
+                "660f1234-e29b-41d4-a716-446655440001"
+            ],
+            "syncOptions": {
+                "canRemoveCertificates": true,
+                "certificateNameSchema": "myapp-{{certificateId}}"
+            },
+            "destinationConfig": {
+                "zoneId": "023e105f4ecef8ad9ca31a8372d0c353"
+            }
+        }'
+        ```
+
+        ### Sample response
+
+        ```json Response
+        {
+            "pkiSync": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-cloudflare-cert-sync",
+                "description": "an example certificate sync",
+                "destination": "cloudflare-custom-certificate",
+                "isAutoSyncEnabled": true,
+                "destinationConfig": {
+                    "zoneId": "023e105f4ecef8ad9ca31a8372d0c353"
+                },
+                "syncOptions": {
+                    "canRemoveCertificates": true,
+                    "certificateNameSchema": "myapp-{{certificateId}}"
+                },
+                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2023-01-01T00:00:00.000Z",
+                "updatedAt": "2023-01-01T00:00:00.000Z"
+            }
+        }
+        ```
+    </Tab>
+
+</Tabs>
+
+## Certificate Management
+
+Your Cloudflare Custom SSL Certificate Sync will:
+
+- **Automatic Deployment**: Deploy certificates in Infisical to Cloudflare as Custom SSL certificates.
+- **Certificate Updates**: Update certificates in Cloudflare when renewals occur.
+- **Expiration Handling**: Optionally remove expired certificates from Cloudflare (if enabled).
+- **Chain Management**: Properly bundle certificate chains for optimal browser compatibility.
+
+<Note>
+  Cloudflare Custom SSL Certificate Syncs support both automatic and manual
+  synchronization modes. When auto-sync is enabled, certificates are
+  automatically deployed as they are issued or renewed.
+</Note>
+
+## Manual Certificate Sync
+
+You can manually trigger certificate synchronization to Cloudflare using the sync certificates functionality. This is useful for:
+
+- Initial setup when you have existing certificates to deploy
+- One-time sync of specific certificates
+- Testing certificate sync configurations
+- Force sync after making changes
+
+To manually sync certificates, use the [Sync Certificates](/api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/sync-certificates) API endpoint or the manual sync option in the Infisical UI.
+
+<Note>
+  Cloudflare does not support importing certificates back into Infisical
+  due to security limitations where private keys cannot be extracted from Cloudflare.
+</Note>
