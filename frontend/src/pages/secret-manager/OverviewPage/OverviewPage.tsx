@@ -955,7 +955,7 @@ export const OverviewPage = () => {
           secretsToDeleteKeys={secretsToDeleteKeys}
           usedBySecretSyncs={usedBySecretSyncs}
         />
-        <UnstableCard className="mt-8 mb-60">
+        <UnstableCard>
           <UnstableCardHeader>
             <div className="flex flex-col gap-3 overflow-hidden lg:flex-row lg:items-center">
               <div className="flex flex-1 items-center gap-x-3 overflow-hidden whitespace-nowrap lg:mr-auto">
