@@ -2630,6 +2630,9 @@ export const AppConnections = {
       apiToken: "The API token used to authenticate with DBT.",
       accountId: "The account ID of your DBT account.",
       instanceUrl: "The base URL of your DBT instance."
+    },
+    OPEN_ROUTER: {
+      apiKey: "The OpenRouter Provisioning API key used to manage API keys."
     }
   }
 };
@@ -2892,6 +2895,11 @@ export const SecretSyncs = {
       projectName: "The name of the Northflank project to sync secrets to.",
       secretGroupId: "The ID of the Northflank secret group to sync secrets to.",
       secretGroupName: "The name of the Northflank secret group to sync secrets to."
+    },
+    CIRCLECI: {
+      orgName: "The CircleCI organization name to sync secrets to.",
+      projectId: "The CircleCI project ID to sync secrets to.",
+      projectName: "The CircleCI project name to sync secrets to."
     }
   }
 };
@@ -3019,6 +3027,13 @@ export const SecretRotations = {
     },
     DBT_SERVICE_TOKEN: {
       permissionGrants: "The permission grants to apply to the service token."
+    },
+    OPEN_ROUTER_API_KEY: {
+      name: "The name for the generated OpenRouter API key.",
+      limit: "The optional spending limit in USD for the generated API key.",
+      limitReset: "The type of limit reset for the API key (daily, weekly, monthly, or null for no reset).",
+      includeByokInLimit:
+        "Whether to include BYOK (Bring Your Own Key) usage in the spending limit. When enabled, usage from your own provider keys counts toward this key's limit. See OpenRouter BYOK docs for details."
     }
   },
   SECRETS_MAPPING: {
@@ -3068,6 +3083,9 @@ export const SecretRotations = {
     },
     DBT_SERVICE_TOKEN: {
       serviceToken: "The name of the secret that the service token will be mapped to."
+    },
+    OPEN_ROUTER_API_KEY: {
+      apiKey: "The name of the secret that the rotated OpenRouter API key will be mapped to."
     }
   }
 };

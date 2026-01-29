@@ -374,8 +374,13 @@ export const certificateProfileServiceFactory = ({
         message: "API enrollment requires API configuration"
       });
     }
-    // TODO: acme type currently doesn't require config obj, but add a check in the future if
-    //       we have options
+    if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
+      if (data.acmeConfig.skipEabBinding && data.acmeConfig.skipDnsOwnershipVerification) {
+        throw new ForbiddenRequestError({
+          message: "Cannot skip both External Account Binding (EAB) and DNS ownership verification at the same time."
+        });
+      }
+    }
 
     // Create enrollment configs and profile
     const profile = await certificateProfileDAL.transaction(async (tx) => {
@@ -422,6 +427,7 @@ export const certificateProfileServiceFactory = ({
         const acmeConfig = await acmeEnrollmentConfigDAL.create(
           {
             skipDnsOwnershipVerification: data.acmeConfig.skipDnsOwnershipVerification ?? false,
+            skipEabBinding: data.acmeConfig.skipEabBinding ?? false,
             encryptedEabSecret
           },
           tx
@@ -524,6 +530,20 @@ export const certificateProfileServiceFactory = ({
       );
     }
 
+    if (finalEnrollmentType === EnrollmentType.ACME && data.acmeConfig && existingProfile.acmeConfigId) {
+      const existingAcmeConfig = await acmeEnrollmentConfigDAL.findById(existingProfile.acmeConfigId);
+      if (existingAcmeConfig) {
+        const finalSkipEabBinding = data.acmeConfig.skipEabBinding ?? existingAcmeConfig.skipEabBinding;
+        const finalSkipDnsOwnershipVerification =
+          data.acmeConfig.skipDnsOwnershipVerification ?? existingAcmeConfig.skipDnsOwnershipVerification;
+
+        if (finalSkipEabBinding && finalSkipDnsOwnershipVerification) {
+          throw new ForbiddenRequestError({
+            message: "Cannot skip both External Account Binding (EAB) and DNS ownership verification at the same time."
+          });
+        }
+      }
+    }
     // Validate defaultTtlDays against policy constraints if provided
     if (data.defaultTtlDays !== undefined) {
       const policyId = data.certificatePolicyId || existingProfile.certificatePolicyId;
@@ -576,13 +596,16 @@ export const certificateProfileServiceFactory = ({
       }
 
       if (acmeConfig && existingProfile.acmeConfigId) {
-        await acmeEnrollmentConfigDAL.updateById(
-          existingProfile.acmeConfigId,
-          {
-            skipDnsOwnershipVerification: acmeConfig.skipDnsOwnershipVerification ?? false
-          },
-          tx
-        );
+        const acmeUpdateData: { skipDnsOwnershipVerification?: boolean; skipEabBinding?: boolean } = {};
+        if (acmeConfig.skipDnsOwnershipVerification !== undefined) {
+          acmeUpdateData.skipDnsOwnershipVerification = acmeConfig.skipDnsOwnershipVerification;
+        }
+        if (acmeConfig.skipEabBinding !== undefined) {
+          acmeUpdateData.skipEabBinding = acmeConfig.skipEabBinding;
+        }
+        if (Object.keys(acmeUpdateData).length > 0) {
+          await acmeEnrollmentConfigDAL.updateById(existingProfile.acmeConfigId, acmeUpdateData, tx);
+        }
       }
 
       const profileResult = await certificateProfileDAL.updateById(profileId, profileUpdateData, tx);

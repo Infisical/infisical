@@ -13,6 +13,7 @@ import { DatabricksServicePrincipalSecretRotationReviewFields } from "./Databric
 import { DbtServiceTokenRotationReviewFields } from "./DbtServiceTokenRotationReviewFields";
 import { LdapPasswordRotationReviewFields } from "./LdapPasswordRotationReviewFields";
 import { OktaClientSecretRotationReviewFields } from "./OktaClientSecretRotationReviewFields";
+import { OpenRouterApiKeyRotationReviewFields } from "./OpenRouterApiKeyRotationReviewFields";
 import { RedisCredentialsRotationReviewFields } from "./RedisCredentialsRotationReviewFields";
 import { SqlCredentialsRotationReviewFields } from "./shared";
 import { UnixLinuxLocalAccountRotationReviewFields } from "./UnixLinuxLocalAccountRotationReviewFields";
@@ -32,7 +33,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.DatabricksServicePrincipalSecret]:
     DatabricksServicePrincipalSecretRotationReviewFields,
   [SecretRotation.UnixLinuxLocalAccount]: UnixLinuxLocalAccountRotationReviewFields,
-  [SecretRotation.DbtServiceToken]: DbtServiceTokenRotationReviewFields
+  [SecretRotation.DbtServiceToken]: DbtServiceTokenRotationReviewFields,
+  [SecretRotation.OpenRouterApiKey]: OpenRouterApiKeyRotationReviewFields
 };
 
 export const SecretRotationV2ReviewFields = () => {

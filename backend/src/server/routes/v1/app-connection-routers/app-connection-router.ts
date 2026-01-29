@@ -50,6 +50,10 @@ import {
   SanitizedChecklyConnectionSchema
 } from "@app/services/app-connection/checkly";
 import {
+  CircleCIConnectionListItemSchema,
+  SanitizedCircleCIConnectionSchema
+} from "@app/services/app-connection/circleci";
+import {
   CloudflareConnectionListItemSchema,
   SanitizedCloudflareConnectionSchema
 } from "@app/services/app-connection/cloudflare/cloudflare-connection-schema";
@@ -107,6 +111,10 @@ import {
   SanitizedOctopusDeployConnectionSchema
 } from "@app/services/app-connection/octopus-deploy";
 import { OktaConnectionListItemSchema, SanitizedOktaConnectionSchema } from "@app/services/app-connection/okta";
+import {
+  OpenRouterConnectionListItemSchema,
+  SanitizedOpenRouterConnectionSchema
+} from "@app/services/app-connection/open-router";
 import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
@@ -176,6 +184,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedZabbixConnectionSchema.options,
   ...SanitizedRailwayConnectionSchema.options,
   ...SanitizedChecklyConnectionSchema.options,
+  ...SanitizedCircleCIConnectionSchema.options,
   ...SanitizedSupabaseConnectionSchema.options,
   ...SanitizedDigitalOceanConnectionSchema.options,
   ...SanitizedNetlifyConnectionSchema.options,
@@ -189,7 +198,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedDNSMadeEasyConnectionSchema.options,
   ...SanitizedOctopusDeployConnectionSchema.options,
   ...SanitizedSshConnectionSchema.options,
-  ...SanitizedDbtConnectionSchema.options
+  ...SanitizedDbtConnectionSchema.options,
+  ...SanitizedOpenRouterConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -226,6 +236,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   ZabbixConnectionListItemSchema,
   RailwayConnectionListItemSchema,
   ChecklyConnectionListItemSchema,
+  CircleCIConnectionListItemSchema,
   SupabaseConnectionListItemSchema,
   DigitalOceanConnectionListItemSchema,
   NetlifyConnectionListItemSchema,
@@ -239,7 +250,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   DNSMadeEasyConnectionListItemSchema,
   OctopusDeployConnectionListItemSchema,
   SshConnectionListItemSchema,
-  DbtConnectionListItemSchema
+  DbtConnectionListItemSchema,
+  OpenRouterConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

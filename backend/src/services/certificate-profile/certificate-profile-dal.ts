@@ -179,7 +179,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db
             .ref("skipDnsOwnershipVerification")
             .withSchema(TableName.PkiAcmeEnrollmentConfig)
-            .as("acmeConfigSkipDnsOwnershipVerification")
+            .as("acmeConfigSkipDnsOwnershipVerification"),
+          db.ref("skipEabBinding").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeConfigSkipEabBinding")
         )
         .where(`${TableName.PkiCertificateProfile}.id`, id)
         .first();
@@ -210,7 +211,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         ? ({
             id: result.acmeConfigId,
             encryptedEabSecret: result.acmeConfigEncryptedEabSecret,
-            skipDnsOwnershipVerification: result.acmeConfigSkipDnsOwnershipVerification ?? false
+            skipDnsOwnershipVerification: result.acmeConfigSkipDnsOwnershipVerification ?? false,
+            skipEabBinding: result.acmeConfigSkipEabBinding ?? false
           } as TCertificateProfileWithConfigs["acmeConfig"])
         : undefined;
 
@@ -377,7 +379,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db
             .ref("skipDnsOwnershipVerification")
             .withSchema(TableName.PkiAcmeEnrollmentConfig)
-            .as("acmeSkipDnsOwnershipVerification")
+            .as("acmeSkipDnsOwnershipVerification"),
+          db.ref("skipEabBinding").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeSkipEabBinding")
         );
 
       if (processedRules) {
@@ -415,7 +418,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         const acmeConfig = result.acmeId
           ? {
               id: result.acmeId as string,
-              skipDnsOwnershipVerification: !!result.acmeSkipDnsOwnershipVerification
+              skipDnsOwnershipVerification: !!result.acmeSkipDnsOwnershipVerification,
+              skipEabBinding: !!result.acmeSkipEabBinding
             }
           : undefined;
 

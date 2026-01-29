@@ -45,7 +45,9 @@ export enum AppConnection {
   Northflank = "northflank",
   OctopusDeploy = "octopus-deploy",
   SSH = "ssh",
-  Dbt = "dbt"
+  Dbt = "dbt",
+  OpenRouter = "open-router",
+  CircleCI = "circleci"
 }
 
 export enum AWSRegion {

@@ -1,8 +1,10 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { SingleValue } from "react-select";
 import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -19,10 +21,15 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
+import {
+  ProjectPermissionCertificatePolicyActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import { usePopUp } from "@app/hooks";
 import { CaType } from "@app/hooks/api/ca/enums";
 import { useGetAzureAdcsTemplates, useListCasByProjectId } from "@app/hooks/api/ca/queries";
-import { useListCertificatePolicies } from "@app/hooks/api/certificatePolicies";
+import { TCertificatePolicy, useListCertificatePolicies } from "@app/hooks/api/certificatePolicies";
 import {
   EnrollmentType,
   IssuerType,
@@ -32,6 +39,9 @@ import {
   useCreateCertificateProfile,
   useUpdateCertificateProfile
 } from "@app/hooks/api/certificateProfiles";
+
+import { CreatePolicyModal } from "../CertificatePoliciesTab/CreatePolicyModal";
+import { CertificatePolicyOption } from "./CertificatePolicyOption";
 
 const createSchema = z
   .object({
@@ -80,7 +90,8 @@ const createSchema = z
       .optional(),
     acmeConfig: z
       .object({
-        skipDnsOwnershipVerification: z.boolean().optional()
+        skipDnsOwnershipVerification: z.boolean().optional(),
+        skipEabBinding: z.boolean().optional()
       })
       .optional(),
     externalConfigs: z
@@ -174,6 +185,17 @@ const createSchema = z
   )
   .refine(
     (data) => {
+      if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
+        return !(data.acmeConfig.skipEabBinding && data.acmeConfig.skipDnsOwnershipVerification);
+      }
+      return true;
+    },
+    {
+      message: "Cannot skip both EAB and DNS ownership validation."
+    }
+  )
+  .refine(
+    (data) => {
       if (data.issuerType === IssuerType.CA) {
         return !!data.certificateAuthorityId;
       }
@@ -241,7 +263,8 @@ const editSchema = z
       .optional(),
     acmeConfig: z
       .object({
-        skipDnsOwnershipVerification: z.boolean().optional()
+        skipDnsOwnershipVerification: z.boolean().optional(),
+        skipEabBinding: z.boolean().optional()
       })
       .optional(),
     externalConfigs: z
@@ -331,6 +354,17 @@ const editSchema = z
     },
     {
       message: "ACME enrollment type cannot have EST or API configuration"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
+        return !(data.acmeConfig.skipEabBinding && data.acmeConfig.skipDnsOwnershipVerification);
+      }
+      return true;
+    },
+    {
+      message: "Cannot skip both EAB and DNS ownership validation."
     }
   )
   .refine(
@@ -428,6 +462,14 @@ interface Props {
 
 export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }: Props) => {
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
+  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["createPolicy"] as const);
+  const queryClient = useQueryClient();
+
+  const canCreatePolicy = permission.can(
+    ProjectPermissionCertificatePolicyActions.Create,
+    ProjectPermissionSub.CertificatePolicies
+  );
 
   const { data: allCaData } = useListCasByProjectId(currentProject?.id || "");
   const { data: policyData } = useListCertificatePolicies({
@@ -446,6 +488,15 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
     groupType: ca.type === "internal" ? "internal" : "external"
   }));
   const certificatePolicies = policyData?.certificatePolicies || [];
+
+  type PolicyOption = TCertificatePolicy | { id: "_create"; name: string };
+
+  const policyOptions: PolicyOption[] = [
+    ...(canCreatePolicy && !isEdit
+      ? [{ id: "_create" as const, name: "Add Certificate Policy" }]
+      : []),
+    ...certificatePolicies
+  ];
 
   const getGroupHeaderLabel = (groupType: "internal" | "external") => {
     switch (groupType) {
@@ -488,7 +539,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
             profile.enrollmentType === EnrollmentType.ACME
               ? {
                   skipDnsOwnershipVerification:
-                    profile.acmeConfig?.skipDnsOwnershipVerification || false
+                    profile.acmeConfig?.skipDnsOwnershipVerification || false,
+                  skipEabBinding: profile.acmeConfig?.skipEabBinding || false
                 }
               : undefined,
           externalConfigs: profile.externalConfigs
@@ -515,7 +567,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
             renewBeforeDays: 30
           },
           acmeConfig: {
-            skipDnsOwnershipVerification: false
+            skipDnsOwnershipVerification: false,
+            skipEabBinding: false
           },
           externalConfigs: undefined,
           defaultTtl: {
@@ -530,6 +583,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
   const watchedCertificateAuthorityId = watch("certificateAuthorityId");
   const watchedDisableBootstrapValidation = watch("estConfig.disableBootstrapCaValidation");
   const watchedAutoRenew = watch("apiConfig.autoRenew");
+  const watchedSkipDnsOwnershipVerification = watch("acmeConfig.skipDnsOwnershipVerification");
+  const watchedSkipEabBinding = watch("acmeConfig.skipEabBinding");
 
   // Get the selected CA to check if it's Azure ADCS
   const selectedCa = certificateAuthorities.find((ca) => ca.id === watchedCertificateAuthorityId);
@@ -571,7 +626,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
           profile.enrollmentType === EnrollmentType.ACME
             ? {
                 skipDnsOwnershipVerification:
-                  profile.acmeConfig?.skipDnsOwnershipVerification || false
+                  profile.acmeConfig?.skipDnsOwnershipVerification || false,
+                skipEabBinding: profile.acmeConfig?.skipEabBinding || false
               }
             : undefined,
         externalConfigs: profile.externalConfigs
@@ -786,7 +842,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                       });
                       setValue("estConfig", undefined);
                       setValue("acmeConfig", {
-                        skipDnsOwnershipVerification: false
+                        skipDnsOwnershipVerification: false,
+                        skipEabBinding: false
                       });
                     }
                     onChange(value);
@@ -890,16 +947,23 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
           <Controller
             control={control}
             name="certificatePolicyId"
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
               <FormControl
                 label="Certificate Policy"
                 isRequired
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
-                <Select
-                  {...field}
-                  onValueChange={(value) => {
+                <FilterableSelect
+                  value={certificatePolicies.find((p) => p.id === value) ?? null}
+                  onChange={(newValue) => {
+                    const selected = newValue as SingleValue<PolicyOption>;
+                    if (selected?.id === "_create") {
+                      handlePopUpOpen("createPolicy");
+                      return;
+                    }
+                    onChange(selected?.id || "");
+
                     if (watchedEnrollmentType === "est") {
                       setValue("apiConfig", undefined);
                       setValue("estConfig", {
@@ -918,26 +982,22 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                       setValue("estConfig", undefined);
                       setValue("apiConfig", undefined);
                       setValue("acmeConfig", {
-                        skipDnsOwnershipVerification: false
+                        skipDnsOwnershipVerification: false,
+                        skipEabBinding: false
                       });
                     }
-                    onChange(value);
                   }}
+                  options={policyOptions}
+                  getOptionLabel={(option) => option.name}
+                  getOptionValue={(option) => option.id}
                   placeholder={
-                    certificatePolicies.length === 0
+                    certificatePolicies.length === 0 && !canCreatePolicy
                       ? "No certificate policies available"
                       : "Select a certificate policy"
                   }
-                  className="w-full"
-                  position="popper"
-                  isDisabled={Boolean(isEdit) || certificatePolicies.length === 0}
-                >
-                  {certificatePolicies.map((policy) => (
-                    <SelectItem key={policy.id} value={policy.id}>
-                      {policy.name}
-                    </SelectItem>
-                  ))}
-                </Select>
+                  isDisabled={Boolean(isEdit)}
+                  components={{ Option: CertificatePolicyOption }}
+                />
               </FormControl>
             )}
           />
@@ -973,7 +1033,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                       setValue("apiConfig", undefined);
                       setValue("estConfig", undefined);
                       setValue("acmeConfig", {
-                        skipDnsOwnershipVerification: false
+                        skipDnsOwnershipVerification: false,
+                        skipEabBinding: false
                       });
                     }
                     onChange(value);
@@ -1177,14 +1238,56 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
             <div className="mb-4 space-y-4">
               <Controller
                 control={control}
+                name="acmeConfig.skipEabBinding"
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl isError={Boolean(error)} errorText={error?.message}>
+                    <div
+                      className={`flex items-center gap-3 rounded-md border bg-mineshaft-900 p-4 ${
+                        watchedSkipDnsOwnershipVerification
+                          ? "border-mineshaft-700 opacity-50"
+                          : "border-mineshaft-600"
+                      }`}
+                    >
+                      <Checkbox
+                        id="skipEabBinding"
+                        isChecked={value || false}
+                        onCheckedChange={onChange}
+                        isDisabled={watchedSkipDnsOwnershipVerification}
+                      />
+                      <div className="space-y-1">
+                        <span className="text-sm font-medium text-mineshaft-100">
+                          Skip External Account Binding (EAB)
+                        </span>
+                        <p className="text-xs text-bunker-300">
+                          Skip EAB authentication when clients create ACME accounts.
+                        </p>
+                        {watchedSkipDnsOwnershipVerification && (
+                          <p className="text-xs text-yellow-500">
+                            Cannot be enabled while DNS ownership validation is skipped.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
                 name="acmeConfig.skipDnsOwnershipVerification"
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <FormControl isError={Boolean(error)} errorText={error?.message}>
-                    <div className="flex items-center gap-3 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4">
+                    <div
+                      className={`flex items-center gap-3 rounded-md border bg-mineshaft-900 p-4 ${
+                        watchedSkipEabBinding
+                          ? "border-mineshaft-700 opacity-50"
+                          : "border-mineshaft-600"
+                      }`}
+                    >
                       <Checkbox
                         id="skipDnsOwnershipVerification"
                         isChecked={value || false}
                         onCheckedChange={onChange}
+                        isDisabled={watchedSkipEabBinding}
                       />
                       <div className="space-y-1">
                         <span className="text-sm font-medium text-mineshaft-100">
@@ -1193,6 +1296,11 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                         <p className="text-xs text-bunker-300">
                           Skip DNS ownership verification during ACME certificate issuance.
                         </p>
+                        {watchedSkipEabBinding && (
+                          <p className="text-xs text-yellow-500">
+                            Cannot be enabled while EAB is skipped.
+                          </p>
+                        )}
                       </div>
                     </div>
                   </FormControl>
@@ -1262,6 +1370,17 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
             </Button>
           </div>
         </form>
+        <CreatePolicyModal
+          isOpen={popUp.createPolicy.isOpen}
+          onClose={() => handlePopUpToggle("createPolicy", false)}
+          onComplete={async (createdPolicy) => {
+            await queryClient.refetchQueries({
+              queryKey: ["list-certificate-policies", currentProject?.id]
+            });
+            setValue("certificatePolicyId", createdPolicy.id, { shouldValidate: true });
+            handlePopUpToggle("createPolicy", false);
+          }}
+        />
       </ModalContent>
     </Modal>
   );

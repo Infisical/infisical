@@ -21,6 +21,7 @@ import { BitbucketConnectionForm } from "./BitbucketConnectionForm";
 import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { ChecklyConnectionForm } from "./ChecklyConnectionForm";
 import { ChefConnectionForm } from "./ChefConnectionForm";
+import { CircleCIConnectionForm } from "./CircleCIConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { DbtConnectionForm } from "./DbtConnectionForm";
@@ -44,6 +45,7 @@ import { NorthflankConnectionForm } from "./NorthflankConnectionForm";
 import { OCIConnectionForm } from "./OCIConnectionForm";
 import { OctopusDeployConnectionForm } from "./OctopusDeployConnectionForm";
 import { OktaConnectionForm } from "./OktaConnectionForm";
+import { OpenRouterConnectionForm } from "./OpenRouterConnectionForm";
 import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { RailwayConnectionForm } from "./RailwayConnectionForm";
@@ -185,6 +187,10 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       return <SshConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Dbt:
       return <DbtConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.OpenRouter:
+      return <OpenRouterConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.CircleCI:
+      return <CircleCIConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -351,6 +357,10 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <SshConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Dbt:
       return <DbtConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.OpenRouter:
+      return <OpenRouterConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.CircleCI:
+      return <CircleCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

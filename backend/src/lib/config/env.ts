@@ -531,7 +531,9 @@ export const initEnvConfig = async (
 export const getTelemetryConfig = () => {
   const parsedEnv = envSchema.safeParse(process.env);
   if (!parsedEnv.success) {
+    // eslint-disable-next-line no-console
     console.error("Invalid environment variables. Check the error below");
+    // eslint-disable-next-line no-console
     console.error(parsedEnv.error.issues);
     process.exit(-1);
   }

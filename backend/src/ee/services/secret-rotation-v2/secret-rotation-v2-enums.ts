@@ -12,7 +12,8 @@ export enum SecretRotation {
   MongoDBCredentials = "mongodb-credentials",
   DatabricksServicePrincipalSecret = "databricks-service-principal-secret",
   UnixLinuxLocalAccount = "unix-linux-local-account",
-  DbtServiceToken = "dbt-service-token"
+  DbtServiceToken = "dbt-service-token",
+  OpenRouterApiKey = "open-router-api-key"
 }
 
 export enum SecretRotationStatus {
