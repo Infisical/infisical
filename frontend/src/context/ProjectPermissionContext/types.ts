@@ -190,10 +190,10 @@ export enum ProjectPermissionSecretScanningConfigActions {
 }
 
 export enum ProjectPermissionSecretEventActions {
-  SubscribeCreated = "subscribe-on-created",
-  SubscribeUpdated = "subscribe-on-updated",
-  SubscribeDeleted = "subscribe-on-deleted",
-  SubscribeImportMutations = "subscribe-on-import-mutations"
+  SubscribeToCreationEvents = "subscribe-to-creation-events",
+  SubscribeToUpdateEvents = "subscribe-to-update-events",
+  SubscribeToDeletionEvents = "subscribe-to-deletion-events",
+  SubscribeToImportMutationEvents = "subscribe-to-import-mutation-events"
 }
 
 export enum ProjectPermissionAuditLogsActions {
@@ -278,7 +278,7 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.SecretFolders
   | ProjectPermissionSub.SecretImports
   | ProjectPermissionSub.SecretRotation
-  | ProjectPermissionSub.SecretEvents
+  | ProjectPermissionSub.SecretEventSubscriptions
   | ProjectPermissionSub.AppConnections
   | ProjectPermissionSub.PamAccounts
   | ProjectPermissionSub.McpEndpoints;
@@ -363,7 +363,7 @@ export enum ProjectPermissionSub {
   SecretScanningDataSources = "secret-scanning-data-sources",
   SecretScanningFindings = "secret-scanning-findings",
   SecretScanningConfigs = "secret-scanning-configs",
-  SecretEvents = "secret-events",
+  SecretEventSubscriptions = "secret-event-subscriptions",
   AppConnections = "app-connections",
   PamFolders = "pam-folders",
   PamResources = "pam-resources",
@@ -606,8 +606,8 @@ export type ProjectPermissionSet =
   | [
       ProjectPermissionSecretEventActions,
       (
-        | ProjectPermissionSub.SecretEvents
-        | (ForcedSubject<ProjectPermissionSub.SecretEvents> & SecretEventSubjectFields)
+        | ProjectPermissionSub.SecretEventSubscriptions
+        | (ForcedSubject<ProjectPermissionSub.SecretEventSubscriptions> & SecretEventSubjectFields)
       )
     ]
   | [

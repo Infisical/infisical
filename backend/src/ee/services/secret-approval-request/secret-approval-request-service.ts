@@ -73,6 +73,7 @@ import {
 } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "../permission/project-permission";
+import { ProjectEvents, TProjectEventPayload } from "../project-events/project-events-types";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
 import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";
 import { TSecretSnapshotServiceFactory } from "../secret-snapshot/secret-snapshot-service";
@@ -1000,6 +1001,39 @@ export const secretApprovalRequestServiceFactory = ({
     }
 
     const { secrets } = mergeStatus;
+    const events: TProjectEventPayload[] = [];
+    if (secrets.created.length > 0) {
+      events.push({
+        type: ProjectEvents.SecretCreate,
+        projectId,
+        environment: folder.environmentSlug,
+        secretPath: folder.path,
+        // @ts-expect-error - not present on V1 secrets
+        secretKeys: secrets.created.map((el) => el.key as string)
+      });
+    }
+
+    if (secrets.updated.length > 0) {
+      events.push({
+        type: ProjectEvents.SecretUpdate,
+        projectId,
+        environment: folder.environmentSlug,
+        secretPath: folder.path,
+        // @ts-expect-error - not present on V1 secrets
+        secretKeys: secrets.updated.map((el) => el.key as string)
+      });
+    }
+
+    if (secrets.deleted.length > 0) {
+      events.push({
+        type: ProjectEvents.SecretDelete,
+        projectId,
+        environment: folder.environmentSlug,
+        secretPath: folder.path,
+        // @ts-expect-error - not present on V1 secrets
+        secretKeys: secrets.deleted.map((el) => el.key as string)
+      });
+    }
 
     await secretQueueService.syncSecrets({
       projectId,
@@ -1008,29 +1042,7 @@ export const secretApprovalRequestServiceFactory = ({
       environmentSlug: folder.environmentSlug,
       actorId,
       actor,
-      event: {
-        created: secrets.created.map((el) => ({
-          environment: folder.environmentSlug,
-          secretPath: folder.path,
-          secretId: el.id,
-          // @ts-expect-error - not present on V1 secrets
-          secretKey: el.key as string
-        })),
-        updated: secrets.updated.map((el) => ({
-          environment: folder.environmentSlug,
-          secretPath: folder.path,
-          secretId: el.id,
-          // @ts-expect-error - not present on V1 secrets
-          secretKey: el.key as string
-        })),
-        deleted: secrets.deleted.map((el) => ({
-          environment: folder.environmentSlug,
-          secretPath: folder.path,
-          secretId: el.id,
-          // @ts-expect-error - not present on V1 secrets
-          secretKey: el.key as string
-        }))
-      }
+      events
     });
 
     if (isSoftEnforcement) {
