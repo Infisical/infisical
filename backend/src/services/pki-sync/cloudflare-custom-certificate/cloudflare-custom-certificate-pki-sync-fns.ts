@@ -75,16 +75,19 @@ export const cloudflareCustomCertificatePkiSyncFactory = ({
           request.get<{
             result: CloudflareEdgeCertificate[];
             result_info: { page: number; per_page: number; total_pages: number; total_count: number };
-          }>(`${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones/${zoneId}/custom_certificates`, {
-            headers: {
-              Authorization: `Bearer ${apiToken}`,
-              "Content-Type": "application/json"
-            },
-            params: {
-              page: currentPage,
-              per_page: perPage
+          }>(
+            `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones/${encodeURIComponent(zoneId)}/custom_certificates`,
+            {
+              headers: {
+                Authorization: `Bearer ${apiToken}`,
+                "Content-Type": "application/json"
+              },
+              params: {
+                page: currentPage,
+                per_page: perPage
+              }
             }
-          }),
+          ),
         { operation: "list-edge-certificates", syncId }
       );
 
@@ -253,7 +256,7 @@ export const cloudflareCustomCertificatePkiSyncFactory = ({
             const patchResponse = await withRateLimitRetry(
               () =>
                 request.patch<{ result: CloudflareEdgeCertificate }>(
-                  `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones/${zoneId}/custom_certificates/${existingCloudflareId}`,
+                  `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones/${encodeURIComponent(zoneId)}/custom_certificates/${existingCloudflareId}`,
                   {
                     certificate: fullCertificate,
                     private_key: privateKey,
@@ -285,7 +288,7 @@ export const cloudflareCustomCertificatePkiSyncFactory = ({
             const response = await withRateLimitRetry(
               () =>
                 request.post<{ result: CloudflareEdgeCertificate }>(
-                  `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones/${zoneId}/custom_certificates`,
+                  `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones/${encodeURIComponent(zoneId)}/custom_certificates`,
                   {
                     certificate: fullCertificate,
                     private_key: privateKey,
@@ -366,7 +369,7 @@ export const cloudflareCustomCertificatePkiSyncFactory = ({
             await withRateLimitRetry(
               () =>
                 request.delete(
-                  `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones/${zoneId}/custom_certificates/${cloudflareCertId}`,
+                  `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones/${encodeURIComponent(zoneId)}/custom_certificates/${cloudflareCertId}`,
                   {
                     headers: {
                       Authorization: `Bearer ${apiToken}`
@@ -515,7 +518,7 @@ export const cloudflareCustomCertificatePkiSyncFactory = ({
           await withRateLimitRetry(
             () =>
               request.delete(
-                `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones/${zoneId}/custom_certificates/${cloudflareCertId}`,
+                `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones/${encodeURIComponent(zoneId)}/custom_certificates/${cloudflareCertId}`,
                 {
                   headers: {
                     Authorization: `Bearer ${apiToken}`
