@@ -1233,7 +1233,7 @@ export const certificateV3ServiceFactory = ({
     const csrHasKeyCertSign = certificateRequest.keyUsages?.includes(CertKeyUsageType.KEY_CERT_SIGN) ?? false;
     const effectiveBasicConstraints = basicConstraints ?? certificateRequest.basicConstraints;
     const shouldIssueAsCA = effectiveBasicConstraints?.isCA === true || csrHasKeyCertSign;
-    
+
     // Compute the final basicConstraints to store/use
     const resolvedBasicConstraints = shouldIssueAsCA
       ? { isCA: true, pathLength: effectiveBasicConstraints?.pathLength }
