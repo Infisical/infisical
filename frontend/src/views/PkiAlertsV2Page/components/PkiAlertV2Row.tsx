@@ -21,7 +21,9 @@ import {
   Tr
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { PkiAlertEventTypeV2, TPkiAlertV2, useUpdatePkiAlertV2 } from "@app/hooks/api/pkiAlertsV2";
+import { TPkiAlertV2, useUpdatePkiAlertV2 } from "@app/hooks/api/pkiAlertsV2";
+
+import { formatAlertBefore, formatEventType } from "../utils/pki-alert-formatters";
 
 interface Props {
   alert: TPkiAlertV2;
@@ -32,21 +34,6 @@ interface Props {
 
 export const PkiAlertV2Row = ({ alert, onView, onEdit, onDelete }: Props) => {
   const { mutateAsync: updateAlert } = useUpdatePkiAlertV2();
-
-  const formatEventType = (eventType: PkiAlertEventTypeV2) => {
-    switch (eventType) {
-      case PkiAlertEventTypeV2.EXPIRATION:
-        return "Certificate Expiration";
-      case PkiAlertEventTypeV2.RENEWAL:
-        return "Certificate Renewal";
-      case PkiAlertEventTypeV2.ISSUANCE:
-        return "Certificate Issuance";
-      case PkiAlertEventTypeV2.REVOCATION:
-        return "Certificate Revocation";
-      default:
-        return eventType;
-    }
-  };
 
   const handleToggleAlert = async () => {
     try {
@@ -64,23 +51,6 @@ export const PkiAlertV2Row = ({ alert, onView, onEdit, onDelete }: Props) => {
         type: "error"
       });
     }
-  };
-
-  const formatAlertBefore = (alertBefore?: string) => {
-    if (!alertBefore) return "-";
-
-    const match = alertBefore.match(/^(\\d+)([dwmy])$/);
-    if (!match) return alertBefore;
-
-    const [, value, unit] = match;
-    const unitMap = {
-      d: "days",
-      w: "weeks",
-      m: "months",
-      y: "years"
-    };
-
-    return `${value} ${unitMap[unit as keyof typeof unitMap] || unit}`;
   };
 
   return (
@@ -104,6 +74,31 @@ export const PkiAlertV2Row = ({ alert, onView, onEdit, onDelete }: Props) => {
         </Badge>
       </Td>
       <Td className="text-gray-300">{formatAlertBefore(alert.alertBefore)}</Td>
+      <Td>
+        {alert.lastRun ? (
+          <Tooltip
+            content={
+              <div className="max-w-sm">
+                <div className="text-xs text-mineshaft-300">
+                  {new Date(alert.lastRun.timestamp)
+                    .toISOString()
+                    .replace("T", " ")
+                    .replace("Z", " UTC")}
+                </div>
+                {alert.lastRun.error && (
+                  <div className="mt-1 text-xs break-words text-red-400">{alert.lastRun.error}</div>
+                )}
+              </div>
+            }
+          >
+            <Badge variant={alert.lastRun.status === "success" ? "success" : "danger"}>
+              {alert.lastRun.status === "success" ? "Success" : "Failed"}
+            </Badge>
+          </Tooltip>
+        ) : (
+          <span className="text-mineshaft-500">—</span>
+        )}
+      </Td>
       <Td className="text-right">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

@@ -1942,7 +1942,8 @@ export const registerRoutes = async (
     pkiAlertChannelDAL,
     pkiAlertHistoryDAL,
     permissionService,
-    smtpService
+    smtpService,
+    kmsService
   });
 
   const pkiAlertV2Queue = pkiAlertV2QueueServiceFactory({

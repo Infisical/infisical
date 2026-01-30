@@ -74,9 +74,14 @@ export const EmailChannelConfigSchema = z.object({
 
 export const WebhookChannelConfigSchema = z.object({
   url: z.string().url(),
-  method: z.enum(["POST", "PUT"]).default("POST"),
-  headers: z.record(z.string()).optional()
+  signingSecret: z.string().max(256).optional().nullable()
 });
+
+// Response type for webhook config - signingSecret is replaced with hasSigningSecret
+export type TWebhookChannelConfigResponse = {
+  url: string;
+  hasSigningSecret: boolean;
+};
 
 export const SlackChannelConfigSchema = z.object({
   webhookUrl: z.string().url(),
@@ -114,7 +119,7 @@ export const CreatePkiAlertV2Schema = z.object({
   alertBefore: z.string().refine(createSecureAlertBeforeValidator(), "Must be in format like '30d', '1w', '3m', '1y'"),
   filters: PkiFiltersSchema,
   enabled: z.boolean().default(true),
-  channels: z.array(CreateChannelSchema).min(1, "At least one channel is required")
+  channels: z.array(CreateChannelSchema).default([])
 });
 
 export type TCreatePkiAlertV2 = z.infer<typeof CreatePkiAlertV2Schema>;
@@ -173,6 +178,15 @@ export type TCertificatePreview = {
   status: string;
 };
 
+// Channel config type for responses (webhook has hasSigningSecret instead of signingSecret)
+export type TChannelConfigResponse = TEmailChannelConfig | TWebhookChannelConfigResponse | TSlackChannelConfig;
+
+export type TLastRun = {
+  timestamp: Date;
+  status: "success" | "failed";
+  error: string | null;
+};
+
 export type TAlertV2Response = {
   id: string;
   name: string;
@@ -185,11 +199,12 @@ export type TAlertV2Response = {
   channels: Array<{
     id: string;
     channelType: PkiAlertChannelType;
-    config: TChannelConfig;
+    config: TChannelConfigResponse;
     enabled: boolean;
     createdAt: Date;
     updatedAt: Date;
   }>;
+  lastRun: TLastRun | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -202,4 +217,10 @@ export type TListAlertsV2Response = {
 export type TListMatchingCertificatesResponse = {
   certificates: TCertificatePreview[];
   total: number;
+};
+
+export type TTestWebhookConfigDTO = TGenericPermission & {
+  projectId: string;
+  url: string;
+  signingSecret?: string;
 };

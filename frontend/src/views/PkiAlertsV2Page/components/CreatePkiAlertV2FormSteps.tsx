@@ -1,13 +1,28 @@
 /* eslint-disable react/no-array-index-key */
 import { useState } from "react";
-import { Controller, useFormContext } from "react-hook-form";
-import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { Controller, useFieldArray, useFormContext } from "react-hook-form";
+import {
+  faCheck,
+  faChevronDown,
+  faCircleInfo,
+  faEnvelope,
+  faKey,
+  faLink,
+  faPlus,
+  faTrash,
+  faTriangleExclamation,
+  faXmark
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Tab } from "@headlessui/react";
 
 import { CertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
 import {
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   FormControl,
   FormLabel,
   GenericFieldLabel,
@@ -17,6 +32,7 @@ import {
   Select,
   SelectItem,
   Skeleton,
+  Switch,
   Table,
   TableContainer,
   TBody,
@@ -24,29 +40,103 @@ import {
   TextArea,
   Th,
   THead,
+  Tooltip,
   Tr
 } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import {
+  Badge,
+  UnstableAccordion as Accordion,
+  UnstableAccordionContent as AccordionContent,
+  UnstableAccordionItem as AccordionItem,
+  UnstableAccordionTrigger as AccordionTrigger
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
+  PkiAlertChannelTypeV2,
   PkiAlertEventTypeV2,
   PkiFilterFieldV2,
   PkiFilterOperatorV2,
   TCreatePkiAlertV2,
-  TPkiAlertChannelV2,
+  TPkiAlertChannelConfigEmail,
+  TPkiAlertChannelConfigWebhook,
   TPkiFilterRuleV2,
-  useGetPkiAlertV2CurrentMatchingCertificates
+  useGetPkiAlertV2CurrentMatchingCertificates,
+  useTestPkiWebhookConfigV2
 } from "@app/hooks/api/pkiAlertsV2";
 
-export const CreatePkiAlertV2FormSteps = () => {
-  const { control, watch, setValue } = useFormContext<TCreatePkiAlertV2>();
+import {
+  formatAlertBefore,
+  formatEventType,
+  getChannelIcon,
+  getChannelSummary
+} from "../utils/pki-alert-formatters";
+
+interface CreatePkiAlertV2FormStepsProps {
+  expandedChannel: string | undefined;
+  setExpandedChannel: (channel: string | undefined) => void;
+}
+
+/**
+ * Multi-step form for creating/editing PKI alerts.
+ *
+ * CHANNEL STATE MANAGEMENT:
+ * - emailInputValues: keyed by index (synchronous, needs shifting on add/remove)
+ * - webhookTestStates: keyed by field.id (async, uses stable ID to avoid race conditions)
+ *
+ * Why prepend new channels (index 0) instead of append?
+ * - New channels appear at top for immediate visibility
+ * - User can quickly configure the just-added channel
+ */
+export const CreatePkiAlertV2FormSteps = ({
+  expandedChannel,
+  setExpandedChannel
+}: CreatePkiAlertV2FormStepsProps) => {
+  const {
+    control,
+    watch,
+    setValue,
+    formState: { errors }
+  } = useFormContext<TCreatePkiAlertV2>();
   const { currentProject } = useProject();
 
   const [certificatesPage, setCertificatesPage] = useState(1);
-  const certificatesPerPage = 10;
+  const certificatesPerPage = 6;
+
+  /**
+   * Stores raw text input for email fields while user is typing.
+   * Key = channel index, Value = comma-separated email string.
+   *
+   * Why not update the form directly?
+   * Parsing "email1, email2," to an array would lose the trailing comma
+   * while the user is still typing. We only parse to array on blur.
+   */
+  const [emailInputValues, setEmailInputValues] = useState<Record<number, string>>({});
+
+  /**
+   * Tracks webhook test results per channel.
+   * Key = field.id (stable identifier from useFieldArray), Value = { success, error, isLoading }
+   *
+   * We use field.id instead of numeric index because the test is async.
+   * If we used index, switching accordions during the API call would
+   * cause the result to appear on the wrong channel.
+   */
+  const [webhookTestStates, setWebhookTestStates] = useState<
+    Record<string, { success: boolean | null; error?: string; isLoading?: boolean }>
+  >({});
+
+  const { mutateAsync: testWebhookConfig } = useTestPkiWebhookConfigV2();
+
+  const {
+    fields: channelFields,
+    prepend: prependChannel,
+    remove: removeChannel
+  } = useFieldArray({
+    control,
+    name: "channels"
+  });
 
   const watchedFilters = watch("filters");
-  const watchedChannels = watch("channels");
+  const watchedChannels = watch("channels") || [];
   const watchedEventType = watch("eventType");
   const watchedAlertBefore = watch("alertBefore");
 
@@ -91,13 +181,148 @@ export const CreatePkiAlertV2FormSteps = () => {
     setValue("filters", currentFilters);
   };
 
-  const updateChannel = (
-    index: number,
-    updatedChannel: Partial<Omit<TPkiAlertChannelV2, "id" | "createdAt" | "updatedAt">>
-  ) => {
-    const currentChannels = [...(watchedChannels || [])];
-    currentChannels[index] = { ...currentChannels[index], ...updatedChannel };
-    setValue("channels", currentChannels);
+  /**
+   * Adds a new channel at index 0 (prepended to the list).
+   *
+   * Because useFieldArray.prepend adds at index 0, emailInputValues indices
+   * must shift up by 1. webhookTestStates uses field.id so no shifting needed.
+   */
+  const addChannel = (type: PkiAlertChannelTypeV2) => {
+    // Shift existing emailInputValues indices up by 1
+    setEmailInputValues((prev) => {
+      const shifted: typeof prev = {};
+      Object.entries(prev).forEach(([key, value]) => {
+        shifted[parseInt(key, 10) + 1] = value;
+      });
+      return shifted;
+    });
+
+    // Shift expandedChannel index up by 1 if one is currently expanded
+    if (expandedChannel) {
+      const match = expandedChannel.match(/^channel-(\d+)$/);
+      if (match) {
+        setExpandedChannel(`channel-${parseInt(match[1], 10) + 1}`);
+      }
+    }
+
+    prependChannel({
+      channelType: type,
+      config: type === PkiAlertChannelTypeV2.EMAIL ? { recipients: [] } : { url: "" },
+      enabled: true
+    });
+
+    // Expand the newly added channel at index 0
+    setExpandedChannel("channel-0");
+  };
+
+  /**
+   * Sends a test request to the webhook URL to verify connectivity.
+   *
+   * Validates URL format client-side before making the API call.
+   * The backend sends a test payload and reports success/failure,
+   * which we display inline next to the test button.
+   */
+  const handleTestWebhook = async (fieldId: string, index: number) => {
+    if (!currentProject?.id) return;
+
+    const channel = watchedChannels[index];
+    const webhookConfig = channel.config as TPkiAlertChannelConfigWebhook;
+
+    // Validate URL before making API call
+    if (!webhookConfig.url) {
+      setWebhookTestStates((prev) => ({
+        ...prev,
+        [fieldId]: { success: false, error: "Please enter a webhook URL", isLoading: false }
+      }));
+      return;
+    }
+
+    try {
+      // eslint-disable-next-line no-new
+      new URL(webhookConfig.url);
+    } catch {
+      setWebhookTestStates((prev) => ({
+        ...prev,
+        [fieldId]: { success: false, error: "Please enter a valid URL", isLoading: false }
+      }));
+      return;
+    }
+
+    setWebhookTestStates((prev) => ({
+      ...prev,
+      [fieldId]: { success: null, isLoading: true }
+    }));
+
+    try {
+      const result = await testWebhookConfig({
+        projectId: currentProject.id,
+        url: webhookConfig.url,
+        signingSecret: webhookConfig.signingSecret || undefined
+      });
+
+      if (result.success) {
+        setWebhookTestStates((prev) => ({
+          ...prev,
+          [fieldId]: { success: true, isLoading: false }
+        }));
+      } else {
+        setWebhookTestStates((prev) => ({
+          ...prev,
+          [fieldId]: {
+            success: false,
+            error: result.error || "Failed to send test notification",
+            isLoading: false
+          }
+        }));
+      }
+    } catch {
+      setWebhookTestStates((prev) => ({
+        ...prev,
+        [fieldId]: {
+          success: false,
+          error: "Failed to send test notification",
+          isLoading: false
+        }
+      }));
+    }
+  };
+
+  /**
+   * Removes a channel and cleans up associated UI state.
+   *
+   * For emailInputValues: indices above the deleted one shift down by 1.
+   * For webhookTestStates: just delete by field.id (no shifting needed).
+   */
+  const deleteChannel = (fieldId: string, index: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    removeChannel(index);
+
+    // Clean up email input values - shift indices
+    setEmailInputValues((prev) => {
+      const newValues = { ...prev };
+      delete newValues[index];
+      const shifted: typeof newValues = {};
+      Object.entries(newValues).forEach(([key, value]) => {
+        const keyNum = parseInt(key, 10);
+        if (keyNum > index) {
+          shifted[keyNum - 1] = value;
+        } else {
+          shifted[keyNum] = value;
+        }
+      });
+      return shifted;
+    });
+
+    // Clean up webhook test states - delete by field.id (no shifting needed)
+    setWebhookTestStates((prev) => {
+      const newStates = { ...prev };
+      delete newStates[fieldId];
+      return newStates;
+    });
+
+    if (expandedChannel === `channel-${index}`) {
+      setExpandedChannel(undefined);
+    }
   };
 
   const getFieldOperators = (field: PkiFilterFieldV2) => {
@@ -115,44 +340,12 @@ export const CreatePkiAlertV2FormSteps = () => {
     return operator === PkiFilterOperatorV2.MATCHES;
   };
 
-  const formatEventType = (eventType: PkiAlertEventTypeV2) => {
-    switch (eventType) {
-      case PkiAlertEventTypeV2.EXPIRATION:
-        return "Certificate Expiration";
-      case PkiAlertEventTypeV2.RENEWAL:
-        return "Certificate Renewal";
-      case PkiAlertEventTypeV2.ISSUANCE:
-        return "Certificate Issuance";
-      case PkiAlertEventTypeV2.REVOCATION:
-        return "Certificate Revocation";
-      default:
-        return eventType;
-    }
-  };
-
-  const formatAlertBefore = (alertBefore?: string) => {
-    if (!alertBefore) return "-";
-
-    const match = alertBefore.match(/^(\d+)([dwmy])$/);
-    if (!match) return alertBefore;
-
-    const [, value, unit] = match;
-    const unitMap = {
-      d: "days",
-      w: "weeks",
-      m: "months",
-      y: "years"
-    };
-
-    return `${value} ${unitMap[unit as keyof typeof unitMap] || unit}`;
-  };
-
   return (
     <>
       <Tab.Panel>
         <div className="space-y-6">
           <p className="mb-4 text-sm text-bunker-300">
-            Choose the event that will trigger this alert notification.
+            Choose the event type and configure basic details for your alert.
           </p>
 
           <div className="w-full">
@@ -174,14 +367,6 @@ export const CreatePkiAlertV2FormSteps = () => {
               )}
             />
           </div>
-        </div>
-      </Tab.Panel>
-
-      <Tab.Panel>
-        <div className="space-y-6">
-          <p className="mb-4 text-sm text-bunker-300">
-            Configure the name, description, and timing for your alert.
-          </p>
 
           <Controller
             control={control}
@@ -482,38 +667,235 @@ export const CreatePkiAlertV2FormSteps = () => {
       </Tab.Panel>
 
       <Tab.Panel>
-        <div className="space-y-6">
-          <p className="mb-4 text-sm text-bunker-300">
-            Set up email notifications to receive alerts when events occur.
-          </p>
-
-          <div className="space-y-4">
-            <FormControl label="Email Recipients">
-              <TextArea
-                value={
-                  Array.isArray((watchedChannels?.[0]?.config as any)?.recipients)
-                    ? (watchedChannels[0].config as any).recipients.join(", ")
-                    : ""
-                }
-                onChange={(e) => {
-                  const emailList = e.target.value
-                    .split(",")
-                    .map((email) => email.trim())
-                    .filter((email) => email.length > 0);
-                  updateChannel(0, { config: { recipients: emailList }, enabled: true });
-                }}
-                placeholder="admin@example.com, security@example.com"
-                className="w-full"
-                rows={2}
-              />
-            </FormControl>
+        <div className="flex min-h-[400px] flex-col gap-6">
+          <div className="flex justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline_bg"
+                  size="sm"
+                  rightIcon={<FontAwesomeIcon icon={faChevronDown} className="ml-1" />}
+                >
+                  Add Channel
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" sideOffset={4}>
+                <DropdownMenuItem onClick={() => addChannel(PkiAlertChannelTypeV2.EMAIL)}>
+                  <FontAwesomeIcon icon={faEnvelope} className="mr-2" />
+                  Email
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => addChannel(PkiAlertChannelTypeV2.WEBHOOK)}>
+                  <FontAwesomeIcon icon={faLink} className="mr-2" />
+                  Webhook
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
+
+          {channelFields.length > 0 ? (
+            <Accordion
+              type="single"
+              collapsible
+              value={expandedChannel}
+              onValueChange={setExpandedChannel}
+              className="border-mineshaft-500 bg-mineshaft-600"
+            >
+              {channelFields.map((field, index) => {
+                const channel = watchedChannels[index];
+                const channelError = errors.channels?.[index];
+                return (
+                  <AccordionItem
+                    key={field.id}
+                    value={`channel-${index}`}
+                    className="border-mineshaft-600"
+                  >
+                    <AccordionTrigger className="group bg-mineshaft-800 hover:bg-mineshaft-600 data-[state=open]:bg-mineshaft-700 data-[state=open]:hover:bg-mineshaft-600">
+                      <div className="flex flex-1 items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <FontAwesomeIcon
+                            icon={getChannelIcon(channel?.channelType)}
+                            className="text-mineshaft-300"
+                          />
+                          <span className="text-sm font-medium capitalize">
+                            {channel?.channelType}
+                          </span>
+                          <span className="text-xs text-mineshaft-400 group-data-[state=open]:hidden">
+                            {channel && getChannelSummary(channel)}
+                          </span>
+                        </div>
+                        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
+                        <div
+                          className="flex items-center gap-2"
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
+                        >
+                          <Controller
+                            control={control}
+                            name={`channels.${index}.enabled`}
+                            render={({ field: enabledField }) => (
+                              <Switch
+                                id={`channel-enabled-${index}`}
+                                isChecked={enabledField.value}
+                                onCheckedChange={enabledField.onChange}
+                              />
+                            )}
+                          />
+                          <IconButton
+                            size="sm"
+                            variant="plain"
+                            colorSchema="danger"
+                            ariaLabel="Delete channel"
+                            onClick={(e) => deleteChannel(field.id, index, e)}
+                          >
+                            <FontAwesomeIcon icon={faTrash} />
+                          </IconButton>
+                        </div>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="bg-mineshaft-800">
+                      {/*
+                       * Email recipients use a "raw text while typing" pattern:
+                       * - onChange: store raw comma-separated text in emailInputValues
+                       * - onBlur: parse to array and update form field
+                       * This preserves partial input (e.g., "user@" while typing)
+                       */}
+                      {channel?.channelType === PkiAlertChannelTypeV2.EMAIL && (
+                        <Controller
+                          control={control}
+                          name={`channels.${index}.config.recipients`}
+                          render={({ field: recipientsField, fieldState: { error } }) => (
+                            <FormControl
+                              label="Email Recipients"
+                              helperText="Enter email addresses separated by commas"
+                              isError={Boolean(error || channelError?.config)}
+                              errorText={
+                                error?.message ||
+                                (channelError?.config as { message?: string })?.message
+                              }
+                            >
+                              <TextArea
+                                value={
+                                  emailInputValues[index] !== undefined
+                                    ? emailInputValues[index]
+                                    : recipientsField.value?.join(", ") || ""
+                                }
+                                onChange={(e) => {
+                                  // Store raw text while typing - don't parse yet
+                                  setEmailInputValues((prev) => ({
+                                    ...prev,
+                                    [index]: e.target.value
+                                  }));
+                                }}
+                                onBlur={() => {
+                                  // Parse to array only on blur
+                                  const rawValue = emailInputValues[index];
+                                  if (rawValue !== undefined) {
+                                    const emails = rawValue
+                                      .split(",")
+                                      .map((s) => s.trim())
+                                      .filter(Boolean);
+                                    recipientsField.onChange(emails);
+                                  }
+                                  recipientsField.onBlur();
+                                }}
+                                placeholder="admin@example.com, security@example.com"
+                                rows={2}
+                              />
+                            </FormControl>
+                          )}
+                        />
+                      )}
+
+                      {channel?.channelType === PkiAlertChannelTypeV2.WEBHOOK && (
+                        <div className="space-y-4">
+                          <Controller
+                            control={control}
+                            name={`channels.${index}.config.url`}
+                            render={({ field: urlField, fieldState: { error } }) => (
+                              <FormControl
+                                label="Webhook URL"
+                                isRequired
+                                isError={Boolean(error)}
+                                errorText={error?.message}
+                              >
+                                <Input
+                                  value={urlField.value || ""}
+                                  onChange={urlField.onChange}
+                                  onBlur={urlField.onBlur}
+                                  placeholder="https://api.example.com/webhook"
+                                />
+                              </FormControl>
+                            )}
+                          />
+                          <Controller
+                            control={control}
+                            name={`channels.${index}.config.signingSecret`}
+                            render={({ field: secretField }) => (
+                              <FormControl
+                                label={
+                                  <div className="flex items-center gap-1">
+                                    <span>Signing Secret</span>
+                                    <Tooltip content="Adding a signing secret enables webhook signature verification, helping ensure requests are genuinely from Infisical. The signature is sent via the x-infisical-signature header.">
+                                      <FontAwesomeIcon
+                                        icon={faCircleInfo}
+                                        className="text-mineshaft-400"
+                                      />
+                                    </Tooltip>
+                                  </div>
+                                }
+                              >
+                                <Input
+                                  type="password"
+                                  value={secretField.value || ""}
+                                  onChange={secretField.onChange}
+                                  onBlur={secretField.onBlur}
+                                  placeholder="Enter signing secret..."
+                                />
+                              </FormControl>
+                            )}
+                          />
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="outline_bg"
+                              size="sm"
+                              onClick={() => handleTestWebhook(field.id, index)}
+                              isLoading={webhookTestStates[field.id]?.isLoading}
+                            >
+                              Test
+                            </Button>
+                            {webhookTestStates[field.id]?.success === true && (
+                              <span className="flex items-center gap-1 text-sm text-green-500">
+                                <FontAwesomeIcon icon={faCheck} />
+                                Success
+                              </span>
+                            )}
+                            {webhookTestStates[field.id]?.success === false && (
+                              <span className="flex items-center gap-1 text-sm text-red-500">
+                                <FontAwesomeIcon icon={faXmark} />
+                                {webhookTestStates[field.id]?.error || "Failed"}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+          ) : (
+            <div className="flex flex-1 items-center justify-center text-bunker-400">
+              No notification channels configured. Click &quot;Add Channel&quot; to add one.
+            </div>
+          )}
         </div>
       </Tab.Panel>
 
       <Tab.Panel>
         <div className="mb-4 flex flex-col gap-6">
-          <p className="mb-4 text-sm text-bunker-300">
+          <p className="text-sm text-bunker-300">
             Please review the settings below before creating your alert.
           </p>
 
@@ -575,15 +957,87 @@ export const CreatePkiAlertV2FormSteps = () => {
 
           <div className="flex flex-col gap-3">
             <div className="w-full border-b border-mineshaft-600">
-              <span className="text-sm text-mineshaft-300">Notifications</span>
+              <span className="text-sm text-mineshaft-300">Notification Channels</span>
             </div>
-            <div className="flex flex-wrap gap-x-8 gap-y-3">
-              <GenericFieldLabel label="Email Recipients">
-                {Array.isArray((watchedChannels?.[0]?.config as any)?.recipients)
-                  ? (watchedChannels[0].config as any).recipients.join(", ")
-                  : (watchedChannels?.[0]?.config as any)?.recipients || "No recipients"}
-              </GenericFieldLabel>
-            </div>
+            {watchedChannels.length > 0 ? (
+              <div className="space-y-2">
+                {watchedChannels.map((channel, index) => (
+                  <div
+                    key={`review-channel-${index}`}
+                    className="flex items-center gap-3 rounded-md border border-mineshaft-600 px-3 py-2"
+                  >
+                    <FontAwesomeIcon
+                      icon={getChannelIcon(channel.channelType)}
+                      className="text-mineshaft-400"
+                    />
+                    <div className="flex flex-1 flex-col">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-mineshaft-100 capitalize">
+                          {channel.channelType}
+                        </span>
+                        {channel.channelType === PkiAlertChannelTypeV2.WEBHOOK &&
+                          ((channel.config as TPkiAlertChannelConfigWebhook).signingSecret ? (
+                            <Tooltip content="Signed webhook - requests will include signature verification">
+                              <FontAwesomeIcon
+                                icon={faKey}
+                                className="text-xs text-mineshaft-400"
+                              />
+                            </Tooltip>
+                          ) : (
+                            <Tooltip content="Unsigned webhook - consider adding a signing secret for security">
+                              <FontAwesomeIcon
+                                icon={faTriangleExclamation}
+                                className="text-xs text-mineshaft-400"
+                              />
+                            </Tooltip>
+                          ))}
+                      </div>
+                      <span className="max-w-[300px] text-xs text-mineshaft-400">
+                        {channel.channelType === PkiAlertChannelTypeV2.EMAIL
+                          ? (() => {
+                              const config = channel.config as TPkiAlertChannelConfigEmail;
+                              const count = config.recipients.length;
+                              if (count === 0) return "No recipients";
+                              const displayEmails = config.recipients.slice(0, 3);
+                              const truncated = displayEmails.map((e) =>
+                                e.length > 20 ? `${e.slice(0, 20)}...` : e
+                              );
+                              const displayText =
+                                count <= 3
+                                  ? truncated.join(", ")
+                                  : `${truncated.join(", ")} +${count - 3} more`;
+
+                              if (count > 3) {
+                                return (
+                                  <Tooltip content={config.recipients.join(", ")}>
+                                    <span className="cursor-help">{displayText}</span>
+                                  </Tooltip>
+                                );
+                              }
+                              return displayText;
+                            })()
+                          : (() => {
+                              const config = channel.config as TPkiAlertChannelConfigWebhook;
+                              try {
+                                const url = new URL(config.url);
+                                return url.hostname;
+                              } catch {
+                                return config.url || "Not configured";
+                              }
+                            })()}
+                      </span>
+                    </div>
+                    {!channel.enabled && (
+                      <Badge variant="neutral" className="text-xs">
+                        Disabled
+                      </Badge>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <span className="text-sm text-mineshaft-400">No channels configured</span>
+            )}
           </div>
         </div>
       </Tab.Panel>
