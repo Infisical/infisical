@@ -17,7 +17,7 @@ export const GeneralPermissionConditions = ({ position = 0, isDisabled, type }: 
       ? [
           { value: "environment", label: "Environment Slug" },
           { value: "secretPath", label: "Secret Path" },
-          { value: "connectionId", label: "Connection ID" }
+          { value: "connectionId", label: "App Connection Id" }
         ]
       : [
           { value: "environment", label: "Environment Slug" },
