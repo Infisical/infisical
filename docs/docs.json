@@ -224,6 +224,7 @@
                       {
                         "group": "OIDC",
                         "pages": [
+                          "documentation/platform/sso/okta-oidc",
                           {
                             "group": "Keycloak OIDC",
                             "pages": [
