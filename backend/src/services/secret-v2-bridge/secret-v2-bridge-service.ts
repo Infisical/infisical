@@ -2033,7 +2033,13 @@ export const secretV2BridgeServiceFactory = ({
         });
 
         // get all tags
-        const sanitizedTagIds = [...new Set(secretsToUpdate.flatMap(({ tagIds = [] }) => tagIds))];
+        // get all tags (include create + update in upsert)
+        const inputSecrets = [...secretsToUpdate, ...secretsToCreate];
+
+        const sanitizedTagIds = [
+          ...new Set(inputSecrets.flatMap(({ tagIds = [] }) => tagIds))
+        ];
+
         const tags = sanitizedTagIds.length ? await secretTagDAL.findManyTagsById(projectId, sanitizedTagIds, tx) : [];
         if (tags.length !== sanitizedTagIds.length) throw new NotFoundError({ message: "Tag not found" });
         const tagsGroupByID = groupBy(tags, (i) => i.id);
