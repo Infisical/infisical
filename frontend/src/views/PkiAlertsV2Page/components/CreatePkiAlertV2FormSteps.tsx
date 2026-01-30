@@ -4,7 +4,6 @@ import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import {
   faCheck,
   faChevronDown,
-  faCircleInfo,
   faEnvelope,
   faKey,
   faLink,
@@ -833,17 +832,8 @@ export const CreatePkiAlertV2FormSteps = ({
                             name={`channels.${index}.config.signingSecret`}
                             render={({ field: secretField }) => (
                               <FormControl
-                                label={
-                                  <div className="flex items-center gap-1">
-                                    <span>Signing Secret</span>
-                                    <Tooltip content="Adding a signing secret enables webhook signature verification, helping ensure requests are genuinely from Infisical. The signature is sent via the x-infisical-signature header.">
-                                      <FontAwesomeIcon
-                                        icon={faCircleInfo}
-                                        className="text-mineshaft-400"
-                                      />
-                                    </Tooltip>
-                                  </div>
-                                }
+                                label="Signing Secret"
+                                tooltipText="Adding a signing secret enables webhook signature verification, helping ensure requests are genuinely from Infisical. The signature is sent via the x-infisical-signature header."
                               >
                                 <Input
                                   type="password"
