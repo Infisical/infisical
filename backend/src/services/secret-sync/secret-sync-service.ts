@@ -102,7 +102,8 @@ export const secretSyncServiceFactory = ({
       projectId
     });
 
-    const getConnectionId = (sync: TSecretSync) => sync.connectionId ?? sync.connection?.id;
+    const getConnectionId = (sync: { connectionId?: string; connection?: { id: string } }) =>
+      sync.connectionId ?? sync.connection?.id;
 
     return secretSyncs.filter((secretSync) =>
       permission.can(
