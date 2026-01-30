@@ -114,8 +114,8 @@ export const RotationsBrowser = () => {
     },
     {
       name: "OpenRouter API Key",
-      slug: "open-router-api-key",
-      path: "/documentation/platform/secret-rotation/open-router-api-key",
+      slug: "openrouter-api-key",
+      path: "/documentation/platform/secret-rotation/openrouter-api-key",
       description:
         "Learn how to automatically rotate OpenRouter API keys.",
       category: "AI & LLM",
