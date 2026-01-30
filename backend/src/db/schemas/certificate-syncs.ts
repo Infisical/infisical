@@ -16,7 +16,8 @@ export const CertificateSyncsSchema = z.object({
   lastSyncedAt: z.date().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  externalIdentifier: z.string().nullable().optional()
+  externalIdentifier: z.string().nullable().optional(),
+  syncMetadata: z.unknown().nullable().optional()
 });
 
 export type TCertificateSyncs = z.infer<typeof CertificateSyncsSchema>;

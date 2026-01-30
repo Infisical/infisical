@@ -172,7 +172,8 @@ describe("CertificateV3Service", () => {
       certificateSyncDAL: {
         findPkiSyncIdsByCertificateId: vi.fn().mockResolvedValue([]),
         addCertificates: vi.fn().mockResolvedValue([]),
-        findByPkiSyncAndCertificate: vi.fn().mockResolvedValue(null)
+        findByPkiSyncAndCertificate: vi.fn().mockResolvedValue(null),
+        updateSyncMetadata: vi.fn().mockResolvedValue(null)
       },
       pkiSyncDAL: {
         find: vi.fn().mockResolvedValue([])

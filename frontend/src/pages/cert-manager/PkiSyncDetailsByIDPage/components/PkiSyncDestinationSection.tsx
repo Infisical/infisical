@@ -13,6 +13,7 @@ import { PkiSync, TPkiSync } from "@app/hooks/api/pkiSyncs";
 
 import {
   AwsCertificateManagerPkiSyncDestinationSection,
+  AwsElasticLoadBalancerPkiSyncDestinationSection,
   AwsSecretsManagerPkiSyncDestinationSection,
   AzureKeyVaultPkiSyncDestinationSection,
   ChefPkiSyncDestinationSection
@@ -39,6 +40,9 @@ export const PkiSyncDestinationSection = ({ pkiSync, onEditDestination }: Props)
   switch (destination) {
     case PkiSync.AwsCertificateManager:
       DestinationComponents = <AwsCertificateManagerPkiSyncDestinationSection pkiSync={pkiSync} />;
+      break;
+    case PkiSync.AwsElasticLoadBalancer:
+      DestinationComponents = <AwsElasticLoadBalancerPkiSyncDestinationSection pkiSync={pkiSync} />;
       break;
     case PkiSync.AwsSecretsManager:
       DestinationComponents = <AwsSecretsManagerPkiSyncDestinationSection pkiSync={pkiSync} />;

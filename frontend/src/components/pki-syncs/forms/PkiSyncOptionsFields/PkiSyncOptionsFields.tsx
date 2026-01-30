@@ -80,6 +80,12 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
                         When enabled, Infisical will remove certificates from the destination during
                         a sync if they are no longer active in Infisical.
                       </p>
+                      {currentDestination === PkiSync.AwsElasticLoadBalancer && (
+                        <p className="mt-4">
+                          For AWS Elastic Load Balancer, this will remove the certificate from both
+                          the load balancer listeners and AWS Certificate Manager.
+                        </p>
+                      )}
                       <p className="mt-4">
                         Disable this option if you intend to manage some certificates manually
                         outside of Infisical.
@@ -137,7 +143,8 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
         )}
       />
 
-      {currentDestination === PkiSync.AwsCertificateManager && (
+      {(currentDestination === PkiSync.AwsCertificateManager ||
+        currentDestination === PkiSync.AwsElasticLoadBalancer) && (
         <Controller
           control={control}
           name="syncOptions.preserveArn"

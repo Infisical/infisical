@@ -258,3 +258,43 @@ export const useRemoveCertificatesFromPkiSync = () => {
     }
   });
 };
+
+export const useSetCertificateAsDefault = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      pkiSyncId,
+      certificateId,
+      destination
+    }: {
+      pkiSyncId: string;
+      certificateId: string;
+      destination: string;
+    }) => {
+      const { data } = await apiRequest.post<{ message: string }>(
+        `/api/v1/cert-manager/syncs/${destination}/${pkiSyncId}/certificates/${certificateId}/set-default`
+      );
+
+      return data;
+    },
+    onSuccess: (_, { pkiSyncId }) => {
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.certificates(pkiSyncId) });
+    }
+  });
+};
+
+export const useClearDefaultCertificate = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ pkiSyncId, destination }: { pkiSyncId: string; destination: string }) => {
+      const { data } = await apiRequest.delete<{ message: string }>(
+        `/api/v1/cert-manager/syncs/${destination}/${pkiSyncId}/default-certificate`
+      );
+
+      return data;
+    },
+    onSuccess: (_, { pkiSyncId }) => {
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.certificates(pkiSyncId) });
+    }
+  });
+};

@@ -1,6 +1,7 @@
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
 
 import { TAwsCertificateManagerPkiSync } from "./aws-certificate-manager-sync";
+import { TAwsElasticLoadBalancerPkiSync } from "./aws-elastic-load-balancer-sync";
 import { TAwsSecretsManagerPkiSync } from "./aws-secrets-manager-sync";
 import { TAzureKeyVaultPkiSync } from "./azure-key-vault-sync";
 import { TChefPkiSync } from "./chef-sync";
@@ -22,6 +23,7 @@ export type TPkiSync =
   | TAzureKeyVaultPkiSync
   | TAwsCertificateManagerPkiSync
   | TAwsSecretsManagerPkiSync
+  | TAwsElasticLoadBalancerPkiSync
   | TChefPkiSync;
 
 export type TListPkiSyncs = { pkiSyncs: TPkiSync[] };
@@ -61,6 +63,12 @@ export type TCreatePkiSyncDTO = TCreatePkiSyncDTOBase & {
     vaultBaseUrl?: string;
     region?: string;
     dataBagName?: string;
+    loadBalancerArn?: string;
+    listeners?: Array<{
+      listenerArn: string;
+      port?: number;
+      protocol?: string;
+    }>;
   };
 };
 
@@ -94,6 +102,7 @@ export type TTriggerPkiSyncRemoveCertificatesDTO = {
 };
 
 export * from "./aws-certificate-manager-sync";
+export * from "./aws-elastic-load-balancer-sync";
 export * from "./aws-secrets-manager-sync";
 export * from "./azure-key-vault-sync";
 export * from "./chef-sync";

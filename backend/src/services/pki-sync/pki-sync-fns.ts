@@ -10,6 +10,8 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { AWS_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION } from "./aws-certificate-manager/aws-certificate-manager-pki-sync-constants";
 import { awsCertificateManagerPkiSyncFactory } from "./aws-certificate-manager/aws-certificate-manager-pki-sync-fns";
+import { AWS_ELASTIC_LOAD_BALANCER_PKI_SYNC_LIST_OPTION } from "./aws-elastic-load-balancer/aws-elastic-load-balancer-pki-sync-constants";
+import { awsElasticLoadBalancerPkiSyncFactory } from "./aws-elastic-load-balancer/aws-elastic-load-balancer-pki-sync-fns";
 import { AWS_SECRETS_MANAGER_PKI_SYNC_LIST_OPTION } from "./aws-secrets-manager/aws-secrets-manager-pki-sync-constants";
 import { awsSecretsManagerPkiSyncFactory } from "./aws-secrets-manager/aws-secrets-manager-pki-sync-fns";
 import { AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION } from "./azure-key-vault/azure-key-vault-pki-sync-constants";
@@ -25,6 +27,7 @@ const PKI_SYNC_LIST_OPTIONS = {
   [PkiSync.AzureKeyVault]: AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION,
   [PkiSync.AwsCertificateManager]: AWS_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION,
   [PkiSync.AwsSecretsManager]: AWS_SECRETS_MANAGER_PKI_SYNC_LIST_OPTION,
+  [PkiSync.AwsElasticLoadBalancer]: AWS_ELASTIC_LOAD_BALANCER_PKI_SYNC_LIST_OPTION,
   [PkiSync.Chef]: CHEF_PKI_SYNC_LIST_OPTION
 };
 
@@ -191,6 +194,11 @@ export const PkiSyncFns = {
           "Chef does not support importing certificates into Infisical (private keys cannot be extracted securely)"
         );
       }
+      case PkiSync.AwsElasticLoadBalancer: {
+        throw new Error(
+          "AWS Elastic Load Balancer does not support importing certificates into Infisical (certificates are stored in ACM)"
+        );
+      }
       default:
         throw new Error(`Unsupported PKI sync destination: ${String(pkiSync.destination)}`);
     }
@@ -254,6 +262,16 @@ export const PkiSyncFns = {
         });
         return chefPkiSync.syncCertificates(pkiSync, certificateMap);
       }
+      case PkiSync.AwsElasticLoadBalancer: {
+        checkPkiSyncDestination(pkiSync, PkiSync.AwsElasticLoadBalancer as PkiSync);
+        const awsElasticLoadBalancerPkiSync = awsElasticLoadBalancerPkiSyncFactory({
+          appConnectionDAL: dependencies.appConnectionDAL,
+          kmsService: dependencies.kmsService,
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL
+        });
+        return awsElasticLoadBalancerPkiSync.syncCertificates(pkiSync, certificateMap);
+      }
       default:
         throw new Error(`Unsupported PKI sync destination: ${String(pkiSync.destination)}`);
     }
@@ -315,6 +333,20 @@ export const PkiSyncFns = {
           certificateSyncDAL: dependencies.certificateSyncDAL
         });
         await chefPkiSync.removeCertificates(pkiSync, certificateNames, {
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          certificateMap: dependencies.certificateMap
+        });
+        break;
+      }
+      case PkiSync.AwsElasticLoadBalancer: {
+        checkPkiSyncDestination(pkiSync, PkiSync.AwsElasticLoadBalancer as PkiSync);
+        const awsElasticLoadBalancerPkiSync = awsElasticLoadBalancerPkiSyncFactory({
+          appConnectionDAL: dependencies.appConnectionDAL,
+          kmsService: dependencies.kmsService,
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL
+        });
+        await awsElasticLoadBalancerPkiSync.removeCertificates(pkiSync, certificateNames, {
           certificateSyncDAL: dependencies.certificateSyncDAL,
           certificateMap: dependencies.certificateMap
         });
