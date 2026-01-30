@@ -25,11 +25,11 @@ description: "Learn how to configure Okta OIDC for Infisical SSO."
    <Step title="Create an OIDC application in Okta">
       In the Okta Admin Portal, select Applications > Applications from the navigation. On the Applications screen, click the **Create App Integration** button.
 
-      {/* SCREENSHOT PLACEHOLDER: Screenshot of Okta Admin Portal showing the Applications page with the "Create App Integration" button highlighted - save as images/sso/okta-oidc/create-app-integration.png */}
+      ![Okta Applications page](../../../images/sso/okta-oidc/create-app-integration.png)
 
       In the Create a New Application Integration dialog, select **OIDC - OpenID Connect** as the Sign-in method and **Web Application** as the Application type, then click **Next**.
 
-      {/* SCREENSHOT PLACEHOLDER: Screenshot of the "Create a new app integration" dialog with "OIDC - OpenID Connect" and "Web Application" options selected - save as images/sso/okta-oidc/create-oidc-app.png */}
+      ![Create OIDC app integration](../../../images/sso/okta-oidc/create-oidc-app.png)
 
       On the New Web App Integration screen, configure the following settings:
       - **App integration name**: Enter a name like `Infisical`
@@ -38,7 +38,7 @@ description: "Learn how to configure Okta OIDC for Infisical SSO."
       - **Sign-out redirect URIs**: (Optional) Set to `https://app.infisical.com`
       - **Controlled access**: Select the appropriate access level for your organization
 
-      {/* SCREENSHOT PLACEHOLDER: Screenshot of the "New Web App Integration" configuration page showing the app name, grant type, and redirect URI fields - save as images/sso/okta-oidc/app-settings.png */}
+      ![App settings configuration](../../../images/sso/okta-oidc/app-settings.png)
 
       <Note>
          If you're self-hosting Infisical, replace `https://app.infisical.com` with your own domain in the redirect URIs.
@@ -50,13 +50,13 @@ description: "Learn how to configure Okta OIDC for Infisical SSO."
    <Step title="Retrieve Identity Provider (IdP) Information from Okta">
       After creating the application, you will be taken to the application's settings page. From the **General** tab, copy the **Client ID** and **Client Secret** values.
 
-      {/* SCREENSHOT PLACEHOLDER: Screenshot of the Okta application's General tab showing the Client ID and Client Secret fields - save as images/sso/okta-oidc/client-credentials.png */}
+      ![Client credentials](../../../images/sso/okta-oidc/client-credentials.png)
 
       Next, you need to obtain the Discovery Document URL (also known as the OpenID Configuration URL). This URL follows the format: `https://<your-okta-domain>/.well-known/openid-configuration`.
 
       To find your Okta domain, look at the URL in your browser's address bar while in the Okta Admin Portal. It typically looks like `https://your-company.okta.com` or `https://your-company.oktapreview.com`.
 
-      {/* SCREENSHOT PLACEHOLDER: Screenshot highlighting the Okta domain in the browser address bar - save as images/sso/okta-oidc/okta-domain.png */}
+      ![Okta domain in browser](../../../images/sso/okta-oidc/okta-domain.png)
 
       Your Discovery Document URL will be: `https://<your-okta-domain>/.well-known/openid-configuration`
 
@@ -72,7 +72,7 @@ description: "Learn how to configure Okta OIDC for Infisical SSO."
       - **Client Secret**: Enter the Client Secret from step 3
       - **JWT Signature Algorithm**: Select **RS256** (this is the default algorithm used by Okta)
 
-      {/* SCREENSHOT PLACEHOLDER: Screenshot of the Infisical OIDC configuration form with the Discovery URL, Client ID, Client Secret, and JWT Signature Algorithm fields filled in - save as images/sso/okta-oidc/infisical-oidc-config.png */}
+      ![Infisical OIDC configuration](../../../images/sso/okta-oidc/infisical-oidc-config.png)
 
       <Info>
          Currently, the following JWT signature algorithms are supported: RS256, RS512, HS256, and EdDSA. Okta typically uses RS256.
@@ -86,7 +86,7 @@ description: "Learn how to configure Okta OIDC for Infisical SSO."
    <Step title="Assign users in Okta to the application">
       Back in Okta, navigate to the **Assignments** tab of your Infisical application and click **Assign**. You can assign access to the application on a user-by-user basis using the **Assign to People** option, or in bulk using the **Assign to Groups** option.
 
-      {/* SCREENSHOT PLACEHOLDER: Screenshot of the Okta application's Assignments tab showing the Assign dropdown with "Assign to People" and "Assign to Groups" options - save as images/sso/okta-oidc/assignment.png */}
+      ![Okta user assignment](../../../images/sso/okta-oidc/assignment.png)
 
       At this point, you have configured everything you need within the context of the Okta Admin Portal.
 
