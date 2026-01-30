@@ -90,7 +90,7 @@ export const SecretCommentForm = ({
       <div className="space-y-3">
         <p className="text-sm font-medium">Comment</p>
 
-        <p className="min-h-24 rounded-md border border-border px-3 py-2 text-sm opacity-100">
+        <p className="max-h-48 min-h-24 thin-scrollbar overflow-y-auto rounded-md border border-border px-3 py-2 text-sm break-words opacity-100">
           {comment}
         </p>
         <div className="flex justify-end gap-2">
@@ -139,7 +139,7 @@ export const SecretCommentForm = ({
             {...field}
             autoFocus
             placeholder="Add a comment..."
-            className="min-h-24 resize-none"
+            className="max-h-48 min-h-24 resize-none"
           />
         )}
       />
