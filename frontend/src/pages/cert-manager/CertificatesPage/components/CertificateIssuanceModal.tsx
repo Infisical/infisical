@@ -28,7 +28,11 @@ import { useOrganization, useProject } from "@app/context";
 import { useGetCert } from "@app/hooks/api";
 import { useGetCertificatePolicyById } from "@app/hooks/api/certificatePolicies";
 import { EnrollmentType, useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
-import { CertExtendedKeyUsage, CertKeyUsage } from "@app/hooks/api/certificates/enums";
+import {
+  CertExtendedKeyUsage,
+  CertificateRequestStatus,
+  CertKeyUsage
+} from "@app/hooks/api/certificates/enums";
 import { useUnifiedCertificateIssuance } from "@app/hooks/api/certificates/mutations";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import {
@@ -277,7 +281,10 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
               }
             });
           }
-        } else if ("status" in response && response.status === "pending_approval") {
+        } else if (
+          "status" in response &&
+          response.status === CertificateRequestStatus.PENDING_APPROVAL
+        ) {
           createNotification({
             text: "Certificate request submitted successfully. Approval is required before the certificate can be issued.",
             type: "success"

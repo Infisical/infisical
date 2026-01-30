@@ -19,7 +19,7 @@ CSR-based certificate issuance is recommended when:
 
 ## Generating a CSR
 
-Before requesting a certificate, you need to generate a CSR. Here's how to do it using OpenSSL.
+Prior to requesting a certificate, a Certificate Signing Request (CSR) must be generated. While multiple tools and workflows are available, the example below illustrates how to generate a CSR using OpenSSL.
 
 ### Generate a New Key and CSR
 
@@ -168,21 +168,9 @@ Your CSR must meet the following requirements:
   </Step>
 </Steps>
 
-## Policy Compliance
-
-Your CSR must comply with the certificate policy attached to the profile. The following attributes are validated:
-
-| Attribute | Validation |
-|-----------|------------|
-| **Subject attributes** | CN, O, OU, C, ST, L must match allowed/required patterns |
-| **Subject Alternative Names** | DNS, IP, Email, URI must match policy rules |
-| **Key algorithm** | Must be in the policy's allowed key algorithms |
-| **Signature algorithm** | Must be in the policy's allowed signature algorithms |
-| **Key usages** | Must include required usages and not include denied usages |
-| **Extended key usages** | Must include required usages and not include denied usages |
-| **Basic constraints** | CA flag and path length must comply with policy |
-
-If your CSR doesn't comply with the policy, you'll receive an error message indicating which constraint was violated.
+<Tip>
+  Your CSR must comply with the [certificate policy](/documentation/platform/pki/certificates/policies) attached to the profile. The policy validates subject attributes, SANs, key algorithms, signature algorithms, key usages, and basic constraints. If your CSR doesn't comply with the policy, you'll receive an error message indicating which constraint was violated.
+</Tip>
 
 ## FAQ
 

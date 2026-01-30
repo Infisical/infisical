@@ -55,13 +55,13 @@ To [issue a certificate](/documentation/platform/pki/concepts/certificate-lifecy
   <Tab title="Infisical UI">
     <Steps>
       <Step title="Issue a certificate">
-        To issue a certificate using your CSR, navigate to your Project > Certificates > Certificate Requests and click **Request**.
+        To issue a certificate, navigate to your Project > Certificates > Certificate Requests and click **Request**.
 
         ![pki certificates](/images/platform/pki/certificate/cert-issue.png)
 
         Select the certificate profile and choose the **Request Method**:
         - **Managed**: Infisical generates and manages the private key for you. Fill out the subject attributes, SANs, algorithms, and other certificate details.
-        - **CSR (Certificate Signing Request)**: Provide your own CSR when you need to manage your private key externally. The certificate will be issued using the subject and public key from your CSR.
+        - **CSR (Certificate Signing Request)**: Provide your own CSR when you need to manage your private key externally. The certificate will be issued using the subject information and public key contained in your CSR. See [Issue a Certificate with CSR](/documentation/platform/pki/guides/request-cert-csr) for more details.
 
         ![pki certificate issue modal](/images/platform/pki/certificate/cert-issue-modal.png)
 
