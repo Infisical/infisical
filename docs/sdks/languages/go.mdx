@@ -395,7 +395,7 @@ if err != nil {
 
 ## Organization Authentication
 
-All SDK authentication methods support logging into a sub-organization that your machine identity has access to.
+All SDK authentication methods support logging into a sub-organization that your machine identity has access to. This is optional and only necessary when attempting to authenticate into a sub-organization using an identity created at the root organization.
 
 Use the `.Auth().WithOrganizationSlug("<organization-slug>")` method to specify which organization to authenticate against:
 

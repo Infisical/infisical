@@ -354,6 +354,10 @@ The login command supports a number of flags that you can use for different auth
    #### Description
     This authenticates the machine identity against the specified sub-organization.
 
+    <Tip>
+      The `organization-slug` flag can be substituted with the `INFISICAL_AUTH_ORGANIZATION_SLUG` environment variable.
+    </Tip>
+
     <Info>
        If no organization slug is provided, the authentication session defaults to the organization where the machine identity was originally created.
     </Info>
