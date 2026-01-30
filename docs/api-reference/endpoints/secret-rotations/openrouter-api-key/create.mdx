@@ -1,6 +1,6 @@
 ---
 title: "Create"
-openapi: "POST /api/v2/secret-rotations/openrouter-api-key"
+openapi: "POST /api/v2/secret-rotations/open-router-api-key"
 ---
 
 <Note>
@@ -32,7 +32,7 @@ Creates an OpenRouter API Key secret rotation. Infisical will create and rotate 
 
 ```bash
 curl --request POST \
-  --url https://us.infisical.com/api/v2/secret-rotations/openrouter-api-key \
+  --url https://us.infisical.com/api/v2/secret-rotations/open-router-api-key \
   --header 'Content-Type: application/json' \
   --header 'Authorization: Bearer <ACCESS_TOKEN>' \
   --data '{
@@ -63,15 +63,15 @@ curl --request POST \
 {
   "secretRotation": {
     "id": "<rotation-id>",
-    "name": "my-openrouter-rotation",
+    "name": "my-open-router-rotation",
     "description": "OpenRouter API key rotation",
     "secretsMapping": { "apiKey": "OPEN_ROUTER_API_KEY" },
     "isAutoRotationEnabled": true,
     "activeIndex": 0,
-    "connectionId": "<openrouter-connection-id>",
+    "connectionId": "<open-router-connection-id>",
     "rotationInterval": 30,
     "rotateAtUtc": { "hours": 0, "minutes": 0 },
-    "type": "openrouter-api-key",
+    "type": "open-router-api-key",
     "parameters": {
       "name": "my-app-key",
       "limit": 100,
