@@ -271,6 +271,7 @@ The implementation uses `@fastify/passport` which has poor TypeScript support, r
 
 ```typescript
 // All the any rules are disabled because passport typesense with fastify is really poor
+// Note: "typesense" appears to be a typo for "type support" in the original source
 ```
 
 ## SAML Authentication
