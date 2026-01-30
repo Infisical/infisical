@@ -1259,6 +1259,68 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/:secretName/secret-references",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "getSecretReferencesV4",
+      tags: [ApiDocsTags.Secrets],
+      description: "Get secret references",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        secretName: z.string().trim().describe(RAW_SECRETS.GET_REFERENCE_TREE.secretName)
+      }),
+      querystring: z.object({
+        projectId: z.string().trim().describe(RAW_SECRETS.GET_REFERENCE_TREE.projectId),
+        environment: z.string().trim().describe(RAW_SECRETS.GET_REFERENCE_TREE.environment),
+        secretPath: z
+          .string()
+          .trim()
+          .default("/")
+          .transform(removeTrailingSlash)
+          .describe(RAW_SECRETS.GET_REFERENCE_TREE.secretPath)
+      }),
+      response: {
+        200: z.object({
+          references: z.array(
+            z.object({
+              secretKey: z.string(),
+              secretId: z.string(),
+              environment: z.string(),
+              secretPath: z.string(),
+              referenceType: z.string()
+            })
+          ),
+          totalCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { secretName } = req.params;
+      const { secretPath, environment, projectId } = req.query;
+      const { references, totalCount } = await server.services.secret.getSecretReferences({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId,
+        secretName,
+        secretPath,
+        environment
+      });
+      return { references, totalCount };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:secretName/secret-reference-tree",
     config: {
       rateLimit: secretsLimit

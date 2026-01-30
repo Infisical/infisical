@@ -99,3 +99,19 @@ export type TListApprovalsDTO = {
 export type TSecretApprovalDetailsDTO = {
   id: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export enum InternalMetadataType {
+  MoveSecret = "move-secret"
+}
+
+export type TInternalMetadataMoveSecret = {
+  type: InternalMetadataType.MoveSecret;
+  payload: {
+    source: {
+      environment: string;
+      secretPath: string;
+    };
+  };
+};
+
+export type TInternalMetadata = TInternalMetadataMoveSecret;
