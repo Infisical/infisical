@@ -56,8 +56,8 @@ This example demonstrates how to use the Infisical Go SDK in a simple Go applica
 
 <Warning>
   We do not recommend hardcoding your [Machine Identity
-  Tokens](/documentation/platform/identities/machine-identities). Setting it as an environment variable
-  would be best.
+  Tokens](/documentation/platform/identities/machine-identities). Setting it as
+  an environment variable would be best.
 </Warning>
 
 # Installation
@@ -287,7 +287,8 @@ if err != nil {
 #### JWT Auth
 
 <Info>
-  Please note that this authentication method requires a valid JWT token from your JWT issuer. Please [read
+  Please note that this authentication method requires a valid JWT token from
+  your JWT issuer. Please [read
   more](/documentation/platform/identities/jwt-auth) about this authentication
   method.
 </Info>
@@ -306,9 +307,9 @@ if err != nil {
 #### LDAP Auth
 
 <Info>
-  Please note that this authentication method requires LDAP credentials. Please [read
-  more](/documentation/platform/identities/ldap-auth/general) about this authentication
-  method.
+  Please note that this authentication method requires LDAP credentials. Please
+  [read more](/documentation/platform/identities/ldap-auth/general) about this
+  authentication method.
 </Info>
 
 **Using environment variables**
@@ -390,7 +391,27 @@ if err != nil {
 - `Fingerprint` (string) - Your OCI API key fingerprint.
 - `PrivateKey` (string) - Your OCI private key (PEM format).
 - `Region` (string) - Your OCI region (e.g., `us-ashburn-1`).
-- `Passphrase` (*string) - Optional: pointer to passphrase string if your private key is encrypted.
+- `Passphrase` (\*string) - Optional: pointer to passphrase string if your private key is encrypted.
+
+## Organization Authentication
+
+All SDK authentication methods support logging into a sub-organization that your machine identity has access to.
+
+Use the `.Auth().WithOrganizationSlug("<organization-slug>")` method to specify which organization to authenticate against:
+
+```go
+_, err := client.Auth().WithOrganizationSlug("ORGANIZATION_SLUG").UniversalAuthLogin("CLIENT_ID", "CLIENT_SECRET")
+
+if err != nil {
+  fmt.Println(err)
+  os.Exit(1)
+}
+```
+
+<Note>
+  If no organization slug is provided, the authentication session defaults to
+  the organization where the machine identity was originally created.
+</Note>
 
 ## Secrets
 
@@ -629,7 +650,6 @@ secret, err := client.Secrets().Delete(infisical.DeleteSecretOptions{
   </Expandable>
 </ParamField>
 
-
 ### Batch Create Secrets
 
 `client.Secrets().Batch().Create(options)`
@@ -655,6 +675,7 @@ Create multiple secrets in Infisical.
 ```
 
 #### Parameters
+
 <ParamField query="Parameters" type="object" optional>
   <Expandable title="properties">
     <ParamField query="Environment" type="string" required>
@@ -696,6 +717,7 @@ Create multiple secrets in Infisical.
       </ParamField>
     </Expandable>
     </ParamField>
+
   </Expandable>
 </ParamField>
 
@@ -903,38 +925,40 @@ Create a new key in Infisical.
     <ParamField query="ProjectId" type="string" required>
       The ID of the project where the key will be created.
     </ParamField>
+
   </Expandable>
 </ParamField>
 
 #### Return (object)
+
 <ParamField query="Return" type="object">
   <Expandable title="properties">
-  <ParamField query="KeyId" type="string" required>
-    The ID of the key that was created.
-  </ParamField>
-  <ParamField query="Name" type="string" required>
-    The name of the key that was created.
-  </ParamField>
-  <ParamField query="Description" type="string" required>
-    The description of the key that was created.
-  </ParamField>
-  <ParamField query="IsDisabled" type="boolean" required>
-    Whether or not the key is disabled.
-  </ParamField>
-  <ParamField query="OrgId" type="string" required>
-    The ID of the organization that the key belongs to.
-  </ParamField>
-  <ParamField query="ProjectId" type="string" required>
-    The ID of the project that the key belongs to.
-  </ParamField>
-  <ParamField query="KeyUsage" type="string" required>
-    The intended usage of the key that was created.
-  </ParamField>
-  <ParamField query="EncryptionAlgorithm" type="string" required>
-    The encryption algorithm of the key that was created.
-  </ParamField>
-  <ParamField query="Version" type="string" required>
-    The version of the key that was created.
+    <ParamField query="KeyId" type="string" required>
+      The ID of the key that was created.
+    </ParamField>
+    <ParamField query="Name" type="string" required>
+      The name of the key that was created.
+    </ParamField>
+    <ParamField query="Description" type="string" required>
+      The description of the key that was created.
+    </ParamField>
+    <ParamField query="IsDisabled" type="boolean" required>
+      Whether or not the key is disabled.
+    </ParamField>
+    <ParamField query="OrgId" type="string" required>
+      The ID of the organization that the key belongs to.
+    </ParamField>
+    <ParamField query="ProjectId" type="string" required>
+      The ID of the project that the key belongs to.
+    </ParamField>
+    <ParamField query="KeyUsage" type="string" required>
+      The intended usage of the key that was created.
+    </ParamField>
+    <ParamField query="EncryptionAlgorithm" type="string" required>
+      The encryption algorithm of the key that was created.
+    </ParamField>
+    <ParamField query="Version" type="string" required>
+      The version of the key that was created.
     </ParamField>
   </Expandable>
 </ParamField>
@@ -962,6 +986,7 @@ deletedKey, err = client.Kms().Keys().Delete(infisical.KmsDeleteKeyOptions{
 </ParamField>
 
 #### Return (object)
+
 <ParamField query="Return" type="object">
   <Expandable title="properties">
     <ParamField query="KeyId" type="string" required>
@@ -1040,10 +1065,12 @@ res, err := client.Kms().Signing().SignData(infisical.KmsSignDataOptions{
       - `ECDSA_SHA_384`
       - `ECDSA_SHA_256`
     </ParamField>
+
   </Expandable>
 </ParamField>
 
 #### Return ([]byte)
+
 <ParamField query="Return" type="[]byte">
   The signature of the data that was signed.
 </ParamField>
@@ -1081,6 +1108,7 @@ res, err := client.Kms().Signing().Verify(infisical.KmsVerifyDataOptions{
 </ParamField>
 
 #### Return (object)
+
 <ParamField query="Return" type="object">
   <Expandable title="properties">
     <ParamField query="SignatureValid" type="boolean" required>
@@ -1117,13 +1145,17 @@ res, err := client.Kms().Signing().ListSigningAlgorithms(infisical.KmsListSignin
 </ParamField>
 
 #### Return ([]string)
+
 <ParamField query="Return" type="[]string">
   The signing algorithms that are available for the key.
 </ParamField>
 
 ### Get Public Key
+
 <Note>
-  This method is only available for keys with key usage `sign-verify`. If you attempt to use this method on a key that is intended for encryption/decryption, it will return an error.
+  This method is only available for keys with key usage `sign-verify`. If you
+  attempt to use this method on a key that is intended for
+  encryption/decryption, it will return an error.
 </Note>
 
 `client.Kms().Signing().GetPublicKey(options)`
@@ -1146,6 +1178,7 @@ publicKey, err := client.Kms().Signing().GetPublicKey(infisical.KmsGetPublicKeyO
 </ParamField>
 
 #### Return (string)
+
 <ParamField query="Return" type="string">
   The public key for the key.
 </ParamField>
@@ -1173,6 +1206,7 @@ res, err := client.Kms().EncryptData(infisical.KmsEncryptDataOptions{
 </ParamField>
 
 #### Return (string)
+
 <ParamField query="Return" type="string">
   The encrypted data.
 </ParamField>
@@ -1203,6 +1237,7 @@ res, err := client.Kms().DecryptData(infisical.KmsDecryptDataOptions{
 </ParamField>
 
 #### Return (string)
+
 <ParamField query="Return" type="string">
   The decrypted data.
 </ParamField>
