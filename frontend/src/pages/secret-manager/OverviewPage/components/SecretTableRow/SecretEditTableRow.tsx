@@ -452,9 +452,9 @@ export const SecretEditTableRow = ({
                     <UnstableIconButton
                       variant="ghost"
                       size="xs"
-                      isDisabled={isCreatable || isImportedSecret}
+                      isDisabled={isCreatable || isImportedSecret || isOverride}
                       className={twMerge(
-                        comment ? "w-7 text-project opacity-100" : "w-0 opacity-0",
+                        comment && !isOverride ? "w-7 text-project opacity-100" : "w-0 opacity-0",
                         "overflow-hidden group-hover:w-7 group-hover:opacity-100",
                         shouldStayExpanded && "w-7 opacity-100"
                       )}
@@ -464,14 +464,21 @@ export const SecretEditTableRow = ({
                   </PopoverTrigger>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {isImportedSecret
-                    ? "Cannot Add Comment to Imported Secret"
-                    : isCreatable
-                      ? "Create Secret to Add Comment"
-                      : `${comment ? "View" : "Add"} Comment`}
+                  {isOverride
+                    ? "Cannot Comment on Personal Overrides"
+                    : isImportedSecret
+                      ? "Cannot Add Comment to Imported Secret"
+                      : isCreatable
+                        ? "Create Secret to Add Comment"
+                        : `${comment ? "View" : "Add"} Comment`}
                 </TooltipContent>
               </Tooltip>
-              <PopoverContent className="w-80" align="end">
+              <PopoverContent
+                // prevents tooltip from displaying on close
+                onCloseAutoFocus={(e) => e.preventDefault()}
+                className="w-80"
+                align="end"
+              >
                 <SecretCommentForm
                   comment={comment}
                   secretKey={secretName}

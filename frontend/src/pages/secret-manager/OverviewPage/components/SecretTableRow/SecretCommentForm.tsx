@@ -50,34 +50,27 @@ export const SecretCommentForm = ({
   });
 
   const onSubmit = async (data: TFormSchema) => {
-    try {
-      const result = await updateSecretV3({
-        environment,
-        projectId,
-        secretPath,
-        secretKey,
-        type: isOverride ? SecretType.Personal : SecretType.Shared,
-        secretComment: data.comment
-      });
+    const result = await updateSecretV3({
+      environment,
+      projectId,
+      secretPath,
+      secretKey,
+      type: isOverride ? SecretType.Personal : SecretType.Shared,
+      secretComment: data.comment
+    });
 
-      if ("approval" in result) {
-        createNotification({
-          type: "info",
-          text: "Requested change has been sent for review"
-        });
-      } else {
-        createNotification({
-          type: "success",
-          text: "Successfully updated secret"
-        });
-      }
-      onClose?.();
-    } catch {
+    if ("approval" in result) {
       createNotification({
-        type: "error",
-        text: "Failed to update secret comment"
+        type: "info",
+        text: "Requested change has been sent for review"
+      });
+    } else {
+      createNotification({
+        type: "success",
+        text: "Successfully updated secret"
       });
     }
+    onClose?.();
   };
 
   const handleCancel = () => {
@@ -90,7 +83,7 @@ export const SecretCommentForm = ({
       <div className="space-y-3">
         <p className="text-sm font-medium">Comment</p>
 
-        <p className="max-h-48 min-h-24 thin-scrollbar overflow-y-auto rounded-md border border-border px-3 py-2 text-sm break-words opacity-100">
+        <p className="max-h-48 min-h-24 thin-scrollbar overflow-y-auto rounded-md border border-border px-3 py-2 text-sm break-words whitespace-pre-wrap opacity-100">
           {comment}
         </p>
         <div className="flex justify-end gap-2">
