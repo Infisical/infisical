@@ -270,6 +270,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       });
     } else if (
       error instanceof SyntaxError &&
+      req.method === "POST" &&
       (req.url === "/api/v1/cert-manager/certificates" || req.url === "/api/v1/cert-manager/certificates/")
     ) {
       // JSON parsing error on certificate endpoint - likely malformed CSR with literal newlines
