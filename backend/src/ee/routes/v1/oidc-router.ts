@@ -15,6 +15,7 @@ import { OidcConfigsSchema } from "@app/db/schemas";
 import { OIDCConfigurationType, OIDCJWTSignatureAlgorithm } from "@app/ee/services/oidc/oidc-config-types";
 import { ApiDocsTags, OidcSSo } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
+import { BadRequestError } from "@app/lib/errors";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -107,6 +108,13 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
       async (req, res) => {
         const oidcOrgSlug = req.session.get<any>("oidcOrgSlug");
         const callbackPort = req.session.get<any>("callbackPort");
+
+        if (!oidcOrgSlug) {
+          throw new BadRequestError({
+            message: "OIDC session expired or invalid. Please try logging in again."
+          });
+        }
+
         const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(oidcOrgSlug, callbackPort);
 
         return (

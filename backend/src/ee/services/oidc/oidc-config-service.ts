@@ -660,6 +660,12 @@ export const oidcConfigServiceFactory = ({
   const getOrgAuthStrategy = async (orgSlug: string, callbackPort?: string) => {
     const appCfg = getConfig();
 
+    if (!orgSlug) {
+      throw new BadRequestError({
+        message: "Organization slug is required for OIDC authentication"
+      });
+    }
+
     const org = await orgDAL.findOne({
       slug: orgSlug
     });
