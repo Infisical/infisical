@@ -1,13 +1,13 @@
 ---
 title: "Create"
-openapi: "POST /api/v2/secret-rotations/open-router-api-key"
+openapi: "POST /api/v2/secret-rotations/openrouter-api-key"
 ---
 
 <Note>
-    Check out the configuration docs for [OpenRouter API Key Rotations](/documentation/platform/secret-rotation/open-router-api-key) to learn how to obtain the required parameters.
+    Check out the configuration docs for [OpenRouter API Key Rotations](/documentation/platform/secret-rotation/openrouter-api-key) to learn how to obtain the required parameters.
 </Note>
 
-Creates an OpenRouter API Key secret rotation. Infisical will create and rotate API keys via your [OpenRouter connection](/integrations/app-connections/open-router) and write them to the specified secret path.
+Creates an OpenRouter API Key secret rotation. Infisical will create and rotate API keys via your [OpenRouter connection](/integrations/app-connections/openrouter) and write them to the specified secret path.
 
 ## Request body
 
@@ -32,14 +32,14 @@ Creates an OpenRouter API Key secret rotation. Infisical will create and rotate 
 
 ```bash
 curl --request POST \
-  --url https://us.infisical.com/api/v2/secret-rotations/open-router-api-key \
+  --url https://us.infisical.com/api/v2/secret-rotations/openrouter-api-key \
   --header 'Content-Type: application/json' \
   --header 'Authorization: Bearer <ACCESS_TOKEN>' \
   --data '{
-    "name": "my-open-router-rotation",
+    "name": "my-openrouter-rotation",
     "projectId": "<project-id>",
     "description": "OpenRouter API key rotation",
-    "connectionId": "<open-router-connection-id>",
+    "connectionId": "<openrouter-connection-id>",
     "environment": "dev",
     "secretPath": "/",
     "isAutoRotationEnabled": true,
@@ -63,15 +63,15 @@ curl --request POST \
 {
   "secretRotation": {
     "id": "<rotation-id>",
-    "name": "my-open-router-rotation",
+    "name": "my-openrouter-rotation",
     "description": "OpenRouter API key rotation",
     "secretsMapping": { "apiKey": "OPEN_ROUTER_API_KEY" },
     "isAutoRotationEnabled": true,
     "activeIndex": 0,
-    "connectionId": "<open-router-connection-id>",
+    "connectionId": "<openrouter-connection-id>",
     "rotationInterval": 30,
     "rotateAtUtc": { "hours": 0, "minutes": 0 },
-    "type": "open-router-api-key",
+    "type": "openrouter-api-key",
     "parameters": {
       "name": "my-app-key",
       "limit": 100,
