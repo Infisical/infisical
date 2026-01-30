@@ -862,7 +862,7 @@ export const OverviewPage = () => {
   useEffect(() => {
     // track previous page size to make navigation loading rows less janky
     if (!isOverviewLoading) prevPageSize.current = Math.min(perPage, totalCount);
-  }, [isOverviewLoading, totalCount]);
+  }, [isOverviewLoading, totalCount, perPage]);
 
   useEffect(() => {
     const element = tableRef.current;
@@ -1103,7 +1103,7 @@ export const OverviewPage = () => {
                             return (
                               <UnstableTableCell
                                 className="border-r last:border-r-0"
-                                key={`loading-env-row-${env}+${index + 1}`}
+                                key={`loading-env-row-${env.slug}+${index + 1}`}
                               >
                                 <Skeleton className="h-4 w-full" />
                               </UnstableTableCell>
