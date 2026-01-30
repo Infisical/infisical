@@ -98,7 +98,7 @@ export const SecretCommentForm = ({
             Close
           </Button>
           <ProjectPermissionCan
-            I={ProjectPermissionActions.Delete}
+            I={ProjectPermissionActions.Edit}
             a={subject(ProjectPermissionSub.Secrets, {
               environment,
               secretPath,
