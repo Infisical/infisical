@@ -47,6 +47,7 @@ import {
   TSecretRotationRotateGeneratedCredentials,
   TSecretRotationV2,
   TSecretRotationV2GeneratedCredentials,
+  TSecretRotationV2PermissionContext,
   TSecretRotationV2Raw,
   TSecretRotationV2TemporaryParameters,
   TSecretRotationV2WithConnection,
@@ -1232,11 +1233,26 @@ export const secretRotationV2ServiceFactory = ({
       });
     }
 
-    const count = await secretRotationV2DAL.findWithMappedSecretsCount({
-      $in: { folderId: folders.map((folder) => folder.id) },
-      search,
-      projectId
-    });
+    const folderIds = folders.map((folder) => folder.id);
+
+    // Fetch rotations (with search) then filter by per-rotation permission so connectionId
+    // (and other) restrictions are enforced; findWithMappedSecretsCount cannot filter by connectionId.
+    const secretRotations = await secretRotationV2DAL.findWithMappedSecrets(
+      { $in: { folderId: folderIds }, search, projectId },
+      {}
+    );
+
+    const rotationsForCount = secretRotations as TSecretRotationV2PermissionContext[];
+    const count = rotationsForCount.filter((rotation) =>
+      permission.can(
+        ProjectPermissionSecretRotationActions.Read,
+        subject(ProjectPermissionSub.SecretRotation, {
+          environment: rotation.environment.slug,
+          secretPath: rotation.folder.path,
+          connectionId: rotation.connection.id
+        })
+      )
+    ).length;
 
     return count;
   };
@@ -1286,7 +1302,7 @@ export const secretRotationV2ServiceFactory = ({
 
     const folderIds = folders.map((folder) => folder.id);
 
-    const secretRotations = await secretRotationV2DAL.findWithMappedSecrets(
+    const secretRotationsRaw = await secretRotationV2DAL.findWithMappedSecrets(
       {
         $in: { folderId: folderIds },
         search,
@@ -1297,6 +1313,18 @@ export const secretRotationV2ServiceFactory = ({
         offset,
         sort: orderBy ? [[orderBy, orderDirection]] : undefined
       }
+    );
+
+    // Filter by per-rotation permission so connectionId (and other) restrictions are enforced.
+    const secretRotations = secretRotationsRaw.filter((rotation: TSecretRotationV2PermissionContext) =>
+      permission.can(
+        ProjectPermissionSecretRotationActions.Read,
+        subject(ProjectPermissionSub.SecretRotation, {
+          environment: rotation.environment.slug,
+          secretPath: rotation.folder.path,
+          connectionId: rotation.connection.id
+        })
+      )
     );
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
@@ -1411,7 +1439,17 @@ export const secretRotationV2ServiceFactory = ({
       options
     );
 
-    return secretRotations as TSecretRotationV2[];
+    // Filter by per-rotation permission so connectionId (and other) restrictions are enforced.
+    return secretRotations.filter((rotation) =>
+      permission.can(
+        ProjectPermissionSecretRotationActions.Read,
+        subject(ProjectPermissionSub.SecretRotation, {
+          environment: rotation.environment.slug,
+          secretPath: rotation.folder.path,
+          connectionId: rotation.connection.id
+        })
+      )
+    ) as TSecretRotationV2[];
   };
 
   const reconcileLocalAccountRotation = async (

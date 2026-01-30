@@ -7,7 +7,8 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretSyncActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  type SecretSyncSubjectFields
 } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -155,7 +156,21 @@ export const secretSyncServiceFactory = ({
       }
     });
 
-    return secretSyncs as TSecretSync[];
+    // Filter by per-sync permission so connectionId (and other) restrictions are enforced.
+    const getConnectionId = (sync: { connectionId?: string; connection?: { id: string } }) =>
+      sync.connectionId ?? sync.connection?.id;
+    return secretSyncs.filter((sync) => {
+      const subjectFields: Record<string, string> = {
+        ...(sync.environment && { environment: sync.environment.slug }),
+        ...(sync.folder && { secretPath: sync.folder.path }),
+        ...(getConnectionId(sync) && { connectionId: getConnectionId(sync) })
+      };
+      const sub =
+        Object.keys(subjectFields).length > 0
+          ? subject(ProjectPermissionSub.SecretSyncs, subjectFields as SecretSyncSubjectFields)
+          : ProjectPermissionSub.SecretSyncs;
+      return permission.can(ProjectPermissionSecretSyncActions.Read, sub);
+    }) as TSecretSync[];
   };
 
   const findSecretSyncById = async ({ destination, syncId }: TFindSecretSyncByIdDTO, actor: OrgServiceActor) => {

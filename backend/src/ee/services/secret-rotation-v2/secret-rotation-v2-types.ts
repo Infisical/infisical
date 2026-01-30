@@ -247,6 +247,13 @@ export type TDeleteSecretRotationV2DTO = {
   revokeGeneratedCredentials: boolean;
 };
 
+/** Minimal rotation shape needed to build a permission subject (env, path, connectionId). */
+export type TSecretRotationV2PermissionContext = {
+  environment: { slug: string };
+  folder: { path: string };
+  connection: { id: string };
+};
+
 export type TGetDashboardSecretRotationV2Count = {
   search?: string;
   projectId: string;
