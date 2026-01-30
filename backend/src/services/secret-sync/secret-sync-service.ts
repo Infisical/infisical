@@ -508,6 +508,20 @@ export const secretSyncServiceFactory = ({
         { connectionId: params.connectionId, projectId: secretSync.projectId },
         actor
       );
+
+      // If changing connectionId, verify user has Edit permission for syncs with the NEW connectionId
+      if (params.connectionId !== connectionId) {
+        if (secretSync.environment?.slug && secretSync.folder?.path) {
+          ForbiddenError.from(permission).throwUnlessCan(
+            ProjectPermissionSecretSyncActions.Edit,
+            subject(ProjectPermissionSub.SecretSyncs, {
+              environment: secretSync.environment.slug,
+              secretPath: secretSync.folder.path,
+              connectionId: params.connectionId
+            })
+          );
+        }
+      }
     }
 
     if (
