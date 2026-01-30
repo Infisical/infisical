@@ -18,6 +18,7 @@ import {
 import { TSecretSyncForm } from "../schemas";
 import { AwsParameterStoreSyncOptionsFields } from "./AwsParameterStoreSyncOptionsFields";
 import { AwsSecretsManagerSyncOptionsFields } from "./AwsSecretsManagerSyncOptionsFields";
+import { CoolifySyncOptionsFields } from "./CoolifySyncOptionsFields";
 import { RenderSyncOptionsFields } from "./RenderSyncOptionsFields";
 
 type Props = {
@@ -45,6 +46,9 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
       break;
     case SecretSync.Render:
       AdditionalSyncOptionsFieldsComponent = <RenderSyncOptionsFields />;
+      break;
+    case SecretSync.Coolify:
+      AdditionalSyncOptionsFieldsComponent = <CoolifySyncOptionsFields />;
       break;
     case SecretSync.GitHub:
     case SecretSync.GCPSecretManager:
@@ -78,6 +82,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.Chef:
     case SecretSync.OctopusDeploy:
     case SecretSync.CircleCI:
+    case SecretSync.Coolify:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     default:
@@ -154,7 +159,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
             </p>
           ) : (
             currentSyncOption.initialSyncBehavior ===
-              SecretSyncInitialSyncBehavior.OverwriteDestination &&
+            SecretSyncInitialSyncBehavior.OverwriteDestination &&
             !currentSyncOption.disableSecretDeletion && (
               <p className="-mt-2.5 mb-2.5 text-xs text-yellow">
                 <FontAwesomeIcon className="mr-1" size="xs" icon={faTriangleExclamation} />

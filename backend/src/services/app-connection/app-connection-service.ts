@@ -73,6 +73,8 @@ import { ValidateCircleCIConnectionCredentialsSchema } from "./circleci";
 import { circleciConnectionService } from "./circleci/circleci-connection-service";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
 import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-service";
+import { ValidateCoolifyConnectionCredentialsSchema } from "./coolify";
+import { coolifyConnectionService } from "./coolify/coolify-connection-service";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
 import { ValidateDigitalOceanConnectionCredentialsSchema } from "./digital-ocean";
@@ -194,7 +196,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.OctopusDeploy]: ValidateOctopusDeployConnectionCredentialsSchema,
   [AppConnection.SSH]: ValidateSshConnectionCredentialsSchema,
   [AppConnection.SMB]: ValidateSmbConnectionCredentialsSchema,
-  [AppConnection.CircleCI]: ValidateCircleCIConnectionCredentialsSchema
+  [AppConnection.CircleCI]: ValidateCircleCIConnectionCredentialsSchema,
+  [AppConnection.Coolify]: ValidateCoolifyConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -603,11 +606,11 @@ export const appConnectionServiceFactory = ({
       const updateConnection = async (connectionCredentials: TAppConnection["credentials"] | undefined) => {
         const encryptedCredentials = connectionCredentials
           ? await encryptAppConnectionCredentials({
-              credentials: connectionCredentials,
-              orgId: actor.orgId,
-              kmsService,
-              projectId: appConnection.projectId
-            })
+            credentials: connectionCredentials,
+            orgId: actor.orgId,
+            kmsService,
+            projectId: appConnection.projectId
+          })
           : undefined;
 
         return appConnectionDAL.updateById(connectionId, {
@@ -913,6 +916,7 @@ export const appConnectionServiceFactory = ({
     laravelForge: laravelForgeConnectionService(connectAppConnectionById),
     chef: chefConnectionService(connectAppConnectionById, licenseService),
     octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),
-    circleci: circleciConnectionService(connectAppConnectionById)
+    circleci: circleciConnectionService(connectAppConnectionById),
+    coolify: coolifyConnectionService(connectAppConnectionById)
   };
 };

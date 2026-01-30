@@ -24,6 +24,7 @@ import { ChefSyncDestinationSection } from "./ChefSyncDestinationSection";
 import { CircleCISyncDestinationSection } from "./CircleCISyncDestinationSection";
 import { CloudflarePagesSyncDestinationSection } from "./CloudflarePagesSyncDestinationSection";
 import { CloudflareWorkersSyncDestinationSection } from "./CloudflareWorkersSyncDestinationSection";
+import { CoolifySyncDestinationSection } from "./CoolifySyncDestinationSection";
 import { DatabricksSyncDestinationSection } from "./DatabricksSyncDestinationSection";
 import { DigitalOceanAppPlatformSyncDestinationSection } from "./DigitalOceanAppPlatformSyncDestinationSection";
 import { FlyioSyncDestinationSection } from "./FlyioSyncDestinationSection";
@@ -168,6 +169,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
     case SecretSync.CircleCI:
       DestinationComponents = <CircleCISyncDestinationSection secretSync={secretSync} />;
       break;
+    case SecretSync.Coolify:
+      DestinationComponents = <CoolifySyncDestinationSection secretSync={secretSync} />;
+      break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);
   }
@@ -175,9 +179,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
   const permissionSubject =
     environment && folder
       ? subject(ProjectPermissionSub.SecretSyncs, {
-          environment: environment.slug,
-          secretPath: folder.path
-        })
+        environment: environment.slug,
+        secretPath: folder.path
+      })
       : ProjectPermissionSub.SecretSyncs;
 
   return (
