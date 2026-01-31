@@ -26,7 +26,7 @@ export const SupabaseSyncFns = {
     } = secretSync;
     const config = secretSync.destinationConfig;
     // Supabase treats project branches as separate projects
-    const projectId = config?.projectBranchId ?? config.projectId;
+    const projectId = config?.projectBranchId || config.projectId;
 
     const variables = await SupabasePublicAPI.getVariables(secretSync.connection, projectId);
 
@@ -77,7 +77,7 @@ export const SupabaseSyncFns = {
 
   async removeSecrets(secretSync: TSupabaseSyncWithCredentials, secretMap: TSecretMap) {
     const config = secretSync.destinationConfig;
-    const projectId = config?.projectBranchId ?? config.projectId;
+    const projectId = config?.projectBranchId || config.projectId;
 
     const variables = await SupabasePublicAPI.getVariables(secretSync.connection, projectId);
 
