@@ -8,5 +8,8 @@ type Props = {
 export const SupabaseSyncDestinationSection = ({ secretSync }: Props) => {
   const { destinationConfig } = secretSync;
 
-  return <GenericFieldLabel label="Project">{destinationConfig.projectName}</GenericFieldLabel>;
+  return <>
+    <GenericFieldLabel label="Project">{destinationConfig.projectName}</GenericFieldLabel>
+    { destinationConfig?.projectBranchId && <GenericFieldLabel label="Branch">{destinationConfig.projectBranchName}</GenericFieldLabel> }
+  </>
 };

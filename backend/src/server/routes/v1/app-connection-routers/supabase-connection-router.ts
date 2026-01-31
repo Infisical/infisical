@@ -53,4 +53,37 @@ export const registerSupabaseConnectionRouter = async (server: FastifyZodProvide
       return { projects };
     }
   });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/projects/:projectId/branches`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listSupabaseProjectBranches",
+      params: z.object({
+        connectionId: z.string().uuid(),
+        projectId: z.string()
+      }),
+      response: {
+        200: z.object({
+          branches: z
+            .object({
+              name: z.string(),
+              project_ref: z.string()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { connectionId, projectId } = req.params;
+
+      const branches = await server.services.appConnection.supabase.listProjectBranches(connectionId, req.permission, projectId);
+
+      return { branches };
+    }
+  });
 };

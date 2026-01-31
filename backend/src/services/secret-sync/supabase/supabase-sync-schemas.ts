@@ -13,7 +13,9 @@ import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 
 const SupabaseSyncDestinationConfigSchema = z.object({
   projectId: z.string().max(255).min(1, "Project ID is required"),
-  projectName: z.string().max(255).min(1, "Project Name is required")
+  projectName: z.string().max(255).min(1, "Project Name is required"),
+  projectBranchId: z.string().max(255).optional(),
+  projectBranchName: z.string().max(255).optional()
 });
 
 const SupabaseSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };

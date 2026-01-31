@@ -56,3 +56,24 @@ export const listProjects = async (appConnection: TSupabaseConnection) => {
     });
   }
 };
+
+export const listProjectBranches = async (appConnection: TSupabaseConnection, projectId: string) => {
+  try {
+    return await SupabasePublicAPI.getProjectBranches(appConnection, projectId);
+  } catch (error: unknown) {
+    if (error instanceof AxiosError) {
+      throw new BadRequestError({
+        message: `Failed to list project branches: ${error.message || "Unknown error"}`
+      });
+    }
+
+    if (error instanceof BadRequestError) {
+      throw error;
+    }
+
+    throw new BadRequestError({
+      message: "Unable to list project branches",
+      error
+    });
+  }
+};

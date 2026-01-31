@@ -128,6 +128,15 @@ class SupabasePublicClient {
 
     return res;
   }
+
+  async getProjectBranches(connection: TSupabaseConnectionConfig, projectId: string) {
+    const res = await this.send<{ branches: string[] }>(connection, {
+      method: "GET",
+      url: `/v1/projects/${projectId}/branches`
+    });
+
+    return res;
+  }
 }
 
 export const SupabasePublicAPI = new SupabasePublicClient();
