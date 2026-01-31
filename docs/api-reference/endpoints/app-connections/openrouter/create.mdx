@@ -4,10 +4,10 @@ openapi: "POST /api/v1/app-connections/open-router"
 ---
 
 <Note>
-    Check out the configuration docs for [OpenRouter Connections](/integrations/app-connections/open-router) to learn how to obtain the required credentials.
+    Check out the configuration docs for [OpenRouter Connections](/integrations/app-connections/openrouter) to learn how to obtain the required credentials.
 </Note>
 
-Creates an OpenRouter app connection using a Provisioning API key. The connection can then be used for [OpenRouter API Key secret rotations](/documentation/platform/secret-rotation/open-router-api-key).
+Creates an OpenRouter app connection using a Provisioning API key. The connection can then be used for [OpenRouter API Key secret rotations](/documentation/platform/secret-rotation/openrouter-api-key).
 
 ## Request body
 
@@ -26,7 +26,7 @@ curl --request POST \
   --header 'Content-Type: application/json' \
   --header 'Authorization: Bearer <ACCESS_TOKEN>' \
   --data '{
-    "name": "my-open-router-connection",
+    "name": "my-openrouter-connection",
     "method": "api-key",
     "projectId": "<project-id>",
     "credentials": {
@@ -41,7 +41,7 @@ curl --request POST \
 {
   "appConnection": {
     "id": "<connection-id>",
-    "name": "my-open-router-connection",
+    "name": "my-openrouter-connection",
     "projectId": "<project-id>",
     "description": null,
     "version": 1,
@@ -50,7 +50,7 @@ curl --request POST \
     "updatedAt": "<ISO8601>",
     "isPlatformManagedCredentials": false,
     "credentialsHash": "...",
-    "app": "open-router",
+    "app": "openrouter",
     "method": "api-key",
     "credentials": {}
   }

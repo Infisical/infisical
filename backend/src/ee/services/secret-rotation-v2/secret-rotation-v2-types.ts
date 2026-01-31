@@ -109,6 +109,13 @@ import {
   TUnixLinuxLocalAccountRotationListItem,
   TUnixLinuxLocalAccountRotationWithConnection
 } from "./unix-linux-local-account-rotation";
+import {
+  TWindowsLocalAccountRotation,
+  TWindowsLocalAccountRotationGeneratedCredentials,
+  TWindowsLocalAccountRotationInput,
+  TWindowsLocalAccountRotationListItem,
+  TWindowsLocalAccountRotationWithConnection
+} from "./windows-local-account-rotation";
 
 export type TSecretRotationV2 =
   | TPostgresCredentialsRotation
@@ -125,6 +132,7 @@ export type TSecretRotationV2 =
   | TDatabricksServicePrincipalSecretRotation
   | TUnixLinuxLocalAccountRotation
   | TDbtServiceTokenRotation
+  | TWindowsLocalAccountRotation
   | TOpenRouterApiKeyRotation;
 
 export type TSecretRotationV2WithConnection =
@@ -142,6 +150,7 @@ export type TSecretRotationV2WithConnection =
   | TDatabricksServicePrincipalSecretRotationWithConnection
   | TUnixLinuxLocalAccountRotationWithConnection
   | TDbtServiceTokenRotationWithConnection
+  | TWindowsLocalAccountRotationWithConnection
   | TOpenRouterApiKeyRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
@@ -155,6 +164,7 @@ export type TSecretRotationV2GeneratedCredentials =
   | TDatabricksServicePrincipalSecretRotationGeneratedCredentials
   | TUnixLinuxLocalAccountRotationGeneratedCredentials
   | TDbtServiceTokenRotationGeneratedCredentials
+  | TWindowsLocalAccountRotationGeneratedCredentials
   | TOpenRouterApiKeyRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
@@ -172,6 +182,7 @@ export type TSecretRotationV2Input =
   | TDatabricksServicePrincipalSecretRotationInput
   | TUnixLinuxLocalAccountRotationInput
   | TDbtServiceTokenRotationInput
+  | TWindowsLocalAccountRotationInput
   | TOpenRouterApiKeyRotationInput;
 
 export type TSecretRotationV2ListItem =
@@ -189,11 +200,13 @@ export type TSecretRotationV2ListItem =
   | TDatabricksServicePrincipalSecretRotationListItem
   | TUnixLinuxLocalAccountRotationListItem
   | TDbtServiceTokenRotationListItem
+  | TWindowsLocalAccountRotationListItem
   | TOpenRouterApiKeyRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters =
   | TLdapPasswordRotationInput["temporaryParameters"]
   | TUnixLinuxLocalAccountRotationInput["temporaryParameters"]
+  | TWindowsLocalAccountRotationInput["temporaryParameters"]
   | undefined;
 
 export type TSecretRotationV2Raw = NonNullable<Awaited<ReturnType<TSecretRotationV2DALFactory["findById"]>>>;

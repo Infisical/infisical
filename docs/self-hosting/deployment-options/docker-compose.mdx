@@ -1,38 +1,53 @@
 ---
 title: "Docker Compose"
-description: "Read how to run Infisical with Docker Compose template."
+description: "Deploy Infisical using Docker Compose for development, testing, or small-scale production environments."
 ---
-This self-hosting guide will walk you through the steps to self-host Infisical using Docker Compose.
 
+Learn how to deploy **Infisical** using Docker Compose. This method runs Infisical and its dependencies (PostgreSQL and Redis) as containers on a single Docker host. It's ideal for trying out Infisical, development environments, or small-scale deployments that don't require high availability.
+
+## Prerequisites
+
+- A Linux server (Ubuntu 20.04+ recommended) or macOS/Windows with Docker Desktop
+- [Docker Engine](https://docs.docker.com/engine/install/) (version 20.10+)
+- [Docker Compose](https://docs.docker.com/compose/install/) (version 2.0+ recommended)
+
+<Warning>
+  This Docker Compose configuration is not designed for high-availability production scenarios. 
+  It includes just the essential components needed to set up an Infisical proof of concept (POC). 
+  To run Infisical in a highly available manner, see the [Docker Swarm guide](/self-hosting/deployment-options/docker-swarm) or [Kubernetes guide](/self-hosting/deployment-options/kubernetes-helm).
+</Warning>
+
+## System Requirements
+
+The following are minimum requirements for running Infisical with Docker Compose:
+
+| Component | Minimum | Recommended |
+|-----------|---------|-------------|
+| CPU | 2 cores | 4 cores |
+| RAM | 4 GB | 8 GB |
+| Disk | 20 GB | 50 GB+ (SSD recommended) |
+
+These requirements include resources for Infisical, PostgreSQL, and Redis containers. For larger deployments with many secrets or users, increase resources accordingly.
+
+## Deployment Steps
 
 <Tabs>
   <Tab title="Docker Compose">
-    ## Prerequisites
-    - [Docker](https://docs.docker.com/engine/install/)
-    - [Docker compose](https://docs.docker.com/compose/install/)
 
-    <Warning>
-      This Docker Compose configuration is not designed for high-availability production scenarios. 
-      It includes just the essential components needed to set up an Infisical proof of concept (POC). 
-      To run Infisical in a highly available manner, give the [Docker Swarm guide](/self-hosting/deployment-options/docker-swarm).
-    </Warning>
+<Steps>
+  <Step title="Verify prerequisites">
+    Confirm that Docker and Docker Compose are installed on your machine:
 
-    ## Verify prerequisites
-    To verify that Docker compose and Docker are installed on the machine where you plan to install Infisical, run the following commands.
-
-    Check for docker installation
     ```bash
-    docker
+    docker --version
+    docker compose version
     ```
 
-    Check for docker compose installation
-    ```bash
-    docker-compose 
-    ```
+    You should see version information for both commands. If not, install Docker and Docker Compose following the official documentation.
+  </Step>
 
-    ## Download docker compose file
-    You can obtain the Infisical docker compose file by using a command-line downloader such as `wget` or `curl`.
-    If your system doesn't have either of these, you can use a equivalent command that works with your machine.
+  <Step title="Download the Docker Compose file">
+    You can obtain the Infisical docker compose file by using a command-line downloader such as `wget` or `curl`. If your system doesn't have either of these, you can use an equivalent command that works with your machine.
 
     <Tabs>
       <Tab title="curl">
@@ -41,76 +56,93 @@ This self-hosting guide will walk you through the steps to self-host Infisical u
         ```
       </Tab>
       <Tab title="wget">
-        ```bash 
+        ```bash
         wget -O docker-compose.prod.yml https://raw.githubusercontent.com/Infisical/infisical/main/docker-compose.prod.yml
         ```
       </Tab>
     </Tabs>
+  </Step>
 
-    ## Configure instance credentials
-    Infisical requires a set of credentials used for connecting to dependent services such as Postgres, Redis, etc.
-    The default credentials can be downloaded using the one of the commands listed below. 
+  <Step title="Configure environment variables">
+    Infisical requires a set of credentials used for connecting to dependent services such as Postgres, Redis, etc. The default credentials can be downloaded using one of the commands listed below.
 
     <Tabs>
       <Tab title="curl">
         ```bash
-          curl -o .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.example
+        curl -o .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.example
         ```
       </Tab>
       <Tab title="wget">
-        ```bash 
-          wget -O .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.example
+        ```bash
+        wget -O .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.example
         ```
       </Tab>
     </Tabs>
 
-    Once downloaded, the credentials file will be saved to your working directly as `.env` file.
-    View all available configurations [here](/self-hosting/configuration/envars).
+    Once downloaded, the credentials file will be saved to your working directory as `.env` file. View all available configurations [here](/self-hosting/configuration/envars).
 
     <Warning>
-      The default .env file contains credentials that are intended solely for testing purposes.
-      Please generate a new `ENCRYPTION_KEY` and `AUTH_SECRET` for use outside of testing. 
-      Instructions to do so, can be found [here](/self-hosting/configuration/envars).
+      The `.env` file contains secrets that control the security of your deployment. Do not commit it to version control, and protect access to it:
+      ```bash
+      chmod 600 .env
+      ```
     </Warning>
+  </Step>
 
-    ## Start Infisical
-    Run the command below to start Infisical and all related services. 
+  <Step title="Start Infisical">
+    Start all services in detached mode:
 
     ```bash
-    docker-compose -f docker-compose.prod.yml up
+    docker compose -f docker-compose.prod.yml up -d
     ```
+
+    This command starts three containers:
+    - **backend**: The main Infisical application (exposed on host port 80, internal port 8080)
+    - **db**: PostgreSQL database for storing encrypted secrets
+    - **redis**: Redis for caching and job queues
+  </Step>
+
+  <Step title="Verify the deployment">
+    Check that all containers are running:
+
+    ```bash
+    docker compose -f docker-compose.prod.yml ps
+    ```
+
+    You should see all three services with a status of `Up`. Next, verify Infisical is responding:
+
+    ```bash
+    curl -s http://localhost:80/api/status | head -c 100
+    ```
+
+    If successful, open your browser and navigate to `http://localhost:80` (or your configured domain) to create your admin account.
+
+    <Tip>
+      The first user to sign up becomes the instance administrator. Make sure to complete this step before exposing Infisical to others.
+    </Tip>
+  </Step>
+</Steps>
 
   </Tab>
+
   <Tab title="Podman Compose">
-  Podman Compose is an alternative way to run Infisical using Podman as a replacement for Docker. Podman is backwards compatible with Docker Compose files.
 
-      ## Prerequisites
-    - [Podman](https://podman-desktop.io/docs/installation)
-    - [Podman Compose](https://podman-desktop.io/docs/compose)
+Podman Compose is an alternative way to run Infisical using Podman as a replacement for Docker. Podman is backwards compatible with Docker Compose files.
 
-    <Warning>
-      This Docker Compose configuration is not designed for high-availability production scenarios. 
-      It includes just the essential components needed to set up an Infisical proof of concept (POC). 
-      To run Infisical in a highly available manner, give the [Docker Swarm guide](/self-hosting/deployment-options/docker-swarm).
-    </Warning>
+<Steps>
+  <Step title="Verify prerequisites">
+    Confirm that Podman and Podman Compose are installed:
 
-
-    ## Verify prerequisites
-    To verify that Podman compose and Podman are installed on the machine where you plan to install Infisical, run the following commands.
-
-    Check for podman installation
     ```bash
-    podman version 
-    ```
-
-    Check for podman compose installation
-    ```bash
+    podman version
     podman-compose version
     ```
 
-    ## Download Docker Compose file
-    You can obtain the Infisical docker compose file by using a command-line downloader such as `wget` or `curl`.
-    If your system doesn't have either of these, you can use a equivalent command that works with your machine.
+    If not installed, follow the [Podman installation guide](https://podman-desktop.io/docs/installation) and [Podman Compose guide](https://podman-desktop.io/docs/compose).
+  </Step>
+
+  <Step title="Download the Docker Compose file">
+    You can obtain the Infisical docker compose file by using a command-line downloader such as `wget` or `curl`. If your system doesn't have either of these, you can use an equivalent command that works with your machine.
 
     <Tabs>
       <Tab title="curl">
@@ -119,57 +151,514 @@ This self-hosting guide will walk you through the steps to self-host Infisical u
         ```
       </Tab>
       <Tab title="wget">
-        ```bash 
+        ```bash
         wget -O docker-compose.prod.yml https://raw.githubusercontent.com/Infisical/infisical/main/docker-compose.prod.yml
         ```
       </Tab>
     </Tabs>
+  </Step>
 
-    ## Configure instance credentials
-    Infisical requires a set of credentials used for connecting to dependent services such as Postgres, Redis, etc.
-    The default credentials can be downloaded using the one of the commands listed below. 
+  <Step title="Configure environment variables">
+    Infisical requires a set of credentials used for connecting to dependent services such as Postgres, Redis, etc. The default credentials can be downloaded using one of the commands listed below.
 
     <Tabs>
       <Tab title="curl">
         ```bash
-          curl -o .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.example
+        curl -o .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.example
         ```
       </Tab>
       <Tab title="wget">
-        ```bash 
-          wget -O .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.example
+        ```bash
+        wget -O .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.example
         ```
       </Tab>
     </Tabs>
 
-    <Note>
-      Make sure to rename the `.env.example` file to `.env` before starting Infisical. Additionally it's important that the `.env` file is in the same directory as the `docker-compose.prod.yml` file.
-    </Note>
+    Once downloaded, the credentials file will be saved to your working directory as `.env` file. View all available configurations [here](/self-hosting/configuration/envars).
+  </Step>
 
-    ## Setup Podman
-    Run the commands below to setup Podman for first time use.
+  <Step title="Set up Podman">
+    Initialize and start the Podman machine:
+
     ```bash
     podman machine init --now
     podman machine set --rootful
     podman machine start
-    ``` 
+    ```
 
     <Note>
-      If you are using a rootless podman installation, you can skip the `podman machine set --rootful` command.
+      If using a rootless Podman install, you can skip `podman machine set --rootful`.
     </Note>
+  </Step>
 
-    ## Start Infisical
-    Run the command below to start Infisical and all related services. 
-
+  <Step title="Start Infisical">
     ```bash
-    podman-compose -f docker-compose.prod.yml up
+    podman-compose -f docker-compose.prod.yml up -d
     ```
+
+    Access the UI at `http://localhost:80`.
+  </Step>
+</Steps>
+
   </Tab>
 </Tabs>
 
+---
 
+## Managing Your Deployment
 
+### Stopping and Restarting Services
 
-Your Infisical instance should now be running on port `80`. To access your instance, visit `http://localhost:80`.
+To stop all Infisical services:
+
+```bash
+docker compose -f docker-compose.prod.yml down
+```
+
+To restart services:
+
+```bash
+docker compose -f docker-compose.prod.yml up -d
+```
+
+To restart a specific service (e.g., after configuration changes):
+
+```bash
+docker compose -f docker-compose.prod.yml restart backend
+```
+
+### Data Persistence and Volumes
+
+The Docker Compose configuration uses named volumes to persist data:
+
+| Volume | Purpose | Data Stored |
+|--------|---------|-------------|
+| `pg_data` | PostgreSQL data | All encrypted secrets, users, projects, and configuration |
+| `redis_data` | Redis data | Cache and job queue data (can be regenerated) |
+
+<Warning>
+  **Critical**: The `pg_data` volume contains all your encrypted secrets. Never delete this volume unless you intend to lose all data. Always back up before any maintenance operations.
+</Warning>
+
+To view volumes:
+
+```bash
+docker volume ls | grep -E "pg_data|redis_data"
+```
+
+To back up the PostgreSQL volume:
+
+```bash
+docker compose -f docker-compose.prod.yml exec db pg_dump -U infisical infisical > backup_$(date +%Y%m%d_%H%M%S).sql
+```
+
+### Viewing Logs
+
+To view logs from all services:
+
+```bash
+docker compose -f docker-compose.prod.yml logs -f
+```
+
+To view logs from a specific service:
+
+```bash
+docker compose -f docker-compose.prod.yml logs -f backend
+docker compose -f docker-compose.prod.yml logs -f db
+docker compose -f docker-compose.prod.yml logs -f redis
+```
+
+To view the last 100 lines of logs:
+
+```bash
+docker compose -f docker-compose.prod.yml logs --tail=100 backend
+```
+
+Logs are also available directly from Docker:
+
+```bash
+docker logs <container_name> --since 1h
+```
+
+---
+
+## Additional Configuration
+
+<AccordionGroup>
+  <Accordion title="Firewall Configuration">
+    Configure your firewall to allow traffic to Infisical while securing other services:
+
+    **Required ports:**
+    | Port | Service | Access |
+    |------|---------|--------|
+    | 80 | HTTP (Infisical) | Public (or internal network) |
+    | 443 | HTTPS (if using TLS) | Public (or internal network) |
+
+    **Internal ports (should NOT be exposed publicly):**
+    | Port | Service | Notes |
+    |------|---------|-------|
+    | 5432 | PostgreSQL | Container-to-container only |
+    | 6379 | Redis | Container-to-container only |
+
+    **UFW (Ubuntu/Debian):**
+    ```bash
+    # Allow HTTP/HTTPS
+    sudo ufw allow 80/tcp
+    sudo ufw allow 443/tcp
+
+    # Ensure database ports are not exposed
+    sudo ufw deny 5432/tcp
+    sudo ufw deny 6379/tcp
+
+    sudo ufw enable
+    ```
+
+    **firewalld (RHEL/CentOS):**
+    ```bash
+    sudo firewall-cmd --permanent --add-service=http
+    sudo firewall-cmd --permanent --add-service=https
+    sudo firewall-cmd --reload
+    ```
+
+    <Warning>
+      Never expose PostgreSQL (5432) or Redis (6379) ports to the public internet. These should only be accessible within the Docker network.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="SMTP/Email Configuration">
+    Infisical uses email for user invitations, password resets, and notifications. Configure SMTP by adding these variables to your `.env` file:
+
+    ```env
+    SMTP_HOST=smtp.example.com
+    SMTP_PORT=587
+    SMTP_USERNAME=your-smtp-username
+    SMTP_PASSWORD=your-smtp-password
+    SMTP_FROM_ADDRESS=infisical@example.com
+    SMTP_FROM_NAME=Infisical
+    ```
+
+    **Common SMTP providers:**
+
+    <Tabs>
+      <Tab title="AWS SES">
+        ```env
+        SMTP_HOST=email-smtp.us-east-1.amazonaws.com
+        SMTP_PORT=587
+        SMTP_USERNAME=your-ses-smtp-username
+        SMTP_PASSWORD=your-ses-smtp-password
+        SMTP_FROM_ADDRESS=noreply@yourdomain.com
+        SMTP_FROM_NAME=Infisical
+        ```
+      </Tab>
+      <Tab title="SendGrid">
+        ```env
+        SMTP_HOST=smtp.sendgrid.net
+        SMTP_PORT=587
+        SMTP_USERNAME=apikey
+        SMTP_PASSWORD=your-sendgrid-api-key
+        SMTP_FROM_ADDRESS=noreply@yourdomain.com
+        SMTP_FROM_NAME=Infisical
+        ```
+      </Tab>
+      <Tab title="Gmail">
+        ```env
+        SMTP_HOST=smtp.gmail.com
+        SMTP_PORT=587
+        SMTP_USERNAME=your-email@gmail.com
+        SMTP_PASSWORD=your-app-password
+        SMTP_FROM_ADDRESS=your-email@gmail.com
+        SMTP_FROM_NAME=Infisical
+        ```
+        <Note>
+          For Gmail, you must use an [App Password](https://support.google.com/accounts/answer/185833) instead of your regular password.
+        </Note>
+      </Tab>
+    </Tabs>
+
+    After updating the `.env` file, restart Infisical:
+
+    ```bash
+    docker compose -f docker-compose.prod.yml restart backend
+    ```
+  </Accordion>
+
+  <Accordion title="Enable HTTPS with NGINX">
+    We recommend securing your Infisical deployment with HTTPS using a reverse proxy like NGINX.
+
+    **1. Obtain SSL certificates** (e.g., via Let's Encrypt):
+    ```bash
+    sudo apt install certbot
+    sudo certbot certonly --standalone -d secrets.example.com
+    ```
+
+    **2. Create NGINX configuration directory:**
+    ```bash
+    mkdir -p ./nginx/certs
+    sudo cp /etc/letsencrypt/live/secrets.example.com/fullchain.pem ./nginx/certs/
+    sudo cp /etc/letsencrypt/live/secrets.example.com/privkey.pem ./nginx/certs/
+    ```
+
+    **3. Add NGINX service to `docker-compose.prod.yml`:**
+    ```yaml
+    nginx:
+      image: nginx:alpine
+      ports:
+        - "80:80"
+        - "443:443"
+      volumes:
+        - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+        - ./nginx/certs:/etc/nginx/certs:ro
+      depends_on:
+        - backend
+    ```
+
+    **4. Create `./nginx/nginx.conf`:**
+    ```nginx
+    events {}
+
+    http {
+      server {
+        listen 80;
+        server_name secrets.example.com;
+        return 301 https://$host$request_uri;
+      }
+
+      server {
+        listen 443 ssl;
+        server_name secrets.example.com;
+
+        ssl_certificate /etc/nginx/certs/fullchain.pem;
+        ssl_certificate_key /etc/nginx/certs/privkey.pem;
+
+        location / {
+          proxy_pass http://backend:8080;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+        }
+      }
+    }
+    ```
+
+    **5. Update `.env`:**
+    ```env
+    SITE_URL=https://secrets.example.com
+    ```
+
+    **6. Restart services:**
+    ```bash
+    docker compose -f docker-compose.prod.yml down
+    docker compose -f docker-compose.prod.yml up -d
+    ```
+  </Accordion>
+
+  <Accordion title="Externalize Database and Redis">
+    For higher availability, use external managed services like AWS RDS and ElastiCache.
+
+    Update your `.env`:
+    ```env
+    DB_CONNECTION_URI=postgresql://<user>:<password>@<host>:5432/<dbname>
+    REDIS_URL=redis://:<password>@<host>:6379
+    ```
+
+    Remove or comment out `db` and `redis` services in `docker-compose.prod.yml`.
+
+    Ensure firewall/VPC access to these services is properly configured.
+  </Accordion>
+
+  <Accordion title="Backup Strategy">
+    Regular backups are critical for protecting your data.
+
+    **Database backup:**
+    ```bash
+    docker compose -f docker-compose.prod.yml exec db pg_dump -U infisical infisical > backup_$(date +%Y%m%d).sql
+    ```
+
+    **Automated daily backups (cron):**
+    ```bash
+    # Add to crontab (crontab -e)
+    0 2 * * * cd /path/to/infisical && docker compose -f docker-compose.prod.yml exec -T db pg_dump -U infisical infisical > /backups/infisical_$(date +\%Y\%m\%d).sql
+    ```
+
+    **Restore from backup:**
+    ```bash
+    docker compose -f docker-compose.prod.yml exec -T db psql -U infisical infisical < backup.sql
+    ```
+
+    <Warning>
+      Also back up your `ENCRYPTION_KEY` from the `.env` file. Without this key, you cannot decrypt secrets even if you restore the database.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="Enable Prometheus Monitoring">
+    Infisical exposes Prometheus metrics when enabled.
+
+    **1. Add to `.env`:**
+    ```env
+    OTEL_TELEMETRY_COLLECTION_ENABLED=true
+    OTEL_EXPORT_TYPE=prometheus
+    ```
+
+    **2. Expose port `9464` in `docker-compose.prod.yml`** by adding to the backend service:
+    ```yaml
+    ports:
+      - "80:8080"
+      - "9464:9464"
+    ```
+
+    **3. Configure Prometheus** to scrape `localhost:9464` or the container DNS.
+
+    See the [Monitoring Guide](/self-hosting/guides/monitoring-telemetry) for full setup.
+  </Accordion>
+
+  <Accordion title="Upgrade Instructions">
+    Keeping Infisical up-to-date ensures you receive the latest features and security patches.
+
+    **1. Back up your database:**
+    ```bash
+    docker compose -f docker-compose.prod.yml exec db pg_dump -U infisical infisical > backup_before_upgrade.sql
+    ```
+
+    **2. Update the image tag** in `docker-compose.prod.yml` to the desired version.
+
+    **3. Pull and restart:**
+    ```bash
+    docker compose -f docker-compose.prod.yml pull
+    docker compose -f docker-compose.prod.yml up -d
+    ```
+
+    **4. Verify the upgrade:**
+    ```bash
+    docker compose -f docker-compose.prod.yml logs -f backend
+    ```
+
+    Watch for successful database migration messages. See the [Upgrade Guide](/self-hosting/guides/upgrading-infisical) for more details.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Containers fail to start">
+    **Check container status:**
+    ```bash
+    docker compose -f docker-compose.prod.yml ps -a
+    ```
+
+    **View startup logs:**
+    ```bash
+    docker compose -f docker-compose.prod.yml logs
+    ```
+
+    **Common causes:**
+    - Port 80 already in use: Stop other services or change the port mapping
+    - Insufficient memory: Ensure at least 4GB RAM is available
+    - Invalid `.env` file: Check for syntax errors or missing required variables
+  </Accordion>
+
+  <Accordion title="Database connection errors">
+    **Check if PostgreSQL is running:**
+    ```bash
+    docker compose -f docker-compose.prod.yml exec db pg_isready
+    ```
+
+    **Verify database credentials:**
+    ```bash
+    docker compose -f docker-compose.prod.yml exec db psql -U infisical -c "SELECT 1"
+    ```
+
+    **Check Infisical logs for connection errors:**
+    ```bash
+    docker compose -f docker-compose.prod.yml logs backend | grep -i "database\|postgres\|connection"
+    ```
+
+    If the database was corrupted, you may need to restore from backup or recreate the volume:
+    ```bash
+    docker compose -f docker-compose.prod.yml down -v  # WARNING: Deletes all data
+    docker compose -f docker-compose.prod.yml up -d
+    ```
+  </Accordion>
+
+  <Accordion title="Cannot access Infisical in browser">
+    **Verify the service is running:**
+    ```bash
+    curl -v http://localhost:80/api/status
+    ```
+
+    **Check if the port is listening:**
+    ```bash
+    sudo netstat -tlnp | grep :80
+    # or
+    sudo ss -tlnp | grep :80
+    ```
+
+    **Check firewall rules:**
+    ```bash
+    sudo ufw status
+    # or
+    sudo firewall-cmd --list-all
+    ```
+
+    **Verify SITE_URL is correct** in your `.env` file and matches how you're accessing Infisical.
+  </Accordion>
+
+  <Accordion title="Email/SMTP not working">
+    **Test SMTP connectivity:**
+    ```bash
+    docker compose -f docker-compose.prod.yml exec backend nc -zv smtp.example.com 587
+    ```
+
+    **Check Infisical logs for email errors:**
+    ```bash
+    docker compose -f docker-compose.prod.yml logs backend | grep -i "smtp\|email\|mail"
+    ```
+
+    **Common issues:**
+    - Incorrect SMTP credentials
+    - Firewall blocking outbound port 587 or 465
+    - SMTP provider requires specific authentication (e.g., Gmail App Passwords)
+  </Accordion>
+
+  <Accordion title="Performance issues">
+    **Check resource usage:**
+    ```bash
+    docker stats
+    ```
+
+    **Check for slow database queries:**
+    ```bash
+    docker compose -f docker-compose.prod.yml exec db psql -U infisical -c "SELECT * FROM pg_stat_activity WHERE state = 'active'"
+    ```
+
+    **Solutions:**
+    - Increase container memory limits in `docker-compose.prod.yml`
+    - Add more CPU cores to the host
+    - Consider migrating to a managed database for better performance
+  </Accordion>
+
+  <Accordion title="Reset admin password">
+    If you have lost access to your admin account, you can reset it via the database:
+
+    ```bash
+    # Connect to the database
+    docker compose -f docker-compose.prod.yml exec db psql -U infisical
+
+    # Find the user
+    SELECT id, email FROM users WHERE email = 'admin@example.com';
+
+    # The password must be reset through the application password reset flow
+    # or by deleting and recreating the user
+    ```
+
+    For security reasons, passwords are hashed and cannot be directly reset in the database. Use the "Forgot Password" flow if SMTP is configured, or contact Infisical support for assistance.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+Your Infisical instance should now be running on port `80` (or `443` if using TLS). Visit `http://localhost:80` or `https://<your-domain>` to access your instance.
 
 ![self-hosted sign up](/images/self-hosting/applicable-to-all/selfhost-signup.png)

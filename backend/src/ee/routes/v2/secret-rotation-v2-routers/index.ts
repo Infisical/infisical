@@ -15,6 +15,7 @@ import { registerOracleDBCredentialsRotationRouter } from "./oracledb-credential
 import { registerPostgresCredentialsRotationRouter } from "./postgres-credentials-rotation-router";
 import { registerRedisCredentialsRotationRouter } from "./redis-credentials-rotation-router";
 import { registerUnixLinuxLocalAccountRotationRouter } from "./unix-linux-local-account-rotation-router";
+import { registerWindowsLocalAccountRotationRouter } from "./windows-local-account-rotation-router";
 
 export * from "./secret-rotation-v2-router";
 
@@ -36,5 +37,6 @@ export const SECRET_ROTATION_REGISTER_ROUTER_MAP: Record<
   [SecretRotation.DatabricksServicePrincipalSecret]: registerDatabricksServicePrincipalSecretRotationRouter,
   [SecretRotation.UnixLinuxLocalAccount]: registerUnixLinuxLocalAccountRotationRouter,
   [SecretRotation.DbtServiceToken]: registerDbtServiceTokenRotationRouter,
+  [SecretRotation.WindowsLocalAccount]: registerWindowsLocalAccountRotationRouter,
   [SecretRotation.OpenRouterApiKey]: registerOpenRouterApiKeyRotationRouter
 };

@@ -182,6 +182,9 @@ RUN wget https://www.openssl.org/source/openssl-3.1.2.tar.gz \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+# Install smbclient for Windows SMB operations
+RUN apt-get update && apt-get install -y smbclient && rm -rf /var/lib/apt/lists/*
+
 # Install Infisical CLI
 RUN curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
     && apt-get update && apt-get install -y infisical=0.43.47 \

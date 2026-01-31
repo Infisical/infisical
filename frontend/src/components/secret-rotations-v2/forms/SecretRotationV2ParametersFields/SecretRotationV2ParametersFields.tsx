@@ -15,6 +15,7 @@ import { OpenRouterApiKeyRotationParametersFields } from "./OpenRouterApiKeyRota
 import { RedisCredentialsRotationParametersFields } from "./RedisCredentialsRotationParametersFields";
 import { SqlCredentialsRotationParametersFields } from "./shared";
 import { UnixLinuxLocalAccountRotationParametersFields } from "./UnixLinuxLocalAccountRotationParametersFields";
+import { WindowsLocalAccountRotationParametersFields } from "./WindowsLocalAccountRotationParametersFields";
 
 const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.PostgresCredentials]: SqlCredentialsRotationParametersFields,
@@ -32,6 +33,7 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
     DatabricksServicePrincipalSecretRotationParametersFields,
   [SecretRotation.UnixLinuxLocalAccount]: UnixLinuxLocalAccountRotationParametersFields,
   [SecretRotation.DbtServiceToken]: DbtServiceTokenRotationParametersFields,
+  [SecretRotation.WindowsLocalAccount]: WindowsLocalAccountRotationParametersFields,
   [SecretRotation.OpenRouterApiKey]: OpenRouterApiKeyRotationParametersFields
 };
 

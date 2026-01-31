@@ -89,7 +89,7 @@ export const renderConditionalComponents = (
       return <PkiSyncPermissionConditions isDisabled={isDisabled} />;
     }
 
-    if (subject === ProjectPermissionSub.SecretEvents) {
+    if (subject === ProjectPermissionSub.SecretEventSubscriptions) {
       return <SecretEventPermissionConditions isDisabled={isDisabled} />;
     }
 

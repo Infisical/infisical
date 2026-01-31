@@ -62,6 +62,7 @@ import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-con
 import { OpenRouterConnectionMethod } from "@app/hooks/api/appConnections/types/open-router-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
+import { SmbConnectionMethod } from "@app/hooks/api/appConnections/types/smb-connection";
 import { SshConnectionMethod } from "@app/hooks/api/appConnections/types/ssh-connection";
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
 
@@ -145,6 +146,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.OctopusDeploy]: { name: "Octopus Deploy", image: "Octopus Deploy.png" },
   [AppConnection.SSH]: { name: "SSH", image: "SSH.png" },
   [AppConnection.Dbt]: { name: "DBT", image: "DBT.png" },
+  [AppConnection.SMB]: { name: "SMB", image: "SMB.png", size: 50 },
   [AppConnection.OpenRouter]: { name: "OpenRouter", image: "OpenRouter.png" },
   [AppConnection.CircleCI]: { name: "CircleCI", image: "CircleCI.png" }
 };
@@ -240,6 +242,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Password", icon: faLock };
     case SshConnectionMethod.SshKey:
       return { name: "SSH Key", icon: faKey };
+    case SmbConnectionMethod.Credentials:
+      return { name: "Credentials", icon: faLock };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

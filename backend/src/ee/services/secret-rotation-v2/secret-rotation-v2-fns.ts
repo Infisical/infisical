@@ -34,6 +34,10 @@ import {
   TUnixLinuxLocalAccountRotation,
   UNIX_LINUX_LOCAL_ACCOUNT_ROTATION_LIST_OPTION
 } from "./unix-linux-local-account-rotation";
+import {
+  TWindowsLocalAccountRotation,
+  WINDOWS_LOCAL_ACCOUNT_ROTATION_LIST_OPTION
+} from "./windows-local-account-rotation";
 
 const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2ListItem> = {
   [SecretRotation.PostgresCredentials]: POSTGRES_CREDENTIALS_ROTATION_LIST_OPTION,
@@ -50,6 +54,7 @@ const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2List
   [SecretRotation.DatabricksServicePrincipalSecret]: DATABRICKS_SERVICE_PRINCIPAL_SECRET_ROTATION_LIST_OPTION,
   [SecretRotation.UnixLinuxLocalAccount]: UNIX_LINUX_LOCAL_ACCOUNT_ROTATION_LIST_OPTION,
   [SecretRotation.DbtServiceToken]: DBT_SERVICE_TOKEN_ROTATION_LIST_OPTION,
+  [SecretRotation.WindowsLocalAccount]: WINDOWS_LOCAL_ACCOUNT_ROTATION_LIST_OPTION,
   [SecretRotation.OpenRouterApiKey]: OPEN_ROUTER_API_KEY_ROTATION_LIST_OPTION
 };
 
@@ -286,6 +291,17 @@ export const throwOnImmutableParameterUpdate = (
         haveUnequalProperties(
           updatePayload.parameters as TUnixLinuxLocalAccountRotation["parameters"],
           secretRotation.parameters as TUnixLinuxLocalAccountRotation["parameters"],
+          ["rotationMethod", "username"]
+        )
+      ) {
+        throw new BadRequestError({ message: "Cannot update rotation method or username" });
+      }
+      break;
+    case SecretRotation.WindowsLocalAccount:
+      if (
+        haveUnequalProperties(
+          updatePayload.parameters as TWindowsLocalAccountRotation["parameters"],
+          secretRotation.parameters as TWindowsLocalAccountRotation["parameters"],
           ["rotationMethod", "username"]
         )
       ) {

@@ -97,6 +97,17 @@ import {
   TUnixLinuxLocalAccountRotation,
   TUnixLinuxLocalAccountRotationGeneratedCredentials
 } from "./unix-linux-local-account-rotation/unix-linux-local-account-rotation-types";
+import { windowsLocalAccountRotationFactory } from "./windows-local-account-rotation/windows-local-account-rotation-fns";
+import { WindowsLocalAccountRotationMethod } from "./windows-local-account-rotation/windows-local-account-rotation-schemas";
+import {
+  TWindowsLocalAccountRotation,
+  TWindowsLocalAccountRotationGeneratedCredentials
+} from "./windows-local-account-rotation/windows-local-account-rotation-types";
+
+type TLocalAccountRotation = TUnixLinuxLocalAccountRotation | TWindowsLocalAccountRotation;
+type TLocalAccountRotationGeneratedCredentials =
+  | TUnixLinuxLocalAccountRotationGeneratedCredentials
+  | TWindowsLocalAccountRotationGeneratedCredentials;
 
 export type TSecretRotationV2ServiceFactoryDep = {
   secretRotationV2DAL: TSecretRotationV2DALFactory;
@@ -150,6 +161,7 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
     databricksServicePrincipalSecretRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.UnixLinuxLocalAccount]: unixLinuxLocalAccountRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.DbtServiceToken]: dbtServiceTokenRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.WindowsLocalAccount]: windowsLocalAccountRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.OpenRouterApiKey]: openRouterApiKeyRotationFactory as TRotationFactoryImplementation
 };
 
@@ -1393,8 +1405,11 @@ export const secretRotationV2ServiceFactory = ({
     return secretRotations as TSecretRotationV2[];
   };
 
-  const reconcileUnixLinuxLocalAccountRotation = async (
-    { rotationId }: { rotationId: string },
+  const reconcileLocalAccountRotation = async (
+    {
+      rotationId,
+      type
+    }: { rotationId: string; type: SecretRotation.UnixLinuxLocalAccount | SecretRotation.WindowsLocalAccount },
     actor: OrgServiceActor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
@@ -1412,9 +1427,12 @@ export const secretRotationV2ServiceFactory = ({
         message: `Could not find Secret Rotation with ID "${rotationId}"`
       });
 
-    if (secretRotation.type !== SecretRotation.UnixLinuxLocalAccount)
+    if (
+      secretRotation.type !== SecretRotation.UnixLinuxLocalAccount &&
+      secretRotation.type !== SecretRotation.WindowsLocalAccount
+    )
       throw new BadRequestError({
-        message: "Reconcile operation is only supported for Unix/Linux Local Account rotations"
+        message: `Reconcile operation is only supported for Unix/Linux Local Account and Windows Local Account rotations`
       });
 
     const { projectId, environment, folder, connection, encryptedGeneratedCredentials, parameters, folderId } =
@@ -1437,12 +1455,22 @@ export const secretRotationV2ServiceFactory = ({
       })
     );
 
-    const unixLinuxParams = parameters as TUnixLinuxLocalAccountRotation["parameters"];
+    const localAccountParams = parameters as TLocalAccountRotation["parameters"];
 
-    // Only allow reconcile for self-rotation mode
-    if (unixLinuxParams.rotationMethod !== UnixLinuxLocalAccountRotationMethod.LoginAsTarget) {
+    const loginAsTargetMethod =
+      type === SecretRotation.UnixLinuxLocalAccount
+        ? UnixLinuxLocalAccountRotationMethod.LoginAsTarget
+        : WindowsLocalAccountRotationMethod.LoginAsTarget;
+
+    const loginAsRootMethod =
+      type === SecretRotation.UnixLinuxLocalAccount
+        ? UnixLinuxLocalAccountRotationMethod.LoginAsRoot
+        : WindowsLocalAccountRotationMethod.LoginAsRoot;
+
+    // Only allow reconcile for login-as-target mode
+    if (localAccountParams.rotationMethod !== loginAsTargetMethod) {
       throw new BadRequestError({
-        message: "Reconcile operation is only supported for self-rotation mode Unix/Linux Local Account rotations"
+        message: `Reconcile operation is only supported for login-as-target mode Unix/Linux Local Account and Windows Local Account rotations`
       });
     }
 
@@ -1455,17 +1483,17 @@ export const secretRotationV2ServiceFactory = ({
 
     const activeCredentials = generatedCredentials[
       secretRotation.activeIndex
-    ] as TUnixLinuxLocalAccountRotationGeneratedCredentials[number];
+    ] as TLocalAccountRotationGeneratedCredentials[number];
     const appConnection = await decryptAppConnection(connection, kmsService);
 
     // Use the rotation factory to perform a rotation using the app connection credentials
-    const rotationFactory = SECRET_ROTATION_FACTORY_MAP[SecretRotation.UnixLinuxLocalAccount](
+    const rotationFactory = SECRET_ROTATION_FACTORY_MAP[type](
       {
         ...secretRotation,
-        // Override rotation method to managed so it uses the app connection credentials
+        // Override rotation method to login-as-root so it uses the app connection credentials
         parameters: {
-          ...unixLinuxParams,
-          rotationMethod: UnixLinuxLocalAccountRotationMethod.LoginAsRoot
+          ...localAccountParams,
+          rotationMethod: loginAsRootMethod
         },
         connection: appConnection
       } as TSecretRotationV2WithConnection,
@@ -1475,12 +1503,12 @@ export const secretRotationV2ServiceFactory = ({
       gatewayV2Service
     );
 
-    // Issue new credentials using managed mode (app connection credentials)
+    // Issue new credentials using login-as-root mode (app connection credentials)
     const updatedRotation = await rotationFactory.issueCredentials(
       async (newCredentials) => {
-        const unixLinuxCredentials = newCredentials as TUnixLinuxLocalAccountRotationGeneratedCredentials[number];
+        const localAccountCredentials = newCredentials as TLocalAccountRotationGeneratedCredentials[number];
         const updatedCredentials = [...generatedCredentials];
-        updatedCredentials[secretRotation.activeIndex] = unixLinuxCredentials;
+        updatedCredentials[secretRotation.activeIndex] = localAccountCredentials;
 
         const encryptedUpdatedCredentials = await encryptSecretRotationCredentials({
           projectId,
@@ -1495,7 +1523,7 @@ export const secretRotationV2ServiceFactory = ({
           });
 
           // Update the password secret with the new value
-          const secretsMapping = secretRotation.secretsMapping as TUnixLinuxLocalAccountRotation["secretsMapping"];
+          const secretsMapping = secretRotation.secretsMapping as TLocalAccountRotation["secretsMapping"];
 
           await fnSecretBulkUpdate({
             folderId,
@@ -1510,7 +1538,7 @@ export const secretRotationV2ServiceFactory = ({
                 },
                 data: {
                   encryptedValue: encryptor({
-                    plainText: Buffer.from(unixLinuxCredentials.password)
+                    plainText: Buffer.from(localAccountCredentials.password)
                   }).cipherTextBlob,
                   references: []
                 }
@@ -1550,7 +1578,7 @@ export const secretRotationV2ServiceFactory = ({
     });
 
     return {
-      message: "Unix/Linux Local Account credentials reconciled successfully",
+      message: `${type === SecretRotation.UnixLinuxLocalAccount ? "Unix/Linux Local Account" : "Windows Local Account"} rotation credentials reconciled successfully`,
       reconciled: true,
       secretRotation: await expandSecretRotation(updatedRotation, kmsService)
     };
@@ -1570,6 +1598,6 @@ export const secretRotationV2ServiceFactory = ({
     getDashboardSecretRotationCount,
     getDashboardSecretRotations,
     getQuickSearchSecretRotations,
-    reconcileUnixLinuxLocalAccountRotation
+    reconcileLocalAccountRotation
   };
 };

@@ -343,6 +343,7 @@ export const SecretTableRow = ({
                             isRotatedSecret={secret?.isRotatedSecret}
                             importedBy={importedBy}
                             isSecretPresent={Boolean(secret)}
+                            comment={secret?.comment}
                           />
                         </UnstableTableCell>
                       </UnstableTableRow>

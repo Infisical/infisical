@@ -42,6 +42,7 @@ import { TPostgresConnection } from "./postgres-connection";
 import { TRailwayConnection } from "./railway-connection";
 import { TRedisConnection } from "./redis-connection";
 import { TRenderConnection } from "./render-connection";
+import { TSmbConnection } from "./smb-connection";
 import { TSshConnection } from "./ssh-connection";
 import { TSupabaseConnection } from "./supabase-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
@@ -91,6 +92,7 @@ export * from "./postgres-connection";
 export * from "./railway-connection";
 export * from "./redis-connection";
 export * from "./render-connection";
+export * from "./smb-connection";
 export * from "./ssh-connection";
 export * from "./supabase-connection";
 export * from "./teamcity-connection";
@@ -147,6 +149,7 @@ export type TAppConnection =
   | TDNSMadeEasyConnection
   | TSshConnection
   | TDbtConnection
+  | TSmbConnection
   | TOpenRouterConnection
   | TCircleCIConnection;
 

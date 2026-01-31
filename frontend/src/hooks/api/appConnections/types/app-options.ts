@@ -204,6 +204,10 @@ export type TDbtConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Dbt;
 };
 
+export type TSmbConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.SMB;
+};
+
 export type TOpenRouterConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.OpenRouter;
 };
@@ -262,6 +266,7 @@ export type TAppConnectionOption =
   | TOctopusDeployConnectionOption
   | TSshConnectionOption
   | TDbtConnectionOption;
+  | TSmbConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -312,5 +317,6 @@ export type TAppConnectionOptionMap = {
   [AppConnection.OctopusDeploy]: TOctopusDeployConnectionOption;
   [AppConnection.SSH]: TSshConnectionOption;
   [AppConnection.Dbt]: TDbtConnectionOption;
+  [AppConnection.SMB]: TSmbConnectionOption;
   [AppConnection.CircleCI]: TCircleCISyncConnectionOption;
 };

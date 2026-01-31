@@ -14,6 +14,7 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
 import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-service";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
@@ -182,12 +183,14 @@ export const secretImportServiceFactory = ({
         environmentSlug: environment,
         actorId,
         actor,
-        event: {
-          importMutation: {
+        events: [
+          {
+            type: ProjectEvents.SecretImportMutation,
+            projectId,
             secretPath,
             environment
           }
-        }
+        ]
       });
     }
 
@@ -363,12 +366,14 @@ export const secretImportServiceFactory = ({
       environmentSlug: environment,
       actor,
       actorId,
-      event: {
-        importMutation: {
+      events: [
+        {
+          type: ProjectEvents.SecretImportMutation,
+          projectId,
           secretPath,
           environment
         }
-      }
+      ]
     });
 
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);

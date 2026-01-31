@@ -143,7 +143,7 @@
                       "integrations/app-connections/oci",
                       "integrations/app-connections/octopus-deploy",
                       "integrations/app-connections/okta",
-                      "integrations/app-connections/open-router",
+                      "integrations/app-connections/openrouter",
                       "integrations/app-connections/oracledb",
                       "integrations/app-connections/postgres",
                       "integrations/app-connections/railway",
@@ -154,6 +154,7 @@
                       "integrations/app-connections/terraform-cloud",
                       "integrations/app-connections/vercel",
                       "integrations/app-connections/windmill",
+                      "integrations/app-connections/smb",
                       "integrations/app-connections/zabbix"
                     ]
                   }
@@ -455,15 +456,16 @@
                       "documentation/platform/secret-rotation/databricks-service-principal-secret",
                       "documentation/platform/secret-rotation/dbt-service-token",
                       "documentation/platform/secret-rotation/ldap-password",
-                      "documentation/platform/secret-rotation/unix-linux-local-account",
                       "documentation/platform/secret-rotation/mongodb-credentials",
                       "documentation/platform/secret-rotation/mssql-credentials",
                       "documentation/platform/secret-rotation/mysql-credentials",
                       "documentation/platform/secret-rotation/okta-client-secret",
+                      "documentation/platform/secret-rotation/openrouter-api-key",
                       "documentation/platform/secret-rotation/oracledb-credentials",
                       "documentation/platform/secret-rotation/postgres-credentials",
                       "documentation/platform/secret-rotation/redis-credentials",
-                      "documentation/platform/secret-rotation/open-router-api-key"
+                      "documentation/platform/secret-rotation/unix-linux-local-account",
+                      "documentation/platform/secret-rotation/windows-local-account"
                     ]
                   },
                   {
@@ -1568,6 +1570,18 @@
                     ]
                   },
                   {
+                    "group": "OpenRouter",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/openrouter/list",
+                      "api-reference/endpoints/app-connections/openrouter/available",
+                      "api-reference/endpoints/app-connections/openrouter/get-by-id",
+                      "api-reference/endpoints/app-connections/openrouter/get-by-name",
+                      "api-reference/endpoints/app-connections/openrouter/create",
+                      "api-reference/endpoints/app-connections/openrouter/update",
+                      "api-reference/endpoints/app-connections/openrouter/delete"
+                    ]
+                  },
+                  {
                     "group": "OracleDB",
                     "pages": [
                       "api-reference/endpoints/app-connections/oracledb/list",
@@ -1697,6 +1711,18 @@
                       "api-reference/endpoints/app-connections/windmill/create",
                       "api-reference/endpoints/app-connections/windmill/update",
                       "api-reference/endpoints/app-connections/windmill/delete"
+                    ]
+                  },
+                  {
+                    "group": "SMB",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/smb/list",
+                      "api-reference/endpoints/app-connections/smb/available",
+                      "api-reference/endpoints/app-connections/smb/get-by-id",
+                      "api-reference/endpoints/app-connections/smb/get-by-name",
+                      "api-reference/endpoints/app-connections/smb/create",
+                      "api-reference/endpoints/app-connections/smb/update",
+                      "api-reference/endpoints/app-connections/smb/delete"
                     ]
                   },
                   {
@@ -2069,20 +2095,6 @@
                     ]
                   },
                   {
-                    "group": "Unix/Linux Local Account",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/create",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/delete",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-by-id",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-by-name",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/list",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/update",
-                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/reconcile"
-                    ]
-                  },
-                  {
                     "group": "Microsoft SQL Server Credentials",
                     "pages": [
                       "api-reference/endpoints/secret-rotations/mssql-credentials/create",
@@ -2171,6 +2183,34 @@
                       "api-reference/endpoints/secret-rotations/redis-credentials/list",
                       "api-reference/endpoints/secret-rotations/redis-credentials/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/redis-credentials/update"
+                    ]
+                  },
+                  {
+                    "group": "Unix/Linux Local Account",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/create",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/delete",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-by-id",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-by-name",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/list",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/update",
+                      "api-reference/endpoints/secret-rotations/unix-linux-local-account/reconcile"
+                    ]
+                  },
+                  {
+                    "group": "Windows Local Account",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/windows-local-account/create",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/delete",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/get-by-id",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/get-by-name",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/list",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/update",
+                      "api-reference/endpoints/secret-rotations/windows-local-account/reconcile"
                     ]
                   }
                 ]

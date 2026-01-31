@@ -246,6 +246,12 @@ import {
   TValidateRenderConnectionCredentialsSchema
 } from "./render/render-connection-types";
 import {
+  TSmbConnection,
+  TSmbConnectionConfig,
+  TSmbConnectionInput,
+  TValidateSmbConnectionCredentialsSchema
+} from "./smb";
+import {
   TSshConnection,
   TSshConnectionConfig,
   TSshConnectionInput,
@@ -336,6 +342,7 @@ export type TAppConnection = { id: string } & (
   | TOctopusDeployConnection
   | TSshConnection
   | TDbtConnection
+  | TSmbConnection
   | TOpenRouterConnection
   | TCircleCIConnection
 );
@@ -392,6 +399,7 @@ export type TAppConnectionInput = { id: string } & (
   | TOctopusDeployConnectionInput
   | TSshConnectionInput
   | TDbtConnectionInput
+  | TSmbConnectionInput
   | TOpenRouterConnectionInput
   | TCircleCIConnectionInput
 );
@@ -466,6 +474,7 @@ export type TAppConnectionConfig =
   | TOctopusDeployConnectionConfig
   | TSshConnectionConfig
   | TDbtConnectionConfig
+  | TSmbConnectionConfig
   | TOpenRouterConnectionConfig
   | TCircleCIConnectionConfig;
 
@@ -517,6 +526,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateOctopusDeployConnectionCredentialsSchema
   | TValidateSshConnectionCredentialsSchema
   | TValidateDbtConnectionCredentialsSchema
+  | TValidateSmbConnectionCredentialsSchema
   | TValidateOpenRouterConnectionCredentialsSchema
   | TValidateCircleCIConnectionCredentialsSchema;
 

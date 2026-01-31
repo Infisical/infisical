@@ -75,6 +75,11 @@ export const SECRET_ROTATION_MAP: Record<
     image: "DBT.png",
     size: 50
   },
+  [SecretRotation.WindowsLocalAccount]: {
+    name: "Windows Local Account",
+    image: "Windows.png",
+    size: 50
+  },
   [SecretRotation.OpenRouterApiKey]: {
     name: "OpenRouter API Key",
     image: "OpenRouter.png",
@@ -97,6 +102,7 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.DatabricksServicePrincipalSecret]: AppConnection.Databricks,
   [SecretRotation.UnixLinuxLocalAccount]: AppConnection.SSH,
   [SecretRotation.DbtServiceToken]: AppConnection.Dbt,
+  [SecretRotation.WindowsLocalAccount]: AppConnection.SMB,
   [SecretRotation.OpenRouterApiKey]: AppConnection.OpenRouter
 };
 
@@ -116,6 +122,7 @@ export const IS_ROTATION_DUAL_CREDENTIALS: Record<SecretRotation, boolean> = {
   [SecretRotation.DatabricksServicePrincipalSecret]: true,
   [SecretRotation.UnixLinuxLocalAccount]: false,
   [SecretRotation.DbtServiceToken]: true,
+  [SecretRotation.WindowsLocalAccount]: false,
   [SecretRotation.OpenRouterApiKey]: true
 };
 

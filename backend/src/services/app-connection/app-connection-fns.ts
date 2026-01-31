@@ -151,6 +151,7 @@ import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } fr
 import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnectionCredentials } from "./redis";
 import { RenderConnectionMethod } from "./render/render-connection-enums";
 import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
+import { getSmbConnectionListItem, SmbConnectionMethod, validateSmbConnectionCredentials } from "./smb";
 import { getSshConnectionListItem, SshConnectionMethod, validateSshConnectionCredentials } from "./ssh";
 import {
   getSupabaseConnectionListItem,
@@ -247,6 +248,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getChefConnectionListItem(),
     getSshConnectionListItem(),
     getDbtConnectionListItem(),
+    getSmbConnectionListItem(),
     getOpenRouterConnectionListItem(),
     getCircleCIConnectionListItem()
   ]
@@ -386,6 +388,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.OctopusDeploy]: validateOctopusDeployConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.SSH]: validateSshConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Dbt]: validateDbtConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.SMB]: validateSmbConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OpenRouter]: validateOpenRouterConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator
   };
@@ -461,6 +464,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "Password";
     case SshConnectionMethod.SshKey:
       return "SSH Key";
+    case SmbConnectionMethod.Credentials:
+      return "Credentials";
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
     case OctopusDeployConnectionMethod.ApiKey:
@@ -549,6 +554,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.OctopusDeploy]: platformManagedCredentialsNotSupported,
   [AppConnection.SSH]: platformManagedCredentialsNotSupported,
   [AppConnection.Dbt]: platformManagedCredentialsNotSupported,
+  [AppConnection.SMB]: platformManagedCredentialsNotSupported,
   [AppConnection.OpenRouter]: platformManagedCredentialsNotSupported,
   [AppConnection.CircleCI]: platformManagedCredentialsNotSupported
 };
