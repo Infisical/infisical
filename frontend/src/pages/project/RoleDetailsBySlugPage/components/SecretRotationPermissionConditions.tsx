@@ -7,11 +7,11 @@ type Props = {
   isDisabled?: boolean;
 };
 
-export const SecretSyncPermissionConditions = ({ position = 0, isDisabled }: Props) => {
+export const SecretRotationPermissionConditions = ({ position = 0, isDisabled }: Props) => {
   return (
     <ConditionsFields
       isDisabled={isDisabled}
-      subject={ProjectPermissionSub.SecretSyncs}
+      subject={ProjectPermissionSub.SecretRotation}
       position={position}
       selectOptions={[
         { value: "environment", label: "Environment Slug" },
