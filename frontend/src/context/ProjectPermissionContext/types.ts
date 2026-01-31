@@ -408,8 +408,9 @@ export type SecretImportSubjectFields = {
 };
 
 export type SecretSyncSubjectFields = {
-  environment: string;
-  secretPath: string;
+  environment?: string;
+  secretPath?: string;
+  connectionId?: string;
 };
 
 export type PkiSyncSubjectFields = {
@@ -434,6 +435,7 @@ export type CertificateProfileSubjectFields = {
 export type SecretRotationSubjectFields = {
   environment: string;
   secretPath: string;
+  connectionId?: string;
 };
 
 export type SshHostSubjectFields = {

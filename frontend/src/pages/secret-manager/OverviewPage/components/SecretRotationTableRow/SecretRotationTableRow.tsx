@@ -183,7 +183,10 @@ export const SecretRotationTableRow = ({
                                   }
                                   a={subject(ProjectPermissionSub.SecretRotation, {
                                     environment: environment.slug,
-                                    secretPath: folder.path
+                                    secretPath: folder.path,
+                                    ...(secretRotation.connectionId && {
+                                      connectionId: secretRotation.connectionId
+                                    })
                                   })}
                                 >
                                   {(isAllowed) => (
@@ -206,7 +209,10 @@ export const SecretRotationTableRow = ({
                                   I={ProjectPermissionSecretRotationActions.RotateSecrets}
                                   a={subject(ProjectPermissionSub.SecretRotation, {
                                     environment: environment.slug,
-                                    secretPath: folder.path
+                                    secretPath: folder.path,
+                                    ...(secretRotation.connectionId && {
+                                      connectionId: secretRotation.connectionId
+                                    })
                                   })}
                                 >
                                   {(isAllowed) => (
@@ -232,7 +238,10 @@ export const SecretRotationTableRow = ({
                                       I={ProjectPermissionSecretRotationActions.RotateSecrets}
                                       a={subject(ProjectPermissionSub.SecretRotation, {
                                         environment: environment.slug,
-                                        secretPath: folder.path
+                                        secretPath: folder.path,
+                                        ...(secretRotation.connectionId && {
+                                          connectionId: secretRotation.connectionId
+                                        })
                                       })}
                                     >
                                       {(isAllowed) => (
@@ -256,7 +265,10 @@ export const SecretRotationTableRow = ({
                                   I={ProjectPermissionSecretRotationActions.Edit}
                                   a={subject(ProjectPermissionSub.SecretRotation, {
                                     environment: environment.slug,
-                                    secretPath: folder.path
+                                    secretPath: folder.path,
+                                    ...(secretRotation.connectionId && {
+                                      connectionId: secretRotation.connectionId
+                                    })
                                   })}
                                   renderTooltip
                                   allowedLabel="Edit"
@@ -281,7 +293,10 @@ export const SecretRotationTableRow = ({
                                   I={ProjectPermissionSecretRotationActions.Delete}
                                   a={subject(ProjectPermissionSub.SecretRotation, {
                                     environment: environment.slug,
-                                    secretPath: folder.path
+                                    secretPath: folder.path,
+                                    ...(secretRotation.connectionId && {
+                                      connectionId: secretRotation.connectionId
+                                    })
                                   })}
                                 >
                                   {(isAllowed) => (

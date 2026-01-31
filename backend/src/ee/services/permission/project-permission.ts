@@ -329,8 +329,9 @@ export type SecretFolderSubjectFields = {
 };
 
 export type SecretSyncSubjectFields = {
-  environment: string;
-  secretPath: string;
+  environment?: string;
+  secretPath?: string;
+  connectionId?: string;
 };
 
 export type PkiSyncSubjectFields = {
@@ -353,8 +354,9 @@ export type SecretImportSubjectFields = {
 };
 
 export type SecretRotationsSubjectFields = {
-  environment: string;
-  secretPath: string;
+  environment?: string;
+  secretPath?: string;
+  connectionId?: string;
 };
 
 export type IdentityManagementSubjectFields = {
@@ -616,6 +618,33 @@ const SecretConditionV1Schema = z
   })
   .partial();
 
+const SecretRotationConditionSchema = z
+  .object({
+    environment: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA,
+    connectionId: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        })
+        .partial()
+    ])
+  })
+  .partial();
+
 const DynamicSecretConditionV2Schema = z
   .object({
     environment: z.union([
@@ -666,7 +695,17 @@ const SecretSyncConditionV2Schema = z
         })
         .partial()
     ]),
-    secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA
+    secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA,
+    connectionId: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        })
+        .partial()
+    ])
   })
   .partial();
 
@@ -1349,7 +1388,7 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretRotationActions).describe(
       "Describe what action an entity can take."
     ),
-    conditions: SecretConditionV1Schema.describe(
+    conditions: SecretRotationConditionSchema.describe(
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
   }),

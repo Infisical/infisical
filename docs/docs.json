@@ -142,7 +142,7 @@
                       "integrations/app-connections/oci",
                       "integrations/app-connections/octopus-deploy",
                       "integrations/app-connections/okta",
-                      "integrations/app-connections/open-router",
+                      "integrations/app-connections/openrouter",
                       "integrations/app-connections/oracledb",
                       "integrations/app-connections/postgres",
                       "integrations/app-connections/railway",
@@ -458,7 +458,7 @@
                       "documentation/platform/secret-rotation/mssql-credentials",
                       "documentation/platform/secret-rotation/mysql-credentials",
                       "documentation/platform/secret-rotation/okta-client-secret",
-                      "documentation/platform/secret-rotation/open-router-api-key",
+                      "documentation/platform/secret-rotation/openrouter-api-key",
                       "documentation/platform/secret-rotation/oracledb-credentials",
                       "documentation/platform/secret-rotation/postgres-credentials",
                       "documentation/platform/secret-rotation/redis-credentials",
@@ -686,6 +686,7 @@
                     "pages": [
                       "documentation/platform/pki/guides/request-cert-agent",
                       "documentation/platform/pki/guides/request-cert-api",
+                      "documentation/platform/pki/guides/request-cert-csr",
                       "documentation/platform/pki/guides/request-cert-acme",
                       "documentation/platform/pki/guides/certificate-approvals"
                     ]
@@ -1555,7 +1556,18 @@
                       "api-reference/endpoints/app-connections/okta/delete"
                     ]
                   },
-
+                  {
+                    "group": "OpenRouter",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/openrouter/list",
+                      "api-reference/endpoints/app-connections/openrouter/available",
+                      "api-reference/endpoints/app-connections/openrouter/get-by-id",
+                      "api-reference/endpoints/app-connections/openrouter/get-by-name",
+                      "api-reference/endpoints/app-connections/openrouter/create",
+                      "api-reference/endpoints/app-connections/openrouter/update",
+                      "api-reference/endpoints/app-connections/openrouter/delete"
+                    ]
+                  },
                   {
                     "group": "OracleDB",
                     "pages": [

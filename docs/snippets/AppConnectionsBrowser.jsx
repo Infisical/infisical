@@ -356,8 +356,8 @@ export const AppConnectionsBrowser = () => {
     },
     {
       name: "OpenRouter",
-      slug: "open-router",
-      path: "/integrations/app-connections/open-router",
+      slug: "openrouter",
+      path: "/integrations/app-connections/openrouter",
       description:
         "Learn how to connect OpenRouter (unified LLM router) to manage and rotate API keys with Infisical.",
       category: "AI & LLM",
