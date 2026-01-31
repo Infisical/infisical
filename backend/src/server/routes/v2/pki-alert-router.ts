@@ -123,6 +123,13 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
                   updatedAt: z.date()
                 })
               ),
+              lastRun: z
+                .object({
+                  timestamp: z.date(),
+                  status: z.enum(["success", "failed"]),
+                  error: z.string().nullable()
+                })
+                .nullable(),
               createdAt: z.date(),
               updatedAt: z.date()
             })
@@ -442,6 +449,44 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body
+      });
+
+      return result;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/test-webhook",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      operationId: "testPkiAlertWebhook",
+      description: "Test a webhook configuration by sending a test payload",
+      tags: [ApiDocsTags.PkiAlerting],
+      body: z.object({
+        projectId: z.string().uuid().describe("Project ID for permission check"),
+        url: z.string().url().describe("Webhook URL to test"),
+        signingSecret: z.string().max(256).optional().describe("Optional signing secret for HMAC signature")
+      }),
+      response: {
+        200: z.object({
+          success: z.boolean(),
+          error: z.string().optional()
+        })
+      }
+    },
+    handler: async (req) => {
+      const result = await server.services.pkiAlertV2.testWebhookConfig({
+        projectId: req.body.projectId,
+        url: req.body.url,
+        signingSecret: req.body.signingSecret,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
       });
 
       return result;
