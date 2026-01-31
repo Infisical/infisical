@@ -1,28 +1,26 @@
 import { subject } from "@casl/ability";
-import { faCertificate, faEllipsis } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCertificate } from "@fortawesome/free-solid-svg-icons";
 import * as x509 from "@peculiar/x509";
 import { format } from "date-fns";
 import FileSaver from "file-saver";
-import { twMerge } from "tailwind-merge";
+import { EllipsisIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
+import { EmptyState, TableSkeleton } from "@app/components/v2";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  EmptyState,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+  Badge,
+  UnstableDropdownMenu,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuTrigger,
+  UnstableIconButton,
+  UnstableTable,
+  UnstableTableBody,
+  UnstableTableCell,
+  UnstableTableHead,
+  UnstableTableHeader,
+  UnstableTableRow
+} from "@app/components/v3";
 import { ProjectPermissionCertificateAuthorityActions, ProjectPermissionSub } from "@app/context";
 import { useGetCaCerts } from "@app/hooks/api";
 
@@ -40,44 +38,44 @@ export const CaCertificatesTable = ({ caId, caName }: Props) => {
   };
 
   return (
-    <TableContainer>
-      <Table>
-        <THead>
-          <Tr>
-            <Th>CA Certificate #</Th>
-            <Th>Not Before</Th>
-            <Th>Not After</Th>
-            <Th className="w-5" />
-          </Tr>
-        </THead>
-        <TBody>
+    <>
+      <UnstableTable>
+        <UnstableTableHeader>
+          <UnstableTableRow>
+            <UnstableTableHead>CA Certificate #</UnstableTableHead>
+            <UnstableTableHead>Not Before</UnstableTableHead>
+            <UnstableTableHead>Not After</UnstableTableHead>
+            <UnstableTableHead className="w-5" />
+          </UnstableTableRow>
+        </UnstableTableHeader>
+        <UnstableTableBody>
           {isPending && <TableSkeleton columns={4} innerKey="ca-certificates" />}
           {!isPending &&
             caCerts?.map?.((caCert, index) => {
               const isLastItem = index === caCerts.length - 1;
               const caCertObj = new x509.X509Certificate(caCert.certificate);
               return (
-                <Tr key={`ca-cert=${caCert.serialNumber}`}>
-                  <Td>
-                    <div className="flex items-center">
+                <UnstableTableRow key={`ca-cert=${caCert.serialNumber}`}>
+                  <UnstableTableCell>
+                    <div className="flex items-center gap-x-2">
                       CA Certificate {caCert.version}
-                      {isLastItem && (
-                        <Badge variant="info" className="ml-4">
-                          Current
-                        </Badge>
-                      )}
+                      {isLastItem && <Badge variant="info">Current</Badge>}
                     </div>
-                  </Td>
-                  <Td>{format(new Date(caCertObj.notBefore), "yyyy-MM-dd")}</Td>
-                  <Td>{format(new Date(caCertObj.notAfter), "yyyy-MM-dd")}</Td>
-                  <Td>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild className="rounded-lg">
-                        <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                          <FontAwesomeIcon size="sm" icon={faEllipsis} />
-                        </div>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="p-1">
+                  </UnstableTableCell>
+                  <UnstableTableCell>
+                    {format(new Date(caCertObj.notBefore), "yyyy-MM-dd")}
+                  </UnstableTableCell>
+                  <UnstableTableCell>
+                    {format(new Date(caCertObj.notAfter), "yyyy-MM-dd")}
+                  </UnstableTableCell>
+                  <UnstableTableCell>
+                    <UnstableDropdownMenu>
+                      <UnstableDropdownMenuTrigger asChild>
+                        <UnstableIconButton variant="ghost" size="xs">
+                          <EllipsisIcon />
+                        </UnstableIconButton>
+                      </UnstableDropdownMenuTrigger>
+                      <UnstableDropdownMenuContent align="end">
                         <ProjectPermissionCan
                           I={ProjectPermissionCertificateAuthorityActions.Read}
                           a={subject(ProjectPermissionSub.CertificateAuthorities, {
@@ -85,18 +83,15 @@ export const CaCertificatesTable = ({ caId, caName }: Props) => {
                           })}
                         >
                           {(isAllowed) => (
-                            <DropdownMenuItem
-                              className={twMerge(
-                                !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                              )}
+                            <UnstableDropdownMenuItem
+                              isDisabled={!isAllowed}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 downloadTxtFile("cert.pem", caCert.certificate);
                               }}
-                              disabled={!isAllowed}
                             >
                               Download CA Certificate
-                            </DropdownMenuItem>
+                            </UnstableDropdownMenuItem>
                           )}
                         </ProjectPermissionCan>
                         <ProjectPermissionCan
@@ -106,34 +101,31 @@ export const CaCertificatesTable = ({ caId, caName }: Props) => {
                           })}
                         >
                           {(isAllowed) => (
-                            <DropdownMenuItem
-                              className={twMerge(
-                                !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                              )}
+                            <UnstableDropdownMenuItem
+                              isDisabled={!isAllowed}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 downloadTxtFile("chain.pem", caCert.certificateChain);
                               }}
-                              disabled={!isAllowed}
                             >
                               Download CA Certificate Chain
-                            </DropdownMenuItem>
+                            </UnstableDropdownMenuItem>
                           )}
                         </ProjectPermissionCan>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </Td>
-                </Tr>
+                      </UnstableDropdownMenuContent>
+                    </UnstableDropdownMenu>
+                  </UnstableTableCell>
+                </UnstableTableRow>
               );
             })}
-        </TBody>
-      </Table>
+        </UnstableTableBody>
+      </UnstableTable>
       {!isPending && !caCerts?.length && (
         <EmptyState
           title="This CA does not have any CA certificates installed"
           icon={faCertificate}
         />
       )}
-    </TableContainer>
+    </>
   );
 };

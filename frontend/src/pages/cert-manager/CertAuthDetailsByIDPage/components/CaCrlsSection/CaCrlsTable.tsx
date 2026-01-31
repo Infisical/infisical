@@ -1,22 +1,17 @@
-import { faCertificate, faFileDownload } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-// import * as x509 from "@peculiar/x509";
-// import { format } from "date-fns";
+import { faCertificate } from "@fortawesome/free-solid-svg-icons";
 import FileSaver from "file-saver";
+import { ClipboardListIcon, DownloadIcon } from "lucide-react";
 
+import { EmptyState, TableSkeleton, Tooltip } from "@app/components/v2";
 import {
-  EmptyState,
-  IconButton,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tooltip,
-  Tr
-} from "@app/components/v2";
+  UnstableIconButton,
+  UnstableTable,
+  UnstableTableBody,
+  UnstableTableCell,
+  UnstableTableHead,
+  UnstableTableHeader,
+  UnstableTableRow
+} from "@app/components/v3";
 import { useGetCaCrls } from "@app/hooks/api";
 
 type Props = {
@@ -32,57 +27,59 @@ export const CaCrlsTable = ({ caId }: Props) => {
   };
 
   return (
-    <TableContainer>
-      <Table>
-        <THead>
-          <Tr>
-            <Th>Distribution Point URL</Th>
-            {/* <Th>This Update</Th> */}
-            {/* <Th>Next Update</Th> */}
-            <Th className="w-5" />
-          </Tr>
-        </THead>
-        <TBody>
-          {isPending && <TableSkeleton columns={4} innerKey="ca-certificates" />}
+    <>
+      <UnstableTable>
+        <UnstableTableHeader>
+          <UnstableTableRow>
+            <UnstableTableHead>Distribution Point URL</UnstableTableHead>
+            <UnstableTableHead className="w-5" />
+          </UnstableTableRow>
+        </UnstableTableHeader>
+        <UnstableTableBody>
+          {isPending && <TableSkeleton columns={2} innerKey="ca-crls" />}
           {!isPending &&
             caCrls?.map(({ id, crl }) => {
-              //   const caCrlObj = new x509.X509Crl(crl);
               return (
-                <Tr key={`ca-crl-${id}`}>
-                  <Td>
-                    <div className="flex items-center">
-                      {`${window.origin}/api/v1/cert-manager/crl/${id}`}
-                    </div>
-                  </Td>
-                  {/* <Td>{format(new Date(caCrlObj.thisUpdate), "yyyy-MM-dd")}</Td> */}
-                  {/* <Td>
-                    {caCrlObj.nextUpdate
-                      ? format(new Date(caCrlObj.nextUpdate), "yyyy-MM-dd")
-                      : "-"}
-                  </Td> */}
-                  <Td>
+                <UnstableTableRow key={`ca-crl-${id}`}>
+                  <UnstableTableCell className="flex items-center gap-x-2">
+                    {`${window.origin}/api/v1/cert-manager/crl/${id}`}
+                    <Tooltip content="Copy CRL URL">
+                      <UnstableIconButton
+                        variant="ghost"
+                        size="xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(
+                            `${window.origin}/api/v1/cert-manager/crl/${id}`
+                          );
+                        }}
+                      >
+                        <ClipboardListIcon className="text-label" />
+                      </UnstableIconButton>
+                    </Tooltip>
+                  </UnstableTableCell>
+                  <UnstableTableCell>
                     <Tooltip content="Download CRL">
-                      <IconButton
-                        ariaLabel="copy icon"
-                        variant="plain"
-                        className="group relative"
+                      <UnstableIconButton
+                        variant="ghost"
+                        size="xs"
                         onClick={(e) => {
                           e.stopPropagation();
                           downloadTxtFile("crl.pem", crl);
                         }}
                       >
-                        <FontAwesomeIcon icon={faFileDownload} />
-                      </IconButton>
+                        <DownloadIcon className="text-label" />
+                      </UnstableIconButton>
                     </Tooltip>
-                  </Td>
-                </Tr>
+                  </UnstableTableCell>
+                </UnstableTableRow>
               );
             })}
-        </TBody>
-      </Table>
+        </UnstableTableBody>
+      </UnstableTable>
       {!isPending && !caCrls?.length && (
         <EmptyState title="This CA does not have any CRLs" icon={faCertificate} />
       )}
-    </TableContainer>
+    </>
   );
 };
