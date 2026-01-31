@@ -265,7 +265,7 @@ export type TAppConnectionOption =
   | TDNSMadeEasyConnectionOption
   | TOctopusDeployConnectionOption
   | TSshConnectionOption
-  | TDbtConnectionOption;
+  | TDbtConnectionOption
   | TSmbConnectionOption;
 
 export type TAppConnectionOptionMap = {
