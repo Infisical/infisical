@@ -4,6 +4,7 @@ import { registerAwsCertificateManagerPkiSyncRouter } from "./aws-certificate-ma
 import { registerAwsSecretsManagerPkiSyncRouter } from "./aws-secrets-manager-pki-sync-router";
 import { registerAzureKeyVaultPkiSyncRouter } from "./azure-key-vault-pki-sync-router";
 import { registerChefPkiSyncRouter } from "./chef-pki-sync-router";
+import { registerCloudflareCustomCertificatePkiSyncRouter } from "./cloudflare-custom-certificate-pki-sync-router";
 
 export * from "./pki-sync-router";
 
@@ -14,5 +15,6 @@ export const PKI_SYNC_REGISTER_ROUTER_MAP: Record<
   [PkiSync.AzureKeyVault]: registerAzureKeyVaultPkiSyncRouter,
   [PkiSync.AwsCertificateManager]: registerAwsCertificateManagerPkiSyncRouter,
   [PkiSync.AwsSecretsManager]: registerAwsSecretsManagerPkiSyncRouter,
-  [PkiSync.Chef]: registerChefPkiSyncRouter
+  [PkiSync.Chef]: registerChefPkiSyncRouter,
+  [PkiSync.CloudflareCustomCertificate]: registerCloudflareCustomCertificatePkiSyncRouter
 };

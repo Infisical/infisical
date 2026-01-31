@@ -23,6 +23,10 @@ export const PKI_SYNC_MAP: Record<
   [PkiSync.Chef]: {
     name: "Chef",
     image: "Chef.png"
+  },
+  [PkiSync.CloudflareCustomCertificate]: {
+    name: "Cloudflare Custom SSL",
+    image: "Cloudflare.png"
   }
 };
 
@@ -30,5 +34,6 @@ export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
   [PkiSync.AzureKeyVault]: AppConnection.AzureKeyVault,
   [PkiSync.AwsCertificateManager]: AppConnection.AWS,
   [PkiSync.AwsSecretsManager]: AppConnection.AWS,
-  [PkiSync.Chef]: AppConnection.Chef
+  [PkiSync.Chef]: AppConnection.Chef,
+  [PkiSync.CloudflareCustomCertificate]: AppConnection.Cloudflare
 };
