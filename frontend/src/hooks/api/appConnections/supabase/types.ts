@@ -4,6 +4,8 @@ export type TSupabaseProject = {
 };
 
 export type TSupabaseProjectBranch = {
+export type TSupabaseProjectBranch = {
   name: string;
   project_ref: string;
+};
 };
