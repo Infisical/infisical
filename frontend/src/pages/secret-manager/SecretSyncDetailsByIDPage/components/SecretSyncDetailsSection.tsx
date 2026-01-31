@@ -38,7 +38,8 @@ export const SecretSyncDetailsSection = ({ secretSync, onEditDetails }: Props) =
     environment && folder
       ? subject(ProjectPermissionSub.SecretSyncs, {
           environment: environment.slug,
-          secretPath: folder.path
+          secretPath: folder.path,
+          ...(secretSync.connectionId && { connectionId: secretSync.connectionId })
         })
       : ProjectPermissionSub.SecretSyncs;
 

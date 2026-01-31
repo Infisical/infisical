@@ -46,6 +46,7 @@ import {
 } from "./ProjectRoleModifySection.utils";
 import { SecretEventPermissionConditions } from "./SecretEventPermissionConditions";
 import { SecretPermissionConditions } from "./SecretPermissionConditions";
+import { SecretRotationPermissionConditions } from "./SecretRotationPermissionConditions";
 import { SecretSyncPermissionConditions } from "./SecretSyncPermissionConditions";
 import { SshHostPermissionConditions } from "./SshHostPermissionConditions";
 
@@ -119,6 +120,10 @@ export const renderConditionalComponents = (
 
     if (subject === ProjectPermissionSub.McpEndpoints) {
       return <McpEndpointPermissionConditions isDisabled={isDisabled} />;
+    }
+
+    if (subject === ProjectPermissionSub.SecretRotation) {
+      return <SecretRotationPermissionConditions isDisabled={isDisabled} />;
     }
 
     return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;

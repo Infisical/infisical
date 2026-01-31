@@ -1,5 +1,6 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { subject } from "@casl/ability";
 import {
   faArrowsSpin,
   faArrowUpRightFromSquare,
@@ -253,7 +254,10 @@ const Page = () => {
                           <div className="flex justify-end space-x-2">
                             <ProjectPermissionCan
                               I={ProjectPermissionSecretRotationActions.Edit}
-                              a={ProjectPermissionSub.SecretRotation}
+                              a={subject(ProjectPermissionSub.SecretRotation, {
+                                environment: environment.slug,
+                                secretPath
+                              })}
                               allowedLabel="Rotate now"
                               renderTooltip
                             >
@@ -275,7 +279,10 @@ const Page = () => {
                             </ProjectPermissionCan>
                             <ProjectPermissionCan
                               I={ProjectPermissionSecretRotationActions.Delete}
-                              a={ProjectPermissionSub.SecretRotation}
+                              a={subject(ProjectPermissionSub.SecretRotation, {
+                                environment: environment.slug,
+                                secretPath
+                              })}
                               allowedLabel="Rotate now"
                               renderTooltip
                             >

@@ -1,12 +1,17 @@
+import { useMemo } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { SingleValue } from "react-select";
+import { subject } from "@casl/ability";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { AppConnectionOption } from "@app/components/app-connections";
 import { FilterableSelect, FormControl } from "@app/components/v2";
 import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
-import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
+import {
+  ProjectPermissionAppConnectionActions,
+  ProjectPermissionSecretRotationActions
+} from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { SECRET_ROTATION_CONNECTION_MAP } from "@app/helpers/secretRotationsV2";
 import { usePopUp } from "@app/hooks";
@@ -27,6 +32,8 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["addConnection"] as const);
 
   const rotationType = watch("type");
+  const environment = watch("environment");
+  const secretPath = watch("secretPath");
   const app = SECRET_ROTATION_CONNECTION_MAP[rotationType];
 
   const { currentProject } = useProject();
@@ -35,6 +42,20 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
     app,
     currentProject.id
   );
+
+  const allowedConnections = useMemo(() => {
+    if (!availableConnections) return [];
+    return availableConnections.filter((conn) =>
+      permission.can(
+        ProjectPermissionSecretRotationActions.Create,
+        subject(ProjectPermissionSub.SecretRotation, {
+          connectionId: conn.id,
+          ...(environment?.slug && { environment: environment.slug }),
+          ...(secretPath && { secretPath })
+        })
+      )
+    );
+  }, [availableConnections, permission, environment?.slug, secretPath]);
 
   const connectionName = APP_CONNECTION_MAP[app].name;
 
@@ -91,7 +112,7 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
               isLoading={isPending}
               options={[
                 ...(canCreateConnection ? [{ id: "_create", name: "Create Connection" }] : []),
-                ...(availableConnections ?? [])
+                ...allowedConnections
               ]}
               isDisabled={isUpdate}
               placeholder="Select connection..."
@@ -104,7 +125,7 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
         control={control}
         name="connection"
       />
-      {!isUpdate && !isPending && !availableConnections?.length && !canCreateConnection && (
+      {!isUpdate && !isPending && !allowedConnections.length && !canCreateConnection && (
         <p className="-mt-2.5 mb-2.5 text-xs text-yellow">
           <FontAwesomeIcon className="mr-1" size="xs" icon={faInfoCircle} />
           You do not have access to any {appName} Connections. Contact an admin to create one.
