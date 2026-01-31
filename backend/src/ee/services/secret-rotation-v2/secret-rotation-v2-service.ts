@@ -313,7 +313,7 @@ export const secretRotationV2ServiceFactory = ({
         message: `Could not find ${SECRET_ROTATION_NAME_MAP[type]} Rotation with ID "${rotationId}"`
       });
 
-    const { projectId, environment, folder, connection } = secretRotation;
+    const { projectId, connection } = secretRotation;
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -356,7 +356,7 @@ export const secretRotationV2ServiceFactory = ({
         message: `Could not find ${SECRET_ROTATION_NAME_MAP[type]} Rotation with ID "${rotationId}"`
       });
 
-    const { projectId, environment, folder, connection, encryptedGeneratedCredentials } = secretRotation;
+    const { projectId, connection, encryptedGeneratedCredentials } = secretRotation;
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -1148,7 +1148,7 @@ export const secretRotationV2ServiceFactory = ({
         message: `Could not find ${SECRET_ROTATION_NAME_MAP[type]} Rotation with ID "${rotationId}"`
       });
 
-    const { projectId, environment, folder, connection } = secretRotation;
+    const { projectId, connection } = secretRotation;
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
