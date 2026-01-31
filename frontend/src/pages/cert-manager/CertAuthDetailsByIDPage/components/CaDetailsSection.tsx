@@ -1,10 +1,21 @@
 import { subject } from "@casl/ability";
-import { faCheck, faCopy, faPencil } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { format } from "date-fns";
+import { CheckIcon, ClipboardListIcon, PencilIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, IconButton, Tooltip } from "@app/components/v2";
+import { Tooltip } from "@app/components/v2";
+import {
+  Badge,
+  Detail,
+  DetailGroup,
+  DetailLabel,
+  DetailValue,
+  UnstableCard,
+  UnstableCardAction,
+  UnstableCardContent,
+  UnstableCardHeader,
+  UnstableCardTitle,
+  UnstableIconButton
+} from "@app/components/v3";
 import { ProjectPermissionCertificateAuthorityActions, ProjectPermissionSub } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import { CaStatus, CaType, InternalCaType, useGetCa } from "@app/hooks/api";
@@ -15,17 +26,27 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   caId: string;
-  handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["ca", "renewCa", "installCaCert", "generateRootCaCert"]>,
-    data?: object
-  ) => void;
+  handlePopUpOpen: (popUpName: keyof UsePopUpState<["ca"]>, data?: object) => void;
+};
+
+const getStatusVariant = (status: CaStatus) => {
+  switch (status) {
+    case CaStatus.ACTIVE:
+      return "success";
+    case CaStatus.PENDING_CERTIFICATE:
+      return "warning";
+    case CaStatus.DISABLED:
+      return "danger";
+    default:
+      return "neutral";
+  }
 };
 
 export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
-  const [copyTextId, isCopyingId, setCopyTextId] = useTimedReset<string>({
+  const [, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
-  const [copyTextParentId, isCopyingParentId, setCopyTextParentId] = useTimedReset<string>({
+  const [, isCopyingParentId, setCopyTextParentId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
 
@@ -36,206 +57,113 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
 
   const ca = data as TInternalCertificateAuthority;
 
-  return ca ? (
-    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-medium text-mineshaft-100">CA Details</h3>
-        <ProjectPermissionCan
-          I={ProjectPermissionCertificateAuthorityActions.Edit}
-          a={subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })}
-        >
-          {(isAllowed) => {
-            return (
+  if (!ca) {
+    return <div />;
+  }
+
+  return (
+    <UnstableCard className="w-full">
+      <UnstableCardHeader className="border-b">
+        <UnstableCardTitle>CA Details</UnstableCardTitle>
+        <UnstableCardAction>
+          <ProjectPermissionCan
+            I={ProjectPermissionCertificateAuthorityActions.Edit}
+            a={subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })}
+          >
+            {(isAllowed) => (
               <Tooltip content="Edit CA">
-                <IconButton
+                <UnstableIconButton
                   isDisabled={!isAllowed}
-                  ariaLabel="copy icon"
-                  variant="plain"
-                  className="group relative"
+                  variant="outline"
+                  size="xs"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handlePopUpOpen("ca", {
-                      caId: ca.id
-                    });
+                    handlePopUpOpen("ca", { caId: ca.id });
                   }}
                 >
-                  <FontAwesomeIcon icon={faPencil} />
-                </IconButton>
+                  <PencilIcon />
+                </UnstableIconButton>
               </Tooltip>
-            );
-          }}
-        </ProjectPermissionCan>
-      </div>
-      <div className="pt-4">
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">CA Type</p>
-          <p className="text-sm text-mineshaft-300">{caTypeToNameMap[ca.configuration.type]}</p>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">CA ID</p>
-          <div className="group flex align-top">
-            <p className="text-sm text-mineshaft-300">{ca.id}</p>
-            <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-              <Tooltip content={copyTextId}>
-                <IconButton
-                  ariaLabel="copy icon"
-                  variant="plain"
-                  className="group relative ml-2"
+            )}
+          </ProjectPermissionCan>
+        </UnstableCardAction>
+      </UnstableCardHeader>
+      <UnstableCardContent>
+        <DetailGroup>
+          <Detail>
+            <DetailLabel>CA Type</DetailLabel>
+            <DetailValue>{caTypeToNameMap[ca.configuration.type]}</DetailValue>
+          </Detail>
+
+          <Detail>
+            <DetailLabel>CA ID</DetailLabel>
+            <DetailValue className="flex items-center gap-x-1">
+              <span className="break-all">{ca.id}</span>
+              <Tooltip content={isCopyingId ? "Copied" : "Copy ID to clipboard"}>
+                <UnstableIconButton
+                  variant="ghost"
+                  size="xs"
                   onClick={() => {
                     navigator.clipboard.writeText(ca.id);
                     setCopyTextId("Copied");
                   }}
                 >
-                  <FontAwesomeIcon icon={isCopyingId ? faCheck : faCopy} />
-                </IconButton>
+                  {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
+                </UnstableIconButton>
               </Tooltip>
-            </div>
-          </div>
-        </div>
-        {ca.configuration.type === InternalCaType.INTERMEDIATE &&
-          ca.status !== CaStatus.PENDING_CERTIFICATE && (
-            <div className="mb-4">
-              <p className="text-sm font-medium text-mineshaft-300">Parent CA ID</p>
-              <div className="group flex align-top">
-                <p className="text-sm text-mineshaft-300">
-                  {ca.configuration.parentCaId
-                    ? ca.configuration.parentCaId
-                    : "N/A - External Parent CA"}
-                </p>
-                {ca.configuration.parentCaId && (
-                  <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                    <Tooltip content={copyTextParentId}>
-                      <IconButton
-                        ariaLabel="copy icon"
-                        variant="plain"
-                        className="group relative ml-2"
+            </DetailValue>
+          </Detail>
+
+          {ca.configuration.type === InternalCaType.INTERMEDIATE &&
+            ca.status !== CaStatus.PENDING_CERTIFICATE && (
+              <Detail>
+                <DetailLabel>Parent CA ID</DetailLabel>
+                <DetailValue className="flex items-center gap-x-1">
+                  <span className="break-all">
+                    {ca.configuration.parentCaId
+                      ? ca.configuration.parentCaId
+                      : "N/A - External Parent CA"}
+                  </span>
+                  {ca.configuration.parentCaId && (
+                    <Tooltip content={isCopyingParentId ? "Copied" : "Copy ID to clipboard"}>
+                      <UnstableIconButton
+                        variant="ghost"
+                        size="xs"
                         onClick={() => {
                           navigator.clipboard.writeText(ca.configuration.parentCaId as string);
                           setCopyTextParentId("Copied");
                         }}
                       >
-                        <FontAwesomeIcon icon={isCopyingParentId ? faCheck : faCopy} />
-                      </IconButton>
+                        {isCopyingParentId ? (
+                          <CheckIcon />
+                        ) : (
+                          <ClipboardListIcon className="text-label" />
+                        )}
+                      </UnstableIconButton>
                     </Tooltip>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Name</p>
-          <p className="text-sm text-mineshaft-300">{ca.name}</p>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Status</p>
-          <p className="text-sm text-mineshaft-300">{caStatusToNameMap[ca.status]}</p>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Key Algorithm</p>
-          <p className="text-sm text-mineshaft-300">
-            {certKeyAlgorithmToNameMap[ca.configuration.keyAlgorithm]}
-          </p>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Max Path Length</p>
-          <p className="text-sm text-mineshaft-300">{ca.configuration.maxPathLength ?? "-"}</p>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Not Before</p>
-          <p className="text-sm text-mineshaft-300">
-            {ca.configuration.notBefore
-              ? format(new Date(ca.configuration.notBefore), "yyyy-MM-dd")
-              : "-"}
-          </p>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Not After</p>
-          <p className="text-sm text-mineshaft-300">
-            {ca.configuration.notAfter
-              ? format(new Date(ca.configuration.notAfter), "yyyy-MM-dd")
-              : "-"}
-          </p>
-        </div>
-        {ca.status === CaStatus.ACTIVE && (
-          <ProjectPermissionCan
-            I={ProjectPermissionCertificateAuthorityActions.IssueCACertificate}
-            a={subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })}
-          >
-            {(isAllowed) => {
-              return (
-                <Button
-                  isDisabled={!isAllowed}
-                  className="mt-4 w-full"
-                  colorSchema="primary"
-                  type="submit"
-                  onClick={() => {
-                    if (
-                      ca.configuration.type === InternalCaType.INTERMEDIATE &&
-                      !ca.configuration.parentCaId
-                    ) {
-                      // intermediate CA with external parent CA
-                      handlePopUpOpen("installCaCert", {
-                        caId: ca.id,
-                        isParentCaExternal: true
-                      });
-                      return;
-                    }
+                  )}
+                </DetailValue>
+              </Detail>
+            )}
 
-                    handlePopUpOpen("renewCa", {
-                      caId: ca.id
-                    });
-                  }}
-                >
-                  Renew CA
-                </Button>
-              );
-            }}
-          </ProjectPermissionCan>
-        )}
-        {ca.status === CaStatus.PENDING_CERTIFICATE && (
-          <ProjectPermissionCan
-            I={ProjectPermissionCertificateAuthorityActions.Create}
-            a={subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })}
-          >
-            {(isAllowed) => {
-              if (ca.configuration.type === InternalCaType.ROOT) {
-                return (
-                  <Button
-                    isDisabled={!isAllowed}
-                    className="mt-4 w-full"
-                    colorSchema="primary"
-                    type="submit"
-                    onClick={() => {
-                      handlePopUpOpen("generateRootCaCert", {
-                        caId: ca.id
-                      });
-                    }}
-                  >
-                    Generate Certificate
-                  </Button>
-                );
-              }
-              return (
-                <Button
-                  isDisabled={!isAllowed}
-                  className="mt-4 w-full"
-                  colorSchema="primary"
-                  type="submit"
-                  onClick={() => {
-                    handlePopUpOpen("installCaCert", {
-                      caId: ca.id
-                    });
-                  }}
-                >
-                  Install CA Certificate
-                </Button>
-              );
-            }}
-          </ProjectPermissionCan>
-        )}
-      </div>
-    </div>
-  ) : (
-    <div />
+          <Detail>
+            <DetailLabel>Name</DetailLabel>
+            <DetailValue>{ca.name}</DetailValue>
+          </Detail>
+
+          <Detail>
+            <DetailLabel>Status</DetailLabel>
+            <DetailValue>
+              <Badge variant={getStatusVariant(ca.status)}>{caStatusToNameMap[ca.status]}</Badge>
+            </DetailValue>
+          </Detail>
+
+          <Detail>
+            <DetailLabel>Key Algorithm</DetailLabel>
+            <DetailValue>{certKeyAlgorithmToNameMap[ca.configuration.keyAlgorithm]}</DetailValue>
+          </Detail>
+        </DetailGroup>
+      </UnstableCardContent>
+    </UnstableCard>
   );
 };
