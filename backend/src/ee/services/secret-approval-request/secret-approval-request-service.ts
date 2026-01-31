@@ -319,7 +319,7 @@ export const secretApprovalRequestServiceFactory = ({
         id: el.id,
         version: el.version,
         secretMetadata: (
-          el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[]
+          el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[] | null
         )?.map((meta) => ({
           key: meta.key,
           isEncrypted: Boolean(meta.encryptedValue),
