@@ -5,6 +5,7 @@ import { Auth0ClientSecretRotationListItemSchema } from "@app/ee/services/secret
 import { AwsIamUserSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/aws-iam-user-secret";
 import { AzureClientSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/azure-client-secret";
 import { DatabricksServicePrincipalSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/databricks-service-principal-secret";
+import { DbtServiceTokenRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/dbt-service-token";
 import { LdapPasswordRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/ldap-password";
 import { MongoDBCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/mongodb-credentials";
 import { MsSqlCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/mssql-credentials";
@@ -36,6 +37,7 @@ const SecretRotationV2OptionsSchema = z.discriminatedUnion("type", [
   MongoDBCredentialsRotationListItemSchema,
   DatabricksServicePrincipalSecretRotationListItemSchema,
   UnixLinuxLocalAccountRotationListItemSchema,
+  DbtServiceTokenRotationListItemSchema,
   WindowsLocalAccountRotationListItemSchema,
   OpenRouterApiKeyRotationListItemSchema
 ]);

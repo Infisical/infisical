@@ -107,6 +107,12 @@ import {
   TValidateDatabricksConnectionCredentialsSchema
 } from "./databricks";
 import {
+  TDbtConnection,
+  TDbtConnectionConfig,
+  TDbtConnectionInput,
+  TValidateDbtConnectionCredentialsSchema
+} from "./dbt";
+import {
   TDigitalOceanConnection,
   TDigitalOceanConnectionConfig,
   TDigitalOceanConnectionInput,
@@ -335,6 +341,7 @@ export type TAppConnection = { id: string } & (
   | TChefConnection
   | TOctopusDeployConnection
   | TSshConnection
+  | TDbtConnection
   | TSmbConnection
   | TOpenRouterConnection
   | TCircleCIConnection
@@ -391,6 +398,7 @@ export type TAppConnectionInput = { id: string } & (
   | TChefConnectionInput
   | TOctopusDeployConnectionInput
   | TSshConnectionInput
+  | TDbtConnectionInput
   | TSmbConnectionInput
   | TOpenRouterConnectionInput
   | TCircleCIConnectionInput
@@ -465,6 +473,7 @@ export type TAppConnectionConfig =
   | TChefConnectionConfig
   | TOctopusDeployConnectionConfig
   | TSshConnectionConfig
+  | TDbtConnectionConfig
   | TSmbConnectionConfig
   | TOpenRouterConnectionConfig
   | TCircleCIConnectionConfig;
@@ -516,6 +525,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateChefConnectionCredentialsSchema
   | TValidateOctopusDeployConnectionCredentialsSchema
   | TValidateSshConnectionCredentialsSchema
+  | TValidateDbtConnectionCredentialsSchema
   | TValidateSmbConnectionCredentialsSchema
   | TValidateOpenRouterConnectionCredentialsSchema
   | TValidateCircleCIConnectionCredentialsSchema;

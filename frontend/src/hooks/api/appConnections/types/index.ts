@@ -15,6 +15,7 @@ import { TChefConnection } from "./chef-connection";
 import { TCircleCIConnection } from "./circleci-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TDatabricksConnection } from "./databricks-connection";
+import { TDbtConnection } from "./dbt-connection";
 import { TDigitalOceanConnection } from "./digital-ocean";
 import { TDNSMadeEasyConnection } from "./dns-made-easy-connection";
 import { TFlyioConnection } from "./flyio-connection";
@@ -65,6 +66,7 @@ export * from "./chef-connection";
 export * from "./circleci-connection";
 export * from "./cloudflare-connection";
 export * from "./databricks-connection";
+export * from "./dbt-connection";
 export * from "./dns-made-easy-connection";
 export * from "./flyio-connection";
 export * from "./gcp-connection";
@@ -146,6 +148,7 @@ export type TAppConnection =
   | TChefConnection
   | TDNSMadeEasyConnection
   | TSshConnection
+  | TDbtConnection
   | TSmbConnection
   | TOpenRouterConnection
   | TCircleCIConnection;
