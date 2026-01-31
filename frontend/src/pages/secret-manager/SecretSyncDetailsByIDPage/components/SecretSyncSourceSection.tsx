@@ -7,8 +7,8 @@ import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { IconButton, Tooltip } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
-import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 import { TSecretSync } from "@app/hooks/api/secretSyncs";
+import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 
 type Props = {
   secretSync: TSecretSync;

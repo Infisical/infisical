@@ -7,9 +7,9 @@ import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { IconButton } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
-import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP } from "@app/helpers/secretSyncs";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
+import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 
 import { AwsParameterStoreSyncOptionsSection } from "./AwsParameterStoreSyncOptionsSection";
 import { AwsSecretsManagerSyncOptionsSection } from "./AwsSecretsManagerSyncOptionsSection";

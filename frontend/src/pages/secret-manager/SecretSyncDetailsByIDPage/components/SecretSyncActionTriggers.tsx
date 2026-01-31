@@ -37,7 +37,6 @@ import { Badge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
-import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { usePopUp, useToggle } from "@app/hooks";
 import {
@@ -46,6 +45,7 @@ import {
   useTriggerSecretSyncSyncSecrets,
   useUpdateSecretSync
 } from "@app/hooks/api/secretSyncs";
+import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 type Props = {

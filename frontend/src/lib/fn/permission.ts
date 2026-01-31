@@ -16,9 +16,9 @@ export function getSecretSyncPermissionSubject(sync: {
   environment?: { slug: string } | null;
   folder?: { path: string } | null;
 }) {
-  const connectionId = sync.connectionId;
-  const envSlug = sync.environment?.slug ?? undefined;
-  const secretPathVal = sync.folder?.path ?? undefined;
+  const { connectionId, environment, folder } = sync;
+  const envSlug = environment?.slug ?? undefined;
+  const secretPathVal = folder?.path ?? undefined;
   const hasAny = connectionId || envSlug || secretPathVal;
   if (!hasAny) return ProjectPermissionSub.SecretSyncs;
   return subject(ProjectPermissionSub.SecretSyncs, {

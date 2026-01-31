@@ -6,9 +6,9 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { IconButton } from "@app/components/v2";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
-import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
+import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 
 import { OnePassSyncDestinationSection } from "./1PasswordSyncDestinationSection";
 import { AwsParameterStoreSyncDestinationSection } from "./AwsParameterStoreSyncDestinationSection";

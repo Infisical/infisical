@@ -22,7 +22,6 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 import {
   SecretSyncImportStatusBadge,
   SecretSyncRemoveStatusBadge,
@@ -45,6 +44,7 @@ import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissi
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { useToggle } from "@app/hooks";
 import { SecretSyncStatus, TSecretSync, useSecretSyncOption } from "@app/hooks/api/secretSyncs";
+import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 
 import { SecretSyncDestinationCol } from "./SecretSyncDestinationCol";
 import { SecretSyncTableCell } from "./SecretSyncTableCell";
