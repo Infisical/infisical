@@ -408,8 +408,8 @@ export type SecretImportSubjectFields = {
 };
 
 export type SecretSyncSubjectFields = {
-  environment: string;
-  secretPath: string;
+  environment?: string;
+  secretPath?: string;
   connectionId?: string;
 };
 

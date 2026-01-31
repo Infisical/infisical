@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { subject } from "@casl/ability";
 import { faEdit } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
@@ -7,8 +6,8 @@ import { format } from "date-fns";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { GenericFieldLabel, SecretSyncStatusBadge } from "@app/components/secret-syncs";
 import { IconButton } from "@app/components/v2";
-import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
+import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 import { SecretSyncStatus, TSecretSync } from "@app/hooks/api/secretSyncs";
 
 type Props = {
@@ -17,8 +16,7 @@ type Props = {
 };
 
 export const SecretSyncDetailsSection = ({ secretSync, onEditDetails }: Props) => {
-  const { syncStatus, lastSyncMessage, lastSyncedAt, name, description, environment, folder } =
-    secretSync;
+  const { syncStatus, lastSyncMessage, lastSyncedAt, name, description } = secretSync;
 
   const failureMessage = useMemo(() => {
     if (syncStatus === SecretSyncStatus.Failed) {
@@ -34,14 +32,7 @@ export const SecretSyncDetailsSection = ({ secretSync, onEditDetails }: Props) =
     return null;
   }, [syncStatus, lastSyncMessage]);
 
-  const permissionSubject =
-    environment && folder
-      ? subject(ProjectPermissionSub.SecretSyncs, {
-          environment: environment.slug,
-          secretPath: folder.path,
-          ...(secretSync.connectionId && { connectionId: secretSync.connectionId })
-        })
-      : ProjectPermissionSub.SecretSyncs;
+  const permissionSubject = getSecretSyncPermissionSubject(secretSync);
 
   return (
     <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">

@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { subject } from "@casl/ability";
 import {
   faBan,
   faCalendarCheck,
@@ -23,6 +22,7 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
+import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 import {
   SecretSyncImportStatusBadge,
   SecretSyncRemoveStatusBadge,
@@ -40,7 +40,7 @@ import {
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionSub, useOrganization } from "@app/context";
+import { useOrganization } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { useToggle } from "@app/hooks";
@@ -119,14 +119,7 @@ export const SecretSyncRow = ({
 
   const destinationDetails = SECRET_SYNC_MAP[destination];
 
-  const permissionSubject =
-    environment && folder
-      ? subject(ProjectPermissionSub.SecretSyncs, {
-          environment: environment.slug,
-          secretPath: folder.path,
-          ...(secretSync.connectionId && { connectionId: secretSync.connectionId })
-        })
-      : ProjectPermissionSub.SecretSyncs;
+  const permissionSubject = getSecretSyncPermissionSubject(secretSync);
 
   return (
     <Tr

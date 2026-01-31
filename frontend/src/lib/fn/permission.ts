@@ -7,6 +7,27 @@ import {
   SecretSubjectFields
 } from "@app/context/ProjectPermissionContext/types";
 
+/**
+ * Builds the permission subject for a Secret Sync. Uses connectionId, environment, and secretPath
+ * when present so connectionId is still checked even when environment or folder are missing.
+ */
+export function getSecretSyncPermissionSubject(sync: {
+  connectionId?: string;
+  environment?: { slug: string } | null;
+  folder?: { path: string } | null;
+}) {
+  const connectionId = sync.connectionId;
+  const envSlug = sync.environment?.slug ?? undefined;
+  const secretPathVal = sync.folder?.path ?? undefined;
+  const hasAny = connectionId || envSlug || secretPathVal;
+  if (!hasAny) return ProjectPermissionSub.SecretSyncs;
+  return subject(ProjectPermissionSub.SecretSyncs, {
+    ...(envSlug && { environment: envSlug }),
+    ...(secretPathVal && { secretPath: secretPathVal }),
+    ...(connectionId && { connectionId })
+  });
+}
+
 export function hasSecretReadValueOrDescribePermission(
   permission: MongoAbility<ProjectPermissionSet>,
   action: Extract<
