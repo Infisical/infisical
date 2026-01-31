@@ -329,8 +329,8 @@ export type SecretFolderSubjectFields = {
 };
 
 export type SecretSyncSubjectFields = {
-  environment: string;
-  secretPath: string;
+  environment?: string;
+  secretPath?: string;
   connectionId?: string;
 };
 
@@ -354,8 +354,8 @@ export type SecretImportSubjectFields = {
 };
 
 export type SecretRotationsSubjectFields = {
-  environment: string;
-  secretPath: string;
+  environment?: string;
+  secretPath?: string;
   connectionId?: string;
 };
 

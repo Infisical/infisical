@@ -239,6 +239,26 @@ export const secretRotationV2ServiceFactory = ({
     }
   };
 
+  const getSecretRotationSubject = (
+    rotation: {
+      environment?: { slug: string };
+      folder?: { path: string };
+      connection?: { id: string };
+    },
+    overrides?: { environment?: string; secretPath?: string; connectionId?: string }
+  ) => {
+    const connectionId = overrides?.connectionId ?? rotation.connection?.id;
+    const envSlug = overrides?.environment ?? rotation.environment?.slug;
+    const secretPath = overrides?.secretPath ?? rotation.folder?.path;
+    const hasAny = connectionId || envSlug || secretPath;
+    if (!hasAny) return ProjectPermissionSub.SecretRotation;
+    return subject(ProjectPermissionSub.SecretRotation, {
+      ...(envSlug && { environment: envSlug }),
+      ...(secretPath && { secretPath }),
+      ...(connectionId && { connectionId })
+    });
+  };
+
   const listSecretRotationsByProjectId = async (
     { projectId, type }: TListSecretRotationsV2ByProjectId,
     actor: OrgServiceActor
@@ -272,14 +292,7 @@ export const secretRotationV2ServiceFactory = ({
     return Promise.all(
       secretRotations
         .filter((rotation) =>
-          permission.can(
-            ProjectPermissionSecretRotationActions.Read,
-            subject(ProjectPermissionSub.SecretRotation, {
-              environment: rotation.environment.slug,
-              secretPath: rotation.folder.path,
-              connectionId: rotation.connection.id
-            })
-          )
+          permission.can(ProjectPermissionSecretRotationActions.Read, getSecretRotationSubject(rotation))
         )
         .map((rotation) => expandSecretRotation(rotation, kmsService))
     );
@@ -313,11 +326,7 @@ export const secretRotationV2ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretRotationActions.Read,
-      subject(ProjectPermissionSub.SecretRotation, {
-        environment: environment.slug,
-        secretPath: folder.path,
-        connectionId: connection.id
-      })
+      getSecretRotationSubject(secretRotation)
     );
 
     if (connection.app !== SECRET_ROTATION_CONNECTION_MAP[type])
@@ -360,11 +369,7 @@ export const secretRotationV2ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretRotationActions.ReadGeneratedCredentials,
-      subject(ProjectPermissionSub.SecretRotation, {
-        environment: environment.slug,
-        secretPath: folder.path,
-        connectionId: connection.id
-      })
+      getSecretRotationSubject(secretRotation)
     );
 
     if (connection.app !== SECRET_ROTATION_CONNECTION_MAP[type])
@@ -426,11 +431,7 @@ export const secretRotationV2ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretRotationActions.Read,
-      subject(ProjectPermissionSub.SecretRotation, {
-        environment,
-        secretPath,
-        connectionId: connection.id
-      })
+      getSecretRotationSubject(secretRotation)
     );
 
     if (connection.app !== SECRET_ROTATION_CONNECTION_MAP[type])
@@ -479,10 +480,10 @@ export const secretRotationV2ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretRotationActions.Create,
-      subject(ProjectPermissionSub.SecretRotation, {
-        environment,
-        secretPath,
-        ...(payload.connectionId && { connectionId: payload.connectionId })
+      getSecretRotationSubject({
+        environment: { slug: environment },
+        folder: { path: secretPath },
+        connection: payload.connectionId ? { id: payload.connectionId } : undefined
       })
     );
 
@@ -682,11 +683,7 @@ export const secretRotationV2ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretRotationActions.Edit,
-      subject(ProjectPermissionSub.SecretRotation, {
-        environment: environment.slug,
-        secretPath: folder.path,
-        connectionId: connection.id
-      })
+      getSecretRotationSubject(secretRotation)
     );
 
     if (connection.app !== SECRET_ROTATION_CONNECTION_MAP[type])
@@ -833,11 +830,7 @@ export const secretRotationV2ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretRotationActions.Delete,
-      subject(ProjectPermissionSub.SecretRotation, {
-        environment: environment.slug,
-        secretPath: folder.path,
-        connectionId: connection.id
-      })
+      getSecretRotationSubject(secretRotation)
     );
 
     if (connection.app !== SECRET_ROTATION_CONNECTION_MAP[type])
@@ -1168,11 +1161,7 @@ export const secretRotationV2ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretRotationActions.RotateSecrets,
-      subject(ProjectPermissionSub.SecretRotation, {
-        environment: environment.slug,
-        secretPath: folder.path,
-        connectionId: connection.id
-      })
+      getSecretRotationSubject(secretRotation)
     );
 
     if (connection.app !== SECRET_ROTATION_CONNECTION_MAP[type])
@@ -1244,14 +1233,7 @@ export const secretRotationV2ServiceFactory = ({
 
     const rotationsForCount = secretRotations as TSecretRotationV2PermissionContext[];
     const count = rotationsForCount.filter((rotation) =>
-      permission.can(
-        ProjectPermissionSecretRotationActions.Read,
-        subject(ProjectPermissionSub.SecretRotation, {
-          environment: rotation.environment.slug,
-          secretPath: rotation.folder.path,
-          connectionId: rotation.connection.id
-        })
-      )
+      permission.can(ProjectPermissionSecretRotationActions.Read, getSecretRotationSubject(rotation))
     ).length;
 
     return count;
@@ -1317,14 +1299,7 @@ export const secretRotationV2ServiceFactory = ({
 
     // Filter by per-rotation permission so connectionId (and other) restrictions are enforced.
     const secretRotations = secretRotationsRaw.filter((rotation: TSecretRotationV2PermissionContext) =>
-      permission.can(
-        ProjectPermissionSecretRotationActions.Read,
-        subject(ProjectPermissionSub.SecretRotation, {
-          environment: rotation.environment.slug,
-          secretPath: rotation.folder.path,
-          connectionId: rotation.connection.id
-        })
-      )
+      permission.can(ProjectPermissionSecretRotationActions.Read, getSecretRotationSubject(rotation))
     );
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
@@ -1441,14 +1416,7 @@ export const secretRotationV2ServiceFactory = ({
 
     // Filter by per-rotation permission so connectionId (and other) restrictions are enforced.
     return secretRotations.filter((rotation) =>
-      permission.can(
-        ProjectPermissionSecretRotationActions.Read,
-        subject(ProjectPermissionSub.SecretRotation, {
-          environment: rotation.environment.slug,
-          secretPath: rotation.folder.path,
-          connectionId: rotation.connection.id
-        })
-      )
+      permission.can(ProjectPermissionSecretRotationActions.Read, getSecretRotationSubject(rotation))
     ) as TSecretRotationV2[];
   };
 
@@ -1496,11 +1464,7 @@ export const secretRotationV2ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretRotationActions.RotateSecrets,
-      subject(ProjectPermissionSub.SecretRotation, {
-        environment: environment.slug,
-        secretPath: folder.path,
-        connectionId: connection.id
-      })
+      getSecretRotationSubject(secretRotation)
     );
 
     const localAccountParams = parameters as TLocalAccountRotation["parameters"];

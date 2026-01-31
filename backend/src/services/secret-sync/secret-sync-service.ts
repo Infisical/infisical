@@ -7,8 +7,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretSyncActions,
-  ProjectPermissionSub,
-  type SecretSyncSubjectFields
+  ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -80,6 +79,30 @@ export const secretSyncServiceFactory = ({
   keyStore,
   licenseService
 }: TSecretSyncServiceFactoryDep) => {
+  const getConnectionId = (sync: { connectionId?: string; connection?: { id: string } }) =>
+    sync.connectionId ?? sync.connection?.id;
+
+  const getSecretSyncSubject = (
+    sync: {
+      environment?: { slug: string } | null;
+      folder?: { path: string } | null;
+      connectionId?: string;
+      connection?: { id: string };
+    },
+    overrides?: { connectionId?: string }
+  ) => {
+    const connectionId = overrides?.connectionId ?? getConnectionId(sync);
+    const envSlug = sync.environment?.slug;
+    const secretPath = sync.folder?.path;
+    const hasAny = connectionId || envSlug || secretPath;
+    if (!hasAny) return ProjectPermissionSub.SecretSyncs;
+    return subject(ProjectPermissionSub.SecretSyncs, {
+      ...(envSlug && { environment: envSlug }),
+      ...(secretPath && { secretPath }),
+      ...(connectionId && { connectionId })
+    });
+  };
+
   const listSecretSyncsByProjectId = async (
     { projectId, destination }: TListSecretSyncsByProjectId,
     actor: OrgServiceActor
@@ -103,20 +126,8 @@ export const secretSyncServiceFactory = ({
       projectId
     });
 
-    const getConnectionId = (sync: { connectionId?: string; connection?: { id: string } }) =>
-      sync.connectionId ?? sync.connection?.id;
-
     return secretSyncs.filter((secretSync) =>
-      permission.can(
-        ProjectPermissionSecretSyncActions.Read,
-        secretSync.environment && secretSync.folder
-          ? subject(ProjectPermissionSub.SecretSyncs, {
-              environment: secretSync.environment.slug,
-              secretPath: secretSync.folder.path,
-              ...(getConnectionId(secretSync) && { connectionId: getConnectionId(secretSync) })
-            })
-          : ProjectPermissionSub.SecretSyncs
-      )
+      permission.can(ProjectPermissionSecretSyncActions.Read, getSecretSyncSubject(secretSync))
     ) as TSecretSync[];
   };
 
@@ -156,21 +167,9 @@ export const secretSyncServiceFactory = ({
       }
     });
 
-    // Filter by per-sync permission so connectionId (and other) restrictions are enforced.
-    const getConnectionId = (sync: { connectionId?: string; connection?: { id: string } }) =>
-      sync.connectionId ?? sync.connection?.id;
-    return secretSyncs.filter((sync) => {
-      const subjectFields: Record<string, string> = {
-        ...(sync.environment && { environment: sync.environment.slug }),
-        ...(sync.folder && { secretPath: sync.folder.path }),
-        ...(getConnectionId(sync) && { connectionId: getConnectionId(sync) })
-      };
-      const sub =
-        Object.keys(subjectFields).length > 0
-          ? subject(ProjectPermissionSub.SecretSyncs, subjectFields as SecretSyncSubjectFields)
-          : ProjectPermissionSub.SecretSyncs;
-      return permission.can(ProjectPermissionSecretSyncActions.Read, sub);
-    }) as TSecretSync[];
+    return secretSyncs.filter((sync) =>
+      permission.can(ProjectPermissionSecretSyncActions.Read, getSecretSyncSubject(sync))
+    ) as TSecretSync[];
   };
 
   const findSecretSyncById = async ({ destination, syncId }: TFindSecretSyncByIdDTO, actor: OrgServiceActor) => {
@@ -190,17 +189,9 @@ export const secretSyncServiceFactory = ({
       projectId: secretSync.projectId
     });
 
-    const connectionId = secretSync.connectionId ?? secretSync.connection?.id;
-
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretSyncActions.Read,
-      secretSync.environment && secretSync.folder
-        ? subject(ProjectPermissionSub.SecretSyncs, {
-            environment: secretSync.environment.slug,
-            secretPath: secretSync.folder.path,
-            ...(connectionId && { connectionId })
-          })
-        : ProjectPermissionSub.SecretSyncs
+      getSecretSyncSubject(secretSync)
     );
 
     if (secretSync.connection.app !== SECRET_SYNC_CONNECTION_MAP[destination])
@@ -235,17 +226,9 @@ export const secretSyncServiceFactory = ({
       projectId: secretSync.projectId
     });
 
-    const connectionId = secretSync.connectionId ?? secretSync.connection?.id;
-
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretSyncActions.Read,
-      secretSync.environment && secretSync.folder
-        ? subject(ProjectPermissionSub.SecretSyncs, {
-            environment: secretSync.environment.slug,
-            secretPath: secretSync.folder.path,
-            ...(connectionId && { connectionId })
-          })
-        : ProjectPermissionSub.SecretSyncs
+      getSecretSyncSubject(secretSync)
     );
 
     if (secretSync.connection.app !== SECRET_SYNC_CONNECTION_MAP[destination])
@@ -445,23 +428,10 @@ export const secretSyncServiceFactory = ({
 
     const connectionId = secretSync.connectionId ?? secretSync.connection?.id;
 
-    // we always check the permission against the existing environment / secret path
-    // if no secret path / environment is present on the secret sync, we need to check without conditions
-    if (secretSync.environment?.slug && secretSync.folder?.path) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretSyncActions.Edit,
-        subject(ProjectPermissionSub.SecretSyncs, {
-          environment: secretSync.environment.slug,
-          secretPath: secretSync.folder.path,
-          ...(connectionId && { connectionId })
-        })
-      );
-    } else {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretSyncActions.Edit,
-        ProjectPermissionSub.SecretSyncs
-      );
-    }
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretSyncActions.Edit,
+      getSecretSyncSubject(secretSync)
+    );
 
     // if the user is updating the secret path or environment, we need to check the permission against the new values
     if (secretPath || environment) {
@@ -526,16 +496,10 @@ export const secretSyncServiceFactory = ({
 
       // If changing connectionId, verify user has Edit permission for syncs with the NEW connectionId
       if (params.connectionId !== connectionId) {
-        if (secretSync.environment?.slug && secretSync.folder?.path) {
-          ForbiddenError.from(permission).throwUnlessCan(
-            ProjectPermissionSecretSyncActions.Edit,
-            subject(ProjectPermissionSub.SecretSyncs, {
-              environment: secretSync.environment.slug,
-              secretPath: secretSync.folder.path,
-              connectionId: params.connectionId
-            })
-          );
-        }
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionSecretSyncActions.Edit,
+          getSecretSyncSubject(secretSync, { connectionId: params.connectionId })
+        );
       }
     }
 
@@ -608,23 +572,10 @@ export const secretSyncServiceFactory = ({
       projectId: secretSync.projectId
     });
 
-    const connectionId = secretSync.connectionId ?? secretSync.connection?.id;
-
-    if (secretSync.environment?.slug && secretSync.folder?.path) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretSyncActions.Delete,
-        subject(ProjectPermissionSub.SecretSyncs, {
-          environment: secretSync.environment.slug,
-          secretPath: secretSync.folder.path,
-          ...(connectionId && { connectionId })
-        })
-      );
-    } else {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretSyncActions.Delete,
-        ProjectPermissionSub.SecretSyncs
-      );
-    }
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretSyncActions.Delete,
+      getSecretSyncSubject(secretSync)
+    );
 
     if (secretSync.connection.app !== SECRET_SYNC_CONNECTION_MAP[destination])
       throw new BadRequestError({
@@ -634,13 +585,7 @@ export const secretSyncServiceFactory = ({
     if (removeSecrets) {
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionSecretSyncActions.RemoveSecrets,
-        secretSync.environment?.slug && secretSync.folder?.path
-          ? subject(ProjectPermissionSub.SecretSyncs, {
-              environment: secretSync.environment.slug,
-              secretPath: secretSync.folder.path,
-              ...(connectionId && { connectionId })
-            })
-          : ProjectPermissionSub.SecretSyncs
+        getSecretSyncSubject(secretSync)
       );
 
       if (!secretSync.folderId)
@@ -694,23 +639,10 @@ export const secretSyncServiceFactory = ({
       projectId: secretSync.projectId
     });
 
-    const connectionId = secretSync.connectionId ?? secretSync.connection?.id;
-
-    if (secretSync.environment?.slug && secretSync.folder?.path) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretSyncActions.SyncSecrets,
-        subject(ProjectPermissionSub.SecretSyncs, {
-          environment: secretSync.environment.slug,
-          secretPath: secretSync.folder.path,
-          ...(connectionId && { connectionId })
-        })
-      );
-    } else {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretSyncActions.SyncSecrets,
-        ProjectPermissionSub.SecretSyncs
-      );
-    }
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretSyncActions.SyncSecrets,
+      getSecretSyncSubject(secretSync)
+    );
 
     if (secretSync.connection.app !== SECRET_SYNC_CONNECTION_MAP[destination])
       throw new BadRequestError({
@@ -769,23 +701,10 @@ export const secretSyncServiceFactory = ({
       projectId: secretSync.projectId
     });
 
-    const connectionId = secretSync.connectionId ?? secretSync.connection?.id;
-
-    if (secretSync.environment?.slug && secretSync.folder?.path) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretSyncActions.ImportSecrets,
-        subject(ProjectPermissionSub.SecretSyncs, {
-          environment: secretSync.environment.slug,
-          secretPath: secretSync.folder.path,
-          ...(connectionId && { connectionId })
-        })
-      );
-    } else {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretSyncActions.ImportSecrets,
-        ProjectPermissionSub.SecretSyncs
-      );
-    }
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretSyncActions.ImportSecrets,
+      getSecretSyncSubject(secretSync)
+    );
 
     if (secretSync.connection.app !== SECRET_SYNC_CONNECTION_MAP[destination])
       throw new BadRequestError({
@@ -838,23 +757,10 @@ export const secretSyncServiceFactory = ({
       projectId: secretSync.projectId
     });
 
-    const connectionId = secretSync.connectionId ?? secretSync.connection?.id;
-
-    if (secretSync.environment?.slug && secretSync.folder?.path) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretSyncActions.RemoveSecrets,
-        subject(ProjectPermissionSub.SecretSyncs, {
-          environment: secretSync.environment.slug,
-          secretPath: secretSync.folder.path,
-          ...(connectionId && { connectionId })
-        })
-      );
-    } else {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretSyncActions.RemoveSecrets,
-        ProjectPermissionSub.SecretSyncs
-      );
-    }
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretSyncActions.RemoveSecrets,
+      getSecretSyncSubject(secretSync)
+    );
 
     if (secretSync.connection.app !== SECRET_SYNC_CONNECTION_MAP[destination])
       throw new BadRequestError({
