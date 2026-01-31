@@ -14,11 +14,15 @@ type BootstrapOpt = {
 const bootstrapCb = async () => {
   const appCfg = getConfig();
   const serverCfg = await getServerCfg();
+  const portNote =
+   "Note: If running in Docker, the exposed host port may differ from the port shown above.";
   if (!serverCfg.initialized) {
     console.info(`Welcome to Infisical
 
 Create your Infisical administrator account at:
 http://localhost:${appCfg.PORT}/admin/signup
+
+${portNote}
 `);
   } else {
     console.info(`Welcome back!
@@ -28,6 +32,8 @@ http://localhost:${appCfg.PORT}/admin
 
 To access Infisical server
 http://localhost:${appCfg.PORT}
+
+${portNote}
 `);
   }
 };
