@@ -172,7 +172,8 @@ export const DbtServiceTokenRotationSchema = z
   .object({
     type: z.literal(SecretRotation.DbtServiceToken),
     parameters: z.object({
-      permissionGrants: DbtTokenPermissionsSchema.array()
+      permissionGrants: DbtTokenPermissionsSchema.array(),
+      tokenName: z.string().trim().min(1, "Token name required")
     }),
     secretsMapping: z.object({
       serviceToken: z.string().trim().min(1, "Service Token required")

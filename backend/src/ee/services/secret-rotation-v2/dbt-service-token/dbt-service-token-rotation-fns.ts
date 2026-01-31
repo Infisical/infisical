@@ -11,8 +11,7 @@ import {
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { createDbtError, getDbtUrl } from "@app/services/app-connection/dbt";
+import { createDbtError, getDbtUrl, retrieveDbtAccount } from "@app/services/app-connection/dbt";
 
 import {
   TCreateDbtServiceTokenResponse,
@@ -27,7 +26,7 @@ export const dbtServiceTokenRotationFactory: TRotationFactory<
 > = (secretRotation) => {
   const {
     connection,
-    parameters: { permissionGrants },
+    parameters: { permissionGrants, tokenName },
     secretsMapping
   } = secretRotation;
 
@@ -41,7 +40,7 @@ export const dbtServiceTokenRotationFactory: TRotationFactory<
       const { data } = await request.post<TCreateDbtServiceTokenResponse>(
         `${instanceUrl}/api/v3/accounts/${connection.credentials.accountId}/service-tokens/`,
         {
-          name: `infisical-service-token-${alphaNumericNanoId(12)}`,
+          name: tokenName,
           permission_grants: permissionGrants.map((grant) => ({
             permission_set: grant.permissionSet,
             project_id: grant.projectId
@@ -54,13 +53,6 @@ export const dbtServiceTokenRotationFactory: TRotationFactory<
           }
         }
       );
-
-      if (!data.data.token_string || !data.data.id) {
-        logger.error(data || "Failed to create service token");
-        throw new BadRequestError({
-          message: "Failed to create service token, no token or token ID found"
-        });
-      }
 
       return {
         tokenId: data.data.id,
@@ -110,10 +102,6 @@ export const dbtServiceTokenRotationFactory: TRotationFactory<
         }
       );
 
-      if (!data.status.is_success) {
-        throw new Error();
-      }
-
       return data.data.id === tokenId;
     } catch (_) {
       return false;
@@ -125,6 +113,13 @@ export const dbtServiceTokenRotationFactory: TRotationFactory<
    * First checks if the service token exists before attempting revocation.
    */
   const revokeCredential = async (tokenId: number) => {
+    await retrieveDbtAccount(connection).catch(() => {
+      throw new BadRequestError({
+        message:
+          "Failed to validate connection credentials. Are you sure your configured DBT app connection credentials are valid?"
+      });
+    });
+
     // Check if credential exists before attempting revocation
     const exists = await tokenExists(tokenId);
     if (!exists) {

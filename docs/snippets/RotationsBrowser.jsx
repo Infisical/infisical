@@ -4,7 +4,7 @@ export const RotationsBrowser = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const categories = ["All", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS"];
+  const categories = ["All", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS", "Data Analytics"];
 
   const rotations = [
     {
@@ -35,7 +35,7 @@ export const RotationsBrowser = () => {
       slug: "dbt-service-token",
       path: "/documentation/platform/secret-rotation/dbt-service-token",
       description: "Learn how to automatically rotate DBT service tokens.",
-      category: "Cloud Providers",
+      category: "Data Analytics",
     },
     {
       name: "Auth0 Client Secret",

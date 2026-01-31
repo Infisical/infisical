@@ -57,6 +57,7 @@ export const DbtServiceTokenRotationGeneratedCredentialsSchema = z
   .max(2);
 
 const DbtServiceTokenRotationParametersSchema = z.object({
+  tokenName: z.string().trim().min(1).describe(SecretRotations.PARAMETERS.DBT_SERVICE_TOKEN.tokenName),
   permissionGrants: DbtTokenPermissionsSchema.array()
     .min(1)
     .describe(SecretRotations.PARAMETERS.DBT_SERVICE_TOKEN.permissionGrants)

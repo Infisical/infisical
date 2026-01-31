@@ -20,16 +20,18 @@ export const DbtServiceTokenRotationReviewFields = () => {
   return (
     <>
       <SecretRotationReviewSection label="Parameters">
-        {parameters.permissionGrants.map((grant, i) => (
-          <GenericFieldLabel key={`grant-${i + 1}`} label={`Permission Grant ${i + 1}`}>
-            <div className="flex items-center gap-2">
-              <span>{DBT_PERMISSION_SET_MAP[grant.permissionSet].label}</span>
-              <Badge variant={grant.projectId ? "neutral" : "info"}>
-                {grant.projectId ? `Project: ${grant.projectId}` : "All Projects"}
-              </Badge>
-            </div>
-          </GenericFieldLabel>
-        ))}
+        <div className="grid grid-cols-2 gap-2">
+          {parameters.permissionGrants.map((grant, i) => (
+            <GenericFieldLabel key={`grant-${i + 1}`} label={`Permission Grant ${i + 1}`}>
+              <div className="flex items-center gap-2">
+                <span>{DBT_PERMISSION_SET_MAP[grant.permissionSet].label}</span>
+                <Badge variant={grant.projectId ? "neutral" : "info"}>
+                  {grant.projectId ? `Project: ${grant.projectId}` : "All Projects"}
+                </Badge>
+              </div>
+            </GenericFieldLabel>
+          ))}
+        </div>
       </SecretRotationReviewSection>
       <SecretRotationReviewSection label="Secrets Mapping">
         <GenericFieldLabel label="Service Token">{serviceToken}</GenericFieldLabel>

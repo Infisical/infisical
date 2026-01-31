@@ -3,6 +3,7 @@ import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { SingleValue } from "react-select";
 import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import {
@@ -11,6 +12,7 @@ import {
   FormControl,
   FormLabel,
   IconButton,
+  Input,
   Select,
   SelectItem
 } from "@app/components/v2";
@@ -65,11 +67,30 @@ export const DbtServiceTokenRotationParametersFields = () => {
 
   return (
     <>
+      <Controller
+        control={control}
+        name="parameters.tokenName"
+        render={({ field, fieldState: { error } }) => (
+          <FormControl
+            tooltipText="Enter a name for the service token to be created. Note that each secret will have a suffix of '-1' or '-2' to differentiate between rotation cycles."
+            isError={Boolean(error?.message)}
+            errorText={error?.message}
+            label="Service Token Name"
+          >
+            <Input {...field} placeholder="infisical-service-token" />
+          </FormControl>
+        )}
+      />
       <FormLabel label="Permission Grants" />
-      <div className="mb-3 flex w-full flex-col space-y-2">
+      <div
+        className={twMerge(
+          "mb-3 flex w-full flex-col space-y-2",
+          permissionGrantsFields?.fields?.length >= 5 ? "max-h-72 overflow-y-auto" : ""
+        )}
+      >
         {permissionGrantsFields.fields.map(({ id: roleFieldId }, i) => (
           <div key={roleFieldId} className="flex items-end space-x-2">
-            <div className="w-72">
+            <div className="w-80">
               {i === 0 && <span className="text-xs text-mineshaft-400">Permission set</span>}
               <Controller
                 control={control}
@@ -80,7 +101,13 @@ export const DbtServiceTokenRotationParametersFields = () => {
                     errorText={error?.message}
                     className="mb-0"
                   >
-                    <Select className="w-72" value={field.value} onValueChange={field.onChange}>
+                    <Select
+                      className="w-80"
+                      position="popper"
+                      dropdownContainerClassName="max-h-72"
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    >
                       {Object.entries(DBT_PERMISSION_SET_MAP).map(
                         ([permissionSet, { label, isEnterpriseOnly }]) => (
                           <SelectItem key={permissionSet} value={permissionSet}>
@@ -125,6 +152,7 @@ export const DbtServiceTokenRotationParametersFields = () => {
                 )}
               />
             </div>
+
             <IconButton
               ariaLabel="delete key"
               className="bottom-0.5 h-9"

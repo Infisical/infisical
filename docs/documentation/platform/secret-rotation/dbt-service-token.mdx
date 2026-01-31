@@ -32,7 +32,12 @@ description: "Learn how to automatically rotate DBT Service Tokens."
             Note that it's important that the DBT connection being used has permissions to create service tokens. Groups such as `Owner` or `Security Admin` are sufficient.
         </Note>
 
-        4. Select the permission grants for the service token. Then click **Next**.
+        4. Select the parameters for the DBT service token rotation. Then click **Next**.
+        - **Service Token Name**: The name of the service token to be created.
+        - **Permission Grants**: The permission grants to apply to the service token.
+            - **Permission Set**: The permission set to apply to the service token.
+            - **Projects**: The projects to apply the permission set to. Select "All Projects" for the permission set to be applied to all projects.
+
 
         ![Rotation Parameters](/images/secret-rotations-v2/dbt-service-token/parameters.png)
 
@@ -80,10 +85,11 @@ description: "Learn how to automatically rotate DBT Service Tokens."
                 "minutes": 0
             },
             "parameters": {
+                "tokenName": "my-service-token",
                 "permissionGrants": [
                     {
                         "permissionSet": "account_admin",
-                        "projectId": "<project-id>, <leave empty for all projects>"
+                        "projectId": "<project-id>" // leave empty for all projects
                     }
                 ]
             },
@@ -138,10 +144,11 @@ description: "Learn how to automatically rotate DBT Service Tokens."
                 "lastRotationMessage": null,
                 "type": "dbt-service-token",
                 "parameters": {
+                    "tokenName": "my-service-token",
                     "permissionGrants": [
                         {
                             "permissionSet": "account_admin",
-projectId": "<project-id>" // empty for all projects
+                            "projectId": "<project-id>" // leave empty for all projects
                         }
                     ]
                 }

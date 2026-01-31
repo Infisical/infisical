@@ -48,7 +48,7 @@ export const createDbtError = (error: AxiosError) => {
   }
 };
 
-const retrieveDbtAccount = async (config: TDbtConnectionConfig) => {
+export const retrieveDbtAccount = async (config: TDbtConnectionConfig) => {
   const { credentials } = config;
 
   const dbtUrl = await getDbtUrl(config);

@@ -28,6 +28,7 @@ export type TDbtServiceTokenRotationGeneratedCredentials = z.infer<
 
 export interface TDbtServiceTokenRotationParameters {
   permissionGrants: DbtTokenPermissions[];
+  tokenName: string;
 }
 
 export interface TDbtServiceTokenRotationSecretsMapping {

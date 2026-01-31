@@ -3026,7 +3026,8 @@ export const SecretRotations = {
       clientId: "The client ID of the Databricks Service Principal to rotate the OAuth secret for."
     },
     DBT_SERVICE_TOKEN: {
-      permissionGrants: "The permission grants to apply to the service token."
+      permissionGrants: "The permission grants to apply to the service token.",
+      tokenName: "The name of the service token to create."
     },
     OPEN_ROUTER_API_KEY: {
       name: "The name for the generated OpenRouter API key.",
