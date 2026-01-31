@@ -1231,10 +1231,11 @@ export const secretRotationV2ServiceFactory = ({
       {}
     );
 
-    const rotationsForCount = secretRotations as TSecretRotationV2PermissionContext[];
-    const count = rotationsForCount.filter((rotation) =>
+    const rotationsForCount = secretRotations as (TSecretRotationV2PermissionContext & { name: string })[];
+    const allowedRotations = rotationsForCount.filter((rotation) =>
       permission.can(ProjectPermissionSecretRotationActions.Read, getSecretRotationSubject(rotation))
-    ).length;
+    );
+    const count = new Set(allowedRotations.map((r) => r.name)).size;
 
     return count;
   };
