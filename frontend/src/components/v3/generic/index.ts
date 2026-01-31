@@ -20,6 +20,7 @@ export * from "./Pagination";
 export * from "./Popover";
 export * from "./Separator";
 export * from "./Sheet";
+export * from "./Skeleton";
 export * from "./Table";
 export * from "./TextArea";
 export * from "./Toast";
