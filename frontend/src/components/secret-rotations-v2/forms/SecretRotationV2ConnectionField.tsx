@@ -45,13 +45,15 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
 
   const allowedConnections = useMemo(() => {
     if (!availableConnections) return [];
+    const envSlug = environment?.slug;
+    if (!envSlug || !secretPath) return availableConnections;
     return availableConnections.filter((conn) =>
       permission.can(
         ProjectPermissionSecretRotationActions.Create,
         subject(ProjectPermissionSub.SecretRotation, {
           connectionId: conn.id,
-          ...(environment?.slug && { environment: environment.slug }),
-          ...(secretPath && { secretPath })
+          environment: envSlug,
+          secretPath
         })
       )
     );

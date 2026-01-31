@@ -44,13 +44,15 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
 
   const allowedConnections = useMemo(() => {
     if (!availableConnections) return [];
+    const envSlug = environment?.slug;
+    if (!envSlug || !secretPath) return availableConnections;
     return availableConnections.filter((conn) =>
       permission.can(
         ProjectPermissionSecretSyncActions.Create,
         subject(ProjectPermissionSub.SecretSyncs, {
           connectionId: conn.id,
-          ...(environment?.slug && { environment: environment.slug }),
-          ...(secretPath && { secretPath })
+          environment: envSlug,
+          secretPath
         })
       )
     );
