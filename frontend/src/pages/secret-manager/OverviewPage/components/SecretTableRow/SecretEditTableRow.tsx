@@ -12,7 +12,8 @@ import {
   TagsIcon,
   TrashIcon,
   Undo2Icon,
-  WorkflowIcon
+  WorkflowIcon,
+  WrapTextIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -38,6 +39,7 @@ import {
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp, useToggle } from "@app/hooks";
+import { useUpdateSecretV3 } from "@app/hooks/api";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
 import { ProjectEnv, SecretType, SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
@@ -59,6 +61,7 @@ type Props = {
   comment?: string;
   tags?: WsTag[];
   secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
+  skipMultilineEncoding?: boolean | null;
   environment: string;
   secretValueHidden: boolean;
   secretPath: string;
@@ -115,7 +118,8 @@ export const SecretEditTableRow = ({
   isSecretPresent,
   comment,
   tags,
-  secretMetadata
+  secretMetadata,
+  skipMultilineEncoding
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret"
@@ -175,6 +179,7 @@ export const SecretEditTableRow = ({
   }, [secretValueData]);
 
   const { permission } = useProjectPermission();
+  const { mutateAsync: updateSecretV3, isPending: isUpdatingMultiline } = useUpdateSecretV3();
 
   const [isDeleting, setIsDeleting] = useToggle();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -201,6 +206,37 @@ export const SecretEditTableRow = ({
       createNotification({
         type: "error",
         text: "Failed to fetch secret value."
+      });
+    }
+  };
+
+  const handleToggleMultilineEncoding = async () => {
+    try {
+      const result = await updateSecretV3({
+        environment,
+        projectId: currentProject.id,
+        secretPath,
+        secretKey: secretName,
+        type: isOverride ? SecretType.Personal : SecretType.Shared,
+        skipMultilineEncoding: !skipMultilineEncoding
+      });
+
+      if ("approval" in result) {
+        createNotification({
+          type: "info",
+          text: "Requested change has been sent for review"
+        });
+      } else {
+        createNotification({
+          type: "success",
+          text: `Multi-line encoding ${skipMultilineEncoding ? "disabled" : "enabled"}`
+        });
+      }
+    } catch (e) {
+      console.error(e);
+      createNotification({
+        type: "error",
+        text: "Failed to update multi-line encoding setting."
       });
     }
   };
@@ -304,7 +340,7 @@ export const SecretEditTableRow = ({
   const shouldStayExpanded = isCommentOpen || isTagOpen || isMetadataOpen;
 
   return (
-    <div className="flex w-full cursor-text items-center space-x-2">
+    <div className="flex w-full cursor-text items-center space-x-2 py-1.5">
       <DeleteActionModal
         isOpen={isModalOpen}
         onClose={toggleModal}
@@ -354,7 +390,7 @@ export const SecretEditTableRow = ({
           )}
         />
       </div>
-      <div className={twMerge("flex w-fit justify-end space-x-2 pl-2 transition-all")}>
+      <div className="flex w-fit items-start justify-end space-x-2 self-start pl-2 transition-all">
         {isDirty && !isImportedSecret ? (
           <>
             <ProjectPermissionCan
@@ -600,6 +636,44 @@ export const SecretEditTableRow = ({
                 />
               </PopoverContent>
             </Popover>
+            <Tooltip delayDuration={300} disableHoverableContent>
+              <TooltipTrigger>
+                <UnstableIconButton
+                  variant="ghost"
+                  size="xs"
+                  isDisabled={
+                    isCreatable ||
+                    isImportedSecret ||
+                    isOverride ||
+                    !canEditSecretValue ||
+                    isUpdatingMultiline
+                  }
+                  onClick={handleToggleMultilineEncoding}
+                  className={twMerge(
+                    skipMultilineEncoding && !isOverride && !isImportedSecret
+                      ? "w-7 text-project opacity-100"
+                      : "w-0 opacity-0",
+                    "overflow-hidden border-0 group-hover:w-7 group-hover:opacity-100",
+                    shouldStayExpanded && "w-7 opacity-100"
+                  )}
+                >
+                  <WrapTextIcon />
+                </UnstableIconButton>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isOverride
+                  ? "Cannot Edit Multi-line Encoding on Personal Overrides"
+                  : isImportedSecret
+                    ? "Cannot Edit Multi-line Encoding on Imported Secret"
+                    : isCreatable
+                      ? "Create Secret to Edit Multi-line Encoding"
+                      : !canEditSecretValue
+                        ? "Access Denied"
+                        : skipMultilineEncoding
+                          ? "Disable Multi-line Encoding"
+                          : "Enable Multi-line Encoding"}
+              </TooltipContent>
+            </Tooltip>
             <Modal>
               <Tooltip delayDuration={300} disableHoverableContent>
                 <TooltipTrigger>
