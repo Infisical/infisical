@@ -345,6 +345,7 @@ export const SecretTableRow = ({
                             isSecretPresent={Boolean(secret)}
                             comment={secret?.comment}
                             tags={secret?.tags}
+                            secretMetadata={secret?.secretMetadata}
                           />
                         </UnstableTableCell>
                       </UnstableTableRow>
