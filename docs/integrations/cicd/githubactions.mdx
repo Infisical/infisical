@@ -143,7 +143,7 @@ In the following steps, we explore how to configure GitHub Actions to authentica
     - **Claims**: (Optional) Additional attributes that should be present in the JWT. Refer to GitHub's [OIDC token documentation](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#understanding-the-oidc-token) for supported claims.
 
     <Warning>
-      Restrict access by configuring the Subject, Audiences, and Claims fields carefully. The `subject`, `audiences`, and `claims` fields support glob pattern matching, but we highly recommend using hardcoded values whenever possible for better security.
+      Restrict access by configuring the Subject, Audiences, and Claims fields carefully. The Subject, Audiences, and Claims fields support glob pattern matching, but we highly recommend using hardcoded values whenever possible for better security.
     </Warning>
 
     <Info>
