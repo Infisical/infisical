@@ -44,6 +44,7 @@ export type TSSEClient = {
   actorId: string;
   ping: () => void;
   close: () => void;
+  unsubscribe: () => void;
 };
 
 // SSE Event format
