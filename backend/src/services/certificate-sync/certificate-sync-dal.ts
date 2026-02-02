@@ -16,7 +16,7 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
 
   const findByPkiSyncId = async (pkiSyncId: string, tx?: Knex) => {
     try {
-      const docs = await (tx || db)(TableName.CertificateSync)
+      const docs = await (tx || db.replicaNode())(TableName.CertificateSync)
         .where({ pkiSyncId })
         .select(selectAllTableCols(TableName.CertificateSync));
       return docs;
@@ -38,7 +38,7 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
 
   const findByPkiSyncAndCertificate = async (pkiSyncId: string, certificateId: string, tx?: Knex) => {
     try {
-      const doc = await (tx || db)(TableName.CertificateSync)
+      const doc = await (tx || db.replicaNode())(TableName.CertificateSync)
         .where({ pkiSyncId, certificateId })
         .select(selectAllTableCols(TableName.CertificateSync))
         .first();
@@ -187,6 +187,18 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
     }
   };
 
+  /**
+   * Removes a specific flag/key from the syncMetadata JSONB column for all certificate_sync records
+   * belonging to a given pkiSyncId.
+   *
+   * This is used, for example, to clear the "isDefault" flag from all certificates when the default
+   * certificate is changed or cleared.
+   *
+   * The SQL logic:
+   * 1. Filters records where syncMetadata is not null and contains the specified flag
+   * 2. Removes the flag from the JSONB object using the `-` operator
+   * 3. If removing the flag results in an empty object `{}`, sets the column to NULL instead
+   */
   const clearSyncMetadataFlag = async (pkiSyncId: string, flag: string, tx?: Knex): Promise<void> => {
     try {
       await (tx || db)(TableName.CertificateSync)

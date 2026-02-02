@@ -14,13 +14,7 @@ export type TAwsElbSyncMetadata = z.infer<typeof AwsElbSyncMetadataSchema>;
 
 export const BaseSyncMetadataSchema = z.object({}).catchall(z.unknown());
 
-export const SyncMetadataSchema = z
-  .object({
-    isDefault: z.boolean().optional()
-  })
-  .catchall(z.unknown())
-  .nullable()
-  .optional();
+export const SyncMetadataSchema = AwsElbSyncMetadataSchema.extend({}).catchall(z.unknown()).nullable().optional();
 
 export type TSyncMetadata = z.infer<typeof SyncMetadataSchema>;
 

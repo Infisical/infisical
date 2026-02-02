@@ -8,6 +8,7 @@ import {
   TListAwsConnectionListeners,
   TListAwsConnectionLoadBalancers
 } from "@app/services/app-connection/app-connection-types";
+import { AwsLoadBalancerType } from "@app/services/app-connection/aws/aws-connection-enums";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
@@ -95,7 +96,7 @@ const listAwsIamUsers = async (appConnection: TAwsConnection) => {
 export type TAwsLoadBalancerInfo = {
   loadBalancerArn: string;
   loadBalancerName: string;
-  type: "application" | "network" | "gateway";
+  type: AwsLoadBalancerType;
   scheme: string;
   state: string;
   vpcId?: string;
@@ -139,11 +140,11 @@ const listAwsLoadBalancers = async (
     if (response.LoadBalancers) {
       for (const lb of response.LoadBalancers) {
         if (lb.LoadBalancerArn && lb.LoadBalancerName && lb.Type) {
-          if (lb.Type === "application" || lb.Type === "network") {
+          if (lb.Type === AwsLoadBalancerType.Application || lb.Type === AwsLoadBalancerType.Network) {
             loadBalancers.push({
               loadBalancerArn: lb.LoadBalancerArn,
               loadBalancerName: lb.LoadBalancerName,
-              type: lb.Type as "application" | "network",
+              type: lb.Type as AwsLoadBalancerType,
               scheme: lb.Scheme || "unknown",
               state: lb.State?.Code || "unknown",
               vpcId: lb.VpcId,

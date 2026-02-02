@@ -214,6 +214,58 @@ Infisical supports two methods for connecting to AWS.
                                     - Tag-related permissions: Manages certificate tags for identification and organization
                                 </Note>
                             </Accordion>
+                            <Accordion title="AWS Elastic Load Balancer">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to sync certificates to AWS Elastic Load Balancers:
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowCertificateManagerAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "acm:ListCertificates",
+                                                "acm:DescribeCertificate",
+                                                "acm:ImportCertificate",
+                                                "acm:DeleteCertificate",
+                                                "acm:ListTagsForCertificate"
+                                            ],
+                                            "Resource": "*"
+                                        },
+                                        {
+                                            "Sid": "AllowElasticLoadBalancerAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "elasticloadbalancing:DescribeLoadBalancers",
+                                                "elasticloadbalancing:DescribeListeners",
+                                                "elasticloadbalancing:DescribeListenerCertificates",
+                                                "elasticloadbalancing:AddListenerCertificates",
+                                                "elasticloadbalancing:RemoveListenerCertificates",
+                                                "elasticloadbalancing:ModifyListener"
+                                            ],
+                                            "Resource": "*"
+                                        }
+                                    ]
+                                }
+                                ```
+                                <Note>
+                                    **ACM Permissions:**
+                                    - **ListCertificates**: Lists all certificates in the account
+                                    - **ImportCertificate**: Imports certificates from Infisical into AWS Certificate Manager
+                                    - **DeleteCertificate**: Removes certificates that are no longer managed by Infisical
+                                    - **DescribeCertificate**: Retrieves certificate details for comparison during sync
+                                    - **ListTagsForCertificate**: Retrieves certificate tags for identification
+
+                                    **ELB Permissions:**
+                                    - **DescribeLoadBalancers**: Lists available load balancers for selection
+                                    - **DescribeListeners**: Lists HTTPS/TLS listeners on load balancers
+                                    - **DescribeListenerCertificates**: Lists certificates attached to listeners
+                                    - **AddListenerCertificates**: Attaches certificates to listeners
+                                    - **RemoveListenerCertificates**: Removes certificates from listeners
+                                    - **ModifyListener**: Sets the default certificate on listeners
+                                </Note>
+                            </Accordion>
                         </AccordionGroup>
                     </Tab>
                 </Tabs>
@@ -428,6 +480,58 @@ Infisical supports two methods for connecting to AWS.
                                     - **DeleteCertificate**: Removes certificates that are no longer managed by Infisical
                                     - **DescribeCertificate** and **GetCertificate**: Retrieves certificate details for comparison during sync
                                     - Tag-related permissions: Manages certificate tags for identification and organization
+                                </Note>
+                            </Accordion>
+                            <Accordion title="AWS Elastic Load Balancer">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to sync certificates to AWS Elastic Load Balancers:
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowCertificateManagerAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "acm:ListCertificates",
+                                                "acm:DescribeCertificate",
+                                                "acm:ImportCertificate",
+                                                "acm:DeleteCertificate",
+                                                "acm:ListTagsForCertificate"
+                                            ],
+                                            "Resource": "*"
+                                        },
+                                        {
+                                            "Sid": "AllowElasticLoadBalancerAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "elasticloadbalancing:DescribeLoadBalancers",
+                                                "elasticloadbalancing:DescribeListeners",
+                                                "elasticloadbalancing:DescribeListenerCertificates",
+                                                "elasticloadbalancing:AddListenerCertificates",
+                                                "elasticloadbalancing:RemoveListenerCertificates",
+                                                "elasticloadbalancing:ModifyListener"
+                                            ],
+                                            "Resource": "*"
+                                        }
+                                    ]
+                                }
+                                ```
+                                <Note>
+                                    **ACM Permissions:**
+                                    - **ListCertificates**: Lists all certificates in the account
+                                    - **ImportCertificate**: Imports certificates from Infisical into AWS Certificate Manager
+                                    - **DeleteCertificate**: Removes certificates that are no longer managed by Infisical
+                                    - **DescribeCertificate**: Retrieves certificate details for comparison during sync
+                                    - **ListTagsForCertificate**: Retrieves certificate tags for identification
+
+                                    **ELB Permissions:**
+                                    - **DescribeLoadBalancers**: Lists available load balancers for selection
+                                    - **DescribeListeners**: Lists HTTPS/TLS listeners on load balancers
+                                    - **DescribeListenerCertificates**: Lists certificates attached to listeners
+                                    - **AddListenerCertificates**: Attaches certificates to listeners
+                                    - **RemoveListenerCertificates**: Removes certificates from listeners
+                                    - **ModifyListener**: Sets the default certificate on listeners
                                 </Note>
                             </Accordion>
                         </AccordionGroup>

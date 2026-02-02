@@ -83,7 +83,10 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
                       {currentDestination === PkiSync.AwsElasticLoadBalancer && (
                         <p className="mt-4">
                           For AWS Elastic Load Balancer, this will remove the certificate from both
-                          the load balancer listeners and AWS Certificate Manager.
+                          the load balancer listeners and AWS Certificate Manager. This only affects
+                          certificates managed by this specific sync and will not interfere with
+                          certificates managed by other syncs (such as ACM syncs or other ELB
+                          syncs).
                         </p>
                       )}
                       <p className="mt-4">

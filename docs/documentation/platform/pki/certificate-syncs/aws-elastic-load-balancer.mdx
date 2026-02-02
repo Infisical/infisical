@@ -3,6 +3,8 @@ title: "AWS Elastic Load Balancer"
 description: "Learn how to configure an AWS Elastic Load Balancer Certificate Sync for Infisical PKI."
 ---
 
+The AWS Elastic Load Balancer Certificate Sync allows you to automatically deploy and manage TLS/SSL certificates on your AWS Application Load Balancers (ALBs) and Network Load Balancers (NLBs). Certificates are first imported into AWS Certificate Manager (ACM) and then attached to your configured listeners, enabling secure HTTPS/TLS traffic to your load balancers with automatic certificate lifecycle management.
+
 **Prerequisites:**
 
 - Create an [AWS Connection](/integrations/app-connections/aws)
@@ -164,7 +166,7 @@ You can set a certificate as the default for all configured listeners. The defau
 
         ```bash Request
         curl --request POST \
-        --url https://app.infisical.com/api/v1/cert-manager/syncs/aws-elastic-load-balancer/{pkiSyncId}/certificates/{certificateId}/set-default \
+        --url https://app.infisical.com/api/v1/cert-manager/syncs/aws-elastic-load-balancer/{pkiSyncId}/certificates/{certificateId}/default \
         --header 'Authorization: Bearer <access-token>'
         ```
 
@@ -172,7 +174,7 @@ You can set a certificate as the default for all configured listeners. The defau
 
         ```bash Request
         curl --request DELETE \
-        --url https://app.infisical.com/api/v1/cert-manager/syncs/aws-elastic-load-balancer/{pkiSyncId}/default-certificate \
+        --url https://app.infisical.com/api/v1/cert-manager/syncs/aws-elastic-load-balancer/{pkiSyncId}/certificates/default \
         --header 'Authorization: Bearer <access-token>'
         ```
     </Tab>

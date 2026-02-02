@@ -272,7 +272,7 @@ export const useSetCertificateAsDefault = () => {
       destination: string;
     }) => {
       const { data } = await apiRequest.post<{ message: string }>(
-        `/api/v1/cert-manager/syncs/${destination}/${pkiSyncId}/certificates/${certificateId}/set-default`
+        `/api/v1/cert-manager/syncs/${destination}/${pkiSyncId}/certificates/${certificateId}/default`
       );
 
       return data;
@@ -288,7 +288,7 @@ export const useClearDefaultCertificate = () => {
   return useMutation({
     mutationFn: async ({ pkiSyncId, destination }: { pkiSyncId: string; destination: string }) => {
       const { data } = await apiRequest.delete<{ message: string }>(
-        `/api/v1/cert-manager/syncs/${destination}/${pkiSyncId}/default-certificate`
+        `/api/v1/cert-manager/syncs/${destination}/${pkiSyncId}/certificates/default`
       );
 
       return data;

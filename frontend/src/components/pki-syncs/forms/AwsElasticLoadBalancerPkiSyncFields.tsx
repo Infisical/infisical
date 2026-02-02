@@ -6,8 +6,8 @@ import { AWS_REGIONS } from "@app/helpers/appConnections";
 import {
   PkiSync,
   TAwsListener,
-  useAwsListeners,
-  useAwsLoadBalancers
+  useListAwsListeners,
+  useListAwsLoadBalancers
 } from "@app/hooks/api/pkiSyncs";
 
 import { TPkiSyncForm } from "./schemas/pki-sync-schema";
@@ -74,12 +74,12 @@ export const AwsElasticLoadBalancerPkiSyncFields = () => {
     name: "destinationConfig.listeners"
   });
 
-  const { data: loadBalancers, isLoading: isLoadingLoadBalancers } = useAwsLoadBalancers(
+  const { data: loadBalancers, isLoading: isLoadingLoadBalancers } = useListAwsLoadBalancers(
     { connectionId, region },
     { enabled: !!connectionId && !!region }
   );
 
-  const { data: listeners, isLoading: isLoadingListeners } = useAwsListeners(
+  const { data: listeners, isLoading: isLoadingListeners } = useListAwsListeners(
     { connectionId, region, loadBalancerArn },
     { enabled: !!connectionId && !!region && !!loadBalancerArn }
   );

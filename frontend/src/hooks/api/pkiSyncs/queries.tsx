@@ -158,7 +158,7 @@ export const useListPkiSyncCertificates = (
   });
 };
 
-export const useAwsLoadBalancers = (
+export const useListAwsLoadBalancers = (
   { connectionId, region }: { connectionId: string; region: string },
   options?: Omit<
     UseQueryOptions<
@@ -186,7 +186,7 @@ export const useAwsLoadBalancers = (
   });
 };
 
-export const useAwsListeners = (
+export const useListAwsListeners = (
   {
     connectionId,
     region,

@@ -4,6 +4,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
+import { AwsLoadBalancerType } from "@app/services/app-connection/aws/aws-connection-enums";
 import { AuthMode } from "@app/services/auth/auth-type";
 import {
   AWS_ELASTIC_LOAD_BALANCER_PKI_SYNC_LIST_OPTION,
@@ -52,7 +53,7 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
             z.object({
               loadBalancerArn: z.string(),
               loadBalancerName: z.string(),
-              type: z.enum(["application", "network", "gateway"]),
+              type: z.nativeEnum(AwsLoadBalancerType),
               scheme: z.string(),
               state: z.string(),
               vpcId: z.string().optional(),
@@ -127,7 +128,7 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
 
   server.route({
     method: "POST",
-    url: "/:pkiSyncId/certificates/:certificateId/set-default",
+    url: "/:pkiSyncId/certificates/:certificateId/default",
     config: {
       rateLimit: writeLimit
     },
@@ -159,10 +160,11 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
         ...req.auditLogInfo,
         projectId: pkiSyncInfo.projectId,
         event: {
-          type: EventType.UPDATE_PKI_SYNC,
+          type: EventType.PKI_SYNC_SET_DEFAULT_CERTIFICATE,
           metadata: {
             pkiSyncId,
-            name: pkiSyncInfo.name
+            name: pkiSyncInfo.name,
+            certificateId
           }
         }
       });
@@ -173,7 +175,7 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
 
   server.route({
     method: "DELETE",
-    url: "/:pkiSyncId/default-certificate",
+    url: "/:pkiSyncId/certificates/default",
     config: {
       rateLimit: writeLimit
     },
@@ -204,7 +206,7 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
         ...req.auditLogInfo,
         projectId: pkiSyncInfo.projectId,
         event: {
-          type: EventType.UPDATE_PKI_SYNC,
+          type: EventType.PKI_SYNC_CLEAR_DEFAULT_CERTIFICATE,
           metadata: {
             pkiSyncId,
             name: pkiSyncInfo.name
