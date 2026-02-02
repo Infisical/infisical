@@ -1544,6 +1544,9 @@ export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
           ? convertFormOperatorToCaslCondition(actions.conditions)
           : undefined;
 
+      // Skip permissions with no actions selected
+      if (caslActions.length === 0) return;
+
       permissions.push({
         action: caslActions,
         subject,
