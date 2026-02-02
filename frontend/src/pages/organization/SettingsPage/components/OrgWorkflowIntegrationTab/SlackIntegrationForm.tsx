@@ -5,11 +5,12 @@ import axios from "axios";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input } from "@app/components/v2";
+import { Button, FormControl, Input, Select, SelectItem } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useToggle } from "@app/hooks";
 import {
   fetchSlackInstallUrl,
+  useGetAdminIntegrationsConfig,
   useGetSlackIntegrationById,
   useUpdateSlackIntegration
 } from "@app/hooks/api";
@@ -22,7 +23,8 @@ type Props = {
 
 const slackFormSchema = z.object({
   slug: slugSchema({ min: 1, field: "Alias" }),
-  description: z.string().optional()
+  description: z.string().optional(),
+  integrationType: z.enum(["slack", "govSlack"]).default("slack")
 });
 
 type TSlackFormData = z.infer<typeof slackFormSchema>;
@@ -41,6 +43,7 @@ export const SlackIntegrationForm = ({ id, onClose }: Props) => {
   const { currentOrg } = useOrganization();
   const { data: slackIntegration } = useGetSlackIntegrationById(id);
   const { mutateAsync: updateSlackIntegration } = useUpdateSlackIntegration();
+  const { data: adminIntegrationsConfig } = useGetAdminIntegrationsConfig();
 
   useEffect(() => {
     if (slackIntegration) {
@@ -49,12 +52,13 @@ export const SlackIntegrationForm = ({ id, onClose }: Props) => {
     }
   }, [slackIntegration]);
 
-  const triggerSlackInstall = async (slug: string, description?: string) => {
+  const triggerSlackInstall = async (slug: string, description?: string, isGovSlack?: boolean) => {
     setIsConnectLoading.on();
     try {
       const slackInstallUrl = await fetchSlackInstallUrl({
         slug,
-        description
+        description,
+        isGovSlack
       });
       if (slackInstallUrl) {
         window.location.assign(slackInstallUrl);
@@ -71,7 +75,7 @@ export const SlackIntegrationForm = ({ id, onClose }: Props) => {
     }
   };
 
-  const handleSlackFormSubmit = async ({ slug, description }: TSlackFormData) => {
+  const handleSlackFormSubmit = async ({ slug, description, integrationType }: TSlackFormData) => {
     if (id && slackIntegration) {
       if (!currentOrg) {
         return;
@@ -90,12 +94,38 @@ export const SlackIntegrationForm = ({ id, onClose }: Props) => {
         type: "success"
       });
     } else {
-      await triggerSlackInstall(slug, description);
+      await triggerSlackInstall(slug, description, integrationType === "govSlack");
     }
   };
 
+  const isGovSlackAvailable =
+    adminIntegrationsConfig?.govSlack?.clientId && adminIntegrationsConfig?.govSlack?.clientSecret;
+
   return (
     <form onSubmit={handleSubmit(handleSlackFormSubmit)} autoComplete="off">
+      {!slackIntegration && (
+        <Controller
+          control={control}
+          name="integrationType"
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              label="Integration Type"
+              isRequired
+              errorText={error?.message}
+              isError={Boolean(error)}
+            >
+              <Select
+                {...field}
+                onValueChange={(value) => field.onChange(value)}
+                className="w-full"
+              >
+                <SelectItem value="slack">Slack</SelectItem>
+                {isGovSlackAvailable && <SelectItem value="govSlack">GovSlack</SelectItem>}
+              </Select>
+            </FormControl>
+          )}
+        />
+      )}
       <Controller
         control={control}
         name="slug"
