@@ -8,6 +8,7 @@ import {
   EyeOffIcon,
   MessageSquareIcon,
   SaveIcon,
+  TagsIcon,
   TrashIcon,
   Undo2Icon,
   WorkflowIcon
@@ -37,12 +38,13 @@ import {
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp, useToggle } from "@app/hooks";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
-import { ProjectEnv, SecretType, SecretV3RawSanitized } from "@app/hooks/api/types";
+import { ProjectEnv, SecretType, SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 import { SecretCommentForm } from "./SecretCommentForm";
+import { SecretTagForm } from "./SecretTagForm";
 
 type Props = {
   defaultValue?: string | null;
@@ -53,6 +55,7 @@ type Props = {
   isVisible?: boolean;
   isImportedSecret: boolean;
   comment?: string;
+  tags?: WsTag[];
   environment: string;
   secretValueHidden: boolean;
   secretPath: string;
@@ -107,7 +110,8 @@ export const SecretEditTableRow = ({
   importedSecret,
   isEmpty,
   isSecretPresent,
-  comment
+  comment,
+  tags
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret"
@@ -171,6 +175,7 @@ export const SecretEditTableRow = ({
   const [isDeleting, setIsDeleting] = useToggle();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isCommentOpen, setIsCommentOpen] = useState(false);
+  const [isTagOpen, setIsTagOpen] = useState(false);
 
   const toggleModal = useCallback(() => {
     setIsModalOpen((prev) => !prev);
@@ -273,6 +278,7 @@ export const SecretEditTableRow = ({
     }
   }, [onSecretDelete, environment, secretName, secretId, reset, setIsDeleting]);
 
+  const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
   const canCreate = permission.can(
     ProjectPermissionSecretActions.Create,
     subject(ProjectPermissionSub.Secrets, {
@@ -290,7 +296,7 @@ export const SecretEditTableRow = ({
     isErrorFetchingSecretValue ||
     (isCreatable ? !canCreate : !canEditSecretValue);
 
-  const shouldStayExpanded = isCommentOpen;
+  const shouldStayExpanded = isCommentOpen || isTagOpen;
 
   return (
     <div className="flex w-full cursor-text items-center space-x-2">
@@ -454,7 +460,9 @@ export const SecretEditTableRow = ({
                       size="xs"
                       isDisabled={isCreatable || isImportedSecret || isOverride}
                       className={twMerge(
-                        comment && !isOverride ? "w-7 text-project opacity-100" : "w-0 opacity-0",
+                        comment && !isOverride && !isImportedSecret
+                          ? "w-7 text-project opacity-100"
+                          : "w-0 opacity-0",
                         "overflow-hidden group-hover:w-7 group-hover:opacity-100",
                         shouldStayExpanded && "w-7 opacity-100"
                       )}
@@ -486,6 +494,54 @@ export const SecretEditTableRow = ({
                   environment={environment}
                   isOverride={isOverride}
                   onClose={() => setIsCommentOpen(false)}
+                />
+              </PopoverContent>
+            </Popover>
+            <Popover modal open={isTagOpen} onOpenChange={setIsTagOpen}>
+              <Tooltip delayDuration={300} disableHoverableContent>
+                <TooltipTrigger>
+                  <PopoverTrigger asChild>
+                    <UnstableIconButton
+                      variant="ghost"
+                      size="xs"
+                      isDisabled={isCreatable || isImportedSecret || isOverride || !canReadTags}
+                      className={twMerge(
+                        canReadTags && tags?.length && !isImportedSecret && !isOverride
+                          ? "w-7 text-project opacity-100"
+                          : "w-0 opacity-0",
+                        "overflow-hidden group-hover:w-7 group-hover:opacity-100",
+                        shouldStayExpanded && "w-7 opacity-100"
+                      )}
+                    >
+                      <TagsIcon />
+                    </UnstableIconButton>
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {!canReadTags
+                    ? "Access Denied"
+                    : isOverride
+                      ? "Cannot Add Tags to Personal Overrides"
+                      : isImportedSecret
+                        ? "Cannot Add Tags to Imported Secret"
+                        : isCreatable
+                          ? "Create Secret to Add Tags"
+                          : `${tags?.length ? "View" : "Add"} Tags`}
+                </TooltipContent>
+              </Tooltip>
+              <PopoverContent
+                // prevents tooltip from displaying on close
+                onCloseAutoFocus={(e) => e.preventDefault()}
+                className="w-80"
+                align="end"
+              >
+                <SecretTagForm
+                  secretKey={secretName}
+                  secretPath={secretPath}
+                  environment={environment}
+                  isOverride={isOverride}
+                  tags={tags}
+                  onClose={() => setIsTagOpen(false)}
                 />
               </PopoverContent>
             </Popover>
