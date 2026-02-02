@@ -13,6 +13,7 @@ import {
   UnstableDropdownMenuItem,
   UnstableDropdownMenuTrigger,
   UnstableEmpty,
+  UnstableEmptyDescription,
   UnstableEmptyHeader,
   UnstableEmptyTitle,
   UnstableIconButton,
@@ -54,6 +55,9 @@ export const CaCertificatesTable = ({ caId, caName }: Props) => {
           <UnstableEmptyTitle>
             This CA does not have any CA certificates installed
           </UnstableEmptyTitle>
+          <UnstableEmptyDescription>
+            Install a CA certificate to get started
+          </UnstableEmptyDescription>
         </UnstableEmptyHeader>
       </UnstableEmpty>
     );
