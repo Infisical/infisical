@@ -1,38 +1,30 @@
-import { subject } from "@casl/ability";
 import { Link } from "@tanstack/react-router";
-import { CheckIcon, ClipboardListIcon, ExternalLinkIcon, PencilIcon } from "lucide-react";
+import { CheckIcon, ClipboardListIcon, ExternalLinkIcon } from "lucide-react";
 
-import { ProjectPermissionCan } from "@app/components/permissions";
-import { Tooltip } from "@app/components/v2";
 import {
   Badge,
   Detail,
   DetailGroup,
   DetailLabel,
   DetailValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   UnstableCard,
-  UnstableCardAction,
   UnstableCardContent,
   UnstableCardHeader,
   UnstableCardTitle,
   UnstableIconButton
 } from "@app/components/v3";
-import {
-  ProjectPermissionCertificateAuthorityActions,
-  ProjectPermissionSub,
-  useOrganization,
-  useProject
-} from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import { CaStatus, CaType, InternalCaType, useGetCa } from "@app/hooks/api";
 import { caStatusToNameMap, caTypeToNameMap } from "@app/hooks/api/ca/constants";
 import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
 import { certKeyAlgorithmToNameMap } from "@app/hooks/api/certificates/constants";
-import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   caId: string;
-  handlePopUpOpen: (popUpName: keyof UsePopUpState<["ca"]>, data?: object) => void;
 };
 
 const getStatusVariant = (status: CaStatus) => {
@@ -48,7 +40,7 @@ const getStatusVariant = (status: CaStatus) => {
   }
 };
 
-export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
+export const CaDetailsSection = ({ caId }: Props) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const [, isCopyingId, setCopyTextId] = useTimedReset<string>({
@@ -80,28 +72,6 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
     <UnstableCard className="w-full">
       <UnstableCardHeader className="border-b">
         <UnstableCardTitle>CA Details</UnstableCardTitle>
-        <UnstableCardAction>
-          <ProjectPermissionCan
-            I={ProjectPermissionCertificateAuthorityActions.Edit}
-            a={subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })}
-          >
-            {(isAllowed) => (
-              <Tooltip content="Edit CA">
-                <UnstableIconButton
-                  isDisabled={!isAllowed}
-                  variant="outline"
-                  size="xs"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handlePopUpOpen("ca", { caId: ca.id });
-                  }}
-                >
-                  <PencilIcon />
-                </UnstableIconButton>
-              </Tooltip>
-            )}
-          </ProjectPermissionCan>
-        </UnstableCardAction>
       </UnstableCardHeader>
       <UnstableCardContent>
         <DetailGroup>
@@ -114,17 +84,20 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
             <DetailLabel>CA ID</DetailLabel>
             <DetailValue className="flex items-center gap-x-1">
               <span className="break-all">{ca.id}</span>
-              <Tooltip content={isCopyingId ? "Copied" : "Copy ID to clipboard"}>
-                <UnstableIconButton
-                  variant="ghost"
-                  size="xs"
-                  onClick={() => {
-                    navigator.clipboard.writeText(ca.id);
-                    setCopyTextId("Copied");
-                  }}
-                >
-                  {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
-                </UnstableIconButton>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <UnstableIconButton
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => {
+                      navigator.clipboard.writeText(ca.id);
+                      setCopyTextId("Copied");
+                    }}
+                  >
+                    {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
+                  </UnstableIconButton>
+                </TooltipTrigger>
+                <TooltipContent>{isCopyingId ? "Copied" : "Copy ID to clipboard"}</TooltipContent>
               </Tooltip>
             </DetailValue>
           </Detail>

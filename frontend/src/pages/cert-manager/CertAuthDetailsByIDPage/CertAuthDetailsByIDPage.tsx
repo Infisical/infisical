@@ -144,7 +144,7 @@ const Page = () => {
                 </PageHeader>
                 <div className="flex flex-col gap-5 lg:flex-row">
                   <div className="w-full lg:max-w-[24rem]">
-                    <CaDetailsSection caId={data.id} handlePopUpOpen={handlePopUpOpen} />
+                    <CaDetailsSection caId={data.id} />
                     <CaCertDetailsSection caId={data.id} />
                   </div>
                   <div className="flex flex-1 flex-col gap-y-5">

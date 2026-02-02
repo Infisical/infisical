@@ -1,9 +1,15 @@
-import { faCertificate } from "@fortawesome/free-solid-svg-icons";
 import FileSaver from "file-saver";
-import { ClipboardListIcon, DownloadIcon } from "lucide-react";
+import { ClipboardListIcon, DownloadIcon, EllipsisIcon } from "lucide-react";
 
-import { EmptyState, TableSkeleton, Tooltip } from "@app/components/v2";
+import { Lottie } from "@app/components/v2";
 import {
+  UnstableDropdownMenu,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuTrigger,
+  UnstableEmpty,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle,
   UnstableIconButton,
   UnstableTable,
   UnstableTableBody,
@@ -26,60 +32,72 @@ export const CaCrlsTable = ({ caId }: Props) => {
     FileSaver.saveAs(blob, filename);
   };
 
+  if (isPending) {
+    return (
+      <div className="flex h-40 w-full items-center justify-center">
+        <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
+      </div>
+    );
+  }
+
+  if (!caCrls?.length) {
+    return (
+      <UnstableEmpty className="border">
+        <UnstableEmptyHeader>
+          <UnstableEmptyTitle>This CA does not have any CRLs</UnstableEmptyTitle>
+        </UnstableEmptyHeader>
+      </UnstableEmpty>
+    );
+  }
+
   return (
-    <>
-      <UnstableTable>
-        <UnstableTableHeader>
-          <UnstableTableRow>
-            <UnstableTableHead>Distribution Point URL</UnstableTableHead>
-            <UnstableTableHead className="w-5" />
-          </UnstableTableRow>
-        </UnstableTableHeader>
-        <UnstableTableBody>
-          {isPending && <TableSkeleton columns={2} innerKey="ca-crls" />}
-          {!isPending &&
-            caCrls?.map(({ id, crl }) => {
-              return (
-                <UnstableTableRow key={`ca-crl-${id}`}>
-                  <UnstableTableCell className="flex items-center gap-x-2">
-                    {`${window.origin}/api/v1/cert-manager/crl/${id}`}
-                    <Tooltip content="Copy CRL URL">
-                      <UnstableIconButton
-                        variant="ghost"
-                        size="xs"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigator.clipboard.writeText(
-                            `${window.origin}/api/v1/cert-manager/crl/${id}`
-                          );
-                        }}
-                      >
-                        <ClipboardListIcon className="text-label" />
-                      </UnstableIconButton>
-                    </Tooltip>
-                  </UnstableTableCell>
-                  <UnstableTableCell>
-                    <Tooltip content="Download CRL">
-                      <UnstableIconButton
-                        variant="ghost"
-                        size="xs"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          downloadTxtFile("crl.pem", crl);
-                        }}
-                      >
-                        <DownloadIcon className="text-label" />
-                      </UnstableIconButton>
-                    </Tooltip>
-                  </UnstableTableCell>
-                </UnstableTableRow>
-              );
-            })}
-        </UnstableTableBody>
-      </UnstableTable>
-      {!isPending && !caCrls?.length && (
-        <EmptyState title="This CA does not have any CRLs" icon={faCertificate} />
-      )}
-    </>
+    <UnstableTable>
+      <UnstableTableHeader>
+        <UnstableTableRow>
+          <UnstableTableHead>Distribution Point URL</UnstableTableHead>
+          <UnstableTableHead className="w-5" />
+        </UnstableTableRow>
+      </UnstableTableHeader>
+      <UnstableTableBody>
+        {caCrls.map(({ id, crl }) => {
+          return (
+            <UnstableTableRow key={`ca-crl-${id}`}>
+              <UnstableTableCell>{`${window.origin}/api/v1/cert-manager/crl/${id}`}</UnstableTableCell>
+              <UnstableTableCell>
+                <UnstableDropdownMenu>
+                  <UnstableDropdownMenuTrigger asChild>
+                    <UnstableIconButton variant="ghost" size="xs">
+                      <EllipsisIcon />
+                    </UnstableIconButton>
+                  </UnstableDropdownMenuTrigger>
+                  <UnstableDropdownMenuContent align="end">
+                    <UnstableDropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(
+                          `${window.origin}/api/v1/cert-manager/crl/${id}`
+                        );
+                      }}
+                    >
+                      <ClipboardListIcon />
+                      Copy CRL URL
+                    </UnstableDropdownMenuItem>
+                    <UnstableDropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        downloadTxtFile("crl.pem", crl);
+                      }}
+                    >
+                      <DownloadIcon />
+                      Download CRL
+                    </UnstableDropdownMenuItem>
+                  </UnstableDropdownMenuContent>
+                </UnstableDropdownMenu>
+              </UnstableTableCell>
+            </UnstableTableRow>
+          );
+        })}
+      </UnstableTableBody>
+    </UnstableTable>
   );
 };

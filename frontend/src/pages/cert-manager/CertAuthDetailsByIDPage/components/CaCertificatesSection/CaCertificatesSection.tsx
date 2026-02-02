@@ -45,7 +45,7 @@ export const CaCertificatesSection = ({ caId, caName, handlePopUpOpen }: Props) 
           {(isAllowed) => (
             <Button
               isDisabled={!isAllowed}
-              variant="outline"
+              variant="project"
               size="xs"
               onClick={() => {
                 if (
@@ -82,7 +82,7 @@ export const CaCertificatesSection = ({ caId, caName, handlePopUpOpen }: Props) 
               return (
                 <Button
                   isDisabled={!isAllowed}
-                  variant="outline"
+                  variant="project"
                   size="xs"
                   onClick={() => {
                     handlePopUpOpen("generateRootCaCert", {
@@ -97,7 +97,7 @@ export const CaCertificatesSection = ({ caId, caName, handlePopUpOpen }: Props) 
             return (
               <Button
                 isDisabled={!isAllowed}
-                variant="outline"
+                variant="project"
                 size="xs"
                 onClick={() => {
                   handlePopUpOpen("installCaCert", {

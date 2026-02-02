@@ -1,18 +1,20 @@
 import { subject } from "@casl/ability";
-import { faCertificate } from "@fortawesome/free-solid-svg-icons";
 import * as x509 from "@peculiar/x509";
 import { format } from "date-fns";
 import FileSaver from "file-saver";
 import { EllipsisIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { EmptyState, TableSkeleton } from "@app/components/v2";
+import { Lottie } from "@app/components/v2";
 import {
   Badge,
   UnstableDropdownMenu,
   UnstableDropdownMenuContent,
   UnstableDropdownMenuItem,
   UnstableDropdownMenuTrigger,
+  UnstableEmpty,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle,
   UnstableIconButton,
   UnstableTable,
   UnstableTableBody,
@@ -37,95 +39,105 @@ export const CaCertificatesTable = ({ caId, caName }: Props) => {
     FileSaver.saveAs(blob, filename);
   };
 
+  if (isPending) {
+    return (
+      <div className="flex h-40 w-full items-center justify-center">
+        <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
+      </div>
+    );
+  }
+
+  if (!caCerts?.length) {
+    return (
+      <UnstableEmpty className="border">
+        <UnstableEmptyHeader>
+          <UnstableEmptyTitle>
+            This CA does not have any CA certificates installed
+          </UnstableEmptyTitle>
+        </UnstableEmptyHeader>
+      </UnstableEmpty>
+    );
+  }
+
   return (
-    <>
-      <UnstableTable>
-        <UnstableTableHeader>
-          <UnstableTableRow>
-            <UnstableTableHead>CA Certificate #</UnstableTableHead>
-            <UnstableTableHead>Not Before</UnstableTableHead>
-            <UnstableTableHead>Not After</UnstableTableHead>
-            <UnstableTableHead className="w-5" />
-          </UnstableTableRow>
-        </UnstableTableHeader>
-        <UnstableTableBody>
-          {isPending && <TableSkeleton columns={4} innerKey="ca-certificates" />}
-          {!isPending &&
-            caCerts?.map?.((caCert, index) => {
-              const isLastItem = index === caCerts.length - 1;
-              const caCertObj = new x509.X509Certificate(caCert.certificate);
-              return (
-                <UnstableTableRow key={`ca-cert=${caCert.serialNumber}`}>
-                  <UnstableTableCell>
-                    <div className="flex items-center gap-x-2">
-                      CA Certificate {caCert.version}
-                      {isLastItem && <Badge variant="info">Current</Badge>}
-                    </div>
-                  </UnstableTableCell>
-                  <UnstableTableCell>
-                    {format(new Date(caCertObj.notBefore), "yyyy-MM-dd")}
-                  </UnstableTableCell>
-                  <UnstableTableCell>
-                    {format(new Date(caCertObj.notAfter), "yyyy-MM-dd")}
-                  </UnstableTableCell>
-                  <UnstableTableCell>
-                    <UnstableDropdownMenu>
-                      <UnstableDropdownMenuTrigger asChild>
-                        <UnstableIconButton variant="ghost" size="xs">
-                          <EllipsisIcon />
-                        </UnstableIconButton>
-                      </UnstableDropdownMenuTrigger>
-                      <UnstableDropdownMenuContent align="end">
-                        <ProjectPermissionCan
-                          I={ProjectPermissionCertificateAuthorityActions.Read}
-                          a={subject(ProjectPermissionSub.CertificateAuthorities, {
-                            name: caName
-                          })}
+    <UnstableTable>
+      <UnstableTableHeader>
+        <UnstableTableRow>
+          <UnstableTableHead>CA Certificate #</UnstableTableHead>
+          <UnstableTableHead>Not Before</UnstableTableHead>
+          <UnstableTableHead>Not After</UnstableTableHead>
+          <UnstableTableHead className="w-5" />
+        </UnstableTableRow>
+      </UnstableTableHeader>
+      <UnstableTableBody>
+        {caCerts.map((caCert, index) => {
+          const isLastItem = index === caCerts.length - 1;
+          const caCertObj = new x509.X509Certificate(caCert.certificate);
+          return (
+            <UnstableTableRow key={`ca-cert=${caCert.serialNumber}`}>
+              <UnstableTableCell>
+                <div className="flex items-center gap-x-2">
+                  CA Certificate {caCert.version}
+                  {isLastItem && <Badge variant="info">Current</Badge>}
+                </div>
+              </UnstableTableCell>
+              <UnstableTableCell>
+                {format(new Date(caCertObj.notBefore), "yyyy-MM-dd")}
+              </UnstableTableCell>
+              <UnstableTableCell>
+                {format(new Date(caCertObj.notAfter), "yyyy-MM-dd")}
+              </UnstableTableCell>
+              <UnstableTableCell>
+                <UnstableDropdownMenu>
+                  <UnstableDropdownMenuTrigger asChild>
+                    <UnstableIconButton variant="ghost" size="xs">
+                      <EllipsisIcon />
+                    </UnstableIconButton>
+                  </UnstableDropdownMenuTrigger>
+                  <UnstableDropdownMenuContent align="end">
+                    <ProjectPermissionCan
+                      I={ProjectPermissionCertificateAuthorityActions.Read}
+                      a={subject(ProjectPermissionSub.CertificateAuthorities, {
+                        name: caName
+                      })}
+                    >
+                      {(isAllowed) => (
+                        <UnstableDropdownMenuItem
+                          isDisabled={!isAllowed}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            downloadTxtFile("cert.pem", caCert.certificate);
+                          }}
                         >
-                          {(isAllowed) => (
-                            <UnstableDropdownMenuItem
-                              isDisabled={!isAllowed}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                downloadTxtFile("cert.pem", caCert.certificate);
-                              }}
-                            >
-                              Download CA Certificate
-                            </UnstableDropdownMenuItem>
-                          )}
-                        </ProjectPermissionCan>
-                        <ProjectPermissionCan
-                          I={ProjectPermissionCertificateAuthorityActions.Read}
-                          a={subject(ProjectPermissionSub.CertificateAuthorities, {
-                            name: caName
-                          })}
+                          Download CA Certificate
+                        </UnstableDropdownMenuItem>
+                      )}
+                    </ProjectPermissionCan>
+                    <ProjectPermissionCan
+                      I={ProjectPermissionCertificateAuthorityActions.Read}
+                      a={subject(ProjectPermissionSub.CertificateAuthorities, {
+                        name: caName
+                      })}
+                    >
+                      {(isAllowed) => (
+                        <UnstableDropdownMenuItem
+                          isDisabled={!isAllowed}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            downloadTxtFile("chain.pem", caCert.certificateChain);
+                          }}
                         >
-                          {(isAllowed) => (
-                            <UnstableDropdownMenuItem
-                              isDisabled={!isAllowed}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                downloadTxtFile("chain.pem", caCert.certificateChain);
-                              }}
-                            >
-                              Download CA Certificate Chain
-                            </UnstableDropdownMenuItem>
-                          )}
-                        </ProjectPermissionCan>
-                      </UnstableDropdownMenuContent>
-                    </UnstableDropdownMenu>
-                  </UnstableTableCell>
-                </UnstableTableRow>
-              );
-            })}
-        </UnstableTableBody>
-      </UnstableTable>
-      {!isPending && !caCerts?.length && (
-        <EmptyState
-          title="This CA does not have any CA certificates installed"
-          icon={faCertificate}
-        />
-      )}
-    </>
+                          Download CA Certificate Chain
+                        </UnstableDropdownMenuItem>
+                      )}
+                    </ProjectPermissionCan>
+                  </UnstableDropdownMenuContent>
+                </UnstableDropdownMenu>
+              </UnstableTableCell>
+            </UnstableTableRow>
+          );
+        })}
+      </UnstableTableBody>
+    </UnstableTable>
   );
 };
