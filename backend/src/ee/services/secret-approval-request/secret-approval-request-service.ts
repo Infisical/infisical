@@ -202,14 +202,20 @@ export const secretApprovalRequestServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    // Check if user has the SecretApprovalRequest.Read permission to count all requests
-    const canReadAllApprovalRequests = permission.can(
+    // Check if user has Describe or Read permission to list all requests
+    // Both Describe and Read allow listing - Read implies Describe
+    const canDescribe = permission.can(
+      ProjectPermissionSecretApprovalRequestActions.Describe,
+      ProjectPermissionSub.SecretApprovalRequest
+    );
+    const canRead = permission.can(
       ProjectPermissionSecretApprovalRequestActions.Read,
       ProjectPermissionSub.SecretApprovalRequest
     );
+    const canListAllApprovalRequests = canDescribe || canRead;
 
     // If user has the permission, count all requests; otherwise count only their requests
-    const userIdFilter = canReadAllApprovalRequests ? undefined : actorId;
+    const userIdFilter = canListAllApprovalRequests ? undefined : actorId;
 
     const count = await secretApprovalRequestDAL.findProjectRequestCount(projectId, userIdFilter, policyId);
     return count;
@@ -239,15 +245,21 @@ export const secretApprovalRequestServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    // Check if user has the SecretApprovalRequest.Read permission to see all requests
-    const canReadAllApprovalRequests = permission.can(
+    // Check if user has Describe or Read permission to list all requests
+    // Both Describe and Read allow listing - Read implies Describe
+    const canDescribe = permission.can(
+      ProjectPermissionSecretApprovalRequestActions.Describe,
+      ProjectPermissionSub.SecretApprovalRequest
+    );
+    const canRead = permission.can(
       ProjectPermissionSecretApprovalRequestActions.Read,
       ProjectPermissionSub.SecretApprovalRequest
     );
+    const canListAllApprovalRequests = canDescribe || canRead;
 
     // If user has the permission, don't filter by userId (they see all requests)
     // Otherwise, filter to only show requests where they are committer or approver
-    const userIdFilter = canReadAllApprovalRequests ? undefined : actorId;
+    const userIdFilter = canListAllApprovalRequests ? undefined : actorId;
 
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 
@@ -303,15 +315,18 @@ export const secretApprovalRequestServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    // Check if user has the SecretApprovalRequest.Read permission
-    const canReadAllApprovalRequests = permission.can(
+    // Check if user has the SecretApprovalRequest.Read permission for full content access
+    // Note: Describe permission only allows listing, NOT viewing details
+    // Read permission is required to see the actual secret changes
+    const canReadApprovalRequestContent = permission.can(
       ProjectPermissionSecretApprovalRequestActions.Read,
       ProjectPermissionSub.SecretApprovalRequest
     );
 
-    // User can view details if they have the read permission, are admin, committer, or approver
+    // User can view details if they have the Read permission, are admin, committer, or approver
+    // Users with only Describe permission cannot access details - they can only list requests
     if (
-      !canReadAllApprovalRequests &&
+      !canReadApprovalRequestContent &&
       !hasRole(ProjectMembershipRole.Admin) &&
       secretApprovalRequest.committerUserId !== actorId &&
       !policy.approvers.find(({ userId }) => userId === actorId)
