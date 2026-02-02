@@ -12,7 +12,8 @@ export enum PkiAlertEventTypeV2 {
 
 export enum PkiAlertChannelTypeV2 {
   EMAIL = "email",
-  WEBHOOK = "webhook"
+  WEBHOOK = "webhook",
+  SLACK = "slack"
 }
 
 export enum PkiFilterFieldV2 {
@@ -51,7 +52,14 @@ export interface TPkiAlertChannelConfigWebhookResponse {
   hasSigningSecret: boolean;
 }
 
-export type TPkiAlertChannelConfig = TPkiAlertChannelConfigEmail | TPkiAlertChannelConfigWebhook;
+export interface TPkiAlertChannelConfigSlack {
+  webhookUrl: string;
+}
+
+export type TPkiAlertChannelConfig =
+  | TPkiAlertChannelConfigEmail
+  | TPkiAlertChannelConfigWebhook
+  | TPkiAlertChannelConfigSlack;
 
 export interface TPkiAlertChannelV2 {
   id: string;
@@ -215,9 +223,28 @@ const webhookChannelSchema = z.object({
   enabled: z.boolean().default(true)
 });
 
+const slackChannelConfigSchema = z.object({
+  webhookUrl: z
+    .string()
+    .url("Must be a valid URL")
+    .refine((url) => url.startsWith("https://"), "Slack webhook URL must use HTTPS")
+    .refine(
+      (url) => url.includes("hooks.slack.com"),
+      "Must be a valid Slack webhook URL (hooks.slack.com)"
+    )
+});
+
+const slackChannelSchema = z.object({
+  id: z.string().uuid().optional(),
+  channelType: z.literal(PkiAlertChannelTypeV2.SLACK),
+  config: slackChannelConfigSchema,
+  enabled: z.boolean().default(true)
+});
+
 export const pkiAlertChannelV2Schema = z.discriminatedUnion("channelType", [
   emailChannelSchema,
-  webhookChannelSchema
+  webhookChannelSchema,
+  slackChannelSchema
 ]);
 
 export const createPkiAlertV2Schema = z.object({

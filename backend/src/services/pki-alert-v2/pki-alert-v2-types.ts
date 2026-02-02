@@ -87,9 +87,11 @@ export type TWebhookChannelConfigResponse = {
 };
 
 export const SlackChannelConfigSchema = z.object({
-  webhookUrl: z.string().url(),
-  channel: z.string().optional(),
-  mentionUsers: z.array(z.string()).optional()
+  webhookUrl: z
+    .string()
+    .url()
+    .refine((url) => url.startsWith("https://"), "Slack webhook URL must use HTTPS")
+    .refine((url) => url.includes("hooks.slack.com"), "Must be a valid Slack webhook URL")
 });
 
 export const ChannelConfigSchema = z.union([

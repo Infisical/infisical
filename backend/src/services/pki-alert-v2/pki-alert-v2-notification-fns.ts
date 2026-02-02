@@ -229,3 +229,138 @@ export const triggerPkiWebhook = async ({
     return { success: false, statusCode: error.response?.status, error: error.message };
   }
 };
+
+// Slack notification types and functions
+type TSlackField = {
+  title: string;
+  value: string;
+  short: boolean;
+};
+
+type TSlackAttachment = {
+  color: string;
+  fields: TSlackField[];
+  footer: string;
+};
+
+export type TSlackPayload = {
+  text: string;
+  attachments: TSlackAttachment[];
+};
+
+type TBuildSlackPayloadParams = {
+  alert: {
+    id: string;
+    name: string;
+    alertBefore: string;
+    projectId: string;
+  };
+  certificates: TCertificatePreview[];
+  eventType: PkiWebhookEventType;
+  appUrl?: string;
+};
+
+const SLACK_URGENT_THRESHOLD_DAYS = 7;
+const SLACK_COLOR_URGENT = "#FF0000";
+const SLACK_COLOR_WARNING = "#E7F256";
+const SLACK_MAX_CERTIFICATES_DISPLAY = 3;
+
+export const buildSlackPayload = ({
+  alert,
+  certificates,
+  appUrl = "https://app.infisical.com"
+}: TBuildSlackPayloadParams): TSlackPayload => {
+  const now = new Date();
+
+  // Determine if any certificate is urgent (expires within 7 days)
+  const hasUrgentCertificate = certificates.some((cert) => {
+    const notAfter = new Date(cert.notAfter);
+    const daysUntilExpiry = Math.ceil((notAfter.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    return daysUntilExpiry <= SLACK_URGENT_THRESHOLD_DAYS;
+  });
+
+  const color = hasUrgentCertificate ? SLACK_COLOR_URGENT : SLACK_COLOR_WARNING;
+
+  // Build main text
+  const mainText = `Certificate Expiration Alert: ${alert.name}`;
+
+  // Build fields
+  const fields: TSlackField[] = [
+    { title: "Alert Name", value: alert.name, short: true },
+    { title: "Alert Before", value: alert.alertBefore, short: true },
+    { title: "Certificates Affected", value: String(certificates.length), short: true },
+    {
+      title: "View Details",
+      value: `<${appUrl}/projects/cert-manager/${alert.projectId}/policies|View in Infisical>`,
+      short: true
+    }
+  ];
+
+  // Add certificate details (max 3)
+  const displayCertificates = certificates.slice(0, SLACK_MAX_CERTIFICATES_DISPLAY);
+  displayCertificates.forEach((cert, index) => {
+    const notAfter = new Date(cert.notAfter);
+    const expiryDate = notAfter.toISOString().split("T")[0];
+    const serialPreview = cert.serialNumber.length > 12 ? `${cert.serialNumber.slice(0, 12)}...` : cert.serialNumber;
+
+    fields.push({
+      title: `Certificate ${index + 1}`,
+      value: `${cert.commonName}\nExpires: ${expiryDate} | Serial: ${serialPreview}`,
+      short: false
+    });
+  });
+
+  // Add "and X more" if there are more certificates
+  if (certificates.length > SLACK_MAX_CERTIFICATES_DISPLAY) {
+    const remaining = certificates.length - SLACK_MAX_CERTIFICATES_DISPLAY;
+    fields.push({
+      title: "",
+      value: `...and ${remaining} more certificate(s)`,
+      short: false
+    });
+  }
+
+  return {
+    text: mainText,
+    attachments: [
+      {
+        color,
+        fields,
+        footer: "Infisical PKI Alerts"
+      }
+    ]
+  };
+};
+
+type TTriggerSlackWebhookParams = {
+  webhookUrl: string;
+  payload: TSlackPayload;
+};
+
+type TTriggerSlackWebhookResult = {
+  success: boolean;
+  statusCode?: number;
+  error?: string;
+};
+
+export const triggerSlackWebhook = async ({
+  webhookUrl,
+  payload
+}: TTriggerSlackWebhookParams): Promise<TTriggerSlackWebhookResult> => {
+  try {
+    const response = await request.post(webhookUrl, payload, {
+      headers: { "Content-Type": "application/json" },
+      timeout: PKI_WEBHOOK_TIMEOUT,
+      signal: AbortSignal.timeout(PKI_WEBHOOK_TIMEOUT)
+    });
+
+    return { success: true, statusCode: response.status };
+  } catch (err) {
+    const error = err as AxiosError;
+    logger.error(
+      { webhookUrl, error: error.message, statusCode: error.response?.status },
+      "Slack webhook trigger failed"
+    );
+    return { success: false, statusCode: error.response?.status, error: error.message };
+  }
+};

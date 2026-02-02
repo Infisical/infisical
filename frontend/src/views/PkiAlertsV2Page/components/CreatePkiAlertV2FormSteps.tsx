@@ -1,6 +1,7 @@
 /* eslint-disable react/no-array-index-key */
 import { useEffect, useRef, useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
+import { faSlack } from "@fortawesome/free-brands-svg-icons";
 import {
   faCheck,
   faChevronDown,
@@ -57,6 +58,7 @@ import {
   PkiFilterOperatorV2,
   TCreatePkiAlertV2,
   TPkiAlertChannelConfigEmail,
+  TPkiAlertChannelConfigSlack,
   TPkiAlertChannelConfigWebhook,
   TPkiFilterRuleV2,
   useGetPkiAlertV2CurrentMatchingCertificates,
@@ -164,9 +166,26 @@ export const CreatePkiAlertV2FormSteps = ({
 
   const addChannel = (type: PkiAlertChannelTypeV2) => {
     justAddedRef.current = true;
+    let config:
+      | TPkiAlertChannelConfigEmail
+      | TPkiAlertChannelConfigWebhook
+      | TPkiAlertChannelConfigSlack;
+    switch (type) {
+      case PkiAlertChannelTypeV2.EMAIL:
+        config = { recipients: [] };
+        break;
+      case PkiAlertChannelTypeV2.WEBHOOK:
+        config = { url: "" };
+        break;
+      case PkiAlertChannelTypeV2.SLACK:
+        config = { webhookUrl: "" };
+        break;
+      default:
+        config = { recipients: [] };
+    }
     prependChannel({
       channelType: type,
-      config: type === PkiAlertChannelTypeV2.EMAIL ? { recipients: [] } : { url: "" },
+      config,
       enabled: true
     });
   };
@@ -635,6 +654,10 @@ export const CreatePkiAlertV2FormSteps = ({
                   <FontAwesomeIcon icon={faLink} className="mr-2" />
                   Webhook
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => addChannel(PkiAlertChannelTypeV2.SLACK)}>
+                  <FontAwesomeIcon icon={faSlack} className="mr-2" />
+                  Slack
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -808,6 +831,29 @@ export const CreatePkiAlertV2FormSteps = ({
                           </div>
                         </div>
                       )}
+
+                      {channel?.channelType === PkiAlertChannelTypeV2.SLACK && (
+                        <Controller
+                          control={control}
+                          name={`channels.${index}.config.webhookUrl`}
+                          render={({ field: webhookUrlField, fieldState: { error } }) => (
+                            <FormControl
+                              label="Slack Webhook URL"
+                              isRequired
+                              isError={Boolean(error)}
+                              errorText={error?.message}
+                              helperText="Get this from Slack App > Incoming Webhooks"
+                            >
+                              <Input
+                                value={webhookUrlField.value || ""}
+                                onChange={webhookUrlField.onChange}
+                                onBlur={webhookUrlField.onBlur}
+                                placeholder="https://hooks.slack.com/services/..."
+                              />
+                            </FormControl>
+                          )}
+                        />
+                      )}
                     </AccordionContent>
                   </AccordionItem>
                 );
@@ -921,38 +967,49 @@ export const CreatePkiAlertV2FormSteps = ({
                           ))}
                       </div>
                       <span className="max-w-[300px] text-xs text-mineshaft-400">
-                        {channel.channelType === PkiAlertChannelTypeV2.EMAIL
-                          ? (() => {
-                              const config = channel.config as TPkiAlertChannelConfigEmail;
-                              const count = config.recipients.length;
-                              if (count === 0) return "No recipients";
-                              const displayEmails = config.recipients.slice(0, 3);
-                              const truncated = displayEmails.map((e) =>
-                                e.length > 20 ? `${e.slice(0, 20)}...` : e
-                              );
-                              const displayText =
-                                count <= 3
-                                  ? truncated.join(", ")
-                                  : `${truncated.join(", ")} +${count - 3} more`;
+                        {(() => {
+                          if (channel.channelType === PkiAlertChannelTypeV2.EMAIL) {
+                            const config = channel.config as TPkiAlertChannelConfigEmail;
+                            const count = config.recipients.length;
+                            if (count === 0) return "No recipients";
+                            const displayEmails = config.recipients.slice(0, 3);
+                            const truncated = displayEmails.map((e) =>
+                              e.length > 20 ? `${e.slice(0, 20)}...` : e
+                            );
+                            const displayText =
+                              count <= 3
+                                ? truncated.join(", ")
+                                : `${truncated.join(", ")} +${count - 3} more`;
 
-                              if (count > 3) {
-                                return (
-                                  <Tooltip content={config.recipients.join(", ")}>
-                                    <span className="cursor-help">{displayText}</span>
-                                  </Tooltip>
-                                );
-                              }
-                              return displayText;
-                            })()
-                          : (() => {
-                              const config = channel.config as TPkiAlertChannelConfigWebhook;
-                              try {
-                                const url = new URL(config.url);
-                                return url.hostname;
-                              } catch {
-                                return config.url || "Not configured";
-                              }
-                            })()}
+                            if (count > 3) {
+                              return (
+                                <Tooltip content={config.recipients.join(", ")}>
+                                  <span className="cursor-help">{displayText}</span>
+                                </Tooltip>
+                              );
+                            }
+                            return displayText;
+                          }
+                          if (channel.channelType === PkiAlertChannelTypeV2.WEBHOOK) {
+                            const config = channel.config as TPkiAlertChannelConfigWebhook;
+                            try {
+                              const url = new URL(config.url);
+                              return url.hostname;
+                            } catch {
+                              return config.url || "Not configured";
+                            }
+                          }
+                          if (channel.channelType === PkiAlertChannelTypeV2.SLACK) {
+                            const config = channel.config as TPkiAlertChannelConfigSlack;
+                            try {
+                              const url = new URL(config.webhookUrl);
+                              return url.hostname;
+                            } catch {
+                              return config.webhookUrl || "Not configured";
+                            }
+                          }
+                          return "Not configured";
+                        })()}
                       </span>
                     </div>
                     {!channel.enabled && (

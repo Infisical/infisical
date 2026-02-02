@@ -15,7 +15,13 @@ import { TPkiAlertChannelDALFactory } from "./pki-alert-channel-dal";
 import { TPkiAlertHistoryDALFactory } from "./pki-alert-history-dal";
 import { TAlertWithChannels, TPkiAlertV2DALFactory } from "./pki-alert-v2-dal";
 import { parseTimeToDays, parseTimeToPostgresInterval } from "./pki-alert-v2-filter-utils";
-import { buildWebhookPayload, PkiWebhookEventType, triggerPkiWebhook } from "./pki-alert-v2-notification-fns";
+import {
+  buildSlackPayload,
+  buildWebhookPayload,
+  PkiWebhookEventType,
+  triggerPkiWebhook,
+  triggerSlackWebhook
+} from "./pki-alert-v2-notification-fns";
 import {
   CertificateOrigin,
   PkiAlertChannelType,
@@ -34,6 +40,7 @@ import {
   TListMatchingCertificatesDTO,
   TListMatchingCertificatesResponse,
   TPkiFilterRule,
+  TSlackChannelConfig,
   TTestWebhookConfigDTO,
   TUpdateAlertV2DTO,
   TWebhookChannelConfig
@@ -673,8 +680,22 @@ export const pkiAlertV2ServiceFactory = ({
             return { success: true, channelType: channel.channelType, url: config.url };
           }
           case PkiAlertChannelType.SLACK: {
-            logger.info(`Slack channel not yet implemented for alert ${alertId}`);
-            return { success: false, channelType: channel.channelType, error: "Slack not yet implemented" };
+            const config = decryptChannelConfig<TSlackChannelConfig>(channel, decryptor);
+            const appCfg = getConfig();
+            const slackPayload = buildSlackPayload({
+              alert: alertData,
+              certificates: matchingCertificates,
+              eventType: PkiWebhookEventType.CERTIFICATE_EXPIRATION,
+              appUrl: appCfg.SITE_URL
+            });
+            const result = await triggerSlackWebhook({
+              webhookUrl: config.webhookUrl,
+              payload: slackPayload
+            });
+            if (!result.success) {
+              throw new Error(result.error || "Slack webhook delivery failed");
+            }
+            return { success: true, channelType: channel.channelType, webhookUrl: config.webhookUrl };
           }
           default:
             return { success: false, channelType: channel.channelType, error: "Unknown channel type" };
@@ -697,6 +718,15 @@ export const pkiAlertV2ServiceFactory = ({
           const config = decryptChannelConfig<TWebhookChannelConfig>(channel, decryptor);
           return { success: false, channelType: channel.channelType, error: errorMessage, url: config.url };
         }
+        if (channel.channelType === PkiAlertChannelType.SLACK) {
+          const config = decryptChannelConfig<TSlackChannelConfig>(channel, decryptor);
+          return {
+            success: false,
+            channelType: channel.channelType,
+            error: errorMessage,
+            webhookUrl: config.webhookUrl
+          };
+        }
 
         return { success: false, channelType: channel.channelType, error: errorMessage };
       }
@@ -714,6 +744,8 @@ export const pkiAlertV2ServiceFactory = ({
           errors.push(`EMAIL (recipients: ${r.recipients.join(", ")}): ${r.error}`);
         } else if (r.channelType === PkiAlertChannelType.WEBHOOK && "url" in r && r.url) {
           errors.push(`WEBHOOK (url: ${r.url}): ${r.error}`);
+        } else if (r.channelType === PkiAlertChannelType.SLACK && "webhookUrl" in r && r.webhookUrl) {
+          errors.push(`SLACK (webhookUrl: ${r.webhookUrl}): ${r.error}`);
         } else {
           errors.push(`${r.channelType}: ${r.error}`);
         }
