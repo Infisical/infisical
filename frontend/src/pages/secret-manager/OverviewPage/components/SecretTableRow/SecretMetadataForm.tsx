@@ -180,7 +180,7 @@ export const SecretMetadataForm = ({
                 render={({ field: switchField }) => (
                   <Switch
                     className="mt-2"
-                    variant="neutral"
+                    variant="project"
                     size="default"
                     checked={switchField.value}
                     onCheckedChange={switchField.onChange}
