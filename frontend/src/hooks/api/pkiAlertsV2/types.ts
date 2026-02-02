@@ -62,6 +62,10 @@ export interface TPkiAlertChannelV2 {
   updatedAt: string;
 }
 
+export type TPkiAlertChannelInput = Omit<TPkiAlertChannelV2, "createdAt" | "updatedAt"> & {
+  id?: string;
+};
+
 export interface TLastRun {
   timestamp: string;
   status: "success" | "failed";
@@ -121,7 +125,7 @@ export interface TCreatePkiAlertV2 {
   alertBefore?: string;
   filters: TPkiFilterRuleV2[];
   enabled?: boolean;
-  channels: Omit<TPkiAlertChannelV2, "id" | "createdAt" | "updatedAt">[];
+  channels: TPkiAlertChannelInput[];
 }
 
 export interface TUpdatePkiAlertV2 {
@@ -132,7 +136,7 @@ export interface TUpdatePkiAlertV2 {
   alertBefore?: string;
   filters?: TPkiFilterRuleV2[];
   enabled?: boolean;
-  channels?: Omit<TPkiAlertChannelV2, "id" | "createdAt" | "updatedAt">[];
+  channels?: TPkiAlertChannelInput[];
 }
 
 export interface TDeletePkiAlertV2 {
@@ -198,12 +202,14 @@ const webhookChannelConfigSchema = z.object({
 });
 
 const emailChannelSchema = z.object({
+  id: z.string().uuid().optional(),
   channelType: z.literal(PkiAlertChannelTypeV2.EMAIL),
   config: emailChannelConfigSchema,
   enabled: z.boolean().default(true)
 });
 
 const webhookChannelSchema = z.object({
+  id: z.string().uuid().optional(),
   channelType: z.literal(PkiAlertChannelTypeV2.WEBHOOK),
   config: webhookChannelConfigSchema,
   enabled: z.boolean().default(true)

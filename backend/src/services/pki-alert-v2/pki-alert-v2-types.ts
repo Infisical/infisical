@@ -104,6 +104,7 @@ export type TSlackChannelConfig = z.infer<typeof SlackChannelConfigSchema>;
 export type TChannelConfig = z.infer<typeof ChannelConfigSchema>;
 
 export const CreateChannelSchema = z.object({
+  id: z.string().uuid().optional(),
   channelType: z.nativeEnum(PkiAlertChannelType),
   config: ChannelConfigSchema,
   enabled: z.boolean().default(true)

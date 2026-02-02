@@ -371,11 +371,11 @@ export const pkiAlertV2ServiceFactory = ({
         const existingChannels = await pkiAlertChannelDAL.findByAlertId(alertId, tx);
         const existingWebhookConfigs = new Map<string, TWebhookChannelConfig>();
 
-        // Build a map of existing webhook configs by URL for preserving signing secrets
+        // Build a map of existing webhook configs by channel id for preserving signing secrets
         for (const existingChannel of existingChannels) {
           if (existingChannel.channelType === PkiAlertChannelType.WEBHOOK) {
             const config = decryptChannelConfig<TWebhookChannelConfig>(existingChannel, decryptor);
-            existingWebhookConfigs.set(config.url, config);
+            existingWebhookConfigs.set(existingChannel.id, config);
           }
         }
 
@@ -387,7 +387,7 @@ export const pkiAlertV2ServiceFactory = ({
           // Handle webhook signing secret preserve/clear logic
           if (channel.channelType === PkiAlertChannelType.WEBHOOK) {
             const webhookConfig = channel.config as TWebhookChannelConfig;
-            const existingConfig = existingWebhookConfigs.get(webhookConfig.url);
+            const existingConfig = channel.id ? existingWebhookConfigs.get(channel.id) : undefined;
 
             // If signingSecret is undefined and we have an existing config, preserve the existing secret
             // If signingSecret is null, explicitly clear it
