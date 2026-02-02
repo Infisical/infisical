@@ -7,6 +7,7 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
@@ -681,11 +682,11 @@ export const pkiAlertV2ServiceFactory = ({
           }
           case PkiAlertChannelType.SLACK: {
             const config = decryptChannelConfig<TSlackChannelConfig>(channel, decryptor);
+            await blockLocalAndPrivateIpAddresses(config.webhookUrl);
             const appCfg = getConfig();
             const slackPayload = buildSlackPayload({
               alert: alertData,
               certificates: matchingCertificates,
-              eventType: PkiWebhookEventType.CERTIFICATE_EXPIRATION,
               appUrl: appCfg.SITE_URL
             });
             const result = await triggerSlackWebhook({
