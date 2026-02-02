@@ -145,7 +145,15 @@ export const SlackChannelConfigSchema = z.object({
     .string()
     .url()
     .refine((url) => url.startsWith("https://"), "Slack webhook URL must use HTTPS")
-    .refine((url) => url.includes("hooks.slack.com"), "Must be a valid Slack webhook URL")
+    // Validate hostname to prevent SSRF via URL manipulation (e.g. hooks.slack.com.evil.com)
+    .refine((url) => {
+      try {
+        const parsed = new URL(url);
+        return parsed.hostname === "hooks.slack.com";
+      } catch {
+        return false;
+      }
+    }, "Must be a valid Slack webhook URL")
 });
 
 export const ChannelConfigSchema = z.union([

@@ -681,11 +681,11 @@ export const pkiAlertV2ServiceFactory = ({
           }
           case PkiAlertChannelType.SLACK: {
             const config = decryptChannelConfig<TSlackChannelConfig>(channel, decryptor);
+            await blockLocalAndPrivateIpAddresses(config.webhookUrl);
             const appCfg = getConfig();
             const slackPayload = buildSlackPayload({
               alert: alertData,
               certificates: matchingCertificates,
-              eventType: PkiWebhookEventType.CERTIFICATE_EXPIRATION,
               appUrl: appCfg.SITE_URL
             });
             const result = await triggerSlackWebhook({
