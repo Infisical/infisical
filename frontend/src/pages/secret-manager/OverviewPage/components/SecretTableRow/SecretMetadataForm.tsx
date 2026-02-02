@@ -24,17 +24,18 @@ import {
 import { useUpdateSecretV3 } from "@app/hooks/api";
 import { SecretType } from "@app/hooks/api/types";
 
-const formSchema = z.object({
-  metadata: z.array(
-    z.object({
-      key: z.string().min(1, "Key is required"),
-      value: z.string(),
-      isEncrypted: z.boolean().default(false)
-    })
-  )
-});
+const formSchema = (enforceEncryption?: boolean) =>
+  z.object({
+    metadata: z.array(
+      z.object({
+        key: z.string().min(1, "Key is required"),
+        value: z.string(),
+        isEncrypted: enforceEncryption ? z.literal(true) : z.boolean().default(false)
+      })
+    )
+  });
 
-type TFormSchema = z.infer<typeof formSchema>;
+type TFormSchema = z.infer<ReturnType<typeof formSchema>>;
 
 type Props = {
   secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
@@ -53,7 +54,7 @@ export const SecretMetadataForm = ({
   isOverride,
   onClose
 }: Props) => {
-  const { projectId } = useProject();
+  const { projectId, currentProject } = useProject();
   const { mutateAsync: updateSecretV3, isPending } = useUpdateSecretV3();
   const { permission } = useProjectPermission();
 
@@ -70,17 +71,18 @@ export const SecretMetadataForm = ({
   const {
     handleSubmit,
     control,
-    formState: { isDirty }
+    formState: { isDirty, errors }
   } = useForm<TFormSchema>({
     defaultValues: {
       metadata:
         secretMetadata?.map((m) => ({
           key: m.key,
           value: m.value,
-          isEncrypted: m.isEncrypted ?? false
+          isEncrypted:
+            m.isEncrypted ?? currentProject?.enforceEncryptedSecretManagerSecretMetadata ?? false
         })) ?? []
     },
-    resolver: zodResolver(formSchema)
+    resolver: zodResolver(formSchema(currentProject?.enforceEncryptedSecretManagerSecretMetadata))
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -115,6 +117,10 @@ export const SecretMetadataForm = ({
     }
     onClose?.();
   };
+
+  const nonEncryptedMetadata = errors?.metadata?.some(
+    (metadata) => metadata?.isEncrypted?.type === "invalid_literal"
+  );
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
@@ -207,12 +213,25 @@ export const SecretMetadataForm = ({
         ))}
       </div>
 
+      {nonEncryptedMetadata && (
+        <FieldError
+          className="text-sm"
+          errors={[{ message: "Project requires all metadata to be encrypted" }]}
+        />
+      )}
+
       {canEditSecret && (
         <Button
           variant="ghost"
           size="xs"
           type="button"
-          onClick={() => append({ key: "", value: "", isEncrypted: false })}
+          onClick={() =>
+            append({
+              key: "",
+              value: "",
+              isEncrypted: currentProject?.enforceEncryptedSecretManagerSecretMetadata ?? false
+            })
+          }
         >
           <PlusIcon className="mr-1 size-4" />
           Add Entry
