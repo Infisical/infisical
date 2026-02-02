@@ -272,7 +272,8 @@ export const useSetCertificateAsDefault = () => {
       destination: string;
     }) => {
       const { data } = await apiRequest.post<{ message: string }>(
-        `/api/v1/cert-manager/syncs/${destination}/${pkiSyncId}/certificates/${certificateId}/default`
+        `/api/v1/cert-manager/syncs/${destination}/${pkiSyncId}/certificates/default`,
+        { certificateId }
       );
 
       return data;

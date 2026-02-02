@@ -128,7 +128,7 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
 
   server.route({
     method: "POST",
-    url: "/:pkiSyncId/certificates/:certificateId/default",
+    url: "/:pkiSyncId/certificates/default",
     config: {
       rateLimit: writeLimit
     },
@@ -138,7 +138,9 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
       description:
         "Set a certificate as the default for all listeners in this AWS ELB PKI Sync. This will trigger a sync immediately.",
       params: z.object({
-        pkiSyncId: z.string().uuid(),
+        pkiSyncId: z.string().uuid()
+      }),
+      body: z.object({
         certificateId: z.string().uuid()
       }),
       response: {
@@ -149,7 +151,8 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { pkiSyncId, certificateId } = req.params;
+      const { pkiSyncId } = req.params;
+      const { certificateId } = req.body;
 
       const { message, pkiSyncInfo } = await server.services.pkiSync.setCertificateAsDefault(
         { pkiSyncId, certificateId },

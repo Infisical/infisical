@@ -166,8 +166,12 @@ You can set a certificate as the default for all configured listeners. The defau
 
         ```bash Request
         curl --request POST \
-        --url https://app.infisical.com/api/v1/cert-manager/syncs/aws-elastic-load-balancer/{pkiSyncId}/certificates/{certificateId}/default \
-        --header 'Authorization: Bearer <access-token>'
+        --url https://app.infisical.com/api/v1/cert-manager/syncs/aws-elastic-load-balancer/{pkiSyncId}/certificates/default \
+        --header 'Authorization: Bearer <access-token>' \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "certificateId": "550e8400-e29b-41d4-a716-446655440000"
+        }'
         ```
 
         To clear the default certificate:
