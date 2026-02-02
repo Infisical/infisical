@@ -172,6 +172,19 @@ export const pkiAlertV2ServiceFactory = ({
       throw new BadRequestError({ message: "Invalid alertBefore format. Use format like '30d', '1w', '3m', '1y'" });
     }
 
+    // Validate webhook URLs early to provide immediate SSRF feedback
+    for (const channel of channels) {
+      if (channel.channelType === PkiAlertChannelType.WEBHOOK) {
+        const webhookConfig = channel.config as TWebhookChannelConfig;
+        const webhookUrl = new URL(webhookConfig.url);
+        // eslint-disable-next-line no-await-in-loop
+        await verifyHostInputValidity({
+          host: webhookUrl.hostname,
+          isDynamicSecret: false
+        });
+      }
+    }
+
     // Create encryptor/decryptor for webhook configs
     const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
@@ -328,6 +341,21 @@ export const pkiAlertV2ServiceFactory = ({
     if (alertBefore !== undefined) updateData.alertBefore = alertBefore;
     if (filters !== undefined) updateData.filters = filters;
     if (enabled !== undefined) updateData.enabled = enabled;
+
+    // Validate webhook URLs early to provide immediate SSRF feedback
+    if (channels) {
+      for (const channel of channels) {
+        if (channel.channelType === PkiAlertChannelType.WEBHOOK) {
+          const webhookConfig = channel.config as TWebhookChannelConfig;
+          const webhookUrl = new URL(webhookConfig.url);
+          // eslint-disable-next-line no-await-in-loop
+          await verifyHostInputValidity({
+            host: webhookUrl.hostname,
+            isDynamicSecret: false
+          });
+        }
+      }
+    }
 
     // Create encryptor/decryptor for webhook configs
     const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({

@@ -468,7 +468,11 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiAlerting],
       body: z.object({
         projectId: z.string().uuid().describe("Project ID for permission check"),
-        url: z.string().url().describe("Webhook URL to test"),
+        url: z
+          .string()
+          .url()
+          .refine((url) => url.startsWith("https://"), "Webhook URL must use HTTPS")
+          .describe("Webhook URL to test"),
         signingSecret: z.string().max(256).optional().describe("Optional signing secret for HMAC signature")
       }),
       response: {

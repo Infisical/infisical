@@ -73,7 +73,10 @@ export const EmailChannelConfigSchema = z.object({
 });
 
 export const WebhookChannelConfigSchema = z.object({
-  url: z.string().url(),
+  url: z
+    .string()
+    .url()
+    .refine((url) => url.startsWith("https://"), "Webhook URL must use HTTPS"),
   signingSecret: z.string().max(256).optional().nullable()
 });
 

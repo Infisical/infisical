@@ -26,6 +26,10 @@ export async function down(knex: Knex): Promise<void> {
       });
     }
 
+    // Ensure all rows have config populated before making NOT NULL
+    // (encrypted-only channels would have config=null)
+    await knex(TableName.PkiAlertChannels).whereNull("config").update({ config: {} });
+
     await knex.schema.alterTable(TableName.PkiAlertChannels, (t) => {
       t.jsonb("config").notNullable().alter();
     });

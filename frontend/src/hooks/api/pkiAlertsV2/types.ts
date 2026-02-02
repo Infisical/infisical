@@ -190,7 +190,10 @@ const emailChannelConfigSchema = z.object({
 });
 
 const webhookChannelConfigSchema = z.object({
-  url: z.string().url("Must be a valid URL"),
+  url: z
+    .string()
+    .url("Must be a valid URL")
+    .refine((url) => url.startsWith("https://"), "Webhook URL must use HTTPS"),
   signingSecret: z.string().max(256).nullable().optional()
 });
 

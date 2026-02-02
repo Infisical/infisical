@@ -22,12 +22,6 @@ type TAlertInfo = {
   projectId: string;
 };
 
-// Event-specific payload structure
-type TBaseEventPayload = {
-  subject: string;
-  data: unknown;
-};
-
 // Certificate data for webhook payloads
 type TCertificateData = {
   id: string;
@@ -64,6 +58,12 @@ export type TPkiWebhookPayload = {
   };
 };
 
+// Base CloudEvents envelope fields
+type TPkiWebhookBase = Pick<TPkiWebhookPayload, "specversion" | "type" | "source" | "id" | "time" | "datacontenttype">;
+
+// Event-specific payload structure (reuses TPkiWebhookPayload fields for type safety)
+type TBaseEventPayload = Pick<TPkiWebhookPayload, "subject" | "data">;
+
 type TBuildWebhookPayloadParams = {
   alert: TAlertInfo;
   certificates: TCertificatePreview[];
@@ -72,7 +72,11 @@ type TBuildWebhookPayloadParams = {
 };
 
 // Builds CloudEvents envelope (shared across all events)
-const buildBasePayload = (params: { eventType: PkiWebhookEventType; projectId: string; alertId: string }) => ({
+const buildBasePayload = (params: {
+  eventType: PkiWebhookEventType;
+  projectId: string;
+  alertId: string;
+}): TPkiWebhookBase => ({
   specversion: "1.0" as const,
   type: params.eventType,
   source: `/projects/${params.projectId}/alerts/${params.alertId}`,
@@ -171,7 +175,7 @@ export const buildWebhookPayload = ({
     }
   })();
 
-  return { ...base, ...eventData } as TPkiWebhookPayload;
+  return { ...base, ...eventData };
 };
 
 const generateHmacSignature = (payload: string, secret: string): string => {
@@ -205,7 +209,7 @@ export const triggerPkiWebhook = async ({
   if (signingSecret) {
     const signaturePayload = `${timestamp}.${payloadString}`;
     const signature = generateHmacSignature(signaturePayload, signingSecret);
-    headers["x-infisical-signature"] = `t=${timestamp};${signature}`;
+    headers["x-infisical-signature"] = `t=${timestamp},v1=${signature}`;
   }
 
   try {

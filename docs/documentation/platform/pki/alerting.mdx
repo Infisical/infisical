@@ -30,7 +30,7 @@ Here's some guidance for each field in the alert configuration sequence:
 Alerts can be delivered through one or more notification channels:
 
 - **Email**: Send alert notifications to a list of email recipients. Enter one or more email addresses to notify when the alert triggers.
-- **Webhook**: Send alert notifications to a webhook URL. Optionally configure a signing secret to verify the authenticity of webhook payloads.
+- **Webhook**: Send alert notifications to a webhook URL. The URL must use HTTPS. Optionally configure a signing secret to verify the authenticity of webhook payloads.
 
 ![pki alerting channels](/images/platform/pki/alerting/alert-create-channels.png)
 
@@ -82,11 +82,12 @@ If you configure a signing secret for your webhook channel, Infisical will inclu
 The header format is:
 
 ```
-x-infisical-signature: t=<timestamp>;<signature>
+x-infisical-signature: t=<timestamp>,v1=<signature>
 ```
 
 Where:
 - `<timestamp>` is the Unix timestamp (in milliseconds) when the signature was generated
+- `v1` indicates the signature version
 - `<signature>` is the HMAC-SHA256 signature of the payload
 
 To verify the signature:
@@ -102,8 +103,10 @@ Example verification in Node.js:
 const crypto = require('crypto');
 
 function verifyWebhookSignature(header, body, secret) {
-  const [timestampPart, signature] = header.split(';');
-  const timestamp = timestampPart.replace('t=', '');
+  // Parse header format: t=<timestamp>,v1=<signature>
+  const parts = header.split(',');
+  const timestamp = parts[0].replace('t=', '');
+  const signature = parts[1].replace('v1=', '');
 
   const signaturePayload = `${timestamp}.${body}`;
   const expectedSignature = crypto

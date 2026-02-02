@@ -1,5 +1,5 @@
 /* eslint-disable react/no-array-index-key */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import {
   faCheck,
@@ -75,17 +75,15 @@ interface CreatePkiAlertV2FormStepsProps {
   setExpandedChannel: (channel: string | undefined) => void;
 }
 
-/**
- * Multi-step form for creating/editing PKI alerts.
- *
- * CHANNEL STATE MANAGEMENT:
- * - emailInputValues: keyed by index (synchronous, needs shifting on add/remove)
- * - webhookTestStates: keyed by field.id (async, uses stable ID to avoid race conditions)
- *
- * Why prepend new channels (index 0) instead of append?
- * - New channels appear at top for immediate visibility
- * - User can quickly configure the just-added channel
- */
+type ChannelUIState = {
+  emailInput?: string;
+  webhookTest?: {
+    success: boolean | null;
+    error?: string;
+    isLoading?: boolean;
+  };
+};
+
 export const CreatePkiAlertV2FormSteps = ({
   expandedChannel,
   setExpandedChannel
@@ -94,6 +92,7 @@ export const CreatePkiAlertV2FormSteps = ({
     control,
     watch,
     setValue,
+    trigger,
     formState: { errors }
   } = useFormContext<TCreatePkiAlertV2>();
   const { currentProject } = useProject();
@@ -101,27 +100,10 @@ export const CreatePkiAlertV2FormSteps = ({
   const [certificatesPage, setCertificatesPage] = useState(1);
   const certificatesPerPage = 6;
 
-  /**
-   * Stores raw text input for email fields while user is typing.
-   * Key = channel index, Value = comma-separated email string.
-   *
-   * Why not update the form directly?
-   * Parsing "email1, email2," to an array would lose the trailing comma
-   * while the user is still typing. We only parse to array on blur.
-   */
-  const [emailInputValues, setEmailInputValues] = useState<Record<number, string>>({});
+  const [channelUIStates, setChannelUIStates] = useState<Record<string, ChannelUIState>>({});
 
-  /**
-   * Tracks webhook test results per channel.
-   * Key = field.id (stable identifier from useFieldArray), Value = { success, error, isLoading }
-   *
-   * We use field.id instead of numeric index because the test is async.
-   * If we used index, switching accordions during the API call would
-   * cause the result to appear on the wrong channel.
-   */
-  const [webhookTestStates, setWebhookTestStates] = useState<
-    Record<string, { success: boolean | null; error?: string; isLoading?: boolean }>
-  >({});
+  // Track when a channel is intentionally added (vs loaded from existing data)
+  const justAddedRef = useRef(false);
 
   const { mutateAsync: testWebhookConfig } = useTestPkiWebhookConfigV2();
 
@@ -180,39 +162,36 @@ export const CreatePkiAlertV2FormSteps = ({
     setValue("filters", currentFilters);
   };
 
-  /**
-   * Adds a new channel at index 0 (prepended to the list).
-   *
-   * Because useFieldArray.prepend adds at index 0, emailInputValues indices
-   * must shift up by 1. webhookTestStates uses field.id so no shifting needed.
-   */
   const addChannel = (type: PkiAlertChannelTypeV2) => {
-    // Shift existing emailInputValues indices up by 1
-    setEmailInputValues((prev) => {
-      const shifted: typeof prev = {};
-      Object.entries(prev).forEach(([key, value]) => {
-        shifted[parseInt(key, 10) + 1] = value;
-      });
-      return shifted;
-    });
-
-    // Shift expandedChannel index up by 1 if one is currently expanded
-    if (expandedChannel) {
-      const match = expandedChannel.match(/^channel-(\d+)$/);
-      if (match) {
-        setExpandedChannel(`channel-${parseInt(match[1], 10) + 1}`);
-      }
-    }
-
+    justAddedRef.current = true;
     prependChannel({
       channelType: type,
       config: type === PkiAlertChannelTypeV2.EMAIL ? { recipients: [] } : { url: "" },
       enabled: true
     });
-
-    // Expand the newly added channel at index 0
-    setExpandedChannel("channel-0");
   };
+
+  // Auto-expand newly added channel (prepended at index 0)
+  useEffect(() => {
+    if (justAddedRef.current && channelFields[0]?.id) {
+      setExpandedChannel(channelFields[0].id);
+      justAddedRef.current = false;
+    }
+  }, [channelFields[0]?.id, setExpandedChannel]);
+
+  // Convert index-based expandedChannel (from modal validation) to field.id
+  useEffect(() => {
+    if (expandedChannel?.startsWith("channel-")) {
+      const match = expandedChannel.match(/^channel-(\d+)$/);
+      if (match) {
+        const index = parseInt(match[1], 10);
+        const fieldId = channelFields[index]?.id;
+        if (fieldId) {
+          setExpandedChannel(fieldId);
+        }
+      }
+    }
+  }, [expandedChannel, channelFields, setExpandedChannel]);
 
   /**
    * Sends a test request to the webhook URL to verify connectivity.
@@ -224,32 +203,16 @@ export const CreatePkiAlertV2FormSteps = ({
   const handleTestWebhook = async (fieldId: string, index: number) => {
     if (!currentProject?.id) return;
 
+    // Trigger validation on the URL field - this will show Zod errors (invalid URL, non-HTTPS, etc.)
+    const isValid = await trigger(`channels.${index}.config.url`);
+    if (!isValid) return;
+
     const channel = watchedChannels[index];
     const webhookConfig = channel.config as TPkiAlertChannelConfigWebhook;
 
-    // Validate URL before making API call
-    if (!webhookConfig.url) {
-      setWebhookTestStates((prev) => ({
-        ...prev,
-        [fieldId]: { success: false, error: "Please enter a webhook URL", isLoading: false }
-      }));
-      return;
-    }
-
-    try {
-      // eslint-disable-next-line no-new
-      new URL(webhookConfig.url);
-    } catch {
-      setWebhookTestStates((prev) => ({
-        ...prev,
-        [fieldId]: { success: false, error: "Please enter a valid URL", isLoading: false }
-      }));
-      return;
-    }
-
-    setWebhookTestStates((prev) => ({
+    setChannelUIStates((prev) => ({
       ...prev,
-      [fieldId]: { success: null, isLoading: true }
+      [fieldId]: { ...prev[fieldId], webhookTest: { success: null, isLoading: true } }
     }));
 
     try {
@@ -260,66 +223,50 @@ export const CreatePkiAlertV2FormSteps = ({
       });
 
       if (result.success) {
-        setWebhookTestStates((prev) => ({
+        setChannelUIStates((prev) => ({
           ...prev,
-          [fieldId]: { success: true, isLoading: false }
+          [fieldId]: { ...prev[fieldId], webhookTest: { success: true, isLoading: false } }
         }));
       } else {
-        setWebhookTestStates((prev) => ({
+        setChannelUIStates((prev) => ({
           ...prev,
           [fieldId]: {
-            success: false,
-            error: result.error || "Failed to send test notification",
-            isLoading: false
+            ...prev[fieldId],
+            webhookTest: {
+              success: false,
+              error: result.error || "Failed to send test notification",
+              isLoading: false
+            }
           }
         }));
       }
     } catch {
-      setWebhookTestStates((prev) => ({
+      setChannelUIStates((prev) => ({
         ...prev,
         [fieldId]: {
-          success: false,
-          error: "Failed to send test notification",
-          isLoading: false
+          ...prev[fieldId],
+          webhookTest: {
+            success: false,
+            error: "Failed to send test notification",
+            isLoading: false
+          }
         }
       }));
     }
   };
 
-  /**
-   * Removes a channel and cleans up associated UI state.
-   *
-   * For emailInputValues: indices above the deleted one shift down by 1.
-   * For webhookTestStates: just delete by field.id (no shifting needed).
-   */
   const deleteChannel = (fieldId: string, index: number, e: React.MouseEvent) => {
     e.stopPropagation();
     removeChannel(index);
 
-    // Clean up email input values - shift indices
-    setEmailInputValues((prev) => {
-      const newValues = { ...prev };
-      delete newValues[index];
-      const shifted: typeof newValues = {};
-      Object.entries(newValues).forEach(([key, value]) => {
-        const keyNum = parseInt(key, 10);
-        if (keyNum > index) {
-          shifted[keyNum - 1] = value;
-        } else {
-          shifted[keyNum] = value;
-        }
-      });
-      return shifted;
-    });
-
-    // Clean up webhook test states - delete by field.id (no shifting needed)
-    setWebhookTestStates((prev) => {
+    // Clean up unified channel state
+    setChannelUIStates((prev) => {
       const newStates = { ...prev };
       delete newStates[fieldId];
       return newStates;
     });
 
-    if (expandedChannel === `channel-${index}`) {
+    if (expandedChannel === fieldId) {
       setExpandedChannel(undefined);
     }
   };
@@ -704,11 +651,7 @@ export const CreatePkiAlertV2FormSteps = ({
                 const channel = watchedChannels[index];
                 const channelError = errors.channels?.[index];
                 return (
-                  <AccordionItem
-                    key={field.id}
-                    value={`channel-${index}`}
-                    className="border-mineshaft-600"
-                  >
+                  <AccordionItem key={field.id} value={field.id} className="border-mineshaft-600">
                     <AccordionTrigger className="group bg-mineshaft-800 hover:bg-mineshaft-600 data-[state=open]:bg-mineshaft-700 data-[state=open]:hover:bg-mineshaft-600">
                       <div className="flex flex-1 items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -723,8 +666,8 @@ export const CreatePkiAlertV2FormSteps = ({
                             {channel && getChannelSummary(channel)}
                           </span>
                         </div>
-                        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
                         <div
+                          role="presentation"
                           className="flex items-center gap-2"
                           onClick={(e) => e.stopPropagation()}
                           onKeyDown={(e) => e.stopPropagation()}
@@ -753,12 +696,6 @@ export const CreatePkiAlertV2FormSteps = ({
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="bg-mineshaft-800">
-                      {/*
-                       * Email recipients use a "raw text while typing" pattern:
-                       * - onChange: store raw comma-separated text in emailInputValues
-                       * - onBlur: parse to array and update form field
-                       * This preserves partial input (e.g., "user@" while typing)
-                       */}
                       {channel?.channelType === PkiAlertChannelTypeV2.EMAIL && (
                         <Controller
                           control={control}
@@ -775,20 +712,20 @@ export const CreatePkiAlertV2FormSteps = ({
                             >
                               <TextArea
                                 value={
-                                  emailInputValues[index] !== undefined
-                                    ? emailInputValues[index]
+                                  channelUIStates[field.id]?.emailInput !== undefined
+                                    ? channelUIStates[field.id].emailInput
                                     : recipientsField.value?.join(", ") || ""
                                 }
                                 onChange={(e) => {
                                   // Store raw text while typing - don't parse yet
-                                  setEmailInputValues((prev) => ({
+                                  setChannelUIStates((prev) => ({
                                     ...prev,
-                                    [index]: e.target.value
+                                    [field.id]: { ...prev[field.id], emailInput: e.target.value }
                                   }));
                                 }}
                                 onBlur={() => {
                                   // Parse to array only on blur
-                                  const rawValue = emailInputValues[index];
+                                  const rawValue = channelUIStates[field.id]?.emailInput;
                                   if (rawValue !== undefined) {
                                     const emails = rawValue
                                       .split(",")
@@ -851,20 +788,21 @@ export const CreatePkiAlertV2FormSteps = ({
                               variant="outline_bg"
                               size="sm"
                               onClick={() => handleTestWebhook(field.id, index)}
-                              isLoading={webhookTestStates[field.id]?.isLoading}
+                              isLoading={channelUIStates[field.id]?.webhookTest?.isLoading}
+                              isDisabled={channelUIStates[field.id]?.webhookTest?.isLoading}
                             >
                               Test
                             </Button>
-                            {webhookTestStates[field.id]?.success === true && (
+                            {channelUIStates[field.id]?.webhookTest?.success === true && (
                               <span className="flex items-center gap-1 text-sm text-green-500">
                                 <FontAwesomeIcon icon={faCheck} />
                                 Success
                               </span>
                             )}
-                            {webhookTestStates[field.id]?.success === false && (
+                            {channelUIStates[field.id]?.webhookTest?.success === false && (
                               <span className="flex items-center gap-1 text-sm text-red-500">
                                 <FontAwesomeIcon icon={faXmark} />
-                                {webhookTestStates[field.id]?.error || "Failed"}
+                                {channelUIStates[field.id]?.webhookTest?.error || "Failed"}
                               </span>
                             )}
                           </div>
