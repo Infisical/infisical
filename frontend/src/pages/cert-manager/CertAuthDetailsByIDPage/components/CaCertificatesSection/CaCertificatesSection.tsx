@@ -1,4 +1,5 @@
 import { subject } from "@casl/ability";
+import { ArrowDownToLineIcon, RefreshCcwIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -64,6 +65,7 @@ export const CaCertificatesSection = ({ caId, caName, handlePopUpOpen }: Props) 
                 });
               }}
             >
+              <RefreshCcwIcon />
               Renew CA
             </Button>
           )}
@@ -105,6 +107,7 @@ export const CaCertificatesSection = ({ caId, caName, handlePopUpOpen }: Props) 
                   });
                 }}
               >
+                <ArrowDownToLineIcon />
                 Install CA Certificate
               </Button>
             );
