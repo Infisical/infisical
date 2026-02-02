@@ -6,7 +6,7 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
@@ -22,6 +22,7 @@ import { parseTimeToDays, parseTimeToPostgresInterval } from "./pki-alert-v2-fil
 import {
   buildSlackPayload,
   buildWebhookPayload,
+  PkiWebhookEventType,
   triggerPkiWebhook,
   triggerSlackWebhook
 } from "./pki-alert-v2-notification-fns";
@@ -680,11 +681,11 @@ export const pkiAlertV2ServiceFactory = ({
           }
           case PkiAlertChannelType.SLACK: {
             const config = decryptChannelConfig<TSlackChannelConfig>(channel, decryptor);
-            await blockLocalAndPrivateIpAddresses(config.webhookUrl);
             const appCfg = getConfig();
             const slackPayload = buildSlackPayload({
               alert: alertData,
               certificates: matchingCertificates,
+              eventType: PkiWebhookEventType.CERTIFICATE_EXPIRATION,
               appUrl: appCfg.SITE_URL
             });
             const result = await triggerSlackWebhook({

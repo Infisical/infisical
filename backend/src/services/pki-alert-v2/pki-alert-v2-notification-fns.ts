@@ -213,6 +213,7 @@ type TBuildSlackPayloadParams = {
     projectId: string;
   };
   certificates: TCertificatePreview[];
+  eventType: PkiWebhookEventType;
   appUrl?: string;
 };
 
@@ -313,15 +314,8 @@ export const triggerSlackWebhook = async ({
     return { success: true, statusCode: response.status };
   } catch (err) {
     const error = err as AxiosError;
-    // Mask the webhook URL path to avoid exposing secrets (format: /services/TEAM/BOT/TOKEN)
-    const parsedUrl = new URL(webhookUrl);
-    const pathParts = parsedUrl.pathname.split("/").filter(Boolean);
-    const maskedPath =
-      pathParts.length >= 4
-        ? `/${pathParts[0]}/${pathParts[1].slice(0, 3)}***/${pathParts[2].slice(0, 3)}***/***`
-        : "/***";
     logger.error(
-      { webhookPath: maskedPath, error: error.message, statusCode: error.response?.status },
+      { webhookUrl, error: error.message, statusCode: error.response?.status },
       "Slack webhook trigger failed"
     );
     return { success: false, statusCode: error.response?.status, error: error.message };
