@@ -62,7 +62,7 @@ export interface TPkiAlertChannelV2 {
   updatedAt: string;
 }
 
-export type TPkiAlertChannelInput = Omit<TPkiAlertChannelV2, "createdAt" | "updatedAt"> & {
+export type TPkiAlertChannelInput = Omit<TPkiAlertChannelV2, "createdAt" | "updatedAt" | "id"> & {
   id?: string;
 };
 
