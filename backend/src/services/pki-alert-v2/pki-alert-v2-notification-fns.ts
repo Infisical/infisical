@@ -124,7 +124,7 @@ const buildCertificateExpirationEventData = (params: {
     certificates: transformCertificates(params.certificates),
     metadata: {
       totalCertificates: params.certificates.length,
-      viewUrl: `${params.appUrl}/cert-manager/${params.alert.projectId}/policies`
+      viewUrl: `${params.appUrl}/projects/cert-manager/${params.alert.projectId}/policies`
     }
   }
 });
@@ -145,7 +145,7 @@ const buildCertificateTestEventData = (params: {
     certificates: transformCertificates(params.certificates),
     metadata: {
       totalCertificates: params.certificates.length,
-      viewUrl: `${params.appUrl}/cert-manager/${params.alert.projectId}/policies`
+      viewUrl: `${params.appUrl}/projects/cert-manager/${params.alert.projectId}/policies`
     }
   }
 });
