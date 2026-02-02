@@ -1,5 +1,6 @@
 import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 import { Knex } from "knex";
+import RE2 from "re2";
 import { z } from "zod";
 
 import {
@@ -90,11 +91,16 @@ import {
   TGetSecretVersionsDTO,
   TMoveSecretsDTO,
   TSecretReference,
+  TUpdateLinkedSecretReferencesDTO,
   TUpdateManySecretDTO,
   TUpdateSecretDTO
 } from "./secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "./secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "./secret-version-tag-dal";
+
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 type TSecretV2BridgeServiceFactoryDep = {
   secretDAL: TSecretV2BridgeDALFactory;
@@ -156,6 +162,105 @@ export const secretV2BridgeServiceFactory = ({
   keyStore,
   reminderService
 }: TSecretV2BridgeServiceFactoryDep) => {
+  const $updateLinkedSecretReferences = async (
+    {
+      projectId,
+      environment,
+      secretPath,
+      folderId,
+      oldSecretKey,
+      newSecretKey,
+      secretId
+    }: TUpdateLinkedSecretReferencesDTO,
+    tx?: Knex
+  ) => {
+    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+
+    // 1. Handle NESTED references (from SecretReferenceV2 table - cross-env/path)
+    const nestedSecretReferences = await secretDAL.findReferencedSecretReferencesBySecretKey(
+      projectId,
+      environment,
+      secretPath,
+      oldSecretKey,
+      tx
+    );
+
+    // 2. Handle LOCAL references (same folder only)
+    // Get all other secrets in the same folder that might have local refs
+    const secretsInSameFolder = await secretDAL.find(
+      {
+        folderId,
+        $notEqual: { [`${TableName.SecretV2}.id` as "id"]: secretId }
+      },
+      { tx }
+    );
+
+    // Combine: nested refs point to secrets by ID, local refs need folder scan
+    const secretIdsToUpdateFromNested = nestedSecretReferences.map((el) => el.secretId);
+
+    // For local refs, we need to check each secret in the folder
+    const secretsToCheck = secretsInSameFolder.filter(
+      (s) => !secretIdsToUpdateFromNested.includes(s.id) // Don't double-process
+    );
+
+    // Process nested reference secrets
+    const nestedSecretsToUpdate = await secretDAL.find(
+      { $in: { [`${TableName.SecretV2}.id` as "id"]: secretIdsToUpdateFromNested } },
+      { tx }
+    );
+
+    const allSecretsToUpdate: Array<TSecretsV2> = [...nestedSecretsToUpdate, ...secretsToCheck];
+
+    for await (const secretToUpdate of allSecretsToUpdate) {
+      // eslint-disable-next-line no-continue
+      if (!secretToUpdate.encryptedValue) continue;
+
+      const originalValue = decryptor({ cipherTextBlob: secretToUpdate.encryptedValue }).toString();
+      let newValue = originalValue;
+
+      const { localReferences, nestedReferences } = getAllSecretReferences(originalValue);
+
+      // Check if this secret references the renamed secret at all (either locally or nested)
+      const hasLocalRef = localReferences.includes(oldSecretKey);
+      const hasNestedRef = nestedReferences.some(
+        (ref) => ref.environment === environment && ref.secretPath === secretPath && ref.secretKey === oldSecretKey
+      );
+
+      // eslint-disable-next-line no-continue
+      if (!hasLocalRef && !hasNestedRef) continue; // No reference to renamed secret, skip
+
+      // Replace LOCAL references: ${OLD_KEY} -> ${NEW_KEY}
+      if (hasLocalRef) {
+        newValue = newValue.replace(new RE2(`\\$\\{${escapeRegex(oldSecretKey)}\\}`, "g"), `\${${newSecretKey}}`);
+      }
+
+      // Replace NESTED references: ${env.path.OLD_KEY} -> ${env.path.NEW_KEY}
+      if (hasNestedRef) {
+        const pathPart = secretPath === "/" ? "" : `.${secretPath.slice(1).replace(/\//g, ".")}`;
+
+        const oldRef = `\${${environment}${pathPart}.${oldSecretKey}}`;
+        const newRef = `\${${environment}${pathPart}.${newSecretKey}}`;
+
+        // Using split/join handles multiple occurrences
+        newValue = newValue.split(oldRef).join(newRef);
+      }
+
+      if (newValue !== originalValue) {
+        await secretDAL.updateById(
+          secretToUpdate.id,
+          { encryptedValue: encryptor({ plainText: Buffer.from(newValue) }).cipherTextBlob },
+          tx
+        );
+      }
+    }
+
+    // Update the SecretReferenceV2 records for nested refs
+    await secretDAL.updateSecretReferenceSecretKey(projectId, environment, secretPath, oldSecretKey, newSecretKey, tx);
+  };
+
   const $validateSecretReferences = async (
     projectId: string,
     permission: MongoAbility<ProjectPermissionSet>,
