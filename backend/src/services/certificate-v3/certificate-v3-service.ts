@@ -1225,7 +1225,15 @@ export const certificateV3ServiceFactory = ({
 
     mappedCertificateRequest.keyAlgorithm = extractedKeyAlgorithm;
     mappedCertificateRequest.signatureAlgorithm = extractedSignatureAlgorithm;
-    mappedCertificateRequest.validity = validity;
+
+    // When notAfter is explicitly provided, validate using date range (notAfter overrides TTL in cert generation).
+    // Otherwise, validate using TTL. These are mutually exclusive to avoid "Cannot specify both" validation error.
+    if (notAfter) {
+      mappedCertificateRequest.notBefore = notBefore;
+      mappedCertificateRequest.notAfter = notAfter;
+    } else {
+      mappedCertificateRequest.validity = validity;
+    }
 
     // Determine effective basicConstraints early (before approval flow)
     // so it's available for both the approval path and direct signing path.
