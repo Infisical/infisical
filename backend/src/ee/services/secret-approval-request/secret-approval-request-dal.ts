@@ -20,13 +20,27 @@ export type TSecretApprovalRequestDALFactory = ReturnType<typeof secretApprovalR
 
 type TFindQueryFilter = {
   projectId: string;
-  userId: string;
+  userId?: string;
   status?: RequestState;
   environment?: string;
   committer?: string;
   limit?: number;
   offset?: number;
   search?: string;
+};
+
+// Helper to filter approval requests by user access (committer, approver, or group member)
+// Only applies filtering when userId is provided (users without SecretApprovalRequest.Read permission)
+const buildUserAccessFilter = (qb: Knex.QueryBuilder, userId?: string) => {
+  if (userId) {
+    void qb.andWhere(
+      (bd) =>
+        void bd
+          .where(`${TableName.SecretApprovalPolicyApprover}.approverUserId`, userId)
+          .orWhere(`${TableName.SecretApprovalRequest}.committerUserId`, userId)
+          .orWhere(`${TableName.UserGroupMembership}.userId`, userId)
+    );
+  }
 };
 
 export const secretApprovalRequestDALFactory = (db: TDbClient) => {
@@ -341,7 +355,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findProjectRequestCount = async (projectId: string, userId: string, policyId?: string, tx?: Knex) => {
+  const findProjectRequestCount = async (projectId: string, userId?: string, policyId?: string, tx?: Knex) => {
     try {
       const docs = await (tx || db.replicaNode())
         .with(
@@ -368,13 +382,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             .where((qb) => {
               if (policyId) void qb.where(`${TableName.SecretApprovalPolicy}.id`, policyId);
             })
-            .andWhere(
-              (bd) =>
-                void bd
-                  .where(`${TableName.SecretApprovalPolicyApprover}.approverUserId`, userId)
-                  .orWhere(`${TableName.SecretApprovalRequest}.committerUserId`, userId)
-                  .orWhere(`${TableName.UserGroupMembership}.userId`, userId)
-            )
+            .modify((qb) => buildUserAccessFilter(qb, userId))
             .select("status", `${TableName.SecretApprovalRequest}.id`)
             .groupBy(`${TableName.SecretApprovalRequest}.id`, "status")
         )
@@ -456,13 +464,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             committerUserId: committer
           })
         )
-        .andWhere(
-          (bd) =>
-            void bd
-              .where(`${TableName.SecretApprovalPolicyApprover}.approverUserId`, userId)
-              .orWhere(`${TableName.SecretApprovalRequest}.committerUserId`, userId)
-              .orWhere(`${TableName.UserGroupMembership}.userId`, userId)
-        )
+        .modify((qb) => buildUserAccessFilter(qb, userId))
         .select(selectAllTableCols(TableName.SecretApprovalRequest))
         .select(
           db.ref("projectId").withSchema(TableName.Environment),
@@ -666,13 +668,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             committerUserId: committer
           })
         )
-        .andWhere(
-          (bd) =>
-            void bd
-              .where(`${TableName.SecretApprovalPolicyApprover}.approverUserId`, userId)
-              .orWhere(`${TableName.SecretApprovalRequest}.committerUserId`, userId)
-              .orWhere(`${TableName.UserGroupMembership}.userId`, userId)
-        )
+        .modify((qb) => buildUserAccessFilter(qb, userId))
         .select(selectAllTableCols(TableName.SecretApprovalRequest))
         .select(
           db.ref("projectId").withSchema(TableName.Environment),

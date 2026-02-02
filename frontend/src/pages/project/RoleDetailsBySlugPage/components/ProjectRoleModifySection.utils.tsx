@@ -32,6 +32,7 @@ import {
   ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSecretActions,
+  ProjectPermissionSecretApprovalRequestActions,
   ProjectPermissionSecretEventActions,
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSecretScanningConfigActions,
@@ -299,6 +300,10 @@ const ApprovalRequestGrantPolicyActionSchema = z.object({
   [ProjectPermissionApprovalRequestGrantActions.Revoke]: z.boolean().optional()
 });
 
+const SecretApprovalRequestPolicyActionSchema = z.object({
+  [ProjectPermissionSecretApprovalRequestActions.Read]: z.boolean().optional()
+});
+
 const SecretRollbackPolicyActionSchema = z.object({
   read: z.boolean().optional(),
   create: z.boolean().optional()
@@ -528,7 +533,9 @@ export const projectRoleFormSchema = z.object({
         []
       ),
       [ProjectPermissionSub.ApprovalRequestGrants]:
-        ApprovalRequestGrantPolicyActionSchema.array().default([])
+        ApprovalRequestGrantPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.SecretApprovalRequest]:
+        SecretApprovalRequestPolicyActionSchema.array().default([])
     })
     .partial()
     .optional()
@@ -1447,6 +1454,14 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canRevoke)
         formVal[subject]![0][ProjectPermissionApprovalRequestGrantActions.Revoke] = true;
     }
+
+    if (subject === ProjectPermissionSub.SecretApprovalRequest) {
+      const canRead = action.includes(ProjectPermissionSecretApprovalRequestActions.Read);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      if (canRead) formVal[subject]![0][ProjectPermissionSecretApprovalRequestActions.Read] = true;
+    }
   });
 
   return formVal;
@@ -2166,6 +2181,10 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   [ProjectPermissionSub.McpActivityLogs]: {
     title: "MCP Activity Logs",
     actions: [{ label: "Read", value: ProjectPermissionActions.Read }]
+  },
+  [ProjectPermissionSub.SecretApprovalRequest]: {
+    title: "Secret Approval Requests",
+    actions: [{ label: "Read", value: ProjectPermissionSecretApprovalRequestActions.Read }]
   }
 };
 
@@ -2198,7 +2217,8 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.SecretRotation]: enabled,
   [ProjectPermissionSub.ServiceTokens]: enabled,
   [ProjectPermissionSub.Commits]: enabled,
-  [ProjectPermissionSub.SecretEventSubscriptions]: enabled
+  [ProjectPermissionSub.SecretEventSubscriptions]: enabled,
+  [ProjectPermissionSub.SecretApprovalRequest]: enabled
 });
 
 const KmsPermissionSubjects = (enabled = false) => ({
