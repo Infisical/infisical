@@ -2,7 +2,15 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
-import { SecretSync } from "@app/hooks/api/secretSyncs";
+import { projectKeys } from "@app/hooks/api";
+import { TIntegration } from "@app/hooks/api/integrations/types";
+import { fetchWorkspaceIntegrations } from "@app/hooks/api/projects/queries";
+import {
+  fetchSecretSyncsByProjectId,
+  SecretSync,
+  secretSyncKeys,
+  TSecretSync
+} from "@app/hooks/api/secretSyncs";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 import { IntegrationsListPage } from "./IntegrationsListPage";
@@ -21,10 +29,64 @@ export const Route = createFileRoute(
   validateSearch: zodValidator(IntegrationsListPageQuerySchema),
   beforeLoad: async ({ context, search, params: { projectId, orgId } }) => {
     if (!search.selectedTab) {
-      // Default to App Connections tab
+      let secretSyncs: TSecretSync[];
+
+      try {
+        secretSyncs = await context.queryClient.ensureQueryData({
+          queryKey: secretSyncKeys.list(projectId),
+          queryFn: () => fetchSecretSyncsByProjectId(projectId)
+        });
+      } catch {
+        throw redirect({
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
+          params: { orgId, projectId },
+          search: { selectedTab: IntegrationsListPageTabs.NativeIntegrations }
+        });
+      }
+
+      if (secretSyncs.length) {
+        throw redirect({
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
+          params: { orgId, projectId },
+          search: { selectedTab: IntegrationsListPageTabs.SecretSyncs }
+        });
+      }
+
+      let integrations: TIntegration[];
+      try {
+        integrations = await context.queryClient.ensureQueryData({
+          queryKey: projectKeys.getProjectIntegrations(projectId),
+          queryFn: () => fetchWorkspaceIntegrations(projectId)
+        });
+      } catch {
+        throw redirect({
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
+          params: {
+            orgId,
+            projectId
+          },
+          search: { selectedTab: IntegrationsListPageTabs.AppConnections }
+        });
+      }
+
+      if (integrations.length) {
+        throw redirect({
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
+          params: {
+            orgId,
+            projectId
+          },
+          search: { selectedTab: IntegrationsListPageTabs.NativeIntegrations }
+        });
+      }
+
+      // Default to App Connections tab if no existing syncs or integrations
       throw redirect({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
-        params: { orgId, projectId },
+        params: {
+          orgId,
+          projectId
+        },
         search: { selectedTab: IntegrationsListPageTabs.AppConnections }
       });
     }
