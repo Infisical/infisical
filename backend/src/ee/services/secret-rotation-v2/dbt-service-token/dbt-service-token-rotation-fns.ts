@@ -116,7 +116,7 @@ export const dbtServiceTokenRotationFactory: TRotationFactory<
     await retrieveDbtAccount(connection).catch(() => {
       throw new BadRequestError({
         message:
-          "Failed to validate connection credentials. Are you sure your configured DBT app connection credentials are valid?"
+          "Failed to validate connection credentials. Check if your configured DBT app connection credentials are valid."
       });
     });
 

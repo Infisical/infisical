@@ -72,7 +72,7 @@ export const DbtServiceTokenRotationParametersFields = () => {
         name="parameters.tokenName"
         render={({ field, fieldState: { error } }) => (
           <FormControl
-            tooltipText="Enter a name for the service token to be created. Note that each secret will have a suffix of '-1' or '-2' to differentiate between rotation cycles."
+            tooltipText="Enter a name for the service token to be created."
             isError={Boolean(error?.message)}
             errorText={error?.message}
             label="Service Token Name"
