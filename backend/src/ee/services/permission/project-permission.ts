@@ -251,7 +251,6 @@ export enum ProjectPermissionApprovalRequestGrantActions {
 }
 
 export enum ProjectPermissionSecretApprovalRequestActions {
-  Describe = "describe",
   Read = "read"
 }
 

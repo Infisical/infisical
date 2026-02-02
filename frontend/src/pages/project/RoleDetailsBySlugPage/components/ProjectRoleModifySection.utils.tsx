@@ -301,7 +301,6 @@ const ApprovalRequestGrantPolicyActionSchema = z.object({
 });
 
 const SecretApprovalRequestPolicyActionSchema = z.object({
-  [ProjectPermissionSecretApprovalRequestActions.Describe]: z.boolean().optional(),
   [ProjectPermissionSecretApprovalRequestActions.Read]: z.boolean().optional()
 });
 
@@ -1457,13 +1456,10 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
     }
 
     if (subject === ProjectPermissionSub.SecretApprovalRequest) {
-      const canDescribe = action.includes(ProjectPermissionSecretApprovalRequestActions.Describe);
       const canRead = action.includes(ProjectPermissionSecretApprovalRequestActions.Read);
 
       if (!formVal[subject]) formVal[subject] = [{}];
 
-      if (canDescribe)
-        formVal[subject]![0][ProjectPermissionSecretApprovalRequestActions.Describe] = true;
       if (canRead) formVal[subject]![0][ProjectPermissionSecretApprovalRequestActions.Read] = true;
     }
   });
@@ -2191,10 +2187,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.SecretApprovalRequest]: {
     title: "Secret Approval Requests",
-    actions: [
-      { label: "Describe", value: ProjectPermissionSecretApprovalRequestActions.Describe },
-      { label: "Read", value: ProjectPermissionSecretApprovalRequestActions.Read }
-    ]
+    actions: [{ label: "Read", value: ProjectPermissionSecretApprovalRequestActions.Read }]
   }
 };
 
