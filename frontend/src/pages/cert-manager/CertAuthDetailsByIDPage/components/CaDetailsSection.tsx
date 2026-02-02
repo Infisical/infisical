@@ -1,5 +1,6 @@
 import { subject } from "@casl/ability";
-import { CheckIcon, ClipboardListIcon, PencilIcon } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { CheckIcon, ClipboardListIcon, ExternalLinkIcon, PencilIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Tooltip } from "@app/components/v2";
@@ -16,7 +17,12 @@ import {
   UnstableCardTitle,
   UnstableIconButton
 } from "@app/components/v3";
-import { ProjectPermissionCertificateAuthorityActions, ProjectPermissionSub } from "@app/context";
+import {
+  ProjectPermissionCertificateAuthorityActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject
+} from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import { CaStatus, CaType, InternalCaType, useGetCa } from "@app/hooks/api";
 import { caStatusToNameMap, caTypeToNameMap } from "@app/hooks/api/ca/constants";
@@ -43,10 +49,9 @@ const getStatusVariant = (status: CaStatus) => {
 };
 
 export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
+  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const [, isCopyingId, setCopyTextId] = useTimedReset<string>({
-    initialState: "Copy ID to clipboard"
-  });
-  const [, isCopyingParentId, setCopyTextParentId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
 
@@ -56,6 +61,16 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
   });
 
   const ca = data as TInternalCertificateAuthority;
+
+  const { data: parentCaData } = useGetCa({
+    caId: ca?.configuration?.parentCaId || "",
+    type: CaType.INTERNAL,
+    options: {
+      enabled: Boolean(ca?.configuration?.parentCaId)
+    }
+  });
+
+  const parentCa = parentCaData as TInternalCertificateAuthority | undefined;
 
   if (!ca) {
     return <div />;
@@ -117,30 +132,24 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
           {ca.configuration.type === InternalCaType.INTERMEDIATE &&
             ca.status !== CaStatus.PENDING_CERTIFICATE && (
               <Detail>
-                <DetailLabel>Parent CA ID</DetailLabel>
+                <DetailLabel>Parent CA</DetailLabel>
                 <DetailValue className="flex items-center gap-x-1">
-                  <span className="break-all">
-                    {ca.configuration.parentCaId
-                      ? ca.configuration.parentCaId
-                      : "N/A - External Parent CA"}
-                  </span>
-                  {ca.configuration.parentCaId && (
-                    <Tooltip content={isCopyingParentId ? "Copied" : "Copy ID to clipboard"}>
-                      <UnstableIconButton
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => {
-                          navigator.clipboard.writeText(ca.configuration.parentCaId as string);
-                          setCopyTextParentId("Copied");
+                  {ca.configuration.parentCaId ? (
+                    <Badge variant="neutral" asChild>
+                      <Link
+                        to="/organizations/$orgId/projects/cert-manager/$projectId/ca/$caId"
+                        params={{
+                          orgId: currentOrg.id,
+                          projectId: currentProject.id,
+                          caId: ca.configuration.parentCaId
                         }}
                       >
-                        {isCopyingParentId ? (
-                          <CheckIcon />
-                        ) : (
-                          <ClipboardListIcon className="text-label" />
-                        )}
-                      </UnstableIconButton>
-                    </Tooltip>
+                        {parentCa?.name || ca.configuration.parentCaId}
+                        <ExternalLinkIcon />
+                      </Link>
+                    </Badge>
+                  ) : (
+                    <span className="break-all">N/A - External Parent CA</span>
                   )}
                 </DetailValue>
               </Detail>

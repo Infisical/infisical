@@ -29,7 +29,15 @@ export const caKeys = {
   ]
 };
 
-export const useGetCa = ({ caId, type }: { caId: string; type: CaType }) => {
+export const useGetCa = ({
+  caId,
+  type,
+  options
+}: {
+  caId: string;
+  type: CaType;
+  options?: { enabled?: boolean };
+}) => {
   return useQuery({
     queryKey: caKeys.getCaById(caId),
     queryFn: async () => {
@@ -38,7 +46,7 @@ export const useGetCa = ({ caId, type }: { caId: string; type: CaType }) => {
       );
       return data;
     },
-    enabled: Boolean(caId && type)
+    enabled: options?.enabled !== undefined ? options.enabled : Boolean(caId && type)
   });
 };
 
