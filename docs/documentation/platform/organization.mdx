@@ -61,25 +61,12 @@ The following can only be configured at the root organization level:
 
 ```mermaid
 graph TD
-    subgraph Root ["Acme Corp (Root Organization)"]
-        Auth["SSO / SCIM / Billing"]
-        Users["Users & Groups"]
-        RootProj["shared-services (Project)"]
-    end
-
-    subgraph SubEng ["Engineering (Sub-Organization)"]
-        EngProj1["backend-api (Project)"]
-        EngProj2["frontend-app (Project)"]
-    end
-
-    subgraph SubSales ["Sales (Sub-Organization)"]
-        SalesProj["crm-integration (Project)"]
-    end
-
+    Root["Acme Corp (Root Organization)"]
+    SubEng["Engineering (Sub-Org)"]
+    SubSales["Sales (Sub-Org)"]
+    
     Root --> SubEng
     Root --> SubSales
-    Users -.->|Can be added| SubEng
-    Users -.->|Can be added| SubSales
 ```
 
 In this setup:
@@ -87,14 +74,13 @@ In this setup:
 - The Engineering team manages their own projects independently
 - Engineering admins can add users from the root org to their sub-org
 - Sales cannot access Engineering's projects (and vice versa)
-- The `shared-services` project remains at the root organization level
 
 ### Creating a Sub-Organization
 
 ![sub-organization list](/images/platform/organization/sub-org-list.png)
 
-1. Navigate to **Organization Settings** → **Sub-Organizations**
-2. Click **Create Sub-Organization**
+1. Click on the **Organization** tab in the header
+2. Click **+ New Sub-Organization**
 3. Enter a name (this becomes the slug used in API calls)
 4. You are automatically assigned as Admin of the new sub-organization
 
