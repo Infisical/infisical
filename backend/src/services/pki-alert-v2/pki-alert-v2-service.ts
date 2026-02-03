@@ -144,7 +144,10 @@ export const pkiAlertV2ServiceFactory = ({
       lastRun: alert.lastRunData
         ? {
             timestamp: alert.lastRunData.triggeredAt,
-            status: alert.lastRunData.hasNotificationSent ? PkiAlertRunStatus.SUCCESS : PkiAlertRunStatus.FAILED,
+            status:
+              !alert.lastRunData.notificationError && alert.lastRunData.hasNotificationSent
+                ? PkiAlertRunStatus.SUCCESS
+                : PkiAlertRunStatus.FAILED,
             error: alert.lastRunData.notificationError
           }
         : null,
