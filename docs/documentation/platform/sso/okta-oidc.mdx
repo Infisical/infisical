@@ -11,17 +11,6 @@ description: "Learn how to configure Okta OIDC for Infisical SSO."
 </Info>
 
 <Steps>
-   <Step title="Prepare the OIDC SSO configuration in Infisical">
-      In Infisical, head to the **Single Sign-On (SSO)** page and select the **General** tab. Click **Connect** for **OIDC** under the Connect to an Identity Provider section.
-
-      ![SSO connect section](../../../images/sso/connect-oidc.png)
-
-      Take note of the **Callback URL** displayed, as you will need it when configuring the Okta OIDC application. The callback URL follows the format: `https://app.infisical.com/api/v1/sso/oidc/callback`.
-
-      <Note>
-         If you're self-hosting Infisical, replace `https://app.infisical.com` with your own domain.
-      </Note>
-   </Step>
    <Step title="Create an OIDC application in Okta">
       In the Okta Admin Portal, select Applications > Applications from the navigation. On the Applications screen, click the **Create App Integration** button.
 
@@ -45,6 +34,14 @@ description: "Learn how to configure Okta OIDC for Infisical SSO."
       </Note>
 
       Click **Save** to create the application.
+
+      After saving, scroll down to the **General Settings** section and click **Edit**. Ensure the **Proof of possession** setting labeled "Require Demonstrating Proof of Possession (DPoP) header in token requests" is **unchecked**.
+
+      ![DPoP setting disabled](../../../images/sso/okta-oidc/dpop-setting.png)
+
+      <Warning>
+         Infisical does not currently support DPoP for OIDC authentication.
+      </Warning>
 
    </Step>
    <Step title="Retrieve Identity Provider (IdP) Information from Okta">
@@ -109,7 +106,7 @@ description: "Learn how to configure Okta OIDC for Infisical SSO."
          prior to enforcing OIDC SSO to prevent any unintended issues.
       </Warning>
       <Info>
-         In case of a lockout, an organization admin can use the [Admin Login Portal](https://infisical.com/docs/documentation/platform/sso/overview#admin-login-portal) in the `/login/admin` path e.g. `https://app.infisical.com/login/admin`.
+         In case of a lockout, an organization admin can use the [Admin Login Portal](https://infisical.com/docs/documentation/platform/sso/overview#admin-login-portal) in the `/login/admin` path e.g. https://app.infisical.com/login/admin.
       </Info>
    </Step>
 </Steps>
