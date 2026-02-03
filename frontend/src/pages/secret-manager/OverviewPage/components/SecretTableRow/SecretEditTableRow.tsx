@@ -6,6 +6,7 @@ import {
   CodeXmlIcon,
   CopyIcon,
   EditIcon,
+  EllipsisIcon,
   EyeOffIcon,
   MessageSquareIcon,
   SaveIcon,
@@ -29,6 +30,10 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  UnstableDropdownMenu,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuTrigger,
   UnstableIconButton
 } from "@app/components/v3";
 import {
@@ -186,6 +191,7 @@ export const SecretEditTableRow = ({
   const [isCommentOpen, setIsCommentOpen] = useState(false);
   const [isTagOpen, setIsTagOpen] = useState(false);
   const [isMetadataOpen, setIsMetadataOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const toggleModal = useCallback(() => {
     setIsModalOpen((prev) => !prev);
@@ -337,7 +343,7 @@ export const SecretEditTableRow = ({
     isErrorFetchingSecretValue ||
     (isCreatable ? !canCreate : !canEditSecretValue);
 
-  const shouldStayExpanded = isCommentOpen || isTagOpen || isMetadataOpen;
+  const shouldStayExpanded = isCommentOpen || isTagOpen || isMetadataOpen || isDropdownOpen;
 
   return (
     <div className="flex w-full cursor-text items-center space-x-2 py-1.5">
@@ -706,50 +712,66 @@ export const SecretEditTableRow = ({
               </ModalContent>
             </Modal>
 
-            <ProjectPermissionCan
-              I={ProjectPermissionActions.Delete}
-              a={subject(ProjectPermissionSub.Secrets, {
-                environment,
-                secretPath,
-                secretName,
-                secretTags: ["*"]
-              })}
-            >
-              {(isAllowed) => (
-                <Tooltip delayDuration={300} disableHoverableContent>
-                  <TooltipTrigger>
-                    <UnstableIconButton
-                      variant="ghost"
-                      size="xs"
-                      className={twMerge(
-                        "w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100",
-                        shouldStayExpanded && "w-7 opacity-100"
-                      )}
-                      onClick={toggleModal}
-                      isDisabled={
-                        isCreatable ||
-                        isDeleting ||
-                        !isAllowed ||
-                        isRotatedSecret ||
-                        isImportedSecret
-                      }
+            <UnstableDropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
+              <UnstableDropdownMenuTrigger asChild>
+                <UnstableIconButton
+                  variant="ghost"
+                  size="xs"
+                  className={twMerge(
+                    "w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100",
+                    shouldStayExpanded && "w-7 opacity-100"
+                  )}
+                >
+                  <EllipsisIcon />
+                </UnstableIconButton>
+              </UnstableDropdownMenuTrigger>
+              <UnstableDropdownMenuContent align="end">
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Delete}
+                  a={subject(ProjectPermissionSub.Secrets, {
+                    environment,
+                    secretPath,
+                    secretName,
+                    secretTags: ["*"]
+                  })}
+                >
+                  {(isAllowed) => (
+                    <Tooltip
+                      open={isRotatedSecret || isImportedSecret || isCreatable ? undefined : false}
+                      delayDuration={300}
+                      disableHoverableContent
                     >
-                      <TrashIcon />
-                    </UnstableIconButton>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {/* eslint-disable-next-line no-nested-ternary */}
-                    {isCreatable
-                      ? "No Secret to Delete"
-                      : isRotatedSecret
-                        ? "Cannot Delete Rotated Secret"
-                        : isImportedSecret
-                          ? "Cannot Delete Imported Secret"
-                          : "Delete"}
-                  </TooltipContent>
-                </Tooltip>
-              )}
-            </ProjectPermissionCan>
+                      <TooltipTrigger>
+                        <UnstableDropdownMenuItem
+                          onClick={toggleModal}
+                          isDisabled={
+                            isCreatable ||
+                            isDeleting ||
+                            !isAllowed ||
+                            isRotatedSecret ||
+                            isImportedSecret
+                          }
+                          variant="danger"
+                        >
+                          <TrashIcon />
+                          Delete Secret
+                        </UnstableDropdownMenuItem>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">
+                        {/* eslint-disable-next-line no-nested-ternary */}
+                        {isRotatedSecret
+                          ? "Cannot Delete Rotated Secret"
+                          : isImportedSecret
+                            ? "Cannot Delete Imported Secret"
+                            : isCreatable
+                              ? "No Secret to Delete"
+                              : "Delete"}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </ProjectPermissionCan>
+              </UnstableDropdownMenuContent>
+            </UnstableDropdownMenu>
           </div>
         )}
       </div>
