@@ -118,9 +118,9 @@ export const SecretMetadataForm = ({
     onClose?.();
   };
 
-  const nonEncryptedMetadata = errors?.metadata?.some(
-    (metadata) => metadata?.isEncrypted?.type === "invalid_literal"
-  );
+  const nonEncryptedMetadata =
+    Array.isArray(errors.metadata) &&
+    errors.metadata.some((metadata) => metadata?.isEncrypted?.type === "invalid_literal");
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
