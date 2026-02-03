@@ -4,11 +4,11 @@ description: "Learn how to automatically rotate Unix/Linux local account passwor
 ---
 
 <Note>
-    Due to how Unix/Linux local account passwords are rotated, retired credentials will not be able to
-    authenticate with the SSH provider during their [inactive period](./overview#how-rotation-works).
+  **Rotation Type: [Single-Instance](/documentation/platform/secret-rotation/overview#single-instance-rotation)**
 
-    This is a limitation of the SSH provider and cannot be
-    rectified by Infisical.
+  This rotation updates a single credential set in place. Old credentials become invalid immediately upon rotation.
+
+  This is a limitation of the SSH provider and cannot be rectified by Infisical.
 </Note>
 
 ## Prerequisites

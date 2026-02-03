@@ -15,7 +15,9 @@ Examples of rotated secrets include:
 
 ## How Rotation Works
 
-Secret Rotation systematically replaces secrets at regular intervals while ensuring zero downtime for your applications. This overlapping lifecycle approach maintains continuous availability while enhancing your security posture.
+Infisical supports two rotation models: **Dual-Phase** (used by most providers) and **Single-Instance**. This section describes dual-phase rotation, the recommended approach that ensures zero downtime. See [Single-Instance Rotation](#single-instance-rotation) for providers with limitations.
+
+Dual-phase rotation systematically replaces secrets at regular intervals while ensuring zero downtime for your applications. This overlapping lifecycle approach maintains continuous availability while enhancing your security posture.
 
 ### Visual Timeline
 
@@ -96,14 +98,51 @@ Using a __30-Day__ rotation interval as an example, here's how the process unfol
 - Ensure your applications can handle credential updates gracefully
 - Monitor for applications still using credentials nearing revocation
 
-## Infisical Secret Rotation Strategies
+## Single-Instance Rotation
 
-- [PostgreSQL Credentials](./postgres-credentials)
-- [Microsoft SQL Server Credentials](./mssql-credentials)
+Some providers have technical limitations that prevent dual-phase rotation. These providers use **single-instance rotation**, which updates a single credential in place. When rotation occurs, old credentials become invalid immediately there is no overlap period.
+
+<Warning>
+Single-instance rotation may cause brief service interruptions. For these providers, we recommend disabling auto-rotation and performing manual rotations during scheduled maintenance windows.
+</Warning>
+
+## Provider Rotation Types
+
+| Provider | Rotation Type | Zero-Downtime |
+|----------|---------------|---------------|
+| [PostgreSQL Credentials](./postgres-credentials) | Dual-Phase | Yes |
+| [Microsoft SQL Server Credentials](./mssql-credentials) | Dual-Phase | Yes |
+| [MySQL Credentials](./mysql-credentials) | Dual-Phase | Yes |
+| [OracleDB Credentials](./oracledb-credentials) | Dual-Phase | Yes |
+| [MongoDB Credentials](./mongodb-credentials) | Dual-Phase | Yes |
+| [Redis Credentials](./redis-credentials) | Dual-Phase | Yes |
+| [AWS IAM User Secret](./aws-iam-user-secret) | Dual-Phase | Yes |
+| [Okta Client Secret](./okta-client-secret) | Dual-Phase | Yes |
+| [Azure Client Secret](./azure-client-secret) | Dual-Phase | Yes |
+| [Databricks Service Principal](./databricks-service-principal-secret) | Dual-Phase | Yes |
+| [DBT Service Token](./dbt-service-token) | Dual-Phase | Yes |
+| [OpenRouter API Key](./openrouter-api-key) | Dual-Phase | Yes |
+| [Auth0 Client Secret](./auth0-client-secret) | Single-Instance | No |
+| [LDAP Password](./ldap-password) | Single-Instance | No |
+| [Unix/Linux Local Account](./unix-linux-local-account) | Single-Instance | No |
+| [Windows Local Account](./windows-local-account) | Single-Instance | No |
 
 ## FAQ
 
 <AccordionGroup>
+    <Accordion title="What is the difference between single-instance and dual-phase rotation?">
+        **Dual-Phase Rotation:**
+        - Maintains two credential sets that cycle between active and inactive states
+        - New credentials are created before old ones are revoked
+        - Provides an overlap period where both credential sets are valid
+        - Enables zero-downtime rotation
+
+        **Single-Instance Rotation:**
+        - Rotates a single credential in place
+        - Old credentials become invalid immediately upon rotation
+        - May cause brief service interruptions during rotation
+        - Recommended to use manual rotation during maintenance windows
+    </Accordion>
     <Accordion title="Why do certain rotations only use a single credential set?">
         Some credential providers have limitations that affect rotation patterns:
 
