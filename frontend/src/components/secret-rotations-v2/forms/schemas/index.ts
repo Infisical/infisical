@@ -14,6 +14,7 @@ import { LdapPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/typ
 import { UnixLinuxLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/unix-linux-local-account-rotation";
 import { WindowsLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/windows-local-account-rotation";
 
+import { DbtServiceTokenRotationSchema } from "./dbt-service-token-rotation-schema";
 import { OktaClientSecretRotationSchema } from "./okta-client-secret-rotation-schema";
 import { OpenRouterApiKeyRotationSchema } from "./open-router-api-key-rotation-schema";
 import { OracleDBCredentialsRotationSchema } from "./oracledb-credentials-rotation-schema";
@@ -38,6 +39,7 @@ export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
         MongoDBCredentialsRotationSchema,
         DatabricksServicePrincipalSecretRotationSchema,
         UnixLinuxLocalAccountRotationSchema,
+        DbtServiceTokenRotationSchema,
         WindowsLocalAccountRotationSchema,
         OpenRouterApiKeyRotationSchema
       ]),

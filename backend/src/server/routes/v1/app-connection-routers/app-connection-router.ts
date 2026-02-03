@@ -61,6 +61,7 @@ import {
   DatabricksConnectionListItemSchema,
   SanitizedDatabricksConnectionSchema
 } from "@app/services/app-connection/databricks";
+import { DbtConnectionListItemSchema, SanitizedDbtConnectionSchema } from "@app/services/app-connection/dbt";
 import {
   DigitalOceanConnectionListItemSchema,
   SanitizedDigitalOceanConnectionSchema
@@ -199,6 +200,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedOctopusDeployConnectionSchema.options,
   ...SanitizedSmbConnectionSchema.options,
   ...SanitizedSshConnectionSchema.options,
+  ...SanitizedDbtConnectionSchema.options,
   ...SanitizedOpenRouterConnectionSchema.options
 ]);
 
@@ -251,6 +253,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OctopusDeployConnectionListItemSchema,
   SmbConnectionListItemSchema,
   SshConnectionListItemSchema,
+  DbtConnectionListItemSchema,
   OpenRouterConnectionListItemSchema
 ]);
 

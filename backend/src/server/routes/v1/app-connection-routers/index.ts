@@ -17,6 +17,7 @@ import { registerChecklyConnectionRouter } from "./checkly-connection-router";
 import { registerCircleCIConnectionRouter } from "./circleci-connection-router";
 import { registerCloudflareConnectionRouter } from "./cloudflare-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
+import { registerDbtConnectionRouter } from "./dbt-connection-router";
 import { registerDigitalOceanConnectionRouter } from "./digital-ocean-connection-router";
 import { registerDNSMadeEasyConnectionRouter } from "./dns-made-easy-connection-router";
 import { registerFlyioConnectionRouter } from "./flyio-connection-router";
@@ -100,6 +101,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Chef]: registerChefConnectionRouter,
     [AppConnection.OctopusDeploy]: registerOctopusDeployConnectionRouter,
     [AppConnection.SSH]: registerSshConnectionRouter,
+    [AppConnection.Dbt]: registerDbtConnectionRouter,
     [AppConnection.SMB]: registerSmbConnectionRouter,
     [AppConnection.OpenRouter]: registerOpenRouterConnectionRouter,
     [AppConnection.CircleCI]: registerCircleCIConnectionRouter

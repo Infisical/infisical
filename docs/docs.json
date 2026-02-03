@@ -121,6 +121,7 @@
                       "integrations/app-connections/chef",
                       "integrations/app-connections/cloudflare",
                       "integrations/app-connections/databricks",
+                      "integrations/app-connections/dbt",
                       "integrations/app-connections/digital-ocean",
                       "integrations/app-connections/dns-made-easy",
                       "integrations/app-connections/flyio",
@@ -454,6 +455,7 @@
                       "documentation/platform/secret-rotation/aws-iam-user-secret",
                       "documentation/platform/secret-rotation/azure-client-secret",
                       "documentation/platform/secret-rotation/databricks-service-principal-secret",
+                      "documentation/platform/secret-rotation/dbt-service-token",
                       "documentation/platform/secret-rotation/ldap-password",
                       "documentation/platform/secret-rotation/mongodb-credentials",
                       "documentation/platform/secret-rotation/mssql-credentials",
@@ -1330,6 +1332,18 @@
                     ]
                   },
                   {
+                    "group": "DBT",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/dbt/list",
+                      "api-reference/endpoints/app-connections/dbt/available",
+                      "api-reference/endpoints/app-connections/dbt/get-by-id",
+                      "api-reference/endpoints/app-connections/dbt/get-by-name",
+                      "api-reference/endpoints/app-connections/dbt/create",
+                      "api-reference/endpoints/app-connections/dbt/update",
+                      "api-reference/endpoints/app-connections/dbt/delete"
+                    ]
+                  },
+                  {
                     "group": "Digital Ocean",
                     "pages": [
                       "api-reference/endpoints/app-connections/digital-ocean/list",
@@ -2054,6 +2068,19 @@
                       "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/list",
                       "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/update"
+                    ]
+                  },
+                  {
+                    "group": "DBT Service Token",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/dbt-service-token/create",
+                      "api-reference/endpoints/secret-rotations/dbt-service-token/delete",
+                      "api-reference/endpoints/secret-rotations/dbt-service-token/get-by-id",
+                      "api-reference/endpoints/secret-rotations/dbt-service-token/get-by-name",
+                      "api-reference/endpoints/secret-rotations/dbt-service-token/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/dbt-service-token/list",
+                      "api-reference/endpoints/secret-rotations/dbt-service-token/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/dbt-service-token/update"
                     ]
                   },
                   {

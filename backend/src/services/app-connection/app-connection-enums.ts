@@ -45,6 +45,7 @@ export enum AppConnection {
   Northflank = "northflank",
   OctopusDeploy = "octopus-deploy",
   SSH = "ssh",
+  Dbt = "dbt",
   SMB = "smb",
   OpenRouter = "open-router",
   CircleCI = "circleci"
