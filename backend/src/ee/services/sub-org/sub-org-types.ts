@@ -2,6 +2,7 @@ import { OrgServiceActor } from "@app/lib/types";
 
 export type TCreateSubOrgDTO = {
   name: string;
+  slug?: string;
   permissionActor: OrgServiceActor;
 };
 
@@ -17,6 +18,7 @@ export type TListSubOrgDTO = {
 
 export type TUpdateSubOrgDTO = {
   subOrgId: string;
-  name: string;
+  name?: string;
+  slug?: string;
   permissionActor: OrgServiceActor;
 };
