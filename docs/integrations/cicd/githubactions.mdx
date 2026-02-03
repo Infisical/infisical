@@ -16,6 +16,19 @@ Instead of storing long-lived credentials in GitHub Secrets, workflows authentic
 
 Secrets are fetched dynamically during workflow execution and exposed as environment variables, existing only for the lifetime of the job. This approach centralizes secret management in Infisical while maintaining security through identity-based authentication.
 
+The short video below provides a guided overview of using Infisical with GitHub Actions and OIDC authentication, helping you build the right mental model before diving into the diagram and setup steps.
+
+<iframe
+  width="560"
+  height="315"
+  src="https://www.youtube.com/embed/9PQmd_aoRWA"
+  title="YouTube video player"
+  frameborder="0"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+  allowfullscreen
+></iframe>
+
+
 ## Diagram
 
 The following sequence diagram illustrates the OIDC authentication workflow. The authentication flow is the same for all OIDC providers; for GitHub Actions, the client is a GitHub workflow and the identity provider is GitHub's OIDC service.
