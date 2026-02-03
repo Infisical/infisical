@@ -749,7 +749,8 @@
                   "documentation/platform/pki/certificate-syncs/aws-certificate-manager",
                   "documentation/platform/pki/certificate-syncs/aws-secrets-manager",
                   "documentation/platform/pki/certificate-syncs/azure-key-vault",
-                  "documentation/platform/pki/certificate-syncs/chef"
+                  "documentation/platform/pki/certificate-syncs/chef",
+                  "documentation/platform/pki/certificate-syncs/cloudflare-custom-certificate"
                 ]
               },
               {
@@ -2838,6 +2839,18 @@
                       "api-reference/endpoints/pki/syncs/chef/delete",
                       "api-reference/endpoints/pki/syncs/chef/sync-certificates",
                       "api-reference/endpoints/pki/syncs/chef/remove-certificates"
+                    ]
+                  },
+                  {
+                    "group": "Cloudflare Custom SSL",
+                    "pages": [
+                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/list",
+                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/get-by-id",
+                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/create",
+                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/update",
+                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/delete",
+                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/sync-certificates",
+                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/remove-certificates"
                     ]
                   }
                 ]

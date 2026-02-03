@@ -16,19 +16,25 @@ import {
   ChefPkiSyncDestinationSchema,
   UpdateChefPkiSyncDestinationSchema
 } from "./chef-pki-sync-destination-schema";
+import {
+  CloudflareCustomCertificatePkiSyncDestinationSchema,
+  UpdateCloudflareCustomCertificatePkiSyncDestinationSchema
+} from "./cloudflare-custom-certificate-pki-sync-destination-schema";
 
 const PkiSyncUnionSchema = z.discriminatedUnion("destination", [
   AzureKeyVaultPkiSyncDestinationSchema,
   AwsCertificateManagerPkiSyncDestinationSchema,
   AwsSecretsManagerPkiSyncDestinationSchema,
-  ChefPkiSyncDestinationSchema
+  ChefPkiSyncDestinationSchema,
+  CloudflareCustomCertificatePkiSyncDestinationSchema
 ]);
 
 const UpdatePkiSyncUnionSchema = z.discriminatedUnion("destination", [
   UpdateAzureKeyVaultPkiSyncDestinationSchema,
   UpdateAwsCertificateManagerPkiSyncDestinationSchema,
   UpdateAwsSecretsManagerPkiSyncDestinationSchema,
-  UpdateChefPkiSyncDestinationSchema
+  UpdateChefPkiSyncDestinationSchema,
+  UpdateCloudflareCustomCertificatePkiSyncDestinationSchema
 ]);
 
 export const PkiSyncFormSchema = PkiSyncUnionSchema;

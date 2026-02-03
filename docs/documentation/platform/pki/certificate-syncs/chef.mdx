@@ -208,14 +208,14 @@ Any role with these permissions would work such as a custom role with **Data Bag
 
 ## Certificate Management
 
-Your Chef Certificate Sync will:
+The Chef Certificate Sync provides:
 
-- **Automatic Deployment**: Deploy certificates in Infisical to Chef data bags with customizable field names
-- **Certificate Updates**: Update certificates in Chef data bags when renewals occur
-- **Expiration Handling**: Optionally remove expired certificates from Chef data bags (if enabled)
-- **Format Preservation**: Maintain certificate format during sync operations
-- **Field Customization**: Map certificate data to custom field names that match your Chef cookbook requirements
-- **CA Certificate Support**: Include CA certificates in data bag items for complete certificate chain management
+- **Automatic Deployment**: Deploy certificates in Infisical to Chef data bags with customizable field names.
+- **Certificate Updates**: Update certificates in Chef data bags when renewals occur.
+- **Expiration Handling**: Optionally remove expired certificates from Chef data bags (if enabled).
+- **Format Preservation**: Maintain certificate format during sync operations.
+- **Field Customization**: Map certificate data to custom field names that match your Chef cookbook requirements.
+- **CA Certificate Support**: Include CA certificates in data bag items for complete certificate chain management.
 
 <Note>
   Chef Certificate Syncs support both automatic and manual
@@ -234,8 +234,10 @@ You can manually trigger certificate synchronization to Chef using the sync cert
 
 To manually sync certificates, use the [Sync Certificates](/api-reference/endpoints/pki/syncs/chef/sync-certificates) API endpoint or the manual sync option in the Infisical UI.
 
-<Note>
+## FAQ
+
+<Accordion title="Can I import certificates from Chef back into Infisical?">
   Chef does not support importing certificates back into Infisical
   due to the nature of Chef data bags where certificates are stored as data
   rather than managed certificate objects.
-</Note>
+</Accordion>
