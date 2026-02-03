@@ -64,9 +64,10 @@ description: "Learn how to configure Okta OIDC for Infisical SSO."
       Back in Infisical, on the OIDC configuration page, set the **Configuration Type** to **Discovery URL**.
 
       Fill in the following fields:
-      - **Discovery Document URL**: Enter the OpenID Configuration URL from step 3 (e.g., `https://your-company.okta.com/.well-known/openid-configuration`)
-      - **Client ID**: Enter the Client ID from step 3
-      - **Client Secret**: Enter the Client Secret from step 3
+      Fill in the following fields:
+      - **Discovery Document URL**: Enter the OpenID Configuration URL from step 2 (e.g., `https://your-company.okta.com/.well-known/openid-configuration`)
+      - **Client ID**: Enter the Client ID from step 2
+      - **Client Secret**: Enter the Client Secret from step 2
       - **JWT Signature Algorithm**: Select **RS256** (this is the default algorithm used by Okta)
 
       ![Infisical OIDC configuration](../../../images/sso/okta-oidc/infisical-oidc-config.png)
