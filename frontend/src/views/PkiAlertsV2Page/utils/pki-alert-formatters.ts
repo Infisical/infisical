@@ -69,8 +69,7 @@ export const getWebhookHostname = (url: string): string => {
   if (!url) return "Not configured";
   try {
     const parsed = new URL(url);
-    const { hostname } = parsed;
-    return hostname.length > 30 ? `${hostname.slice(0, 30)}...` : hostname;
+    return parsed.hostname;
   } catch {
     return url || "Not configured";
   }

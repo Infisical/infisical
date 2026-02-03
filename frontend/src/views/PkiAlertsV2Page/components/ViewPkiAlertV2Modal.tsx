@@ -198,9 +198,9 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
                         >
                           <FontAwesomeIcon
                             icon={getChannelIcon(channel.channelType)}
-                            className="mt-1 text-mineshaft-400"
+                            className="mt-1 shrink-0 text-mineshaft-400"
                           />
-                          <div className="flex-1">
+                          <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-mineshaft-100 capitalize">
                                 {channel.channelType}
@@ -246,7 +246,7 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
                               </div>
                             )}
                             {channel.channelType === PkiAlertChannelTypeV2.WEBHOOK && (
-                              <div className="mt-1 text-sm text-mineshaft-400">
+                              <div className="mt-1 truncate text-sm text-mineshaft-400">
                                 {getWebhookHostname(
                                   (channel.config as TPkiAlertChannelConfigWebhookResponse).url
                                 )}

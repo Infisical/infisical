@@ -70,6 +70,8 @@ import {
   getChannelSummary
 } from "../utils/pki-alert-formatters";
 
+const MAX_CHANNELS = 10;
+
 interface CreatePkiAlertV2FormStepsProps {
   expandedChannel: string | undefined;
   setExpandedChannel: (channel: string | undefined) => void;
@@ -162,7 +164,10 @@ export const CreatePkiAlertV2FormSteps = ({
     setValue("filters", currentFilters);
   };
 
+  const isChannelLimitReached = watchedChannels.length >= MAX_CHANNELS;
+
   const addChannel = (type: PkiAlertChannelTypeV2) => {
+    if (isChannelLimitReached) return;
     justAddedRef.current = true;
     prependChannel({
       channelType: type,
@@ -614,13 +619,19 @@ export const CreatePkiAlertV2FormSteps = ({
 
       <Tab.Panel>
         <div className="flex min-h-[400px] flex-col gap-6">
-          <div className="flex justify-end">
+          <div className="flex items-center justify-end gap-3">
+            {isChannelLimitReached && (
+              <span className="text-xs text-mineshaft-400">
+                Maximum of {MAX_CHANNELS} channels reached
+              </span>
+            )}
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+              <DropdownMenuTrigger asChild disabled={isChannelLimitReached}>
                 <Button
                   type="button"
                   variant="outline_bg"
                   size="sm"
+                  disabled={isChannelLimitReached}
                   rightIcon={<FontAwesomeIcon icon={faChevronDown} className="ml-1" />}
                 >
                   Add Channel
@@ -652,23 +663,23 @@ export const CreatePkiAlertV2FormSteps = ({
                 const channelError = errors.channels?.[index];
                 return (
                   <AccordionItem key={field.id} value={field.id} className="border-mineshaft-600">
-                    <AccordionTrigger className="group bg-mineshaft-800 hover:bg-mineshaft-600 data-[state=open]:bg-mineshaft-700 data-[state=open]:hover:bg-mineshaft-600">
-                      <div className="flex flex-1 items-center justify-between">
-                        <div className="flex items-center gap-3">
+                    <AccordionTrigger className="group overflow-hidden bg-mineshaft-800 hover:bg-mineshaft-600 data-[state=open]:bg-mineshaft-700 data-[state=open]:hover:bg-mineshaft-600">
+                      <div className="flex w-0 flex-1 items-center justify-between gap-3">
+                        <div className="flex min-w-0 flex-1 items-center gap-3">
                           <FontAwesomeIcon
                             icon={getChannelIcon(channel?.channelType)}
-                            className="text-mineshaft-300"
+                            className="shrink-0 text-mineshaft-300"
                           />
-                          <span className="text-sm font-medium capitalize">
+                          <span className="shrink-0 text-sm font-medium capitalize">
                             {channel?.channelType}
                           </span>
-                          <span className="text-xs text-mineshaft-400 group-data-[state=open]:hidden">
+                          <span className="truncate text-xs text-mineshaft-400 group-data-[state=open]:hidden">
                             {channel && getChannelSummary(channel)}
                           </span>
                         </div>
                         <div
                           role="presentation"
-                          className="flex items-center gap-2"
+                          className="flex shrink-0 items-center gap-2"
                           onClick={(e) => e.stopPropagation()}
                           onKeyDown={(e) => e.stopPropagation()}
                         >
@@ -898,7 +909,7 @@ export const CreatePkiAlertV2FormSteps = ({
                       icon={getChannelIcon(channel.channelType)}
                       className="text-mineshaft-400"
                     />
-                    <div className="flex flex-1 flex-col">
+                    <div className="flex min-w-0 flex-1 flex-col">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-mineshaft-100 capitalize">
                           {channel.channelType}
@@ -920,7 +931,7 @@ export const CreatePkiAlertV2FormSteps = ({
                             </Tooltip>
                           ))}
                       </div>
-                      <span className="max-w-[300px] text-xs text-mineshaft-400">
+                      <span className="truncate text-xs text-mineshaft-400">
                         {channel.channelType === PkiAlertChannelTypeV2.EMAIL
                           ? (() => {
                               const config = channel.config as TPkiAlertChannelConfigEmail;
