@@ -187,7 +187,7 @@ export const CreatePkiAlertV2Schema = z.object({
   alertBefore: z.string().refine(createSecureAlertBeforeValidator(), "Must be in format like '30d', '1w', '3m', '1y'"),
   filters: PkiFiltersSchema,
   enabled: z.boolean().default(true),
-  channels: z.array(CreateChannelSchema).default([])
+  channels: z.array(CreateChannelSchema).max(10).default([])
 });
 
 export type TCreatePkiAlertV2 = z.infer<typeof CreatePkiAlertV2Schema>;
