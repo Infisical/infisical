@@ -262,6 +262,10 @@ export const CreatePkiAlertV2FormSteps = ({
 
   const deleteChannel = (fieldId: string, index: number, e: React.MouseEvent) => {
     e.stopPropagation();
+
+    // Prevent deleting the last channel
+    if (channelFields.length <= 1) return;
+
     removeChannel(index);
 
     // Clean up unified channel state
@@ -275,6 +279,8 @@ export const CreatePkiAlertV2FormSteps = ({
       setExpandedChannel(undefined);
     }
   };
+
+  const isLastChannel = channelFields.length === 1;
 
   const getFieldOperators = (field: PkiFilterFieldV2) => {
     if (field === PkiFilterFieldV2.INCLUDE_CAS) {
@@ -694,15 +700,21 @@ export const CreatePkiAlertV2FormSteps = ({
                               />
                             )}
                           />
-                          <IconButton
-                            size="sm"
-                            variant="plain"
-                            colorSchema="danger"
-                            ariaLabel="Delete channel"
-                            onClick={(e) => deleteChannel(field.id, index, e)}
+                          <Tooltip
+                            content="At least one channel is required"
+                            isDisabled={!isLastChannel}
                           >
-                            <FontAwesomeIcon icon={faTrash} />
-                          </IconButton>
+                            <IconButton
+                              size="sm"
+                              variant="plain"
+                              colorSchema="danger"
+                              ariaLabel="Delete channel"
+                              isDisabled={isLastChannel}
+                              onClick={(e) => deleteChannel(field.id, index, e)}
+                            >
+                              <FontAwesomeIcon icon={faTrash} />
+                            </IconButton>
+                          </Tooltip>
                         </div>
                       </div>
                     </AccordionTrigger>
@@ -825,8 +837,14 @@ export const CreatePkiAlertV2FormSteps = ({
               })}
             </Accordion>
           ) : (
-            <div className="flex flex-1 items-center justify-center text-bunker-400">
-              No notification channels configured. Click &quot;Add Channel&quot; to add one.
+            <div className="flex flex-1 flex-col items-center justify-center gap-2">
+              <span className="text-bunker-400">
+                At least one notification channel is required. Click &quot;Add Channel&quot; to add
+                one.
+              </span>
+              {errors.channels?.message && (
+                <span className="text-sm text-red-500">{errors.channels.message}</span>
+              )}
             </div>
           )}
         </div>
@@ -975,7 +993,9 @@ export const CreatePkiAlertV2FormSteps = ({
                 ))}
               </div>
             ) : (
-              <span className="text-sm text-mineshaft-400">No channels configured</span>
+              <span className="text-sm text-red-400">
+                No channels configured - at least one is required
+              </span>
             )}
           </div>
         </div>
