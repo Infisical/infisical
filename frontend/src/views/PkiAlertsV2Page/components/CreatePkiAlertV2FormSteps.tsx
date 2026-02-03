@@ -638,13 +638,19 @@ export const CreatePkiAlertV2FormSteps = ({
 
       <Tab.Panel>
         <div className="flex min-h-[400px] flex-col gap-6">
-          <div className="flex justify-end">
+          <div className="flex items-center justify-end gap-3">
+            {isChannelLimitReached && (
+              <span className="text-xs text-mineshaft-400">
+                Maximum of {MAX_CHANNELS} channels reached
+              </span>
+            )}
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+              <DropdownMenuTrigger asChild disabled={isChannelLimitReached}>
                 <Button
                   type="button"
                   variant="outline_bg"
                   size="sm"
+                  disabled={isChannelLimitReached}
                   rightIcon={<FontAwesomeIcon icon={faChevronDown} className="ml-1" />}
                 >
                   Add Channel
