@@ -22,7 +22,6 @@ import { parseTimeToDays, parseTimeToPostgresInterval } from "./pki-alert-v2-fil
 import {
   buildSlackPayload,
   buildWebhookPayload,
-  PkiWebhookEventType,
   triggerPkiWebhook,
   triggerSlackWebhook
 } from "./pki-alert-v2-notification-fns";

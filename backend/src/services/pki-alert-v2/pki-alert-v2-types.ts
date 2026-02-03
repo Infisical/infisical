@@ -292,3 +292,38 @@ export type TTestWebhookConfigDTO = TGenericPermission & {
   url: string;
   signingSecret?: string;
 };
+
+// Slack notification types
+export type TSlackField = {
+  title: string;
+  value: string;
+  short: boolean;
+};
+
+export type TSlackAttachment = {
+  color: string;
+  fields: TSlackField[];
+  footer: string;
+};
+
+export type TSlackPayload = {
+  text: string;
+  attachments: TSlackAttachment[];
+};
+
+export type TBuildSlackPayloadParams = {
+  alert: TAlertInfo;
+  certificates: TCertificatePreview[];
+  appUrl?: string;
+};
+
+export type TTriggerSlackWebhookParams = {
+  webhookUrl: string;
+  payload: TSlackPayload;
+};
+
+export type TTriggerSlackWebhookResult = {
+  success: boolean;
+  statusCode?: number;
+  error?: string;
+};

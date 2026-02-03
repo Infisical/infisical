@@ -8,9 +8,14 @@ import { logger } from "@app/lib/logger";
 import {
   PkiWebhookEventType,
   TAlertInfo,
+  TBuildSlackPayloadParams,
   TCertificateData,
   TCertificatePreview,
-  TPkiWebhookPayload
+  TPkiWebhookPayload,
+  TSlackField,
+  TSlackPayload,
+  TTriggerSlackWebhookParams,
+  TTriggerSlackWebhookResult
 } from "./pki-alert-v2-types";
 
 const PKI_WEBHOOK_TIMEOUT = 7 * 1000;
@@ -187,35 +192,6 @@ export const triggerPkiWebhook = async ({
   }
 };
 
-// Slack notification types and functions
-type TSlackField = {
-  title: string;
-  value: string;
-  short: boolean;
-};
-
-type TSlackAttachment = {
-  color: string;
-  fields: TSlackField[];
-  footer: string;
-};
-
-export type TSlackPayload = {
-  text: string;
-  attachments: TSlackAttachment[];
-};
-
-type TBuildSlackPayloadParams = {
-  alert: {
-    id: string;
-    name: string;
-    alertBefore: string;
-    projectId: string;
-  };
-  certificates: TCertificatePreview[];
-  appUrl?: string;
-};
-
 const SLACK_URGENT_THRESHOLD_DAYS = 7;
 const SLACK_COLOR_URGENT = "#FF0000";
 const SLACK_COLOR_WARNING = "#E7F256";
@@ -286,17 +262,6 @@ export const buildSlackPayload = ({
       }
     ]
   };
-};
-
-type TTriggerSlackWebhookParams = {
-  webhookUrl: string;
-  payload: TSlackPayload;
-};
-
-type TTriggerSlackWebhookResult = {
-  success: boolean;
-  statusCode?: number;
-  error?: string;
 };
 
 export const triggerSlackWebhook = async ({
