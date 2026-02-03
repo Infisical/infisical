@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import {
+  CodeXmlIcon,
   CopyIcon,
   EditIcon,
   EyeOffIcon,
@@ -44,6 +45,7 @@ import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashbo
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 import { SecretCommentForm } from "./SecretCommentForm";
+import { SecretMetadataForm } from "./SecretMetadataForm";
 import { SecretTagForm } from "./SecretTagForm";
 
 type Props = {
@@ -56,6 +58,7 @@ type Props = {
   isImportedSecret: boolean;
   comment?: string;
   tags?: WsTag[];
+  secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
   environment: string;
   secretValueHidden: boolean;
   secretPath: string;
@@ -111,7 +114,8 @@ export const SecretEditTableRow = ({
   isEmpty,
   isSecretPresent,
   comment,
-  tags
+  tags,
+  secretMetadata
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret"
@@ -176,6 +180,7 @@ export const SecretEditTableRow = ({
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isCommentOpen, setIsCommentOpen] = useState(false);
   const [isTagOpen, setIsTagOpen] = useState(false);
+  const [isMetadataOpen, setIsMetadataOpen] = useState(false);
 
   const toggleModal = useCallback(() => {
     setIsModalOpen((prev) => !prev);
@@ -296,7 +301,7 @@ export const SecretEditTableRow = ({
     isErrorFetchingSecretValue ||
     (isCreatable ? !canCreate : !canEditSecretValue);
 
-  const shouldStayExpanded = isCommentOpen || isTagOpen;
+  const shouldStayExpanded = isCommentOpen || isTagOpen || isMetadataOpen;
 
   return (
     <div className="flex w-full cursor-text items-center space-x-2">
@@ -396,7 +401,12 @@ export const SecretEditTableRow = ({
             </div>
           </>
         ) : (
-          <div className="flex items-center space-x-1.5 transition-all duration-500">
+          <div
+            className={twMerge(
+              "flex items-center transition-all duration-500 group-hover:space-x-1.5",
+              shouldStayExpanded && "space-x-1.5"
+            )}
+          >
             <Tooltip delayDuration={300} disableHoverableContent>
               <TooltipTrigger>
                 <UnstableIconButton
@@ -411,7 +421,7 @@ export const SecretEditTableRow = ({
                   variant="ghost"
                   size="xs"
                   className={twMerge(
-                    "w-0 overflow-hidden opacity-0 group-hover:w-7 group-hover:opacity-100",
+                    "w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100",
                     shouldStayExpanded && "w-7 opacity-100"
                   )}
                 >
@@ -436,7 +446,7 @@ export const SecretEditTableRow = ({
                   variant="ghost"
                   size="xs"
                   className={twMerge(
-                    "w-0 overflow-hidden opacity-0 group-hover:w-7 group-hover:opacity-100",
+                    "w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100",
                     shouldStayExpanded && "w-7 opacity-100"
                   )}
                 >
@@ -463,7 +473,7 @@ export const SecretEditTableRow = ({
                         comment && !isOverride && !isImportedSecret
                           ? "w-7 text-project opacity-100"
                           : "w-0 opacity-0",
-                        "overflow-hidden group-hover:w-7 group-hover:opacity-100",
+                        "overflow-hidden border-0 group-hover:w-7 group-hover:opacity-100",
                         shouldStayExpanded && "w-7 opacity-100"
                       )}
                     >
@@ -509,7 +519,7 @@ export const SecretEditTableRow = ({
                         canReadTags && tags?.length && !isImportedSecret && !isOverride
                           ? "w-7 text-project opacity-100"
                           : "w-0 opacity-0",
-                        "overflow-hidden group-hover:w-7 group-hover:opacity-100",
+                        "overflow-hidden border-0 group-hover:w-7 group-hover:opacity-100",
                         shouldStayExpanded && "w-7 opacity-100"
                       )}
                     >
@@ -545,6 +555,51 @@ export const SecretEditTableRow = ({
                 />
               </PopoverContent>
             </Popover>
+            <Popover open={isMetadataOpen} onOpenChange={setIsMetadataOpen}>
+              <Tooltip delayDuration={300} disableHoverableContent>
+                <TooltipTrigger>
+                  <PopoverTrigger asChild>
+                    <UnstableIconButton
+                      variant="ghost"
+                      size="xs"
+                      isDisabled={isCreatable || isImportedSecret || isOverride}
+                      className={twMerge(
+                        secretMetadata?.length && !isOverride && !isImportedSecret
+                          ? "w-7 text-project opacity-100"
+                          : "w-0 opacity-0",
+                        "overflow-hidden border-0 group-hover:w-7 group-hover:opacity-100",
+                        shouldStayExpanded && "w-7 opacity-100"
+                      )}
+                    >
+                      <CodeXmlIcon />
+                    </UnstableIconButton>
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isOverride
+                    ? "Cannot Edit Metadata on Personal Overrides"
+                    : isImportedSecret
+                      ? "Cannot Edit Metadata on Imported Secret"
+                      : isCreatable
+                        ? "Create Secret to Add Metadata"
+                        : `${secretMetadata?.length ? "View" : "Add"} Metadata`}
+                </TooltipContent>
+              </Tooltip>
+              <PopoverContent
+                onCloseAutoFocus={(e) => e.preventDefault()}
+                className="w-[500px]"
+                align="end"
+              >
+                <SecretMetadataForm
+                  secretMetadata={secretMetadata}
+                  secretKey={secretName}
+                  secretPath={secretPath}
+                  environment={environment}
+                  isOverride={isOverride}
+                  onClose={() => setIsMetadataOpen(false)}
+                />
+              </PopoverContent>
+            </Popover>
             <Modal>
               <Tooltip delayDuration={300} disableHoverableContent>
                 <TooltipTrigger>
@@ -553,7 +608,7 @@ export const SecretEditTableRow = ({
                       variant="ghost"
                       size="xs"
                       className={twMerge(
-                        "w-0 overflow-hidden opacity-0 group-hover:w-7 group-hover:opacity-100",
+                        "w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100",
                         shouldStayExpanded && "w-7 opacity-100"
                       )}
                       isDisabled={!canReadSecretValue || !secretId || isEmpty}
@@ -593,7 +648,7 @@ export const SecretEditTableRow = ({
                       variant="ghost"
                       size="xs"
                       className={twMerge(
-                        "w-0 overflow-hidden opacity-0 group-hover:w-7 group-hover:opacity-100",
+                        "w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100",
                         shouldStayExpanded && "w-7 opacity-100"
                       )}
                       onClick={toggleModal}
