@@ -86,7 +86,9 @@ export const PkiAlertV2Row = ({ alert, onView, onEdit, onDelete }: Props) => {
                     .replace("Z", " UTC")}
                 </div>
                 {alert.lastRun.error && (
-                  <div className="mt-1 text-xs break-words text-red-400">{alert.lastRun.error}</div>
+                  <div className="mt-1 max-h-32 thin-scrollbar overflow-y-auto text-xs break-words text-red-400">
+                    {alert.lastRun.error}
+                  </div>
                 )}
               </div>
             }
