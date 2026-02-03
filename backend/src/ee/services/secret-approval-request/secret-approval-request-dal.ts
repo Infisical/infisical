@@ -29,6 +29,33 @@ type TFindQueryFilter = {
   search?: string;
 };
 
+// Type for the query result documents in findByProjectId and findByProjectIdBridgeSecretV2
+type TSecretApprovalRequestDoc = TSecretApprovalRequests & {
+  environment: string;
+  projectId: string;
+  policyId: string;
+  policyName: string;
+  policyApprovals: number;
+  policySecretPath: string | null;
+  policyEnforcementLevel: string;
+  policyAllowedSelfApprovals: boolean;
+  committerUserId: string | null;
+  committerUserEmail: string | null;
+  committerUserFirstName: string | null;
+  committerUserLastName: string | null;
+  committerUserUsername: string | null;
+  reviewerId: string | null;
+  reviewerUserId: string | null;
+  reviewerStatus: string | null;
+  approverUserId: string | null;
+  approverGroupUserId: string | null;
+  bypasserUserId: string | null;
+  bypasserGroupUserId: string | null;
+  commitId: string | null;
+  commitOp: string | null;
+  commitSecretId: string | null;
+};
+
 // Helper to filter approval requests by user access (committer, approver, or group member)
 // Only applies filtering when userId is provided (users without SecretApprovalRequest.Read permission)
 const buildUserAccessFilter = (qb: Knex.QueryBuilder, userId?: string) => {
@@ -536,7 +563,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         .andWhere("w.rank", "<", offset + limit);
 
       const formattedDoc = sqlNestRelationships({
-        data: docs,
+        data: docs as TSecretApprovalRequestDoc[],
         key: "id",
         parentMapper: (el) => ({
           ...SecretApprovalRequestsSchema.parse(el),
@@ -556,7 +583,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
                 email: el.committerUserEmail,
                 firstName: el.committerUserFirstName,
                 lastName: el.committerUserLastName,
-                username: el.committerUserUsername
+                username: el.committerUserUsername!
               }
             : null
         }),
@@ -565,7 +592,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             key: "reviewerId",
             label: "reviewers" as const,
             mapper: ({ reviewerUserId, reviewerStatus: s }) =>
-              reviewerUserId ? { userId: reviewerUserId, status: s } : undefined
+              reviewerUserId ? { userId: reviewerUserId, status: s! } : undefined
           },
           {
             key: "approverUserId",
@@ -575,9 +602,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           {
             key: "commitId",
             label: "commits" as const,
-            mapper: ({ commitSecretId: secretId, commitId: id, commitOp: op }) => ({
-              op,
-              id,
+            mapper: ({ commitSecretId: secretId, commitOp: op }) => ({
+              op: op!,
               secretId
             })
           },
@@ -770,7 +796,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
               .orderBy("createdAt", "desc")) as Awaited<typeof query>[number][]);
 
       const formattedDoc = sqlNestRelationships({
-        data: docs,
+        data: docs as TSecretApprovalRequestDoc[],
         key: "id",
         parentMapper: (el) => ({
           ...SecretApprovalRequestsSchema.parse(el),
@@ -790,7 +816,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
                 email: el.committerUserEmail,
                 firstName: el.committerUserFirstName,
                 lastName: el.committerUserLastName,
-                username: el.committerUserUsername
+                username: el.committerUserUsername!
               }
             : null
         }),
@@ -799,7 +825,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             key: "reviewerId",
             label: "reviewers" as const,
             mapper: ({ reviewerUserId, reviewerStatus: s }) =>
-              reviewerUserId ? { userId: reviewerUserId, status: s } : undefined
+              reviewerUserId ? { userId: reviewerUserId, status: s! } : undefined
           },
           {
             key: "approverUserId",
@@ -809,9 +835,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           {
             key: "commitId",
             label: "commits" as const,
-            mapper: ({ commitSecretId: secretId, commitId: id, commitOp: op }) => ({
-              op,
-              id,
+            mapper: ({ commitSecretId: secretId, commitOp: op }) => ({
+              op: op!,
               secretId
             })
           },
