@@ -233,6 +233,12 @@ export const cloudflareCustomCertificatePkiSyncFactory = ({
           let fullCertificate: string;
           const bundleMethod = isPrivateCA ? "force" : "ubiquitous";
 
+          // Certificate chain ordering differs based on bundle method:
+          // - Private CAs (bundle_method: "force"): Chain first, then leaf cert.
+          //   Cloudflare cannot resolve private CA chains, so we provide the full chain
+          // - Public CAs (bundle_method: "ubiquitous"): Leaf cert first, then chain.
+          //   Cloudflare resolves and optimizes the chain itself, so we provide
+          //   the leaf certificate first followed by any intermediates.
           if (isPrivateCA) {
             let chain = certificateChain?.trim() || "";
             const rootCa = caCertificate.trim();

@@ -740,7 +740,7 @@
                   "documentation/platform/pki/certificate-syncs/aws-secrets-manager",
                   "documentation/platform/pki/certificate-syncs/azure-key-vault",
                   "documentation/platform/pki/certificate-syncs/chef",
-                  "documentation/platform/pki/certificate-syncs/cloudflare-custom-ssl"
+                  "documentation/platform/pki/certificate-syncs/cloudflare-custom-certificate"
                 ]
               },
               {
