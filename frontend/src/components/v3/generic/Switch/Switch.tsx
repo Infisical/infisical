@@ -24,19 +24,19 @@ const switchVariants = cva(
         outline:
           "data-[state=checked]:border-border data-[state=checked]:bg-foreground/10 data-[state=checked]:hover:bg-foreground/15 data-[state=checked]:hover:border-foreground/30",
         neutral:
-          "data-[state=checked]:border-neutral/20 data-[state=checked]:bg-neutral/10 data-[state=checked]:hover:bg-neutral/15 data-[state=checked]:hover:border-neutral/30",
+          "data-[state=checked]:border-neutral/25 data-[state=checked]:bg-neutral/10 data-[state=checked]:hover:bg-neutral/15 data-[state=checked]:hover:border-neutral/30",
         project:
-          "data-[state=checked]:border-project/20 data-[state=checked]:bg-project/10 data-[state=checked]:hover:bg-project/15 data-[state=checked]:hover:border-project/30",
-        org: "data-[state=checked]:border-org/20 data-[state=checked]:bg-org/10 data-[state=checked]:hover:bg-org/15 data-[state=checked]:hover:border-org/30",
+          "data-[state=checked]:border-project/25 data-[state=checked]:bg-project/10 data-[state=checked]:hover:bg-project/15 data-[state=checked]:hover:border-project/30",
+        org: "data-[state=checked]:border-org/25 data-[state=checked]:bg-org/10 data-[state=checked]:hover:bg-org/15 data-[state=checked]:hover:border-org/30",
         "sub-org":
-          "data-[state=checked]:border-sub-org/20 data-[state=checked]:bg-sub-org/10 data-[state=checked]:hover:bg-sub-org/15 data-[state=checked]:hover:border-sub-org/30",
+          "data-[state=checked]:border-sub-org/25 data-[state=checked]:bg-sub-org/10 data-[state=checked]:hover:bg-sub-org/15 data-[state=checked]:hover:border-sub-org/30",
         success:
-          "data-[state=checked]:border-success/20 data-[state=checked]:bg-success/10 data-[state=checked]:hover:bg-success/15 data-[state=checked]:hover:border-success/30",
-        info: "data-[state=checked]:border-info/20 data-[state=checked]:bg-info/10 data-[state=checked]:hover:bg-info/15 data-[state=checked]:hover:border-info/30",
+          "data-[state=checked]:border-success/25 data-[state=checked]:bg-success/10 data-[state=checked]:hover:bg-success/15 data-[state=checked]:hover:border-success/30",
+        info: "data-[state=checked]:border-info/25 data-[state=checked]:bg-info/10 data-[state=checked]:hover:bg-info/15 data-[state=checked]:hover:border-info/30",
         warning:
-          "data-[state=checked]:border-warning/20 data-[state=checked]:bg-warning/10 data-[state=checked]:hover:bg-warning/15 data-[state=checked]:hover:border-warning/30",
+          "data-[state=checked]:border-warning/25 data-[state=checked]:bg-warning/10 data-[state=checked]:hover:bg-warning/15 data-[state=checked]:hover:border-warning/30",
         danger:
-          "data-[state=checked]:border-danger/20 data-[state=checked]:bg-danger/10 data-[state=checked]:hover:bg-danger/15 data-[state=checked]:hover:border-danger/30"
+          "data-[state=checked]:border-danger/25 data-[state=checked]:bg-danger/10 data-[state=checked]:hover:bg-danger/15 data-[state=checked]:hover:border-danger/30"
       }
     },
     defaultVariants: {
@@ -55,8 +55,8 @@ const switchThumbVariants = cva(
     "group-data-[size=sm]/switch:data-[state=checked]:translate-x-[calc(100%-2px)]",
     "data-[state=unchecked]:border-foreground/5 data-[state=unchecked]:bg-foreground/15",
     "data-[state=unchecked]:group-hover/switch:bg-foreground/35",
-    "data-[state=checked]:border-foreground/5 data-[state=checked]:bg-foreground/35",
-    "data-[state=checked]:group-hover/switch:bg-foreground/35"
+    "data-[state=checked]:border-foreground/5 data-[state=checked]:bg-foreground/65",
+    "data-[state=checked]:group-hover/switch:bg-foreground/75"
   )
 );
 
