@@ -34,6 +34,10 @@ Alerts can be delivered through one or more notification channels:
 
 ![pki alerting channels](/images/platform/pki/alerting/alert-create-channels.png)
 
+<Note>
+All configured channels must successfully deliver for an alert to be marked as complete. If any channel fails, the alert will retry until all channels succeed. Make sure all channels are working correctly to avoid repeated notifications.
+</Note>
+
 ## Webhook Payload Format
 
 Webhook notifications are sent as HTTP POST requests with a [CloudEvents](https://cloudevents.io/)-compliant JSON payload.

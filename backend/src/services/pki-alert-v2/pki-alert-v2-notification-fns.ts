@@ -5,58 +5,15 @@ import { AxiosError } from "axios";
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 
-import { TCertificatePreview } from "./pki-alert-v2-types";
+import {
+  PkiWebhookEventType,
+  TAlertInfo,
+  TCertificateData,
+  TCertificatePreview,
+  TPkiWebhookPayload
+} from "./pki-alert-v2-types";
 
-const PKI_WEBHOOK_TIMEOUT = 2 * 1000;
-
-export enum PkiWebhookEventType {
-  CERTIFICATE_EXPIRATION = "com.infisical.pki.certificate.expiration",
-  CERTIFICATE_TEST = "com.infisical.pki.certificate.test"
-}
-
-// Alert info used across event types
-type TAlertInfo = {
-  id: string;
-  name: string;
-  alertBefore: string;
-  projectId: string;
-};
-
-// Certificate data for webhook payloads
-type TCertificateData = {
-  id: string;
-  serialNumber: string;
-  commonName: string;
-  san: string[];
-  profileName: string | null;
-  notBefore: string;
-  notAfter: string;
-  status: string;
-  daysUntilExpiry: number;
-};
-
-export type TPkiWebhookPayload = {
-  // Required CloudEvents attributes
-  specversion: "1.0";
-  type: PkiWebhookEventType;
-  source: string;
-  id: string;
-
-  // Optional CloudEvents attributes
-  time: string;
-  datacontenttype: "application/json";
-  subject: string;
-
-  // Event data
-  data: {
-    alert: TAlertInfo;
-    certificates: TCertificateData[];
-    metadata: {
-      totalCertificates: number;
-      viewUrl: string;
-    };
-  };
-};
+const PKI_WEBHOOK_TIMEOUT = 7 * 1000;
 
 // Base CloudEvents envelope fields
 type TPkiWebhookBase = Pick<TPkiWebhookPayload, "specversion" | "type" | "source" | "id" | "time" | "datacontenttype">;
