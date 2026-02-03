@@ -13,6 +13,105 @@ Within an organization, you can create any number of projects—each tied to a s
 
 ![organization](/images/platform/organization/organization.png)
 
+## Sub-Organizations
+
+<Info>
+  Sub-organizations is a paid feature. If you're using Infisical Cloud, then it
+  is available under the **Enterprise Tier**. If you're self-hosting Infisical,
+  then you should contact team@infisical.com to purchase an enterprise license
+  to use it.
+</Info>
+
+Sub-organizations allow large enterprises to create autonomous child organizations within a parent (root) organization. Each sub-organization operates like a regular organization—with its own projects, members, and settings—while sharing authentication and billing with the root organization.
+
+### When to Use Sub-Organizations
+
+Sub-organizations are ideal when you need to:
+
+- **Segment by business unit**: Give departments (Engineering, Sales, Marketing) independent project spaces
+- **Delegate administration**: Allow team leads to manage their own organization without root-level access
+- **Maintain clear boundaries**: Keep projects and resources isolated between teams while sharing a common user directory
+
+### Key Concepts
+
+**Root Organization**: The parent organization where authentication (SSO, SCIM, LDAP) and billing are configured. All users exist at this level.
+
+**Sub-Organization**: A child organization that can have its own projects, groups, and machine identities. Resources from the root organization can be added to sub-orgs, but resources created in sub-orgs cannot be accessed from the root or other sub-orgs.
+
+<Note>
+Currently, only one level of nesting is supported: root organization → sub-organizations. Sub-organizations cannot create their own sub-organizations.
+</Note>
+
+### Resource Model
+
+Resources from the root organization (users, groups, machine identities) can be added to sub-organizations, but resources never flow upward. Each sub-organization maintains its own isolated set of projects and app connections.
+
+Resources must be **explicitly added** to a sub-organization before they can be used within it.
+
+<Warning>
+The following can only be configured at the root organization level:
+- Authentication (SSO, SAML, OIDC, LDAP)
+- User provisioning (SCIM)
+- Billing and subscription management
+- GitHub organization sync
+</Warning>
+
+
+### Example Structure
+
+```mermaid
+graph TD
+    subgraph Root ["Acme Corp (Root Organization)"]
+        Auth["SSO / SCIM / Billing"]
+        Users["Users & Groups"]
+        RootProj["shared-services (Project)"]
+    end
+
+    subgraph SubEng ["Engineering (Sub-Organization)"]
+        EngProj1["backend-api (Project)"]
+        EngProj2["frontend-app (Project)"]
+    end
+
+    subgraph SubSales ["Sales (Sub-Organization)"]
+        SalesProj["crm-integration (Project)"]
+    end
+
+    Root --> SubEng
+    Root --> SubSales
+    Users -.->|Can be added| SubEng
+    Users -.->|Can be added| SubSales
+```
+
+In this setup:
+- All employees authenticate via Acme Corp's SSO configuration
+- The Engineering team manages their own projects independently
+- Engineering admins can add users from the root org to their sub-org
+- Sales cannot access Engineering's projects (and vice versa)
+- The `shared-services` project remains at the root organization level
+
+### Creating a Sub-Organization
+
+![sub-organization list](/images/platform/organization/sub-org-list.png)
+
+1. Navigate to **Organization Settings** → **Sub-Organizations**
+2. Click **Create Sub-Organization**
+3. Enter a name (this becomes the slug used in API calls)
+4. You are automatically assigned as Admin of the new sub-organization
+
+![create sub-organization](/images/platform/organization/sub-org-create.png)
+
+### Adding Resources to a Sub-Organization
+
+To use root organization resources in a sub-organization:
+
+1. Switch to the sub-organization
+2. Go to **Access Control** → **Users**, **Groups**, or **Machine Identities**
+3. Click **Add from Organization** and select the resources to include
+
+![add resources to sub-organization](/images/platform/organization/sub-org-add-resources.png)
+
+Once added, these resources can be assigned to projects within the sub-organization.
+
 ## Projects
 
 The _Projects_ tab shows a list of projects that you have access to.

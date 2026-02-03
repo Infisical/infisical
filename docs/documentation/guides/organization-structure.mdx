@@ -21,6 +21,13 @@ Infisical is designed to provide comprehensive, centralized, and efficient manag
     - In **self-hosted** setups, you can create multiple organizations (e.g., one for each department or business unit).
     - In **cloud-hosted deployments**, it's standard to use a single organization.
 
+### 1.5 Sub-Organizations (Enterprise)
+
+- **Definition**: [Sub-organizations](/documentation/platform/organization#sub-organizations) are optional child organizations within a root organization, allowing large enterprises to segment by business unit or team.
+- **Hierarchy**: Sub-organizations sit between organizations and projects. Each sub-org can have its own projects, groups, and machine identities.
+- **Resource Sharing**: Users, groups, and machine identities from the root organization can be added to sub-organizations. Resources flow downward only and must be explicitly added.
+- **Limitations**: Authentication (SSO, SCIM, LDAP) and billing are configured at the root organization level only.
+
 ### 2. Projects
 
 - **Definition and Role**: [Projects](/documentation/platform/project) are the highest-level construct within an [organization](/documentation/platform/organization) in Infisical. They serve as the primary container for all functionalities.
@@ -33,7 +40,7 @@ Infisical is designed to provide comprehensive, centralized, and efficient manag
 
 - **Purpose**: Environments are designed for organizing and compartmentalizing secrets within projects.
 - **Customization Options**: Environments can be tailored to align with existing infrastructure setups of any project. Default options include **Development**, **Staging**, and **Production**.
-- **Structure**: Each environment inherently has a root level for storing secrets, but additional sub-organizations can be created through [folders](/documentation/platform/folder) for better secret management.
+- **Structure**: Each environment inherently has a root level for storing secrets, and additional hierarchical layers can be created through [folders](/documentation/platform/folder) for better secret management.
 
 ### 4. Folders
 
