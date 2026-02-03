@@ -56,20 +56,33 @@ In the following steps, we explore how to create and use identities to access th
 
 <Steps>
     <Step title="Creating an identity">
-    To create an identity, head to your Organization Settings > Access Control > Identities and press **Create identity**.
+    You can create an identity either at the organization level or directly at the project level. For more details on the differences between these scopes, see [Machine Identities](/documentation/platform/identities/machine-identities).
 
-    ![identities organization](/images/platform/identities/identities-org.png)
+    <Tabs>
+        <Tab title="Organization Level">
+        To create an organization-level identity, head to your Organization Settings > Access Control > Identities and press **Create identity**.
 
-    When creating an identity, you specify an organization level [role](/documentation/platform/access-controls/role-based-access-controls) for it to assume; you can configure roles in Organization Settings > Access Control > Organization Roles.
+        ![identities organization](/images/platform/identities/identities-org.png)
 
-    ![identities organization create](/images/platform/identities/identities-org-create.png)
+        When creating an identity, you specify an organization level [role](/documentation/platform/access-controls/role-based-access-controls) for it to assume; you can configure roles in Organization Settings > Access Control > Organization Roles.
 
-    Now input a few details for your new identity. Here's some guidance for each field:
+        ![identities organization create](/images/platform/identities/identities-org-create.png)
 
-    - Name (required): A friendly name for the identity.
-    - Role (required): A role from the **Organization Roles** tab for the identity to assume. The organization role assigned will determine what organization level resources this identity can have access to.
+        Now input a few details for your new identity. Here's some guidance for each field:
 
-    Once you've created an identity, you'll be redirected to a page where you can manage the identity.
+        - Name (required): A friendly name for the identity.
+        - Role (required): A role from the **Organization Roles** tab for the identity to assume. The organization role assigned will determine what organization level resources this identity can have access to.
+
+        Once you've created an identity, you'll be redirected to a page where you can manage the identity.
+        </Tab>
+        <Tab title="Project Level">
+        To create a project-level identity, navigate to your Project > Access Control > Machine Identities and press **Create identity**.
+
+        Project-level identities are scoped to a single project and are useful for teams that manage their own workloads independently.
+
+        When creating a project-level identity, you specify a project-level role for it to assume.
+        </Tab>
+    </Tabs>
 
     ![identities page](/images/platform/identities/identities-page.png)
 
@@ -99,8 +112,12 @@ In the following steps, we explore how to create and use identities to access th
 
     </Step>
 
-    <Step title="Adding an identity to a project">
-    To enable the identity to access project-level resources such as secrets within a specific project, you should add it to that project.
+    <Step title="Adding an identity to a project (Organization-level identities only)">
+    <Note>
+    If you created a project-level identity in the previous step, you can skip this step as the identity is already scoped to your project.
+    </Note>
+
+    To enable an organization-level identity to access project-level resources such as secrets within a specific project, you should add it to that project.
 
     To do this, head over to the project you want to add the identity to and go to Project Settings > Access Control > Machine Identities and press **Add identity**.
 
