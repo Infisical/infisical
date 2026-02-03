@@ -25,6 +25,7 @@ import { Badge } from "@app/components/v3";
 import {
   PkiAlertChannelTypeV2,
   TPkiAlertChannelConfigEmail,
+  TPkiAlertChannelConfigSlack,
   TPkiAlertChannelConfigWebhookResponse,
   useGetPkiAlertV2ById,
   useGetPkiAlertV2MatchingCertificates
@@ -249,6 +250,13 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
                               <div className="mt-1 truncate text-sm text-mineshaft-400">
                                 {getWebhookHostname(
                                   (channel.config as TPkiAlertChannelConfigWebhookResponse).url
+                                )}
+                              </div>
+                            )}
+                            {channel.channelType === PkiAlertChannelTypeV2.SLACK && (
+                              <div className="mt-1 truncate text-sm text-mineshaft-400">
+                                {getWebhookHostname(
+                                  (channel.config as TPkiAlertChannelConfigSlack).webhookUrl
                                 )}
                               </div>
                             )}
