@@ -163,15 +163,7 @@ In the following steps, we explore how to configure GitHub Actions to authentica
       Together, the Subject and Audience settings make the trust relationship explicit. Only workflows that match the repository, context, and audience you've defined will be able to authenticate and fetch secrets.
     </Info>
   </Step>
-  <Step title="Add identity to project">
-    To enable the identity to access project-level resources (like secrets), add it to your project:
 
-    1. In your project, go to **Access Control** > **Machine Identities**
-    2. Click **Add identity**
-    3. Select the identity you created
-    4. Choose a project-level role that determines what project resources this identity can access
-    5. Click **Add identity**
-  </Step>
   <Step title="Copy the identity ID">
     After configuring OIDC authentication, Infisical provides an **Identity ID**. This is what you'll reference in your GitHub Actions workflow.
 
