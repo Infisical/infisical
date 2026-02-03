@@ -329,11 +329,10 @@
                   "self-hosting/deployment-options/linux-upgrade"
                 ]
               },
-              "self-hosting/guides/replication",
-              "self-hosting/guides/upgrading-infisical",
-              "self-hosting/configuration/envars",
-              "self-hosting/guides/releases",
-              "self-hosting/configuration/requirements",
+                            "self-hosting/guides/replication",
+                            "self-hosting/guides/upgrading-infisical",
+                            "self-hosting/configuration/envars",
+                            "self-hosting/configuration/requirements",
               {
                 "group": "Guides",
                 "pages": [
