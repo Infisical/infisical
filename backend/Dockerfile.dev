@@ -78,6 +78,9 @@ RUN mkdir -p /opt/oracle && \
 
 # ? App setup
 
+# Install smbclient for Windows SMB operations
+RUN apt-get update && apt-get install -y smbclient
+
 # Install Infisical CLI
 RUN curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash && \
     apt-get update && \

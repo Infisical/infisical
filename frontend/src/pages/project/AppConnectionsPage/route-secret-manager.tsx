@@ -1,19 +1,16 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { AppConnectionsPage } from "./AppConnectionsPage";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
+// Redirect old App Connections route to Integrations page with App Connections tab
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/app-connections"
 )({
-  component: AppConnectionsPage,
-  beforeLoad: ({ context }) => {
-    return {
-      breadcrumbs: [
-        ...context.breadcrumbs,
-        {
-          label: "App Connections"
-        }
-      ]
-    };
+  beforeLoad: ({ params: { orgId, projectId } }) => {
+    throw redirect({
+      to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
+      params: { orgId, projectId },
+      search: { selectedTab: IntegrationsListPageTabs.AppConnections }
+    });
   }
 });

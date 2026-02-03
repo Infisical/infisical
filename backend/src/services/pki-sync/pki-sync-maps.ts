@@ -7,7 +7,8 @@ export const PKI_SYNC_NAME_MAP: Record<PkiSync, string> = {
   [PkiSync.AwsCertificateManager]: "AWS Certificate Manager",
   [PkiSync.AwsSecretsManager]: "AWS Secrets Manager",
   [PkiSync.AwsElasticLoadBalancer]: "AWS Elastic Load Balancer",
-  [PkiSync.Chef]: "Chef"
+  [PkiSync.Chef]: "Chef",
+  [PkiSync.CloudflareCustomCertificate]: "Cloudflare Custom SSL Certificate"
 };
 
 export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
@@ -15,5 +16,6 @@ export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
   [PkiSync.AwsCertificateManager]: AppConnection.AWS,
   [PkiSync.AwsSecretsManager]: AppConnection.AWS,
   [PkiSync.AwsElasticLoadBalancer]: AppConnection.AWS,
-  [PkiSync.Chef]: AppConnection.Chef
+  [PkiSync.Chef]: AppConnection.Chef,
+  [PkiSync.CloudflareCustomCertificate]: AppConnection.Cloudflare
 };

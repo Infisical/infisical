@@ -200,6 +200,22 @@ export type TSshConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.SSH;
 };
 
+export type TDbtConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Dbt;
+};
+
+export type TSmbConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.SMB;
+};
+
+export type TOpenRouterConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.OpenRouter;
+};
+
+export type TCircleCISyncConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.CircleCI;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -239,6 +255,8 @@ export type TAppConnectionOption =
   | TNetlifyConnectionOption
   | TNorthflankConnectionOption
   | TOktaConnectionOption
+  | TOpenRouterConnectionOption
+  | TCircleCISyncConnectionOption
   | TAzureAdCsConnectionOption
   | TLaravelForgeConnectionOption
   | TRedisConnectionOption
@@ -246,7 +264,9 @@ export type TAppConnectionOption =
   | TChefConnectionOption
   | TDNSMadeEasyConnectionOption
   | TOctopusDeployConnectionOption
-  | TSshConnectionOption;
+  | TSshConnectionOption
+  | TDbtConnectionOption
+  | TSmbConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -288,6 +308,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Netlify]: TNetlifyConnectionOption;
   [AppConnection.Northflank]: TNorthflankConnectionOption;
   [AppConnection.Okta]: TOktaConnectionOption;
+  [AppConnection.OpenRouter]: TOpenRouterConnectionOption;
   [AppConnection.AzureADCS]: TAzureAdCsConnectionOption;
   [AppConnection.Redis]: TRedisConnectionOption;
   [AppConnection.MongoDB]: TMongoDBConnectionOption;
@@ -295,4 +316,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Chef]: TChefConnectionOption;
   [AppConnection.OctopusDeploy]: TOctopusDeployConnectionOption;
   [AppConnection.SSH]: TSshConnectionOption;
+  [AppConnection.Dbt]: TDbtConnectionOption;
+  [AppConnection.SMB]: TSmbConnectionOption;
+  [AppConnection.CircleCI]: TCircleCISyncConnectionOption;
 };

@@ -13,6 +13,7 @@ type AlgorithmSelectorsProps = {
   availableKeyAlgorithms: AlgorithmOption[];
   signatureError?: string;
   keyError?: string;
+  shouldUnregister?: boolean;
 };
 
 export const AlgorithmSelectors = ({
@@ -20,7 +21,8 @@ export const AlgorithmSelectors = ({
   availableSignatureAlgorithms,
   availableKeyAlgorithms,
   signatureError,
-  keyError
+  keyError,
+  shouldUnregister
 }: AlgorithmSelectorsProps) => {
   return (
     <div className="grid grid-cols-2 gap-4">
@@ -28,6 +30,7 @@ export const AlgorithmSelectors = ({
         <Controller
           control={control}
           name="signatureAlgorithm"
+          shouldUnregister={shouldUnregister}
           render={({ field: { onChange, ...field } }) => (
             <FormControl
               label="Signature Algorithm"
@@ -62,6 +65,7 @@ export const AlgorithmSelectors = ({
         <Controller
           control={control}
           name="keyAlgorithm"
+          shouldUnregister={shouldUnregister}
           render={({ field: { onChange, ...field } }) => (
             <FormControl
               label="Key Algorithm"

@@ -15,8 +15,7 @@ import { TCertificateAuthorityCrlServiceFactory } from "@app/ee/services/certifi
 import { TCertificateEstServiceFactory } from "@app/ee/services/certificate-est/certificate-est-service";
 import { TDynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-types";
 import { TDynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-types";
-import { TEventBusService } from "@app/ee/services/event/event-bus-service";
-import { TServerSentEventsService } from "@app/ee/services/event/event-sse-service";
+import { TEventBusService as TInternalEventBusService } from "@app/ee/services/event-bus";
 import { TExternalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -36,6 +35,8 @@ import { TPamSessionServiceFactory } from "@app/ee/services/pam-session/pam-sess
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TPitServiceFactory } from "@app/ee/services/pit/pit-service";
 import { TPkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-types";
+import { TProjectEventsService } from "@app/ee/services/project-events/project-events-service";
+import { TProjectEventsSSEService } from "@app/ee/services/project-events/project-events-sse-service";
 import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-types";
 import { RateLimitConfiguration, TRateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-types";
 import { TRelayServiceFactory } from "@app/ee/services/relay/relay-service";
@@ -55,6 +56,7 @@ import { TSshHostGroupServiceFactory } from "@app/ee/services/ssh-host-group/ssh
 import { TSubOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
 import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-types";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
+import { TAccountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { TAdditionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
 import { TApiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -241,6 +243,7 @@ declare module "fastify" {
     services: {
       login: TAuthLoginFactory;
       password: TAuthPasswordFactory;
+      accountRecovery: TAccountRecoveryServiceFactory;
       signup: TAuthSignupFactory;
       authToken: TAuthTokenServiceFactory;
       permission: TPermissionServiceFactory;
@@ -349,8 +352,9 @@ declare module "fastify" {
       internalCertificateAuthority: TInternalCertificateAuthorityServiceFactory;
       pkiTemplate: TPkiTemplatesServiceFactory;
       reminder: TReminderServiceFactory;
-      bus: TEventBusService;
-      sse: TServerSentEventsService;
+      eventBus: TInternalEventBusService;
+      projectEvents: TProjectEventsService;
+      projectEventsSSE: TProjectEventsSSEService;
       identityAuthTemplate: TIdentityAuthTemplateServiceFactory;
       notification: TNotificationServiceFactory;
       offlineUsageReport: TOfflineUsageReportServiceFactory;

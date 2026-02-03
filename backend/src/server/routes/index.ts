@@ -47,8 +47,7 @@ import { buildDynamicSecretProviders } from "@app/ee/services/dynamic-secret/pro
 import { dynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import { dynamicSecretLeaseQueueServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-queue";
 import { dynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-service";
-import { eventBusFactory } from "@app/ee/services/event/event-bus-service";
-import { sseServiceFactory } from "@app/ee/services/event/event-sse-service";
+import { eventBusServiceFactory } from "@app/ee/services/event-bus/event-bus-service";
 import { externalKmsDALFactory } from "@app/ee/services/external-kms/external-kms-dal";
 import { externalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
 import { gatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
@@ -99,6 +98,8 @@ import { pkiAcmeOrderAuthDALFactory } from "@app/ee/services/pki-acme/pki-acme-o
 import { pkiAcmeOrderDALFactory } from "@app/ee/services/pki-acme/pki-acme-order-dal";
 import { pkiAcmeQueueServiceFactory } from "@app/ee/services/pki-acme/pki-acme-queue";
 import { pkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-service";
+import { projectEventsServiceFactory } from "@app/ee/services/project-events/project-events-service";
+import { projectEventsSSEServiceFactory } from "@app/ee/services/project-events/project-events-sse-service";
 import { projectTemplateDALFactory } from "@app/ee/services/project-template/project-template-dal";
 import { projectTemplateGroupMembershipDALFactory } from "@app/ee/services/project-template/project-template-group-membership-dal";
 import { projectTemplateIdentityMembershipDALFactory } from "@app/ee/services/project-template/project-template-identity-membership-dal";
@@ -173,6 +174,7 @@ import { TQueueServiceFactory } from "@app/queue";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { registerSecretScanningV2Webhooks } from "@app/server/plugins/secret-scanner-v2";
 import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue/access-token-queue";
+import { accountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { additionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
 import { apiKeyDALFactory } from "@app/services/api-key/api-key-dal";
@@ -620,8 +622,11 @@ export const registerRoutes = async (
 
   const vaultExternalMigrationConfigDAL = vaultExternalMigrationConfigDALFactory(db);
 
-  const eventBusService = eventBusFactory(server.redis);
-  const sseService = sseServiceFactory(eventBusService, server.redis);
+  // New event bus for inter-container communication
+  const eventBusService = eventBusServiceFactory({ redis: server.redis });
+
+  // Project events service (publishes via event bus for inter-container communication)
+  const projectEventsService = projectEventsServiceFactory({ eventBus: eventBusService });
 
   const permissionService = permissionServiceFactory({
     permissionDAL,
@@ -645,6 +650,14 @@ export const registerRoutes = async (
     keyStore,
     projectDAL,
     envConfig
+  });
+
+  // Project events SSE service (for clients to subscribe to secret mutation events)
+  const projectEventsSSEService = projectEventsSSEServiceFactory({
+    projectEventsService,
+    permissionService,
+    licenseService,
+    keyStore
   });
 
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL, orgDAL });
@@ -955,7 +968,13 @@ export const registerRoutes = async (
     smtpService,
     authDAL,
     userDAL,
-    totpConfigDAL,
+    totpConfigDAL
+  });
+
+  const accountRecoveryService = accountRecoveryServiceFactory({
+    tokenService,
+    smtpService,
+    userDAL,
     membershipUserDAL
   });
 
@@ -1394,11 +1413,11 @@ export const registerRoutes = async (
     folderCommitService,
     secretSyncQueue,
     reminderService,
-    eventBusService,
     licenseService,
     membershipRoleDAL,
     membershipUserDAL,
-    telemetryService
+    telemetryService,
+    projectEventsService
   });
 
   const projectService = projectServiceFactory({
@@ -2677,6 +2696,7 @@ export const registerRoutes = async (
   server.decorate<FastifyZodProvider["services"]>("services", {
     login: loginService,
     password: passwordService,
+    accountRecovery: accountRecoveryService,
     signup: signupService,
     user: userService,
     group: groupService,
@@ -2787,8 +2807,9 @@ export const registerRoutes = async (
     folderCommit: folderCommitService,
     secretScanningV2: secretScanningV2Service,
     reminder: reminderService,
-    bus: eventBusService,
-    sse: sseService,
+    eventBus: eventBusService,
+    projectEvents: projectEventsService,
+    projectEventsSSE: projectEventsSSEService,
     notification: notificationService,
     pamFolder: pamFolderService,
     pamResource: pamResourceService,
@@ -2947,6 +2968,6 @@ export const registerRoutes = async (
     cronJobs.forEach((job) => job.stop());
     await telemetryService.flushAll();
     await eventBusService.close();
-    sseService.close();
+    await projectEventsSSEService.close();
   });
 };

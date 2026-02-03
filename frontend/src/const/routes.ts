@@ -13,7 +13,10 @@ export const ROUTE_PATHS = Object.freeze({
       "/_restrict-login-signup/login/provider/success"
     ),
     SignUpSsoPage: setRoute("/signup/sso", "/_restrict-login-signup/signup/sso"),
-    PasswordResetPage: setRoute("/password-reset", "/_restrict-login-signup/password-reset"),
+    AccountRecoveryResetPage: setRoute(
+      "/account-recovery-reset",
+      "/_restrict-login-signup/account-recovery-reset"
+    ),
     PasswordSetupPage: setRoute("/password-setup", "/_authenticate/password-setup")
   },
   Admin: {
@@ -324,6 +327,10 @@ export const ROUTE_PATHS = Object.freeze({
     PkiSyncDetailsByIDPage: setRoute(
       "/organizations/$orgId/projects/cert-manager/$projectId/integrations/$syncId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/integrations/$syncId"
+    ),
+    CertificateDetailsByIDPage: setRoute(
+      "/organizations/$orgId/projects/cert-manager/$projectId/certificates/$certificateId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificates/$certificateId"
     )
   },
   Ssh: {

@@ -4,7 +4,7 @@ export const RotationsBrowser = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const categories = ["All", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS"];
+  const categories = ["All", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS", "Data Analytics"];
 
   const rotations = [
     {
@@ -29,6 +29,13 @@ export const RotationsBrowser = () => {
       description:
         "Learn how to automatically rotate Databricks service principal OAuth secrets.",
       category: "Cloud Providers",
+    },
+    {
+      name: "DBT Service Token",
+      slug: "dbt-service-token",
+      path: "/documentation/platform/secret-rotation/dbt-service-token",
+      description: "Learn how to automatically rotate DBT service tokens.",
+      category: "Data Analytics",
     },
     {
       name: "Auth0 Client Secret",
@@ -104,6 +111,21 @@ export const RotationsBrowser = () => {
       path: "/documentation/platform/secret-rotation/mongodb-credentials",
       description: "Learn how to automatically rotate MongoDB credentials.",
       category: "Databases",
+    },
+    {
+      name: "Windows Local Account",
+      slug: "windows-local-account",
+      path: "/documentation/platform/secret-rotation/windows-local-account",
+      description: "Learn how to automatically rotate Windows local account passwords.",
+      category: "Networking & DNS",
+    },
+    {
+      name: "OpenRouter API Key",
+      slug: "openrouter-api-key",
+      path: "/documentation/platform/secret-rotation/openrouter-api-key",
+      description:
+        "Learn how to automatically rotate OpenRouter API keys.",
+      category: "AI & LLM",
     },
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());

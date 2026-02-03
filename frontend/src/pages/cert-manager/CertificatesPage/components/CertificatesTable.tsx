@@ -15,6 +15,7 @@ import {
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
@@ -53,6 +54,7 @@ import {
   ProjectPermissionCertificateActions,
   ProjectPermissionPkiSyncActions,
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useProjectPermission
 } from "@app/context";
@@ -65,7 +67,7 @@ import { CertStatus } from "@app/hooks/api/certificates/enums";
 import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import { getCertValidUntilBadgeDetails } from "./CertificatesTable.utils";
+import { getCertValidUntilBadgeDetails, isExpiringWithinOneDay } from "./CertificatesTable.utils";
 
 enum CertificateStatus {
   Active = "active",
@@ -75,13 +77,6 @@ enum CertificateStatus {
 
 type CertificateFilters = {
   status?: CertificateStatus;
-};
-
-const isExpiringWithinOneDay = (notAfter: string): boolean => {
-  const expiryDate = new Date(notAfter);
-  const now = new Date();
-  const oneDayFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  return expiryDate <= oneDayFromNow;
 };
 
 type Props = {
@@ -139,6 +134,8 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
     return () => clearTimeout(timeoutId);
   }, [pendingSearch]);
 
+  const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
 
@@ -406,7 +403,20 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                 const { originalDisplayName } = getCertificateDisplayName(certificate, 64, "—");
 
                 return (
-                  <Tr className="group h-10" key={`certificate-${certificate.id}`}>
+                  <Tr
+                    className="group h-10 cursor-pointer hover:bg-mineshaft-700"
+                    key={`certificate-${certificate.id}`}
+                    onClick={() => {
+                      navigate({
+                        to: "/organizations/$orgId/projects/cert-manager/$projectId/certificates/$certificateId",
+                        params: {
+                          orgId: currentOrg.id,
+                          projectId: currentProject.id,
+                          certificateId: certificate.id
+                        }
+                      });
+                    }}
+                  >
                     <Td className="max-w-0">
                       <CertificateDisplayName cert={certificate} maxLength={64} fallback="—" />
                     </Td>
@@ -533,12 +543,13 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                                 className={twMerge(
                                   !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                                 )}
-                                onClick={async () =>
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   handlePopUpOpen("certificateExport", {
                                     certificateId: certificate.id,
                                     serialNumber: certificate.serialNumber
-                                  })
-                                }
+                                  });
+                                }}
                                 disabled={!isAllowed}
                                 icon={<FontAwesomeIcon icon={faFileExport} />}
                               >
@@ -562,11 +573,12 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                                     !isAllowed &&
                                       "pointer-events-none cursor-not-allowed opacity-50"
                                   )}
-                                  onClick={async () =>
-                                    handlePopUpOpen("issueCertificate", {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePopUpOpen("certificateCert", {
                                       serialNumber: certificate.serialNumber
-                                    })
-                                  }
+                                    });
+                                  }}
                                   disabled={!isAllowed}
                                   icon={<FontAwesomeIcon icon={faEye} />}
                                 >
@@ -604,7 +616,8 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                                         !isAllowed &&
                                           "pointer-events-none cursor-not-allowed opacity-50"
                                       )}
-                                      onClick={async () => {
+                                      onClick={(e) => {
+                                        e.stopPropagation();
                                         const notAfterDate = new Date(certificate.notAfter);
                                         const notBeforeDate = certificate.notBefore
                                           ? new Date(certificate.notBefore)
@@ -671,7 +684,8 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                                       !isAllowed &&
                                         "pointer-events-none cursor-not-allowed opacity-50"
                                     )}
-                                    onClick={async () => {
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
                                       await handleDisableAutoRenewal(
                                         certificate.id,
                                         certificate.commonName
@@ -712,7 +726,8 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                                       !isAllowed &&
                                         "pointer-events-none cursor-not-allowed opacity-50"
                                     )}
-                                    onClick={async () => {
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       handlePopUpOpen("renewCertificate", {
                                         certificateId: certificate.id,
                                         commonName: certificate.commonName
@@ -739,12 +754,13 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                                       !isAllowed &&
                                         "pointer-events-none cursor-not-allowed opacity-50"
                                     )}
-                                    onClick={async () =>
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       handlePopUpOpen("managePkiSyncs", {
                                         certificateId: certificate.id,
                                         commonName: certificate.commonName
-                                      })
-                                    }
+                                      });
+                                    }}
                                     disabled={!isAllowed}
                                     icon={<FontAwesomeIcon icon={faLink} />}
                                   >
@@ -779,11 +795,12 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                                       !isAllowed &&
                                         "pointer-events-none cursor-not-allowed opacity-50"
                                     )}
-                                    onClick={async () =>
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       handlePopUpOpen("revokeCertificate", {
                                         certificateId: certificate.id
-                                      })
-                                    }
+                                      });
+                                    }}
                                     disabled={!isAllowed}
                                     icon={<FontAwesomeIcon icon={faBan} />}
                                   >
@@ -807,12 +824,13 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                                 className={twMerge(
                                   !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                                 )}
-                                onClick={async () =>
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   handlePopUpOpen("deleteCertificate", {
                                     certificateId: certificate.id,
                                     commonName: certificate.commonName
-                                  })
-                                }
+                                  });
+                                }}
                                 disabled={!isAllowed}
                                 icon={<FontAwesomeIcon icon={faTrash} />}
                               >

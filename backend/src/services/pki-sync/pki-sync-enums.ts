@@ -3,7 +3,8 @@ export enum PkiSync {
   AwsCertificateManager = "aws-certificate-manager",
   AwsSecretsManager = "aws-secrets-manager",
   AwsElasticLoadBalancer = "aws-elastic-load-balancer",
-  Chef = "chef"
+  Chef = "chef",
+  CloudflareCustomCertificate = "cloudflare-custom-certificate"
 }
 
 export enum PkiSyncStatus {

@@ -12,7 +12,7 @@ Each permission consists of:
 - **Subject**: The resource the permission applies to (e.g., secrets, members, settings)
 - **Action**: The operation that can be performed (e.g., read, create, edit, delete)
 
-Some project-level resources—specifically `secrets`, `secret-folders`, `secret-imports`, `dynamic-secrets`, and `secret-syncs`, support conditional permissions and permission inversion for more granular access control. Conditions allow you to specify criteria (like environment, secret path, or tags) that must be met for the permission to apply.
+Some project-level resources—specifically `secrets`, `secret-folders`, `secret-imports`, `dynamic-secrets`, `secret-syncs`, and `secret-rotation`, support conditional permissions and permission inversion for more granular access control. Conditions allow you to specify criteria (like environment, secret path, tags, or app connection ID) that must be met for the permission to apply.
 
 ## Available Project Permissions
 
@@ -181,14 +181,14 @@ Supports conditions and permission inversion
 | `edit` | Modify secret imports |
 | `delete` | Remove secret imports |
 
-#### Subject: `secret-events`
+#### Subject: `secret-event-subscriptions`
 
 | Action                          | Description                                                   |
 | ------------------------------- | ------------------------------------------------------------- |
-| `subscribe-on-created`          | Subscribe to events when secrets are created                  |
-| `subscribe-on-updated`          | Subscribe to events when secrets are updated                  |
-| `subscribe-on-deleted`          | Subscribe to events when secrets are deleted                  |
-| `subscribe-on-import-mutations` | Subscribe to events when secrets are modified through imports |
+| `subscribe-to-creation-events`          | Subscribe to events when secrets are created                  |
+| `subscribe-to-update-events`          | Subscribe to events when secrets are updated                  |
+| `subscribe-to-deletion-events`          | Subscribe to events when secrets are deleted                  |
+| `subscribe-to-import-mutation-events` | Subscribe to events when secrets are modified through imports |
 
 #### Subject: `secret-rollback`
 
@@ -218,6 +218,7 @@ Supports conditions and permission inversion
 #### Subject: `secret-rotation`
 
 Supports conditions and permission inversion
+
 | Action | Description |
 | ------------------------------ | ---------------------------------------------- |
 | `read` | View secret rotation configurations |
@@ -226,6 +227,11 @@ Supports conditions and permission inversion
 | `edit` | Modify secret rotation configurations |
 | `rotate-secrets` | Rotate the generated credentials of a rotation |
 | `delete` | Remove secret rotation configurations |
+
+**Condition Properties:**
+- `environment` – Restrict by environment slug
+- `secretPath` – Restrict by secret path
+- `connectionId` – Restrict by app connection ID (e.g. to allow or deny access to rotations tied to a specific org-level app connection)
 
 #### Subject: `secret-syncs`
 
@@ -240,6 +246,11 @@ Supports conditions and permission inversion.
 | `sync-secrets`   | Execute synchronization of secrets between systems |
 | `import-secrets` | Import secrets from sync sources                   |
 | `remove-secrets` | Remove secrets from sync destinations              |
+
+**Condition Properties:**
+- `environment` – Restrict by environment slug
+- `secretPath` – Restrict by secret path
+- `connectionId` – Restrict by app connection ID (e.g. to allow or deny access to syncs tied to a specific org-level app connection)
 
 #### Subject: `dynamic-secrets`
 

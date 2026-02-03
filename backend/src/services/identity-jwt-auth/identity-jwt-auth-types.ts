@@ -49,5 +49,5 @@ export type TRevokeJwtAuthDTO = {
 export type TLoginJwtAuthDTO = {
   identityId: string;
   jwt: string;
-  subOrganizationName?: string;
+  organizationSlug?: string;
 };

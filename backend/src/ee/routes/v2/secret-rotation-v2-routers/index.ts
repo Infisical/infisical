@@ -4,15 +4,18 @@ import { registerAuth0ClientSecretRotationRouter } from "./auth0-client-secret-r
 import { registerAwsIamUserSecretRotationRouter } from "./aws-iam-user-secret-rotation-router";
 import { registerAzureClientSecretRotationRouter } from "./azure-client-secret-rotation-router";
 import { registerDatabricksServicePrincipalSecretRotationRouter } from "./databricks-service-principal-secret-rotation-router";
+import { registerDbtServiceTokenRotationRouter } from "./dbt-service-token-rotation-router";
 import { registerLdapPasswordRotationRouter } from "./ldap-password-rotation-router";
 import { registerMongoDBCredentialsRotationRouter } from "./mongodb-credentials-rotation-router";
 import { registerMsSqlCredentialsRotationRouter } from "./mssql-credentials-rotation-router";
 import { registerMySqlCredentialsRotationRouter } from "./mysql-credentials-rotation-router";
 import { registerOktaClientSecretRotationRouter } from "./okta-client-secret-rotation-router";
+import { registerOpenRouterApiKeyRotationRouter } from "./open-router-api-key-rotation-router";
 import { registerOracleDBCredentialsRotationRouter } from "./oracledb-credentials-rotation-router";
 import { registerPostgresCredentialsRotationRouter } from "./postgres-credentials-rotation-router";
 import { registerRedisCredentialsRotationRouter } from "./redis-credentials-rotation-router";
 import { registerUnixLinuxLocalAccountRotationRouter } from "./unix-linux-local-account-rotation-router";
+import { registerWindowsLocalAccountRotationRouter } from "./windows-local-account-rotation-router";
 
 export * from "./secret-rotation-v2-router";
 
@@ -32,5 +35,8 @@ export const SECRET_ROTATION_REGISTER_ROUTER_MAP: Record<
   [SecretRotation.RedisCredentials]: registerRedisCredentialsRotationRouter,
   [SecretRotation.MongoDBCredentials]: registerMongoDBCredentialsRotationRouter,
   [SecretRotation.DatabricksServicePrincipalSecret]: registerDatabricksServicePrincipalSecretRotationRouter,
-  [SecretRotation.UnixLinuxLocalAccount]: registerUnixLinuxLocalAccountRotationRouter
+  [SecretRotation.UnixLinuxLocalAccount]: registerUnixLinuxLocalAccountRotationRouter,
+  [SecretRotation.DbtServiceToken]: registerDbtServiceTokenRotationRouter,
+  [SecretRotation.WindowsLocalAccount]: registerWindowsLocalAccountRotationRouter,
+  [SecretRotation.OpenRouterApiKey]: registerOpenRouterApiKeyRotationRouter
 };

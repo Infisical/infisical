@@ -1,0 +1,111 @@
+---
+title: "DBT Connection"
+description: "Learn how to configure a DBT Connection for Infisical."
+---
+
+Infisical supports the use of [Personal Access Tokens](https://docs.getdbt.com/docs/dbt-cloud-apis/user-tokens) to connect with DBT.
+
+## Create DBT Personal Access Token
+
+<Steps>
+    <Step title="Open DBT Account Settings">
+        On your DBT dashboard, press the organization name in the bottom left corner, and press **Account Settings**.
+
+        ![DBT Account Settings](/images/app-connections/dbt/account-settings.png)
+    </Step>
+    <Step title="Create Personal Access Token">
+        Click on the **Personal Access Tokens** tab and click **Create personal access token**.
+
+        ![Create Personal Access Token](/images/app-connections/dbt/create-token.png)
+    </Step>
+    <Step title="Enter Token Name">
+        Enter a descriptive name for the token and click **Save**.
+
+        ![Enter Token Name](/images/app-connections/dbt/token-details.png)
+    </Step>
+    <Step title="Copy Token">
+        Copy the token from the modal for later steps.
+
+        ![Copy Token](/images/app-connections/dbt/copy-token.png)
+    </Step>
+</Steps>
+
+## Create DBT Connection in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Navigate to App Connections">
+                In your Infisical dashboard, navigate to the **App Connections** page in the desired project.
+
+                ![App Connections Tab](/images/app-connections/general/add-connection.png)
+            </Step>
+            <Step title="Select DBT Connection">
+                Click the **Add Connection** button and select **DBT** from the list of available connections.
+
+                ![Select DBT Connection](/images/app-connections/dbt/select-dbt-connection.png)
+            </Step>
+            <Step title="Fill out Connection Modal">
+                Complete the DBT Connection form by entering:
+                - A descriptive name for the connection
+                - An optional description for future reference
+                - Your DBT instance URL
+                - Your DBT account ID
+                - The Personal Access Token from earlier steps
+
+                ![Connection Modal](/images/app-connections/dbt/connection-modal.png)
+            </Step>
+            <Step title="Connection Created">
+                After clicking Create, your **DBT Connection** is established and ready to use with your Infisical project.
+
+                ![Connection Created](/images/app-connections/dbt/connection-created.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create a DBT Connection, make an API request to the [Create DBT Connection](/api-reference/endpoints/app-connections/dbt/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+                --url https://app.infisical.com/api/v1/app-connections/dbt \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-dbt-connection",
+                    "method": "api-token",
+                    "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+                    "credentials": {
+                        "instanceUrl": "https://example.dbt.com",
+                        "accountId": "<YOUR-ACCOUNT-ID>",
+                        "apiToken": "<YOUR-API-TOKEN>"
+                    }
+                }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+          "appConnection": {
+              "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
+              "name": "my-dbt-connection",
+              "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+              "description": null,
+              "version": 1,
+              "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+              "createdAt": "2025-04-23T19:46:34.831Z",
+              "updatedAt": "2025-04-23T19:46:34.831Z",
+              "isPlatformManagedCredentials": false,
+              "credentialsHash": "7c2d371dec195f82a6a0d5b41c970a229cfcaf88e894a5b6395e2dbd0280661f",
+              "app": "dbt",
+              "method": "api-token",
+              "credentials": {
+                  "instanceUrl": "https://example.dbt.com",
+                  "accountId": "<YOUR-ACCOUNT-ID>"
+              }
+          }
+        }
+        ```
+    </Tab>
+</Tabs>

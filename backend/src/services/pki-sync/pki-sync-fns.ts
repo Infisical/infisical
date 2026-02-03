@@ -18,6 +18,8 @@ import { AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION } from "./azure-key-vault/azure-ke
 import { azureKeyVaultPkiSyncFactory } from "./azure-key-vault/azure-key-vault-pki-sync-fns";
 import { chefPkiSyncFactory } from "./chef/chef-pki-sync-fns";
 import { CHEF_PKI_SYNC_LIST_OPTION } from "./chef/chef-pki-sync-list-constants";
+import { CLOUDFLARE_CUSTOM_CERTIFICATE_PKI_SYNC_LIST_OPTION } from "./cloudflare-custom-certificate/cloudflare-custom-certificate-pki-sync-constants";
+import { cloudflareCustomCertificatePkiSyncFactory } from "./cloudflare-custom-certificate/cloudflare-custom-certificate-pki-sync-fns";
 import { PkiSync } from "./pki-sync-enums";
 import { TCertificateMap, TPkiSyncWithCredentials } from "./pki-sync-types";
 
@@ -28,7 +30,8 @@ const PKI_SYNC_LIST_OPTIONS = {
   [PkiSync.AwsCertificateManager]: AWS_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION,
   [PkiSync.AwsSecretsManager]: AWS_SECRETS_MANAGER_PKI_SYNC_LIST_OPTION,
   [PkiSync.AwsElasticLoadBalancer]: AWS_ELASTIC_LOAD_BALANCER_PKI_SYNC_LIST_OPTION,
-  [PkiSync.Chef]: CHEF_PKI_SYNC_LIST_OPTION
+  [PkiSync.Chef]: CHEF_PKI_SYNC_LIST_OPTION,
+  [PkiSync.CloudflareCustomCertificate]: CLOUDFLARE_CUSTOM_CERTIFICATE_PKI_SYNC_LIST_OPTION
 };
 
 export const enterprisePkiSyncCheck = async (
@@ -199,6 +202,11 @@ export const PkiSyncFns = {
           "AWS Elastic Load Balancer does not support importing certificates into Infisical (certificates are stored in ACM)"
         );
       }
+      case PkiSync.CloudflareCustomCertificate: {
+        throw new Error(
+          "Cloudflare Custom SSL Certificate does not support importing certificates into Infisical (private keys cannot be extracted)"
+        );
+      }
       default:
         throw new Error(`Unsupported PKI sync destination: ${String(pkiSync.destination)}`);
     }
@@ -271,6 +279,14 @@ export const PkiSyncFns = {
           certificateSyncDAL: dependencies.certificateSyncDAL
         });
         return awsElasticLoadBalancerPkiSync.syncCertificates(pkiSync, certificateMap);
+      }
+      case PkiSync.CloudflareCustomCertificate: {
+        checkPkiSyncDestination(pkiSync, PkiSync.CloudflareCustomCertificate as PkiSync);
+        const cloudflareCustomCertificatePkiSync = cloudflareCustomCertificatePkiSyncFactory({
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL
+        });
+        return cloudflareCustomCertificatePkiSync.syncCertificates(pkiSync, certificateMap);
       }
       default:
         throw new Error(`Unsupported PKI sync destination: ${String(pkiSync.destination)}`);
@@ -347,6 +363,18 @@ export const PkiSyncFns = {
           certificateSyncDAL: dependencies.certificateSyncDAL
         });
         await awsElasticLoadBalancerPkiSync.removeCertificates(pkiSync, certificateNames, {
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          certificateMap: dependencies.certificateMap
+        });
+        break;
+      }
+      case PkiSync.CloudflareCustomCertificate: {
+        checkPkiSyncDestination(pkiSync, PkiSync.CloudflareCustomCertificate as PkiSync);
+        const cloudflareCustomCertificatePkiSync = cloudflareCustomCertificatePkiSyncFactory({
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL
+        });
+        await cloudflareCustomCertificatePkiSync.removeCertificates(pkiSync, certificateNames, {
           certificateSyncDAL: dependencies.certificateSyncDAL,
           certificateMap: dependencies.certificateMap
         });

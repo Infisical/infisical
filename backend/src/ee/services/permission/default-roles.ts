@@ -80,7 +80,7 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionCertificateAuthorityActions.Create,
       ProjectPermissionCertificateAuthorityActions.Edit,
       ProjectPermissionCertificateAuthorityActions.Delete,
-      ProjectPermissionCertificateAuthorityActions.Renew,
+      ProjectPermissionCertificateAuthorityActions.IssueCACertificate,
       ProjectPermissionCertificateAuthorityActions.SignIntermediate
     ],
     ProjectPermissionSub.CertificateAuthorities
@@ -324,12 +324,12 @@ const buildAdminPermissionRules = () => {
 
   can(
     [
-      ProjectPermissionSecretEventActions.SubscribeCreated,
-      ProjectPermissionSecretEventActions.SubscribeDeleted,
-      ProjectPermissionSecretEventActions.SubscribeUpdated,
-      ProjectPermissionSecretEventActions.SubscribeImportMutations
+      ProjectPermissionSecretEventActions.SubscribeToCreationEvents,
+      ProjectPermissionSecretEventActions.SubscribeToDeleteEvents,
+      ProjectPermissionSecretEventActions.SubscribeToUpdateEvents,
+      ProjectPermissionSecretEventActions.SubscribeToImportMutationEvents
     ],
-    ProjectPermissionSub.SecretEvents
+    ProjectPermissionSub.SecretEventSubscriptions
   );
 
   can(
@@ -606,12 +606,12 @@ const buildMemberPermissionRules = () => {
 
   can(
     [
-      ProjectPermissionSecretEventActions.SubscribeCreated,
-      ProjectPermissionSecretEventActions.SubscribeDeleted,
-      ProjectPermissionSecretEventActions.SubscribeUpdated,
-      ProjectPermissionSecretEventActions.SubscribeImportMutations
+      ProjectPermissionSecretEventActions.SubscribeToCreationEvents,
+      ProjectPermissionSecretEventActions.SubscribeToDeleteEvents,
+      ProjectPermissionSecretEventActions.SubscribeToUpdateEvents,
+      ProjectPermissionSecretEventActions.SubscribeToImportMutationEvents
     ],
-    ProjectPermissionSub.SecretEvents
+    ProjectPermissionSub.SecretEventSubscriptions
   );
 
   can(ProjectPermissionAppConnectionActions.Connect, ProjectPermissionSub.AppConnections);
@@ -685,12 +685,12 @@ const buildViewerPermissionRules = () => {
 
   can(
     [
-      ProjectPermissionSecretEventActions.SubscribeCreated,
-      ProjectPermissionSecretEventActions.SubscribeDeleted,
-      ProjectPermissionSecretEventActions.SubscribeUpdated,
-      ProjectPermissionSecretEventActions.SubscribeImportMutations
+      ProjectPermissionSecretEventActions.SubscribeToCreationEvents,
+      ProjectPermissionSecretEventActions.SubscribeToDeleteEvents,
+      ProjectPermissionSecretEventActions.SubscribeToUpdateEvents,
+      ProjectPermissionSecretEventActions.SubscribeToImportMutationEvents
     ],
-    ProjectPermissionSub.SecretEvents
+    ProjectPermissionSub.SecretEventSubscriptions
   );
 
   can([ProjectPermissionActions.Read], ProjectPermissionSub.PamFolders);
