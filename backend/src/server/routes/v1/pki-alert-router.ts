@@ -10,6 +10,7 @@ import {
   createSecureAlertBeforeValidator,
   PkiAlertChannelType,
   PkiAlertEventType,
+  PkiAlertRunStatus,
   PkiFilterRuleSchema,
   UpdatePkiAlertV2Schema
 } from "@app/services/pki-alert-v2/pki-alert-v2-types";
@@ -128,7 +129,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
               lastRun: z
                 .object({
                   timestamp: z.date(),
-                  status: z.enum(["success", "failed"]),
+                  status: z.nativeEnum(PkiAlertRunStatus),
                   error: z.string().nullable()
                 })
                 .nullable(),

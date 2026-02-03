@@ -1,7 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
@@ -19,7 +18,6 @@ import { parseTimeToDays, parseTimeToPostgresInterval } from "./pki-alert-v2-fil
 import {
   buildSlackPayload,
   buildWebhookPayload,
-  PkiWebhookEventType,
   triggerPkiWebhook,
   triggerSlackWebhook
 } from "./pki-alert-v2-notification-fns";
@@ -27,6 +25,8 @@ import {
   CertificateOrigin,
   PkiAlertChannelType,
   PkiAlertEventType,
+  PkiAlertRunStatus,
+  PkiWebhookEventType,
   TAlertV2Response,
   TCertificatePreview,
   TChannelConfig,
@@ -140,7 +140,7 @@ export const pkiAlertV2ServiceFactory = ({
       lastRun: alert.lastRunData
         ? {
             timestamp: alert.lastRunData.triggeredAt,
-            status: alert.lastRunData.hasNotificationSent ? ("success" as const) : ("failed" as const),
+            status: alert.lastRunData.hasNotificationSent ? PkiAlertRunStatus.SUCCESS : PkiAlertRunStatus.FAILED,
             error: alert.lastRunData.notificationError
           }
         : null,
@@ -184,12 +184,8 @@ export const pkiAlertV2ServiceFactory = ({
     for (const channel of channels) {
       if (channel.channelType === PkiAlertChannelType.WEBHOOK) {
         const webhookConfig = channel.config as TWebhookChannelConfig;
-        const webhookUrl = new URL(webhookConfig.url);
         // eslint-disable-next-line no-await-in-loop
-        await verifyHostInputValidity({
-          host: webhookUrl.hostname,
-          isDynamicSecret: false
-        });
+        await blockLocalAndPrivateIpAddresses(webhookConfig.url);
       }
     }
 
@@ -355,12 +351,8 @@ export const pkiAlertV2ServiceFactory = ({
       for (const channel of channels) {
         if (channel.channelType === PkiAlertChannelType.WEBHOOK) {
           const webhookConfig = channel.config as TWebhookChannelConfig;
-          const webhookUrl = new URL(webhookConfig.url);
           // eslint-disable-next-line no-await-in-loop
-          await verifyHostInputValidity({
-            host: webhookUrl.hostname,
-            isDynamicSecret: false
-          });
+          await blockLocalAndPrivateIpAddresses(webhookConfig.url);
         }
       }
     }
@@ -597,11 +589,7 @@ export const pkiAlertV2ServiceFactory = ({
     eventType: PkiWebhookEventType
   ) => {
     // Validate webhook URL to prevent SSRF
-    const webhookUrl = new URL(config.url);
-    await verifyHostInputValidity({
-      host: webhookUrl.hostname,
-      isDynamicSecret: false
-    });
+    await blockLocalAndPrivateIpAddresses(config.url);
 
     const appCfg = getConfig();
     const payload = buildWebhookPayload({
