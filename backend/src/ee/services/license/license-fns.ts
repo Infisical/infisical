@@ -73,7 +73,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   customRateLimits: false,
   subOrganization: false,
   customAlerts: false,
-  secretAccessInsights: true,
+  secretAccessInsights: false,
   auditLogs: false,
   auditLogsRetentionDays: 0,
   auditLogStreams: false,
@@ -88,8 +88,8 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   status: null,
   trial_end: null,
   has_used_trial: true,
-  secretApproval: true,
-  secretRotation: true,
+  secretApproval: false,
+  secretRotation: false,
   caCrl: false,
   instanceUserManagement: false,
   externalKms: false,
@@ -106,14 +106,14 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   gateway: false,
   sshHostGroups: false,
   secretScanning: false,
-  enterpriseSecretSyncs: true,
+  enterpriseSecretSyncs: false,
   enterpriseCertificateSyncs: false,
   enterpriseAppConnections: false,
   fips: false,
   eventSubscriptions: false,
   machineIdentityAuthTemplates: false,
   pkiLegacyTemplates: false,
-  secretShareExternalBranding: true
+  secretShareExternalBranding: false
 });
 
 export const setupLicenseRequestWithStore = (
