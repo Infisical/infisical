@@ -282,3 +282,5 @@ export type TTestWebhookConfigDTO = TGenericPermission & {
   url: string;
   signingSecret?: string;
 };
+
+export type TChannelResult = { success: boolean; error?: string };

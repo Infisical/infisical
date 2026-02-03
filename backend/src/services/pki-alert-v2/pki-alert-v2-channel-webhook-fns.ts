@@ -2,18 +2,32 @@ import crypto from "node:crypto";
 
 import { AxiosError } from "axios";
 
+import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
+import { delay } from "@app/lib/delay";
 import { logger } from "@app/lib/logger";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
 
+import { PKI_ALERT_RETRY_CONFIG, RETRYABLE_NETWORK_ERRORS } from "./pki-alert-v2-constants";
 import {
   PkiWebhookEventType,
   TAlertInfo,
   TCertificateData,
   TCertificatePreview,
-  TPkiWebhookPayload
+  TChannelResult,
+  TPkiWebhookPayload,
+  TWebhookChannelConfig
 } from "./pki-alert-v2-types";
 
 const PKI_WEBHOOK_TIMEOUT = 7 * 1000;
+
+const isWebhookErrorRetryable = (err: AxiosError): boolean => {
+  const status = err.response?.status;
+  if (status && status >= 500) return true;
+  if (err.code && RETRYABLE_NETWORK_ERRORS.includes(err.code)) return true;
+  if (err.message?.toLowerCase().includes("timeout")) return true;
+  return false;
+};
 
 // Base CloudEvents envelope fields
 type TPkiWebhookBase = Pick<TPkiWebhookPayload, "specversion" | "type" | "source" | "id" | "time" | "datacontenttype">;
@@ -139,23 +153,12 @@ const generateHmacSignature = (payload: string, secret: string): string => {
   return crypto.createHmac("sha256", secret).update(payload).digest("hex");
 };
 
-type TTriggerPkiWebhookParams = {
+const triggerPkiWebhook = async (params: {
   url: string;
   payload: TPkiWebhookPayload;
   signingSecret?: string;
-};
-
-type TTriggerPkiWebhookResult = {
-  success: boolean;
-  statusCode?: number;
-  error?: string;
-};
-
-export const triggerPkiWebhook = async ({
-  url,
-  payload,
-  signingSecret
-}: TTriggerPkiWebhookParams): Promise<TTriggerPkiWebhookResult> => {
+}): Promise<void> => {
+  const { url, payload, signingSecret } = params;
   const headers: Record<string, string> = {
     "Content-Type": "application/json"
   };
@@ -169,20 +172,71 @@ export const triggerPkiWebhook = async ({
     headers["x-infisical-signature"] = `t=${timestamp},v1=${signature}`;
   }
 
-  try {
-    const response = await request.post(url, payload, {
-      headers,
-      timeout: PKI_WEBHOOK_TIMEOUT,
-      signal: AbortSignal.timeout(PKI_WEBHOOK_TIMEOUT)
-    });
+  await request.post(url, payload, {
+    headers,
+    timeout: PKI_WEBHOOK_TIMEOUT,
+    signal: AbortSignal.timeout(PKI_WEBHOOK_TIMEOUT)
+  });
+};
 
-    return { success: true, statusCode: response.status };
-  } catch (err) {
-    const error = err as AxiosError;
-    logger.error(
-      { url, alertId: payload.data.alert.id, error: error.message, statusCode: error.response?.status },
-      "PKI webhook trigger failed"
-    );
-    return { success: false, statusCode: error.response?.status, error: error.message };
+const triggerPkiWebhookWithRetry = async (params: {
+  url: string;
+  payload: TPkiWebhookPayload;
+  signingSecret?: string;
+}): Promise<TChannelResult> => {
+  const { maxRetries, delayMs } = PKI_ALERT_RETRY_CONFIG;
+  let lastError: AxiosError | undefined;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      await triggerPkiWebhook(params);
+      return { success: true };
+    } catch (err) {
+      lastError = err as AxiosError;
+
+      if (!isWebhookErrorRetryable(lastError)) {
+        logger.info(
+          { url: params.url, statusCode: lastError.response?.status, error: lastError.message },
+          "PKI webhook error is not retryable (4xx or non-transient error)"
+        );
+        return { success: false, error: lastError.message };
+      }
+
+      logger.info(
+        { url: params.url, attempt, maxRetries, statusCode: lastError.response?.status, error: lastError.message },
+        `PKI webhook failed, ${attempt < maxRetries ? `retrying in ${delayMs}ms` : "no more retries"}`
+      );
+
+      if (attempt < maxRetries) {
+        // eslint-disable-next-line no-await-in-loop
+        await delay(delayMs);
+      }
+    }
   }
+
+  return { success: false, error: lastError?.message };
+};
+
+export const sendWebhookNotification = async (
+  config: TWebhookChannelConfig,
+  alertData: TAlertInfo,
+  matchingCertificates: TCertificatePreview[],
+  eventType: PkiWebhookEventType
+): Promise<TChannelResult> => {
+  await blockLocalAndPrivateIpAddresses(config.url);
+
+  const appCfg = getConfig();
+  const payload = buildWebhookPayload({
+    alert: alertData,
+    certificates: matchingCertificates,
+    eventType,
+    appUrl: appCfg.SITE_URL
+  });
+
+  return triggerPkiWebhookWithRetry({
+    url: config.url,
+    payload,
+    signingSecret: config.signingSecret ?? undefined
+  });
 };

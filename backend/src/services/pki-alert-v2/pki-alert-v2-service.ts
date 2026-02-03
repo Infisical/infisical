@@ -3,7 +3,6 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
@@ -13,13 +12,14 @@ import { TNotificationServiceFactory } from "@app/services/notification/notifica
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
-import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TPkiAlertChannelDALFactory } from "./pki-alert-channel-dal";
 import { TPkiAlertHistoryDALFactory } from "./pki-alert-history-dal";
+import { sendEmailNotificationWithRetry } from "./pki-alert-v2-channel-email-fns";
+import { sendWebhookNotification } from "./pki-alert-v2-channel-webhook-fns";
 import { TAlertWithChannels, TPkiAlertV2DALFactory } from "./pki-alert-v2-dal";
 import { parseTimeToDays, parseTimeToPostgresInterval } from "./pki-alert-v2-filter-utils";
-import { buildWebhookPayload, triggerPkiWebhook } from "./pki-alert-v2-notification-fns";
 import {
   CertificateOrigin,
   PkiAlertChannelType,
@@ -561,55 +561,6 @@ export const pkiAlertV2ServiceFactory = ({
     };
   };
 
-  const sendEmailNotification = async (
-    config: TEmailChannelConfig,
-    alertName: string,
-    alertBeforeDays: number,
-    projectId: string,
-    matchingCertificates: TCertificatePreview[]
-  ) => {
-    return smtpService.sendMail({
-      recipients: config.recipients,
-      subjectLine: `Infisical Certificate Alert - ${alertName}`,
-      substitutions: {
-        alertName,
-        alertBeforeDays,
-        projectId,
-        items: matchingCertificates.map((cert) => ({
-          type: "Certificate",
-          friendlyName: cert.commonName,
-          serialNumber: cert.serialNumber,
-          expiryDate: cert.notAfter.toLocaleDateString()
-        }))
-      },
-      template: SmtpTemplates.PkiExpirationAlert
-    });
-  };
-
-  const sendWebhookNotification = async (
-    config: TWebhookChannelConfig,
-    alertData: { id: string; name: string; alertBefore: string; projectId: string },
-    matchingCertificates: TCertificatePreview[],
-    eventType: PkiWebhookEventType
-  ) => {
-    // Validate webhook URL to prevent SSRF
-    await blockLocalAndPrivateIpAddresses(config.url);
-
-    const appCfg = getConfig();
-    const payload = buildWebhookPayload({
-      alert: alertData,
-      certificates: matchingCertificates,
-      eventType,
-      appUrl: appCfg.SITE_URL
-    });
-
-    return triggerPkiWebhook({
-      url: config.url,
-      payload,
-      signingSecret: config.signingSecret ?? undefined
-    });
-  };
-
   const sendAlertNotifications = async (alertId: string, certificateIds: string[]) => {
     const alert = await pkiAlertV2DAL.findByIdWithChannels(alertId);
     if (!alert || !alert.enabled) return;
@@ -655,8 +606,16 @@ export const pkiAlertV2ServiceFactory = ({
         switch (channel.channelType) {
           case PkiAlertChannelType.EMAIL: {
             const config = decryptChannelConfig<TEmailChannelConfig>(channel, decryptor);
-            await sendEmailNotification(config, alert.name, alertBeforeDays, projectId, matchingCertificates);
-            return { success: true, channelType: channel.channelType, recipients: config.recipients };
+            const result = await sendEmailNotificationWithRetry(
+              smtpService,
+              config,
+              alert.name,
+              alertBeforeDays,
+              projectId,
+              matchingCertificates,
+              alertId
+            );
+            return { ...result, channelType: channel.channelType, recipients: config.recipients };
           }
           case PkiAlertChannelType.WEBHOOK: {
             const config = decryptChannelConfig<TWebhookChannelConfig>(channel, decryptor);
@@ -666,11 +625,7 @@ export const pkiAlertV2ServiceFactory = ({
               matchingCertificates,
               PkiWebhookEventType.CERTIFICATE_EXPIRATION
             );
-
-            if (!result.success) {
-              throw new Error(result.error || "Webhook delivery failed");
-            }
-            return { success: true, channelType: channel.channelType, url: config.url };
+            return { ...result, channelType: channel.channelType, url: config.url };
           }
           case PkiAlertChannelType.SLACK: {
             logger.info(`Slack channel not yet implemented for alert ${alertId}`);
@@ -704,8 +659,10 @@ export const pkiAlertV2ServiceFactory = ({
 
     const results = await Promise.all(channelPromises);
 
-    // All channels must succeed for notification to be considered sent
-    hasNotificationSent = results.every((r) => r.success);
+    // After attempting all channels with retries, always mark as success
+    // This ensures the alert history records the attempt, even if some channels failed
+    // Error details are still captured and shown to admins via in-app notifications
+    hasNotificationSent = true;
 
     // Collect errors from failed channels with context info
     results.forEach((r) => {
