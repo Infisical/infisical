@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
@@ -9,6 +9,10 @@ import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
+import { NotificationType } from "@app/services/notification/notification-types";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TPkiAlertChannelDALFactory } from "./pki-alert-channel-dal";
@@ -60,6 +64,9 @@ type TPkiAlertV2ServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export type TPkiAlertV2ServiceFactory = ReturnType<typeof pkiAlertV2ServiceFactory>;
@@ -70,7 +77,10 @@ export const pkiAlertV2ServiceFactory = ({
   pkiAlertHistoryDAL,
   permissionService,
   smtpService,
-  kmsService
+  kmsService,
+  notificationService,
+  projectMembershipDAL,
+  projectDAL
 }: TPkiAlertV2ServiceFactoryDep) => {
   // Helper to encrypt channel config before storing in DB
   const encryptChannelConfig = (
@@ -712,6 +722,37 @@ export const pkiAlertV2ServiceFactory = ({
 
     if (errors.length > 0) {
       notificationError = errors.join("\n");
+
+      // Send in-app notifications to project admins
+      try {
+        const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
+        const project = await projectDAL.findById(projectId);
+
+        if (project) {
+          const projectAdmins = projectMembers.filter((member) =>
+            member.roles.some((role) => role.role === ProjectMembershipRole.Admin)
+          );
+
+          if (projectAdmins.length > 0) {
+            const alertingPath = `/organizations/${project.orgId}/projects/cert-manager/${projectId}/alerting`;
+            const truncatedError =
+              notificationError.length > 200 ? `${notificationError.substring(0, 200)}...` : notificationError;
+
+            await notificationService.createUserNotifications(
+              projectAdmins.map((admin) => ({
+                userId: admin.userId,
+                orgId: project.orgId,
+                type: NotificationType.PKI_ALERT_CHANNEL_FAILED,
+                title: `PKI Alert Channel Failed: ${alert.name}`,
+                body: `Your PKI alert **${alert.name}** failed to deliver notifications: \`${truncatedError}\``,
+                link: alertingPath
+              }))
+            );
+          }
+        }
+      } catch (notifyErr) {
+        logger.error(notifyErr, `Failed to send in-app notification for PKI alert channel failure: ${alertId}`);
+      }
     }
 
     await pkiAlertHistoryDAL.createWithCertificates(alertId, certificateIds, {
