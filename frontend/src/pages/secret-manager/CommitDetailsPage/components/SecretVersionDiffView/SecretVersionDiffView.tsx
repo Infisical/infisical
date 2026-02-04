@@ -592,13 +592,17 @@ export const SecretVersionDiffView = ({
       });
     }
 
+    const metadata = (version.metadata ?? version.secretMetadata) as
+      | Array<{ key: string; value: string }>
+      | undefined;
+
     return {
       secretKey: version.secretKey as string | undefined,
       secretValue: version.secretValue as string | undefined,
       secretValueHidden: version.secretValueHidden as boolean | undefined,
       secretComment: version.comment as string | undefined,
       tags,
-      secretMetadata: version.secretMetadata as Array<{ key: string; value: string }> | undefined,
+      secretMetadata: metadata,
       skipMultilineEncoding: version.skipMultilineEncoding as boolean | undefined
     };
   };
