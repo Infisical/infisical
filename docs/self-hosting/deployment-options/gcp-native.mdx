@@ -1,0 +1,1214 @@
+---
+title: "GCP (GKE with Cloud SQL & Memorystore)"
+description: "Deploy Infisical securely on Google Cloud Platform using GKE, Cloud SQL, and Memorystore."
+---
+
+Learn how to deploy **Infisical** on Google Cloud Platform using **Google Kubernetes Engine (GKE)** for container orchestration. This guide covers setting up Infisical in a production-ready GCP environment using **Cloud SQL** (PostgreSQL) for the database, **Memorystore** (Redis) for caching, and **Google Cloud Load Balancing** for routing traffic.
+
+## Prerequisites
+
+- A Google Cloud Platform account with permissions to create VPCs, GKE clusters, Cloud SQL instances, Memorystore instances, and Load Balancers
+- Basic knowledge of GCP networking (VPC, subnets, firewall rules) and Kubernetes concepts
+- [gcloud CLI](https://cloud.google.com/sdk/docs/install) installed and configured
+- [kubectl](https://kubernetes.io/docs/tasks/tools/) installed for interacting with your GKE cluster
+- [Helm](https://helm.sh/docs/intro/install/) installed (version 3.x) for deploying the Infisical Helm chart
+- An Infisical Docker image tag from [Docker Hub](https://hub.docker.com/r/infisical/infisical/tags)
+
+<Warning>
+  Do not use the `latest` tag in production. Always pin to a specific version to avoid unexpected changes during upgrades.
+</Warning>
+
+## System Requirements
+
+The following are minimum requirements for running Infisical on GCP GKE:
+
+| Component | Minimum | Recommended (Production) |
+|-----------|---------|--------------------------|
+| GKE Node Machine Type | e2-small | n2-standard-2 or larger |
+| GKE Nodes per Zone | 1 | 2+ |
+| Cloud SQL Instance | db-f1-micro | db-n1-standard-2 or larger |
+| Memorystore Capacity | 1 GB | 2 GB or larger |
+| Infisical Pod Memory | 512 MB | 1 GB |
+| Infisical Pod CPU | 500m | 1000m |
+
+For production deployments with many users or secrets, increase these values accordingly.
+
+## Deployment Steps
+
+<Steps>
+<Step title="Set up network infrastructure (VPC, subnets, firewall rules)">
+  Create a VPC network for hosting Infisical:
+
+  **VPC & Subnets:**
+  - Create a **VPC-native network** that will host your GKE cluster, Cloud SQL instance, and Memorystore instance
+  - Create a **subnet** for your GKE cluster with an appropriate IP range
+  - Define **secondary IP ranges** for Kubernetes pods and services:
+    - Primary range: `10.0.0.0/20` (for nodes)
+    - Secondary range for pods: `10.4.0.0/14`
+    - Secondary range for services: `10.8.0.0/20`
+
+  ```bash
+  # Create VPC
+  gcloud compute networks create infisical-vpc --subnet-mode=custom
+
+  # Create subnet with secondary ranges
+  gcloud compute networks subnets create infisical-subnet \
+    --network=infisical-vpc \
+    --region=us-central1 \
+    --range=10.0.0.0/20 \
+    --secondary-range=pods=10.4.0.0/14,services=10.8.0.0/20
+  ```
+
+  **Cloud Router & Cloud NAT:**
+  - Deploy a Cloud Router and NAT gateway for outbound internet access from private GKE nodes
+
+  ```bash
+  # Create Cloud Router
+  gcloud compute routers create infisical-router \
+    --network=infisical-vpc \
+    --region=us-central1
+
+  # Create Cloud NAT
+  gcloud compute routers nats create infisical-nat \
+    --router=infisical-router \
+    --region=us-central1 \
+    --nat-all-subnet-ip-ranges \
+    --auto-allocate-nat-external-ips
+  ```
+
+  **Firewall Rules:**
+
+  | Rule | Source | Destination | Ports | Purpose |
+  |------|--------|-------------|-------|---------|
+  | Allow internal | VPC CIDR | VPC CIDR | All | Internal communication |
+  | Allow health checks | 130.211.0.0/22, 35.191.0.0/16 | GKE nodes | 8080 | Load balancer health checks |
+  | Allow GKE to Cloud SQL | GKE pods | Cloud SQL | 5432 | Database access |
+  | Allow GKE to Memorystore | GKE pods | Memorystore | 6379 | Redis access |
+
+  ```bash
+  # Allow health check traffic
+  gcloud compute firewall-rules create allow-health-checks \
+    --network=infisical-vpc \
+    --allow=tcp:8080 \
+    --source-ranges=130.211.0.0/22,35.191.0.0/16 \
+    --target-tags=gke-infisical
+  ```
+
+  **Enable Private Google Access:**
+
+  ```bash
+  gcloud compute networks subnets update infisical-subnet \
+    --region=us-central1 \
+    --enable-private-ip-google-access
+  ```
+
+  **Verify:** Confirm your network infrastructure is created:
+  ```bash
+  # Verify VPC and subnet
+  gcloud compute networks describe infisical-vpc
+  gcloud compute networks subnets describe infisical-subnet --region=us-central1
+
+  # Verify NAT gateway
+  gcloud compute routers nats describe infisical-nat --router=infisical-router --region=us-central1
+  ```
+</Step>
+
+<Step title="Provision Google Kubernetes Engine (GKE) cluster">
+  Create a GKE cluster to host your Infisical deployment:
+
+  ```bash
+  gcloud container clusters create infisical-cluster \
+    --region us-central1 \
+    --machine-type n2-standard-2 \
+    --num-nodes 1 \
+    --enable-ip-alias \
+    --network infisical-vpc \
+    --subnetwork infisical-subnet \
+    --cluster-secondary-range-name pods \
+    --services-secondary-range-name services \
+    --enable-private-nodes \
+    --master-ipv4-cidr 172.16.0.0/28 \
+    --no-enable-basic-auth \
+    --no-issue-client-certificate \
+    --enable-stackdriver-kubernetes \
+    --enable-autoscaling \
+    --min-nodes 1 \
+    --max-nodes 5 \
+    --enable-autorepair \
+    --enable-autoupgrade \
+    --enable-workload-identity \
+    --workload-pool=<YOUR_PROJECT_ID>.svc.id.goog
+  ```
+
+  **Connect to the cluster:**
+
+  ```bash
+  gcloud container clusters get-credentials infisical-cluster --region us-central1
+  ```
+
+  **Verify:** Confirm cluster is ready:
+  ```bash
+  # Check nodes are ready
+  kubectl get nodes
+
+  # Verify cluster info
+  kubectl cluster-info
+  ```
+
+  You should see your nodes listed and in a `Ready` state.
+
+  <Note>
+    For private GKE clusters, you'll need to access the cluster from within the VPC (via a bastion host or Cloud Shell) or configure authorized networks to allow your IP to access the control plane endpoint.
+  </Note>
+</Step>
+
+<Step title="Provision Cloud SQL for PostgreSQL">
+  Set up the PostgreSQL database for Infisical:
+
+  ```bash
+  # Enable required APIs
+  gcloud services enable sqladmin.googleapis.com
+  gcloud services enable servicenetworking.googleapis.com
+
+  # Allocate IP range for private services
+  gcloud compute addresses create google-managed-services-infisical-vpc \
+    --global \
+    --purpose=VPC_PEERING \
+    --prefix-length=16 \
+    --network=infisical-vpc
+
+  # Create private connection
+  gcloud services vpc-peerings connect \
+    --service=servicenetworking.googleapis.com \
+    --ranges=google-managed-services-infisical-vpc \
+    --network=infisical-vpc
+
+  # Create Cloud SQL instance
+  gcloud sql instances create infisical-db \
+    --database-version=POSTGRES_15 \
+    --tier=db-n1-standard-2 \
+    --region=us-central1 \
+    --network=infisical-vpc \
+    --no-assign-ip \
+    --availability-type=REGIONAL \
+    --storage-type=SSD \
+    --storage-size=20GB \
+    --storage-auto-increase \
+    --backup-start-time=03:00 \
+    --enable-point-in-time-recovery \
+    --retained-backups-count=7
+  ```
+
+  **Create database and user:**
+
+  ```bash
+  # Set root password
+  gcloud sql users set-password postgres \
+    --instance=infisical-db \
+    --password=<your-secure-password>
+
+  # Create database
+  gcloud sql databases create infisical --instance=infisical-db
+
+  # Create user
+  gcloud sql users create infisical_user \
+    --instance=infisical-db \
+    --password=<your-secure-password>
+  ```
+
+  **Verify:** Confirm Cloud SQL is ready:
+  ```bash
+  # Check instance status
+  gcloud sql instances describe infisical-db --format="value(state)"
+
+  # Get private IP address
+  gcloud sql instances describe infisical-db --format="value(ipAddresses[0].ipAddress)"
+  ```
+
+  Note the **private IP address** for your connection string:
+  ```
+  postgresql://infisical_user:<password>@<private-ip>:5432/infisical
+  ```
+</Step>
+
+<Step title="Provision Memorystore for Redis">
+  Set up Redis caching for Infisical:
+
+  ```bash
+  # Enable Memorystore API
+  gcloud services enable redis.googleapis.com
+
+  # Create Memorystore instance
+  gcloud redis instances create infisical-redis \
+    --size=1 \
+    --region=us-central1 \
+    --network=infisical-vpc \
+    --tier=STANDARD_HA \
+    --redis-version=redis_7_0
+  ```
+
+  **Verify:** Confirm Memorystore is ready:
+  ```bash
+  # Check instance status
+  gcloud redis instances describe infisical-redis --region=us-central1 --format="value(state)"
+
+  # Get host IP
+  gcloud redis instances describe infisical-redis --region=us-central1 --format="value(host)"
+  ```
+
+  Note the **host IP** for your connection string:
+  ```
+  redis://<memorystore-ip>:6379
+  ```
+
+  <Warning>
+    Memorystore for Redis does not support AUTH passwords. Security relies on VPC isolation and firewall rules. Ensure only your GKE cluster's pods can access the Memorystore IP.
+  </Warning>
+</Step>
+
+<Step title="Securely store Infisical secrets and configuration">
+  Generate and store the required secrets:
+
+  **Generate secrets:**
+  ```bash
+  # Generate ENCRYPTION_KEY (16-byte hex string)
+  ENCRYPTION_KEY=$(openssl rand -hex 16)
+  echo "ENCRYPTION_KEY: $ENCRYPTION_KEY"
+
+  # Generate AUTH_SECRET (32-byte base64 string)
+  AUTH_SECRET=$(openssl rand -base64 32)
+  echo "AUTH_SECRET: $AUTH_SECRET"
+  ```
+
+  <Warning>
+    Store your `ENCRYPTION_KEY` securely outside of GCP as well. Without this key, you cannot decrypt your secrets even if you restore the database.
+  </Warning>
+
+  <Tabs>
+    <Tab title="Google Secret Manager (Recommended)">
+      ```bash
+      # Enable the Secret Manager API
+      gcloud services enable secretmanager.googleapis.com
+
+      # Store each secret
+      echo -n "$ENCRYPTION_KEY" | gcloud secrets create infisical-encryption-key --data-file=-
+      echo -n "$AUTH_SECRET" | gcloud secrets create infisical-auth-secret --data-file=-
+      echo -n "postgresql://infisical_user:<password>@<cloud-sql-ip>:5432/infisical" | gcloud secrets create infisical-db-uri --data-file=-
+      echo -n "redis://<memorystore-ip>:6379" | gcloud secrets create infisical-redis-url --data-file=-
+      ```
+
+      **Verify:** Confirm secrets are stored:
+      ```bash
+      gcloud secrets list --filter="name:infisical"
+      ```
+    </Tab>
+
+    <Tab title="Kubernetes Secrets">
+      ```bash
+      # Create namespace
+      kubectl create namespace infisical
+
+      # Create the secret
+      kubectl create secret generic infisical-secrets \
+        --from-literal=ENCRYPTION_KEY="$ENCRYPTION_KEY" \
+        --from-literal=AUTH_SECRET="$AUTH_SECRET" \
+        --from-literal=DB_CONNECTION_URI="postgresql://infisical_user:<password>@<cloud-sql-ip>:5432/infisical" \
+        --from-literal=REDIS_URL="redis://<memorystore-ip>:6379" \
+        --from-literal=SITE_URL="https://infisical.example.com" \
+        -n infisical
+      ```
+
+      **Verify:** Confirm secret is created:
+      ```bash
+      kubectl get secrets -n infisical
+      ```
+    </Tab>
+  </Tabs>
+
+  **Configure IAM for Secret Access (if using Secret Manager with Workload Identity):**
+
+  ```bash
+  # Create Google Cloud IAM service account
+  gcloud iam service-accounts create infisical-gsa \
+    --display-name="Infisical GKE Service Account"
+
+  # Grant access to secrets
+  for secret in infisical-encryption-key infisical-auth-secret infisical-db-uri infisical-redis-url; do
+    gcloud secrets add-iam-policy-binding $secret \
+      --member="serviceAccount:infisical-gsa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com" \
+      --role="roles/secretmanager.secretAccessor"
+  done
+
+  # Bind to Kubernetes service account
+  gcloud iam service-accounts add-iam-policy-binding \
+    infisical-gsa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com \
+    --role roles/iam.workloadIdentityUser \
+    --member "serviceAccount:<YOUR_PROJECT_ID>.svc.id.goog[infisical/infisical]"
+  ```
+</Step>
+
+<Step title="Deploy Infisical using Helm">
+  Deploy Infisical to your GKE cluster using the official Helm chart:
+
+  **Add the Infisical Helm Repository:**
+
+  ```bash
+  helm repo add infisical-helm-charts https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/
+  helm repo update
+  ```
+
+  **Create a Helm Values File:**
+
+  Create a file named `infisical-values.yaml`:
+
+  ```yaml
+  # infisical-values.yaml
+
+  replicaCount: 2
+
+  image:
+    repository: infisical/infisical
+    tag: "v0.46.2-postgres"  # Use a specific version
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 8080
+
+  ingress:
+    enabled: true
+    className: "gce"
+    annotations:
+      kubernetes.io/ingress.class: "gce"
+      kubernetes.io/ingress.global-static-ip-name: "infisical-ip"
+      networking.gke.io/managed-certificates: "infisical-cert"
+    hosts:
+      - host: infisical.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+
+  env:
+    - name: SITE_URL
+      value: "https://infisical.example.com"
+    - name: HOST
+      value: "0.0.0.0"
+    - name: PORT
+      value: "8080"
+
+  envFrom:
+    - secretRef:
+        name: infisical-secrets
+
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+  livenessProbe:
+    httpGet:
+      path: /api/status
+      port: 8080
+    initialDelaySeconds: 30
+    periodSeconds: 10
+
+  readinessProbe:
+    httpGet:
+      path: /api/status
+      port: 8080
+    initialDelaySeconds: 10
+    periodSeconds: 5
+
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+
+  serviceAccount:
+    create: true
+    name: infisical
+    annotations:
+      iam.gke.io/gcp-service-account: infisical-gsa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com
+
+  podSecurityContext:
+    fsGroup: 1000
+    runAsNonRoot: true
+    runAsUser: 1000
+
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                    - infisical
+            topologyKey: topology.kubernetes.io/zone
+  ```
+
+  **Reserve a Static IP Address:**
+
+  ```bash
+  gcloud compute addresses create infisical-ip --global
+  gcloud compute addresses describe infisical-ip --global --format="value(address)"
+  ```
+
+  **Deploy Infisical:**
+
+  ```bash
+  helm install infisical infisical-helm-charts/infisical \
+    --namespace infisical \
+    --create-namespace \
+    --values infisical-values.yaml
+  ```
+
+  **Verify:** Confirm deployment is successful:
+  ```bash
+  # Check pods are running
+  kubectl get pods -n infisical
+
+  # Check service
+  kubectl get svc -n infisical
+
+  # Check ingress
+  kubectl get ingress -n infisical
+
+  # Check pod logs
+  kubectl logs -l app.kubernetes.io/name=infisical -n infisical --tail=50
+  ```
+
+  Wait for all pods to be in `Running` state.
+</Step>
+
+<Step title="Configure HTTPS access with SSL/TLS">
+  Secure your Infisical deployment with HTTPS:
+
+  <Tabs>
+    <Tab title="Google-Managed Certificates (Recommended)">
+      **Create a ManagedCertificate Resource:**
+
+      ```yaml
+      # managed-cert.yaml
+      apiVersion: networking.gke.io/v1
+      kind: ManagedCertificate
+      metadata:
+        name: infisical-cert
+        namespace: infisical
+      spec:
+        domains:
+          - infisical.example.com
+      ```
+
+      ```bash
+      kubectl apply -f managed-cert.yaml
+      ```
+
+      **Update DNS:**
+
+      Create an **A record** in your DNS provider pointing `infisical.example.com` to the static IP address.
+
+      **Verify:** Check certificate status:
+      ```bash
+      kubectl describe managedcertificate infisical-cert -n infisical
+      ```
+
+      Certificate provisioning can take 15-60 minutes.
+    </Tab>
+
+    <Tab title="cert-manager with Let's Encrypt">
+      **Install cert-manager:**
+
+      ```bash
+      kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.0/cert-manager.yaml
+      ```
+
+      **Create a ClusterIssuer:**
+
+      ```yaml
+      # letsencrypt-prod.yaml
+      apiVersion: cert-manager.io/v1
+      kind: ClusterIssuer
+      metadata:
+        name: letsencrypt-prod
+      spec:
+        acme:
+          server: https://acme-v02.api.letsencrypt.org/directory
+          email: admin@example.com
+          privateKeySecretRef:
+            name: letsencrypt-prod
+          solvers:
+            - http01:
+                ingress:
+                  class: gce
+      ```
+
+      ```bash
+      kubectl apply -f letsencrypt-prod.yaml
+      ```
+
+      Update your ingress annotations to use cert-manager:
+
+      ```yaml
+      ingress:
+        annotations:
+          cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      ```
+    </Tab>
+  </Tabs>
+
+  **Force HTTPS Redirect:**
+
+  ```yaml
+  # frontend-config.yaml
+  apiVersion: networking.gke.io/v1beta1
+  kind: FrontendConfig
+  metadata:
+    name: ssl-redirect
+    namespace: infisical
+  spec:
+    redirectToHttps:
+      enabled: true
+  ```
+
+  ```bash
+  kubectl apply -f frontend-config.yaml
+  ```
+
+  Add the annotation to your ingress:
+  ```yaml
+  annotations:
+    networking.gke.io/v1beta1.FrontendConfig: "ssl-redirect"
+  ```
+
+  **Verify:** Test HTTPS access:
+  ```bash
+  curl -I https://infisical.example.com/api/status
+  ```
+</Step>
+</Steps>
+
+After completing the above steps, your Infisical instance should be up and running on GCP. You can now proceed with creating an admin account and configuring additional features.
+
+## Additional Configuration
+
+<AccordionGroup>
+  <Accordion title="SMTP/Email Configuration">
+    Configure email sending for Infisical notifications and invitations:
+
+    **Using SendGrid:**
+    ```bash
+    kubectl create secret generic infisical-smtp \
+      --from-literal=SMTP_HOST="smtp.sendgrid.net" \
+      --from-literal=SMTP_PORT="587" \
+      --from-literal=SMTP_USERNAME="apikey" \
+      --from-literal=SMTP_PASSWORD="<your-sendgrid-api-key>" \
+      --from-literal=SMTP_FROM_ADDRESS="noreply@example.com" \
+      --from-literal=SMTP_FROM_NAME="Infisical" \
+      -n infisical
+    ```
+
+    **Using Gmail:**
+    ```bash
+    kubectl create secret generic infisical-smtp \
+      --from-literal=SMTP_HOST="smtp.gmail.com" \
+      --from-literal=SMTP_PORT="587" \
+      --from-literal=SMTP_USERNAME="your-email@gmail.com" \
+      --from-literal=SMTP_PASSWORD="<app-password>" \
+      --from-literal=SMTP_FROM_ADDRESS="your-email@gmail.com" \
+      --from-literal=SMTP_FROM_NAME="Infisical" \
+      -n infisical
+    ```
+
+    Update your Helm values to include the SMTP secret:
+    ```yaml
+    envFrom:
+      - secretRef:
+          name: infisical-secrets
+      - secretRef:
+          name: infisical-smtp
+    ```
+
+    Upgrade the deployment:
+    ```bash
+    helm upgrade infisical infisical-helm-charts/infisical \
+      --namespace infisical \
+      --values infisical-values.yaml
+    ```
+
+    **Verify:** Check logs for SMTP configuration:
+    ```bash
+    kubectl logs -l app.kubernetes.io/name=infisical -n infisical | grep -i smtp
+    ```
+  </Accordion>
+
+  <Accordion title="Debugging with kubectl exec">
+    Access running containers for debugging:
+
+    **Exec into an Infisical pod:**
+    ```bash
+    # Get pod name
+    kubectl get pods -n infisical
+
+    # Exec into the pod
+    kubectl exec -it <pod-name> -n infisical -- /bin/sh
+    ```
+
+    **Common debugging commands:**
+    ```bash
+    # Check environment variables
+    kubectl exec -it <pod-name> -n infisical -- env | grep -E "(DB_|REDIS_|SITE_)"
+
+    # Test database connectivity
+    kubectl exec -it <pod-name> -n infisical -- nc -zv <cloud-sql-ip> 5432
+
+    # Test Redis connectivity
+    kubectl exec -it <pod-name> -n infisical -- nc -zv <memorystore-ip> 6379
+
+    # View application logs
+    kubectl logs <pod-name> -n infisical --tail=100 -f
+    ```
+
+    **Run a debug pod:**
+    ```bash
+    kubectl run debug-pod --rm -it --image=busybox -n infisical -- /bin/sh
+    ```
+  </Accordion>
+
+  <Accordion title="Database Migrations">
+    Infisical automatically runs database migrations on startup. To manually manage migrations:
+
+    **Check migration status:**
+    ```bash
+    kubectl logs -l app.kubernetes.io/name=infisical -n infisical | grep -i migration
+    ```
+
+    **Run migrations manually:**
+    ```bash
+    # Exec into a pod and run migrations
+    kubectl exec -it <pod-name> -n infisical -- npm run migration:latest
+    ```
+
+    **Rollback migrations (if needed):**
+    ```bash
+    kubectl exec -it <pod-name> -n infisical -- npm run migration:rollback
+    ```
+
+    <Warning>
+      Always backup your database before running manual migrations. Use Cloud SQL automated backups or create a manual snapshot first.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="Backup Strategy">
+    **Database Backups:**
+
+    Cloud SQL automated backups are enabled by default. To create a manual backup:
+    ```bash
+    gcloud sql backups create --instance=infisical-db
+    ```
+
+    To restore from a backup:
+    ```bash
+    gcloud sql backups restore <backup-id> \
+      --restore-instance=infisical-db \
+      --backup-instance=infisical-db
+    ```
+
+    **Encryption Key Backup:**
+
+    The `ENCRYPTION_KEY` is critical. Store it securely:
+    - In Google Secret Manager with restricted IAM permissions
+    - In an offline encrypted backup in a secure physical location
+    - Never store it in version control
+
+    **Export secrets for backup:**
+    ```bash
+    gcloud secrets versions access latest --secret=infisical-encryption-key > encryption-key-backup.txt
+    # Encrypt and store this file securely offline
+    ```
+  </Accordion>
+
+  <Accordion title="Upgrade Instructions">
+    **Pre-upgrade checklist:**
+    1. Review Infisical release notes for breaking changes
+    2. Backup your database
+    3. Verify your `ENCRYPTION_KEY` is backed up
+
+    **Upgrade process:**
+    ```bash
+    # Update Helm repo
+    helm repo update
+
+    # Update image tag in values file
+    # Edit infisical-values.yaml: image.tag: "v0.X.X"
+
+    # Upgrade deployment
+    helm upgrade infisical infisical-helm-charts/infisical \
+      --namespace infisical \
+      --values infisical-values.yaml
+
+    # Monitor rollout
+    kubectl rollout status deployment/infisical -n infisical
+    ```
+
+    **Rollback if needed:**
+    ```bash
+    helm rollback infisical -n infisical
+    ```
+  </Accordion>
+
+  <Accordion title="Monitoring & Telemetry">
+    **Google Cloud Logging:**
+
+    View Infisical logs in Cloud Logging:
+    - Navigate to **Logging > Logs Explorer** in the GCP Console
+    - Filter: `resource.type="k8s_container" resource.labels.namespace_name="infisical"`
+
+    **Set up Cloud Monitoring alerts:**
+    ```bash
+    # Create alert for high CPU usage
+    gcloud alpha monitoring policies create \
+      --notification-channels=<channel-id> \
+      --display-name="Infisical High CPU" \
+      --condition-display-name="Pod CPU > 80%" \
+      --condition-threshold-value=0.8 \
+      --condition-threshold-duration=300s \
+      --condition-filter='resource.type="k8s_pod" AND resource.labels.namespace_name="infisical"'
+    ```
+
+    **Uptime checks:**
+    - Navigate to **Monitoring > Uptime checks** in the GCP Console
+    - Create a check for `https://infisical.example.com/api/status`
+    - Set check frequency (e.g., every 1 minute)
+
+    **Enable OpenTelemetry:**
+    ```yaml
+    env:
+      - name: OTEL_TELEMETRY_COLLECTION_ENABLED
+        value: "true"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: "http://otel-collector.monitoring.svc.cluster.local:4317"
+    ```
+  </Accordion>
+
+  <Accordion title="Auto-Scaling Configuration">
+    **Horizontal Pod Autoscaler:**
+
+    The HPA is configured in the Helm values. To verify:
+    ```bash
+    kubectl get hpa -n infisical
+    kubectl describe hpa infisical -n infisical
+    ```
+
+    **GKE Cluster Autoscaler:**
+
+    Already enabled during cluster creation. To verify:
+    ```bash
+    gcloud container clusters describe infisical-cluster \
+      --region=us-central1 \
+      --format="value(autoscaling)"
+    ```
+
+    **Adjust scaling parameters:**
+    ```yaml
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 20
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 80
+    ```
+  </Accordion>
+
+  <Accordion title="Clean Up / Delete Resources">
+    To completely remove Infisical and associated resources:
+
+    **Delete Helm release:**
+    ```bash
+    helm uninstall infisical -n infisical
+    kubectl delete namespace infisical
+    ```
+
+    **Delete GCP resources:**
+    ```bash
+    # Delete Memorystore
+    gcloud redis instances delete infisical-redis --region=us-central1
+
+    # Delete Cloud SQL (WARNING: This deletes all data!)
+    gcloud sql instances delete infisical-db
+
+    # Delete GKE cluster
+    gcloud container clusters delete infisical-cluster --region=us-central1
+
+    # Delete static IP
+    gcloud compute addresses delete infisical-ip --global
+
+    # Delete NAT and router
+    gcloud compute routers nats delete infisical-nat --router=infisical-router --region=us-central1
+    gcloud compute routers delete infisical-router --region=us-central1
+
+    # Delete firewall rules
+    gcloud compute firewall-rules delete allow-health-checks
+
+    # Delete VPC (after all resources are removed)
+    gcloud compute networks subnets delete infisical-subnet --region=us-central1
+    gcloud compute networks delete infisical-vpc
+
+    # Delete secrets
+    for secret in infisical-encryption-key infisical-auth-secret infisical-db-uri infisical-redis-url; do
+      gcloud secrets delete $secret
+    done
+
+    # Delete service account
+    gcloud iam service-accounts delete infisical-gsa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com
+    ```
+
+    <Warning>
+      Deleting Cloud SQL will permanently delete all data. Ensure you have backups before proceeding.
+    </Warning>
+  </Accordion>
+</AccordionGroup>
+
+## Infrastructure as Code
+
+<AccordionGroup>
+  <Accordion title="Terraform Example">
+    A Terraform configuration for deploying Infisical infrastructure on GCP:
+
+    ```hcl
+    # main.tf
+    terraform {
+      required_providers {
+        google = {
+          source  = "hashicorp/google"
+          version = "~> 5.0"
+        }
+      }
+    }
+
+    provider "google" {
+      project = var.project_id
+      region  = var.region
+    }
+
+    variable "project_id" {
+      description = "GCP Project ID"
+      type        = string
+    }
+
+    variable "region" {
+      description = "GCP Region"
+      type        = string
+      default     = "us-central1"
+    }
+
+    # VPC Network
+    resource "google_compute_network" "infisical_vpc" {
+      name                    = "infisical-vpc"
+      auto_create_subnetworks = false
+    }
+
+    resource "google_compute_subnetwork" "infisical_subnet" {
+      name          = "infisical-subnet"
+      ip_cidr_range = "10.0.0.0/20"
+      region        = var.region
+      network       = google_compute_network.infisical_vpc.id
+
+      secondary_ip_range {
+        range_name    = "pods"
+        ip_cidr_range = "10.4.0.0/14"
+      }
+
+      secondary_ip_range {
+        range_name    = "services"
+        ip_cidr_range = "10.8.0.0/20"
+      }
+
+      private_ip_google_access = true
+    }
+
+    # Cloud Router and NAT
+    resource "google_compute_router" "infisical_router" {
+      name    = "infisical-router"
+      region  = var.region
+      network = google_compute_network.infisical_vpc.id
+    }
+
+    resource "google_compute_router_nat" "infisical_nat" {
+      name                               = "infisical-nat"
+      router                             = google_compute_router.infisical_router.name
+      region                             = var.region
+      nat_ip_allocate_option             = "AUTO_ONLY"
+      source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
+    }
+
+    # GKE Cluster
+    resource "google_container_cluster" "infisical_cluster" {
+      name     = "infisical-cluster"
+      location = var.region
+
+      network    = google_compute_network.infisical_vpc.name
+      subnetwork = google_compute_subnetwork.infisical_subnet.name
+
+      remove_default_node_pool = true
+      initial_node_count       = 1
+
+      ip_allocation_policy {
+        cluster_secondary_range_name  = "pods"
+        services_secondary_range_name = "services"
+      }
+
+      private_cluster_config {
+        enable_private_nodes    = true
+        enable_private_endpoint = false
+        master_ipv4_cidr_block  = "172.16.0.0/28"
+      }
+
+      workload_identity_config {
+        workload_pool = "${var.project_id}.svc.id.goog"
+      }
+
+      logging_service    = "logging.googleapis.com/kubernetes"
+      monitoring_service = "monitoring.googleapis.com/kubernetes"
+    }
+
+    resource "google_container_node_pool" "infisical_nodes" {
+      name       = "infisical-node-pool"
+      location   = var.region
+      cluster    = google_container_cluster.infisical_cluster.name
+      node_count = 1
+
+      autoscaling {
+        min_node_count = 1
+        max_node_count = 5
+      }
+
+      node_config {
+        machine_type = "n2-standard-2"
+        disk_size_gb = 50
+
+        oauth_scopes = [
+          "https://www.googleapis.com/auth/cloud-platform"
+        ]
+
+        workload_metadata_config {
+          mode = "GKE_METADATA"
+        }
+      }
+
+      management {
+        auto_repair  = true
+        auto_upgrade = true
+      }
+    }
+
+    # Cloud SQL
+    resource "google_sql_database_instance" "infisical_db" {
+      name             = "infisical-db"
+      database_version = "POSTGRES_15"
+      region           = var.region
+
+      settings {
+        tier              = "db-n1-standard-2"
+        availability_type = "REGIONAL"
+        disk_type         = "PD_SSD"
+        disk_size         = 20
+        disk_autoresize   = true
+
+        ip_configuration {
+          ipv4_enabled    = false
+          private_network = google_compute_network.infisical_vpc.id
+        }
+
+        backup_configuration {
+          enabled                        = true
+          start_time                     = "03:00"
+          point_in_time_recovery_enabled = true
+          transaction_log_retention_days = 7
+        }
+      }
+
+      deletion_protection = true
+
+      depends_on = [google_service_networking_connection.private_vpc_connection]
+    }
+
+    # Private VPC Connection for Cloud SQL
+    resource "google_compute_global_address" "private_ip_address" {
+      name          = "google-managed-services-infisical-vpc"
+      purpose       = "VPC_PEERING"
+      address_type  = "INTERNAL"
+      prefix_length = 16
+      network       = google_compute_network.infisical_vpc.id
+    }
+
+    resource "google_service_networking_connection" "private_vpc_connection" {
+      network                 = google_compute_network.infisical_vpc.id
+      service                 = "servicenetworking.googleapis.com"
+      reserved_peering_ranges = [google_compute_global_address.private_ip_address.name]
+    }
+
+    # Memorystore Redis
+    resource "google_redis_instance" "infisical_redis" {
+      name           = "infisical-redis"
+      tier           = "STANDARD_HA"
+      memory_size_gb = 1
+      region         = var.region
+
+      authorized_network = google_compute_network.infisical_vpc.id
+      redis_version      = "REDIS_7_0"
+    }
+
+    # Outputs
+    output "gke_cluster_name" {
+      value = google_container_cluster.infisical_cluster.name
+    }
+
+    output "cloud_sql_private_ip" {
+      value = google_sql_database_instance.infisical_db.private_ip_address
+    }
+
+    output "redis_host" {
+      value = google_redis_instance.infisical_redis.host
+    }
+    ```
+
+    <Note>
+      This is a simplified example to get you started. For a complete deployment, you'll need to add Secret Manager resources, IAM bindings, and Kubernetes resources. Adapt this example to your infrastructure standards.
+    </Note>
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Pods not starting">
+    **Symptoms:** Pods stuck in `Pending`, `CrashLoopBackOff`, or `Error` state.
+
+    **Check pod status:**
+    ```bash
+    kubectl describe pod <pod-name> -n infisical
+    kubectl logs <pod-name> -n infisical --previous
+    ```
+
+    **Common causes:**
+    - Insufficient resources: Check node capacity and resource requests
+    - Image pull errors: Verify image tag and registry access
+    - Secret not found: Ensure `infisical-secrets` exists in the namespace
+    - Database connection failed: Verify Cloud SQL private IP and credentials
+  </Accordion>
+
+  <Accordion title="Cannot connect to Cloud SQL">
+    **Symptoms:** Database connection errors in logs.
+
+    **Verify connectivity:**
+    ```bash
+    # Check Cloud SQL instance status
+    gcloud sql instances describe infisical-db
+
+    # Test from a debug pod
+    kubectl run debug --rm -it --image=postgres:15 -n infisical -- \
+      psql "postgresql://infisical_user:<password>@<cloud-sql-ip>:5432/infisical"
+    ```
+
+    **Common causes:**
+    - VPC peering not established: Check private service connection
+    - Firewall rules blocking traffic: Verify firewall allows port 5432
+    - Wrong credentials: Verify username and password
+    - Cloud SQL not in same VPC: Ensure private IP is configured
+  </Accordion>
+
+  <Accordion title="Cannot connect to Memorystore">
+    **Symptoms:** Redis connection errors in logs.
+
+    **Verify connectivity:**
+    ```bash
+    # Check Memorystore status
+    gcloud redis instances describe infisical-redis --region=us-central1
+
+    # Test from a debug pod
+    kubectl run debug --rm -it --image=redis:7 -n infisical -- \
+      redis-cli -h <memorystore-ip> ping
+    ```
+
+    **Common causes:**
+    - Memorystore not in same VPC: Verify network configuration
+    - Firewall rules blocking traffic: Verify firewall allows port 6379
+    - Wrong IP address: Verify the Memorystore host IP
+  </Accordion>
+
+  <Accordion title="Ingress not working">
+    **Symptoms:** Cannot access Infisical via the external URL.
+
+    **Check ingress status:**
+    ```bash
+    kubectl describe ingress -n infisical
+    kubectl get events -n infisical --sort-by='.lastTimestamp'
+    ```
+
+    **Common causes:**
+    - DNS not configured: Verify A record points to static IP
+    - Certificate not ready: Check ManagedCertificate status
+    - Backend unhealthy: Verify pods are passing health checks
+    - Static IP not reserved: Ensure `infisical-ip` exists
+  </Accordion>
+
+  <Accordion title="SSL certificate not provisioning">
+    **Symptoms:** ManagedCertificate stuck in `Provisioning` state.
+
+    **Check certificate status:**
+    ```bash
+    kubectl describe managedcertificate infisical-cert -n infisical
+    ```
+
+    **Common causes:**
+    - DNS not propagated: Wait for DNS propagation (can take up to 48 hours)
+    - Domain verification failed: Ensure A record is correct
+    - Rate limiting: Let's Encrypt has rate limits for certificate issuance
+    - Ingress not ready: Ensure ingress has an external IP assigned
+  </Accordion>
+
+  <Accordion title="High memory or CPU usage">
+    **Symptoms:** Pods being OOMKilled or throttled.
+
+    **Check resource usage:**
+    ```bash
+    kubectl top pods -n infisical
+    kubectl describe pod <pod-name> -n infisical | grep -A5 "Limits\|Requests"
+    ```
+
+    **Solutions:**
+    - Increase resource limits in Helm values
+    - Enable HPA for automatic scaling
+    - Check for memory leaks in application logs
+    - Review Cloud Monitoring dashboards for trends
+  </Accordion>
+
+  <Accordion title="Encryption key errors">
+    **Symptoms:** Errors about decryption or invalid encryption key.
+
+    **Common causes:**
+    - Wrong `ENCRYPTION_KEY`: Verify the key matches what was used to encrypt data
+    - Key not set: Ensure the secret contains `ENCRYPTION_KEY`
+    - Key changed: The encryption key cannot be changed after initial setup
+
+    **Verify key is set:**
+    ```bash
+    kubectl get secret infisical-secrets -n infisical -o jsonpath='{.data.ENCRYPTION_KEY}' | base64 -d
+    ```
+
+    <Warning>
+      If you've lost your encryption key, encrypted data cannot be recovered. Always maintain secure backups of your encryption key.
+    </Warning>
+  </Accordion>
+</AccordionGroup>
