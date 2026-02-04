@@ -3,6 +3,7 @@ import { AxiosError } from "axios";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { TQueueOptions } from "@app/queue/queue-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { AUTH0_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./auth0-client-secret";
@@ -152,14 +153,19 @@ export const decryptSecretRotationCredentials = async ({
 export const getSecretRotationRotateSecretJobOptions = ({
   id,
   nextRotationAt
-}: Pick<TSecretRotationV2Raw, "id" | "nextRotationAt">) => {
+}: Pick<TSecretRotationV2Raw, "id" | "nextRotationAt">): TQueueOptions => {
   const appCfg = getConfig();
 
   return {
     jobId: `secret-rotation-v2-rotate-${id}`,
-    retryLimit: appCfg.isRotationDevelopmentMode ? 3 : 5,
-    retryBackoff: true,
-    startAfter: nextRotationAt ?? undefined
+    attempts: appCfg.isRotationDevelopmentMode ? 1 : 5,
+    removeOnFail: true,
+    removeOnComplete: true,
+    backoff: {
+      type: "exponential",
+      delay: 1000
+    },
+    delay: nextRotationAt ? Number(nextRotationAt) - Date.now() : undefined
   };
 };
 

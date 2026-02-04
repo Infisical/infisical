@@ -36,116 +36,108 @@ export const certificateV3QueueServiceFactory = ({
       QueueName.CertificateV3AutoRenewal
     );
 
-    await queueService.startPg<QueueName.CertificateV3AutoRenewal>(
-      QueueJobs.CertificateV3DailyAutoRenewal,
-      async () => {
-        try {
-          logger.info(`${QueueJobs.CertificateV3DailyAutoRenewal}: queue task started`);
+    queueService.start(QueueName.CertificateV3AutoRenewal, async () => {
+      try {
+        logger.info(`${QueueJobs.CertificateV3DailyAutoRenewal}: queue task started`);
 
-          const { QUEUE_BATCH_SIZE } = CERTIFICATE_RENEWAL_CONFIG;
-          let offset = 0;
-          let hasMore = true;
-          let totalCertificatesFound = 0;
-          let totalCertificatesRenewed = 0;
+        const { QUEUE_BATCH_SIZE } = CERTIFICATE_RENEWAL_CONFIG;
+        let offset = 0;
+        let hasMore = true;
+        let totalCertificatesFound = 0;
+        let totalCertificatesRenewed = 0;
 
-          while (hasMore) {
-            const certificates = await certificateDAL.findCertificatesEligibleForRenewal({
-              limit: QUEUE_BATCH_SIZE,
-              offset
-            });
+        while (hasMore) {
+          const certificates = await certificateDAL.findCertificatesEligibleForRenewal({
+            limit: QUEUE_BATCH_SIZE,
+            offset
+          });
 
-            if (certificates.length === 0) {
-              hasMore = false;
-              break;
-            }
-
-            totalCertificatesFound += certificates.length;
-            logger.info(
-              `${QueueJobs.CertificateV3DailyAutoRenewal}: found ${certificates.length} certificates eligible for renewal (batch ${Math.floor(offset / QUEUE_BATCH_SIZE) + 1}, total found so far: ${totalCertificatesFound})`
-            );
-
-            for (const certificate of certificates) {
-              try {
-                if (certificate.renewBeforeDays) {
-                  const { MIN_RENEW_BEFORE_DAYS, MAX_RENEW_BEFORE_DAYS } = CERTIFICATE_RENEWAL_CONFIG;
-                  if (
-                    certificate.renewBeforeDays < MIN_RENEW_BEFORE_DAYS ||
-                    certificate.renewBeforeDays > MAX_RENEW_BEFORE_DAYS
-                  ) {
-                    // eslint-disable-next-line no-continue
-                    continue;
-                  }
-                }
-
-                await certificateV3Service.renewCertificate({
-                  actor: ActorType.PLATFORM,
-                  actorId: "",
-                  actorAuthMethod: null,
-                  actorOrgId: "",
-                  certificateId: certificate.id,
-                  internal: true
-                });
-
-                totalCertificatesRenewed += 1;
-
-                await auditLogService.createAuditLog({
-                  projectId: certificate.projectId,
-                  actor: {
-                    type: ActorType.PLATFORM,
-                    metadata: {}
-                  },
-                  event: {
-                    type: EventType.AUTOMATED_RENEW_CERTIFICATE,
-                    metadata: {
-                      certificateId: certificate.id,
-                      commonName: certificate.commonName || "",
-                      profileId: certificate.profileId!,
-                      renewBeforeDays: certificate.renewBeforeDays?.toString() || "",
-                      profileName: certificate.profileName || ""
-                    }
-                  }
-                });
-              } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : String(error);
-                logger.error(error, `Failed to renew certificate ${certificate.id}: ${errorMessage}`);
-                await auditLogService.createAuditLog({
-                  projectId: certificate.projectId,
-                  actor: {
-                    type: ActorType.PLATFORM,
-                    metadata: {}
-                  },
-                  event: {
-                    type: EventType.AUTOMATED_RENEW_CERTIFICATE_FAILED,
-                    metadata: {
-                      certificateId: certificate.id,
-                      commonName: certificate.commonName || "",
-                      profileId: certificate.profileId || "",
-                      renewBeforeDays: certificate.renewBeforeDays?.toString() || "",
-                      profileName: certificate.profileName || "",
-                      error: errorMessage
-                    }
-                  }
-                });
-              }
-            }
-
-            offset += QUEUE_BATCH_SIZE;
+          if (certificates.length === 0) {
+            hasMore = false;
+            break;
           }
 
+          totalCertificatesFound += certificates.length;
           logger.info(
-            `${QueueJobs.CertificateV3DailyAutoRenewal}: queue task completed. Renewed ${totalCertificatesRenewed} certificates out of ${totalCertificatesFound}`
+            `${QueueJobs.CertificateV3DailyAutoRenewal}: found ${certificates.length} certificates eligible for renewal (batch ${Math.floor(offset / QUEUE_BATCH_SIZE) + 1}, total found so far: ${totalCertificatesFound})`
           );
-        } catch (error) {
-          logger.error(error, `${QueueJobs.CertificateV3DailyAutoRenewal}: certificate renewal failed`);
-          throw error;
+
+          for (const certificate of certificates) {
+            try {
+              if (certificate.renewBeforeDays) {
+                const { MIN_RENEW_BEFORE_DAYS, MAX_RENEW_BEFORE_DAYS } = CERTIFICATE_RENEWAL_CONFIG;
+                if (
+                  certificate.renewBeforeDays < MIN_RENEW_BEFORE_DAYS ||
+                  certificate.renewBeforeDays > MAX_RENEW_BEFORE_DAYS
+                ) {
+                  // eslint-disable-next-line no-continue
+                  continue;
+                }
+              }
+
+              await certificateV3Service.renewCertificate({
+                actor: ActorType.PLATFORM,
+                actorId: "",
+                actorAuthMethod: null,
+                actorOrgId: "",
+                certificateId: certificate.id,
+                internal: true
+              });
+
+              totalCertificatesRenewed += 1;
+
+              await auditLogService.createAuditLog({
+                projectId: certificate.projectId,
+                actor: {
+                  type: ActorType.PLATFORM,
+                  metadata: {}
+                },
+                event: {
+                  type: EventType.AUTOMATED_RENEW_CERTIFICATE,
+                  metadata: {
+                    certificateId: certificate.id,
+                    commonName: certificate.commonName || "",
+                    profileId: certificate.profileId!,
+                    renewBeforeDays: certificate.renewBeforeDays?.toString() || "",
+                    profileName: certificate.profileName || ""
+                  }
+                }
+              });
+            } catch (error) {
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              logger.error(error, `Failed to renew certificate ${certificate.id}: ${errorMessage}`);
+              await auditLogService.createAuditLog({
+                projectId: certificate.projectId,
+                actor: {
+                  type: ActorType.PLATFORM,
+                  metadata: {}
+                },
+                event: {
+                  type: EventType.AUTOMATED_RENEW_CERTIFICATE_FAILED,
+                  metadata: {
+                    certificateId: certificate.id,
+                    commonName: certificate.commonName || "",
+                    profileId: certificate.profileId || "",
+                    renewBeforeDays: certificate.renewBeforeDays?.toString() || "",
+                    profileName: certificate.profileName || "",
+                    error: errorMessage
+                  }
+                }
+              });
+            }
+          }
+
+          offset += QUEUE_BATCH_SIZE;
         }
-      },
-      {
-        batchSize: 1,
-        workerCount: 1,
-        pollingIntervalSeconds: 60
+
+        logger.info(
+          `${QueueJobs.CertificateV3DailyAutoRenewal}: queue task completed. Renewed ${totalCertificatesRenewed} certificates out of ${totalCertificatesFound}`
+        );
+      } catch (error) {
+        logger.error(error, `${QueueJobs.CertificateV3DailyAutoRenewal}: certificate renewal failed`);
+        throw error;
       }
-    );
+    });
 
     await queueService.schedulePg(
       QueueJobs.CertificateV3DailyAutoRenewal,

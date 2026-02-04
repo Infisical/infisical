@@ -28,8 +28,8 @@ export const pamAccountRotationServiceFactory = ({
       QueueName.PamAccountRotation // job id
     );
 
-    await queueService.startPg<QueueName.PamAccountRotation>(
-      QueueJobs.PamAccountRotation,
+    queueService.start(
+      QueueName.PamAccountRotation,
       async () => {
         try {
           logger.info(`${QueueName.PamAccountRotation}: pam account rotation task started`);
@@ -41,9 +41,7 @@ export const pamAccountRotationServiceFactory = ({
         }
       },
       {
-        batchSize: 1,
-        workerCount: 1,
-        pollingIntervalSeconds: 5 * 60
+        persistence: true
       }
     );
 

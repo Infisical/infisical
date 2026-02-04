@@ -306,7 +306,7 @@ export type TSecretRotationRotateGeneratedCredentials = {
   isManualRotation?: boolean;
 };
 
-export type TSecretRotationRotateSecretsJobPayload = { rotationId: string; queuedAt: Date; isManualRotation: boolean };
+export type TSecretRotationRotateSecretsJobPayload = { rotationId: string; queuedAt: Date; isManualRotation?: boolean };
 
 export type TSecretRotationSendNotificationJobPayload = {
   secretRotation: TSecretRotationV2Raw;

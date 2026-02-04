@@ -3,7 +3,7 @@ import acme from "acme-client";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, TQueueServiceFactory } from "@app/queue";
+import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -184,10 +184,13 @@ export const certificateIssuanceQueueFactory = ({
       csr
     };
 
-    await queueService.queuePg(QueueJobs.CaIssueCertificateFromProfile, jobData, {
-      retryLimit: 3,
-      retryDelay: 5,
-      retryBackoff: true
+    await queueService.queue(QueueName.CertificateIssuance, QueueJobs.CaIssueCertificateFromProfile, jobData, {
+      jobId: `certificate-issuance-${certificateId}`,
+      attempts: 3,
+      backoff: {
+        type: "exponential",
+        delay: 5000
+      }
     });
   };
 
@@ -382,26 +385,12 @@ export const certificateIssuanceQueueFactory = ({
     }
   };
 
-  const initializeCertificateIssuanceQueue = async () => {
-    await queueService.startPg(
-      QueueJobs.CaIssueCertificateFromProfile,
-      async ([job]) => {
-        const data = job.data as TIssueCertificateFromProfileJobData;
-        await processCertificateIssuanceJobs(data);
-      },
-      {
-        workerCount: 2,
-        batchSize: 1,
-        pollingIntervalSeconds: 1
-      }
-    );
-
-    logger.info("Certificate issuance queue worker initialized successfully");
-  };
+  queueService.start(QueueName.CertificateIssuance, async (job) => {
+    await processCertificateIssuanceJobs(job.data);
+  });
 
   return {
     queueCertificateIssuance,
-    initializeCertificateIssuanceQueue,
     processCertificateIssuanceJobs
   };
 };

@@ -1,4 +1,6 @@
-import { QueueJobs, TQueueServiceFactory } from "@app/queue";
+import { randomUUID } from "crypto";
+
+import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TCreateUserNotificationDTO } from "./notification-types";
 import { TUserNotificationDALFactory } from "./user-notification-dal";
@@ -12,26 +14,23 @@ export type TNotificationQueueServiceFactory = {
   pushUserNotifications: (data: TCreateUserNotificationDTO[]) => Promise<void>;
 };
 
-export const notificationQueueServiceFactory = async ({
+export const notificationQueueServiceFactory = ({
   userNotificationDAL,
   queueService
-}: TNotificationQueueServiceFactoryDep): Promise<TNotificationQueueServiceFactory> => {
+}: TNotificationQueueServiceFactoryDep): TNotificationQueueServiceFactory => {
   const pushUserNotifications = async (data: TCreateUserNotificationDTO[]) => {
-    await queueService.queuePg(QueueJobs.UserNotification, { notifications: data });
+    await queueService.queue(
+      QueueName.UserNotification,
+      QueueJobs.UserNotification,
+      { notifications: data },
+      { jobId: randomUUID() }
+    );
   };
 
-  await queueService.startPg(
-    QueueJobs.UserNotification,
-    async ([job]) => {
-      const { notifications } = job.data as { notifications: TCreateUserNotificationDTO[] };
-      await userNotificationDAL.batchInsert(notifications);
-    },
-    {
-      batchSize: 1,
-      workerCount: 2,
-      pollingIntervalSeconds: 1
-    }
-  );
+  queueService.start(QueueName.UserNotification, async (job) => {
+    const { notifications } = job.data as { notifications: TCreateUserNotificationDTO[] };
+    await userNotificationDAL.batchInsert(notifications);
+  });
 
   return {
     pushUserNotifications
