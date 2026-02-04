@@ -23,10 +23,13 @@ Infisical is designed to provide comprehensive, centralized, and efficient manag
 
 ### 1.5 Sub-Organizations (Enterprise)
 
-- **Definition**: [Sub-organizations](/documentation/platform/organization#sub-organizations) are optional child organizations within a root organization, allowing large enterprises to segment by business unit or team.
-- **Hierarchy**: Sub-organizations sit between organizations and projects. Each sub-org can have its own projects, groups, and machine identities.
-- **Resource Sharing**: Users, groups, and machine identities from the root organization can be added to sub-organizations. Resources flow downward only and must be explicitly added.
-- **Limitations**: Authentication (SSO, SCIM, LDAP) and billing are configured at the root organization level only.
+- **Definition**: [Sub-organizations](/documentation/platform/sub-organizations) are optional child organizations within a root organization, enabling large enterprises to create autonomous units that operate independently while inheriting common resources from the parent organization.
+- **Hierarchy**: One level of nesting is supported (root organization to sub-organizations). Each sub-organization works like a regular organization with its own projects, groups, and machine identities.
+- **Resource Sharing**: Users, groups, and machine identities from the root organization can be pulled into sub-organizations. Resources flow downward only and must be explicitly added to a sub-organization before use.
+- **Project Ownership**: Projects belong to the organization you're in. In a sub-organization, you only see projects for that sub-organization—not root organization projects.
+- **Limitations**: Authentication (SSO, SCIM, LDAP) and billing are configured at the root organization level only. No default sub-organization exists—they are created when needed.
+
+For detailed information on resource inheritance, project ownership, and enterprise examples, see the [Sub-Organizations documentation](/documentation/platform/sub-organizations).
 
 ### 2. Projects
 
