@@ -178,6 +178,10 @@ export const subOrgServiceFactory = ({
       }
     }
 
+    if (Object.keys(updateData).length === 0) {
+      return { organization: subOrg };
+    }
+
     const organization = await orgDAL.updateById(subOrgId, updateData);
 
     return {

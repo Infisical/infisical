@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
@@ -30,13 +31,23 @@ export const SubOrgNameChangeSection = (): JSX.Element => {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { handleSubmit, control } = useForm<FormData>({
+  const { handleSubmit, control, reset } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: currentOrg?.name || "",
       slug: currentOrg?.slug || ""
     }
   });
+
+  useEffect(() => {
+    if (currentOrg) {
+      reset({
+        name: currentOrg.name || "",
+        slug: currentOrg.slug || ""
+      });
+    }
+  }, [currentOrg?.id, currentOrg?.name, currentOrg?.slug, reset]);
+
   const { mutateAsync, isPending } = useUpdateSubOrganization();
 
   const onFormSubmit = async ({ name, slug }: FormData) => {

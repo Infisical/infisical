@@ -18,7 +18,8 @@ type ContentProps = {
 
 const AddOrgSchema = z.object({
   name: GenericResourceNameSchema,
-  slug: slugSchema()
+  // Optional: server auto-generates slug from name when not provided (backward compatibility)
+  slug: z.union([slugSchema(), z.literal("")]).optional()
 });
 
 type FormData = z.infer<typeof AddOrgSchema>;
@@ -52,7 +53,7 @@ export const NewSubOrganizationForm = ({ onClose, handleOrgSelection }: ContentP
 
     const { organization } = await createSubOrg.mutateAsync({
       name,
-      slug
+      ...(slug?.trim() && { slug: slug.trim() })
     });
 
     createNotification({
@@ -90,7 +91,7 @@ export const NewSubOrganizationForm = ({ onClose, handleOrgSelection }: ContentP
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl
             isError={Boolean(error)}
-            helperText="Auto-generated from name. Must be slug-friendly."
+            helperText="Optional. Auto-generated from name when empty. Must be slug-friendly if set."
             errorText={error?.message}
             label="Slug"
           >

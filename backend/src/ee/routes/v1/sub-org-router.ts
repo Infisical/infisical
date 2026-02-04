@@ -57,7 +57,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.CREATE_SUB_ORGANIZATION,
           metadata: {
-            name: req.body.name,
+            name: organization.name,
             organizationId: organization.id
           }
         }
