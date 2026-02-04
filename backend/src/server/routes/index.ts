@@ -2685,16 +2685,14 @@ export const registerRoutes = async (
   await healthAlert.init();
   await pkiSyncCleanup.init();
   await pamAccountRotation.init();
-  await pamSessionExpirationService.init();
+  pamSessionExpirationService.init();
   await dailyReminderQueueService.startDailyRemindersJob();
   await dailyReminderQueueService.startSecretReminderMigrationJob();
   await dailyExpiringPkiItemAlert.startSendingAlerts();
   await pkiSubscriberQueue.startDailyAutoRenewalJob();
   await pkiAlertV2Queue.init();
   await certificateV3Queue.init();
-  await certificateIssuanceQueue.initializeCertificateIssuanceQueue();
   await microsoftTeamsService.start();
-  await dynamicSecretQueueService.init();
   await eventBusService.init();
 
   // inject all services

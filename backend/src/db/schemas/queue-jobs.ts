@@ -14,6 +14,7 @@ export const QueueJobsSchema = z.object({
   queueJobName: z.string(),
   jobId: z.string(),
   queueData: z.unknown(),
+  queueOptions: z.unknown().nullable().optional(),
   status: z.string().default("pending"),
   attempts: z.number().default(0),
   maxAttempts: z.number().default(3),

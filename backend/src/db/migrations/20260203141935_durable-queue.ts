@@ -14,7 +14,8 @@ export async function up(knex: Knex): Promise<void> {
       t.string("queueType").notNullable().defaultTo("bullmq");
       t.string("queueJobName").notNullable();
       t.string("jobId").notNullable();
-      t.json("queueData").notNullable();
+      t.jsonb("queueData").notNullable();
+      t.jsonb("queueOptions");
       t.string("status").notNullable().defaultTo("pending");
 
       t.integer("attempts").notNullable().defaultTo(0);

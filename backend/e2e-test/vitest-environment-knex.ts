@@ -74,7 +74,7 @@ export default {
 
       const smtp = mockSmtpServer();
       const queueJobsDAL = queueJobsDALFactory(db);
-      const queue = queueServiceFactory(envCfg, queueJobsDAL, { dbConnectionUrl: envCfg.DB_CONNECTION_URI });
+      const queue = queueServiceFactory(envCfg, queueJobsDAL);
       const keyValueStoreDAL = keyValueStoreDALFactory(db);
       const keyStore = keyStoreFactory(envCfg, keyValueStoreDAL);
 

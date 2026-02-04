@@ -73,12 +73,7 @@ const run = async () => {
   const smtp = smtpServiceFactory(formatSmtpConfig());
 
   const queueJobsDAL = queueJobsDALFactory(db);
-  const queue = queueServiceFactory(envConfig, queueJobsDAL, {
-    dbConnectionUrl: envConfig.DB_CONNECTION_URI,
-    dbRootCert: envConfig.DB_ROOT_CERT
-  });
-
-  await queue.initialize();
+  const queue = queueServiceFactory(envConfig, queueJobsDAL);
 
   const keyValueStoreDAL = keyValueStoreDALFactory(db);
   const keyStore = keyStoreFactory(envConfig, keyValueStoreDAL);
@@ -97,6 +92,8 @@ const run = async () => {
     redis,
     envConfig
   });
+
+  await queue.initialize();
   const bootstrap = await bootstrapCheck({ db });
 
   // eslint-disable-next-line

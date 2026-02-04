@@ -160,7 +160,7 @@ export const dailyReminderQueueServiceFactory = ({
     await queueService.queue(QueueName.DailyReminders, QueueJobs.DailyReminders, undefined, {
       delay: 5000,
       jobId: QueueName.DailyReminders,
-      repeat: { pattern: "0 0 * * *", utc: true }
+      repeat: { pattern: "0 0 * * *", utc: true, key: QueueJobs.DailyReminders }
     });
   };
 
