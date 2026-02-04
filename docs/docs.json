@@ -754,6 +754,7 @@
                 "pages": [
                   "documentation/platform/pki/certificate-syncs/overview",
                   "documentation/platform/pki/certificate-syncs/aws-certificate-manager",
+                  "documentation/platform/pki/certificate-syncs/aws-elastic-load-balancer",
                   "documentation/platform/pki/certificate-syncs/aws-secrets-manager",
                   "documentation/platform/pki/certificate-syncs/azure-key-vault",
                   "documentation/platform/pki/certificate-syncs/chef",
@@ -2810,6 +2811,18 @@
                       "api-reference/endpoints/pki/syncs/aws-certificate-manager/delete",
                       "api-reference/endpoints/pki/syncs/aws-certificate-manager/sync-certificates",
                       "api-reference/endpoints/pki/syncs/aws-certificate-manager/remove-certificates"
+                    ]
+                  },
+                  {
+                    "group": "AWS Elastic Load Balancer",
+                    "pages": [
+                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/list",
+                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/get-by-id",
+                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/create",
+                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/update",
+                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/delete",
+                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/sync-certificates",
+                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/remove-certificates"
                     ]
                   },
                   {

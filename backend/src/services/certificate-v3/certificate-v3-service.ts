@@ -118,7 +118,7 @@ type TCertificateV3ServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
-    "findPkiSyncIdsByCertificateId" | "addCertificates" | "findByPkiSyncAndCertificate"
+    "findPkiSyncIdsByCertificateId" | "addCertificates" | "findByPkiSyncAndCertificate" | "updateSyncMetadata"
   >;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
