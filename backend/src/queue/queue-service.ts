@@ -1,7 +1,6 @@
 import { Job, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from "bullmq";
-import PgBoss from "pg-boss";
 
-import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
+import { SecretEncryptionAlgo, SecretKeyEncoding, TQueueJobs } from "@app/db/schemas";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import {
   TSecretRotationRotateSecretsJobPayload,
@@ -55,6 +54,10 @@ export enum PersistanceQueueStatus {
 }
 
 export enum QueueName {
+  // Internal queues for durable queue recovery
+  QueueInternalRecovery = "queue-internal-recovery",
+  QueueInternalReconciliation = "queue-internal-reconciliation",
+
   SecretRotation = "secret-rotation",
   SecretReminder = "secret-reminder",
   AuditLog = "audit-log",
@@ -101,6 +104,10 @@ export enum QueueName {
 }
 
 export enum QueueJobs {
+  // Internal queue jobs for durable queue recovery
+  QueueRecovery = "queue-recovery-job",
+  QueueReconciliation = "queue-reconciliation-job",
+
   SecretReminder = "secret-reminder-job",
   SecretRotation = "secret-rotation-job",
   AuditLog = "audit-log-job",
@@ -169,11 +176,30 @@ export type TQueueOptions = {
   };
   repeat?: {
     pattern?: string;
+    every?: number;
+    // only works with every by bullmq
+    immediately?: boolean;
     key: string;
+    utc?: boolean;
   };
 };
 
+export type TPersistenceConfig = {
+  enabled: boolean;
+  stuckThresholdMs?: number; // Default: 5 minutes (300000ms)
+};
+
 export type TQueueJobTypes = {
+  // Internal queue types for durable queue recovery
+  [QueueName.QueueInternalRecovery]: {
+    name: QueueJobs.QueueRecovery;
+    payload: undefined;
+  };
+  [QueueName.QueueInternalReconciliation]: {
+    name: QueueJobs.QueueReconciliation;
+    payload: undefined;
+  };
+
   [QueueName.SecretReminder]: {
     payload: {
       projectId: string;
@@ -477,7 +503,7 @@ export type TQueueServiceFactory = {
   start: <T extends QueueName>(
     name: T,
     jobFn: (job: Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>, token?: string) => Promise<void>,
-    queueSettings?: Omit<QueueOptions, "connection"> & { persistence?: boolean }
+    queueSettings?: Omit<QueueOptions, "connection"> & { persistence?: boolean | TPersistenceConfig }
   ) => void;
   listen: <
     T extends QueueName,
@@ -493,7 +519,6 @@ export type TQueueServiceFactory = {
     data: TQueueJobTypes[T]["payload"],
     opts: TQueueOptions
   ) => Promise<void>;
-  unschedulePg: <T extends QueueName>(job: TQueueJobTypes[T]["name"]) => Promise<void>;
   shutdown: () => Promise<void>;
   stopRepeatableJob: <T extends QueueName>(
     name: T,
@@ -505,7 +530,6 @@ export type TQueueServiceFactory = {
   stopRepeatableJobByKey: <T extends QueueName>(name: T, repeatJobKey: string) => Promise<boolean>;
   clearQueue: (name: QueueName) => Promise<void>;
   stopJobById: <T extends QueueName>(name: T, jobId: string) => Promise<void | undefined>;
-  stopJobByIdPg: <T extends QueueName>(name: T, jobId: string) => Promise<void | undefined>;
   getRepeatableJobs: (
     name: QueueName,
     startOffset?: number,
@@ -516,12 +540,12 @@ export type TQueueServiceFactory = {
     startOffset?: number,
     endOffset?: number
   ) => Promise<{ delay: number; timestamp: number; repeatJobKey?: string; data?: unknown }[]>;
+  updateJobHeartbeat: <T extends QueueName>(queueName: T, jobId: string) => Promise<void>;
 };
 
 export const queueServiceFactory = (
   redisCfg: TRedisConfigKeys,
-  queueJobsDAL: TQueueJobsDALFactory,
-  { dbConnectionUrl, dbRootCert }: { dbConnectionUrl: string; dbRootCert?: string }
+  queueJobsDAL: TQueueJobsDALFactory
 ): TQueueServiceFactory => {
   const isClusterMode = Boolean(redisCfg?.REDIS_CLUSTER_HOSTS);
   const connection = buildRedisFromConfig(redisCfg);
@@ -530,20 +554,6 @@ export const queueServiceFactory = (
     Queue<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>
   >;
 
-  const pgBoss = new PgBoss({
-    connectionString: dbConnectionUrl,
-    archiveCompletedAfterSeconds: 60,
-    cronMonitorIntervalSeconds: 5,
-    archiveFailedAfterSeconds: 1000, // we want to keep failed jobs for a longer time so that it can be retried
-    deleteAfterSeconds: 30,
-    ssl: dbRootCert
-      ? {
-          rejectUnauthorized: true,
-          ca: Buffer.from(dbRootCert, "base64").toString("ascii")
-        }
-      : false
-  });
-
   const workerContainer = {} as Record<
     QueueName,
     Worker<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>
@@ -551,13 +561,239 @@ export const queueServiceFactory = (
 
   const persistantQueues = new Set<QueueName>();
 
-  const initialize = async () => {
-    logger.info("Initializing pg-queue...");
-    await pgBoss.start();
+  // Configuration for persistent queues (threshold and max attempts)
+  const persistentQueueConfigs = new Map<
+    QueueName,
+    {
+      stuckThresholdMs: number;
+      maxAttempts: number;
+    }
+  >();
 
-    pgBoss.on("error", (error) => {
-      logger.error(error, "pg-queue error");
+  // Track startup recovery completion to prevent duplicate runs
+  let startupRecoveryCompleted = false;
+
+  /**
+   * Startup Recovery Function
+   * Recovers pending jobs from PostgreSQL after server restart
+   */
+  const startupRecovery = async () => {
+    if (startupRecoveryCompleted) return;
+
+    logger.info("Starting queue startup recovery...");
+
+    const queueNames = Array.from(persistantQueues);
+    if (queueNames.length === 0) {
+      startupRecoveryCompleted = true;
+      logger.info("No persistent queues configured, skipping startup recovery");
+      return;
+    }
+
+    try {
+      const pendingJobs = await queueJobsDAL.find({
+        status: PersistanceQueueStatus.Pending,
+        $in: { queueName: queueNames }
+      });
+
+      logger.info({ count: pendingJobs.length }, "Found pending jobs for recovery");
+
+      for await (const job of pendingJobs) {
+        const queueName = job.queueName as QueueName;
+        const q = queueContainer[queueName];
+        if (!q) {
+          logger.warn({ queueName, jobId: job.jobId }, "Queue not initialized, skipping job");
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
+        const opts = (job.queueOptions || {}) as TQueueOptions;
+
+        // Check if already in Redis (avoid duplicates)
+        const existingJob = await q.getJob(job.jobId);
+        if (existingJob) {
+          logger.debug({ jobId: job.jobId, queueName }, "Job already in Redis, skipping");
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
+        // Recalculate delay for delayed jobs
+        let adjustedDelay = opts.delay;
+        if (opts.delay && opts.delay > 0) {
+          const originalScheduledTime = new Date(job.createdAt).getTime() + opts.delay;
+          adjustedDelay = Math.max(0, originalScheduledTime - Date.now());
+        }
+
+        // Re-queue the job
+        await q.add(job.queueJobName as TQueueJobTypes[typeof queueName]["name"], job.queueData as never, {
+          ...opts,
+          delay: adjustedDelay,
+          jobId: job.jobId
+        });
+
+        logger.info({ jobId: job.jobId, queueName, adjustedDelay }, "Job recovered and re-queued");
+      }
+
+      startupRecoveryCompleted = true;
+      logger.info("Queue startup recovery completed");
+    } catch (error) {
+      logger.error(error, "Queue startup recovery failed");
+    }
+  };
+
+  /**
+   * Handle a stuck job - either re-queue it or mark it as dead
+   */
+  const handleStuckJob = async (dbJob: TQueueJobs, config: { stuckThresholdMs: number; maxAttempts: number }) => {
+    const queueName = dbJob.queueName as QueueName;
+    const q = queueContainer[queueName];
+    if (!q) return;
+
+    const newAttempts = dbJob.attempts + 1;
+
+    if (newAttempts >= config.maxAttempts) {
+      // Mark as dead - exceeded max retries
+      await queueJobsDAL.update(
+        { id: dbJob.id },
+        {
+          status: PersistanceQueueStatus.Dead,
+          attempts: newAttempts,
+          errorMessage: `Exceeded max attempts (${config.maxAttempts}) after being stuck`
+        }
+      );
+
+      logger.error({ jobId: dbJob.jobId, queueName, attempts: newAttempts }, "Job marked as dead");
+
+      // Remove from Redis if exists
+      try {
+        const redisJob = await q.getJob(dbJob.jobId);
+        if (redisJob) await redisJob.remove();
+      } catch {
+        // Ignore removal errors
+      }
+      return;
+    }
+
+    // Reset to pending with incremented attempts
+    await queueJobsDAL.update(
+      { id: dbJob.id },
+      {
+        status: PersistanceQueueStatus.Pending,
+        attempts: newAttempts,
+        startedAt: null,
+        lastHeartBeat: null,
+        errorMessage: `Re-queued after stuck detection (attempt ${newAttempts}/${config.maxAttempts})`
+      }
+    );
+
+    // Remove from Redis and re-add
+    try {
+      const redisJob = await q.getJob(dbJob.jobId);
+      if (redisJob) await redisJob.remove();
+    } catch {
+      // Ignore removal errors
+    }
+
+    const opts = (dbJob.queueOptions || {}) as TQueueOptions;
+    await q.add(dbJob.queueJobName as TQueueJobTypes[typeof queueName]["name"], dbJob.queueData as never, {
+      ...opts,
+      jobId: dbJob.jobId,
+      delay: undefined // Execute immediately on retry
     });
+
+    logger.info({ jobId: dbJob.jobId, queueName, attempt: newAttempts }, "Stuck job re-queued");
+  };
+
+  /**
+   * Reconciliation Function
+   * Checks for stuck jobs and re-queues them
+   */
+  const runReconciliation = async () => {
+    logger.debug("Running queue reconciliation check...");
+
+    if (persistentQueueConfigs.size === 0) return;
+
+    try {
+      // Iterate through each persistent queue
+      for await (const [queueName, config] of persistentQueueConfigs.entries()) {
+        // Find stuck jobs for this specific queue
+        const stuckJobs = await queueJobsDAL.findStuckJobsByQueue(queueName, config.stuckThresholdMs);
+
+        if (stuckJobs.length > 0) {
+          logger.info({ queueName, count: stuckJobs.length }, "Found stuck jobs for reconciliation");
+        }
+
+        // Process stuck jobs sequentially to avoid race conditions
+        // eslint-disable-next-line no-await-in-loop
+        for await (const job of stuckJobs) {
+          await handleStuckJob(job, config);
+        }
+      }
+    } catch (error) {
+      logger.error(error, "Queue reconciliation failed");
+    }
+  };
+
+  const initialize = async () => {
+    const appCfg = getConfig();
+
+    // Initialize internal recovery queue (BullMQ for distributed coordination)
+    queueContainer[QueueName.QueueInternalRecovery] = new Queue(QueueName.QueueInternalRecovery, {
+      prefix: isClusterMode ? `{${QueueName.QueueInternalRecovery}}` : undefined,
+      connection
+    });
+
+    // Initialize internal reconciliation queue
+    queueContainer[QueueName.QueueInternalReconciliation] = new Queue(QueueName.QueueInternalReconciliation, {
+      prefix: isClusterMode ? `{${QueueName.QueueInternalReconciliation}}` : undefined,
+      connection
+    });
+
+    if (appCfg.QUEUE_WORKERS_ENABLED) {
+      // Start recovery worker
+      workerContainer[QueueName.QueueInternalRecovery] = new Worker(
+        QueueName.QueueInternalRecovery,
+        async () => {
+          await startupRecovery();
+        },
+        {
+          prefix: isClusterMode ? `{${QueueName.QueueInternalRecovery}}` : undefined,
+          connection
+        }
+      );
+
+      // Start reconciliation worker
+      workerContainer[QueueName.QueueInternalReconciliation] = new Worker(
+        QueueName.QueueInternalReconciliation,
+        async () => {
+          await runReconciliation();
+        },
+        {
+          prefix: isClusterMode ? `{${QueueName.QueueInternalReconciliation}}` : undefined,
+          connection
+        }
+      );
+
+      // Schedule startup recovery job (runs once after 2 minutes)
+      await queueContainer[QueueName.QueueInternalRecovery].add(QueueJobs.QueueRecovery, undefined, {
+        jobId: "queue-startup-recovery",
+        delay: 2 * 60 * 1000,
+        removeOnComplete: true,
+        removeOnFail: true
+      });
+
+      // Schedule reconciliation job (runs every minute)
+      await queueContainer[QueueName.QueueInternalReconciliation].add(QueueJobs.QueueReconciliation, undefined, {
+        jobId: "queue-reconciliation-cron",
+        repeat: {
+          pattern: "* * * * *",
+          key: "queue-reconciliation-cron"
+        },
+        removeOnComplete: true,
+        removeOnFail: true
+      });
+
+      logger.info("Internal queue recovery and reconciliation workers started");
+    }
   };
 
   const start: TQueueServiceFactory["start"] = (name, jobFn, queueSettings) => {
@@ -614,7 +850,20 @@ export const queueServiceFactory = (
       connection
     });
 
-    if (persistence) {
+    // Check if persistence is enabled (either true or an object with enabled: true)
+    const isPersistenceEnabled = persistence === true || (typeof persistence === "object" && persistence.enabled);
+
+    if (isPersistenceEnabled) {
+      // Normalize persistence config (supports boolean or object)
+      const persistenceConfig =
+        typeof persistence === "object"
+          ? {
+              stuckThresholdMs: persistence.stuckThresholdMs ?? 5 * 60 * 1000,
+              maxAttempts: 3
+            }
+          : { stuckThresholdMs: 5 * 60 * 1000, maxAttempts: 3 };
+
+      persistentQueueConfigs.set(name, persistenceConfig);
       persistantQueues.add(name);
 
       workerContainer[name].on("active", (job) => {
@@ -681,8 +930,13 @@ export const queueServiceFactory = (
   const queue: TQueueServiceFactory["queue"] = async (name, job, data, opts) => {
     const q = queueContainer[name];
 
-    const { jobId } = opts;
-    const finalOptions = { removeOnFail: true, removeOnComplete: true, ...opts };
+    const { jobId, repeat } = opts;
+    const finalOptions = {
+      removeOnFail: true,
+      removeOnComplete: true,
+      ...opts,
+      repeat: repeat ? { ...repeat, utc: true } : undefined
+    };
 
     if (persistantQueues.has(name)) {
       await queueJobsDAL.create({
@@ -697,11 +951,6 @@ export const queueServiceFactory = (
     }
 
     await q.add(job, data, { ...opts, jobId });
-  };
-
-  const unschedulePg: TQueueServiceFactory["unschedulePg"] = async (job) => {
-    await pgBoss.unschedule(job);
-    await pgBoss.deleteQueue(job);
   };
 
   const stopRepeatableJob: TQueueServiceFactory["stopRepeatableJob"] = async (name, job, repeatOpt, jobId) => {
@@ -739,13 +988,15 @@ export const queueServiceFactory = (
     return q.removeRepeatableByKey(repeatJobKey);
   };
 
-  const stopJobByIdPg: TQueueServiceFactory["stopJobByIdPg"] = async (name, jobId) => {
-    await pgBoss.deleteJob(name, jobId);
-  };
-
   const stopJobById: TQueueServiceFactory["stopJobById"] = async (name, jobId) => {
     const q = queueContainer[name];
     const job = await q.getJob(jobId);
+
+    const isPersistantQueue = persistantQueues.has(name);
+    if (isPersistantQueue) {
+      await queueJobsDAL.delete({ jobId });
+    }
+
     return job?.remove().catch(() => undefined);
   };
 
@@ -755,7 +1006,27 @@ export const queueServiceFactory = (
   };
 
   const shutdown: TQueueServiceFactory["shutdown"] = async () => {
+    // Stop internal queue repeatable jobs
+    try {
+      const reconciliationQueue = queueContainer[QueueName.QueueInternalReconciliation];
+      if (reconciliationQueue) {
+        await reconciliationQueue.removeRepeatableByKey("queue-reconciliation-cron");
+      }
+    } catch {
+      // Ignore errors during shutdown
+    }
+
     await Promise.all(Object.values(workerContainer).map((worker) => worker.close()));
+  };
+
+  /**
+   * Update the heartbeat for a job to signal it's still alive
+   * Long-running jobs should call this periodically to avoid being marked as stuck
+   */
+  const updateJobHeartbeat: TQueueServiceFactory["updateJobHeartbeat"] = async (queueName, jobId) => {
+    if (!persistantQueues.has(queueName)) return;
+
+    await queueJobsDAL.update({ queueName, jobId }, { lastHeartBeat: new Date() });
   };
 
   return {
@@ -769,9 +1040,8 @@ export const queueServiceFactory = (
     stopRepeatableJobByKey,
     clearQueue,
     stopJobById,
-    stopJobByIdPg,
     getRepeatableJobs,
     getDelayedJobs,
-    unschedulePg
+    updateJobHeartbeat
   };
 };

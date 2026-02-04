@@ -773,7 +773,7 @@ export const secretRotationV2ServiceFactory = ({
       // queue for rotation if adjusted time falls before next cron
       if (nextRotationAt && nextRotationAt.getTime() < getNextUtcRotationInterval().getTime()) {
         await queueService.queue(
-          QueueName.SecretRotationV2,
+          QueueName.SecretRotationV2RotateSecrets,
           QueueJobs.SecretRotationV2RotateSecrets,
           { rotationId, queuedAt: new Date(), isManualRotation: true },
           getSecretRotationRotateSecretJobOptions(updatedSecretRotation)
