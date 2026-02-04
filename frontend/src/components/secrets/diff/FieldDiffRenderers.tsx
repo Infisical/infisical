@@ -45,11 +45,11 @@ export const InlineTextDiff = ({
 
   return (
     <span className={twMerge(baseClass, fontSizeClass)}>
-      {changes.map((change) => {
+      {changes.map((change, index) => {
         let keyPrefix = "unchanged";
         if (change.added) keyPrefix = "add";
         else if (change.removed) keyPrefix = "rem";
-        const key = `${keyPrefix}-${change.value}`;
+        const key = `${keyPrefix}-${index}`;
 
         if (change.added && !isOldVersion) {
           return (
