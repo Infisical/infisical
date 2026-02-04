@@ -36,6 +36,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import {
   getUserTablePreference,
@@ -61,6 +62,7 @@ type Props = {
       };
     }
   ) => void;
+  onUnlinkGroup?: (data: { name: string; groupId: string; organizationId: string }) => void;
 };
 
 enum GroupsOrderBy {
@@ -69,7 +71,7 @@ enum GroupsOrderBy {
   Role = "role"
 }
 
-export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
+export const OrgGroupsTable = ({ handlePopUpOpen, onUnlinkGroup }: Props) => {
   const navigate = useNavigate();
   const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
@@ -230,7 +232,9 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
             {!isPending &&
               filteredGroups
                 .slice(offset, perPage * page)
-                .map(({ id, name, slug, role, customRole }) => {
+                .map((group) => {
+                  const { id, name, slug, role, customRole, orgId: groupOrgId } = group;
+                  const isLinked = Boolean(isSubOrganization && groupOrgId && groupOrgId !== orgId);
                   return (
                     <Tr
                       onClick={() =>
@@ -245,7 +249,16 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                       className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                       key={`org-group-${id}`}
                     >
-                      <Td>{name}</Td>
+                      <Td>
+                        <div className="flex items-center gap-2">
+                          {name}
+                          {isLinked && (
+                            <Badge variant="neutral" className="text-xs">
+                              From parent org
+                            </Badge>
+                          )}
+                        </div>
+                      </Td>
                       <Td>{slug}</Td>
                       <Td>
                         <OrgPermissionCan
@@ -348,26 +361,46 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                                 </DropdownMenuItem>
                               )}
                             </OrgPermissionCan>
-                            <OrgPermissionCan
-                              I={OrgPermissionGroupActions.Delete}
-                              a={OrgPermissionSubjects.Groups}
-                            >
-                              {(isAllowed) => (
-                                <DropdownMenuItem
-                                  icon={<FontAwesomeIcon icon={faTrash} />}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePopUpOpen("deleteGroup", {
-                                      groupId: id,
-                                      name
-                                    });
-                                  }}
-                                  isDisabled={!isAllowed}
-                                >
-                                  Delete Group
-                                </DropdownMenuItem>
-                              )}
-                            </OrgPermissionCan>
+                            {isLinked && onUnlinkGroup ? (
+                              <OrgPermissionCan
+                                I={OrgPermissionGroupActions.Delete}
+                                a={OrgPermissionSubjects.Groups}
+                              >
+                                {(isAllowed) => (
+                                  <DropdownMenuItem
+                                    icon={<FontAwesomeIcon icon={faTrash} />}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onUnlinkGroup({ name, groupId: id, organizationId: orgId });
+                                    }}
+                                    isDisabled={!isAllowed}
+                                  >
+                                    Remove from sub-organization
+                                  </DropdownMenuItem>
+                                )}
+                              </OrgPermissionCan>
+                            ) : (
+                              <OrgPermissionCan
+                                I={OrgPermissionGroupActions.Delete}
+                                a={OrgPermissionSubjects.Groups}
+                              >
+                                {(isAllowed) => (
+                                  <DropdownMenuItem
+                                    icon={<FontAwesomeIcon icon={faTrash} />}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePopUpOpen("deleteGroup", {
+                                        groupId: id,
+                                        name
+                                      });
+                                    }}
+                                    isDisabled={!isAllowed}
+                                  >
+                                    Delete Group
+                                  </DropdownMenuItem>
+                                )}
+                              </OrgPermissionCan>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </Td>

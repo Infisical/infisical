@@ -42,11 +42,13 @@ export const groupDALFactory = (db: TDbClient) => {
 
   const findByOrgId = async (orgId: string, tx?: Knex) => {
     try {
-      const docs = await (tx || db.replicaNode())(TableName.Groups)
-        .where(`${TableName.Groups}.orgId`, orgId)
+      // Return groups that have a membership in this org (owned: group.orgId === orgId, or linked: group.orgId === parentOrgId).
+      // Join on Membership.scopeOrgId = orgId so we get the role for this org's membership.
+      const docs = await (tx || db.replicaNode())(TableName.Membership)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-        .join(TableName.Membership, `${TableName.Groups}.id`, `${TableName.Membership}.actorGroupId`)
+        .whereNotNull(`${TableName.Membership}.actorGroupId`)
+        .join(TableName.Groups, `${TableName.Groups}.id`, `${TableName.Membership}.actorGroupId`)
         .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .select(selectAllTableCols(TableName.Groups))
@@ -521,6 +523,30 @@ export const groupDALFactory = (db: TDbClient) => {
     }
   };
 
+  const listAvailableGroupsForSubOrg = async (subOrgId: string, parentOrgId: string, tx?: Knex) => {
+    try {
+      const groupsLinkedToSubOrg = (tx || db.replicaNode())(TableName.Membership)
+        .where(`${TableName.Membership}.scopeOrgId`, subOrgId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNotNull(`${TableName.Membership}.actorGroupId`)
+        .select(`${TableName.Membership}.actorGroupId`);
+
+      const docs = await (tx || db.replicaNode())(TableName.Groups)
+        .where(`${TableName.Groups}.orgId`, parentOrgId)
+        .where(`${TableName.Membership}.scopeOrgId`, parentOrgId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .join(TableName.Membership, `${TableName.Groups}.id`, `${TableName.Membership}.actorGroupId`)
+        .whereNotIn(`${TableName.Groups}.id`, groupsLinkedToSubOrg)
+        .select(db.ref("id").withSchema(TableName.Groups))
+        .select(db.ref("name").withSchema(TableName.Groups))
+        .select(db.ref("slug").withSchema(TableName.Groups));
+
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "ListAvailableGroupsForSubOrg" });
+    }
+  };
+
   const findById = async (id: string, tx?: Knex) => {
     try {
       const doc = await (tx || db.replicaNode())(TableName.Groups)
@@ -570,6 +596,7 @@ export const groupDALFactory = (db: TDbClient) => {
     ...groupOrm,
     findGroups,
     findByOrgId,
+    listAvailableGroupsForSubOrg,
     findAllGroupPossibleUsers,
     findAllGroupPossibleMachineIdentities,
     findAllGroupPossibleMembers,

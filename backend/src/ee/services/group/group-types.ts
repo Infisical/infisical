@@ -97,6 +97,21 @@ export type TRemoveMachineIdentityFromGroupDTO = {
   identityId: string;
 } & TGenericPermission;
 
+export type TListAvailableGroupsForSubOrgDTO = {
+  subOrgId: string;
+} & TGenericPermission;
+
+export type TLinkGroupToOrganizationDTO = {
+  groupId: string;
+  organizationId: string;
+  role?: string;
+} & TGenericPermission;
+
+export type TUnlinkGroupFromOrganizationDTO = {
+  groupId: string;
+  organizationId: string;
+} & TGenericPermission;
+
 // group fns types
 
 export type TAddUsersToGroup = {

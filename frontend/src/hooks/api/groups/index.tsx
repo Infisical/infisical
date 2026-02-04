@@ -3,8 +3,10 @@ export {
   useAddUserToGroup,
   useCreateGroup,
   useDeleteGroup,
+  useLinkGroupToOrganization,
   useRemoveIdentityFromGroup,
   useRemoveUserFromGroup,
+  useUnlinkGroupFromOrganization,
   useUpdateGroup
 } from "./mutations";
 export {

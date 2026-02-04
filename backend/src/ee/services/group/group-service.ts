@@ -32,12 +32,15 @@ import {
   TCreateGroupDTO,
   TDeleteGroupDTO,
   TGetGroupByIdDTO,
+  TLinkGroupToOrganizationDTO,
+  TListAvailableGroupsForSubOrgDTO,
   TListGroupMachineIdentitiesDTO,
   TListGroupMembersDTO,
   TListGroupProjectsDTO,
   TListGroupUsersDTO,
   TRemoveMachineIdentityFromGroupDTO,
   TRemoveUserFromGroupDTO,
+  TUnlinkGroupFromOrganizationDTO,
   TUpdateGroupDTO
 } from "./group-types";
 import { TIdentityGroupMembershipDALFactory } from "./identity-group-membership-dal";
@@ -59,9 +62,10 @@ type TGroupServiceFactoryDep = {
     | "findById"
     | "transaction"
     | "findAllGroupProjects"
+    | "listAvailableGroupsForSubOrg"
   >;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "findOne" | "create" | "getGroupById">;
-  membershipDAL: Pick<TMembershipDALFactory, "find" | "findOne">;
+  membershipDAL: Pick<TMembershipDALFactory, "find" | "findOne" | "delete">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "countAllOrgMembers" | "findById">;
   userGroupMembershipDAL: Pick<
@@ -337,13 +341,198 @@ export const groupServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
 
     const group = await groupDAL.findById(id);
-    if (!group || group.orgId !== actorOrgId) {
+    if (!group) {
       throw new NotFoundError({
         message: `Cannot find group with ID ${id}`
       });
     }
+    // Allow access if group is owned by this org or linked to this org (has membership in actorOrgId)
+    const isOwned = group.orgId === actorOrgId;
+    if (!isOwned) {
+      const linkedMembership = await membershipDAL.findOne({
+        actorGroupId: group.id,
+        scopeOrgId: actorOrgId,
+        scope: AccessScope.Organization
+      });
+      if (!linkedMembership) {
+        throw new NotFoundError({
+          message: `Cannot find group with ID ${id}`
+        });
+      }
+    }
 
     return group;
+  };
+
+  const listAvailableGroupsForSubOrg = async ({
+    subOrgId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TListAvailableGroupsForSubOrgDTO) => {
+    if (!actorOrgId || actorOrgId !== subOrgId)
+      throw new UnauthorizedError({ message: "Sub-organization context required" });
+
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: subOrgId,
+      actorAuthMethod,
+      actorOrgId: subOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Create, OrgPermissionSubjects.Groups);
+
+    const org = await orgDAL.findById(subOrgId);
+    if (!org?.parentOrgId)
+      throw new BadRequestError({ message: "Organization is not a sub-organization" });
+
+    const parentOrgId = org.parentOrgId;
+    const plan = await licenseService.getPlan(org.rootOrgId ?? subOrgId);
+    if (!plan.groups)
+      throw new BadRequestError({
+        message: "Failed to list available groups due to plan restriction. Upgrade plan to use groups."
+      });
+
+    const groups = await groupDAL.listAvailableGroupsForSubOrg(subOrgId, parentOrgId);
+    return groups;
+  };
+
+  const linkGroupToOrganization = async ({
+    groupId,
+    organizationId: subOrgId,
+    role = OrgMembershipRole.NoAccess,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TLinkGroupToOrganizationDTO) => {
+    if (!actorOrgId || actorOrgId !== subOrgId)
+      throw new UnauthorizedError({ message: "Sub-organization context required" });
+
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: subOrgId,
+      actorAuthMethod,
+      actorOrgId: subOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Create, OrgPermissionSubjects.Groups);
+
+    const org = await orgDAL.findById(subOrgId);
+    if (!org?.parentOrgId)
+      throw new BadRequestError({ message: "Organization is not a sub-organization" });
+
+    const parentOrgId = org.parentOrgId;
+    const plan = await licenseService.getPlan(org.rootOrgId ?? subOrgId);
+    if (!plan.groups)
+      throw new BadRequestError({
+        message: "Failed to link group due to plan restriction. Upgrade plan to use groups."
+      });
+
+    const group = await groupDAL.findOne({ id: groupId, orgId: parentOrgId });
+    if (!group)
+      throw new NotFoundError({ message: "Group not found or does not belong to parent organization" });
+
+    const existingLink = await membershipDAL.findOne({
+      actorGroupId: groupId,
+      scopeOrgId: subOrgId,
+      scope: AccessScope.Organization
+    });
+    if (existingLink)
+      throw new BadRequestError({ message: "Group is already linked to this sub-organization" });
+
+    const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([role], subOrgId);
+    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(subOrgId);
+    const isCustomRole = Boolean(rolePermissionDetails?.role);
+    if (role !== OrgMembershipRole.NoAccess) {
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        OrgPermissionGroupActions.GrantPrivileges,
+        OrgPermissionSubjects.Groups,
+        permission,
+        rolePermissionDetails.permission
+      );
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to link group",
+            shouldUseNewPrivilegeSystem,
+            OrgPermissionGroupActions.GrantPrivileges,
+            OrgPermissionSubjects.Groups
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
+    }
+
+    await groupDAL.transaction(async (tx) => {
+      const membership = await membershipGroupDAL.create(
+        {
+          actorGroupId: group.id,
+          scope: AccessScope.Organization,
+          scopeOrgId: subOrgId
+        },
+        tx
+      );
+      await membershipRoleDAL.create(
+        {
+          membershipId: membership.id,
+          role: isCustomRole ? OrgMembershipRole.Custom : role,
+          customRoleId: rolePermissionDetails?.role?.id
+        },
+        tx
+      );
+    });
+
+    return group;
+  };
+
+  const unlinkGroupFromOrganization = async ({
+    groupId,
+    organizationId: subOrgId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TUnlinkGroupFromOrganizationDTO) => {
+    if (!actorOrgId || actorOrgId !== subOrgId)
+      throw new UnauthorizedError({ message: "Sub-organization context required" });
+
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: subOrgId,
+      actorAuthMethod,
+      actorOrgId: subOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Delete, OrgPermissionSubjects.Groups);
+
+    const org = await orgDAL.findById(subOrgId);
+    if (!org?.parentOrgId)
+      throw new BadRequestError({ message: "Organization is not a sub-organization" });
+
+    const group = await groupDAL.findOne({ id: groupId });
+    if (!group)
+      throw new NotFoundError({ message: "Group not found" });
+    // Only allow unlinking if the group is linked (group belongs to parent, not this org)
+    if (group.orgId === subOrgId)
+      throw new BadRequestError({ message: "Cannot unlink an owned group; use delete instead" });
+
+    const membership = await membershipDAL.findOne({
+      actorGroupId: groupId,
+      scopeOrgId: subOrgId,
+      scope: AccessScope.Organization
+    });
+    if (!membership)
+      throw new NotFoundError({ message: "Group is not linked to this sub-organization" });
+
+    await membershipRoleDAL.delete({ membershipId: membership.id });
+    await membershipDAL.delete({ id: membership.id });
+
+    return { ok: true };
   };
 
   const listGroupUsers = async ({
@@ -867,6 +1056,10 @@ export const groupServiceFactory = ({
     createGroup,
     updateGroup,
     deleteGroup,
+    getGroupById,
+    listAvailableGroupsForSubOrg,
+    linkGroupToOrganization,
+    unlinkGroupFromOrganization,
     listGroupUsers,
     listGroupMachineIdentities,
     listGroupMembers,
@@ -874,7 +1067,6 @@ export const groupServiceFactory = ({
     addUserToGroup,
     addMachineIdentityToGroup,
     removeUserFromGroup,
-    removeMachineIdentityFromGroup,
-    getGroupById
+    removeMachineIdentityFromGroup
   };
 };

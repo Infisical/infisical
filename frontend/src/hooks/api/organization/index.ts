@@ -8,6 +8,7 @@ export {
   useDeleteOrgTaxId,
   useGetIdentityMembershipOrgs,
   useGetOrganizationGroups,
+  useGetOrganizationGroupsAvailable,
   useGetOrganizations,
   useGetOrgBillingDetails,
   useGetOrgIntegrationAuths,

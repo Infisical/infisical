@@ -472,6 +472,106 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/:organizationId/groups/available",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listAvailableOrganizationGroups",
+      params: z.object({
+        organizationId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          groups: z
+            .object({
+              id: z.string().uuid(),
+              name: z.string(),
+              slug: z.string()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const groups = await server.services.group.listAvailableGroupsForSubOrg({
+        subOrgId: req.params.organizationId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      return { groups };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:organizationId/groups/link",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "linkGroupToOrganization",
+      params: z.object({
+        organizationId: z.string().uuid()
+      }),
+      body: z.object({
+        groupId: z.string().uuid(),
+        role: z.string().trim().min(1).optional()
+      }),
+      response: {
+        200: GroupsSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const group = await server.services.group.linkGroupToOrganization({
+        groupId: req.body.groupId,
+        organizationId: req.params.organizationId,
+        role: req.body.role,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      return group;
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:organizationId/groups/:groupId/membership",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "unlinkGroupFromOrganization",
+      params: z.object({
+        organizationId: z.string().uuid(),
+        groupId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({ ok: z.literal(true) })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const result = await server.services.group.unlinkGroupFromOrganization({
+        groupId: req.params.groupId,
+        organizationId: req.params.organizationId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      return result;
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:organizationId/groups",
     schema: {
       operationId: "listOrganizationGroups",

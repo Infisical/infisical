@@ -172,3 +172,49 @@ export const useRemoveIdentityFromGroup = () => {
     }
   });
 };
+
+export const useLinkGroupToOrganization = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      organizationId,
+      groupId,
+      role
+    }: {
+      organizationId: string;
+      groupId: string;
+      role?: string;
+    }) => {
+      const { data } = await apiRequest.post<TGroup>(
+        `/api/v1/organization/${organizationId}/groups/link`,
+        { groupId, role }
+      );
+      return data;
+    },
+    onSuccess: (_, { organizationId }) => {
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getOrgGroups(organizationId) });
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getOrgGroupsAvailable(organizationId) });
+    }
+  });
+};
+
+export const useUnlinkGroupFromOrganization = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      organizationId,
+      groupId
+    }: {
+      organizationId: string;
+      groupId: string;
+    }) => {
+      await apiRequest.delete<{ ok: true }>(
+        `/api/v1/organization/${organizationId}/groups/${groupId}/membership`
+      );
+    },
+    onSuccess: (_, { organizationId }) => {
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getOrgGroups(organizationId) });
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getOrgGroupsAvailable(organizationId) });
+    }
+  });
+};

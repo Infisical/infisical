@@ -41,6 +41,7 @@ export const organizationKeys = {
   }: TListOrgIdentitiesDTO) =>
     [...organizationKeys.getOrgIdentityMemberships(orgId), params] as const,
   getOrgGroups: (orgId: string) => [{ orgId }, "organization-groups"] as const,
+  getOrgGroupsAvailable: (orgId: string) => [{ orgId }, "organization-groups-available"] as const,
   getOrgIntegrationAuths: (orgId: string) => [{ orgId }, "integration-auths"] as const,
   getOrgById: (orgId: string) => ["organization", { orgId }],
   getAvailableIdentities: () => ["available-identities"],
@@ -558,6 +559,27 @@ export const useGetOrganizationGroups = (organizationId: string) => {
         `/api/v1/organization/${organizationId}/groups`
       );
 
+      return groups;
+    }
+  });
+};
+
+export type TAvailableGroup = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+export const useGetOrganizationGroupsAvailable = (organizationId: string) => {
+  return useQuery({
+    queryKey: organizationKeys.getOrgGroupsAvailable(organizationId),
+    enabled: Boolean(organizationId),
+    queryFn: async () => {
+      const {
+        data: { groups }
+      } = await apiRequest.get<{ groups: TAvailableGroup[] }>(
+        `/api/v1/organization/${organizationId}/groups/available`
+      );
       return groups;
     }
   });
