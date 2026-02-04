@@ -236,7 +236,13 @@ export const createPkiAlertV2Schema = z.object({
     .optional(),
   filters: z.array(pkiFilterRuleV2Schema),
   enabled: z.boolean().default(true),
-  channels: z.array(pkiAlertChannelV2Schema).min(1, "At least one notification channel is required")
+  channels: z
+    .array(pkiAlertChannelV2Schema)
+    .min(1, "At least one notification channel is required")
+    .refine(
+      (channels) => channels.some((ch) => ch.enabled),
+      "At least one notification channel must be enabled"
+    )
 });
 
 export const updatePkiAlertV2Schema = createPkiAlertV2Schema.partial().omit({ projectId: true });

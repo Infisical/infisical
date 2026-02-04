@@ -174,6 +174,7 @@ export const CreatePkiAlertV2FormSteps = ({
       config: type === PkiAlertChannelTypeV2.EMAIL ? { recipients: [] } : { url: "" },
       enabled: true
     });
+    trigger("channels");
   };
 
   // Auto-expand newly added channel (prepended at index 0)
@@ -263,9 +264,6 @@ export const CreatePkiAlertV2FormSteps = ({
   const deleteChannel = (fieldId: string, index: number, e: React.MouseEvent) => {
     e.stopPropagation();
 
-    // Prevent deleting the last channel
-    if (channelFields.length <= 1) return;
-
     removeChannel(index);
 
     // Clean up unified channel state
@@ -279,8 +277,6 @@ export const CreatePkiAlertV2FormSteps = ({
       setExpandedChannel(undefined);
     }
   };
-
-  const isLastChannel = channelFields.length === 1;
 
   const getFieldOperators = (field: PkiFilterFieldV2) => {
     if (field === PkiFilterFieldV2.INCLUDE_CAS) {
@@ -656,7 +652,7 @@ export const CreatePkiAlertV2FormSteps = ({
             </DropdownMenu>
           </div>
 
-          {channelFields.length > 0 ? (
+          {channelFields.length > 0 && (
             <Accordion
               type="single"
               collapsible
@@ -696,25 +692,22 @@ export const CreatePkiAlertV2FormSteps = ({
                               <Switch
                                 id={`channel-enabled-${index}`}
                                 isChecked={enabledField.value}
-                                onCheckedChange={enabledField.onChange}
+                                onCheckedChange={(checked) => {
+                                  enabledField.onChange(checked);
+                                  trigger("channels");
+                                }}
                               />
                             )}
                           />
-                          <Tooltip
-                            content="At least one channel is required"
-                            isDisabled={!isLastChannel}
+                          <IconButton
+                            size="sm"
+                            variant="plain"
+                            colorSchema="danger"
+                            ariaLabel="Delete channel"
+                            onClick={(e) => deleteChannel(field.id, index, e)}
                           >
-                            <IconButton
-                              size="sm"
-                              variant="plain"
-                              colorSchema="danger"
-                              ariaLabel="Delete channel"
-                              isDisabled={isLastChannel}
-                              onClick={(e) => deleteChannel(field.id, index, e)}
-                            >
-                              <FontAwesomeIcon icon={faTrash} />
-                            </IconButton>
-                          </Tooltip>
+                            <FontAwesomeIcon icon={faTrash} />
+                          </IconButton>
                         </div>
                       </div>
                     </AccordionTrigger>
@@ -836,7 +829,13 @@ export const CreatePkiAlertV2FormSteps = ({
                 );
               })}
             </Accordion>
-          ) : (
+          )}
+
+          {channelFields.length > 0 && errors.channels?.message && (
+            <span className="text-sm text-red-500">{errors.channels.message}</span>
+          )}
+
+          {channelFields.length === 0 && (
             <div className="flex flex-1 flex-col items-center justify-center gap-2">
               <span className="text-bunker-400">
                 At least one notification channel is required. Click &quot;Add Channel&quot; to add
