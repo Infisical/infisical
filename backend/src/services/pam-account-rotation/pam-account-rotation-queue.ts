@@ -45,12 +45,13 @@ export const pamAccountRotationServiceFactory = ({
       }
     );
 
-    await queueService.schedulePg(
-      QueueJobs.PamAccountRotation,
-      "0 * * * *", // Schedule to run every hour
-      undefined,
-      { tz: "UTC" }
-    );
+    await queueService.queue(QueueName.PamAccountRotation, QueueJobs.PamAccountRotation, undefined, {
+      jobId: QueueJobs.PamAccountRotation,
+      repeat: {
+        pattern: "0 * * * *",
+        key: QueueJobs.PamAccountRotation
+      }
+    });
   };
 
   return {
