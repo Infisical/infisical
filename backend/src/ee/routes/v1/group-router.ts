@@ -344,7 +344,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
                 CharacterType.At
               ])(val),
             {
-              message: "Invalid pattern: only alphanumeric characters, - are allowed."
+              message: "Invalid pattern: only alphanumeric characters, -, ., @ are allowed."
             }
           )
           .optional()
