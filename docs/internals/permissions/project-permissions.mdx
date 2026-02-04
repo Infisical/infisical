@@ -215,17 +215,17 @@ Supports conditions and permission inversion
 | `allow-change-bypass` | Allow request creators to merge changes without approval in break-glass situations  |
 | `allow-access-bypass` | Allow request creators to access secrets without approval in break-glass situations |
 
-<Note>
-  Listing and viewing all secret approval requests in the project is gated by **Secret Approval Requests** (`secret-approval-request`) with action **Read**. Without it, users only see requests where they are committer or approver. This permission is available only in Secret Manager projects. Secret values within approval requests are controlled by the user's `secrets.readValue` permission for each secret's environment/path, unless the user is a designated reviewer for the request.
-</Note>
-
 #### Subject: `secret-approval-request`
 
 Secret Manager projects only. Not available in the role editor for other project types.
 
 | Action | Description                                                                 |
 | ------ | --------------------------------------------------------------------------- |
-| `read` | View all secret approval requests in the project (otherwise only requests where the user is committer or approver are visible) |
+| `read` | List and view all secret approval requests in the project                   |
+
+<Note>
+  Project admins and users with **Secret Approval Requests** (`secret-approval-request`) **Read** can view all approval requests; others only see requests where they are committer or approver. Secret values in requests follow `secrets.readValue` for the secret's environment/path, or reviewer access.
+</Note>
 
 #### Subject: `secret-rotation`
 

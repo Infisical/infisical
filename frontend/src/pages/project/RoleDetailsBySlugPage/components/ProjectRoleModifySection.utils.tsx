@@ -1539,9 +1539,6 @@ export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
       const caslActions = Object.keys(actions).filter(
         (el) => actions?.[el as keyof typeof actions] && el !== "conditions" && el !== "inverted"
       );
-      // Skip permissions with no actions selected (e.g. user added a row but unchecked all actions).
-      // Sending empty action arrays would be invalid or redundant for the API.
-      if (caslActions.length === 0) return;
 
       const caslConditions =
         "conditions" in actions
