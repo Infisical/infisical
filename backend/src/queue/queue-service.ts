@@ -1,4 +1,4 @@
-import { Job, JobsOptions, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from "bullmq";
+import { Job, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from "bullmq";
 import PgBoss, { WorkOptions } from "pg-boss";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
@@ -155,6 +155,18 @@ export enum QueueJobs {
   PamSessionExpiration = "pam-session-expiration",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation"
 }
+
+export type TQueueOptions = {
+  jobId: string;
+  removeOnComplete?: boolean | { count: number };
+  removeOnFail?: boolean | { count: number };
+  attempts?: number;
+  delay?: number;
+  backoff?: {
+    type: "exponential" | "fixed";
+    delay: number;
+  };
+};
 
 export type TQueueJobTypes = {
   [QueueName.SecretReminder]: {
@@ -471,13 +483,6 @@ export type TQueueServiceFactory = {
     jobFn: (job: Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>, token?: string) => Promise<void>,
     queueSettings?: Omit<QueueOptions, "connection"> & { persistence?: boolean }
   ) => void;
-  startPg: <T extends QueueName>(
-    jobName: QueueJobs,
-    jobsFn: (jobs: PgBoss.JobWithMetadata<TQueueJobTypes[T]["payload"]>[]) => Promise<void>,
-    options: WorkOptions & {
-      workerCount: number;
-    }
-  ) => Promise<void>;
   listen: <
     T extends QueueName,
     U extends keyof WorkerListener<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>
@@ -490,14 +495,7 @@ export type TQueueServiceFactory = {
     name: T,
     job: TQueueJobTypes[T]["name"],
     data: TQueueJobTypes[T]["payload"],
-    opts: JobsOptions & {
-      jobId: string;
-    }
-  ) => Promise<void>;
-  queuePg: <T extends QueueName>(
-    job: TQueueJobTypes[T]["name"],
-    data: TQueueJobTypes[T]["payload"],
-    opts?: PgBoss.SendOptions & { jobId?: string }
+    opts: TQueueOptions
   ) => Promise<void>;
   schedulePg: <T extends QueueName>(
     job: TQueueJobTypes[T]["name"],
@@ -719,6 +717,7 @@ export const queueServiceFactory = (
     const q = queueContainer[name];
 
     const { jobId } = opts;
+    const finalOptions = { removeOnFail: true, removeOnComplete: true, ...opts };
 
     if (persistantQueues.has(name)) {
       await queueJobsDAL.create({
@@ -727,23 +726,12 @@ export const queueServiceFactory = (
         queueJobName: job,
         jobId,
         queueData: data,
+        queueOptions: finalOptions,
         status: PersistanceQueueStatus.Pending
       });
     }
 
     await q.add(job, data, { ...opts, jobId });
-  };
-
-  const queuePg = async <T extends QueueName>(
-    job: TQueueJobTypes[T]["name"],
-    data: TQueueJobTypes[T]["payload"],
-    opts?: PgBoss.SendOptions & { jobId?: string }
-  ) => {
-    await pgBoss.send({
-      name: job,
-      data,
-      options: opts
-    });
   };
 
   const schedulePg: TQueueServiceFactory["schedulePg"] = async (job, cron, data, opts) => {
@@ -818,8 +806,6 @@ export const queueServiceFactory = (
     stopJobByIdPg,
     getRepeatableJobs,
     getDelayedJobs,
-    startPg,
-    queuePg,
     schedulePg
   };
 };

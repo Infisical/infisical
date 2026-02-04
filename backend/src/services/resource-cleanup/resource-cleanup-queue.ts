@@ -83,41 +83,34 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       QueueName.DailyResourceCleanUp // just a job id
     );
 
-    await queueService.startPg<QueueName.DailyResourceCleanUp>(
-      QueueJobs.DailyResourceCleanUp,
-      async () => {
-        try {
-          logger.info(`${QueueName.DailyResourceCleanUp}: queue task started`);
-          await identityUniversalAuthClientSecretDAL.removeExpiredClientSecrets();
-          await secretSharingDAL.pruneExpiredSharedSecrets();
-          await secretSharingDAL.pruneExpiredSecretRequests();
-          await snapshotDAL.pruneExcessSnapshots();
-          await secretVersionDAL.pruneExcessVersions();
-          await secretVersionV2DAL.pruneExcessVersions();
-          await secretFolderVersionDAL.pruneExcessVersions();
-          await serviceTokenService.notifyExpiringTokens();
-          await scimService.notifyExpiringTokens();
-          await orgService.notifyInvitedUsers();
-          await auditLogDAL.pruneAuditLog();
-          await userNotificationDAL.pruneNotifications();
-          await keyValueStoreDAL.pruneExpiredKeys();
-          const expiredApprovalRequestIds = await approvalRequestDAL.markExpiredRequests();
-          if (expiredApprovalRequestIds.length > 0) {
-            await certificateRequestDAL.markExpiredApprovalRequests(expiredApprovalRequestIds);
-          }
-          await approvalRequestGrantsDAL.markExpiredGrants();
-          logger.info(`${QueueName.DailyResourceCleanUp}: queue task completed`);
-        } catch (error) {
-          logger.error(error, `${QueueName.DailyResourceCleanUp}: resource cleanup failed`);
-          throw error;
+    queueService.start(QueueName.DailyResourceCleanUp, async () => {
+      try {
+        logger.info(`${QueueName.DailyResourceCleanUp}: queue task started`);
+        await identityUniversalAuthClientSecretDAL.removeExpiredClientSecrets();
+        await secretSharingDAL.pruneExpiredSharedSecrets();
+        await secretSharingDAL.pruneExpiredSecretRequests();
+        await snapshotDAL.pruneExcessSnapshots();
+        await secretVersionDAL.pruneExcessVersions();
+        await secretVersionV2DAL.pruneExcessVersions();
+        await secretFolderVersionDAL.pruneExcessVersions();
+        await serviceTokenService.notifyExpiringTokens();
+        await scimService.notifyExpiringTokens();
+        await orgService.notifyInvitedUsers();
+        await auditLogDAL.pruneAuditLog();
+        await userNotificationDAL.pruneNotifications();
+        await keyValueStoreDAL.pruneExpiredKeys();
+        const expiredApprovalRequestIds = await approvalRequestDAL.markExpiredRequests();
+        if (expiredApprovalRequestIds.length > 0) {
+          await certificateRequestDAL.markExpiredApprovalRequests(expiredApprovalRequestIds);
         }
-      },
-      {
-        batchSize: 1,
-        workerCount: 1,
-        pollingIntervalSeconds: 1
+        await approvalRequestGrantsDAL.markExpiredGrants();
+        logger.info(`${QueueName.DailyResourceCleanUp}: queue task completed`);
+      } catch (error) {
+        logger.error(error, `${QueueName.DailyResourceCleanUp}: resource cleanup failed`);
+        throw error;
       }
-    );
+    });
+
     await queueService.schedulePg(
       QueueJobs.DailyResourceCleanUp,
       appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *",
@@ -133,8 +126,8 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       QueueName.FrequentResourceCleanUp // just a job id
     );
 
-    await queueService.startPg<QueueName.FrequentResourceCleanUp>(
-      QueueJobs.FrequentResourceCleanUp,
+    queueService.start(
+      QueueName.FrequentResourceCleanUp,
       async () => {
         try {
           logger.info(`${QueueName.FrequentResourceCleanUp}: queue task started`);
@@ -146,9 +139,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
         }
       },
       {
-        batchSize: 1,
-        workerCount: 1,
-        pollingIntervalSeconds: 1
+        persistence: true
       }
     );
     await queueService.schedulePg(
