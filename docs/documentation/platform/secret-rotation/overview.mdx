@@ -49,8 +49,8 @@ Infisical supports two rotation models: **Dual-Phase** (used by most providers) 
 
         Each set of credentials transitions through three distinct states:
 
-        - **Active**: The primary credentials that will be used for new connections
-        - **Inactive**: These credentials are still valid but are no longer issued for new connections
+        - **Active**: The primary credentials
+        - **Inactive**: These credentials are still valid, but will be revoked in the next rotation 
         - **Revoked**: Permanently invalidated and deleted from the system
 
         ### Rotation Cycle Example (30-Day Interval)
