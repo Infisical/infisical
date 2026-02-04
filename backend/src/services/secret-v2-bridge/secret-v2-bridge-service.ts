@@ -2034,10 +2034,10 @@ export const secretV2BridgeServiceFactory = ({
 
         // get all tags
         // get all tags (include create + update in upsert)
-        const inputSecrets = [...secretsToUpdate, ...secretsToCreate];
+        const allInputSecrets = [...secretsToUpdate, ...secretsToCreate];
 
         const sanitizedTagIds = [
-          ...new Set(inputSecrets.flatMap(({ tagIds = [] }) => tagIds))
+          ...new Set(allInputSecrets.flatMap(({ tagIds = [] }) => tagIds))
         ];
 
         const tags = sanitizedTagIds.length ? await secretTagDAL.findManyTagsById(projectId, sanitizedTagIds, tx) : [];
