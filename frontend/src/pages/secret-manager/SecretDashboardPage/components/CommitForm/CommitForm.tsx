@@ -103,7 +103,7 @@ const RenderSecretChanges = ({ onDiscard, change }: RenderResourceProps) => {
               secretKey: existingSecret.key,
               secretValue: change.existingSecret.secretValueHidden
                 ? HIDDEN_SECRET_VALUE_API_MASK
-                : (change.originalValue ?? change.secretValue ?? existingSecret.value ?? ""),
+                : (change.originalValue ?? existingSecret.value ?? ""),
               tags: existingSecret.tags?.map((tag) => tag.slug) ?? [],
               secretMetadata: existingSecret.secretMetadata,
               skipMultilineEncoding: existingSecret.skipMultilineEncoding,
