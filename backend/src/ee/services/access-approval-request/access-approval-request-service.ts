@@ -245,7 +245,7 @@ export const accessApprovalRequestServiceFactory = ({
       const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
       const projectPath = `/organizations/${project.orgId}/projects/secret-management/${project.id}`;
       const approvalPath = `${projectPath}/approval`;
-      const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
+      const approvalUrl = `${cfg.SITE_URL}${approvalPath}?requestId=${approvalRequest.id}`;
 
       await triggerWorkflowIntegrationNotification({
         input: {
@@ -401,7 +401,7 @@ export const accessApprovalRequestServiceFactory = ({
       const editorFullName = `${editedByUser.firstName} ${editedByUser.lastName}`;
       const projectPath = `/organizations/${project.orgId}/projects/secret-management/${project.id}`;
       const approvalPath = `${projectPath}/approval`;
-      const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
+      const approvalUrl = `${cfg.SITE_URL}${approvalPath}?requestId=${requestId}`;
 
       await triggerWorkflowIntegrationNotification({
         input: {
