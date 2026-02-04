@@ -40,6 +40,7 @@ import {
   formRolePermission2API,
   isConditionalSubjects,
   PROJECT_PERMISSION_OBJECT,
+  ProjectTypePermissionSubjects,
   projectRoleFormSchema,
   rolePermission2Form,
   TFormSchema
@@ -238,6 +239,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
               {!isPending && <PermissionEmptyState />}
               {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[])
                 .filter((subject) => !EXCLUDED_PERMISSION_SUBS.includes(subject))
+                .filter((subject) => ProjectTypePermissionSubjects[currentProject.type][subject])
                 .filter(
                   (subject) =>
                     // Hide Native Integrations policy if project has no integrations
@@ -250,11 +252,6 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                     title={PROJECT_PERMISSION_OBJECT[subject].title}
                     key={`project-permission-${subject}`}
                     isDisabled={isDisabled}
-                    hiddenActions={
-                      subject === ProjectPermissionSub.ApprovalRequests && isSecretManagerProject
-                        ? ["create"]
-                        : undefined
-                    }
                     onShowAccessTree={
                       [
                         ProjectPermissionSub.Secrets,

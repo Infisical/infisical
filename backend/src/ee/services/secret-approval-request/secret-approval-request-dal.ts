@@ -57,7 +57,7 @@ type TSecretApprovalRequestDoc = TSecretApprovalRequests & {
 };
 
 // Helper to filter approval requests by user access (committer, approver, or group member)
-// Only applies filtering when userId is provided (users without Approval Requests Read permission)
+// Only applies filtering when userId is provided (users without SecretApprovalRequest.Read permission)
 const buildUserAccessFilter = (qb: Knex.QueryBuilder, userId?: string) => {
   if (userId) {
     void qb.andWhere(

@@ -73,8 +73,8 @@ import {
 } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import {
-  ProjectPermissionApprovalRequestActions,
   ProjectPermissionSecretActions,
+  ProjectPermissionSecretApprovalRequestActions,
   ProjectPermissionSub
 } from "../permission/project-permission";
 import { ProjectEvents, TProjectEventPayload } from "../project-events/project-events-types";
@@ -202,10 +202,10 @@ export const secretApprovalRequestServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    // Check if user has Approval Requests Read permission to list all requests
+    // Check if user has SecretApprovalRequest.Read permission to list all requests
     const canReadAllApprovalRequests = permission.can(
-      ProjectPermissionApprovalRequestActions.Read,
-      ProjectPermissionSub.ApprovalRequests
+      ProjectPermissionSecretApprovalRequestActions.Read,
+      ProjectPermissionSub.SecretApprovalRequest
     );
 
     // If user has the permission, count all requests; otherwise count only their requests
@@ -239,10 +239,10 @@ export const secretApprovalRequestServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    // Check if user has Approval Requests Read permission to list all requests
+    // Check if user has SecretApprovalRequest.Read permission to list all requests
     const canReadAllApprovalRequests = permission.can(
-      ProjectPermissionApprovalRequestActions.Read,
-      ProjectPermissionSub.ApprovalRequests
+      ProjectPermissionSecretApprovalRequestActions.Read,
+      ProjectPermissionSub.SecretApprovalRequest
     );
 
     // If user has the permission, don't filter by userId (they see all requests)
@@ -303,11 +303,11 @@ export const secretApprovalRequestServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    // Check if user has Approval Requests Read permission
+    // Check if user has SecretApprovalRequest.Read permission
     // Secret values are controlled by underlying secret.ReadValue permissions
     const canReadApprovalRequests = permission.can(
-      ProjectPermissionApprovalRequestActions.Read,
-      ProjectPermissionSub.ApprovalRequests
+      ProjectPermissionSecretApprovalRequestActions.Read,
+      ProjectPermissionSub.SecretApprovalRequest
     );
 
     // User can view details if they have Read permission, are admin, committer, or approver
