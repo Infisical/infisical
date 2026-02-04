@@ -1483,7 +1483,7 @@ export const secretApprovalRequestServiceFactory = ({
     const projectPath = `/organizations/${actorOrgId}/projects/secret-management/${projectId}`;
     const approvalPath = `${projectPath}/approval`;
     const cfg = getConfig();
-    const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
+    const approvalUrl = `${cfg.SITE_URL}${approvalPath}?requestId=${secretApprovalRequest.id}`;
 
     await triggerWorkflowIntegrationNotification({
       input: {
@@ -1890,7 +1890,7 @@ export const secretApprovalRequestServiceFactory = ({
     const projectPath = `/organizations/${actorOrgId}/projects/secret-management/${project.id}`;
     const approvalPath = `${projectPath}/approval`;
     const cfg = getConfig();
-    const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
+    const approvalUrl = `${cfg.SITE_URL}${approvalPath}?requestId=${secretApprovalRequest.id}`;
 
     await triggerWorkflowIntegrationNotification({
       input: {
