@@ -55,7 +55,7 @@ const RenderSecretChanges = ({ onDiscard, change }: RenderResourceProps) => {
               version: 1, // placeholder, not used
               secretKey: change.secretKey,
               secretValue: change.secretValue,
-              tags: change.tags,
+              tags: change.tags?.map((tag) => tag.slug),
               secretMetadata: change.secretMetadata,
               skipMultilineEncoding: change.skipMultilineEncoding,
               comment: change.secretComment
@@ -100,30 +100,27 @@ const RenderSecretChanges = ({ onDiscard, change }: RenderResourceProps) => {
           versions: [
             {
               version: 1, // placeholder, not used
-              secretKey: change.newSecretName ? existingSecret.key : undefined,
-              secretValue:
-                // eslint-disable-next-line no-nested-ternary
-                change.secretValue !== undefined
-                  ? change.existingSecret.secretValueHidden
-                    ? HIDDEN_SECRET_VALUE_API_MASK
-                    : (change.originalValue ?? "")
-                  : undefined,
-              tags: change.tags ? (existingSecret.tags?.map((tag) => tag.slug) ?? []) : undefined,
-              secretMetadata: change.secretMetadata ? existingSecret.secretMetadata : undefined,
-              skipMultilineEncoding:
-                typeof change.skipMultilineEncoding === "boolean"
-                  ? existingSecret.skipMultilineEncoding
-                  : undefined,
-              comment: change.secretComment !== undefined ? existingSecret.comment : undefined
+              secretKey: existingSecret.key,
+              secretValue: change.existingSecret.secretValueHidden
+                ? HIDDEN_SECRET_VALUE_API_MASK
+                : (change.originalValue ?? change.secretValue ?? existingSecret.value ?? ""),
+              tags: existingSecret.tags?.map((tag) => tag.slug) ?? [],
+              secretMetadata: existingSecret.secretMetadata,
+              skipMultilineEncoding: existingSecret.skipMultilineEncoding,
+              comment: existingSecret.comment
             },
             {
               version: 2, // placeholder, not used
-              secretKey: change.newSecretName,
-              secretValue: change.secretValue,
-              tags: change.tags?.map((tag) => tag.slug),
-              secretMetadata: change.secretMetadata,
-              skipMultilineEncoding: change.skipMultilineEncoding,
-              comment: change.secretComment
+              secretKey: change.newSecretName ?? existingSecret.key,
+              secretValue: change.secretValue ?? change.originalValue,
+              tags:
+                change.tags?.map((tag) => tag.slug) ??
+                existingSecret.tags?.map((tag) => tag.slug) ??
+                [],
+              secretMetadata: change.secretMetadata ?? existingSecret.secretMetadata,
+              skipMultilineEncoding:
+                change.skipMultilineEncoding ?? existingSecret.skipMultilineEncoding,
+              comment: change.secretComment ?? existingSecret.comment
             }
           ]
         }}
