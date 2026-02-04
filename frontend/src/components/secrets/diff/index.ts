@@ -5,5 +5,5 @@ export type { MultiLineDiffProps } from "./MultiLineDiff";
 export { MultiLineDiff } from "./MultiLineDiff";
 export type { SecretDiffViewProps, SecretVersionData } from "./SecretDiffView";
 export { SecretDiffView } from "./SecretDiffView";
-export type { SingleLineDiffProps } from "./SingleLineDiff";
-export { SingleLineDiff } from "./SingleLineDiff";
+export type { RenderTextDiffOptions, SingleLineDiffProps } from "./SingleLineDiff";
+export { renderTextDiff, SingleLineDiff } from "./SingleLineDiff";

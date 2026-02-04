@@ -165,13 +165,13 @@ export const MetadataDiffRenderer = ({
           "bg-mineshaft-500",
           keyHighlighted &&
             (isOldVersion
-              ? "ring-1 ring-red-500/60 ring-inset"
-              : "ring-1 ring-green-500/60 ring-inset")
+              ? "bg-red-500/30 ring-1 ring-red-500/60 ring-inset"
+              : "bg-green-500/30 ring-1 ring-green-500/60 ring-inset")
         );
 
         // Value: color background if changed
         const valueBgClass = twMerge(
-          valueHighlighted && (isOldVersion ? "bg-red-600/30" : "bg-green-600/30"),
+          valueHighlighted && (isOldVersion ? "bg-red-900/30" : "bg-green-900/30"),
           !valueHighlighted && "bg-mineshaft-900"
         );
 

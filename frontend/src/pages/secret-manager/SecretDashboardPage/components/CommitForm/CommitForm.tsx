@@ -376,6 +376,9 @@ export const CommitForm: React.FC<CommitFormProps> = ({
     return null;
   }
 
+  const hasOnlyFolderChanges =
+    pendingChanges.folders.length > 0 && pendingChanges.secrets.length === 0;
+
   const handleCommit = async () => {
     await onCommit(pendingChanges, commitMessage);
     clearAllPendingChanges({
@@ -385,6 +388,14 @@ export const CommitForm: React.FC<CommitFormProps> = ({
     });
     setIsModalOpen(false);
     setCommitMessage("");
+  };
+
+  const handleSaveChanges = async () => {
+    if (hasOnlyFolderChanges) {
+      await handleCommit();
+    } else {
+      setIsModalOpen(true);
+    }
   };
 
   return (
@@ -433,8 +444,9 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                     <Button
                       variant="solid"
                       leftIcon={<FontAwesomeIcon icon={faSave} />}
-                      onClick={() => setIsModalOpen(true)}
-                      isDisabled={totalChangesCount === 0}
+                      onClick={handleSaveChanges}
+                      isDisabled={totalChangesCount === 0 || isCommitting}
+                      isLoading={isCommitting && hasOnlyFolderChanges}
                       className="px-6"
                     >
                       Save Changes

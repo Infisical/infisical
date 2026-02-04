@@ -1,5 +1,3 @@
-import { diffChars } from "diff";
-
 import { computeWordDiff } from "@app/components/utilities/diff";
 
 export interface SingleLineDiffProps {
@@ -8,151 +6,95 @@ export interface SingleLineDiffProps {
   isOldVersion: boolean;
 }
 
+export interface RenderTextDiffOptions {
+  oldText: string;
+  newText: string;
+  isOldVersion: boolean;
+  keyPrefix?: string;
+  addedClass?: string;
+  removedClass?: string;
+}
+
 /**
- * Render single-line diff (just word highlighting, no container/+/-)
+ * Renders text with highlighted prefix and/or suffix around unchanged content.
  */
-export const SingleLineDiff = ({ oldText, newText, isOldVersion }: SingleLineDiffProps) => {
-  // Check if old text is contained within new text (pure insertion - append, prepend, or middle)
+const renderWithHighlightedParts = (
+  unchangedText: string,
+  prefixText: string,
+  suffixText: string,
+  highlightClass: string
+): React.ReactNode => {
+  return (
+    <>
+      {prefixText && <span className={highlightClass}>{prefixText}</span>}
+      <span>{unchangedText}</span>
+      {suffixText && <span className={highlightClass}>{suffixText}</span>}
+    </>
+  );
+};
+
+/**
+ * Core diff rendering logic - returns React nodes for text diff highlighting.
+ * Handles pure insertions, pure deletions, and mixed changes.
+ * Can be used standalone or wrapped in a container component.
+ */
+export const renderTextDiff = ({
+  oldText,
+  newText,
+  isOldVersion,
+  keyPrefix = "diff",
+  addedClass = "rounded bg-green-600/70 px-0.5",
+  removedClass = "rounded bg-red-600/70 px-0.5"
+}: RenderTextDiffOptions): React.ReactNode => {
+  // Check if one text contains the other (pure insertion or deletion)
   const oldExistsInNew = oldText !== "" && newText !== "" && newText.includes(oldText);
-
-  if (oldExistsInNew) {
-    const startIndex = newText.indexOf(oldText);
-    const endIndex = startIndex + oldText.length;
-
-    const prependPart = newText.slice(0, startIndex);
-    const appendPart = newText.slice(endIndex);
-
-    if (isOldVersion) {
-      return (
-        <div className="font-mono text-sm break-words">
-          <span>{oldText}</span>
-        </div>
-      );
-    }
-
-    return (
-      <div className="font-mono text-sm break-words">
-        {prependPart && <span className="rounded bg-green-600/70 px-0.5">{prependPart}</span>}
-        <span>{oldText}</span>
-        {appendPart && <span className="rounded bg-green-600/70 px-0.5">{appendPart}</span>}
-      </div>
-    );
-  }
-
-  // Check if new text is contained within old text (pure deletion)
   const newExistsInOld = oldText !== "" && newText !== "" && oldText.includes(newText);
 
+  // Pure insertion: old text is fully contained in new text
+  if (oldExistsInNew) {
+    if (isOldVersion) {
+      return <span>{oldText}</span>;
+    }
+    const startIndex = newText.indexOf(oldText);
+    const prependPart = newText.slice(0, startIndex);
+    const appendPart = newText.slice(startIndex + oldText.length);
+    return renderWithHighlightedParts(oldText, prependPart, appendPart, addedClass);
+  }
+
+  // Pure deletion: new text is fully contained in old text
   if (newExistsInOld) {
-    const startIndex = oldText.indexOf(newText);
-    const endIndex = startIndex + newText.length;
-
-    const removedPrefix = oldText.slice(0, startIndex);
-    const removedSuffix = oldText.slice(endIndex);
-
-    if (isOldVersion) {
-      return (
-        <div className="font-mono text-sm break-words">
-          {removedPrefix && <span className="rounded bg-red-600/70 px-0.5">{removedPrefix}</span>}
-          <span>{newText}</span>
-          {removedSuffix && <span className="rounded bg-red-600/70 px-0.5">{removedSuffix}</span>}
-        </div>
-      );
-    }
-
-    return (
-      <div className="font-mono text-sm break-words">
-        <span>{newText}</span>
-      </div>
-    );
-  }
-
-  // For mixed changes (both insertions and deletions), use character diff
-  // but only apply special handling for pure insertions
-  const charDiffs = diffChars(oldText, newText);
-  const hasRemovals = charDiffs.some((d) => d.removed);
-  const hasAdditions = charDiffs.some((d) => d.added);
-
-  // Pure insertion case (no removals): don't highlight old version
-  if (!hasRemovals && hasAdditions) {
-    if (isOldVersion) {
-      return (
-        <div className="font-mono text-sm break-words">
-          <span>{oldText}</span>
-        </div>
-      );
-    }
-    // Show new version with character-level highlighting
-    return (
-      <div className="font-mono text-sm break-words">
-        {charDiffs.map((change, idx) => {
-          if (change.removed) return null;
-          const key = `char-${idx}`;
-          const className = change.added ? "bg-green-600/70 rounded px-0.5" : "";
-          return (
-            <span key={key} className={className}>
-              {change.value}
-            </span>
-          );
-        })}
-      </div>
-    );
-  }
-
-  // Pure deletion case (no additions): don't highlight new version
-  if (hasRemovals && !hasAdditions) {
     if (!isOldVersion) {
-      return (
-        <div className="font-mono text-sm break-words">
-          <span>{newText}</span>
-        </div>
-      );
+      return <span>{newText}</span>;
     }
-    // Show old version with character-level highlighting
-    return (
-      <div className="font-mono text-sm break-words">
-        {charDiffs.map((change, idx) => {
-          if (change.added) return null;
-          const key = `char-${idx}`;
-          const className = change.removed ? "bg-red-600/70 rounded px-0.5" : "";
-          return (
-            <span key={key} className={className}>
-              {change.value}
-            </span>
-          );
-        })}
-      </div>
-    );
+    const startIndex = oldText.indexOf(newText);
+    const removedPrefix = oldText.slice(0, startIndex);
+    const removedSuffix = oldText.slice(startIndex + newText.length);
+    return renderWithHighlightedParts(newText, removedPrefix, removedSuffix, removedClass);
   }
 
-  // Mixed changes: fall back to word-level diff (more readable for humans)
+  // Use word-level diff for better readability
   const wordDiffs = computeWordDiff(oldText, newText);
 
   // If no common words, show as single highlighted block
   if (!wordDiffs) {
     const value = isOldVersion ? oldText : newText;
-    const highlightClass = isOldVersion
-      ? "bg-red-600/70 rounded px-0.5"
-      : "bg-green-600/70 rounded px-0.5";
-    return (
-      <div className="font-mono text-sm break-words">
-        <span className={highlightClass}>{value}</span>
-      </div>
-    );
+    const highlightClass = isOldVersion ? removedClass : addedClass;
+    return <span className={highlightClass}>{value}</span>;
   }
 
   // Show word-by-word diff
   return (
-    <div className="font-mono text-sm break-words">
+    <>
       {wordDiffs.map((change, wordIdx) => {
         if (isOldVersion && change.added) return null;
         if (!isOldVersion && change.removed) return null;
 
-        const wordKey = `word-${wordIdx}`;
+        const wordKey = `${keyPrefix}-word-${wordIdx}`;
         let wordClass = "";
         if (change.removed) {
-          wordClass = "bg-red-600/70 rounded px-0.5";
+          wordClass = removedClass;
         } else if (change.added) {
-          wordClass = "bg-green-600/70 rounded px-0.5";
+          wordClass = addedClass;
         }
 
         return (
@@ -161,6 +103,17 @@ export const SingleLineDiff = ({ oldText, newText, isOldVersion }: SingleLineDif
           </span>
         );
       })}
+    </>
+  );
+};
+
+/**
+ * Render single-line diff with container (just word highlighting, no +/-)
+ */
+export const SingleLineDiff = ({ oldText, newText, isOldVersion }: SingleLineDiffProps) => {
+  return (
+    <div className="font-mono text-sm break-words">
+      {renderTextDiff({ oldText, newText, isOldVersion })}
     </div>
   );
 };

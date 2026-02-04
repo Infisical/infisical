@@ -181,6 +181,7 @@ export const SecretDetailSidebar = ({
     resolver: zodResolver(formSchema),
     values: {
       ...secret,
+      tags: secret?.tags?.map((tag) => ({ id: tag.id, slug: tag.slug, tagColor: tag.color })),
       valueOverride: getOverrideDefaultValue(),
       value: getDefaultValue()
     },
@@ -270,7 +271,7 @@ export const SecretDetailSidebar = ({
         tagFields.remove(tagPos);
       }
     } else {
-      tagFields.append(tag);
+      tagFields.append({ id: tag.id, slug: tag.slug, tagColor: tag.color });
     }
   };
 
