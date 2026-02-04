@@ -758,7 +758,7 @@ export const registerRoutes = async (
     auditLogStreamService
   });
 
-  const notificationQueue = await notificationQueueServiceFactory({
+  const notificationQueue = notificationQueueServiceFactory({
     userNotificationDAL,
     queueService
   });
@@ -2509,7 +2509,7 @@ export const registerRoutes = async (
     notificationService
   });
 
-  const secretScanningV2Queue = await secretScanningV2QueueServiceFactory({
+  const secretScanningV2Queue = secretScanningV2QueueServiceFactory({
     auditLogService,
     secretScanningV2DAL,
     queueService,

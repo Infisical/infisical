@@ -31,8 +31,8 @@ export const healthAlertServiceFactory = ({
       QueueName.HealthAlert // job id
     );
 
-    await queueService.startPg<QueueName.HealthAlert>(
-      QueueJobs.HealthAlert,
+    queueService.start(
+      QueueName.HealthAlert,
       async () => {
         try {
           logger.info(`${QueueName.HealthAlert}: health check alert task started`);
@@ -45,9 +45,7 @@ export const healthAlertServiceFactory = ({
         }
       },
       {
-        batchSize: 1,
-        workerCount: 1,
-        pollingIntervalSeconds: 60
+        persistence: true
       }
     );
 
