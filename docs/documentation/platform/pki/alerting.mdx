@@ -15,11 +15,114 @@ To create an alert, head to your Certificate Management Project > Alerting and p
 
 ![pki alerting modal](/images/platform/pki/alerting/alert-create-modal.png)
 
+### Field Descriptions
+
 Here's some guidance for each field in the alert configuration sequence:
 
-- Alert Type: The type of alert to create such as **Certificate Expiration**.
-- Alert Name: A slug-friendly name for the alert such as `tls-expiry-alert`.
-- Description: An optional description for the alert.
-- Alert Before: The time before certificate expiration to trigger the alert such as 30 days denoted by `30d`.
-- Filters: A list of filters that determine which certificates the alert applies to. Each row includes a **Field**, **Operator**, and **Value** to match against. For example, you can filter for certificates with a common name containing `example.com` by setting the field to **Common Name**, the operator to **Contains**, and the value to `example.com`.
-- Channels / Email Recipients: A list of email addresses to notify when the alert triggers.
+- **Alert Type**: The type of alert to create such as **Certificate Expiration**.
+- **Alert Name**: A slug-friendly name for the alert such as `tls-expiry-alert`.
+- **Description**: An optional description for the alert.
+- **Alert Before**: The time before certificate expiration to trigger the alert such as 30 days denoted by `30d`.
+- **Filters**: A list of filters that determine which certificates the alert applies to. Each row includes a **Field**, **Operator**, and **Value** to match against. For example, you can filter for certificates with a common name containing `example.com` by setting the field to **Common Name**, the operator to **Contains**, and the value to `example.com`.
+
+### Notification Channels
+
+Alerts can be delivered through one or more notification channels:
+
+- **Email**: Send alert notifications to a list of email recipients. Enter one or more email addresses to notify when the alert triggers.
+- **Webhook**: Send alert notifications to a webhook URL. The URL must use HTTPS. Optionally configure a signing secret to verify the authenticity of webhook payloads.
+
+You can configure up to 10 notification channels per alert.
+
+![pki alerting channels](/images/platform/pki/alerting/alert-create-channels.png)
+
+<Note>
+All configured channels must successfully deliver for an alert to be marked as complete. If any channel fails, the alert will retry until all channels succeed. Make sure all channels are working correctly to avoid repeated notifications.
+</Note>
+
+## Webhook Payload Format
+
+Webhook notifications are sent as HTTP POST requests with a [CloudEvents](https://cloudevents.io/)-compliant JSON payload.
+
+```json
+{
+  "specversion": "1.0",
+  "type": "com.infisical.pki.certificate.expiration",
+  "source": "/projects/<project-id>/alerts/<alert-id>",
+  "id": "<unique-event-id>",
+  "time": "2024-01-15T10:30:00.000Z",
+  "datacontenttype": "application/json",
+  "subject": "certificate-expiration-alert",
+  "data": {
+    "alert": {
+      "id": "<alert-id>",
+      "name": "tls-expiry-alert",
+      "alertBefore": "30d",
+      "projectId": "<project-id>"
+    },
+    "certificates": [
+      {
+        "id": "<certificate-id>",
+        "serialNumber": "1234567890",
+        "commonName": "example.com",
+        "san": ["example.com", "www.example.com"],
+        "profileName": "TLS Server",
+        "notBefore": "2024-01-01T00:00:00.000Z",
+        "notAfter": "2024-12-31T23:59:59.000Z",
+        "status": "active",
+        "daysUntilExpiry": 30
+      }
+    ],
+    "metadata": {
+      "totalCertificates": 1,
+      "viewUrl": "https://app.infisical.com/cert-manager/<project-id>/policies"
+    }
+  }
+}
+```
+
+## Webhook Signature Verification
+
+If you configure a signing secret for your webhook channel, Infisical will include an `x-infisical-signature` header with each request. This allows you to verify that the webhook payload originated from Infisical.
+
+The header format is:
+
+```
+x-infisical-signature: t=<timestamp>,v1=<signature>
+```
+
+Where:
+- `<timestamp>` is the Unix timestamp (in milliseconds) when the signature was generated
+- `v1` indicates the signature version
+- `<signature>` is the HMAC-SHA256 signature of the payload
+
+To verify the signature:
+
+1. Extract the timestamp and signature from the header
+2. Construct the signature payload by concatenating the timestamp, a period (`.`), and the raw request body: `{timestamp}.{body}`
+3. Compute an HMAC-SHA256 hash using your signing secret
+4. Compare the computed signature with the signature from the header
+
+Example verification in Node.js:
+
+```javascript
+const crypto = require('crypto');
+
+function verifyWebhookSignature(header, body, secret) {
+  // Parse header format: t=<timestamp>,v1=<signature>
+  const parts = header.split(',');
+  const timestamp = parts[0].replace('t=', '');
+  const signature = parts[1].replace('v1=', '');
+
+  const signaturePayload = `${timestamp}.${body}`;
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(signaturePayload)
+    .digest('hex');
+
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expectedSignature)
+  );
+}
+```

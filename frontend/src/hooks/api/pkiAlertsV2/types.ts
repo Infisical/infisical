@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+// Sentinel value for masked signing secret display in edit mode
+export const SIGNING_SECRET_MASK = "*****";
+
 export enum PkiAlertEventTypeV2 {
   EXPIRATION = "expiration",
   RENEWAL = "renewal",
@@ -8,7 +11,8 @@ export enum PkiAlertEventTypeV2 {
 }
 
 export enum PkiAlertChannelTypeV2 {
-  EMAIL = "email"
+  EMAIL = "email",
+  WEBHOOK = "webhook"
 }
 
 export enum PkiFilterFieldV2 {
@@ -36,8 +40,18 @@ export interface TPkiAlertChannelConfigEmail {
   recipients: string[];
 }
 
-// In the future other channels like webhooks will be supported here
-export type TPkiAlertChannelConfig = TPkiAlertChannelConfigEmail;
+export interface TPkiAlertChannelConfigWebhook {
+  url: string;
+  signingSecret?: string | null;
+}
+
+// Response type for webhook config - signingSecret is replaced with hasSigningSecret
+export interface TPkiAlertChannelConfigWebhookResponse {
+  url: string;
+  hasSigningSecret: boolean;
+}
+
+export type TPkiAlertChannelConfig = TPkiAlertChannelConfigEmail | TPkiAlertChannelConfigWebhook;
 
 export interface TPkiAlertChannelV2 {
   id: string;
@@ -46,6 +60,16 @@ export interface TPkiAlertChannelV2 {
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export type TPkiAlertChannelInput = Omit<TPkiAlertChannelV2, "createdAt" | "updatedAt" | "id"> & {
+  id?: string;
+};
+
+export interface TLastRun {
+  timestamp: string;
+  status: "success" | "failed";
+  error: string | null;
 }
 
 export interface TPkiAlertV2 {
@@ -58,6 +82,7 @@ export interface TPkiAlertV2 {
   filters: TPkiFilterRuleV2[];
   enabled: boolean;
   channels: TPkiAlertChannelV2[];
+  lastRun: TLastRun | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -100,7 +125,7 @@ export interface TCreatePkiAlertV2 {
   alertBefore?: string;
   filters: TPkiFilterRuleV2[];
   enabled?: boolean;
-  channels: Omit<TPkiAlertChannelV2, "id" | "createdAt" | "updatedAt">[];
+  channels: TPkiAlertChannelInput[];
 }
 
 export interface TUpdatePkiAlertV2 {
@@ -111,7 +136,7 @@ export interface TUpdatePkiAlertV2 {
   alertBefore?: string;
   filters?: TPkiFilterRuleV2[];
   enabled?: boolean;
-  channels?: Omit<TPkiAlertChannelV2, "id" | "createdAt" | "updatedAt">[];
+  channels?: TPkiAlertChannelInput[];
 }
 
 export interface TDeletePkiAlertV2 {
@@ -155,20 +180,45 @@ export const pkiFilterRuleV2Schema = z.object({
 const emailChannelConfigSchema = z.object({
   recipients: z
     .array(z.string())
-    .transform((emails) => emails.filter(Boolean).map((email) => email.trim()))
+    .transform((emails) => emails.filter(Boolean).map((email) => email.trim().toLowerCase()))
     .refine((emails) => emails.length > 0, "At least one email recipient is required")
     .refine((emails) => emails.length <= 10, "Maximum 10 email recipients allowed")
     .refine(
       (emails) => emails.every((email) => z.string().email().safeParse(email).success),
       "All recipients must be valid email addresses"
     )
+    .refine(
+      (emails) => new Set(emails).size === emails.length,
+      "Duplicate email addresses are not allowed"
+    )
 });
 
-export const pkiAlertChannelV2Schema = z.object({
-  channelType: z.nativeEnum(PkiAlertChannelTypeV2),
+const webhookChannelConfigSchema = z.object({
+  url: z
+    .string()
+    .url("Must be a valid URL")
+    .refine((url) => url.startsWith("https://"), "Webhook URL must use HTTPS"),
+  signingSecret: z.string().max(256).nullable().optional()
+});
+
+const emailChannelSchema = z.object({
+  id: z.string().uuid().optional(),
+  channelType: z.literal(PkiAlertChannelTypeV2.EMAIL),
   config: emailChannelConfigSchema,
   enabled: z.boolean().default(true)
 });
+
+const webhookChannelSchema = z.object({
+  id: z.string().uuid().optional(),
+  channelType: z.literal(PkiAlertChannelTypeV2.WEBHOOK),
+  config: webhookChannelConfigSchema,
+  enabled: z.boolean().default(true)
+});
+
+export const pkiAlertChannelV2Schema = z.discriminatedUnion("channelType", [
+  emailChannelSchema,
+  webhookChannelSchema
+]);
 
 export const createPkiAlertV2Schema = z.object({
   projectId: z.string().uuid(),
@@ -186,7 +236,13 @@ export const createPkiAlertV2Schema = z.object({
     .optional(),
   filters: z.array(pkiFilterRuleV2Schema),
   enabled: z.boolean().default(true),
-  channels: z.array(pkiAlertChannelV2Schema).min(1)
+  channels: z
+    .array(pkiAlertChannelV2Schema)
+    .min(1, "At least one notification channel is required")
+    .refine(
+      (channels) => channels.some((ch) => ch.enabled),
+      "At least one notification channel must be enabled"
+    )
 });
 
 export const updatePkiAlertV2Schema = createPkiAlertV2Schema.partial().omit({ projectId: true });

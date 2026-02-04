@@ -1,4 +1,9 @@
-export { useCreatePkiAlertV2, useDeletePkiAlertV2, useUpdatePkiAlertV2 } from "./mutations";
+export {
+  useCreatePkiAlertV2,
+  useDeletePkiAlertV2,
+  useTestPkiWebhookConfigV2,
+  useUpdatePkiAlertV2
+} from "./mutations";
 export {
   pkiAlertsV2Keys,
   useGetPkiAlertsV2,
@@ -15,6 +20,8 @@ export type {
   TGetPkiAlertV2CurrentMatchingCertificatesResponse,
   TGetPkiAlertV2MatchingCertificates,
   TPkiAlertChannelConfigEmail,
+  TPkiAlertChannelConfigWebhook,
+  TPkiAlertChannelConfigWebhookResponse,
   TPkiAlertChannelV2,
   TPkiAlertV2,
   TPkiFilterRuleV2,
@@ -26,5 +33,6 @@ export {
   PkiAlertEventTypeV2,
   PkiFilterFieldV2,
   PkiFilterOperatorV2,
+  SIGNING_SECRET_MASK,
   updatePkiAlertV2Schema
 } from "./types";
