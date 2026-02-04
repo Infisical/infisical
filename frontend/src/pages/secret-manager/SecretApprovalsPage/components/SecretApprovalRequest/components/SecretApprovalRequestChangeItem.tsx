@@ -18,6 +18,7 @@ import { twMerge } from "tailwind-merge";
 
 import { SecretInput, Tag, Tooltip } from "@app/components/v2";
 import { CommitType, SecretV3Raw, TSecretApprovalSecChange, WsTag } from "@app/hooks/api/types";
+import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 // Scrolls a container to center the first changed element if it's not visible
 const scrollToFirstChange = (container: HTMLDivElement | null) => {
@@ -394,24 +395,35 @@ const renderOldSecretValue = ({
   }
 
   if (hasValueChanges) {
-    if (isBothSingleLine) {
-      return (
+    const diffContent = isBothSingleLine ? (
+      renderSingleLineDiffForApproval(oldValue, newValue, true)
+    ) : (
+      <div className="min-w-max">{renderMultilineDiffForApproval(oldValue, newValue, true)}</div>
+    );
+    return (
+      <div className="relative">
         <div
-          className="relative rounded-lg border border-mineshaft-600 p-2"
+          ref={oldDiffContainerRef}
+          className={twMerge(
+            "rounded-lg border border-mineshaft-600 p-2",
+            !isBothSingleLine && "max-h-96 thin-scrollbar overflow-x-auto overflow-y-auto"
+          )}
           style={{ backgroundColor: "#120808" }}
         >
-          {renderSingleLineDiffForApproval(oldValue, newValue, true)}
+          {isVisible ? (
+            diffContent
+          ) : (
+            <div className="ph-no-capture font-mono text-sm text-bunker-300">
+              {HIDDEN_SECRET_VALUE}
+            </div>
+          )}
         </div>
-      );
-    }
-
-    return (
-      <div
-        ref={oldDiffContainerRef}
-        className="relative max-h-96 thin-scrollbar overflow-x-auto overflow-y-auto rounded-lg border border-mineshaft-600 p-2"
-        style={{ backgroundColor: "#120808" }}
-      >
-        <div className="min-w-max">{renderMultilineDiffForApproval(oldValue, newValue, true)}</div>
+        <div className="absolute top-1 right-1 z-10" onClick={onToggleVisibility}>
+          <FontAwesomeIcon
+            icon={isVisible ? faEyeSlash : faEye}
+            className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
+          />
+        </div>
       </div>
     );
   }
@@ -490,24 +502,35 @@ const renderNewSecretValue = ({
   }
 
   if (hasValueChanges) {
-    if (isBothSingleLine) {
-      return (
+    const diffContent = isBothSingleLine ? (
+      renderSingleLineDiffForApproval(oldValue, newValue, false)
+    ) : (
+      <div className="min-w-max">{renderMultilineDiffForApproval(oldValue, newValue, false)}</div>
+    );
+    return (
+      <div className="relative">
         <div
-          className="relative rounded-lg border border-mineshaft-600 p-2"
+          ref={newDiffContainerRef}
+          className={twMerge(
+            "rounded-lg border border-mineshaft-600 p-2",
+            !isBothSingleLine && "max-h-96 thin-scrollbar overflow-x-auto overflow-y-auto"
+          )}
           style={{ backgroundColor: "#081208" }}
         >
-          {renderSingleLineDiffForApproval(oldValue, newValue, false)}
+          {isVisible ? (
+            diffContent
+          ) : (
+            <div className="ph-no-capture font-mono text-sm text-bunker-300">
+              {HIDDEN_SECRET_VALUE}
+            </div>
+          )}
         </div>
-      );
-    }
-
-    return (
-      <div
-        ref={newDiffContainerRef}
-        className="relative max-h-96 thin-scrollbar overflow-x-auto overflow-y-auto rounded-lg border border-mineshaft-600 p-2"
-        style={{ backgroundColor: "#081208" }}
-      >
-        <div className="min-w-max">{renderMultilineDiffForApproval(oldValue, newValue, false)}</div>
+        <div className="absolute top-1 right-1 z-10" onClick={onToggleVisibility}>
+          <FontAwesomeIcon
+            icon={isVisible ? faEyeSlash : faEye}
+            className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
+          />
+        </div>
       </div>
     );
   }

@@ -32,7 +32,6 @@ import {
   ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSecretActions,
-  ProjectPermissionSecretApprovalRequestActions,
   ProjectPermissionSecretEventActions,
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSecretScanningConfigActions,
@@ -300,10 +299,6 @@ const ApprovalRequestGrantPolicyActionSchema = z.object({
   [ProjectPermissionApprovalRequestGrantActions.Revoke]: z.boolean().optional()
 });
 
-const SecretApprovalRequestPolicyActionSchema = z.object({
-  [ProjectPermissionSecretApprovalRequestActions.Read]: z.boolean().optional()
-});
-
 const SecretRollbackPolicyActionSchema = z.object({
   read: z.boolean().optional(),
   create: z.boolean().optional()
@@ -533,9 +528,7 @@ export const projectRoleFormSchema = z.object({
         []
       ),
       [ProjectPermissionSub.ApprovalRequestGrants]:
-        ApprovalRequestGrantPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.SecretApprovalRequest]:
-        SecretApprovalRequestPolicyActionSchema.array().default([])
+        ApprovalRequestGrantPolicyActionSchema.array().default([])
     })
     .partial()
     .optional()
@@ -1454,14 +1447,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canRevoke)
         formVal[subject]![0][ProjectPermissionApprovalRequestGrantActions.Revoke] = true;
     }
-
-    if (subject === ProjectPermissionSub.SecretApprovalRequest) {
-      const canRead = action.includes(ProjectPermissionSecretApprovalRequestActions.Read);
-
-      if (!formVal[subject]) formVal[subject] = [{}];
-
-      if (canRead) formVal[subject]![0][ProjectPermissionSecretApprovalRequestActions.Read] = true;
-    }
   });
 
   return formVal;
@@ -1539,13 +1524,14 @@ export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
       const caslActions = Object.keys(actions).filter(
         (el) => actions?.[el as keyof typeof actions] && el !== "conditions" && el !== "inverted"
       );
+      // Skip permissions with no actions selected (e.g. user added a row but unchecked all actions).
+      // Sending empty action arrays would be invalid or redundant for the API.
+      if (caslActions.length === 0) return;
+
       const caslConditions =
         "conditions" in actions
           ? convertFormOperatorToCaslCondition(actions.conditions)
           : undefined;
-
-      // Skip permissions with no actions selected
-      if (caslActions.length === 0) return;
 
       permissions.push({
         action: caslActions,
@@ -2184,10 +2170,6 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   [ProjectPermissionSub.McpActivityLogs]: {
     title: "MCP Activity Logs",
     actions: [{ label: "Read", value: ProjectPermissionActions.Read }]
-  },
-  [ProjectPermissionSub.SecretApprovalRequest]: {
-    title: "Secret Approval Requests",
-    actions: [{ label: "Read", value: ProjectPermissionSecretApprovalRequestActions.Read }]
   }
 };
 
@@ -2220,8 +2202,7 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.SecretRotation]: enabled,
   [ProjectPermissionSub.ServiceTokens]: enabled,
   [ProjectPermissionSub.Commits]: enabled,
-  [ProjectPermissionSub.SecretEventSubscriptions]: enabled,
-  [ProjectPermissionSub.SecretApprovalRequest]: enabled
+  [ProjectPermissionSub.SecretEventSubscriptions]: enabled
 });
 
 const KmsPermissionSubjects = (enabled = false) => ({
