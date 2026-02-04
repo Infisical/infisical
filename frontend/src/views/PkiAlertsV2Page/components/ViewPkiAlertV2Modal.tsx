@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { faKey } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { CertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
 import {
@@ -16,14 +18,24 @@ import {
   Td,
   Th,
   THead,
+  Tooltip,
   Tr
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import {
-  PkiAlertEventTypeV2,
+  PkiAlertChannelTypeV2,
+  TPkiAlertChannelConfigEmail,
+  TPkiAlertChannelConfigWebhookResponse,
   useGetPkiAlertV2ById,
   useGetPkiAlertV2MatchingCertificates
 } from "@app/hooks/api/pkiAlertsV2";
+
+import {
+  formatAlertBefore,
+  formatEventType,
+  getChannelIcon,
+  getWebhookHostname
+} from "../utils/pki-alert-formatters";
 
 interface Props {
   isOpen: boolean;
@@ -64,38 +76,6 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
       setCertificatesPage(1);
     }
   }, [isOpen]);
-
-  const formatEventType = (eventType: PkiAlertEventTypeV2) => {
-    switch (eventType) {
-      case PkiAlertEventTypeV2.EXPIRATION:
-        return "Certificate Expiration";
-      case PkiAlertEventTypeV2.RENEWAL:
-        return "Certificate Renewal";
-      case PkiAlertEventTypeV2.ISSUANCE:
-        return "Certificate Issuance";
-      case PkiAlertEventTypeV2.REVOCATION:
-        return "Certificate Revocation";
-      default:
-        return eventType;
-    }
-  };
-
-  const formatAlertBefore = (alertBefore?: string) => {
-    if (!alertBefore) return "Not set";
-
-    const match = alertBefore.match(/^(\\d+)([dwmy])$/);
-    if (!match) return alertBefore;
-
-    const [, value, unit] = match;
-    const unitMap = {
-      d: "days",
-      w: "weeks",
-      m: "months",
-      y: "years"
-    };
-
-    return `${value} ${unitMap[unit as keyof typeof unitMap] || unit}`;
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -164,7 +144,9 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
                       <div className="mb-1 block text-sm font-medium text-gray-400">
                         Alert Before
                       </div>
-                      <span className="text-gray-300">{formatAlertBefore(alert.alertBefore)}</span>
+                      <span className="text-gray-300">
+                        {formatAlertBefore(alert.alertBefore, "Not set")}
+                      </span>
                     </div>
 
                     <div>
@@ -206,28 +188,73 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
                 </div>
 
                 <div className="space-y-3">
-                  <h3 className="text-lg font-medium text-gray-200">Notification Recipients</h3>
-                  {(alert.channels || []).some(
-                    (channel) =>
-                      channel.channelType === "email" && (channel.config as any)?.recipients
-                  ) ? (
+                  <h3 className="text-lg font-medium text-gray-200">Notification Channels</h3>
+                  {(alert.channels || []).length > 0 ? (
                     <div className="space-y-3">
-                      <div>
-                        <div className="flex flex-wrap gap-1">
-                          {(alert.channels || [])
-                            .filter(
-                              (channel) =>
-                                channel.channelType === "email" &&
-                                (channel.config as any)?.recipients
-                            )
-                            .flatMap((channel) => (channel.config as any).recipients)
-                            .map((email: string) => (
-                              <Badge key={`email-${email}`} variant="neutral" className="text-sm">
-                                {email}
-                              </Badge>
-                            ))}
+                      {(alert.channels || []).map((channel) => (
+                        <div
+                          key={channel.id}
+                          className="flex items-start gap-3 rounded-md border border-mineshaft-600 p-3"
+                        >
+                          <FontAwesomeIcon
+                            icon={getChannelIcon(channel.channelType)}
+                            className="mt-1 shrink-0 text-mineshaft-400"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-mineshaft-100 capitalize">
+                                {channel.channelType}
+                              </span>
+                              {channel.channelType === PkiAlertChannelTypeV2.WEBHOOK &&
+                                (channel.config as TPkiAlertChannelConfigWebhookResponse)
+                                  ?.hasSigningSecret && (
+                                  <Tooltip content="Signed webhook">
+                                    <FontAwesomeIcon
+                                      icon={faKey}
+                                      className="text-xs text-mineshaft-400"
+                                    />
+                                  </Tooltip>
+                                )}
+                              {!channel.enabled && (
+                                <Badge variant="neutral" className="text-xs">
+                                  Disabled
+                                </Badge>
+                              )}
+                            </div>
+                            {channel.channelType === PkiAlertChannelTypeV2.EMAIL && (
+                              <div className="mt-1 text-sm text-mineshaft-400">
+                                {(() => {
+                                  const config = channel.config as TPkiAlertChannelConfigEmail;
+                                  const recipients = config?.recipients || [];
+                                  const count = recipients.length;
+                                  if (count === 0) return "No recipients";
+                                  const displayEmails = recipients.slice(0, 3);
+                                  const displayText =
+                                    count <= 3
+                                      ? displayEmails.join(", ")
+                                      : `${displayEmails.join(", ")} +${count - 3} more`;
+
+                                  if (count > 3) {
+                                    return (
+                                      <Tooltip content={recipients.join(", ")}>
+                                        <span className="cursor-help">{displayText}</span>
+                                      </Tooltip>
+                                    );
+                                  }
+                                  return displayText;
+                                })()}
+                              </div>
+                            )}
+                            {channel.channelType === PkiAlertChannelTypeV2.WEBHOOK && (
+                              <div className="mt-1 truncate text-sm text-mineshaft-400">
+                                {getWebhookHostname(
+                                  (channel.config as TPkiAlertChannelConfigWebhookResponse).url
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
                   ) : (
                     <p className="text-gray-400">No notification channels configured</p>

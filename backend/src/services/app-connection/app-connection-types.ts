@@ -540,6 +540,17 @@ export type TListAwsConnectionIamUsers = {
   connectionId: string;
 };
 
+export type TListAwsConnectionLoadBalancers = {
+  connectionId: string;
+  region: AWSRegion;
+};
+
+export type TListAwsConnectionListeners = {
+  connectionId: string;
+  region: AWSRegion;
+  loadBalancerArn: string;
+};
+
 export type TAppConnectionCredentialsValidator = (
   appConnection: TAppConnectionConfig,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,

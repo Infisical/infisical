@@ -460,6 +460,8 @@ export enum EventType {
   PKI_SYNC_SYNC_CERTIFICATES = "pki-sync-sync-certificates",
   PKI_SYNC_IMPORT_CERTIFICATES = "pki-sync-import-certificates",
   PKI_SYNC_REMOVE_CERTIFICATES = "pki-sync-remove-certificates",
+  PKI_SYNC_SET_DEFAULT_CERTIFICATE = "pki-sync-set-default-certificate",
+  PKI_SYNC_CLEAR_DEFAULT_CERTIFICATE = "pki-sync-clear-default-certificate",
   OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
   OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user",
   CREATE_KMIP_CLIENT = "create-kmip-client",
@@ -3482,6 +3484,23 @@ interface PkiSyncRemoveCertificatesEvent {
   };
 }
 
+interface PkiSyncSetDefaultCertificateEvent {
+  type: EventType.PKI_SYNC_SET_DEFAULT_CERTIFICATE;
+  metadata: {
+    pkiSyncId: string;
+    name: string;
+    certificateId: string;
+  };
+}
+
+interface PkiSyncClearDefaultCertificateEvent {
+  type: EventType.PKI_SYNC_CLEAR_DEFAULT_CERTIFICATE;
+  metadata: {
+    pkiSyncId: string;
+    name: string;
+  };
+}
+
 interface OidcGroupMembershipMappingAssignUserEvent {
   type: EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER;
   metadata: {
@@ -5207,6 +5226,8 @@ export type Event =
   | PkiSyncSyncCertificatesEvent
   | PkiSyncImportCertificatesEvent
   | PkiSyncRemoveCertificatesEvent
+  | PkiSyncSetDefaultCertificateEvent
+  | PkiSyncClearDefaultCertificateEvent
   | OidcGroupMembershipMappingAssignUserEvent
   | OidcGroupMembershipMappingRemoveUserEvent
   | CreateKmipClientEvent

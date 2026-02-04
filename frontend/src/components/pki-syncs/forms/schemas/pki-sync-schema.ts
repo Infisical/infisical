@@ -5,6 +5,10 @@ import {
   UpdateAwsCertificateManagerPkiSyncDestinationSchema
 } from "./aws-certificate-manager-pki-sync-destination-schema";
 import {
+  AwsElasticLoadBalancerPkiSyncDestinationSchema,
+  UpdateAwsElasticLoadBalancerPkiSyncDestinationSchema
+} from "./aws-elastic-load-balancer-pki-sync-destination-schema";
+import {
   AwsSecretsManagerPkiSyncDestinationSchema,
   UpdateAwsSecretsManagerPkiSyncDestinationSchema
 } from "./aws-secrets-manager-pki-sync-destination-schema";
@@ -24,6 +28,7 @@ import {
 const PkiSyncUnionSchema = z.discriminatedUnion("destination", [
   AzureKeyVaultPkiSyncDestinationSchema,
   AwsCertificateManagerPkiSyncDestinationSchema,
+  AwsElasticLoadBalancerPkiSyncDestinationSchema,
   AwsSecretsManagerPkiSyncDestinationSchema,
   ChefPkiSyncDestinationSchema,
   CloudflareCustomCertificatePkiSyncDestinationSchema
@@ -32,6 +37,7 @@ const PkiSyncUnionSchema = z.discriminatedUnion("destination", [
 const UpdatePkiSyncUnionSchema = z.discriminatedUnion("destination", [
   UpdateAzureKeyVaultPkiSyncDestinationSchema,
   UpdateAwsCertificateManagerPkiSyncDestinationSchema,
+  UpdateAwsElasticLoadBalancerPkiSyncDestinationSchema,
   UpdateAwsSecretsManagerPkiSyncDestinationSchema,
   UpdateChefPkiSyncDestinationSchema,
   UpdateCloudflareCustomCertificatePkiSyncDestinationSchema
