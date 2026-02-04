@@ -1,4 +1,6 @@
 /* eslint-disable no-await-in-loop */
+import { randomUUID } from "crypto";
+
 import {
   AccessScope,
   IntegrationAuthsSchema,
@@ -89,7 +91,8 @@ export const projectQueueFactory = ({
       removeOnComplete: true,
       removeOnFail: {
         count: 5 // keep the most recent jobs
-      }
+      },
+      jobId: randomUUID()
     });
   };
 

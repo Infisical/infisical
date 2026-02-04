@@ -74,7 +74,7 @@ export const telemetryQueueServiceFactory = ({
     if (postHog) {
       await queueService.queue(QueueName.TelemetryInstanceStats, QueueJobs.TelemetryInstanceStats, undefined, {
         jobId: QueueName.TelemetryInstanceStats,
-        repeat: { pattern: "0 0 * * *", utc: true }
+        repeat: { pattern: "0 0 * * *", utc: true, key: QueueName.TelemetryInstanceStats }
       });
     }
   };
@@ -92,7 +92,7 @@ export const telemetryQueueServiceFactory = ({
       // Start aggregated events job (runs every five minutes)
       await queueService.queue(QueueName.TelemetryAggregatedEvents, QueueJobs.TelemetryAggregatedEvents, undefined, {
         jobId: QueueName.TelemetryAggregatedEvents,
-        repeat: { pattern: "*/5 * * * *", utc: true }
+        repeat: { pattern: "*/5 * * * *", utc: true, key: QueueName.TelemetryAggregatedEvents }
       });
     }
   };

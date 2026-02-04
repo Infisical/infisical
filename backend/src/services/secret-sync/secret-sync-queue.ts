@@ -1,6 +1,7 @@
 import opentelemetry from "@opentelemetry/api";
 import { AxiosError } from "axios";
 import { Job } from "bullmq";
+import { randomUUID } from "crypto";
 
 import { ProjectMembershipRole, SecretType } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -353,21 +354,25 @@ export const secretSyncQueueFactory = ({
         delay: 3000
       },
       removeOnComplete: true,
-      removeOnFail: true
+      removeOnFail: true,
+      jobId: randomUUID()
     });
 
   const queueSecretSyncImportSecretsById = async (payload: TQueueSecretSyncImportSecretsByIdDTO) =>
     queueService.queue(QueueName.AppConnectionSecretSync, QueueJobs.SecretSyncImportSecrets, payload, {
       attempts: 1,
       removeOnComplete: true,
-      removeOnFail: true
+      removeOnFail: true,
+
+      jobId: randomUUID()
     });
 
   const queueSecretSyncRemoveSecretsById = async (payload: TQueueSecretSyncRemoveSecretsByIdDTO) =>
     queueService.queue(QueueName.AppConnectionSecretSync, QueueJobs.SecretSyncRemoveSecrets, payload, {
       attempts: 1,
       removeOnComplete: true,
-      removeOnFail: true
+      removeOnFail: true,
+      jobId: randomUUID()
     });
 
   const $queueSendSecretSyncFailedNotifications = async (payload: TQueueSendSecretSyncActionFailedNotificationsDTO) => {

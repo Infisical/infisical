@@ -1,6 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import opentelemetry from "@opentelemetry/api";
 import { AxiosError } from "axios";
+import { randomUUID } from "crypto";
 import { Knex } from "knex";
 
 import {
@@ -537,7 +538,8 @@ export const secretQueueFactory = ({
         delay: 3000
       },
       removeOnComplete: true,
-      removeOnFail: true
+      removeOnFail: true,
+      jobId: randomUUID()
     });
   };
 
@@ -549,7 +551,8 @@ export const secretQueueFactory = ({
         delay: 3000
       },
       removeOnComplete: true,
-      removeOnFail: true
+      removeOnFail: true,
+      jobId: randomUUID()
     });
   };
 
@@ -1128,7 +1131,8 @@ export const secretQueueFactory = ({
       { projectId },
       {
         removeOnComplete: true,
-        removeOnFail: true
+        removeOnFail: true,
+        jobId: randomUUID()
       }
     );
   };
