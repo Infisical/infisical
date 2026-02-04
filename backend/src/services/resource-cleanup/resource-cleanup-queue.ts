@@ -70,19 +70,6 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       return;
     }
 
-    await queueService.stopRepeatableJob(
-      QueueName.AuditLogPrune,
-      QueueJobs.AuditLogPrune,
-      { pattern: "0 0 * * *", utc: true },
-      QueueName.AuditLogPrune // just a job id
-    );
-    await queueService.stopRepeatableJob(
-      QueueName.DailyResourceCleanUp,
-      QueueJobs.DailyResourceCleanUp,
-      { pattern: "0 0 * * *", utc: true },
-      QueueName.DailyResourceCleanUp // just a job id
-    );
-
     queueService.start(QueueName.DailyResourceCleanUp, async () => {
       try {
         logger.info(`${QueueName.DailyResourceCleanUp}: queue task started`);
@@ -111,12 +98,13 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       }
     });
 
-    await queueService.schedulePg(
-      QueueJobs.DailyResourceCleanUp,
-      appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *",
-      undefined,
-      { tz: "UTC" }
-    );
+    await queueService.queue(QueueName.DailyResourceCleanUp, QueueJobs.DailyResourceCleanUp, undefined, {
+      jobId: QueueJobs.DailyResourceCleanUp,
+      repeat: {
+        pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *",
+        key: QueueJobs.DailyResourceCleanUp
+      }
+    });
 
     // Hourly cleanup routine
     await queueService.stopRepeatableJob(
@@ -126,28 +114,24 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       QueueName.FrequentResourceCleanUp // just a job id
     );
 
-    queueService.start(
-      QueueName.FrequentResourceCleanUp,
-      async () => {
-        try {
-          logger.info(`${QueueName.FrequentResourceCleanUp}: queue task started`);
-          await identityAccessTokenDAL.removeExpiredTokens();
-          logger.info(`${QueueName.FrequentResourceCleanUp}: queue task completed`);
-        } catch (error) {
-          logger.error(error, `${QueueName.FrequentResourceCleanUp}: resource cleanup failed`);
-          throw error;
-        }
-      },
-      {
-        persistence: true
+    queueService.start(QueueName.FrequentResourceCleanUp, async () => {
+      try {
+        logger.info(`${QueueName.FrequentResourceCleanUp}: queue task started`);
+        await identityAccessTokenDAL.removeExpiredTokens();
+        logger.info(`${QueueName.FrequentResourceCleanUp}: queue task completed`);
+      } catch (error) {
+        logger.error(error, `${QueueName.FrequentResourceCleanUp}: resource cleanup failed`);
+        throw error;
       }
-    );
-    await queueService.schedulePg(
-      QueueJobs.FrequentResourceCleanUp,
-      "0 * * * *", // Schedule to run every hour
-      undefined,
-      { tz: "UTC" }
-    );
+    });
+
+    await queueService.queue(QueueName.FrequentResourceCleanUp, QueueJobs.FrequentResourceCleanUp, undefined, {
+      jobId: QueueJobs.FrequentResourceCleanUp,
+      repeat: {
+        pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 * * * *",
+        key: QueueJobs.FrequentResourceCleanUp
+      }
+    });
   };
 
   return {

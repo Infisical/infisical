@@ -139,12 +139,13 @@ export const certificateV3QueueServiceFactory = ({
       }
     });
 
-    await queueService.schedulePg(
-      QueueJobs.CertificateV3DailyAutoRenewal,
-      CERTIFICATE_RENEWAL_CONFIG.DAILY_CRON_SCHEDULE,
-      undefined,
-      { tz: "UTC" }
-    );
+    await queueService.queue(QueueName.CertificateV3AutoRenewal, QueueJobs.CertificateV3DailyAutoRenewal, undefined, {
+      jobId: QueueJobs.CertificateV3DailyAutoRenewal,
+      repeat: {
+        pattern: CERTIFICATE_RENEWAL_CONFIG.DAILY_CRON_SCHEDULE,
+        key: QueueJobs.CertificateV3DailyAutoRenewal
+      }
+    });
   };
 
   return {
