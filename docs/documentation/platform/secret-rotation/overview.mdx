@@ -64,7 +64,7 @@ Infisical supports two rotation models: **Dual-Phase** (used by most providers) 
         2. __Day 30__
             - `Credential set 2` is issued and set to **Active**
             - `Credential set 1` transitions to **Inactive** but remains valid
-            - New connections utilize set 2 while existing connections with set 1 continue to work
+            - New applications will utilize set 1, while existing applications with set 1 continue to work
 
             <Note>
                 This overlapping validity period ensures that at any point during the active period of a credential set, you are guaranteed that retrieved credentials will be valid for the specified rotation period.
