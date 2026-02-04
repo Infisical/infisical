@@ -8,6 +8,7 @@ import {
   EditIcon,
   EllipsisIcon,
   EyeOffIcon,
+  HistoryIcon,
   MessageSquareIcon,
   SaveIcon,
   TagsIcon,
@@ -24,9 +25,15 @@ import { SecretReferenceTree } from "@app/components/secrets/SecretReferenceDeta
 import { DeleteActionModal, Modal, ModalContent, ModalTrigger } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
+  Badge,
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -34,7 +41,8 @@ import {
   UnstableDropdownMenuContent,
   UnstableDropdownMenuItem,
   UnstableDropdownMenuTrigger,
-  UnstableIconButton
+  UnstableIconButton,
+  UnstableSeparator
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -54,6 +62,7 @@ import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPa
 import { SecretCommentForm } from "./SecretCommentForm";
 import { SecretMetadataForm } from "./SecretMetadataForm";
 import { SecretTagForm } from "./SecretTagForm";
+import { SecretVersionHistory } from "./SecretVersionHistory";
 
 type Props = {
   defaultValue?: string | null;
@@ -68,6 +77,7 @@ type Props = {
   secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
   skipMultilineEncoding?: boolean | null;
   environment: string;
+  environmentName: string;
   secretValueHidden: boolean;
   secretPath: string;
   onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
@@ -124,6 +134,7 @@ export const SecretEditTableRow = ({
   comment,
   tags,
   secretMetadata,
+  environmentName,
   skipMultilineEncoding
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
@@ -192,6 +203,7 @@ export const SecretEditTableRow = ({
   const [isTagOpen, setIsTagOpen] = useState(false);
   const [isMetadataOpen, setIsMetadataOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
 
   const toggleModal = useCallback(() => {
     setIsModalOpen((prev) => !prev);
@@ -727,6 +739,35 @@ export const SecretEditTableRow = ({
               </UnstableDropdownMenuTrigger>
               <UnstableDropdownMenuContent align="end">
                 <ProjectPermissionCan
+                  I={ProjectPermissionActions.Read}
+                  a={ProjectPermissionSub.Commits}
+                >
+                  {(isAllowed) => (
+                    <Tooltip
+                      open={isImportedSecret || isCreatable || !isAllowed ? undefined : false}
+                      delayDuration={300}
+                      disableHoverableContent
+                    >
+                      <TooltipTrigger className="block w-full">
+                        <UnstableDropdownMenuItem
+                          onClick={() => setIsVersionHistoryOpen(true)}
+                          isDisabled={!secretId || isCreatable || isImportedSecret || !isAllowed}
+                        >
+                          <HistoryIcon />
+                          Version History
+                        </UnstableDropdownMenuItem>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">
+                        {!isAllowed
+                          ? "Access Denied"
+                          : isImportedSecret
+                            ? "Cannot View Version History for Imported Secret"
+                            : "Create Secret to View History"}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </ProjectPermissionCan>
+                <ProjectPermissionCan
                   I={ProjectPermissionActions.Delete}
                   a={subject(ProjectPermissionSub.Secrets, {
                     environment,
@@ -741,7 +782,7 @@ export const SecretEditTableRow = ({
                       delayDuration={300}
                       disableHoverableContent
                     >
-                      <TooltipTrigger>
+                      <TooltipTrigger className="block w-full">
                         <UnstableDropdownMenuItem
                           onClick={toggleModal}
                           isDisabled={
@@ -772,6 +813,36 @@ export const SecretEditTableRow = ({
                 </ProjectPermissionCan>
               </UnstableDropdownMenuContent>
             </UnstableDropdownMenu>
+            <Sheet open={isVersionHistoryOpen} onOpenChange={setIsVersionHistoryOpen}>
+              <SheetContent
+                onOpenAutoFocus={(e) => e.preventDefault()}
+                className="gap-y-0"
+                side="right"
+              >
+                <SheetHeader>
+                  <SheetTitle>Version History</SheetTitle>
+                  <SheetDescription>Audit secret history and rollback changes</SheetDescription>
+                </SheetHeader>
+                <UnstableSeparator />
+                <div className="bg-container p-4 text-foreground">
+                  <p className="truncate">{secretName}</p>
+                  <Badge variant="neutral" className="mt-0.5">
+                    {environmentName}
+                  </Badge>
+                </div>
+                <UnstableSeparator />
+                {secretId && (
+                  <SecretVersionHistory
+                    secretId={secretId}
+                    secretKey={secretName}
+                    environment={environment}
+                    secretPath={secretPath}
+                    isRotatedSecret={isRotatedSecret ?? false}
+                    canReadValue={canReadSecretValue}
+                  />
+                )}
+              </SheetContent>
+            </Sheet>
           </div>
         )}
       </div>
