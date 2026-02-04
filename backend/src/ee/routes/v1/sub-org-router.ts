@@ -58,6 +58,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
           type: EventType.CREATE_SUB_ORGANIZATION,
           metadata: {
             name: organization.name,
+            slug: organization.slug,
             organizationId: organization.id
           }
         }
@@ -156,6 +157,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
           type: EventType.UPDATE_SUB_ORGANIZATION,
           metadata: {
             name: organization.name,
+            slug: organization.slug,
             organizationId: organization.id
           }
         }
