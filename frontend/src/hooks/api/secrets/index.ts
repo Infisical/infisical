@@ -9,8 +9,10 @@ export {
   useUpdateSecretV3
 } from "./mutations";
 export {
+  fetchSecretReferences,
   useGetProjectSecrets,
   useGetProjectSecretsAllEnv,
+  useGetSecretReferences,
   useGetSecretReferenceTree,
   useGetSecretVersion
 } from "./queries";
