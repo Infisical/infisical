@@ -40,8 +40,8 @@ import {
   formRolePermission2API,
   isConditionalSubjects,
   PROJECT_PERMISSION_OBJECT,
-  ProjectTypePermissionSubjects,
   projectRoleFormSchema,
+  ProjectTypePermissionSubjects,
   rolePermission2Form,
   TFormSchema
 } from "./ProjectRoleModifySection.utils";
