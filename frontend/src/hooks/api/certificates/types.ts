@@ -123,8 +123,8 @@ export type TUnifiedCertificateIssuanceDTO = {
       type: string;
       value: string;
     }>;
-    signatureAlgorithm: string;
-    keyAlgorithm: string;
+    signatureAlgorithm?: string;
+    keyAlgorithm?: string;
     subjectAlternativeNames?: Array<{
       type: string;
       value: string;

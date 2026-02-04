@@ -200,6 +200,10 @@ export type TSshConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.SSH;
 };
 
+export type TDbtConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Dbt;
+};
+
 export type TSmbConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.SMB;
 };
@@ -261,6 +265,7 @@ export type TAppConnectionOption =
   | TDNSMadeEasyConnectionOption
   | TOctopusDeployConnectionOption
   | TSshConnectionOption
+  | TDbtConnectionOption
   | TSmbConnectionOption;
 
 export type TAppConnectionOptionMap = {
@@ -311,6 +316,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Chef]: TChefConnectionOption;
   [AppConnection.OctopusDeploy]: TOctopusDeployConnectionOption;
   [AppConnection.SSH]: TSshConnectionOption;
+  [AppConnection.Dbt]: TDbtConnectionOption;
   [AppConnection.SMB]: TSmbConnectionOption;
   [AppConnection.CircleCI]: TCircleCISyncConnectionOption;
 };

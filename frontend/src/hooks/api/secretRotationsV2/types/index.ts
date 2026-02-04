@@ -37,6 +37,11 @@ import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { DiscriminativePick } from "@app/types";
 
 import {
+  TDbtServiceTokenRotation,
+  TDbtServiceTokenRotationGeneratedCredentialsResponse,
+  TDbtServiceTokenRotationOption
+} from "./dbt-service-token-rotation";
+import {
   TMongoDBCredentialsRotation,
   TMongoDBCredentialsRotationGeneratedCredentialsResponse,
   TMongoDBCredentialsRotationOption
@@ -89,6 +94,7 @@ export type TSecretRotationV2 = (
   | TMongoDBCredentialsRotation
   | TDatabricksServicePrincipalSecretRotation
   | TUnixLinuxLocalAccountRotation
+  | TDbtServiceTokenRotation
   | TWindowsLocalAccountRotation
   | TOpenRouterApiKeyRotation
 ) & {
@@ -106,6 +112,7 @@ export type TSecretRotationV2Option =
   | TMongoDBCredentialsRotationOption
   | TDatabricksServicePrincipalSecretRotationOption
   | TUnixLinuxLocalAccountRotationOption
+  | TDbtServiceTokenRotationOption
   | TWindowsLocalAccountRotationOption
   | TOpenRouterApiKeyRotationOption;
 
@@ -127,6 +134,7 @@ export type TViewSecretRotationGeneratedCredentialsResponse =
   | TMongoDBCredentialsRotationGeneratedCredentialsResponse
   | TDatabricksServicePrincipalSecretRotationGeneratedCredentialsResponse
   | TUnixLinuxLocalAccountRotationGeneratedCredentialsResponse
+  | TDbtServiceTokenRotationGeneratedCredentialsResponse
   | TWindowsLocalAccountRotationGeneratedCredentialsResponse
   | TOpenRouterApiKeyRotationGeneratedCredentialsResponse;
 
@@ -185,6 +193,7 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.MongoDBCredentials]: TMongoDBCredentialsRotationOption;
   [SecretRotation.DatabricksServicePrincipalSecret]: TDatabricksServicePrincipalSecretRotationOption;
   [SecretRotation.UnixLinuxLocalAccount]: TUnixLinuxLocalAccountRotationOption;
+  [SecretRotation.DbtServiceToken]: TDbtServiceTokenRotationOption;
   [SecretRotation.WindowsLocalAccount]: TWindowsLocalAccountRotationOption;
   [SecretRotation.OpenRouterApiKey]: TOpenRouterApiKeyRotationOption;
 };
@@ -203,6 +212,7 @@ export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.MongoDBCredentials]: TMongoDBCredentialsRotationGeneratedCredentialsResponse;
   [SecretRotation.DatabricksServicePrincipalSecret]: TDatabricksServicePrincipalSecretRotationGeneratedCredentialsResponse;
   [SecretRotation.UnixLinuxLocalAccount]: TUnixLinuxLocalAccountRotationGeneratedCredentialsResponse;
+  [SecretRotation.DbtServiceToken]: TDbtServiceTokenRotationGeneratedCredentialsResponse;
   [SecretRotation.WindowsLocalAccount]: TWindowsLocalAccountRotationGeneratedCredentialsResponse;
   [SecretRotation.OpenRouterApiKey]: TOpenRouterApiKeyRotationGeneratedCredentialsResponse;
 };

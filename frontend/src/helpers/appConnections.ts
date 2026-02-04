@@ -23,6 +23,7 @@ import {
   CamundaConnectionMethod,
   CloudflareConnectionMethod,
   DatabricksConnectionMethod,
+  DbtConnectionMethod,
   FlyioConnectionMethod,
   GcpConnectionMethod,
   GitHubConnectionMethod,
@@ -144,6 +145,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Chef]: { name: "Chef", image: "Chef.png", enterprise: true },
   [AppConnection.OctopusDeploy]: { name: "Octopus Deploy", image: "Octopus Deploy.png" },
   [AppConnection.SSH]: { name: "SSH", image: "SSH.png" },
+  [AppConnection.Dbt]: { name: "DBT", image: "DBT.png" },
   [AppConnection.SMB]: { name: "SMB", image: "SMB.png", size: 50 },
   [AppConnection.OpenRouter]: { name: "OpenRouter", image: "OpenRouter.png" },
   [AppConnection.CircleCI]: { name: "CircleCI", image: "CircleCI.png" }
@@ -186,6 +188,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case NorthflankConnectionMethod.ApiToken:
     case OktaConnectionMethod.ApiToken:
     case LaravelForgeConnectionMethod.ApiToken:
+    case DbtConnectionMethod.ApiToken:
     case CircleCIConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:

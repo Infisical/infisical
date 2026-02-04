@@ -24,6 +24,7 @@ import { ChefConnectionForm } from "./ChefConnectionForm";
 import { CircleCIConnectionForm } from "./CircleCIConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
+import { DbtConnectionForm } from "./DbtConnectionForm";
 import { DigitalOceanConnectionForm } from "./DigitalOceanConnectionForm";
 import { DNSMadeEasyConnectionForm } from "./DNSMadeEasyConnectionForm";
 import { FlyioConnectionForm } from "./FlyioConnectionForm";
@@ -185,6 +186,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       return <OctopusDeployConnectionForm onSubmit={onSubmit} />;
     case AppConnection.SSH:
       return <SshConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Dbt:
+      return <DbtConnectionForm onSubmit={onSubmit} />;
     case AppConnection.SMB:
       return <SmbConnectionForm onSubmit={onSubmit} />;
     case AppConnection.OpenRouter:
@@ -355,6 +358,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <OctopusDeployConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.SSH:
       return <SshConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Dbt:
+      return <DbtConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.SMB:
       return <SmbConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.OpenRouter:

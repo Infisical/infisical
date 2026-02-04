@@ -9,6 +9,7 @@ import { AUTH0_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./auth0-client-secret"
 import { AWS_IAM_USER_SECRET_ROTATION_LIST_OPTION } from "./aws-iam-user-secret";
 import { AZURE_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./azure-client-secret";
 import { DATABRICKS_SERVICE_PRINCIPAL_SECRET_ROTATION_LIST_OPTION } from "./databricks-service-principal-secret";
+import { DBT_SERVICE_TOKEN_ROTATION_LIST_OPTION } from "./dbt-service-token";
 import { LDAP_PASSWORD_ROTATION_LIST_OPTION, TLdapPasswordRotation } from "./ldap-password";
 import { MONGODB_CREDENTIALS_ROTATION_LIST_OPTION } from "./mongodb-credentials";
 import { MSSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mssql-credentials";
@@ -52,6 +53,7 @@ const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2List
   [SecretRotation.MongoDBCredentials]: MONGODB_CREDENTIALS_ROTATION_LIST_OPTION,
   [SecretRotation.DatabricksServicePrincipalSecret]: DATABRICKS_SERVICE_PRINCIPAL_SECRET_ROTATION_LIST_OPTION,
   [SecretRotation.UnixLinuxLocalAccount]: UNIX_LINUX_LOCAL_ACCOUNT_ROTATION_LIST_OPTION,
+  [SecretRotation.DbtServiceToken]: DBT_SERVICE_TOKEN_ROTATION_LIST_OPTION,
   [SecretRotation.WindowsLocalAccount]: WINDOWS_LOCAL_ACCOUNT_ROTATION_LIST_OPTION,
   [SecretRotation.OpenRouterApiKey]: OPEN_ROUTER_API_KEY_ROTATION_LIST_OPTION
 };

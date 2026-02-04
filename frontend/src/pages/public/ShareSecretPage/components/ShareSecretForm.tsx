@@ -396,7 +396,18 @@ export const ShareSecretForm = ({
                     <FormControl
                       label="Authorized Emails"
                       isOptional
-                      tooltipText="Unique secret links will be emailed to each individual. The secret will only be accessible to those links."
+                      helperText="Recipients must have an Infisical account to verify identity"
+                      tooltipText={
+                        <>
+                          <p>
+                            Unique secret links will be emailed to each individual. The secret will
+                            only be accessible to those links.
+                          </p>
+                          <p className="mt-2">
+                            Recipients must have an Infisical account to verify their identity.
+                          </p>
+                        </>
+                      }
                       tooltipClassName="max-w-sm"
                       isError={Boolean(error)}
                       errorText={error?.message}

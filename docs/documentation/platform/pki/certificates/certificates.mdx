@@ -51,7 +51,34 @@ To [issue a certificate](/documentation/platform/pki/concepts/certificate-lifecy
 - Self-Signed Certificates: To issue a [self-signed certificate](https://en.wikipedia.org/wiki/Self-signed_certificate), you must configure the certificate profile to use the `Self-Signed` issuer type. You can then use the [API enrollment method](/documentation/platform/pki/enrollment-methods/api) to request a self-signed certificate against it.
 - CA-Issued Certificates: To issue a certificate from a certificate authority, you must configure the certificate profile to use the `Certificate Authority` issuer type and select the [issuing CA](/documentation/platform/pki/ca/overview) to use. You can then use one of the [enrollment methods](/documentation/platform/pki/enrollment-methods/overview) to request a certificate against it.
 
-Refer to the documentation for each [enrollment method](/documentation/platform/pki/enrollment-methods/overview) to learn more about how to issue certificates using it.
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Issue a certificate">
+        To issue a certificate, navigate to your Project > Certificates > Certificate Requests and click **Request**.
+
+        ![pki certificates](/images/platform/pki/certificate/cert-issue.png)
+
+        Select the certificate profile and choose the **Request Method**:
+        - **Managed**: Infisical generates and manages the private key for you. Fill out the subject attributes, SANs, algorithms, and other certificate details.
+        - **CSR (Certificate Signing Request)**: Provide your own CSR when you need to manage your private key externally. The certificate will be issued using the subject information and public key contained in your CSR. See [Issue a Certificate with CSR](/documentation/platform/pki/guides/request-cert-csr) for more details.
+
+        ![pki certificate issue modal](/images/platform/pki/certificate/cert-issue-modal.png)
+
+        When using the **CSR** method, paste your PEM-encoded Certificate Signing Request into the text area and specify the TTL:
+
+        ![pki certificate issue modal csr](/images/platform/pki/certificate/cert-issue-modal-csr.png)
+
+        <Note>
+          When using a CSR, the subject attributes, subject alternative names, and key algorithm are extracted from your CSR. You only need to specify the TTL for the certificate. The CSR must be a valid PEM-encoded PKCS#10 request.
+        </Note>
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    To issue certificates via API, refer to the [API enrollment method](/documentation/platform/pki/enrollment-methods/api) documentation.
+  </Tab>
+</Tabs>
 
 ## Guide to Renewing Certificates
 

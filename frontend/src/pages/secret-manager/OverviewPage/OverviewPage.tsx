@@ -14,10 +14,11 @@ import { EditSecretRotationV2Modal } from "@app/components/secret-rotations-v2/E
 import { ReconcileLocalAccountRotationModal } from "@app/components/secret-rotations-v2/ReconcileLocalAccountRotationModal";
 import { RotateSecretRotationV2Modal } from "@app/components/secret-rotations-v2/RotateSecretRotationV2Modal";
 import { ViewSecretRotationV2GeneratedCredentialsModal } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials";
-import { Lottie, Modal, ModalContent, PageHeader } from "@app/components/v2";
+import { Modal, ModalContent, PageHeader } from "@app/components/v2";
 import {
   Button,
   Checkbox,
+  Skeleton,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -156,6 +157,7 @@ export const OverviewPage = () => {
   const [debouncedSearchFilter, setDebouncedSearchFilter] = useDebounce(searchFilter);
   const secretPath = (routerSearch?.secretPath as string) || "/";
   const { subscription } = useSubscription();
+  const prevPageSize = useRef(0);
 
   // scott: keeping incase we bring it back
   // const [collapseEnvironments, setCollapseEnvironments] = useToggle(
@@ -257,6 +259,7 @@ export const OverviewPage = () => {
   const {
     isPending: isOverviewLoading,
     data: overview,
+    isPlaceholderData,
     isFetching: isOverviewFetching
   } = useGetProjectSecretsOverview(
     {
@@ -516,7 +519,8 @@ export const OverviewPage = () => {
     key: string,
     value: string,
     secretValueHidden: boolean,
-    type = SecretType.Shared
+    type = SecretType.Shared,
+    secretComment?: string
   ) => {
     let secretValue: string | undefined = value;
 
@@ -533,7 +537,8 @@ export const OverviewPage = () => {
       secretPath,
       secretKey: key,
       secretValue,
-      type
+      type,
+      secretComment
     });
 
     if ("approval" in result) {
@@ -854,7 +859,12 @@ export const OverviewPage = () => {
 
   const [tableWidth, setTableWidth] = useState(0);
 
-  const isTableEmpty = totalCount === 0;
+  const isTableEmpty = totalCount === 0 && !isOverviewLoading;
+
+  useEffect(() => {
+    // track previous page size to make navigation loading rows less janky
+    if (!isOverviewLoading) prevPageSize.current = Math.min(perPage, totalCount);
+  }, [isOverviewLoading, totalCount, perPage]);
 
   useEffect(() => {
     const element = tableRef.current;
@@ -872,14 +882,6 @@ export const OverviewPage = () => {
       resizeObserver.disconnect();
     };
   }, [tableRef, isTableEmpty]);
-
-  if (isProjectV3 && visibleEnvs.length > 0 && isOverviewLoading) {
-    return (
-      <div className="container mx-auto flex h-screen w-full items-center justify-center px-8 text-mineshaft-50 dark:scheme-dark">
-        <Lottie isAutoPlay icon="infisical_loading" className="h-32 w-32" />
-      </div>
-    );
-  }
 
   // This is needed to also show imports from other paths – right now those are missing.
   // const combinedKeys = [...secKeys, ...secretImports.map((impSecrets) => impSecrets?.data?.map((impSec) => impSec.secrets?.map((impSecKey) => impSecKey.key))).flat().flat()];
@@ -1089,106 +1091,136 @@ export const OverviewPage = () => {
                       })}
                     </UnstableTableRow>
                   </UnstableTableHeader>
-                  <UnstableTableBody>
-                    {folderNamesAndDescriptions.map(({ name: folderName, description }, index) => (
-                      <FolderTableRow
-                        folderName={folderName}
-                        isFolderPresentInEnv={isFolderPresentInEnv}
-                        isSelected={Boolean(selectedEntries.folder[folderName])}
-                        onToggleFolderSelect={() =>
-                          toggleSelectedEntry(EntryType.FOLDER, folderName)
-                        }
-                        environments={visibleEnvs}
-                        key={`overview-${folderName}-${index + 1}`}
-                        onClick={handleFolderClick}
-                        onToggleFolderEdit={(name: string) =>
-                          handlePopUpOpen("updateFolder", { name, description })
-                        }
-                      />
-                    ))}
-                    {dynamicSecretNames.map((dynamicSecretName, index) => (
-                      <DynamicSecretTableRow
-                        dynamicSecretName={dynamicSecretName}
-                        isDynamicSecretInEnv={isDynamicSecretPresentInEnv}
-                        environments={visibleEnvs}
-                        key={`overview-${dynamicSecretName}-${index + 1}`}
-                      />
-                    ))}
-                    {secretRotationNames.map((secretRotationName, index) => (
-                      <SecretRotationTableRow
-                        secretRotationName={secretRotationName}
-                        isSecretRotationInEnv={isSecretRotationPresentInEnv}
-                        environments={visibleEnvs}
-                        getSecretRotationByName={getSecretRotationByName}
-                        getSecretRotationStatusesByName={getSecretRotationStatusesByName}
-                        key={`overview-${secretRotationName}-${index + 1}`}
-                        tableWidth={tableWidth}
-                        onEdit={(secretRotation) =>
-                          handlePopUpOpen("editSecretRotation", secretRotation)
-                        }
-                        onRotate={(secretRotation) =>
-                          handlePopUpOpen("rotateSecretRotation", secretRotation)
-                        }
-                        onReconcile={(secretRotation) =>
-                          handlePopUpOpen("reconcileSecretRotation", secretRotation)
-                        }
-                        onViewGeneratedCredentials={(secretRotation) =>
-                          handlePopUpOpen("viewSecretRotationGeneratedCredentials", secretRotation)
-                        }
-                        onDelete={(secretRotation) =>
-                          handlePopUpOpen("deleteSecretRotation", secretRotation)
-                        }
-                      />
-                    ))}
-                    {secKeys.map((key, index) => (
-                      <SecretTableRow
-                        isSelected={Boolean(selectedEntries.secret[key])}
-                        onToggleSecretSelect={() => toggleSelectedEntry(EntryType.SECRET, key)}
-                        secretPath={secretPath}
-                        getImportedSecretByKey={getImportedSecretByKey}
-                        isImportedSecretPresentInEnv={handleIsImportedSecretPresentInEnv}
-                        onSecretCreate={handleSecretCreate}
-                        onSecretDelete={handleSecretDelete}
-                        onSecretUpdate={handleSecretUpdate}
-                        key={`overview-${key}-${index + 1}`}
-                        environments={visibleEnvs}
-                        secretKey={key}
-                        getSecretByKey={getSecretByKey}
-                        tableWidth={tableWidth}
-                        importedBy={importedBy}
-                      />
-                    ))}
-                    <SecretNoAccessTableRow
-                      environments={visibleEnvs}
-                      count={Math.max(
-                        (page * perPage > totalCount ? totalCount % perPage : perPage) -
-                          (totalUniqueFoldersInPage || 0) -
-                          (totalUniqueDynamicSecretsInPage || 0) -
-                          (totalUniqueSecretsInPage || 0) -
-                          (totalUniqueSecretImportsInPage || 0) -
-                          (totalUniqueSecretRotationsInPage || 0),
-                        0
-                      )}
-                    />
-                    <UnstableTableRow className="hover:bg-container">
-                      <UnstableTableCell className="sticky left-0 z-10 bg-container" />
-                      <UnstableTableCell className="sticky left-10 z-10 border-r bg-container" />
-                      {visibleEnvs?.map(({ slug }) => (
-                        <UnstableTableCell
-                          className="border-r last:border-r-0"
-                          key={`explore-${slug}`}
-                        >
-                          <Button
-                            onClick={() => handleExploreEnvClick(slug)}
-                            isFullWidth
-                            variant="project"
-                            size="xs"
-                          >
-                            Explore <LogInIcon />
-                          </Button>
-                        </UnstableTableCell>
-                      ))}
-                    </UnstableTableRow>
+                  <UnstableTableBody className="transition-all duration-500">
+                    {isOverviewLoading || isPlaceholderData ? (
+                      Array.from({ length: prevPageSize.current || perPage }).map((_, index) => (
+                        <UnstableTableRow className="group" key={`loading-row-${index + 1}`}>
+                          <UnstableTableCell className="sticky left-0 z-10 bg-container group-hover:bg-container-hover">
+                            <Skeleton className="h-4 w-full" />
+                          </UnstableTableCell>
+                          <UnstableTableCell className="sticky left-10 z-10 border-r bg-container group-hover:bg-container-hover">
+                            <Skeleton className="h-4 w-full" />
+                          </UnstableTableCell>
+                          {visibleEnvs.map((env) => {
+                            return (
+                              <UnstableTableCell
+                                className="border-r last:border-r-0"
+                                key={`loading-env-row-${env.slug}+${index + 1}`}
+                              >
+                                <Skeleton className="h-4 w-full" />
+                              </UnstableTableCell>
+                            );
+                          })}
+                        </UnstableTableRow>
+                      ))
+                    ) : (
+                      <>
+                        {folderNamesAndDescriptions.map(
+                          ({ name: folderName, description }, index) => (
+                            <FolderTableRow
+                              folderName={folderName}
+                              isFolderPresentInEnv={isFolderPresentInEnv}
+                              isSelected={Boolean(selectedEntries.folder[folderName])}
+                              onToggleFolderSelect={() =>
+                                toggleSelectedEntry(EntryType.FOLDER, folderName)
+                              }
+                              environments={visibleEnvs}
+                              key={`overview-${folderName}-${index + 1}`}
+                              onClick={handleFolderClick}
+                              onToggleFolderEdit={(name: string) =>
+                                handlePopUpOpen("updateFolder", { name, description })
+                              }
+                            />
+                          )
+                        )}
+                        {dynamicSecretNames.map((dynamicSecretName, index) => (
+                          <DynamicSecretTableRow
+                            dynamicSecretName={dynamicSecretName}
+                            isDynamicSecretInEnv={isDynamicSecretPresentInEnv}
+                            environments={visibleEnvs}
+                            key={`overview-${dynamicSecretName}-${index + 1}`}
+                          />
+                        ))}
+                        {secretRotationNames.map((secretRotationName, index) => (
+                          <SecretRotationTableRow
+                            secretRotationName={secretRotationName}
+                            isSecretRotationInEnv={isSecretRotationPresentInEnv}
+                            environments={visibleEnvs}
+                            getSecretRotationByName={getSecretRotationByName}
+                            getSecretRotationStatusesByName={getSecretRotationStatusesByName}
+                            key={`overview-${secretRotationName}-${index + 1}`}
+                            tableWidth={tableWidth}
+                            onEdit={(secretRotation) =>
+                              handlePopUpOpen("editSecretRotation", secretRotation)
+                            }
+                            onRotate={(secretRotation) =>
+                              handlePopUpOpen("rotateSecretRotation", secretRotation)
+                            }
+                            onReconcile={(secretRotation) =>
+                              handlePopUpOpen("reconcileSecretRotation", secretRotation)
+                            }
+                            onViewGeneratedCredentials={(secretRotation) =>
+                              handlePopUpOpen(
+                                "viewSecretRotationGeneratedCredentials",
+                                secretRotation
+                              )
+                            }
+                            onDelete={(secretRotation) =>
+                              handlePopUpOpen("deleteSecretRotation", secretRotation)
+                            }
+                          />
+                        ))}
+                        {secKeys.map((key, index) => (
+                          <SecretTableRow
+                            isSelected={Boolean(selectedEntries.secret[key])}
+                            onToggleSecretSelect={() => toggleSelectedEntry(EntryType.SECRET, key)}
+                            secretPath={secretPath}
+                            getImportedSecretByKey={getImportedSecretByKey}
+                            isImportedSecretPresentInEnv={handleIsImportedSecretPresentInEnv}
+                            onSecretCreate={handleSecretCreate}
+                            onSecretDelete={handleSecretDelete}
+                            onSecretUpdate={handleSecretUpdate}
+                            key={`overview-${key}-${index + 1}`}
+                            environments={visibleEnvs}
+                            secretKey={key}
+                            getSecretByKey={getSecretByKey}
+                            tableWidth={tableWidth}
+                            importedBy={importedBy}
+                          />
+                        ))}
+                        <SecretNoAccessTableRow
+                          environments={visibleEnvs}
+                          count={Math.max(
+                            (page * perPage > totalCount ? totalCount % perPage : perPage) -
+                              (totalUniqueFoldersInPage || 0) -
+                              (totalUniqueDynamicSecretsInPage || 0) -
+                              (totalUniqueSecretsInPage || 0) -
+                              (totalUniqueSecretImportsInPage || 0) -
+                              (totalUniqueSecretRotationsInPage || 0),
+                            0
+                          )}
+                        />
+                        <UnstableTableRow className="hover:bg-container">
+                          <UnstableTableCell className="sticky left-0 z-10 bg-container" />
+                          <UnstableTableCell className="sticky left-10 z-10 border-r bg-container" />
+                          {visibleEnvs?.map(({ slug }) => (
+                            <UnstableTableCell
+                              className="border-r last:border-r-0"
+                              key={`explore-${slug}`}
+                            >
+                              <Button
+                                onClick={() => handleExploreEnvClick(slug)}
+                                isFullWidth
+                                variant="project"
+                                size="xs"
+                              >
+                                Explore <LogInIcon />
+                              </Button>
+                            </UnstableTableCell>
+                          ))}
+                        </UnstableTableRow>
+                      </>
+                    )}
                   </UnstableTableBody>
                 </UnstableTable>
                 <UnstablePagination

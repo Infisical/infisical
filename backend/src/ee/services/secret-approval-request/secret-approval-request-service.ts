@@ -327,7 +327,7 @@ export const secretApprovalRequestServiceFactory = ({
         id: el.id,
         version: el.version,
         secretMetadata: (
-          el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[]
+          el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[] | null
         )?.map((meta) => ({
           key: meta.key,
           isEncrypted: Boolean(meta.encryptedValue),
@@ -1587,7 +1587,7 @@ export const secretApprovalRequestServiceFactory = ({
     const projectPath = `/organizations/${actorOrgId}/projects/secret-management/${projectId}`;
     const approvalPath = `${projectPath}/approval`;
     const cfg = getConfig();
-    const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
+    const approvalUrl = `${cfg.SITE_URL}${approvalPath}?requestId=${secretApprovalRequest.id}`;
 
     await triggerWorkflowIntegrationNotification({
       input: {
@@ -1994,7 +1994,7 @@ export const secretApprovalRequestServiceFactory = ({
     const projectPath = `/organizations/${actorOrgId}/projects/secret-management/${project.id}`;
     const approvalPath = `${projectPath}/approval`;
     const cfg = getConfig();
-    const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
+    const approvalUrl = `${cfg.SITE_URL}${approvalPath}?requestId=${secretApprovalRequest.id}`;
 
     await triggerWorkflowIntegrationNotification({
       input: {

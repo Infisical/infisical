@@ -139,7 +139,8 @@ export const SecretRotationItem = ({
               I={ProjectPermissionSecretRotationActions.ReadGeneratedCredentials}
               a={subject(ProjectPermissionSub.SecretRotation, {
                 environment: environment.slug,
-                secretPath: folder.path
+                secretPath: folder.path,
+                ...(secretRotation.connectionId && { connectionId: secretRotation.connectionId })
               })}
               renderTooltip
               allowedLabel="View Generated Credentials"
@@ -164,7 +165,8 @@ export const SecretRotationItem = ({
               I={ProjectPermissionSecretRotationActions.RotateSecrets}
               a={subject(ProjectPermissionSub.SecretRotation, {
                 environment: environment.slug,
-                secretPath: folder.path
+                secretPath: folder.path,
+                ...(secretRotation.connectionId && { connectionId: secretRotation.connectionId })
               })}
               renderTooltip
               allowedLabel="Rotate Secrets"
@@ -195,7 +197,8 @@ export const SecretRotationItem = ({
                 I={ProjectPermissionSecretRotationActions.RotateSecrets}
                 a={subject(ProjectPermissionSub.SecretRotation, {
                   environment: environment.slug,
-                  secretPath: folder.path
+                  secretPath: folder.path,
+                  ...(secretRotation.connectionId && { connectionId: secretRotation.connectionId })
                 })}
                 renderTooltip
                 allowedLabel="Reconcile Secret"
@@ -231,7 +234,8 @@ export const SecretRotationItem = ({
               I={ProjectPermissionSecretRotationActions.Edit}
               a={subject(ProjectPermissionSub.SecretRotation, {
                 environment: environment.slug,
-                secretPath: folder.path
+                secretPath: folder.path,
+                ...(secretRotation.connectionId && { connectionId: secretRotation.connectionId })
               })}
               renderTooltip
               allowedLabel="Edit"
@@ -255,7 +259,8 @@ export const SecretRotationItem = ({
               I={ProjectPermissionSecretRotationActions.Delete}
               a={subject(ProjectPermissionSub.SecretRotation, {
                 environment: environment.slug,
-                secretPath: folder.path
+                secretPath: folder.path,
+                ...(secretRotation.connectionId && { connectionId: secretRotation.connectionId })
               })}
               renderTooltip
               allowedLabel="Delete"

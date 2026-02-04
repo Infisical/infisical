@@ -47,6 +47,7 @@ import {
   TSecretRotationRotateGeneratedCredentials,
   TSecretRotationV2,
   TSecretRotationV2GeneratedCredentials,
+  TSecretRotationV2PermissionContext,
   TSecretRotationV2Raw,
   TSecretRotationV2TemporaryParameters,
   TSecretRotationV2WithConnection,
@@ -85,6 +86,7 @@ import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/se
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { awsIamUserSecretRotationFactory } from "./aws-iam-user-secret/aws-iam-user-secret-rotation-fns";
+import { dbtServiceTokenRotationFactory } from "./dbt-service-token/dbt-service-token-rotation-fns";
 import { mongodbCredentialsRotationFactory } from "./mongodb-credentials/mongodb-credentials-rotation-fns";
 import { oktaClientSecretRotationFactory } from "./okta-client-secret/okta-client-secret-rotation-fns";
 import { openRouterApiKeyRotationFactory } from "./open-router-api-key/open-router-api-key-rotation-fns";
@@ -159,6 +161,7 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.DatabricksServicePrincipalSecret]:
     databricksServicePrincipalSecretRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.UnixLinuxLocalAccount]: unixLinuxLocalAccountRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.DbtServiceToken]: dbtServiceTokenRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.WindowsLocalAccount]: windowsLocalAccountRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.OpenRouterApiKey]: openRouterApiKeyRotationFactory as TRotationFactoryImplementation
 };
@@ -238,6 +241,26 @@ export const secretRotationV2ServiceFactory = ({
     }
   };
 
+  const getSecretRotationSubject = (
+    rotation: {
+      environment?: { slug: string };
+      folder?: { path: string };
+      connection?: { id: string };
+    },
+    overrides?: { environment?: string; secretPath?: string; connectionId?: string }
+  ) => {
+    const connectionId = overrides?.connectionId ?? rotation.connection?.id;
+    const envSlug = overrides?.environment ?? rotation.environment?.slug;
+    const secretPath = overrides?.secretPath ?? rotation.folder?.path;
+    const hasAny = connectionId || envSlug || secretPath;
+    if (!hasAny) return ProjectPermissionSub.SecretRotation;
+    return subject(ProjectPermissionSub.SecretRotation, {
+      ...(envSlug && { environment: envSlug }),
+      ...(secretPath && { secretPath }),
+      ...(connectionId && { connectionId })
+    });
+  };
+
   const listSecretRotationsByProjectId = async (
     { projectId, type }: TListSecretRotationsV2ByProjectId,
     actor: OrgServiceActor
@@ -271,13 +294,7 @@ export const secretRotationV2ServiceFactory = ({
     return Promise.all(
       secretRotations
         .filter((rotation) =>
-          permission.can(
-            ProjectPermissionSecretRotationActions.Read,
-            subject(ProjectPermissionSub.SecretRotation, {
-              environment: rotation.environment.slug,
-              secretPath: rotation.folder.path
-            })
-          )
+          permission.can(ProjectPermissionSecretRotationActions.Read, getSecretRotationSubject(rotation))
         )
         .map((rotation) => expandSecretRotation(rotation, kmsService))
     );
@@ -298,7 +315,7 @@ export const secretRotationV2ServiceFactory = ({
         message: `Could not find ${SECRET_ROTATION_NAME_MAP[type]} Rotation with ID "${rotationId}"`
       });
 
-    const { projectId, environment, folder, connection } = secretRotation;
+    const { projectId, connection } = secretRotation;
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -311,10 +328,7 @@ export const secretRotationV2ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretRotationActions.Read,
-      subject(ProjectPermissionSub.SecretRotation, {
-        environment: environment.slug,
-        secretPath: folder.path
-      })
+      getSecretRotationSubject(secretRotation)
     );
 
     if (connection.app !== SECRET_ROTATION_CONNECTION_MAP[type])
@@ -344,7 +358,7 @@ export const secretRotationV2ServiceFactory = ({
         message: `Could not find ${SECRET_ROTATION_NAME_MAP[type]} Rotation with ID "${rotationId}"`
       });
 
-    const { projectId, environment, folder, connection, encryptedGeneratedCredentials } = secretRotation;
+    const { projectId, connection, encryptedGeneratedCredentials } = secretRotation;
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -357,10 +371,7 @@ export const secretRotationV2ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretRotationActions.ReadGeneratedCredentials,
-      subject(ProjectPermissionSub.SecretRotation, {
-        environment: environment.slug,
-        secretPath: folder.path
-      })
+      getSecretRotationSubject(secretRotation)
     );
 
     if (connection.app !== SECRET_ROTATION_CONNECTION_MAP[type])
@@ -422,10 +433,7 @@ export const secretRotationV2ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretRotationActions.Read,
-      subject(ProjectPermissionSub.SecretRotation, {
-        environment,
-        secretPath
-      })
+      getSecretRotationSubject(secretRotation)
     );
 
     if (connection.app !== SECRET_ROTATION_CONNECTION_MAP[type])
@@ -474,7 +482,11 @@ export const secretRotationV2ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretRotationActions.Create,
-      subject(ProjectPermissionSub.SecretRotation, { environment, secretPath })
+      getSecretRotationSubject({
+        environment: { slug: environment },
+        folder: { path: secretPath },
+        connection: payload.connectionId ? { id: payload.connectionId } : undefined
+      })
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
@@ -673,10 +685,7 @@ export const secretRotationV2ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretRotationActions.Edit,
-      subject(ProjectPermissionSub.SecretRotation, {
-        environment: environment.slug,
-        secretPath: folder.path
-      })
+      getSecretRotationSubject(secretRotation)
     );
 
     if (connection.app !== SECRET_ROTATION_CONNECTION_MAP[type])
@@ -823,10 +832,7 @@ export const secretRotationV2ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretRotationActions.Delete,
-      subject(ProjectPermissionSub.SecretRotation, {
-        environment: environment.slug,
-        secretPath: folder.path
-      })
+      getSecretRotationSubject(secretRotation)
     );
 
     if (connection.app !== SECRET_ROTATION_CONNECTION_MAP[type])
@@ -1144,7 +1150,7 @@ export const secretRotationV2ServiceFactory = ({
         message: `Could not find ${SECRET_ROTATION_NAME_MAP[type]} Rotation with ID "${rotationId}"`
       });
 
-    const { projectId, environment, folder, connection } = secretRotation;
+    const { projectId, connection } = secretRotation;
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -1157,10 +1163,7 @@ export const secretRotationV2ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretRotationActions.RotateSecrets,
-      subject(ProjectPermissionSub.SecretRotation, {
-        environment: environment.slug,
-        secretPath: folder.path
-      })
+      getSecretRotationSubject(secretRotation)
     );
 
     if (connection.app !== SECRET_ROTATION_CONNECTION_MAP[type])
@@ -1221,11 +1224,20 @@ export const secretRotationV2ServiceFactory = ({
       });
     }
 
-    const count = await secretRotationV2DAL.findWithMappedSecretsCount({
-      $in: { folderId: folders.map((folder) => folder.id) },
-      search,
-      projectId
-    });
+    const folderIds = folders.map((folder) => folder.id);
+
+    // Fetch rotations (with search) then filter by per-rotation permission so connectionId
+    // (and other) restrictions are enforced; findWithMappedSecretsCount cannot filter by connectionId.
+    const secretRotations = await secretRotationV2DAL.findWithMappedSecrets(
+      { $in: { folderId: folderIds }, search, projectId },
+      {}
+    );
+
+    const rotationsForCount = secretRotations as (TSecretRotationV2PermissionContext & { name: string })[];
+    const allowedRotations = rotationsForCount.filter((rotation) =>
+      permission.can(ProjectPermissionSecretRotationActions.Read, getSecretRotationSubject(rotation))
+    );
+    const count = new Set(allowedRotations.map((r) => r.name)).size;
 
     return count;
   };
@@ -1275,7 +1287,7 @@ export const secretRotationV2ServiceFactory = ({
 
     const folderIds = folders.map((folder) => folder.id);
 
-    const secretRotations = await secretRotationV2DAL.findWithMappedSecrets(
+    const secretRotationsRaw = await secretRotationV2DAL.findWithMappedSecrets(
       {
         $in: { folderId: folderIds },
         search,
@@ -1286,6 +1298,11 @@ export const secretRotationV2ServiceFactory = ({
         offset,
         sort: orderBy ? [[orderBy, orderDirection]] : undefined
       }
+    );
+
+    // Filter by per-rotation permission so connectionId (and other) restrictions are enforced.
+    const secretRotations = secretRotationsRaw.filter((rotation: TSecretRotationV2PermissionContext) =>
+      permission.can(ProjectPermissionSecretRotationActions.Read, getSecretRotationSubject(rotation))
     );
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
@@ -1400,7 +1417,10 @@ export const secretRotationV2ServiceFactory = ({
       options
     );
 
-    return secretRotations as TSecretRotationV2[];
+    // Filter by per-rotation permission so connectionId (and other) restrictions are enforced.
+    return secretRotations.filter((rotation) =>
+      permission.can(ProjectPermissionSecretRotationActions.Read, getSecretRotationSubject(rotation))
+    ) as TSecretRotationV2[];
   };
 
   const reconcileLocalAccountRotation = async (
@@ -1447,10 +1467,7 @@ export const secretRotationV2ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionSecretRotationActions.RotateSecrets,
-      subject(ProjectPermissionSub.SecretRotation, {
-        environment: environment.slug,
-        secretPath: folder.path
-      })
+      getSecretRotationSubject(secretRotation)
     );
 
     const localAccountParams = parameters as TLocalAccountRotation["parameters"];

@@ -217,6 +217,7 @@ export const projectEventsSSEServiceFactory = ({
     } catch (error) {
       logger.error(error, "Failed to refresh SSE client permission or permission revoked");
       entry.send({ type: "error", data: { message: "Permission denied or refresh failed" } });
+      entry.client.unsubscribe();
       entry.client.close();
       clients.delete(clientId);
     }
@@ -293,7 +294,7 @@ export const projectEventsSSEServiceFactory = ({
     }
 
     const lock = await keyStore
-      .acquireLock([KeyStorePrefixes.ProjectSSEConnectionsLockoutKey(opts.projectId)], 150, {
+      .acquireLock([KeyStorePrefixes.ProjectSSEConnectionsLockoutKey(opts.projectId)], 5000, {
         retryCount: -1,
         retryDelay: 200,
         retryJitter: 50
@@ -321,6 +322,7 @@ export const projectEventsSSEServiceFactory = ({
       const chunk = serializeSSEEvent(event);
       if (!stream.push(chunk)) {
         logger.debug("SSE backpressure detected: event dropped");
+        stream.destroy(new Error("Client too slow / Buffer overflow"));
       }
     };
 
@@ -333,19 +335,6 @@ export const projectEventsSSEServiceFactory = ({
       stream.push(null);
       stream.destroy();
     };
-
-    const client: TSSEClient = {
-      id,
-      stream,
-      projectId: opts.projectId,
-      actorId: opts.actorId,
-      ping,
-      close
-    };
-
-    // Store client with its opts and permission cache
-    const entry = { client, opts, permissionCache, send };
-    clients.set(id, entry);
 
     // Subscribe to secret mutations and filter for this client
     const unsubscribe = projectEventsService.subscribe(async (payload) => {
@@ -382,21 +371,48 @@ export const projectEventsSSEServiceFactory = ({
       }
 
       // Send event to client
-      send({
+      currentEntry.send({
         id: Date.now().toString(),
         type: payload.type,
         data: payloadFormattedData
       });
     });
 
+    const client: TSSEClient = {
+      id,
+      stream,
+      projectId: opts.projectId,
+      actorId: opts.actorId,
+      ping,
+      close,
+      unsubscribe
+    };
+
+    // Store client with its opts and permission cache
+    const entry = { client, opts, permissionCache, send };
+    clients.set(id, entry);
+
     // Cleanup function that's safe to call multiple times
     let cleaned = false;
     const cleanup = () => {
       if (cleaned) return;
       cleaned = true;
-      unsubscribe();
       clients.delete(id);
-      void $removeConnection(opts.projectId, id);
+
+      try {
+        unsubscribe();
+      } catch (err) {
+        logger.error(err, "Failed to unsubscribe from project events");
+      }
+
+      void $removeConnection(opts.projectId, id).catch((err) =>
+        logger.error(err, "Failed to remove connection from keystore")
+      );
+
+      stream.removeAllListeners();
+      if (!stream.destroyed) {
+        stream.destroy();
+      }
     };
 
     // Handle stream errors - ensure cleanup even if "close" doesn't fire
@@ -405,7 +421,6 @@ export const projectEventsSSEServiceFactory = ({
         logger.error(error, "SSE stream error");
       }
       cleanup();
-      stream.destroy(error);
     });
 
     // Clean up on stream close
