@@ -4,27 +4,54 @@ sidebarTitle: "Vault"
 description: "Learn how to migrate resources from Vault to Infisical."
 ---
 
-Infisical provides two approaches for migrating from HashiCorp Vault.
+This guide helps you migrate from HashiCorp Vault to Infisical. Whether you're moving a single application or your entire secrets infrastructure, Infisical provides tooling to make the transition smooth.
 
-### Which approach should I use?
+## Before You Begin
 
-**Choose In-Platform Migration Tooling if you want to:**
+If you're new to Infisical, here's a quick overview of the core concepts you'll encounter during migration:
 
-- Migrate specific secrets, not everything at once
-- Import secrets into existing Infisical projects
-- Translate Vault policies to Infisical access controls
-- Import Kubernetes authentication configurations
-- Have more control over the migration process
+### Infisical Concepts for Vault Users
 
-**Choose Bulk Data Import if you want to:**
+| Vault Concept | Infisical Equivalent | Description |
+|---------------|---------------------|-------------|
+| Namespace | Organization | Top-level container for all your resources. Infisical supports sub-organizations within an organization, which would be the equivalent of nested namespaces in Vault. |
+| KV Secret Engine | Secrets Management Project | A collection of secrets for an application or service |
+| KV Path<br/> (e.g `secret/app/dev`) | Environment + Folder | Environments (Dev, Staging, Prod) organize secrets by stage; folders provide additional hierarchy |
+| Policy | Project and Organization Roles | Define what actions users/machines can perform within the project or organization |
+| AppRole / Kubernetes Auth | Machine Identity | Non-human authentication for applications and services. We support a wide range of [identity authentication methods](/integrations/machine-authentication). |
+| Dynamic Secrets | Dynamic Secrets | Short-lived credentials generated on-demand |
 
-- Migrate all secrets from Vault in one go
-- Automatically create new Infisical projects from your Vault structure
-- Perform a one-time migration when moving entirely from Vault to Infisical
+**Key Differences:**
+- In Vault, you might have paths like `secret/app/dev`. In Infisical, this becomes: **Project** (`app`) -> **Environment** (`dev`) -> **Folder** (`database`)
+- Infisical uses [Machine Identities](/documentation/platform/identities/machine-identities) instead of AppRoles for service authentication. We support a wide range of [identity authentication methods](/integrations/machine-authentication).
+- Access control in Infisical is managed through [Project Roles](/documentation/platform/access-controls/role-based-access-controls) rather than HCL policies
+
+## Migration Approaches
+
+Infisical offers two migration paths. **For most teams, we recommend the In-Platform Migration Tooling** as it provides more control and flexibility.
+
+| | In-Platform Migration | Bulk Data Import |
+|---|---|---|
+| **Best for** | Controlled, incremental migration | One-time full migration for KV secret engines |
+| **Creates new projects** | No - import into existing projects | Yes - auto-creates projects |
+| **Selective import** | Yes - choose specific secrets | No - imports everything |
+| **Policy translation** | Yes | No |
+| **K8s auth import** | Yes | No |
+| **Dynamic secrets import** | Yes | No |
 
 ## In-Platform Migration Tooling
 
-This migration approach lets you set up a connection to your Vault instance once, then import specific resources as needed throughout Infisical.
+<Info>
+**Recommended Approach** - This method lets you migrate incrementally, giving you time to validate each step before proceeding. It also supports importing Kubernetes auth configurations and translating Vault policies.
+</Info>
+
+This migration approach lets you set up a connection to your Vault instance once, then import specific resources as needed throughout Infisical. Think of it as creating a "bridge" between Vault and Infisical that you can use repeatedly.
+
+**What you can import:**
+- Secrets from KV v1 and KV v2 engines
+- Kubernetes authentication configurations (to set up [Machine Identities](/documentation/platform/identities/machine-identities))
+- Kubernetes secrets engine roles (as [Dynamic Secrets](/documentation/platform/dynamic-secrets/kubernetes))
+- Vault policies (translated to [Infisical project roles](/documentation/platform/access-controls/role-based-access-controls))
 
 <Warning>
   **Organization Admin Access Required:** All in-platform migration features
@@ -34,9 +61,11 @@ This migration approach lets you set up a connection to your Vault instance once
 
 ### Step 1: Set Up Your Vault Connection
 
+Before importing anything, you need to establish a secure connection between Infisical and your Vault instance. This is a one-time setup.
+
 <Steps>
   <Step title="Create a Vault policy">
-    In your Vault instance, create a policy that allows Infisical to read your secrets, policies, and authentication configurations. This policy grants read-only access and doesn't allow Infisical to modify anything in Vault.
+    In your Vault instance, create a policy that allows Infisical to read your secrets, policies, and authentication configurations. This policy grants read-only access and doesn't allow Infisical to modify or create resources within your Vault instance.
 
     <Accordion title="View the complete policy">
     ```hcl
@@ -140,11 +169,21 @@ This migration approach lets you set up a connection to your Vault instance once
 
 ### Step 2: Import Your Resources
 
-Once your Vault connection is configured, you'll see import options throughout Infisical wherever relevant. Here's what you can import:
+Once your Vault connection is configured, you'll see import options throughout Infisical wherever relevant. The sections below cover each type of resource you can import.
 
-#### Import Secrets into a Project
+<Tip>
+**Migration Strategy:** We recommend migrating one application at a time. Start with a non-critical application to familiarize yourself with the process, then proceed to more important services.
+</Tip>
 
-You can import secrets from Vault directly into a specific environment and secret path:
+### Importing Secrets
+
+Secrets are imported into a specific **environment** (e.g., Development, Staging, Production) within a **project**. If you're coming from Vault, think of a project as similar to a KV secret engine dedicated to one application.
+
+<Info>
+**First time?** You'll need to [create a project](/documentation/platform/project) first. A project in Infisical typically represents a single application or microservice.
+</Info>
+
+**To import secrets from Vault:**
 
 1. Navigate to your project and select a specific environment (e.g., Development, Production)
 2. In the secrets view, click the dropdown icon (caret) next to the **"+ Add Secret"** button
@@ -152,36 +191,51 @@ You can import secrets from Vault directly into a specific environment and secre
 
    ![Import Vault Secrets](/images/platform/external-migrations/vault-in-platform/import-vault-secrets-modal.png)
 
-4. Choose your Vault namespace and the secret path you want to import
+4. Choose your Vault namespace and the secret path you want to import (e.g., `secret/app/prod`)
 5. Click **"Import Secrets"**
 
-The secrets will be imported into your current environment and folder path.
+The secrets will be imported into your current environment and folder path. If your Vault path has nested paths, you can create [folders](/documentation/platform/folder) in Infisical to maintain a similar structure.
 
-#### Import Kubernetes Authentication Configurations
+### Importing Kubernetes Authentication Configurations
 
-When setting up Kubernetes authentication for a machine identity, you can import the configuration from Vault:
+If you're using Vault's Kubernetes auth method to authenticate your pods, you can migrate this configuration to Infisical's [Machine Identities](/documentation/platform/identities/machine-identities).
 
-1. Navigate to **Access Control > Machine Identities** and select an identity
-2. Click **"Add Authentication Method"** and choose **Kubernetes Auth**
-3. In the configuration modal, click **"Load from Vault"**
+**Vault Kubernetes Auth -> Infisical Machine Identity**
+
+In Vault, you define Kubernetes roles that specify which service accounts can authenticate. In Infisical, this maps to a Machine Identity with Kubernetes authentication enabled.
+
+**To import Kubernetes auth configuration:**
+
+1. First, [create a Machine Identity](/documentation/platform/identities/machine-identities) in Infisical
+2. Navigate to **Access Control > Machine Identities** and select the identity
+3. Click **"Add Authentication Method"** and choose **Kubernetes Auth**
+4. In the configuration modal, click **"Load from Vault"**
 
    ![Load Kubernetes Auth from Vault](/images/platform/external-migrations/vault-in-platform/import-vault-kubernetes-auth-modal.png)
 
-4. Select your Vault namespace and the Kubernetes role
-5. Click **"Load"**
+5. Select your Vault namespace and the Kubernetes role
+6. Click **"Load"**
 
    ![Kubernetes Auth Form Populated](/images/platform/external-migrations/vault-in-platform/import-vault-kubernetes-auth-modal-form.png)
 
-The authentication settings (service accounts, TTL, policies, etc.) will be automatically populated from your Vault configuration.
+The authentication settings (allowed service accounts, namespaces, TTL, etc.) will be automatically populated from your Vault configuration.
 
 <Note>
   Sensitive values like service account JWTs cannot be retrieved from Vault and
   must be manually provided in the form after importing the configuration.
 </Note>
 
-#### Import Kubernetes Dynamic Secret Configurations
+**After importing:** You'll need to update your Kubernetes deployments to use the [Infisical Kubernetes Operator](/integrations/platforms/kubernetes/overview) or [Infisical SDK](/sdks/overview) instead of the Vault agent/sidecar.
 
-When creating a Kubernetes dynamic secret, you can import the configuration from a Vault Kubernetes secrets engine role:
+### Importing Kubernetes Dynamic Secret Configurations
+
+If you're using Vault's Kubernetes secrets engine to generate short-lived Kubernetes credentials, you can migrate these to Infisical's [Dynamic Secrets](/documentation/platform/dynamic-secrets/kubernetes).
+
+**Vault Kubernetes Secrets Engine -> Infisical Dynamic Secrets**
+
+Both platforms support generating temporary Kubernetes service account tokens or creating temporary service accounts. The configuration is similar.
+
+**To import a Kubernetes dynamic secret configuration:**
 
 1. Navigate to your project and select an environment
 2. Click **"+ Add Secret"** dropdown and choose **"Dynamic Secret"**
@@ -207,16 +261,27 @@ The form will be automatically populated with the role's configuration including
   be manually provided in the form after loading the configuration.
 </Note>
 
-#### Import and Translate Access Control Policies
+Learn more about how Dynamic Secrets work in Infisical in the [Dynamic Secrets documentation](/documentation/platform/dynamic-secrets/overview).
 
-When configuring project role-based access control, you can import Vault HCL policies and automatically translate them to Infisical permissions.
+### Importing and Translating Access Control Policies
+
+Infisical can translate your Vault HCL policies into [Infisical project roles](/documentation/platform/access-controls/role-based-access-controls).
+
+**Vault Policies -> Infisical Project Roles**
+
+| Vault Capability | Infisical Permission |
+|-----------------|---------------------|
+| `read` | Read secrets |
+| `list` | Read secrets (list is implicit with read) |
+| `create` | Create secrets |
+| `update` | Edit secrets |
+| `delete` | Delete secrets |
 
 <Note>
   Policy translation is best-effort and provides a starting point based on your
   Vault configuration. The translated permissions should be reviewed and
   adjusted as needed since Vault and Infisical have different access control
-  models. Infisical will analyze path patterns and capabilities to suggest
-  equivalent permissions.
+  models.
 </Note>
 
 **To import and translate a policy:**
@@ -234,20 +299,43 @@ When configuring project role-based access control, you can import Vault HCL pol
 5. Review the automatically translated Infisical permissions
 6. Make any adjustments and save
 
-<Tip>
-  **How policy translation works:** 
-  
+<Accordion title="How policy translation works">
   - Vault path patterns are analyzed to identify KV secret engines and environments
-  - Vault capabilities (`read`,`list`, `create`, etc.) are mapped to Infisical permissions
+  - Vault capabilities (`read`, `list`, `create`, etc.) are mapped to Infisical permissions
   - Wildcards in paths are converted to glob patterns
   - Secret paths are preserved for granular access control
   
-  Always review the translated permissions carefully, as Vault's capability-based model may not map 1:1 with Infisical's permission structure.
-</Tip>
+  **Example translation:**
+  ```hcl
+  # Vault policy
+  path "secret/data/app/*" {
+    capabilities = ["read", "list"]
+  }
+  ```
+  
+  Becomes an Infisical role with **read** permission on secrets in the corresponding environment/folder path.
+</Accordion>
+
+### Next Steps After Migration
+
+Once you've imported your secrets and configurations, here's how to start using them in your applications:
+
+<CardGroup cols={2}>
+  <Card title="Update Your Applications" icon="code" href="/sdks/overview">
+    Replace Vault client libraries with Infisical SDKs in your application code
+  </Card>
+  <Card title="Set Up Kubernetes Integration" icon="dharmachakra" href="/integrations/platforms/kubernetes/overview">
+    Use the Infisical Kubernetes Operator to inject secrets into your pods
+  </Card>
+</CardGroup>
 
 ---
 
 ## Bulk Data Import
+
+<Note>
+**When to use Bulk Import:** This approach is best for one-time migrations where you want to move all secrets at once and have Infisical automatically create projects based on your Vault structure. For most migrations, we recommend the [In-Platform Migration Tooling](#in-platform-migration-tooling) above.
+</Note>
 
 This migration approach imports all secrets from your Vault instance in one operation and automatically creates new Infisical projects based on your Vault structure.
 
