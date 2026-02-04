@@ -43,7 +43,13 @@
           {
             "group": "Platform Reference",
             "pages": [
-              "documentation/platform/organization",
+              {
+                "group": "Organization",
+                "pages": [
+                  "documentation/platform/organization",
+                  "documentation/platform/sub-organizations"
+                ]
+              },
               {
                 "group": "Projects",
                 "pages": [
