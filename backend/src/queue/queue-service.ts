@@ -85,6 +85,7 @@ export enum QueueName {
   ImportSecretsFromExternalSource = "import-secrets-from-external-source",
   AppConnectionSecretSync = "app-connection-secret-sync",
   SecretRotationV2 = "secret-rotation-v2",
+  SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
   FolderTreeCheckpoint = "folder-tree-checkpoint",
   InvalidateCache = "invalidate-cache",
   SecretScanningV2 = "secret-scanning-v2",
@@ -353,13 +354,13 @@ export type TQueueJobTypes = {
         payload: undefined;
       }
     | {
-        name: QueueJobs.SecretRotationV2RotateSecrets;
-        payload: TSecretRotationRotateSecretsJobPayload;
-      }
-    | {
         name: QueueJobs.SecretRotationV2SendNotification;
         payload: TSecretRotationSendNotificationJobPayload;
       };
+  [QueueName.SecretRotationV2RotateSecrets]: {
+    name: QueueJobs.SecretRotationV2RotateSecrets;
+    payload: TSecretRotationRotateSecretsJobPayload;
+  };
   [QueueName.InvalidateCache]: {
     name: QueueJobs.InvalidateCache;
     payload: {
