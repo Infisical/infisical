@@ -183,10 +183,11 @@ export const secretRotationV2QueueServiceFactory = async ({
     }
   );
 
-  await queueService.schedulePg(
-    QueueJobs.SecretRotationV2QueueRotations,
-    appCfg.isRotationDevelopmentMode ? "* * * * *" : "0 0 * * *",
-    undefined,
-    { tz: "UTC" }
-  );
+  await queueService.queue(QueueName.SecretRotationV2, QueueJobs.SecretRotationV2QueueRotations, undefined, {
+    jobId: "secret-rotation-v2-cron",
+    repeat: {
+      pattern: appCfg.isRotationDevelopmentMode ? "* * * * *" : "0 0 * * *",
+      key: "secret-rotation-v2-cron"
+    }
+  });
 };

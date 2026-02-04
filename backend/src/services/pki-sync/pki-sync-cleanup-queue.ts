@@ -76,7 +76,13 @@ export const pkiSyncCleanupQueueServiceFactory = ({
       }
     });
 
-    await queueService.schedulePg(QueueJobs.PkiSyncCleanup, "0 0 * * *", undefined, { tz: "UTC" });
+    await queueService.queue(QueueName.PkiSyncCleanup, QueueJobs.PkiSyncCleanup, undefined, {
+      jobId: QueueJobs.PkiSyncCleanup,
+      repeat: {
+        pattern: "0 0 * * *",
+        key: QueueJobs.PkiSyncCleanup
+      }
+    });
   };
 
   return {

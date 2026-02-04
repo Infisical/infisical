@@ -1,5 +1,5 @@
 import { Job, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from "bullmq";
-import PgBoss, { WorkOptions } from "pg-boss";
+import PgBoss from "pg-boss";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
@@ -165,6 +165,10 @@ export type TQueueOptions = {
   backoff?: {
     type: "exponential" | "fixed";
     delay: number;
+  };
+  repeat?: {
+    pattern?: string;
+    key: string;
   };
 };
 
@@ -445,15 +449,6 @@ export type TQueueJobTypes = {
   };
 };
 
-const SECRET_SCANNING_JOBS = [
-  QueueJobs.SecretScanningV2FullScan,
-  QueueJobs.SecretScanningV2DiffScan,
-  QueueJobs.SecretScanningV2SendNotification,
-  QueueJobs.SecretScan
-];
-
-const NON_STANDARD_JOBS = [...SECRET_SCANNING_JOBS];
-
 const SECRET_SCANNING_QUEUES = [
   QueueName.SecretScanningV2,
   QueueName.SecretFullRepoScan,
@@ -497,12 +492,7 @@ export type TQueueServiceFactory = {
     data: TQueueJobTypes[T]["payload"],
     opts: TQueueOptions
   ) => Promise<void>;
-  schedulePg: <T extends QueueName>(
-    job: TQueueJobTypes[T]["name"],
-    cron: string,
-    data: TQueueJobTypes[T]["payload"],
-    opts?: PgBoss.ScheduleOptions & { jobId?: string }
-  ) => Promise<void>;
+  unschedulePg: <T extends QueueName>(job: TQueueJobTypes[T]["name"]) => Promise<void>;
   shutdown: () => Promise<void>;
   stopRepeatableJob: <T extends QueueName>(
     name: T,
@@ -553,8 +543,6 @@ export const queueServiceFactory = (
       : false
   });
 
-  const queueContainerPg = {} as Record<QueueJobs, boolean>;
-
   const workerContainer = {} as Record<
     QueueName,
     Worker<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>
@@ -576,6 +564,20 @@ export const queueServiceFactory = (
       throw new Error(`${name} queue is already initialized`);
     }
 
+    const appCfg = getConfig();
+
+    if (!appCfg.QUEUE_WORKERS_ENABLED) return;
+
+    if (appCfg.QUEUE_WORKER_PROFILE === QueueWorkerProfile.Standard && NON_STANDARD_QUEUES.includes(name)) {
+      // only process standard jobs
+      return;
+    }
+
+    if (appCfg.QUEUE_WORKER_PROFILE === QueueWorkerProfile.SecretScanning && !SECRET_SCANNING_QUEUES.includes(name)) {
+      // only process secret scanning jobs
+      return;
+    }
+
     const { persistence, ...restQueueSettings } = queueSettings || {};
 
     queueContainer[name] = new Queue(name as string, {
@@ -593,114 +595,76 @@ export const queueServiceFactory = (
       connection
     });
 
-    const appCfg = getConfig();
-    if (appCfg.QUEUE_WORKERS_ENABLED && isQueueEnabled(name)) {
-      workerContainer[name] = new Worker(name, jobFn, {
-        prefix: isClusterMode ? `{${name}}` : undefined,
-        ...restQueueSettings,
-        ...(crypto.isFipsModeEnabled()
-          ? {
-              settings: {
-                ...restQueueSettings?.settings,
-                repeatKeyHashAlgorithm: "sha256"
-              }
+    if (!appCfg.QUEUE_WORKERS_ENABLED || !isQueueEnabled(name)) {
+      return;
+    }
+
+    workerContainer[name] = new Worker(name, jobFn, {
+      prefix: isClusterMode ? `{${name}}` : undefined,
+      ...restQueueSettings,
+      ...(crypto.isFipsModeEnabled()
+        ? {
+            settings: {
+              ...restQueueSettings?.settings,
+              repeatKeyHashAlgorithm: "sha256"
             }
-          : {}),
-        connection
+          }
+        : {}),
+      connection
+    });
+
+    if (persistence) {
+      persistantQueues.add(name);
+
+      workerContainer[name].on("active", (job) => {
+        if (job.id) {
+          void queueJobsDAL
+            .update(
+              { jobId: job.id },
+              {
+                status: PersistanceQueueStatus.Processing,
+                startedAt: new Date(),
+                errorMessage: null
+              }
+            )
+            .catch((err) => {
+              logger.error(err, "Failed to update queue job status active");
+            });
+        }
       });
 
-      if (persistence) {
-        persistantQueues.add(name);
-
-        workerContainer[name].on("active", (job) => {
-          if (job.id) {
-            void queueJobsDAL
-              .update(
-                { jobId: job.id },
-                {
-                  status: PersistanceQueueStatus.Processing,
-                  startedAt: new Date(),
-                  errorMessage: null
-                }
-              )
-              .catch((err) => {
-                logger.error(err, "Failed to update queue job status active");
-              });
-          }
-        });
-
-        workerContainer[name].on("completed", (job) => {
-          if (job.id) {
-            void queueJobsDAL
-              .update(
-                { jobId: job.id },
-                {
-                  status: PersistanceQueueStatus.Completed,
-                  completedAt: new Date()
-                }
-              )
-              .catch((err) => {
-                logger.error(err, "Failed to update queue job status completed");
-              });
-          }
-        });
-
-        workerContainer[name].on("failed", (job, error) => {
-          if (job?.id) {
-            void queueJobsDAL
-              .update(
-                { jobId: job.id },
-                {
-                  status: PersistanceQueueStatus.Failed,
-                  errorMessage: error.message.slice(0, 1000)
-                }
-              )
-              .catch((err) => {
-                logger.error(err, "Failed to update queue job status failed");
-              });
-          }
-        });
-      }
-    }
-  };
-
-  const startPg: TQueueServiceFactory["startPg"] = async (jobName, jobsFn, options) => {
-    if (queueContainerPg[jobName]) {
-      throw new Error(`${jobName} queue is already initialized`);
-    }
-
-    const appCfg = getConfig();
-
-    if (!appCfg.QUEUE_WORKERS_ENABLED) return;
-
-    switch (appCfg.QUEUE_WORKER_PROFILE) {
-      case QueueWorkerProfile.Standard:
-        if (NON_STANDARD_JOBS.includes(jobName)) {
-          // only process standard jobs
-          return;
+      workerContainer[name].on("completed", (job) => {
+        if (job.id) {
+          void queueJobsDAL
+            .update(
+              { jobId: job.id },
+              {
+                status: PersistanceQueueStatus.Completed,
+                completedAt: new Date()
+              }
+            )
+            .catch((err) => {
+              logger.error(err, "Failed to update queue job status completed");
+            });
         }
+      });
 
-        break;
-      case QueueWorkerProfile.SecretScanning:
-        if (!SECRET_SCANNING_JOBS.includes(jobName)) {
-          // only process secret scanning jobs
-          return;
+      workerContainer[name].on("failed", (job, error) => {
+        if (job?.id) {
+          void queueJobsDAL
+            .update(
+              { jobId: job.id },
+              {
+                status: PersistanceQueueStatus.Failed,
+                errorMessage: error.message.slice(0, 1000)
+              }
+            )
+            .catch((err) => {
+              logger.error(err, "Failed to update queue job status failed");
+            });
         }
-
-        break;
-      case QueueWorkerProfile.All:
-      default:
-      // allow all
+      });
     }
-
-    await pgBoss.createQueue(jobName);
-    queueContainerPg[jobName] = true;
-
-    await Promise.all(
-      Array.from({ length: options.workerCount }).map(() =>
-        pgBoss.work(jobName, { ...options, includeMetadata: true }, jobsFn)
-      )
-    );
   };
 
   const listen: TQueueServiceFactory["listen"] = (name, event, listener) => {
@@ -734,8 +698,9 @@ export const queueServiceFactory = (
     await q.add(job, data, { ...opts, jobId });
   };
 
-  const schedulePg: TQueueServiceFactory["schedulePg"] = async (job, cron, data, opts) => {
-    await pgBoss.schedule(job, cron, data, opts);
+  const unschedulePg: TQueueServiceFactory["unschedulePg"] = async (job) => {
+    await pgBoss.unschedule(job);
+    await pgBoss.deleteQueue(job);
   };
 
   const stopRepeatableJob: TQueueServiceFactory["stopRepeatableJob"] = async (name, job, repeatOpt, jobId) => {
@@ -806,6 +771,6 @@ export const queueServiceFactory = (
     stopJobByIdPg,
     getRepeatableJobs,
     getDelayedJobs,
-    schedulePg
+    unschedulePg
   };
 };
