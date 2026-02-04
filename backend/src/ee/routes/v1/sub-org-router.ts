@@ -3,6 +3,7 @@ import { z } from "zod";
 import { OrganizationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SUB_ORGANIZATIONS } from "@app/lib/api-docs";
+import { pick } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { GenericResourceNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -57,8 +58,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.CREATE_SUB_ORGANIZATION,
           metadata: {
-            name: organization.name,
-            slug: organization.slug,
+            ...pick(organization, ["name", "slug"]),
             organizationId: organization.id
           }
         }
@@ -160,8 +160,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.UPDATE_SUB_ORGANIZATION,
           metadata: {
-            name: organization.name,
-            slug: organization.slug,
+            ...pick(organization, ["name", "slug"]),
             organizationId: organization.id
           }
         }
