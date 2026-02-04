@@ -131,10 +131,14 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         subOrgId: z.string().trim().describe(SUB_ORGANIZATIONS.UPDATE.subOrgId)
       }),
-      body: z.object({
-        name: GenericResourceNameSchema.optional().describe(SUB_ORGANIZATIONS.UPDATE.name),
-        slug: slugSchema({ field: "Slug" }).optional().describe(SUB_ORGANIZATIONS.UPDATE.slug)
-      }),
+      body: z
+        .object({
+          name: GenericResourceNameSchema.optional().describe(SUB_ORGANIZATIONS.UPDATE.name),
+          slug: slugSchema({ field: "Slug" }).optional().describe(SUB_ORGANIZATIONS.UPDATE.slug)
+        })
+        .refine((data) => data.name !== undefined || data.slug !== undefined, {
+          message: "At least one field (name or slug) must be provided"
+        }),
       response: {
         200: z.object({
           organization: sanitizedSubOrganizationSchema
