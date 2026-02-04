@@ -142,6 +142,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
     | "findReferencedSecretReferencesBySecretKey"
     | "updateSecretReferenceSecretKey"
     | "updateSecretReferenceEnvAndPath"
+    | "findOne"
   >;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
