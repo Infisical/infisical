@@ -882,6 +882,9 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.SecretReferenceV2}.secretId`)
         .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where({
+          [`${TableName.SecretFolder}.isReserved` as "isReserved"]: false
+        })
         .where("projectId", projectId)
         .select(selectAllTableCols(TableName.SecretReferenceV2))
         .select("folderId");

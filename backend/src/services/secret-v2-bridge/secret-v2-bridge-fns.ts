@@ -810,6 +810,7 @@ type TFnUpdateMovedSecretReferences = {
   secretDAL: Pick<
     TSecretV2BridgeDALFactory,
     | "find"
+    | "findOne"
     | "updateById"
     | "upsertSecretReferences"
     | "findReferencedSecretReferencesBySecretKey"
@@ -864,6 +865,8 @@ export const fnUpdateMovedSecretReferences = async ({
     },
     { tx }
   );
+
+  const destinationMovedSecret = await secretDAL.findOne({ id: secretId }, tx);
 
   for await (const secretToUpdate of secretsInSourceFolder) {
     if (!secretToUpdate.encryptedValue) {
@@ -1007,6 +1010,67 @@ export const fnUpdateMovedSecretReferences = async ({
           await secretDAL.upsertSecretReferences([{ secretId: secretToUpdate.id, references: updatedNestedRefs }], tx);
         }
       }
+    }
+  }
+
+  // update the moved secret's own references:
+  // case 1: local references should become nested references (pointing back to source folder, but only if the referenced secret wasan'tt also moved)
+  // case 2: nested references should become local references (if they point to the destination folder)
+  if (destinationMovedSecret?.encryptedValue) {
+    const movedSecretValue = decryptor({ cipherTextBlob: destinationMovedSecret.encryptedValue }).toString();
+    const { localReferences, nestedReferences } = getAllSecretReferences(movedSecretValue);
+
+    let updatedValue = movedSecretValue;
+    let valueChanged = false;
+
+    // case 1: convert local references to nested references pointing back to source
+    if (localReferences.length > 0) {
+      const destinationSecrets = await secretDAL.find({ folderId: destinationFolderId }, { tx });
+      const destinationSecretKeys = new Set(destinationSecrets.map((s) => s.key));
+
+      // Build the nested reference prefix for source
+      const sourcePathPart = sourceSecretPath === "/" ? "" : `.${sourceSecretPath.slice(1).replace(/\//g, ".")}`;
+      const sourceNestedPrefix = `${sourceEnvironment}${sourcePathPart}.`;
+
+      for (const localRef of localReferences) {
+        // only convert to nested if the referenced secret doesn't exist in the destination
+        if (!destinationSecretKeys.has(localRef)) {
+          const localPattern = new RE2(`\\$\\{${escapeRegex(localRef)}\\}`, "g");
+          const nestedRef = `\${${sourceNestedPrefix}${localRef}}`;
+          updatedValue = updatedValue.replace(localPattern, nestedRef);
+          valueChanged = true;
+        }
+      }
+    }
+
+    // case 2: convert nested references to local if they point to the destination folder
+    for (const nestedRef of nestedReferences) {
+      if (nestedRef.environment === destinationEnvironment && nestedRef.secretPath === destinationSecretPath) {
+        // this nested reference points to the destination folder, convert to local
+        const nestedPathPart =
+          nestedRef.secretPath === "/" ? "" : `.${nestedRef.secretPath.slice(1).replace(/\//g, ".")}`;
+        const oldNestedRefStr = `\${${nestedRef.environment}${nestedPathPart}.${nestedRef.secretKey}}`;
+        const localRefStr = `\${${nestedRef.secretKey}}`;
+
+        updatedValue = updatedValue.split(oldNestedRefStr).join(localRefStr);
+        valueChanged = true;
+      }
+    }
+
+    if (valueChanged) {
+      const newEncryptedValue = encryptor({ plainText: Buffer.from(updatedValue) }).cipherTextBlob;
+
+      await secretDAL.updateById(destinationMovedSecret.id, { encryptedValue: newEncryptedValue }, tx);
+
+      const folderSecrets = updatedSecretsByFolder.get(destinationMovedSecret.folderId) || [];
+      folderSecrets.push({ secret: destinationMovedSecret, newEncryptedValue });
+      updatedSecretsByFolder.set(destinationMovedSecret.folderId, folderSecrets);
+
+      const { nestedReferences: finalNestedReferences } = getAllSecretReferences(updatedValue);
+      await secretDAL.upsertSecretReferences(
+        [{ secretId: destinationMovedSecret.id, references: finalNestedReferences }],
+        tx
+      );
     }
   }
 
