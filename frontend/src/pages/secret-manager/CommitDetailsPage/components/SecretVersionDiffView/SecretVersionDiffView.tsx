@@ -4,6 +4,7 @@ import { faChevronDown, faChevronUp, faTrash } from "@fortawesome/free-solid-svg
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
+import { SecretDiffView, SecretVersionData } from "@app/components/secrets/diff";
 import { IconButton, Tooltip } from "@app/components/v2";
 
 export interface Version {
@@ -508,6 +509,10 @@ export const SecretVersionDiffView = ({
   let newVersionContent = null;
   let diffPaths = new Set<string>();
 
+  let operationType: "create" | "update" | "delete" = "update";
+  if (item.isAdded) operationType = "create";
+  else if (item.isDeleted) operationType = "delete";
+
   if (item.isUpdated && sortedVersions.length >= 2) {
     if (item.isRollback) {
       [oldVersion, newVersion] = sortedVersions;
@@ -573,6 +578,35 @@ export const SecretVersionDiffView = ({
   } else {
     return null;
   }
+
+  // Convert versions to SecretVersionData format for SecretDiffView
+  const convertToSecretVersionData = (version: Version | null): SecretVersionData | undefined => {
+    if (!version) return undefined;
+
+    // Handle tags - normalize to string array (slugs only)
+    let tags: string[] | undefined;
+    if (Array.isArray(version.tags)) {
+      tags = version.tags.map((tag: { slug?: string } | string) => {
+        if (typeof tag === "string") {
+          return tag;
+        }
+        return tag.slug ?? "";
+      });
+    }
+
+    return {
+      secretKey: version.secretKey as string | undefined,
+      secretValue: version.secretValue as string | undefined,
+      secretValueHidden: version.secretValueHidden as boolean | undefined,
+      secretComment: version.comment as string | undefined,
+      tags,
+      secretMetadata: version.secretMetadata as Array<{ key: string; value: string }> | undefined,
+      skipMultilineEncoding: version.skipMultilineEncoding as boolean | undefined
+    };
+  };
+
+  const oldSecretData = convertToSecretVersionData(oldVersion);
+  const newSecretData = convertToSecretVersionData(newVersion);
 
   const renderHeader = () => {
     if (customHeader) {
@@ -651,21 +685,29 @@ export const SecretVersionDiffView = ({
       {showHeader && renderHeader()}
       {!collapsed && (
         <div className="border-t border-mineshaft-700 bg-mineshaft-900 p-3 text-mineshaft-100">
-          <div className="flex gap-3">
-            <div
-              ref={oldContainerRef}
-              className="max-h-96 thin-scrollbar flex-1 overflow-auto whitespace-pre"
-            >
-              {oldVersionContent}
+          {item.type === "secret" ? (
+            <SecretDiffView
+              operationType={operationType}
+              oldVersion={oldSecretData}
+              newVersion={newSecretData}
+            />
+          ) : (
+            <div className="flex gap-3">
+              <div
+                ref={oldContainerRef}
+                className="max-h-96 thin-scrollbar flex-1 overflow-auto whitespace-pre"
+              >
+                {oldVersionContent}
+              </div>
+              <div className="max-h-96 w-[0.05rem] self-stretch bg-mineshaft-600" />
+              <div
+                ref={newContainerRef}
+                className="max-h-96 thin-scrollbar flex-1 overflow-auto whitespace-pre"
+              >
+                {newVersionContent}
+              </div>
             </div>
-            <div className="max-h-96 w-[0.05rem] self-stretch bg-mineshaft-600" />
-            <div
-              ref={newContainerRef}
-              className="max-h-96 thin-scrollbar flex-1 overflow-auto whitespace-pre"
-            >
-              {newVersionContent}
-            </div>
-          </div>
+          )}
         </div>
       )}
     </div>
