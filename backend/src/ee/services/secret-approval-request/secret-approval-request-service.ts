@@ -74,7 +74,11 @@ import {
   throwIfMissingSecretReadValueOrDescribePermission
 } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { ProjectPermissionSecretActions, ProjectPermissionSub } from "../permission/project-permission";
+import {
+  ProjectPermissionSecretActions,
+  ProjectPermissionSecretApprovalRequestActions,
+  ProjectPermissionSub
+} from "../permission/project-permission";
 import { ProjectEvents, TProjectEventPayload } from "../project-events/project-events-types";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
 import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";
@@ -198,7 +202,7 @@ export const secretApprovalRequestServiceFactory = ({
   }: TApprovalRequestCountDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
-    await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -207,7 +211,16 @@ export const secretApprovalRequestServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const count = await secretApprovalRequestDAL.findProjectRequestCount(projectId, actorId, policyId);
+    // Check if user has SecretApprovalRequest.Read permission to list all requests
+    const canReadAllApprovalRequests = permission.can(
+      ProjectPermissionSecretApprovalRequestActions.Read,
+      ProjectPermissionSub.SecretApprovalRequest
+    );
+
+    // If user has the permission, count all requests; otherwise count only their requests
+    const userIdFilter = canReadAllApprovalRequests ? undefined : actorId;
+
+    const count = await secretApprovalRequestDAL.findProjectRequestCount(projectId, userIdFilter, policyId);
     return count;
   };
 
@@ -226,7 +239,7 @@ export const secretApprovalRequestServiceFactory = ({
   }: TListApprovalsDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
-    await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -234,6 +247,16 @@ export const secretApprovalRequestServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
+
+    // Check if user has SecretApprovalRequest.Read permission to list all requests
+    const canReadAllApprovalRequests = permission.can(
+      ProjectPermissionSecretApprovalRequestActions.Read,
+      ProjectPermissionSub.SecretApprovalRequest
+    );
+
+    // If user has the permission, don't filter by userId (they see all requests)
+    // Otherwise, filter to only show requests where they are committer or approver
+    const userIdFilter = canReadAllApprovalRequests ? undefined : actorId;
 
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 
@@ -243,7 +266,7 @@ export const secretApprovalRequestServiceFactory = ({
         committer,
         environment,
         status,
-        userId: actorId,
+        userId: userIdFilter,
         limit,
         offset,
         search
@@ -255,7 +278,7 @@ export const secretApprovalRequestServiceFactory = ({
       committer,
       environment,
       status,
-      userId: actorId,
+      userId: userIdFilter,
       limit,
       offset,
       search
@@ -288,7 +311,17 @@ export const secretApprovalRequestServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
+
+    // Check if user has SecretApprovalRequest.Read permission
+    // Secret values are controlled by underlying secret.ReadValue permissions
+    const canReadApprovalRequests = permission.can(
+      ProjectPermissionSecretApprovalRequestActions.Read,
+      ProjectPermissionSub.SecretApprovalRequest
+    );
+
+    // User can view details if they have Read permission, are admin, committer, or approver
     if (
+      !canReadApprovalRequests &&
       !hasRole(ProjectMembershipRole.Admin) &&
       secretApprovalRequest.committerUserId !== actorId &&
       !policy.approvers.find(({ userId }) => userId === actorId)
