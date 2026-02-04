@@ -53,7 +53,7 @@ export const DiffContainer = ({
       )}
       style={{ backgroundColor }}
     >
-      <div className="min-w-max">{children}</div>
+      <div className="w-max min-w-full">{children}</div>
     </div>
   );
 };

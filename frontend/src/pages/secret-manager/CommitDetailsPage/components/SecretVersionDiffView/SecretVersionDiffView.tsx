@@ -582,13 +582,13 @@ export const SecretVersionDiffView = ({
     if (!version) return undefined;
 
     // Handle tags - normalize to string array (slugs only)
-    let tags: string[] | undefined;
+    let tags: { slug: string; color: string }[] | undefined;
     if (Array.isArray(version.tags)) {
-      tags = version.tags.map((tag: { slug?: string } | string) => {
+      tags = version.tags.map((tag: { slug?: string; color?: string } | string) => {
         if (typeof tag === "string") {
-          return tag;
+          return { slug: tag, color: "" };
         }
-        return tag.slug ?? "";
+        return { slug: tag.slug ?? "", color: tag.color ?? "" };
       });
     }
 

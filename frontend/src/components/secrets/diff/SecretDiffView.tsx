@@ -5,7 +5,7 @@ import { faCircleCheck, faCircleXmark, faEye, faEyeSlash } from "@fortawesome/fr
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { areValuesEqual, isSingleLine } from "@app/components/utilities/diff";
+import { isSingleLine } from "@app/components/utilities/diff";
 import { SecretInput, Tooltip } from "@app/components/v2";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
@@ -31,6 +31,52 @@ export interface SecretDiffViewProps {
   oldVersionLabel?: string;
   newVersionLabel?: string;
 }
+
+const CommentRenderer = ({
+  comment,
+  oldComment,
+  newComment,
+  hasChanges,
+  isBothSingleLine,
+  isOldVersion,
+  containerRef
+}: {
+  comment: string;
+  oldComment: string;
+  newComment: string;
+  hasChanges: boolean;
+  isBothSingleLine: boolean;
+  isOldVersion: boolean;
+  containerRef: React.RefObject<HTMLDivElement>;
+}) => {
+  if (!comment) {
+    return <span className="text-sm text-mineshaft-300">-</span>;
+  }
+
+  if (!hasChanges) {
+    return (
+      <div className="max-h-32 thin-scrollbar overflow-y-auto rounded border border-mineshaft-600 bg-bunker-800 p-2">
+        <span className="text-sm whitespace-pre-wrap">{comment}</span>
+      </div>
+    );
+  }
+
+  const variant = isOldVersion ? "removed" : "added";
+
+  if (isBothSingleLine) {
+    return (
+      <DiffContainer variant={variant} isSingleLine>
+        <SingleLineDiff oldText={oldComment} newText={newComment} isOldVersion={isOldVersion} />
+      </DiffContainer>
+    );
+  }
+
+  return (
+    <DiffContainer variant={variant} containerRef={containerRef}>
+      <MultiLineDiff oldText={oldComment} newText={newComment} isOldVersion={isOldVersion} />
+    </DiffContainer>
+  );
+};
 
 const SecretValueRenderer = ({
   isOldVersion,
@@ -97,19 +143,25 @@ const SecretValueRenderer = ({
       <SecretInput
         isReadOnly
         isVisible={isVisible}
-        valueAlwaysHidden={isValueHidden}
-        value={value}
+        valueAlwaysHidden={isValueHidden || !isVisible}
+        value={value ?? HIDDEN_SECRET_VALUE}
         containerClassName={twMerge(
           "border border-mineshaft-600 bg-bunker-700 py-1.5 text-bunker-300 hover:border-primary-400/50",
           isValueHidden ? "pr-2 pl-8" : "px-2"
         )}
       />
-      <div className="absolute top-1 right-1" onClick={() => setIsVisible(!isVisible)}>
-        <FontAwesomeIcon
-          icon={isVisible ? faEyeSlash : faEye}
-          className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
-        />
-      </div>
+      {value && (
+        <div className="absolute top-1 right-1">
+          <FontAwesomeIcon
+            icon={isVisible ? faEyeSlash : faEye}
+            className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsVisible(!isVisible);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };
@@ -123,10 +175,12 @@ export const SecretDiffView = ({
 }: SecretDiffViewProps) => {
   const oldDiffContainerRef = useRef<HTMLDivElement>(null);
   const newDiffContainerRef = useRef<HTMLDivElement>(null);
+  const oldCommentDiffContainerRef = useRef<HTMLDivElement>(null);
+  const newCommentDiffContainerRef = useRef<HTMLDivElement>(null);
 
   const oldSecretValue = oldVersion?.secretValue ?? "";
   const newSecretValue = newVersion?.secretValue ?? oldVersion?.secretValue ?? "";
-  const hasValueChanges = !areValuesEqual(oldSecretValue, newSecretValue);
+  const hasValueChanges = oldSecretValue !== newSecretValue;
   const isBothSingleLine = isSingleLine(oldSecretValue) && isSingleLine(newSecretValue);
 
   const oldKey = oldVersion?.secretKey ?? "";
@@ -136,6 +190,7 @@ export const SecretDiffView = ({
   const oldComment = oldVersion?.secretComment ?? "";
   const newComment = newVersion?.secretComment ?? "";
   const hasCommentChanges = oldComment !== newComment;
+  const isCommentBothSingleLine = isSingleLine(oldComment) && isSingleLine(newComment);
 
   const oldMultiline = String(oldVersion?.skipMultilineEncoding ?? false);
   const newMultiline = String(newVersion?.skipMultilineEncoding ?? false);
@@ -150,7 +205,7 @@ export const SecretDiffView = ({
   return (
     <div className="flex flex-col space-y-4 space-x-0 xl:flex-row xl:space-y-0 xl:space-x-4">
       {showOldVersion ? (
-        <div className="flex w-full cursor-default flex-col rounded-lg border border-red-600/60 bg-red-600/10 p-4 xl:w-1/2">
+        <div className="flex w-full min-w-0 cursor-default flex-col rounded-lg border border-red-600/60 bg-red-600/10 p-4 xl:w-1/2">
           <div className="mb-4 flex flex-row justify-between">
             <span className="text-md font-medium">{oldVersionLabel}</span>
             <div className="rounded-full bg-red px-2 pt-[0.2rem] pb-[0.14rem] text-xs font-medium">
@@ -182,25 +237,21 @@ export const SecretDiffView = ({
           </div>
           <div className="mb-2">
             <div className="text-sm font-medium text-mineshaft-300">Comment</div>
-            {oldComment ? (
-              <div className="max-h-32 thin-scrollbar overflow-y-auto rounded border border-mineshaft-600 bg-bunker-800 p-2">
-                <InlineTextDiff
-                  oldText={oldComment}
-                  newText={newComment}
-                  isOldVersion
-                  hasChanges={hasCommentChanges}
-                  preserveWhitespace
-                />
-              </div>
-            ) : (
-              <span className="text-sm text-mineshaft-300">-</span>
-            )}
+            <CommentRenderer
+              comment={oldComment}
+              oldComment={oldComment}
+              newComment={newComment}
+              hasChanges={hasCommentChanges}
+              isBothSingleLine={isCommentBothSingleLine}
+              isOldVersion
+              containerRef={oldCommentDiffContainerRef}
+            />
           </div>
           <div className="mb-2">
             <div className="text-sm font-medium text-mineshaft-300">Tags</div>
             <TagsDiffRenderer
-              tags={oldTags.map((tag) => ({ slug: tag.slug, color: tag.color }))}
-              otherTags={newTags.map((tag) => ({ slug: tag.slug, color: tag.color }))}
+              tags={oldTags.map((tag) => ({ slug: tag.slug, color: tag.color ?? "" }))}
+              otherTags={newTags.map((tag) => ({ slug: tag.slug, color: tag.color ?? "" }))}
               isOldVersion
             />
           </div>
@@ -232,7 +283,7 @@ export const SecretDiffView = ({
       )}
 
       {showNewVersion ? (
-        <div className="flex w-full cursor-default flex-col rounded-lg border border-green-600/60 bg-green-600/10 p-4 xl:w-1/2">
+        <div className="flex w-full min-w-0 cursor-default flex-col rounded-lg border border-green-600/60 bg-green-600/10 p-4 xl:w-1/2">
           <div className="mb-4 flex flex-row justify-between">
             <span className="text-md font-medium">{newVersionLabel}</span>
             <div className="rounded-full bg-green-600 px-2 pt-[0.2rem] pb-[0.14rem] text-xs font-medium">
@@ -264,25 +315,21 @@ export const SecretDiffView = ({
           </div>
           <div className="mb-2">
             <div className="text-sm font-medium text-mineshaft-300">Comment</div>
-            {newComment ? (
-              <div className="max-h-32 thin-scrollbar overflow-y-auto rounded border border-mineshaft-600 bg-bunker-800 p-2">
-                <InlineTextDiff
-                  oldText={oldComment}
-                  newText={newComment}
-                  isOldVersion={false}
-                  hasChanges={hasCommentChanges}
-                  preserveWhitespace
-                />
-              </div>
-            ) : (
-              <span className="text-sm text-mineshaft-300">-</span>
-            )}
+            <CommentRenderer
+              comment={newComment}
+              oldComment={oldComment}
+              newComment={newComment}
+              hasChanges={hasCommentChanges}
+              isBothSingleLine={isCommentBothSingleLine}
+              isOldVersion={false}
+              containerRef={newCommentDiffContainerRef}
+            />
           </div>
           <div className="mb-2">
             <div className="text-sm font-medium text-mineshaft-300">Tags</div>
             <TagsDiffRenderer
-              tags={newTags.map((tag) => ({ slug: tag.slug, color: tag.color }))}
-              otherTags={oldTags.map((tag) => ({ slug: tag.slug, color: tag.color }))}
+              tags={newTags.map((tag) => ({ slug: tag.slug, color: tag.color ?? "" }))}
+              otherTags={oldTags.map((tag) => ({ slug: tag.slug, color: tag.color ?? "" }))}
               isOldVersion={false}
             />
           </div>
