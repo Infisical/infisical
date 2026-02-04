@@ -43,6 +43,17 @@ import {
 import { CacheType } from "@app/services/super-admin/super-admin-types";
 import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 
+import { TQueueJobsDALFactory } from "./queue-jobs-dal";
+
+export enum PersistanceQueueStatus {
+  Pending = "pending",
+  Processing = "processing",
+  Completed = "completed",
+  Failed = "failed",
+  Stuck = "stuck",
+  Dead = "dead"
+}
+
 export enum QueueName {
   SecretRotation = "secret-rotation",
   SecretReminder = "secret-reminder",
@@ -458,7 +469,7 @@ export type TQueueServiceFactory = {
   start: <T extends QueueName>(
     name: T,
     jobFn: (job: Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>, token?: string) => Promise<void>,
-    queueSettings?: Omit<QueueOptions, "connection">
+    queueSettings?: Omit<QueueOptions, "connection"> & { persistence?: boolean }
   ) => void;
   startPg: <T extends QueueName>(
     jobName: QueueJobs,
@@ -479,8 +490,8 @@ export type TQueueServiceFactory = {
     name: T,
     job: TQueueJobTypes[T]["name"],
     data: TQueueJobTypes[T]["payload"],
-    opts?: JobsOptions & {
-      jobId?: string;
+    opts: JobsOptions & {
+      jobId: string;
     }
   ) => Promise<void>;
   queuePg: <T extends QueueName>(
@@ -520,6 +531,7 @@ export type TQueueServiceFactory = {
 
 export const queueServiceFactory = (
   redisCfg: TRedisConfigKeys,
+  queueJobsDAL: TQueueJobsDALFactory,
   { dbConnectionUrl, dbRootCert }: { dbConnectionUrl: string; dbRootCert?: string }
 ): TQueueServiceFactory => {
   const isClusterMode = Boolean(redisCfg?.REDIS_CLUSTER_HOSTS);
@@ -550,6 +562,8 @@ export const queueServiceFactory = (
     Worker<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>
   >;
 
+  const persistantQueues = new Set<QueueName>();
+
   const initialize = async () => {
     logger.info("Initializing pg-queue...");
     await pgBoss.start();
@@ -564,14 +578,16 @@ export const queueServiceFactory = (
       throw new Error(`${name} queue is already initialized`);
     }
 
+    const { persistence, ...restQueueSettings } = queueSettings || {};
+
     queueContainer[name] = new Queue(name as string, {
       // ref: docs.bullmq.io/bull/patterns/redis-cluster
       prefix: isClusterMode ? `{${name}}` : undefined,
-      ...queueSettings,
+      ...restQueueSettings,
       ...(crypto.isFipsModeEnabled()
         ? {
             settings: {
-              ...queueSettings?.settings,
+              ...restQueueSettings?.settings,
               repeatKeyHashAlgorithm: "sha256"
             }
           }
@@ -583,17 +599,70 @@ export const queueServiceFactory = (
     if (appCfg.QUEUE_WORKERS_ENABLED && isQueueEnabled(name)) {
       workerContainer[name] = new Worker(name, jobFn, {
         prefix: isClusterMode ? `{${name}}` : undefined,
-        ...queueSettings,
+        ...restQueueSettings,
         ...(crypto.isFipsModeEnabled()
           ? {
               settings: {
-                ...queueSettings?.settings,
+                ...restQueueSettings?.settings,
                 repeatKeyHashAlgorithm: "sha256"
               }
             }
           : {}),
         connection
       });
+
+      if (persistence) {
+        persistantQueues.add(name);
+
+        workerContainer[name].on("active", (job) => {
+          if (job.id) {
+            void queueJobsDAL
+              .update(
+                { jobId: job.id },
+                {
+                  status: PersistanceQueueStatus.Processing,
+                  startedAt: new Date(),
+                  errorMessage: null
+                }
+              )
+              .catch((err) => {
+                logger.error(err, "Failed to update queue job status active");
+              });
+          }
+        });
+
+        workerContainer[name].on("completed", (job) => {
+          if (job.id) {
+            void queueJobsDAL
+              .update(
+                { jobId: job.id },
+                {
+                  status: PersistanceQueueStatus.Completed,
+                  completedAt: new Date()
+                }
+              )
+              .catch((err) => {
+                logger.error(err, "Failed to update queue job status completed");
+              });
+          }
+        });
+
+        workerContainer[name].on("failed", (job, error) => {
+          if (job?.id) {
+            void queueJobsDAL
+              .update(
+                { jobId: job.id },
+                {
+                  status: PersistanceQueueStatus.Failed,
+                  errorMessage: error.message.slice(0, 1000)
+                }
+              )
+              .catch((err) => {
+                logger.error(err, "Failed to update queue job status failed");
+              });
+          }
+        });
+      }
     }
   };
 
@@ -649,7 +718,20 @@ export const queueServiceFactory = (
   const queue: TQueueServiceFactory["queue"] = async (name, job, data, opts) => {
     const q = queueContainer[name];
 
-    await q.add(job, data, opts);
+    const { jobId } = opts;
+
+    if (persistantQueues.has(name)) {
+      await queueJobsDAL.create({
+        queueName: name,
+        queueType: "bullmq",
+        queueJobName: job,
+        jobId,
+        queueData: data,
+        status: PersistanceQueueStatus.Pending
+      });
+    }
+
+    await q.add(job, data, { ...opts, jobId });
   };
 
   const queuePg = async <T extends QueueName>(
