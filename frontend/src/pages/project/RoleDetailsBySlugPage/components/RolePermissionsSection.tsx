@@ -250,6 +250,11 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                     title={PROJECT_PERMISSION_OBJECT[subject].title}
                     key={`project-permission-${subject}`}
                     isDisabled={isDisabled}
+                    hiddenActions={
+                      subject === ProjectPermissionSub.ApprovalRequests && isSecretManagerProject
+                        ? ["create"]
+                        : undefined
+                    }
                     onShowAccessTree={
                       [
                         ProjectPermissionSub.Secrets,

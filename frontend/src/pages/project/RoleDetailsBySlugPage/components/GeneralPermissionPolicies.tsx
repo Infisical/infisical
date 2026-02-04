@@ -29,6 +29,8 @@ type Props<T extends ProjectPermissionSub> = {
   children?: JSX.Element;
   isDisabled?: boolean;
   onShowAccessTree?: (subject: ProjectPermissionSub) => void;
+  /** Action values to hide (e.g. ["create"]). Used to hide options in specific project contexts. */
+  hiddenActions?: string[];
 };
 
 type ActionProps = {
@@ -74,7 +76,8 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
   children,
   title,
   isDisabled,
-  onShowAccessTree
+  onShowAccessTree,
+  hiddenActions = []
 }: Props<T>) => {
   const { control, watch } = useFormContext<TFormSchema>();
   const { fields, remove, insert, move } = useFieldArray({
@@ -292,6 +295,8 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                   <div className="flex grow flex-wrap justify-start gap-x-8 gap-y-4">
                     {actions.map(({ label, value }, index) => {
                       if (typeof value !== "string") return undefined;
+
+                      if (hiddenActions.includes(value)) return null;
 
                       if (
                         subject === ProjectPermissionSub.Secrets &&
