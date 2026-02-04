@@ -53,7 +53,7 @@ const convertToSecretVersionData = (
       secretValue: secret.secretValue,
       secretValueHidden: secret.secretValueHidden,
       secretComment: secret.secretComment,
-      tags: secret.tags?.map((t) => ({ slug: t.slug, color: t.color })),
+      tags: secret.tags?.map((t) => ({ slug: t.slug, color: t.color ?? "" })),
       secretMetadata: secret.secretMetadata,
       skipMultilineEncoding: secret.skipMultilineEncoding
     };
@@ -66,8 +66,8 @@ const convertToSecretVersionData = (
       secretValueHidden: change.secretValueHidden ?? secret?.secretValueHidden,
       secretComment: change.secretComment ?? secret?.secretComment,
       tags:
-        change.tags?.map((t) => ({ slug: t.slug, color: t.color })) ??
-        secret?.tags?.map((t) => ({ slug: t.slug, color: t.color })),
+        change.tags?.map((t) => ({ slug: t.slug, color: t.color ?? "" })) ??
+        secret?.tags?.map((t) => ({ slug: t.slug, color: t.color ?? "" })),
       secretMetadata: change.secretMetadata ?? secret?.secretMetadata,
       skipMultilineEncoding: change.skipMultilineEncoding ?? secret?.skipMultilineEncoding
     };
