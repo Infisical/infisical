@@ -441,6 +441,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
                   onChange={setMfaCode}
                   className="mt-6 mb-2"
                   {...codeInputProps}
+                  autoComplete="one-time-code"
                 />
               </div>
             )}
@@ -455,6 +456,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
                   onChange={setMfaCode}
                   className="mb-2"
                   {...codeInputProps}
+                  autoComplete="one-time-code"
                 />
               </div>
             )}
@@ -470,6 +472,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
                   onChange={setMfaCode}
                   className="mt-2 mb-2"
                   {...codeInputPropsPhone}
+                  autoComplete="one-time-code"
                 />
               </div>
             )}
@@ -484,6 +487,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
                   onChange={setMfaCode}
                   className="mb-2"
                   {...codeInputPropsPhone}
+                  autoComplete="one-time-code"
                 />
               </div>
             )}
