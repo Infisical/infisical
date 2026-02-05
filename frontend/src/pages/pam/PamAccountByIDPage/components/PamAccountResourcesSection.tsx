@@ -1,4 +1,4 @@
-import { faArrowRight, faDesktop } from "@fortawesome/free-solid-svg-icons";
+import { faDesktop } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { TPamAccount } from "@app/hooks/api/pam";
@@ -30,7 +30,6 @@ const ResourceCard = ({ name, resourceId, onAccess }: ResourceCardProps) => {
           <p className="text-xs text-mineshaft-400">{resourceId.slice(0, 8)}</p>
         </div>
       </div>
-      <FontAwesomeIcon icon={faArrowRight} className="text-mineshaft-400" />
     </button>
   );
 };
