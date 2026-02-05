@@ -499,6 +499,7 @@ export type TQueueServiceFactory = {
       /*
       Enable postgres backup persistance mechanism for schedule job
       Avoid this for cron job and very high throughput job
+      Use updateJobHeartbeat() for long running job
       */
       persistence?: boolean | TPersistenceConfig;
     }
