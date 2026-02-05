@@ -43,7 +43,7 @@ import { CacheType } from "@app/services/super-admin/super-admin-types";
 import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 
 import { TQueueJobsDALFactory } from "./queue-jobs-dal";
-import { PersistanceQueueStatus } from "./queue-types";
+import { PersistenceQueueStatus } from "./queue-types";
 
 export enum QueueName {
   // Internal queues for durable queue recovery
@@ -495,7 +495,13 @@ export type TQueueServiceFactory = {
   start: <T extends QueueName>(
     name: T,
     jobFn: (job: Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>, token?: string) => Promise<void>,
-    queueSettings?: Omit<QueueOptions, "connection"> & { persistence?: boolean | TPersistenceConfig }
+    queueSettings?: Omit<QueueOptions, "connection"> & {
+      /*
+      Enable postgres backup persistance mechanism for schedule job
+      Avoid this for cron job and very high throughput job
+      */
+      persistence?: boolean | TPersistenceConfig;
+    }
   ) => void;
   listen: <
     T extends QueueName,
@@ -581,7 +587,7 @@ export const queueServiceFactory = (
       const pendingJobs = await queueJobsDAL.find({
         $in: {
           queueName: queueNames,
-          status: [PersistanceQueueStatus.Pending, PersistanceQueueStatus.Failed]
+          status: [PersistenceQueueStatus.Pending, PersistenceQueueStatus.Failed]
         }
       });
 
@@ -609,7 +615,7 @@ export const queueServiceFactory = (
         // For failed jobs, run immediately (no delay)
         // For pending jobs with delay, recalculate based on original schedule
         let adjustedDelay: number | undefined;
-        const isFailedJob = job.status === PersistanceQueueStatus.Failed;
+        const isFailedJob = job.status === PersistenceQueueStatus.Failed;
 
         if (!isFailedJob && opts.delay && opts.delay > 0) {
           const originalScheduledTime = new Date(job.createdAt).getTime() + opts.delay;
@@ -650,7 +656,7 @@ export const queueServiceFactory = (
       await queueJobsDAL.update(
         { id: dbJob.id },
         {
-          status: PersistanceQueueStatus.Dead,
+          status: PersistenceQueueStatus.Dead,
           attempts: newAttempts,
           errorMessage: `Exceeded max attempts (${dbJob.maxAttempts}) after being stuck`
         }
@@ -672,7 +678,7 @@ export const queueServiceFactory = (
     await queueJobsDAL.update(
       { id: dbJob.id },
       {
-        status: PersistanceQueueStatus.Pending,
+        status: PersistenceQueueStatus.Pending,
         attempts: newAttempts,
         startedAt: null,
         lastHeartBeat: null,
@@ -867,7 +873,7 @@ export const queueServiceFactory = (
             .update(
               { jobId: job.id, queueName: name },
               {
-                status: PersistanceQueueStatus.Processing,
+                status: PersistenceQueueStatus.Processing,
                 startedAt: new Date(),
                 errorMessage: null
               }
@@ -884,7 +890,7 @@ export const queueServiceFactory = (
             .update(
               { jobId: job.id, queueName: name },
               {
-                status: PersistanceQueueStatus.Completed,
+                status: PersistenceQueueStatus.Completed,
                 completedAt: new Date()
               }
             )
@@ -933,7 +939,7 @@ export const queueServiceFactory = (
         jobId,
         queueData: data,
         queueOptions: finalOptions,
-        status: PersistanceQueueStatus.Pending,
+        status: PersistenceQueueStatus.Pending,
         maxAttempts: opts.attempts || 1
       });
     }

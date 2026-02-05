@@ -18,8 +18,6 @@ export const pkiAcmeQueueServiceFactory = async ({
 }: TPkiAcmeQueueServiceFactoryDep) => {
   const appCfg = getConfig();
 
-  // TODO(dq): verify persistance needed or not
-  // Initialize the worker to process challenge validation jobs
   queueService.start(QueueName.PkiAcmeChallengeValidation, async (job) => {
     const { challengeId } = job.data;
     const retryCount = job.attemptsMade || 0;
