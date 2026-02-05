@@ -245,13 +245,20 @@ export const PamAccountsTable = ({ projectId }: Props) => {
       policyType: ApprovalPolicyType.PamAccess,
       projectId,
       inputs: {
-        accountPath: fullAccountPath
+        accountPath: fullAccountPath,
+        resourceName: account.resource.name,
+        accountName: account.name
       }
     });
 
     if (requiresApproval) {
-      // Open request access modal with pre-populated path
-      handlePopUpOpen("requestAccount", { accountPath: fullAccountPath, accountAccessed: true });
+      // Open request access modal with pre-populated data
+      handlePopUpOpen("requestAccount", {
+        accountPath: fullAccountPath,
+        resourceName: account.resource.name,
+        accountName: account.name,
+        accountAccessed: true
+      });
       return;
     }
 
@@ -556,6 +563,8 @@ export const PamAccountsTable = ({ projectId }: Props) => {
         isOpen={popUp.requestAccount.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("requestAccount", isOpen)}
         accountPath={popUp.requestAccount.data?.accountPath}
+        resourceName={popUp.requestAccount.data?.resourceName}
+        accountName={popUp.requestAccount.data?.accountName}
         accountAccessed={popUp.requestAccount.data?.accountAccessed}
       />
       <PamDeleteAccountModal

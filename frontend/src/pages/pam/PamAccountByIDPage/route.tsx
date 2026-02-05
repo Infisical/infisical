@@ -1,9 +1,9 @@
-import { createFileRoute, linkOptions } from "@tanstack/react-router";
+import { createFileRoute, linkOptions } from '@tanstack/react-router'
 
-import { PamAccountByIDPage } from "./PamAccountByIDPage";
+import { PamAccountByIDPage } from './PamAccountByIDPage'
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/accounts/$accountId"
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/accounts/$accountId',
 )({
   component: PamAccountByIDPage,
   beforeLoad: ({ context, params }) => {
@@ -11,28 +11,28 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: "Resources",
+          label: 'Resources',
           link: linkOptions({
-            to: "/organizations/$orgId/projects/pam/$projectId/resources",
-            params: { orgId: params.orgId, projectId: params.projectId }
-          })
+            to: '/organizations/$orgId/projects/pam/$projectId/resources',
+            params: { orgId: params.orgId, projectId: params.projectId },
+          }),
         },
         {
-          label: "Resource",
+          label: 'Resource',
           link: linkOptions({
-            to: "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId",
+            to: '/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId',
             params: {
               orgId: params.orgId,
               projectId: params.projectId,
               resourceType: params.resourceType,
-              resourceId: params.resourceId
-            }
-          })
+              resourceId: params.resourceId,
+            },
+          }),
         },
         {
-          label: "Account Details"
-        }
-      ]
-    };
-  }
-});
+          label: 'Account Details',
+        },
+      ],
+    }
+  },
+})

@@ -22,6 +22,8 @@ import { useCreateApprovalRequest } from "@app/hooks/api/approvalRequests/mutati
 
 type Props = {
   accountPath?: string;
+  resourceName?: string;
+  accountName?: string;
   accountAccessed?: boolean;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -30,13 +32,13 @@ type Props = {
 const formSchema = z.object({
   accountPath: z
     .string()
-    .min(1, "Account path is required")
-    .refine((el) => el.startsWith("/"), {
+    .refine((el) => !el || el.startsWith("/"), {
       message: "Path must start with /"
     })
-    .refine((el) => !el.endsWith("/"), {
+    .refine((el) => !el || !el.endsWith("/"), {
       message: "Path cannot end with /"
-    }),
+    })
+    .optional(),
   accessDuration: z
     .string()
     .min(1, "Access duration is required")
@@ -56,7 +58,13 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-const Content = ({ onOpenChange, accountPath, accountAccessed }: Props) => {
+const Content = ({
+  onOpenChange,
+  accountPath,
+  resourceName,
+  accountName,
+  accountAccessed
+}: Props) => {
   const { projectId } = useProject();
   const { mutateAsync: createApprovalRequest, isPending: isSubmitting } =
     useCreateApprovalRequest();
@@ -84,8 +92,10 @@ const Content = ({ onOpenChange, accountPath, accountAccessed }: Props) => {
         projectId,
         justification: formData.justification || null,
         requestData: {
-          accountPath: formData.accountPath,
-          accessDuration: formData.accessDuration
+          accessDuration: formData.accessDuration,
+          ...(formData.accountPath && { accountPath: formData.accountPath }),
+          ...(resourceName && { resourceName }),
+          ...(accountName && { accountName })
         }
       });
 
@@ -104,6 +114,8 @@ const Content = ({ onOpenChange, accountPath, accountAccessed }: Props) => {
     }
   };
 
+  const showAccountDetails = accountAccessed && resourceName && accountName;
+
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       {accountAccessed && (
@@ -115,21 +127,36 @@ const Content = ({ onOpenChange, accountPath, accountAccessed }: Props) => {
           </UnstableAlertDescription>
         </UnstableAlert>
       )}
-      <Controller
-        name="accountPath"
-        control={control}
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            isRequired
-            helperText="Account path including the account name. Supports glob patterns (e.g., /folder/**, /*/account-name)"
-            errorText={error?.message}
-            isError={Boolean(error?.message)}
-            label="Account Path"
-          >
-            <Input autoFocus placeholder="/folder/account-name" {...field} />
-          </FormControl>
-        )}
-      />
+      {showAccountDetails ? (
+        <div className="mb-4 rounded-md border border-mineshaft-600 bg-mineshaft-700/50 p-3">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <span className="text-xs text-mineshaft-400">Resource</span>
+              <p className="text-sm text-mineshaft-100">{resourceName}</p>
+            </div>
+            <div>
+              <span className="text-xs text-mineshaft-400">Account</span>
+              <p className="text-sm text-mineshaft-100">{accountName}</p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <Controller
+          name="accountPath"
+          control={control}
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              isRequired
+              helperText="Account path including the account name. Supports glob patterns (e.g., /folder/**, /*/account-name)"
+              errorText={error?.message}
+              isError={Boolean(error?.message)}
+              label="Account Path"
+            >
+              <Input autoFocus placeholder="/folder/account-name" {...field} />
+            </FormControl>
+          )}
+        />
+      )}
       <Controller
         name="accessDuration"
         control={control}
@@ -179,15 +206,16 @@ const Content = ({ onOpenChange, accountPath, accountAccessed }: Props) => {
 };
 
 export const PamRequestAccountAccessModal = (props: Props) => {
-  const { isOpen, onOpenChange } = props;
+  const { isOpen, onOpenChange, accountAccessed, resourceName, accountName } = props;
+
+  const subTitle =
+    accountAccessed && resourceName && accountName
+      ? "Request access to a protected account"
+      : "Request access to an account path";
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        className="max-w-2xl pb-2"
-        title="Request Account Access"
-        subTitle="Request access to an account path"
-      >
+      <ModalContent className="max-w-2xl pb-2" title="Request Account Access" subTitle={subTitle}>
         <Content {...props} />
       </ModalContent>
     </Modal>

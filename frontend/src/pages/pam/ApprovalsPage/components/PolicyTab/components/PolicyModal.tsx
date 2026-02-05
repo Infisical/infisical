@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { Tab } from "@headlessui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -42,12 +42,19 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const [selectedStepIndex, setSelectedStepIndex] = useState(0);
 
+  // Check if the existing policy has legacy accountPaths defined
+  const hasLegacyAccountPaths = useMemo(() => {
+    if (!policyData?.policy) return false;
+    const conditions = policyData.policy.conditions.conditions as PamAccessPolicyConditions;
+    return conditions.some((c) => c.accountPaths && c.accountPaths.length > 0);
+  }, [policyData]);
+
   const formMethods = useForm<TPolicyForm>({
     resolver: zodResolver(PolicyFormSchema),
     defaultValues: {
       name: "",
       maxRequestTtl: null,
-      conditions: [{ accountPaths: [] }],
+      conditions: [{ resourceNames: [], accountNames: [] }],
       constraints: {
         accessDuration: {
           min: "30s",
@@ -72,10 +79,15 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   useEffect(() => {
     if (policyData?.policy) {
+      const conditions = policyData.policy.conditions.conditions as PamAccessPolicyConditions;
       reset({
         name: policyData.policy.name,
         maxRequestTtl: policyData.policy.maxRequestTtl,
-        conditions: policyData.policy.conditions.conditions as PamAccessPolicyConditions,
+        conditions: conditions.map((c) => ({
+          accountPaths: c.accountPaths || [],
+          resourceNames: c.resourceNames || [],
+          accountNames: c.accountNames || []
+        })),
         constraints: policyData.policy.constraints.constraints,
         steps: policyData.policy.steps.map((step) => ({
           ...step,
@@ -86,7 +98,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
       reset({
         name: "",
         maxRequestTtl: null,
-        conditions: [{ accountPaths: [] }],
+        conditions: [{ resourceNames: [], accountNames: [] }],
         constraints: {
           accessDuration: {
             min: "30s",
@@ -214,13 +226,16 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
               </Tab.List>
               <Tab.Panels>
                 <Tab.Panel>
-                  <PolicyDetailsStep />
+                  <PolicyDetailsStep
+                    isEditing={Boolean(policyData?.policyId)}
+                    hasLegacyAccountPaths={hasLegacyAccountPaths}
+                  />
                 </Tab.Panel>
                 <Tab.Panel>
                   <PolicyApprovalSteps />
                 </Tab.Panel>
                 <Tab.Panel>
-                  <PolicyReviewStep />
+                  <PolicyReviewStep hasLegacyAccountPaths={hasLegacyAccountPaths} />
                 </Tab.Panel>
               </Tab.Panels>
             </Tab.Group>

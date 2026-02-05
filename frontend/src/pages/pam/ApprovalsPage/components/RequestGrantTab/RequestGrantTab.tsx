@@ -119,9 +119,12 @@ export const RequestGrantTab = () => {
     if (search) {
       filtered = filtered.filter((grant) => {
         if (grant.type !== ApprovalPolicyType.PamAccess) return false;
+        const searchLower = search.toLowerCase();
         return (
-          grant.attributes.accountPath.toLowerCase().includes(search.toLowerCase()) ||
-          grant.id.toLowerCase().includes(search.toLowerCase())
+          grant.attributes.accountPath?.toLowerCase().includes(searchLower) ||
+          grant.attributes.resourceName?.toLowerCase().includes(searchLower) ||
+          grant.attributes.accountName?.toLowerCase().includes(searchLower) ||
+          grant.id.toLowerCase().includes(searchLower)
         );
       });
     }
@@ -273,7 +276,7 @@ export const RequestGrantTab = () => {
             <THead>
               <Tr>
                 <Th>User</Th>
-                <Th>Account Path</Th>
+                <Th>Account</Th>
                 <Th>Access Duration</Th>
                 <Th>Status</Th>
                 <Th>Granted</Th>
@@ -294,7 +297,28 @@ export const RequestGrantTab = () => {
                         {grant.granteeUserId ? getGrantedUser(grant.granteeUserId) : "Unknown"}
                       </Td>
                       <Td>
-                        <div>{grant.attributes.accountPath}</div>
+                        <div className="space-y-0.5">
+                          {grant.attributes.resourceName && (
+                            <div className="text-sm text-mineshaft-200">
+                              <span className="text-mineshaft-400">Resource:</span>{" "}
+                              {grant.attributes.resourceName}
+                            </div>
+                          )}
+                          {grant.attributes.accountName && (
+                            <div className="text-sm text-mineshaft-200">
+                              <span className="text-mineshaft-400">Account:</span>{" "}
+                              {grant.attributes.accountName}
+                            </div>
+                          )}
+                          {grant.attributes.accountPath &&
+                            !grant.attributes.resourceName &&
+                            !grant.attributes.accountName && (
+                              <div className="text-sm text-mineshaft-200">
+                                <span className="text-mineshaft-400">Path:</span>{" "}
+                                {grant.attributes.accountPath}
+                              </div>
+                            )}
+                        </div>
                       </Td>
                       <Td>
                         <span className="text-sm text-mineshaft-200">
