@@ -160,7 +160,7 @@ export const subOrgServiceFactory = ({
       updateData.name = name;
       updateData.slug = generatedSlug;
     } else {
-      // New behavior: update fields independently
+      // update fields independently
       if (name !== undefined) updateData.name = name;
 
       if (slug !== undefined) {

@@ -36,7 +36,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
       ],
       body: z.object({
         name: GenericResourceNameSchema.describe(SUB_ORGANIZATIONS.CREATE.name),
-        slug: slugSchema({ field: "Slug" }).optional().describe(SUB_ORGANIZATIONS.CREATE.slug)
+        slug: slugSchema().optional().describe(SUB_ORGANIZATIONS.CREATE.slug)
       }),
       response: {
         200: z.object({
@@ -134,7 +134,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
       body: z
         .object({
           name: GenericResourceNameSchema.optional().describe(SUB_ORGANIZATIONS.UPDATE.name),
-          slug: slugSchema({ field: "Slug" }).optional().describe(SUB_ORGANIZATIONS.UPDATE.slug)
+          slug: slugSchema().optional().describe(SUB_ORGANIZATIONS.UPDATE.slug)
         })
         .refine((data) => data.name !== undefined || data.slug !== undefined, {
           message: "At least one field (name or slug) must be provided"
