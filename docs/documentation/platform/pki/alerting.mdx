@@ -31,6 +31,7 @@ Alerts can be delivered through one or more notification channels:
 
 - **Email**: Send alert notifications to a list of email recipients. Enter one or more email addresses to notify when the alert triggers.
 - **Webhook**: Send alert notifications to a webhook URL. The URL must use HTTPS. Optionally configure a signing secret to verify the authenticity of webhook payloads.
+- **Slack**: Send alert notifications to a Slack channel via an Incoming Webhook. See [detailed setup steps](#slack-notifications).
 
 You can configure up to 10 notification channels per alert.
 
@@ -126,3 +127,39 @@ function verifyWebhookSignature(header, body, secret) {
   );
 }
 ```
+
+## Slack Notifications
+
+PKI alerts can be sent to Slack channels using [Incoming Webhooks](https://api.slack.com/messaging/webhooks). Follow these steps to set up Slack notifications:
+
+<Steps>
+  <Step title="Create a Slack App">
+    1. Go to the [Slack API Apps page](https://api.slack.com/apps) and click **Create New App**
+    2. Select **From scratch**
+    3. Give your app a name (e.g., "Infisical PKI Alerts") and select the Slack workspace where you want to receive notifications
+    4. Click **Create App**
+
+    ![slack create app](/images/platform/pki/alerting/slack-create-app.png)
+  </Step>
+  <Step title="Enable Incoming Webhooks">
+    1. In your app settings, navigate to **Incoming Webhooks** in the left sidebar under "Features"
+    2. Toggle **Activate Incoming Webhooks** to **On**
+    3. Click **Add New Webhook** at the bottom of the page
+    4. Select the channel where you want to receive alerts and click **Allow**
+    5. Copy the generated **Webhook URL** (it will look like `https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX`)
+
+    ![slack enable webhooks](/images/platform/pki/alerting/slack-enable-webhooks.png)
+  </Step>
+  <Step title="Configure the Alert in Infisical">
+    1. When creating or editing a PKI alert, add a **Slack** notification channel
+    2. Paste the webhook URL you copied from Slack
+
+    ![slack configure alert](/images/platform/pki/alerting/slack-configure-alert.png)
+  </Step>
+</Steps>
+
+<Note>
+Keep your webhook URL secure. Anyone with access to it can post messages to your Slack channel.
+</Note>
+
+Slack messages include alert details and the two most urgent expiring certificates, with a link to view all certificates in Infisical.
