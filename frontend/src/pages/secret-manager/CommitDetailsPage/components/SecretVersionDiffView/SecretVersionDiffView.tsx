@@ -36,6 +36,7 @@ interface SecretVersionDiffViewProps {
   customHeader?: JSX.Element;
   excludedFieldsHighlight?: string[];
   onDiscard?: VoidFunction;
+  headerExtra?: JSX.Element;
 }
 
 const isObject = (obj: JsonValue): obj is JsonObject => {
@@ -479,7 +480,8 @@ export const SecretVersionDiffView = ({
   showHeader = true,
   customHeader,
   excludedFieldsHighlight = ["metadata", "tags"],
-  onDiscard
+  onDiscard,
+  headerExtra
 }: SecretVersionDiffViewProps) => {
   const oldContainerRef = useRef<HTMLDivElement>(null);
   const newContainerRef = useRef<HTMLDivElement>(null);
@@ -620,6 +622,7 @@ export const SecretVersionDiffView = ({
         <div className="flex min-w-0 flex-1 items-center">
           <p className={twMerge(textStyle, "truncate")}>{key}</p>
           {changeBadge}
+          {headerExtra}
         </div>
         {onDiscard && (
           <Tooltip side="left" content="Discard change">

@@ -3,8 +3,9 @@ import { z } from "zod";
 import { OrganizationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SUB_ORGANIZATIONS } from "@app/lib/api-docs";
+import { pick } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { slugSchema } from "@app/server/lib/schemas";
+import { GenericResourceNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -34,7 +35,8 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
         }
       ],
       body: z.object({
-        name: slugSchema().describe(SUB_ORGANIZATIONS.CREATE.name)
+        name: GenericResourceNameSchema.describe(SUB_ORGANIZATIONS.CREATE.name),
+        slug: slugSchema().optional().describe(SUB_ORGANIZATIONS.CREATE.slug)
       }),
       response: {
         200: z.object({
@@ -46,6 +48,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { organization } = await server.services.subOrganization.createSubOrg({
         name: req.body.name,
+        slug: req.body.slug,
         permissionActor: req.permission
       });
 
@@ -55,7 +58,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.CREATE_SUB_ORGANIZATION,
           metadata: {
-            name: req.body.name,
+            ...pick(organization, ["name", "slug"]),
             organizationId: organization.id
           }
         }
@@ -128,9 +131,14 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         subOrgId: z.string().trim().describe(SUB_ORGANIZATIONS.UPDATE.subOrgId)
       }),
-      body: z.object({
-        name: slugSchema().describe(SUB_ORGANIZATIONS.UPDATE.name)
-      }),
+      body: z
+        .object({
+          name: GenericResourceNameSchema.optional().describe(SUB_ORGANIZATIONS.UPDATE.name),
+          slug: slugSchema().optional().describe(SUB_ORGANIZATIONS.UPDATE.slug)
+        })
+        .refine((data) => data.name !== undefined || data.slug !== undefined, {
+          message: "At least one field (name or slug) must be provided"
+        }),
       response: {
         200: z.object({
           organization: sanitizedSubOrganizationSchema
@@ -142,6 +150,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
       const { organization } = await server.services.subOrganization.updateSubOrg({
         subOrgId: req.params.subOrgId,
         name: req.body.name,
+        slug: req.body.slug,
         permissionActor: req.permission
       });
 
@@ -151,7 +160,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.UPDATE_SUB_ORGANIZATION,
           metadata: {
-            name: req.body.name,
+            ...pick(organization, ["name", "slug"]),
             organizationId: organization.id
           }
         }

@@ -355,6 +355,13 @@ export type TGetSecretReferencesTreeDTO = {
   secretPath: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TGetSecretReferencesDTO = {
+  projectId: string;
+  secretName: string;
+  environment: string;
+  secretPath: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TFindSecretsByFolderIdsFilter = {
   limit?: number;
   offset?: number;
@@ -384,3 +391,13 @@ export type TGetAccessibleSecretsDTO = {
   recursive?: boolean;
   filterByAction: ProjectPermissionSecretActions.DescribeSecret | ProjectPermissionSecretActions.ReadValue;
 } & TProjectPermission;
+
+export type TUpdateLinkedSecretReferencesDTO = {
+  projectId: string;
+  environment: string;
+  secretPath: string;
+  folderId: string;
+  secretId: string;
+  oldSecretKey: string;
+  newSecretKey: string;
+};

@@ -264,8 +264,24 @@ export type TSecretReferenceTraceNode = {
   children: TSecretReferenceTraceNode[];
 };
 
+export type TGetSecretReferencesDTO = {
+  secretKey: string;
+  secretPath: string;
+  environment: string;
+  projectId: string;
+};
+
+export type TSecretReference = {
+  secretKey: string;
+  secretId: string;
+  environment: string;
+  secretPath: string;
+  referenceType: "nested" | "local";
+};
+
 export type SecretAccessListEntry = {
   allowedActions: ProjectPermissionActions[];
   id: string;
+  membershipId: string;
   name: string;
 };

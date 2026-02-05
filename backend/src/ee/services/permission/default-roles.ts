@@ -24,6 +24,7 @@ import {
   ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSecretActions,
+  ProjectPermissionSecretApprovalRequestActions,
   ProjectPermissionSecretEventActions,
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSecretScanningConfigActions,
@@ -376,6 +377,8 @@ const buildAdminPermissionRules = () => {
     [ProjectPermissionApprovalRequestGrantActions.Read, ProjectPermissionApprovalRequestGrantActions.Revoke],
     ProjectPermissionSub.ApprovalRequestGrants
   );
+
+  can([ProjectPermissionSecretApprovalRequestActions.Read], ProjectPermissionSub.SecretApprovalRequest);
 
   return rules;
 };

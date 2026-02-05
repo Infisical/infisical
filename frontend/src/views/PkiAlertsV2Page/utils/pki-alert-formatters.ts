@@ -1,10 +1,12 @@
 import { IconDefinition } from "@fortawesome/fontawesome-svg-core";
+import { faSlack } from "@fortawesome/free-brands-svg-icons";
 import { faEnvelope, faLink } from "@fortawesome/free-solid-svg-icons";
 
 import {
   PkiAlertChannelTypeV2,
   PkiAlertEventTypeV2,
   TPkiAlertChannelConfigEmail,
+  TPkiAlertChannelConfigSlack,
   TPkiAlertChannelConfigWebhook
 } from "@app/hooks/api/pkiAlertsV2";
 
@@ -56,6 +58,8 @@ export const getChannelIcon = (type: PkiAlertChannelTypeV2): IconDefinition => {
       return faEnvelope;
     case PkiAlertChannelTypeV2.WEBHOOK:
       return faLink;
+    case PkiAlertChannelTypeV2.SLACK:
+      return faSlack;
     default:
       return faEnvelope;
   }
@@ -81,10 +85,11 @@ export const getWebhookHostname = (url: string): string => {
  *
  * For email: shows recipients (truncated if >2)
  * For webhook: shows hostname from URL
+ * For slack: shows "Slack webhook configured"
  */
 export const getChannelSummary = (channel: {
   channelType: PkiAlertChannelTypeV2;
-  config: TPkiAlertChannelConfigEmail | TPkiAlertChannelConfigWebhook;
+  config: TPkiAlertChannelConfigEmail | TPkiAlertChannelConfigWebhook | TPkiAlertChannelConfigSlack;
 }): string => {
   if (channel.channelType === PkiAlertChannelTypeV2.EMAIL) {
     const config = channel.config as TPkiAlertChannelConfigEmail;
@@ -96,6 +101,10 @@ export const getChannelSummary = (channel: {
   if (channel.channelType === PkiAlertChannelTypeV2.WEBHOOK) {
     const config = channel.config as TPkiAlertChannelConfigWebhook;
     return getWebhookHostname(config.url);
+  }
+  if (channel.channelType === PkiAlertChannelTypeV2.SLACK) {
+    const config = channel.config as TPkiAlertChannelConfigSlack;
+    return config.webhookUrl ? "Slack webhook configured" : "Not configured";
   }
   return "";
 };
