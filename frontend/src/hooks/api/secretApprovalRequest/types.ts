@@ -20,7 +20,7 @@ export type TSecretApprovalSecChangeData = {
   secretKey: string;
   secretValue?: string;
   secretComment?: string;
-  skipMultilineEncoding?: boolean;
+  skipMultilineEncoding?: boolean | null;
   algorithm: "aes-256-gcm";
   keyEncoding: "utf8" | "base64";
   tags?: WsTag[];
