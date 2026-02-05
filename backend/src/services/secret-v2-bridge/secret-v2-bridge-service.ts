@@ -2036,9 +2036,7 @@ export const secretV2BridgeServiceFactory = ({
         // get all tags (include create + update in upsert)
         const allInputSecrets = [...secretsToUpdate, ...secretsToCreate];
 
-        const sanitizedTagIds = [
-          ...new Set(allInputSecrets.flatMap(({ tagIds = [] }) => tagIds))
-        ];
+        const sanitizedTagIds = [...new Set(allInputSecrets.flatMap(({ tagIds = [] }) => tagIds))];
 
         const tags = sanitizedTagIds.length ? await secretTagDAL.findManyTagsById(projectId, sanitizedTagIds, tx) : [];
         if (tags.length !== sanitizedTagIds.length) throw new NotFoundError({ message: "Tag not found" });
