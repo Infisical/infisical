@@ -496,6 +496,7 @@ export const permissionServiceFactory = ({
       return {
         permission,
         id: userProjectPermission.userId,
+        membershipId: userProjectPermission.id,
         name: userProjectPermission.username
       };
     });
@@ -541,6 +542,7 @@ export const permissionServiceFactory = ({
       return {
         permission,
         id: identityProjectPermission.identityId,
+        membershipId: identityProjectPermission.id,
         name: identityProjectPermission.username
       };
     });
@@ -558,6 +560,7 @@ export const permissionServiceFactory = ({
       return {
         permission,
         id: groupProjectPermission.groupId,
+        membershipId: groupProjectPermission.id,
         name: groupProjectPermission.username
       };
     });
