@@ -18,7 +18,7 @@ type ContentProps = {
 
 const AddOrgSchema = z.object({
   name: GenericResourceNameSchema,
-  // Optional: server auto-generates slug from name when not provided (backward compatibility)
+  // Optional: server auto-generates slug from name when not provided
   slug: z.union([slugSchema(), z.literal("")]).optional()
 });
 
