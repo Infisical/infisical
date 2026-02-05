@@ -31,20 +31,21 @@ const migratePgBossJobsToQueueJobs = async <TData>(
   let jobCount = 0;
 
   do {
+    console.log(">>>> pg boss trigger");
     const jobs = await db.query<{ id: string; name: string; data: TData; start_after: Date }>(
       `
         SELECT id, name, data, start_after
         FROM pgboss.job
         WHERE state = 'created'
           AND name = $1
-        ORDER BY createdon ASC
+        ORDER BY created_on ASC
         LIMIT $2 OFFSET $3
       `,
       [config.pgBossQueueName, BATCH_SIZE, offset]
     );
 
     jobCount = jobs.rows.length;
-
+    console.log(jobCount);
     if (jobCount > 0) {
       await knex(TableName.QueueJobs).insert(
         jobs.rows.map((job) => {
@@ -105,7 +106,6 @@ const migrateDynamicSecretRevocationToQueueJobs = async (knex: Knex, db: pg.Clie
   });
 };
 
-// TODO(dq): add index
 export async function up(knex: Knex): Promise<void> {
   const hasTable = await knex.schema.hasTable(TableName.QueueJobs);
   if (!hasTable) {
@@ -127,14 +127,19 @@ export async function up(knex: Knex): Promise<void> {
       t.datetime("startedAt");
       t.datetime("completedAt");
       t.timestamps(true, true, true);
+
+      // Indexes for query optimization
+      t.index(["queueName", "status"]);
+      t.index(["jobId", "queueName"]);
+      t.index(["status"]);
     });
 
     await createOnUpdateTrigger(knex, TableName.QueueJobs);
     const db = new pg.Client({
       application_name: "pgboss",
-      connectionString: process.env.DATABASE_URL,
+      connectionString: process.env.DB_CONNECTION_URI,
       host: process.env.DB_HOST,
-      port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 5432,
+      port: process.env.DB_PORT ? Number(process.env.DB_PORT) : undefined,
       user: process.env.DB_USER,
       database: process.env.DB_NAME,
       password: process.env.DB_PASSWORD,
@@ -145,8 +150,23 @@ export async function up(knex: Knex): Promise<void> {
           }
         : false
     });
-    await migratePamSessionExpirationToQueueJobs(knex, db);
-    await migrateDynamicSecretRevocationToQueueJobs(knex, db);
+    await db.connect();
+    try {
+      const schemaCheck = await db.query(
+        `SELECT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'pgboss') AS exists`
+      );
+
+      if (schemaCheck.rows[0].exists) {
+        console.log("trigger 1");
+        await migratePamSessionExpirationToQueueJobs(knex, db);
+
+        console.log("trigger 2");
+        await migrateDynamicSecretRevocationToQueueJobs(knex, db);
+      }
+    } finally {
+      await db.end();
+    }
+    console.log("trigger 3");
   }
 }
 
