@@ -127,6 +127,20 @@ To successfully deploy an Infisical Relay for use, follow these steps in order.
 
   </Step>
 
+   <Step title="Install the Infisical CLI">
+      Make sure the Infisical CLI is installed on the machine or environment where you plan to deploy the relay. The CLI is required for relay installation and management.
+
+      See the [CLI Installation Guide](/cli/overview) for instructions.
+
+      <Warning>
+        If you are running a self-hosted Infisical instance using the `infisical-core` Linux package on the same machine where you want to deploy the relay, do **not** install the `infisical` CLI package via `apt-get` or `yum`. The `infisical` CLI package conflicts with the `infisical-core` package and will remove your Infisical server installation.
+
+        Instead, use one of the following alternative methods to install the CLI alongside `infisical-core`:
+        - **NPM**: `npm install -g @infisical/cli`
+        - **Separate machine**: Deploy the relay on a different machine from your Infisical server, which is the recommended approach for production environments.
+      </Warning>
+   </Step>
+
    <Step title="Select a Deployment Method">
       You can deploy the Infisical Relay in various ways. This guide provides a manual setup example using the Infisical CLI. For an infrastructure-as-code approach, see our [Terraform guide](/documentation/platform/gateways/relay-deployment/terraform).
 

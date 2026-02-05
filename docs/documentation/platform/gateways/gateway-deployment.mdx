@@ -101,6 +101,14 @@ To successfully deploy an Infisical Gateway for use, follow these steps in order
     Make sure the Infisical CLI is installed on the machine or environment where you plan to deploy the gateway. The CLI is required for gateway installation and management.
 
     See the [CLI Installation Guide](/cli/overview) for instructions.
+
+    <Warning>
+      If you are running a self-hosted Infisical instance using the `infisical-core` Linux package on the same machine where you want to deploy the gateway, do **not** install the `infisical` CLI package via `apt-get` or `yum`. The `infisical` CLI package conflicts with the `infisical-core` package and will remove your Infisical server installation.
+
+      Instead, use one of the following alternative methods to install the CLI alongside `infisical-core`:
+      - **NPM**: `npm install -g @infisical/cli`
+      - **Separate machine**: Deploy the gateway on a different machine from your Infisical server, which is the recommended approach for production environments.
+    </Warning>
   </Step>
   <Step title="Configure Network & Firewall">
     Ensure your network and firewall settings allow the gateway to connect to all required services. All connections are outbound only; no inbound ports need to be opened.
@@ -257,6 +265,15 @@ Check gateway logs for detailed error information:
 
 <Accordion title="Where is the gateway configuration file stored?">
 For systemd-based installations, the gateway's configuration file is stored at `/etc/infisical/gateway.conf`. You may reference or inspect this file for troubleshooting advanced configuration issues.
+</Accordion>
+
+<Accordion title="Can I run the gateway on the same machine as my self-hosted Infisical server?">
+Yes, but with a caveat. The `infisical` CLI package (used for gateway and relay commands) conflicts with the `infisical-core` Linux package (the self-hosted server). Installing the CLI via `apt-get` or `yum` will remove `infisical-core`.
+
+To run both on the same machine, install the CLI using an alternative method such as NPM (`npm install -g @infisical/cli`). This avoids the package conflict and allows you to use both the Infisical server and the gateway CLI on the same host.
+
+For production environments, we recommend deploying the gateway on a separate machine from your Infisical server for better isolation and reliability.
+
 </Accordion>
 
 <Accordion title="What happens if there is a network interruption?">
