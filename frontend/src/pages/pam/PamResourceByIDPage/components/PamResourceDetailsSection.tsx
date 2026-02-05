@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { GenericFieldLabel, IconButton } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
-import { PAM_RESOURCE_TYPE_MAP, TPamResource } from "@app/hooks/api/pam";
+import { TPamResource } from "@app/hooks/api/pam";
 
 type Props = {
   resource: TPamResource;
@@ -13,8 +13,6 @@ type Props = {
 };
 
 export const PamResourceDetailsSection = ({ resource, onEdit }: Props) => {
-  const resourceTypeInfo = PAM_RESOURCE_TYPE_MAP[resource.resourceType];
-
   return (
     <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
@@ -38,16 +36,6 @@ export const PamResourceDetailsSection = ({ resource, onEdit }: Props) => {
       </div>
       <div className="space-y-3">
         <GenericFieldLabel label="Name">{resource.name}</GenericFieldLabel>
-        <GenericFieldLabel label="Type">
-          <div className="flex items-center gap-2">
-            <img
-              alt={resourceTypeInfo.name}
-              src={`/images/integrations/${resourceTypeInfo.image}`}
-              className="size-4"
-            />
-            {resourceTypeInfo.name}
-          </div>
-        </GenericFieldLabel>
         <GenericFieldLabel label="Created">
           {format(new Date(resource.createdAt), "yyyy-MM-dd, hh:mm aaa")}
         </GenericFieldLabel>
