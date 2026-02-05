@@ -40,9 +40,15 @@ const PageContent = () => {
   const { currentOrg } = useOrganization();
   const params = useParams({
     strict: false
-  }) as { accountId?: string; projectId?: string; orgId?: string };
+  }) as {
+    accountId?: string;
+    projectId?: string;
+    orgId?: string;
+    resourceType?: string;
+    resourceId?: string;
+  };
 
-  const { accountId, projectId } = params;
+  const { accountId, projectId, resourceType, resourceId } = params;
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -84,8 +90,8 @@ const PageContent = () => {
       params: {
         orgId: currentOrg.id,
         projectId: projectId!,
-        resourceType: account.resource.resourceType,
-        resourceId: account.resourceId
+        resourceType: resourceType!,
+        resourceId: resourceId!
       }
     });
   };

@@ -355,8 +355,8 @@ export const ROUTE_PATHS = Object.freeze({
   },
   Pam: {
     AccountsPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/accounts/",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/accounts/"
+      "/organizations/$orgId/projects/pam/$projectId/accounts",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/accounts"
     ),
     ResourcesPage: setRoute(
       "/organizations/$orgId/projects/pam/$projectId/resources/",
@@ -379,8 +379,8 @@ export const ROUTE_PATHS = Object.freeze({
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId"
     ),
     PamAccountByIDPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/accounts/$accountId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/accounts/$accountId"
+      "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/accounts/$accountId"
     )
   },
   Public: {

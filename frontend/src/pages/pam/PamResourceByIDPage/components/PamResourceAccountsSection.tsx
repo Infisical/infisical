@@ -96,8 +96,14 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
 
   const handleAccountClick = (account: TPamAccount) => {
     navigate({
-      to: "/organizations/$orgId/projects/pam/$projectId/accounts/$accountId",
-      params: { orgId: currentOrg.id, projectId: projectId!, accountId: account.id }
+      to: "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId",
+      params: {
+        orgId: currentOrg.id,
+        projectId: projectId!,
+        resourceType: resource.resourceType,
+        resourceId: resource.id,
+        accountId: account.id
+      }
     });
   };
 
