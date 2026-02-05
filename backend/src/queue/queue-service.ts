@@ -43,15 +43,7 @@ import { CacheType } from "@app/services/super-admin/super-admin-types";
 import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 
 import { TQueueJobsDALFactory } from "./queue-jobs-dal";
-
-export enum PersistanceQueueStatus {
-  Pending = "pending",
-  Processing = "processing",
-  Completed = "completed",
-  Failed = "failed",
-  Stuck = "stuck",
-  Dead = "dead"
-}
+import { PersistanceQueueStatus } from "./queue-types";
 
 export enum QueueName {
   // Internal queues for durable queue recovery
@@ -566,36 +558,34 @@ export const queueServiceFactory = (
     QueueName,
     {
       stuckThresholdMs: number;
-      maxAttempts: number;
     }
   >();
 
-  // Track startup recovery completion to prevent duplicate runs
-  let startupRecoveryCompleted = false;
-
   /**
    * Startup Recovery Function
-   * Recovers pending jobs from PostgreSQL after server restart
+   * Recovers pending and failed jobs from PostgreSQL after server restart
+   * - Pending jobs: Jobs that were queued but not yet processed
+   * - Failed jobs: Jobs that failed but haven't reached max attempts (can retry)
    */
   const startupRecovery = async () => {
-    if (startupRecoveryCompleted) return;
-
     logger.info("Starting queue startup recovery...");
 
     const queueNames = Array.from(persistantQueues);
     if (queueNames.length === 0) {
-      startupRecoveryCompleted = true;
       logger.info("No persistent queues configured, skipping startup recovery");
       return;
     }
 
     try {
+      // Recover both pending jobs and failed jobs that can be retried
       const pendingJobs = await queueJobsDAL.find({
-        status: PersistanceQueueStatus.Pending,
-        $in: { queueName: queueNames }
+        $in: {
+          queueName: queueNames,
+          status: [PersistanceQueueStatus.Pending, PersistanceQueueStatus.Failed]
+        }
       });
 
-      logger.info({ count: pendingJobs.length }, "Found pending jobs for recovery");
+      logger.info({ count: pendingJobs.length }, "Found jobs for recovery (pending + failed)");
 
       for await (const job of pendingJobs) {
         const queueName = job.queueName as QueueName;
@@ -616,9 +606,12 @@ export const queueServiceFactory = (
           continue;
         }
 
-        // Recalculate delay for delayed jobs
-        let adjustedDelay = opts.delay;
-        if (opts.delay && opts.delay > 0) {
+        // For failed jobs, run immediately (no delay)
+        // For pending jobs with delay, recalculate based on original schedule
+        let adjustedDelay: number | undefined;
+        const isFailedJob = job.status === PersistanceQueueStatus.Failed;
+
+        if (!isFailedJob && opts.delay && opts.delay > 0) {
           const originalScheduledTime = new Date(job.createdAt).getTime() + opts.delay;
           adjustedDelay = Math.max(0, originalScheduledTime - Date.now());
         }
@@ -630,10 +623,12 @@ export const queueServiceFactory = (
           jobId: job.jobId
         });
 
-        logger.info({ jobId: job.jobId, queueName, adjustedDelay }, "Job recovered and re-queued");
+        logger.info(
+          { jobId: job.jobId, queueName, adjustedDelay, wasFailedJob: isFailedJob },
+          "Job recovered and re-queued"
+        );
       }
 
-      startupRecoveryCompleted = true;
       logger.info("Queue startup recovery completed");
     } catch (error) {
       logger.error(error, "Queue startup recovery failed");
@@ -643,21 +638,21 @@ export const queueServiceFactory = (
   /**
    * Handle a stuck job - either re-queue it or mark it as dead
    */
-  const handleStuckJob = async (dbJob: TQueueJobs, config: { stuckThresholdMs: number; maxAttempts: number }) => {
+  const handleStuckJob = async (dbJob: TQueueJobs) => {
     const queueName = dbJob.queueName as QueueName;
     const q = queueContainer[queueName];
     if (!q) return;
 
     const newAttempts = dbJob.attempts + 1;
 
-    if (newAttempts >= config.maxAttempts) {
+    if (newAttempts >= dbJob.maxAttempts) {
       // Mark as dead - exceeded max retries
       await queueJobsDAL.update(
         { id: dbJob.id },
         {
           status: PersistanceQueueStatus.Dead,
           attempts: newAttempts,
-          errorMessage: `Exceeded max attempts (${config.maxAttempts}) after being stuck`
+          errorMessage: `Exceeded max attempts (${dbJob.maxAttempts}) after being stuck`
         }
       );
 
@@ -681,7 +676,7 @@ export const queueServiceFactory = (
         attempts: newAttempts,
         startedAt: null,
         lastHeartBeat: null,
-        errorMessage: `Re-queued after stuck detection (attempt ${newAttempts}/${config.maxAttempts})`
+        errorMessage: `Re-queued after stuck detection (attempt ${newAttempts}/${dbJob.maxAttempts})`
       }
     );
 
@@ -725,7 +720,7 @@ export const queueServiceFactory = (
         // Process stuck jobs sequentially to avoid race conditions
         // eslint-disable-next-line no-await-in-loop
         for await (const job of stuckJobs) {
-          await handleStuckJob(job, config);
+          await handleStuckJob(job);
         }
       }
     } catch (error) {
@@ -781,11 +776,11 @@ export const queueServiceFactory = (
         removeOnFail: true
       });
 
-      // Schedule reconciliation job (runs every minute)
+      // Schedule reconciliation job (runs every 2 minute)
       await queueContainer[QueueName.QueueInternalReconciliation].add(QueueJobs.QueueReconciliation, undefined, {
         jobId: "queue-reconciliation-cron",
         repeat: {
-          pattern: "* * * * *",
+          pattern: "*/2 * * * *",
           key: "queue-reconciliation-cron"
         },
         removeOnComplete: true,
@@ -859,9 +854,9 @@ export const queueServiceFactory = (
         typeof persistence === "object"
           ? {
               stuckThresholdMs: persistence.stuckThresholdMs ?? 5 * 60 * 1000,
-              maxAttempts: 3
+              maxAttempts: 1
             }
-          : { stuckThresholdMs: 5 * 60 * 1000, maxAttempts: 3 };
+          : { stuckThresholdMs: 5 * 60 * 1000, maxAttempts: 1 };
 
       persistentQueueConfigs.set(name, persistenceConfig);
       persistantQueues.add(name);
@@ -870,7 +865,7 @@ export const queueServiceFactory = (
         if (job.id) {
           void queueJobsDAL
             .update(
-              { jobId: job.id },
+              { jobId: job.id, queueName: name },
               {
                 status: PersistanceQueueStatus.Processing,
                 startedAt: new Date(),
@@ -887,7 +882,7 @@ export const queueServiceFactory = (
         if (job.id) {
           void queueJobsDAL
             .update(
-              { jobId: job.id },
+              { jobId: job.id, queueName: name },
               {
                 status: PersistanceQueueStatus.Completed,
                 completedAt: new Date()
@@ -901,17 +896,9 @@ export const queueServiceFactory = (
 
       workerContainer[name].on("failed", (job, error) => {
         if (job?.id) {
-          void queueJobsDAL
-            .update(
-              { jobId: job.id },
-              {
-                status: PersistanceQueueStatus.Failed,
-                errorMessage: error.message.slice(0, 1000)
-              }
-            )
-            .catch((err) => {
-              logger.error(err, "Failed to update queue job status failed");
-            });
+          void queueJobsDAL.updateJobFailure(name, job.id, error.message).catch((err) => {
+            logger.error(err, "Failed to update queue job status failed");
+          });
         }
       });
     }
@@ -946,7 +933,8 @@ export const queueServiceFactory = (
         jobId,
         queueData: data,
         queueOptions: finalOptions,
-        status: PersistanceQueueStatus.Pending
+        status: PersistanceQueueStatus.Pending,
+        maxAttempts: opts.attempts || 1
       });
     }
 
@@ -994,7 +982,7 @@ export const queueServiceFactory = (
 
     const isPersistantQueue = persistantQueues.has(name);
     if (isPersistantQueue) {
-      await queueJobsDAL.delete({ jobId });
+      await queueJobsDAL.delete({ jobId, queueName: name });
     }
 
     return job?.remove().catch(() => undefined);
