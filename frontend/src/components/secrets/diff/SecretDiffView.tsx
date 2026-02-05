@@ -32,6 +32,36 @@ export interface SecretDiffViewProps {
   newVersionLabel?: string;
 }
 
+const KeyRenderer = ({
+  secretKey,
+  oldKey,
+  newKey,
+  hasChanges,
+  isOldVersion
+}: {
+  secretKey: string;
+  oldKey: string;
+  newKey: string;
+  hasChanges: boolean;
+  isOldVersion: boolean;
+}) => {
+  if (!hasChanges) {
+    return (
+      <div className="rounded border border-mineshaft-600 bg-bunker-800 p-2">
+        <span className="text-sm">{secretKey}</span>
+      </div>
+    );
+  }
+
+  const variant = isOldVersion ? "removed" : "added";
+
+  return (
+    <DiffContainer variant={variant} isSingleLine>
+      <SingleLineDiff oldText={oldKey} newText={newKey} isOldVersion={isOldVersion} />
+    </DiffContainer>
+  );
+};
+
 const CommentRenderer = ({
   comment,
   oldComment,
@@ -215,11 +245,12 @@ export const SecretDiffView = ({
           </div>
           <div className="mb-2">
             <div className="text-sm font-medium text-mineshaft-300">Key</div>
-            <InlineTextDiff
-              oldText={oldKey}
-              newText={newKey}
-              isOldVersion
+            <KeyRenderer
+              secretKey={oldKey}
+              oldKey={oldKey}
+              newKey={newKey}
               hasChanges={hasKeyChanges}
+              isOldVersion
             />
           </div>
           <div className="mb-2">
@@ -293,11 +324,12 @@ export const SecretDiffView = ({
           </div>
           <div className="mb-2">
             <div className="text-sm font-medium text-mineshaft-300">Key</div>
-            <InlineTextDiff
-              oldText={oldKey}
-              newText={newKey}
-              isOldVersion={false}
+            <KeyRenderer
+              secretKey={newKey}
+              oldKey={oldKey}
+              newKey={newKey}
               hasChanges={hasKeyChanges}
+              isOldVersion={false}
             />
           </div>
           <div className="mb-2">
