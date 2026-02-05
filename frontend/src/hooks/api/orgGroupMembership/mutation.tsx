@@ -14,7 +14,7 @@ export const useCreateOrgGroupMembership = () => {
   return useMutation({
     mutationFn: async ({ groupId, roles }: TCreateOrgGroupMembershipDTO) => {
       const { data } = await apiRequest.post<{ groupMembership: TOrgGroupMembership }>(
-        `/api/v1/organization/group-memberships/${groupId}`,
+        `/api/v1/groups/${groupId}/link`,
         { roles }
       );
       return data.groupMembership;
@@ -36,7 +36,7 @@ export const useDeleteOrgGroupMembership = () => {
   return useMutation({
     mutationFn: async ({ groupId }: TDeleteOrgGroupMembershipDTO) => {
       const { data } = await apiRequest.delete<{ groupMembership: TOrgGroupMembership }>(
-        `/api/v1/organization/group-memberships/${groupId}`
+        `/api/v1/groups/${groupId}/link`
       );
       return data.groupMembership;
     },
