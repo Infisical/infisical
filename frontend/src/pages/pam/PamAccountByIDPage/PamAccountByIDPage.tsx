@@ -80,8 +80,13 @@ const PageContent = () => {
 
   const handleBack = () => {
     navigate({
-      to: "/organizations/$orgId/projects/pam/$projectId/accounts",
-      params: { orgId: currentOrg.id, projectId: projectId! }
+      to: "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId",
+      params: {
+        orgId: currentOrg.id,
+        projectId: projectId!,
+        resourceType: account.resource.resourceType,
+        resourceId: account.resourceId
+      }
     });
   };
 
@@ -116,7 +121,7 @@ const PageContent = () => {
         className="mb-4 flex items-center gap-1 text-sm text-bunker-300 hover:text-primary-400"
       >
         <FontAwesomeIcon icon={faChevronLeft} className="text-xs" />
-        Accounts
+        Back to resource
       </button>
 
       <div className="mb-6 flex items-center justify-between">
