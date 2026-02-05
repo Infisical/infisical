@@ -87,8 +87,7 @@ type Props = {
     value: string,
     secretValueHidden: boolean,
     type?: SecretType,
-    secretId?: string,
-    comment?: string
+    secretId?: string
   ) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
   isRotatedSecret?: boolean;
