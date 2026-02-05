@@ -836,7 +836,7 @@ export const SUB_ORGANIZATIONS = {
   },
   UPDATE: {
     name: "Optional. The display name of the sub organization. When only name is provided (no slug), both name and slug are updated for backward compatibility.",
-    slug: "Optional. The slug of the sub organization. Can be updated independently when both name and slug are provided.",
+    slug: "Optional. The slug of the sub-organization. Can be updated independently when both name and slug are provided.",
     subOrgId: "The id of the sub organization to update."
   },
   LIST: {
