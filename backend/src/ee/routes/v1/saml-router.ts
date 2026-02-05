@@ -71,12 +71,31 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             if (!ssoConfig || !ssoConfig.isActive)
               throw new BadRequestError({ message: "Failed to authenticate with SAML SSO" });
 
+            if (!appCfg.SITE_URL) {
+              throw new BadRequestError({
+                message:
+                  "SITE_URL environment variable is not configured. SAML SSO requires SITE_URL to be set to your Infisical instance URL (e.g. https://your-domain.com)."
+              });
+            }
+
+            try {
+              const parsedUrl = new URL(appCfg.SITE_URL);
+              if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+                throw new Error("Invalid protocol");
+              }
+            } catch {
+              throw new BadRequestError({
+                message:
+                  "SITE_URL environment variable is not a valid absolute URL. SAML SSO requires SITE_URL to be a valid http(s) URL (e.g. https://your-domain.com)."
+              });
+            }
+
             const samlConfig: TSAMLConfig = {
               callbackUrl: `${appCfg.SITE_URL}/api/v1/sso/saml2/${ssoConfig.id}`,
               entryPoint: ssoConfig.entryPoint,
               issuer: ssoConfig.issuer,
               idpCert: ssoConfig.cert,
-              audience: appCfg.SITE_URL || ""
+              audience: appCfg.SITE_URL
             };
             if (ssoConfig.authProvider === SamlProviders.JUMPCLOUD_SAML) {
               samlConfig.wantAuthnResponseSigned = false;
