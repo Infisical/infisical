@@ -1,25 +1,24 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
-import { faBan, faChevronLeft, faEllipsisV } from "@fortawesome/free-solid-svg-icons";
+import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
+import { BanIcon, EllipsisVerticalIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
+import { DeleteActionModal, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import {
   Button,
-  ContentLoader,
-  DeleteActionModal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  EmptyState,
-  Tab,
-  TabList,
-  TabPanel,
-  Tabs
-} from "@app/components/v2";
+  UnstableDropdownMenu,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuTrigger,
+  UnstableEmpty,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle,
+  UnstablePageLoader
+} from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useOrganization } from "@app/context";
 import {
   PAM_RESOURCE_TYPE_MAP,
@@ -58,21 +57,20 @@ const PageContent = () => {
   const deleteResource = useDeletePamResource();
 
   if (isPending) {
-    return (
-      <div className="flex h-full w-full items-center justify-center">
-        <ContentLoader />
-      </div>
-    );
+    return <UnstablePageLoader />;
   }
 
   if (!resource) {
     return (
       <div className="flex h-full w-full items-center justify-center px-20">
-        <EmptyState
-          className="max-w-2xl rounded-md text-center"
-          icon={faBan}
-          title={`Could not find PAM Resource with ID ${resourceId}`}
-        />
+        <UnstableEmpty className="max-w-2xl">
+          <UnstableEmptyHeader>
+            <BanIcon className="size-8 text-muted" />
+            <UnstableEmptyTitle className="text-muted">
+              Could not find PAM Resource with ID {resourceId}
+            </UnstableEmptyTitle>
+          </UnstableEmptyHeader>
+        </UnstableEmpty>
       </div>
     );
   }
@@ -134,24 +132,24 @@ const PageContent = () => {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" colorSchema="secondary">
-                <FontAwesomeIcon icon={faEllipsisV} />
+          <UnstableDropdownMenu>
+            <UnstableDropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <EllipsisVerticalIcon />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" sideOffset={2}>
+            </UnstableDropdownMenuTrigger>
+            <UnstableDropdownMenuContent align="end" sideOffset={2}>
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Edit}
                 a={ProjectPermissionSub.PamResources}
               >
                 {(isAllowed) => (
-                  <DropdownMenuItem
+                  <UnstableDropdownMenuItem
                     onClick={() => setIsEditModalOpen(true)}
                     isDisabled={!isAllowed}
                   >
                     Edit Resource
-                  </DropdownMenuItem>
+                  </UnstableDropdownMenuItem>
                 )}
               </ProjectPermissionCan>
               <ProjectPermissionCan
@@ -159,17 +157,17 @@ const PageContent = () => {
                 a={ProjectPermissionSub.PamResources}
               >
                 {(isAllowed) => (
-                  <DropdownMenuItem
+                  <UnstableDropdownMenuItem
                     onClick={() => setIsDeleteModalOpen(true)}
-                    className="text-red-500"
+                    variant="danger"
                     isDisabled={!isAllowed}
                   >
                     Delete Resource
-                  </DropdownMenuItem>
+                  </UnstableDropdownMenuItem>
                 )}
               </ProjectPermissionCan>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </UnstableDropdownMenuContent>
+          </UnstableDropdownMenu>
         </div>
       </div>
 

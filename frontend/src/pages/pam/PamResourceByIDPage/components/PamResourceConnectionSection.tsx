@@ -1,9 +1,8 @@
-import { faCheck, faEdit, faLock, faUnlock } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
+import { CheckIcon, LockIcon, PencilIcon, UnlockIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { GenericFieldLabel, IconButton } from "@app/components/v2";
+import { Detail, DetailLabel, DetailValue, UnstableIconButton } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { gatewaysQueryKeys } from "@app/hooks/api";
 import { PamResourceType, TPamResource } from "@app/hooks/api/pam";
@@ -14,10 +13,11 @@ type Props = {
 
 const SSLStatusBadge = ({ enabled }: { enabled: boolean }) => (
   <div className="flex items-center gap-2">
-    <FontAwesomeIcon
-      icon={enabled ? faLock : faUnlock}
-      className={enabled ? "text-green-500" : "text-yellow-500"}
-    />
+    {enabled ? (
+      <LockIcon className="size-3.5 text-success" />
+    ) : (
+      <UnlockIcon className="size-3.5 text-warning" />
+    )}
     <span>{enabled ? "Enabled" : "Disabled"}</span>
   </div>
 );
@@ -28,12 +28,24 @@ const SqlConnectionDetails = ({
   connectionDetails: { host: string; port: number; database: string; sslEnabled: boolean };
 }) => (
   <>
-    <GenericFieldLabel label="Host">{connectionDetails.host}</GenericFieldLabel>
-    <GenericFieldLabel label="Port">{connectionDetails.port}</GenericFieldLabel>
-    <GenericFieldLabel label="Database">{connectionDetails.database}</GenericFieldLabel>
-    <GenericFieldLabel label="SSL">
-      <SSLStatusBadge enabled={connectionDetails.sslEnabled} />
-    </GenericFieldLabel>
+    <Detail>
+      <DetailLabel>Host</DetailLabel>
+      <DetailValue>{connectionDetails.host}</DetailValue>
+    </Detail>
+    <Detail>
+      <DetailLabel>Port</DetailLabel>
+      <DetailValue>{connectionDetails.port}</DetailValue>
+    </Detail>
+    <Detail>
+      <DetailLabel>Database</DetailLabel>
+      <DetailValue>{connectionDetails.database}</DetailValue>
+    </Detail>
+    <Detail>
+      <DetailLabel>SSL</DetailLabel>
+      <DetailValue>
+        <SSLStatusBadge enabled={connectionDetails.sslEnabled} />
+      </DetailValue>
+    </Detail>
   </>
 );
 
@@ -43,8 +55,14 @@ const SSHConnectionDetails = ({
   connectionDetails: { host: string; port: number };
 }) => (
   <>
-    <GenericFieldLabel label="Host">{connectionDetails.host}</GenericFieldLabel>
-    <GenericFieldLabel label="Port">{connectionDetails.port}</GenericFieldLabel>
+    <Detail>
+      <DetailLabel>Host</DetailLabel>
+      <DetailValue>{connectionDetails.host}</DetailValue>
+    </Detail>
+    <Detail>
+      <DetailLabel>Port</DetailLabel>
+      <DetailValue>{connectionDetails.port}</DetailValue>
+    </Detail>
   </>
 );
 
@@ -54,11 +72,20 @@ const RedisConnectionDetails = ({
   connectionDetails: { host: string; port: number; sslEnabled: boolean };
 }) => (
   <>
-    <GenericFieldLabel label="Host">{connectionDetails.host}</GenericFieldLabel>
-    <GenericFieldLabel label="Port">{connectionDetails.port}</GenericFieldLabel>
-    <GenericFieldLabel label="SSL">
-      <SSLStatusBadge enabled={connectionDetails.sslEnabled} />
-    </GenericFieldLabel>
+    <Detail>
+      <DetailLabel>Host</DetailLabel>
+      <DetailValue>{connectionDetails.host}</DetailValue>
+    </Detail>
+    <Detail>
+      <DetailLabel>Port</DetailLabel>
+      <DetailValue>{connectionDetails.port}</DetailValue>
+    </Detail>
+    <Detail>
+      <DetailLabel>SSL</DetailLabel>
+      <DetailValue>
+        <SSLStatusBadge enabled={connectionDetails.sslEnabled} />
+      </DetailValue>
+    </Detail>
   </>
 );
 
@@ -68,18 +95,23 @@ const KubernetesConnectionDetails = ({
   connectionDetails: { url: string; sslRejectUnauthorized: boolean };
 }) => (
   <>
-    <GenericFieldLabel label="API URL" truncate>
-      {connectionDetails.url}
-    </GenericFieldLabel>
-    <GenericFieldLabel label="Verify SSL">
-      <div className="flex items-center gap-2">
-        <FontAwesomeIcon
-          icon={connectionDetails.sslRejectUnauthorized ? faCheck : faUnlock}
-          className={connectionDetails.sslRejectUnauthorized ? "text-green-500" : "text-yellow-500"}
-        />
-        <span>{connectionDetails.sslRejectUnauthorized ? "Yes" : "No"}</span>
-      </div>
-    </GenericFieldLabel>
+    <Detail>
+      <DetailLabel>API URL</DetailLabel>
+      <DetailValue className="truncate">{connectionDetails.url}</DetailValue>
+    </Detail>
+    <Detail>
+      <DetailLabel>Verify SSL</DetailLabel>
+      <DetailValue>
+        <div className="flex items-center gap-2">
+          {connectionDetails.sslRejectUnauthorized ? (
+            <CheckIcon className="size-3.5 text-success" />
+          ) : (
+            <UnlockIcon className="size-3.5 text-warning" />
+          )}
+          <span>{connectionDetails.sslRejectUnauthorized ? "Yes" : "No"}</span>
+        </div>
+      </DetailValue>
+    </Detail>
   </>
 );
 
@@ -88,9 +120,10 @@ const AwsIamConnectionDetails = ({
 }: {
   connectionDetails: { roleArn: string };
 }) => (
-  <GenericFieldLabel label="Role ARN" truncate>
-    {connectionDetails.roleArn}
-  </GenericFieldLabel>
+  <Detail>
+    <DetailLabel>Role ARN</DetailLabel>
+    <DetailValue className="truncate">{connectionDetails.roleArn}</DetailValue>
+  </Detail>
 );
 
 const ConnectionDetailsContent = ({ resource }: Props) => {
@@ -120,29 +153,26 @@ export const PamResourceConnectionSection = ({
   const gateway = gateways?.find((g) => g.id === resource.gatewayId);
 
   return (
-    <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
-      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
-        <h3 className="text-lg font-medium text-mineshaft-100">Connection</h3>
+    <div className="flex w-full flex-col gap-3 rounded-lg border border-border bg-container px-4 py-3">
+      <div className="flex items-center justify-between border-b border-border pb-2">
+        <h3 className="text-lg font-medium">Connection</h3>
         <ProjectPermissionCan
           I={ProjectPermissionActions.Edit}
           a={ProjectPermissionSub.PamResources}
         >
           {(isAllowed) => (
-            <IconButton
-              variant="plain"
-              colorSchema="secondary"
-              ariaLabel="Edit resource details"
-              onClick={onEdit}
-              isDisabled={!isAllowed}
-            >
-              <FontAwesomeIcon icon={faEdit} />
-            </IconButton>
+            <UnstableIconButton variant="ghost" size="xs" onClick={onEdit} isDisabled={!isAllowed}>
+              <PencilIcon />
+            </UnstableIconButton>
           )}
         </ProjectPermissionCan>
       </div>
-      <div className="space-y-3">
+      <div className="space-y-4">
         {resource.gatewayId && (
-          <GenericFieldLabel label="Gateway">{gateway?.name ?? "Unknown"}</GenericFieldLabel>
+          <Detail>
+            <DetailLabel>Gateway</DetailLabel>
+            <DetailValue>{gateway?.name ?? "Unknown"}</DetailValue>
+          </Detail>
         )}
         <ConnectionDetailsContent resource={resource} />
       </div>

@@ -1,9 +1,14 @@
-import { faCopy, faEdit } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { CopyIcon, PencilIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { GenericFieldLabel, IconButton, Input } from "@app/components/v2";
+import {
+  Detail,
+  DetailLabel,
+  DetailValue,
+  UnstableIconButton,
+  UnstableInput
+} from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPamAccountActions } from "@app/context/ProjectPermissionContext/types";
 import { PamResourceType, TPamAccount } from "@app/hooks/api/pam";
@@ -26,16 +31,17 @@ const CopyableField = ({ label, value }: { label: string; value: string }) => {
   };
 
   return (
-    <div>
-      <GenericFieldLabel label={label}>
-        <div className="mt-1 flex items-center gap-2">
-          <Input value={value} readOnly className="flex-1 font-mono text-sm" />
-          <IconButton ariaLabel="Copy" variant="outline_bg" onClick={handleCopy} size="sm">
-            <FontAwesomeIcon icon={faCopy} />
-          </IconButton>
+    <Detail>
+      <DetailLabel>{label}</DetailLabel>
+      <DetailValue>
+        <div className="flex items-center gap-2">
+          <UnstableInput value={value} readOnly className="flex-1 font-mono text-sm" />
+          <UnstableIconButton variant="ghost" onClick={handleCopy} size="sm">
+            <CopyIcon />
+          </UnstableIconButton>
         </div>
-      </GenericFieldLabel>
-    </div>
+      </DetailValue>
+    </Detail>
   );
 };
 
@@ -59,9 +65,10 @@ const SSHCredentialsContent = ({ credentials }: { credentials: TSSHCredentials }
 const AwsIamCredentialsContent = ({ credentials }: { credentials: TAwsIamCredentials }) => (
   <>
     <CopyableField label="Target Role ARN" value={credentials.targetRoleArn} />
-    <GenericFieldLabel label="Default Session Duration">
-      {Math.floor(credentials.defaultSessionDuration / 60)} minutes
-    </GenericFieldLabel>
+    <Detail>
+      <DetailLabel>Default Session Duration</DetailLabel>
+      <DetailValue>{Math.floor(credentials.defaultSessionDuration / 60)} minutes</DetailValue>
+    </Detail>
   </>
 );
 
@@ -90,23 +97,17 @@ export const PamAccountCredentialsSection = ({ account, onEdit }: Props) => {
     return null;
 
   return (
-    <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
-      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
-        <h3 className="text-lg font-medium text-mineshaft-100">Credentials</h3>
+    <div className="flex w-full flex-col gap-3 rounded-lg border border-border bg-container px-4 py-3">
+      <div className="flex items-center justify-between border-b border-border pb-2">
+        <h3 className="text-lg font-medium">Credentials</h3>
         <ProjectPermissionCan
           I={ProjectPermissionPamAccountActions.Edit}
           a={ProjectPermissionSub.PamAccounts}
         >
           {(isAllowed) => (
-            <IconButton
-              variant="plain"
-              colorSchema="secondary"
-              ariaLabel="Edit credentials"
-              onClick={onEdit}
-              isDisabled={!isAllowed}
-            >
-              <FontAwesomeIcon icon={faEdit} />
-            </IconButton>
+            <UnstableIconButton variant="ghost" size="xs" onClick={onEdit} isDisabled={!isAllowed}>
+              <PencilIcon />
+            </UnstableIconButton>
           )}
         </ProjectPermissionCan>
       </div>
