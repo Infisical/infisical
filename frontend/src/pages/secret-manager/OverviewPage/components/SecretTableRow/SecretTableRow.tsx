@@ -340,6 +340,7 @@ export const SecretTableRow = ({
                             onSecretCreate={onSecretCreate}
                             onSecretUpdate={onSecretUpdate}
                             environment={slug}
+                            environmentName={name}
                             isRotatedSecret={secret?.isRotatedSecret}
                             importedBy={importedBy}
                             isSecretPresent={Boolean(secret)}

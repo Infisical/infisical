@@ -1,5 +1,6 @@
 export * from "./Accordion";
 export * from "./Alert";
+export * from "./AlertDialog";
 export * from "./Badge";
 export * from "./Breadcrumb";
 export * from "./Button";
