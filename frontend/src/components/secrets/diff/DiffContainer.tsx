@@ -4,7 +4,7 @@ import { twMerge } from "tailwind-merge";
 import { scrollToFirstChange } from "@app/components/utilities/diff";
 
 export interface DiffContainerProps {
-  variant: "added" | "removed";
+  variant?: "added" | "removed";
   children: React.ReactNode;
   containerRef?: React.RefObject<HTMLDivElement>;
   className?: string;
@@ -21,7 +21,12 @@ export const DiffContainer = ({
   className,
   isSingleLine = false
 }: DiffContainerProps) => {
-  const backgroundColor = variant === "removed" ? "#120808" : "#081208";
+  const getBackgroundColor = () => {
+    if (!variant) return undefined;
+    return variant === "removed" ? "#120808" : "#081208";
+  };
+
+  const backgroundColor = getBackgroundColor();
 
   useEffect(() => {
     if (!isSingleLine && containerRef?.current) {
@@ -36,8 +41,12 @@ export const DiffContainer = ({
   if (isSingleLine) {
     return (
       <div
-        className={twMerge("relative rounded-lg border border-mineshaft-600 p-2", className)}
-        style={{ backgroundColor }}
+        className={twMerge(
+          "relative rounded-lg border border-mineshaft-600 p-2",
+          !variant && "bg-bunker-800",
+          className
+        )}
+        style={backgroundColor ? { backgroundColor } : undefined}
       >
         {children}
       </div>
@@ -49,9 +58,10 @@ export const DiffContainer = ({
       ref={containerRef}
       className={twMerge(
         "relative max-h-96 thin-scrollbar overflow-x-auto overflow-y-auto rounded-lg border border-mineshaft-600 p-2",
+        !variant && "bg-bunker-800",
         className
       )}
-      style={{ backgroundColor }}
+      style={backgroundColor ? { backgroundColor } : undefined}
     >
       <div className="w-max min-w-full">{children}</div>
     </div>

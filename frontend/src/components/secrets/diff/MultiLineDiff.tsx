@@ -73,8 +73,8 @@ export const MultiLineDiff = ({ oldText, newText, isOldVersion }: MultiLineDiffP
             (isOldVersion ? change.removed && !oldExistsInNew : change.added && !newExistsInOld);
 
           const lineClass = isChanged
-            ? `flex min-w-full rounded-xs ${
-                isOldVersion ? "bg-red-500/30 text-red-300" : "bg-green-500/30 text-green-300"
+            ? `flex min-w-full ${
+                isOldVersion ? "bg-red-500/30 text-red-200" : "bg-green-500/30 text-green-200"
               }`
             : "flex min-w-full";
 

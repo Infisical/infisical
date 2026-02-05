@@ -55,6 +55,10 @@ export interface PendingSecretDelete extends BasePendingChange {
   secretKey: string;
   secretValue: string;
   secretValueHidden: boolean;
+  tags: { id: string; slug: string }[];
+  secretMetadata: { key: string; value: string; isEncrypted?: boolean }[];
+  skipMultilineEncoding: boolean | null;
+  comment: string;
 }
 
 // Folder-related change types

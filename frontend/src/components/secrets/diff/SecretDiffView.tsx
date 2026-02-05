@@ -3,14 +3,19 @@
 import { useRef, useState } from "react";
 import { faCircleCheck, faCircleXmark, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { twMerge } from "tailwind-merge";
 
 import { isSingleLine } from "@app/components/utilities/diff";
-import { SecretInput, Tooltip } from "@app/components/v2";
+import { Tooltip } from "@app/components/v2";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 import { DiffContainer } from "./DiffContainer";
-import { InlineTextDiff, MetadataDiffRenderer, TagsDiffRenderer } from "./FieldDiffRenderers";
+import {
+  InlineTextDiff,
+  MetadataDiffRenderer,
+  MultiLineTextDiffRenderer,
+  SingleLineTextDiffRenderer,
+  TagsDiffRenderer
+} from "./FieldDiffRenderers";
 import { MultiLineDiff } from "./MultiLineDiff";
 import { SingleLineDiff } from "./SingleLineDiff";
 
@@ -20,7 +25,7 @@ export interface SecretVersionData {
   secretValueHidden?: boolean;
   secretComment?: string;
   tags?: Array<{ slug: string; color: string }>;
-  secretMetadata?: Array<{ key: string; value: string }>;
+  secretMetadata?: Array<{ key: string; value: string; isEncrypted?: boolean }>;
   skipMultilineEncoding?: boolean;
 }
 
@@ -31,82 +36,6 @@ export interface SecretDiffViewProps {
   oldVersionLabel?: string;
   newVersionLabel?: string;
 }
-
-const KeyRenderer = ({
-  secretKey,
-  oldKey,
-  newKey,
-  hasChanges,
-  isOldVersion
-}: {
-  secretKey: string;
-  oldKey: string;
-  newKey: string;
-  hasChanges: boolean;
-  isOldVersion: boolean;
-}) => {
-  if (!hasChanges) {
-    return (
-      <div className="rounded border border-mineshaft-600 bg-bunker-800 p-2">
-        <span className="text-sm">{secretKey}</span>
-      </div>
-    );
-  }
-
-  const variant = isOldVersion ? "removed" : "added";
-
-  return (
-    <DiffContainer variant={variant} isSingleLine>
-      <SingleLineDiff oldText={oldKey} newText={newKey} isOldVersion={isOldVersion} />
-    </DiffContainer>
-  );
-};
-
-const CommentRenderer = ({
-  comment,
-  oldComment,
-  newComment,
-  hasChanges,
-  isBothSingleLine,
-  isOldVersion,
-  containerRef
-}: {
-  comment: string;
-  oldComment: string;
-  newComment: string;
-  hasChanges: boolean;
-  isBothSingleLine: boolean;
-  isOldVersion: boolean;
-  containerRef: React.RefObject<HTMLDivElement>;
-}) => {
-  if (!comment) {
-    return <span className="text-sm text-mineshaft-300">-</span>;
-  }
-
-  if (!hasChanges) {
-    return (
-      <div className="max-h-32 thin-scrollbar overflow-y-auto rounded border border-mineshaft-600 bg-bunker-800 p-2">
-        <span className="text-sm whitespace-pre-wrap">{comment}</span>
-      </div>
-    );
-  }
-
-  const variant = isOldVersion ? "removed" : "added";
-
-  if (isBothSingleLine) {
-    return (
-      <DiffContainer variant={variant} isSingleLine>
-        <SingleLineDiff oldText={oldComment} newText={newComment} isOldVersion={isOldVersion} />
-      </DiffContainer>
-    );
-  }
-
-  return (
-    <DiffContainer variant={variant} containerRef={containerRef}>
-      <MultiLineDiff oldText={oldComment} newText={newComment} isOldVersion={isOldVersion} />
-    </DiffContainer>
-  );
-};
 
 const SecretValueRenderer = ({
   isOldVersion,
@@ -129,69 +58,67 @@ const SecretValueRenderer = ({
 }) => {
   const [isVisible, setIsVisible] = useState(false);
 
-  if (isValueHidden) {
-    return (
-      <div className="relative">
-        <div className="absolute top-1/2 left-1 z-50 -translate-y-1/2">
+  const variant = isOldVersion ? "removed" : "added";
+
+  // Visibility toggle icon - shown when user can reveal value, or access denied indicator
+  const renderVisibilityIcon = () => {
+    if (isValueHidden) {
+      return (
+        <div className="absolute top-1/2 left-2 z-10 -translate-y-1/2">
           <Tooltip
             position="right"
             content={`You do not have access to view the ${isOldVersion ? "old" : "new"} secret value.`}
           >
-            <FontAwesomeIcon className="pl-2 text-mineshaft-300" size="sm" icon={faEyeSlash} />
+            <FontAwesomeIcon className="text-mineshaft-300" size="sm" icon={faEyeSlash} />
           </Tooltip>
         </div>
-        <SecretInput
-          isReadOnly
-          isVisible={isVisible}
-          valueAlwaysHidden={isValueHidden}
-          value={HIDDEN_SECRET_VALUE}
-          containerClassName="border border-mineshaft-600 bg-bunker-700 py-1.5 text-bunker-300 hover:border-primary-400/50 pr-2 pl-8"
-        />
-      </div>
-    );
-  }
-
-  if (hasValueChanges) {
-    const variant = isOldVersion ? "removed" : "added";
-    if (isBothSingleLine) {
-      return (
-        <DiffContainer variant={variant} isSingleLine>
-          <SingleLineDiff oldText={oldValue} newText={newValue} isOldVersion={isOldVersion} />
-        </DiffContainer>
       );
     }
 
-    return (
-      <DiffContainer variant={variant} containerRef={containerRef}>
-        <MultiLineDiff oldText={oldValue} newText={newValue} isOldVersion={isOldVersion} />
-      </DiffContainer>
-    );
-  }
+    if (value) {
+      return (
+        <div className="absolute top-1.5 right-1.5 z-10">
+          <Tooltip content={isVisible ? "Hide value" : "Reveal value"}>
+            <FontAwesomeIcon
+              icon={isVisible ? faEyeSlash : faEye}
+              className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsVisible(!isVisible);
+              }}
+            />
+          </Tooltip>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  const renderContent = () => {
+    if (!isVisible) {
+      return <span className="text-sm text-bunker-300">{HIDDEN_SECRET_VALUE}</span>;
+    }
+
+    // Show revealed value with diff highlighting if there are changes
+    if (hasValueChanges) {
+      if (isBothSingleLine) {
+        return <SingleLineDiff oldText={oldValue} newText={newValue} isOldVersion={isOldVersion} />;
+      }
+      return <MultiLineDiff oldText={oldValue} newText={newValue} isOldVersion={isOldVersion} />;
+    }
+
+    return <span className="text-sm whitespace-pre-wrap">{value}</span>;
+  };
+
+  const containerVariant = hasValueChanges ? variant : undefined;
 
   return (
     <div className="relative">
-      <SecretInput
-        isReadOnly
-        isVisible={isVisible}
-        valueAlwaysHidden={isValueHidden || !isVisible}
-        value={value ?? HIDDEN_SECRET_VALUE}
-        containerClassName={twMerge(
-          "border border-mineshaft-600 bg-bunker-700 py-1.5 text-bunker-300 hover:border-primary-400/50",
-          isValueHidden ? "pr-2 pl-8" : "px-2"
-        )}
-      />
-      {value && (
-        <div className="absolute top-1 right-1">
-          <FontAwesomeIcon
-            icon={isVisible ? faEyeSlash : faEye}
-            className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsVisible(!isVisible);
-            }}
-          />
-        </div>
-      )}
+      <DiffContainer variant={containerVariant} containerRef={containerRef} className="pr-8">
+        {renderContent()}
+      </DiffContainer>
+      {renderVisibilityIcon()}
     </div>
   );
 };
@@ -220,7 +147,6 @@ export const SecretDiffView = ({
   const oldComment = oldVersion?.secretComment ?? "";
   const newComment = newVersion?.secretComment ?? "";
   const hasCommentChanges = oldComment !== newComment;
-  const isCommentBothSingleLine = isSingleLine(oldComment) && isSingleLine(newComment);
 
   const oldMultiline = String(oldVersion?.skipMultilineEncoding ?? false);
   const newMultiline = String(newVersion?.skipMultilineEncoding ?? false);
@@ -245,35 +171,36 @@ export const SecretDiffView = ({
           </div>
           <div className="mb-2">
             <div className="text-sm font-medium text-mineshaft-300">Key</div>
-            <KeyRenderer
-              secretKey={oldKey}
-              oldKey={oldKey}
-              newKey={newKey}
+            <SingleLineTextDiffRenderer
+              text={oldKey}
+              oldText={oldKey}
+              newText={newKey}
               hasChanges={hasKeyChanges}
               isOldVersion
             />
           </div>
           <div className="mb-2">
             <div className="text-sm font-medium text-mineshaft-300">Value</div>
-            <SecretValueRenderer
-              value={oldVersion?.secretValue}
-              isValueHidden={oldVersion?.secretValueHidden}
-              isOldVersion
-              oldValue={oldSecretValue}
-              newValue={newSecretValue}
-              hasValueChanges={hasValueChanges}
-              isBothSingleLine={isBothSingleLine}
-              containerRef={oldDiffContainerRef}
-            />
+            {oldVersion?.secretValue && (
+              <SecretValueRenderer
+                value={oldVersion?.secretValue}
+                isValueHidden={oldVersion?.secretValueHidden}
+                isOldVersion
+                oldValue={oldSecretValue}
+                newValue={newSecretValue}
+                hasValueChanges={hasValueChanges}
+                isBothSingleLine={isBothSingleLine}
+                containerRef={oldDiffContainerRef}
+              />
+            )}
           </div>
           <div className="mb-2">
             <div className="text-sm font-medium text-mineshaft-300">Comment</div>
-            <CommentRenderer
-              comment={oldComment}
-              oldComment={oldComment}
-              newComment={newComment}
+            <MultiLineTextDiffRenderer
+              text={oldComment}
+              oldText={oldComment}
+              newText={newComment}
               hasChanges={hasCommentChanges}
-              isBothSingleLine={isCommentBothSingleLine}
               isOldVersion
               containerRef={oldCommentDiffContainerRef}
             />
@@ -324,35 +251,36 @@ export const SecretDiffView = ({
           </div>
           <div className="mb-2">
             <div className="text-sm font-medium text-mineshaft-300">Key</div>
-            <KeyRenderer
-              secretKey={newKey}
-              oldKey={oldKey}
-              newKey={newKey}
+            <SingleLineTextDiffRenderer
+              text={newKey}
+              oldText={oldKey}
+              newText={newKey}
               hasChanges={hasKeyChanges}
               isOldVersion={false}
             />
           </div>
           <div className="mb-2">
             <div className="text-sm font-medium text-mineshaft-300">Value</div>
-            <SecretValueRenderer
-              value={newVersion?.secretValue}
-              oldValue={oldSecretValue}
-              newValue={newSecretValue}
-              isValueHidden={newVersion?.secretValueHidden}
-              isOldVersion={false}
-              hasValueChanges={hasValueChanges}
-              isBothSingleLine={isBothSingleLine}
-              containerRef={newDiffContainerRef}
-            />
+            {newVersion?.secretValue && (
+              <SecretValueRenderer
+                value={newVersion?.secretValue}
+                oldValue={oldSecretValue}
+                newValue={newSecretValue}
+                isValueHidden={newVersion?.secretValueHidden}
+                isOldVersion={false}
+                hasValueChanges={hasValueChanges}
+                isBothSingleLine={isBothSingleLine}
+                containerRef={newDiffContainerRef}
+              />
+            )}
           </div>
           <div className="mb-2">
             <div className="text-sm font-medium text-mineshaft-300">Comment</div>
-            <CommentRenderer
-              comment={newComment}
-              oldComment={oldComment}
-              newComment={newComment}
+            <MultiLineTextDiffRenderer
+              text={newComment}
+              oldText={oldComment}
+              newText={newComment}
               hasChanges={hasCommentChanges}
-              isBothSingleLine={isCommentBothSingleLine}
               isOldVersion={false}
               containerRef={newCommentDiffContainerRef}
             />

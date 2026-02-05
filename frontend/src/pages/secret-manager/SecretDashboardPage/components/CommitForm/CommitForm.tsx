@@ -153,7 +153,15 @@ const RenderSecretChanges = ({ onDiscard, change, referenceCount }: RenderResour
   }
 
   if (change.type === PendingAction.Delete) {
-    const { secretKey, secretValue, secretValueHidden } = change;
+    const {
+      secretKey,
+      secretValue,
+      secretValueHidden,
+      tags,
+      secretMetadata,
+      skipMultilineEncoding,
+      comment
+    } = change;
     return (
       <SecretVersionDiffView
         onDiscard={onDiscard}
@@ -171,7 +179,11 @@ const RenderSecretChanges = ({ onDiscard, change, referenceCount }: RenderResour
                 ? secretValueHidden
                   ? HIDDEN_SECRET_VALUE_API_MASK
                   : secretValue
-                : undefined
+                : undefined,
+              tags: tags?.map((tag) => tag.slug),
+              secretMetadata,
+              skipMultilineEncoding,
+              comment
             }
           ]
         }}
@@ -376,9 +388,6 @@ export const CommitForm: React.FC<CommitFormProps> = ({
     return null;
   }
 
-  const hasOnlyFolderChanges =
-    pendingChanges.folders.length > 0 && pendingChanges.secrets.length === 0;
-
   const handleCommit = async () => {
     await onCommit(pendingChanges, commitMessage);
     clearAllPendingChanges({
@@ -390,12 +399,8 @@ export const CommitForm: React.FC<CommitFormProps> = ({
     setCommitMessage("");
   };
 
-  const handleSaveChanges = async () => {
-    if (hasOnlyFolderChanges) {
-      await handleCommit();
-    } else {
-      setIsModalOpen(true);
-    }
+  const handleSaveChanges = () => {
+    setIsModalOpen(true);
   };
 
   return (
@@ -446,7 +451,6 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                       leftIcon={<FontAwesomeIcon icon={faSave} />}
                       onClick={handleSaveChanges}
                       isDisabled={totalChangesCount === 0 || isCommitting}
-                      isLoading={isCommitting && hasOnlyFolderChanges}
                       className="px-6"
                     >
                       Save Changes
@@ -472,12 +476,12 @@ export const CommitForm: React.FC<CommitFormProps> = ({
             </div>
           }
           subTitle="Write a commit message and review the changes you're about to save."
-          className="max-h-[90vh] max-w-[95%] md:max-w-8xl"
+          className="flex h-[calc(100vh-1rem)] max-w-[95%] flex-col md:max-w-8xl"
+          bodyClassName="flex flex-1 flex-col overflow-hidden !max-h-none"
         >
-          <div className="space-y-6">
-            {/* Changes List */}
-            <div className="space-y-6">
-              <div className="max-h-[50vh] space-y-4 overflow-y-auto">
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="space-y-4">
                 {/* Folder Changes */}
                 {pendingChanges.folders.length > 0 && (
                   <div>
@@ -524,40 +528,41 @@ export const CommitForm: React.FC<CommitFormProps> = ({
               </div>
             </div>
 
-            {/* Commit Message */}
-            <div>
-              <label className="mb-2 block text-sm font-medium text-mineshaft-200">
-                Commit Message
-              </label>
-              <Input
-                value={commitMessage}
-                onChange={(e) => setCommitMessage(e.target.value)}
-                placeholder="Describe your changes..."
-                className="w-full"
-                autoFocus
-              />
-            </div>
+            <div className="shrink-0 space-y-4 border-t border-mineshaft-600 pt-4">
+              {/* Commit Message */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-mineshaft-200">
+                  Commit Message
+                </label>
+                <Input
+                  value={commitMessage}
+                  onChange={(e) => setCommitMessage(e.target.value)}
+                  placeholder="Describe your changes..."
+                  className="w-full"
+                  autoFocus
+                />
+              </div>
 
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-3">
-              <Button
-                variant="plain"
-                colorSchema="secondary"
-                onClick={() => setIsModalOpen(false)}
-                isDisabled={isCommitting}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleCommit}
-                isLoading={isCommitting}
-                isDisabled={isCommitting}
-                leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
-                colorSchema="primary"
-                variant="outline_bg"
-              >
-                {isCommitting ? "Saving..." : "Save Changes"}
-              </Button>
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="plain"
+                  colorSchema="secondary"
+                  onClick={() => setIsModalOpen(false)}
+                  isDisabled={isCommitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCommit}
+                  isLoading={isCommitting}
+                  isDisabled={isCommitting}
+                  leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
+                  colorSchema="primary"
+                  variant="outline_bg"
+                >
+                  {isCommitting ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
             </div>
           </div>
         </ModalContent>

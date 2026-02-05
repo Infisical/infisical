@@ -480,7 +480,11 @@ export const SecretListView = ({
       key,
       id: secretId,
       value,
-      secretValueHidden
+      secretValueHidden,
+      tags,
+      secretMetadata,
+      skipMultilineEncoding,
+      comment
     } = popUp.deleteSecret?.data as SecretV3RawSanitized;
     if (isBatchMode) {
       const deleteChange: PendingSecretDelete = {
@@ -490,7 +494,11 @@ export const SecretListView = ({
         secretValue: value || "",
         timestamp: Date.now(),
         resourceType: "secret",
-        secretValueHidden
+        secretValueHidden,
+        tags: tags || [],
+        secretMetadata: secretMetadata || [],
+        skipMultilineEncoding: skipMultilineEncoding || false,
+        comment: comment || ""
       };
 
       addPendingChange(deleteChange, {
