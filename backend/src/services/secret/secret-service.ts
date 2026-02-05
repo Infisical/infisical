@@ -1669,6 +1669,7 @@ export const secretServiceFactory = ({
     secretReminderRepeatDays,
     secretMetadata
   }: TCreateSecretRawDTO) => {
+    const normalizedSkipMultilineEncoding = skipMultilineEncoding ?? false;
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     const project = await projectDAL.findById(projectId);
     if (project.enforceCapitalization) {
@@ -1699,7 +1700,7 @@ export const secretServiceFactory = ({
             [SecretOperations.Create]: [
               {
                 secretKey: secretName,
-                skipMultilineEncoding,
+                skipMultilineEncoding: normalizedSkipMultilineEncoding,
                 secretComment,
                 secretValue,
                 tagIds,
@@ -1725,7 +1726,7 @@ export const secretServiceFactory = ({
         secretValue,
         tagIds,
         secretReminderNote,
-        skipMultilineEncoding,
+        skipMultilineEncoding: normalizedSkipMultilineEncoding,
         secretReminderRepeatDays,
         secretMetadata
       });
@@ -1782,7 +1783,7 @@ export const secretServiceFactory = ({
               secretCommentCiphertext: secretCommentEncrypted.ciphertext,
               secretCommentIV: secretCommentEncrypted.iv,
               secretCommentTag: secretCommentEncrypted.tag,
-              skipMultilineEncoding,
+              skipMultilineEncoding: normalizedSkipMultilineEncoding,
               tagIds
             }
           ]
@@ -1810,7 +1811,7 @@ export const secretServiceFactory = ({
       secretCommentCiphertext: secretCommentEncrypted.ciphertext,
       secretCommentIV: secretCommentEncrypted.iv,
       secretCommentTag: secretCommentEncrypted.tag,
-      skipMultilineEncoding,
+      skipMultilineEncoding: normalizedSkipMultilineEncoding,
       secretReminderRepeatDays,
       secretReminderNote,
       tags: tagIds
@@ -2175,7 +2176,7 @@ export const secretServiceFactory = ({
               secretValue: el.secretValue,
               secretComment: el.secretComment,
               metadata: el.metadata,
-              skipMultilineEncoding: el.skipMultilineEncoding,
+              skipMultilineEncoding: el.skipMultilineEncoding ?? false,
               secretKey: el.secretKey,
               secretMetadata: el.secretMetadata
             }))
@@ -2203,7 +2204,15 @@ export const secretServiceFactory = ({
       });
 
     const sanitizedSecrets = inputSecrets.map(
-      ({ secretComment, secretKey, metadata, tagIds, secretValue, skipMultilineEncoding }) => {
+      ({
+        secretComment,
+        secretKey,
+        metadata,
+        tagIds,
+        secretValue,
+        skipMultilineEncoding: rawSkipMultilineEncoding
+      }) => {
+        const skipMultilineEncoding = rawSkipMultilineEncoding ?? false;
         const secretKeyEncrypted = crypto.encryption().symmetric().encrypt({
           plaintext: secretKey,
           key: botKey,

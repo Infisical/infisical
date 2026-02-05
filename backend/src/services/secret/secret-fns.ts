@@ -920,7 +920,7 @@ export const createManySecretsRawFnFactory = ({
         secretCommentCiphertext: secretCommentEncrypted.ciphertext,
         secretCommentIV: secretCommentEncrypted.iv,
         secretCommentTag: secretCommentEncrypted.tag,
-        skipMultilineEncoding: secret.skipMultilineEncoding,
+        skipMultilineEncoding: secret.skipMultilineEncoding ?? false,
         tags: secret.tags,
         references: secretReferences
       };

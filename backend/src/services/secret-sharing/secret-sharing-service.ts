@@ -112,7 +112,7 @@ export const secretSharingServiceFactory = ({
     }
 
     if (secretValue.length > 10_000) {
-      throw new BadRequestError({ message: "Shared secret value too long" });
+      throw new BadRequestError({ message: "Shared secret value is too long" });
     }
 
     // Check lifetime is within org allowance
@@ -388,7 +388,7 @@ export const secretSharingServiceFactory = ({
     }
 
     if (secretValue.length > 10_000) {
-      throw new BadRequestError({ message: "Shared secret value too long" });
+      throw new BadRequestError({ message: "Shared secret value is too long" });
     }
 
     if (secretRequest.expiresAt && secretRequest.expiresAt < new Date()) {

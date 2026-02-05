@@ -108,7 +108,8 @@ export const useUpdateSecretV3 = ({
         secretReminderRepeatDays,
         secretReminderRecipients,
         secretPath,
-        skipMultilineEncoding,
+        skipMultilineEncoding:
+          typeof skipMultilineEncoding === "boolean" ? skipMultilineEncoding : undefined,
         newSecretName,
         secretComment,
         tagIds,
