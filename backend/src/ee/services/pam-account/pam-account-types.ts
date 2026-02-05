@@ -36,3 +36,7 @@ export type TListAccountsDTO = {
   offset?: number;
   filterResourceIds?: string[];
 } & TProjectPermission;
+
+export type TGetAccountByIdDTO = {
+  accountId: string;
+} & Omit<TProjectPermission, "projectId">;
