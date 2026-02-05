@@ -28,22 +28,16 @@ export const pamAccountRotationServiceFactory = ({
       QueueName.PamAccountRotation // job id
     );
 
-    queueService.start(
-      QueueName.PamAccountRotation,
-      async () => {
-        try {
-          logger.info(`${QueueName.PamAccountRotation}: pam account rotation task started`);
-          await pamAccountService.rotateAllDueAccounts();
-          logger.info(`${QueueName.PamAccountRotation}: pam account rotation task completed`);
-        } catch (error) {
-          logger.error(error, `${QueueName.PamAccountRotation}: pam account rotation failed`);
-          throw error;
-        }
-      },
-      {
-        persistence: true
+    queueService.start(QueueName.PamAccountRotation, async () => {
+      try {
+        logger.info(`${QueueName.PamAccountRotation}: pam account rotation task started`);
+        await pamAccountService.rotateAllDueAccounts();
+        logger.info(`${QueueName.PamAccountRotation}: pam account rotation task completed`);
+      } catch (error) {
+        logger.error(error, `${QueueName.PamAccountRotation}: pam account rotation failed`);
+        throw error;
       }
-    );
+    });
 
     await queueService.queue(QueueName.PamAccountRotation, QueueJobs.PamAccountRotation, undefined, {
       jobId: QueueJobs.PamAccountRotation,
