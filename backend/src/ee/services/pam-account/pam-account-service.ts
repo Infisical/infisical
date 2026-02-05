@@ -618,6 +618,8 @@ export const pamAccountServiceFactory = ({
   const access = async (
     {
       accountPath,
+      resourceName: inputResourceName,
+      accountName: inputAccountName,
       projectId,
       actorEmail,
       actorIp,
@@ -628,39 +630,80 @@ export const pamAccountServiceFactory = ({
     }: TAccessAccountDTO,
     actor: OrgServiceActor
   ) => {
-    const pathSegments: string[] = accountPath.split("/").filter(Boolean);
-    if (pathSegments.length === 0) {
-      throw new BadRequestError({ message: "Invalid accountPath. Path must contain at least the account name." });
-    }
+    let account;
+    let resource;
+    let folderPath = "/";
 
-    const accountName: string = pathSegments[pathSegments.length - 1] ?? "";
-    const folderPathSegments: string[] = pathSegments.slice(0, -1);
-
-    const folderPath: string = folderPathSegments.length > 0 ? `/${folderPathSegments.join("/")}` : "/";
-
-    let folderId: string | null = null;
-    if (folderPath !== "/") {
-      const folder = await pamFolderDAL.findByPath(projectId, folderPath);
-      if (!folder) {
-        throw new NotFoundError({ message: `Folder at path '${folderPath}' not found` });
+    // New approach: Use resourceName + accountName to find the account directly
+    if (inputResourceName && inputAccountName) {
+      // Find resource by name
+      resource = await pamResourceDAL.findOne({ projectId, name: inputResourceName });
+      if (!resource) {
+        throw new NotFoundError({ message: `Resource with name '${inputResourceName}' not found` });
       }
-      folderId = folder.id;
+
+      // Find account by name within the resource
+      account = await pamAccountDAL.findOne({
+        projectId,
+        resourceId: resource.id,
+        name: inputAccountName
+      });
+
+      if (!account) {
+        throw new NotFoundError({
+          message: `Account with name '${inputAccountName}' not found for resource '${inputResourceName}'`
+        });
+      }
+
+      // Get folder path if account has a folder
+      if (account.folderId) {
+        folderPath = await getFullPamFolderPath({
+          pamFolderDAL,
+          folderId: account.folderId,
+          projectId
+        });
+      }
     }
+    // Legacy approach: Use accountPath to find the account
+    else if (accountPath) {
+      const pathSegments: string[] = accountPath.split("/").filter(Boolean);
+      if (pathSegments.length === 0) {
+        throw new BadRequestError({ message: "Invalid accountPath. Path must contain at least the account name." });
+      }
 
-    const account = await pamAccountDAL.findOne({
-      projectId,
-      folderId,
-      name: accountName
-    });
+      const accountName: string = pathSegments[pathSegments.length - 1] ?? "";
+      const folderPathSegments: string[] = pathSegments.slice(0, -1);
 
-    if (!account) {
-      throw new NotFoundError({
-        message: `Account with name '${accountName}' not found at path '${accountPath}'`
+      folderPath = folderPathSegments.length > 0 ? `/${folderPathSegments.join("/")}` : "/";
+
+      let folderId: string | null = null;
+      if (folderPath !== "/") {
+        const folder = await pamFolderDAL.findByPath(projectId, folderPath);
+        if (!folder) {
+          throw new NotFoundError({ message: `Folder at path '${folderPath}' not found` });
+        }
+        folderId = folder.id;
+      }
+
+      account = await pamAccountDAL.findOne({
+        projectId,
+        folderId,
+        name: accountName
+      });
+
+      if (!account) {
+        throw new NotFoundError({
+          message: `Account with name '${accountName}' not found at path '${accountPath}'`
+        });
+      }
+
+      resource = await pamResourceDAL.findById(account.resourceId);
+      if (!resource) throw new NotFoundError({ message: `Resource with ID '${account.resourceId}' not found` });
+    } else {
+      throw new BadRequestError({
+        message: "Either (resourceName and accountName) or accountPath must be provided"
       });
     }
-
-    const resource = await pamResourceDAL.findById(account.resourceId);
-    if (!resource) throw new NotFoundError({ message: `Resource with ID '${account.resourceId}' not found` });
 
     const fac = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.PamAccess](ApprovalPolicyType.PamAccess);
 
