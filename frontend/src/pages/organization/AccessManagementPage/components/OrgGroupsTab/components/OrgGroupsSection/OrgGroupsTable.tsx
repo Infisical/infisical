@@ -55,6 +55,7 @@ type Props = {
       name?: string;
       slug?: string;
       role?: string;
+      isInherited?: boolean;
       customRole?: {
         name: string;
         slug: string;
@@ -230,7 +231,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
             {!isPending &&
               filteredGroups
                 .slice(offset, perPage * page)
-                .map(({ id, name, slug, role, customRole }) => {
+                .map(({ id, name, slug, role, customRole, orgId: groupOrgId }) => {
                   return (
                     <Tr
                       onClick={() =>
@@ -352,21 +353,27 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                               I={OrgPermissionGroupActions.Delete}
                               a={OrgPermissionSubjects.Groups}
                             >
-                              {(isAllowed) => (
-                                <DropdownMenuItem
-                                  icon={<FontAwesomeIcon icon={faTrash} />}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePopUpOpen("deleteGroup", {
-                                      groupId: id,
-                                      name
-                                    });
-                                  }}
-                                  isDisabled={!isAllowed}
-                                >
-                                  Delete Group
-                                </DropdownMenuItem>
-                              )}
+                              {(isAllowed) => {
+                                const isInherited = currentOrg
+                                  ? groupOrgId !== currentOrg.id
+                                  : false;
+                                return (
+                                  <DropdownMenuItem
+                                    icon={<FontAwesomeIcon icon={faTrash} />}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePopUpOpen("deleteGroup", {
+                                        groupId: id,
+                                        name,
+                                        isInherited
+                                      });
+                                    }}
+                                    isDisabled={!isAllowed}
+                                  >
+                                    {isInherited ? "Unlink Group" : "Delete Group"}
+                                  </DropdownMenuItem>
+                                );
+                              }}
                             </OrgPermissionCan>
                           </DropdownMenuContent>
                         </DropdownMenu>
