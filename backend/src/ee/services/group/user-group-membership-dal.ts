@@ -157,6 +157,14 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
 
   const findGroupMembershipsByUserIdInOrg = async (userId: string, orgId: string) => {
     try {
+      // Group visible in org = has Membership with scopeOrgId = orgId (native or inherited)
+      const groupIdsVisibleInOrg = db
+        .replicaNode()(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .whereNotNull(`${TableName.Membership}.actorGroupId`)
+        .select(`${TableName.Membership}.actorGroupId`);
+
       const docs = await db
         .replicaNode()(TableName.UserGroupMembership)
         .join(TableName.Groups, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
@@ -165,7 +173,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
         .where(`${TableName.UserGroupMembership}.userId`, userId)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
-        .where(`${TableName.Groups}.orgId`, orgId)
+        .whereIn(`${TableName.Groups}.id`, groupIdsVisibleInOrg)
         .select(
           db.ref("id").withSchema(TableName.UserGroupMembership),
           db.ref("groupId").withSchema(TableName.UserGroupMembership),
@@ -184,15 +192,23 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
 
   const findGroupMembershipsByGroupIdInOrg = async (groupId: string, orgId: string) => {
     try {
+      // Group visible in org = has Membership with scopeOrgId = orgId (native or inherited)
+      const groupIdsVisibleInOrg = db
+        .replicaNode()(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .whereNotNull(`${TableName.Membership}.actorGroupId`)
+        .select(`${TableName.Membership}.actorGroupId`);
+
       const docs = await db
         .replicaNode()(TableName.UserGroupMembership)
         .join(TableName.Groups, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
         .join(TableName.Membership, `${TableName.UserGroupMembership}.userId`, `${TableName.Membership}.actorUserId`)
         .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
-        .where(`${TableName.Groups}.id`, groupId)
+        .where(`${TableName.UserGroupMembership}.groupId`, groupId)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
-        .where(`${TableName.Groups}.orgId`, orgId)
+        .whereIn(`${TableName.UserGroupMembership}.groupId`, groupIdsVisibleInOrg)
         .select(
           db.ref("id").withSchema(TableName.UserGroupMembership),
           db.ref("groupId").withSchema(TableName.UserGroupMembership),
