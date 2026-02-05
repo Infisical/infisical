@@ -3400,7 +3400,7 @@ export const secretV2BridgeServiceFactory = ({
 
       const referencingSecrets = await findSecretsReferencingSecret(env, path, key);
 
-      for await (const refSecret of referencingSecrets) {
+      for (const refSecret of referencingSecrets) {
         const hasAccess = hasSecretReadValueOrDescribePermission(
           permission,
           ProjectPermissionSecretActions.DescribeSecret,

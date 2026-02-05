@@ -6,12 +6,7 @@ import {
   TreeItemIndex,
   UncontrolledTreeEnvironment
 } from "react-complex-tree";
-import {
-  faExclamationTriangle,
-  faEye,
-  faEyeSlash,
-  faProjectDiagram
-} from "@fortawesome/free-solid-svg-icons";
+import { faExclamationTriangle, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AxiosError } from "axios";
 
