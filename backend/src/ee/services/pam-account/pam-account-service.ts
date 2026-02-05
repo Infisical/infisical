@@ -659,7 +659,9 @@ export const pamAccountServiceFactory = ({
 
     const inputs = {
       resourceId: resource.id,
-      accountPath: path.join(folderPath, account.name)
+      accountPath: path.join(folderPath, account.name),
+      resourceName: resource.name,
+      accountName: account.name
     };
 
     const canAccess = await fac.canAccess(approvalRequestGrantsDAL, resource.projectId, actor.id, inputs);

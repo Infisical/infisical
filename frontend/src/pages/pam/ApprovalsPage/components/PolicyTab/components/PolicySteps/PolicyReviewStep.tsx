@@ -16,7 +16,11 @@ const ReviewField = ({ label, value }: { label: string; value: string | number }
   </div>
 );
 
-export const PolicyReviewStep = () => {
+type Props = {
+  hasLegacyAccountPaths?: boolean;
+};
+
+export const PolicyReviewStep = ({ hasLegacyAccountPaths }: Props) => {
   const { watch } = useFormContext<TPolicyForm>();
   const { currentProject } = useProject();
   const projectId = currentProject?.id || "";
@@ -41,6 +45,10 @@ export const PolicyReviewStep = () => {
     return approverId;
   };
 
+  const resourceNames = conditions[0]?.resourceNames || [];
+  const accountNames = conditions[0]?.accountNames || [];
+  const accountPaths = conditions[0]?.accountPaths || [];
+
   return (
     <div className="space-y-6">
       <div>
@@ -50,12 +58,18 @@ export const PolicyReviewStep = () => {
         <div className="grid grid-cols-2 gap-2">
           <ReviewField label="Policy Name" value={name || "Not set"} />
           <ReviewField label="Max. Access Duration" value={constraints.accessDuration.max} />
-          <ReviewField
-            label="Account Paths"
-            value={
-              conditions[0].accountPaths.length ? conditions[0].accountPaths.join(",") : "Not set"
-            }
-          />
+          {resourceNames.length > 0 && (
+            <ReviewField label="Resource Names" value={resourceNames.join(", ")} />
+          )}
+          {accountNames.length > 0 && (
+            <ReviewField label="Account Names" value={accountNames.join(", ")} />
+          )}
+          {resourceNames.length === 0 && accountNames.length === 0 && !hasLegacyAccountPaths && (
+            <ReviewField label="Conditions" value="Not set" />
+          )}
+          {hasLegacyAccountPaths && accountPaths.length > 0 && (
+            <ReviewField label="Account Paths (Legacy)" value={accountPaths.join(", ")} />
+          )}
         </div>
       </div>
 

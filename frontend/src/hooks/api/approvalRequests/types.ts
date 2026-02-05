@@ -50,8 +50,10 @@ export type ApprovalRequestStep = {
 };
 
 export type PamAccessRequestData = {
-  accountPath: string;
+  accountPath?: string;
   accessDuration: string;
+  resourceName?: string;
+  accountName?: string;
 };
 
 export type CertRequestRequestData = {
