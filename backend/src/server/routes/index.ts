@@ -713,7 +713,8 @@ export const registerRoutes = async (
     secretApprovalPolicyApproverDAL: sapApproverDAL,
     roleDAL,
     permissionService,
-    orgDAL
+    orgDAL,
+    groupDAL
   });
 
   const roleService = roleServiceFactory({
