@@ -45,6 +45,8 @@ import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 import { TQueueJobsDALFactory } from "./queue-jobs-dal";
 import { PersistenceQueueStatus } from "./queue-types";
 
+const RECOVERY_BATCH_SIZE = 500;
+
 export enum QueueName {
   // Internal queues for durable queue recovery
   QueueInternalRecovery = "queue-internal-recovery",
@@ -573,6 +575,7 @@ export const queueServiceFactory = (
    * Recovers pending and failed jobs from PostgreSQL after server restart
    * - Pending jobs: Jobs that were queued but not yet processed
    * - Failed jobs: Jobs that failed but haven't reached max attempts (can retry)
+   * Uses pagination to avoid loading all jobs into memory at once
    */
   const startupRecovery = async () => {
     logger.info("Starting queue startup recovery...");
@@ -584,59 +587,85 @@ export const queueServiceFactory = (
     }
 
     try {
-      // Recover both pending jobs and failed jobs that can be retried
-      const pendingJobs = await queueJobsDAL.find({
-        $in: {
-          queueName: queueNames,
-          status: [PersistenceQueueStatus.Pending, PersistenceQueueStatus.Failed]
-        }
-      });
+      let offset = 0;
+      let totalRecovered = 0;
+      let jobsInBatch: TQueueJobs[];
 
-      logger.info({ count: pendingJobs.length }, "Found jobs for recovery (pending + failed)");
-
-      for await (const job of pendingJobs) {
-        const queueName = job.queueName as QueueName;
-        const q = queueContainer[queueName];
-        if (!q) {
-          logger.warn({ queueName, jobId: job.jobId }, "Queue not initialized, skipping job");
-          // eslint-disable-next-line no-continue
-          continue;
-        }
-
-        const opts = (job.queueOptions || {}) as TQueueOptions;
-
-        // Check if already in Redis (avoid duplicates)
-        const existingJob = await q.getJob(job.jobId);
-        if (existingJob) {
-          logger.debug({ jobId: job.jobId, queueName }, "Job already in Redis, skipping");
-          // eslint-disable-next-line no-continue
-          continue;
-        }
-
-        // For failed jobs, run immediately (no delay)
-        // For pending jobs with delay, recalculate based on original schedule
-        let adjustedDelay: number | undefined;
-        const isFailedJob = job.status === PersistenceQueueStatus.Failed;
-
-        if (!isFailedJob && opts.delay && opts.delay > 0) {
-          const originalScheduledTime = new Date(job.createdAt).getTime() + opts.delay;
-          adjustedDelay = Math.max(0, originalScheduledTime - Date.now());
-        }
-
-        // Re-queue the job
-        await q.add(job.queueJobName as TQueueJobTypes[typeof queueName]["name"], job.queueData as never, {
-          ...opts,
-          delay: adjustedDelay,
-          jobId: job.jobId
-        });
-
-        logger.info(
-          { jobId: job.jobId, queueName, adjustedDelay, wasFailedJob: isFailedJob },
-          "Job recovered and re-queued"
+      do {
+        // eslint-disable-next-line no-await-in-loop
+        jobsInBatch = await queueJobsDAL.find(
+          {
+            $in: {
+              queueName: queueNames,
+              status: [PersistenceQueueStatus.Pending, PersistenceQueueStatus.Failed]
+            }
+          },
+          {
+            limit: RECOVERY_BATCH_SIZE,
+            offset,
+            sort: [["createdAt", "asc"]]
+          }
         );
-      }
 
-      logger.info("Queue startup recovery completed");
+        if (jobsInBatch.length > 0) {
+          logger.info({ batchSize: jobsInBatch.length, offset }, "Processing recovery batch");
+
+          // eslint-disable-next-line no-await-in-loop
+          for (const job of jobsInBatch) {
+            const queueName = job.queueName as QueueName;
+            const q = queueContainer[queueName];
+            if (!q) {
+              logger.warn({ queueName, jobId: job.jobId }, "Queue not initialized, skipping job");
+              // eslint-disable-next-line no-continue
+              continue;
+            }
+
+            const opts = (job.queueOptions || {}) as TQueueOptions;
+
+            // Check if already in Redis (avoid duplicates)
+            // eslint-disable-next-line no-await-in-loop
+            const existingJob = await q.getJob(job.jobId);
+            if (existingJob) {
+              logger.debug({ jobId: job.jobId, queueName }, "Job already in Redis, skipping");
+              // eslint-disable-next-line no-continue
+              continue;
+            }
+
+            // For failed jobs, run immediately (no delay)
+            // For pending jobs with delay, recalculate based on original schedule
+            let adjustedDelay: number | undefined;
+            const isFailedJob = job.status === PersistenceQueueStatus.Failed;
+
+            if (!isFailedJob && opts.delay && opts.delay > 0) {
+              const originalScheduledTime = new Date(job.createdAt).getTime() + opts.delay;
+              adjustedDelay = Math.max(0, originalScheduledTime - Date.now());
+            }
+
+            // Re-queue the job
+            // eslint-disable-next-line no-await-in-loop
+            await q.add(job.queueJobName as TQueueJobTypes[typeof queueName]["name"], job.queueData as never, {
+              ...opts,
+              delay: adjustedDelay,
+              jobId: job.jobId
+            });
+
+            logger.info(
+              { jobId: job.jobId, queueName, adjustedDelay, wasFailedJob: isFailedJob },
+              "Job recovered and re-queued"
+            );
+          }
+
+          totalRecovered += jobsInBatch.length;
+          offset += RECOVERY_BATCH_SIZE;
+        }
+
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((resolve) => {
+          setTimeout(resolve, 10); // time to breathe for db
+        });
+      } while (jobsInBatch.length === RECOVERY_BATCH_SIZE);
+
+      logger.info({ totalRecovered }, "Queue startup recovery completed");
     } catch (error) {
       logger.error(error, "Queue startup recovery failed");
     }
@@ -933,16 +962,24 @@ export const queueServiceFactory = (
     };
 
     if (persistantQueues.has(name)) {
-      await queueJobsDAL.create({
-        queueName: name,
-        queueType: "bullmq",
-        queueJobName: job,
-        jobId,
-        queueData: data,
-        queueOptions: finalOptions,
-        status: PersistenceQueueStatus.Pending,
-        maxAttempts: opts.attempts || 1
+      await queueJobsDAL.transaction(async (tx) => {
+        await queueJobsDAL.create(
+          {
+            queueName: name,
+            queueType: "bullmq",
+            queueJobName: job,
+            jobId,
+            queueData: data,
+            queueOptions: finalOptions,
+            status: PersistenceQueueStatus.Pending,
+            maxAttempts: opts.attempts || 1
+          },
+          tx
+        );
+        // if this fails transaction rollback happens
+        await q.add(job, data, { ...opts, jobId });
       });
+      return;
     }
 
     await q.add(job, data, { ...opts, jobId });

@@ -129,7 +129,7 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
 
       // Indexes for query optimization
-      t.index(["queueName", "status"]);
+      t.index(["queueName", "status", "createdAt"]);
       t.index(["jobId", "queueName"]);
       t.index(["status"]);
     });
