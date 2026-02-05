@@ -371,12 +371,18 @@ const secretScanningRoutes = route("/organizations/$orgId/projects/secret-scanni
 
 const pamRoutes = route("/organizations/$orgId/projects/pam/$projectId", [
   layout("pam-layout", "pam/layout.tsx", [
-    route("/accounts", "pam/PamAccountsPage/route.tsx"),
+    route("/accounts", [
+      index("pam/PamAccountsPage/route.tsx"),
+      route("/$accountId", "pam/PamAccountByIDPage/route.tsx")
+    ]),
     route("/sessions", [
       index("pam/PamSessionsPage/route.tsx"),
       route("/$sessionId", "pam/PamSessionsByIDPage/route.tsx")
     ]),
-    route("/resources", "pam/PamResourcesPage/route.tsx"),
+    route("/resources", [
+      index("pam/PamResourcesPage/route.tsx"),
+      route("/$resourceType/$resourceId", "pam/PamResourceByIDPage/route.tsx")
+    ]),
     route("/audit-logs", "project/AuditLogsPage/route-pam.tsx"),
     route("/settings", "pam/SettingsPage/route.tsx"),
     route("/approvals", "pam/ApprovalsPage/route.tsx"),

@@ -39,6 +39,50 @@ const ListPamAccountsResponseSchema = z.object({
 export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
+    url: "/:accountId",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Get PAM account by ID",
+      params: z.object({
+        accountId: z.string().uuid()
+      }),
+      response: {
+        200: SanitizedAccountSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { accountId } = req.params;
+
+      const account = await server.services.pamAccount.getById({
+        accountId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: account.projectId,
+        event: {
+          type: EventType.PAM_ACCOUNT_GET,
+          metadata: {
+            accountId: account.id,
+            accountName: account.name
+          }
+        }
+      });
+
+      return account;
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/",
     config: {
       rateLimit: readLimit

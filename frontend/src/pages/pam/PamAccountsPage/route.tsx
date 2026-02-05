@@ -13,7 +13,7 @@ const PamAccountsPageQueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/accounts"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/accounts/"
 )({
   validateSearch: zodValidator(PamAccountsPageQueryParamsSchema),
   search: {
