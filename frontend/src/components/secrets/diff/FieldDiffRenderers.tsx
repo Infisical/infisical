@@ -1,9 +1,13 @@
-import { faKey } from "@fortawesome/free-solid-svg-icons";
+import { faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { computeWordDiff } from "@app/components/utilities/diff";
+import { computeWordDiff, isSingleLine } from "@app/components/utilities/diff";
 import { Tag, Tooltip } from "@app/components/v2";
+
+import { DiffContainer } from "./DiffContainer";
+import { MultiLineDiff } from "./MultiLineDiff";
+import { SingleLineDiff } from "./SingleLineDiff";
 
 // Inline text diff renderer (for Key, Comment, Multi-line Encoding)
 export const InlineTextDiff = ({
@@ -122,22 +126,26 @@ export const MetadataDiffRenderer = ({
   otherMetadata,
   isOldVersion
 }: {
-  metadata?: Array<{ key: string; value: string }>;
-  otherMetadata?: Array<{ key: string; value: string }>;
+  metadata?: Array<{ key: string; value: string; isEncrypted?: boolean }>;
+  otherMetadata?: Array<{ key: string; value: string; isEncrypted?: boolean }>;
   isOldVersion: boolean;
 }) => {
   if (!metadata?.length) {
     return <p className="text-sm text-mineshaft-300">-</p>;
   }
 
-  const otherMetaByKey = new Map(otherMetadata?.map((m) => [m.key, m.value]) ?? []);
+  const otherMetaByKey = new Map(
+    otherMetadata?.map((m) => [m.key, { value: m.value, isEncrypted: m.isEncrypted }]) ?? []
+  );
   const otherMetaByValue = new Map(otherMetadata?.map((m) => [m.value, m.key]) ?? []);
 
   return (
     <div className="mt-1 flex flex-wrap gap-2 text-sm text-mineshaft-300">
       {metadata.map((el) => {
         const keyExistsInOther = otherMetaByKey.has(el.key);
-        const otherValueForKey = otherMetaByKey.get(el.key);
+        const otherDataForKey = otherMetaByKey.get(el.key);
+        const otherValueForKey = otherDataForKey?.value;
+        const otherIsEncrypted = otherDataForKey?.isEncrypted;
 
         const valueExistsWithDifferentKey =
           !keyExistsInOther &&
@@ -149,30 +157,36 @@ export const MetadataDiffRenderer = ({
         const isValueChanged = keyExistsInOther && otherValueForKey !== el.value;
         const isKeyRenamed = valueExistsWithDifferentKey;
 
+        const encryptionChanged = keyExistsInOther && el.isEncrypted !== otherIsEncrypted;
+        const encryptionTurnedOff = encryptionChanged && isOldVersion && el.isEncrypted === true;
+        const encryptionTurnedOn = encryptionChanged && !isOldVersion && el.isEncrypted === true;
+
         const keyHighlighted = isEntirelyNew || isEntirelyRemoved || isKeyRenamed;
         const valueHighlighted = isEntirelyNew || isEntirelyRemoved || isValueChanged;
 
-        const hasAnyChange = keyHighlighted || valueHighlighted;
-        const borderColorClass = isOldVersion ? "border-red-500/60" : "border-green-500/60";
+        const hasAnyChange = keyHighlighted || valueHighlighted || encryptionChanged;
+        const borderColorClass = isOldVersion ? "border-red-500" : "border-green-500";
         const borderClass = twMerge(
           "border",
           hasAnyChange && borderColorClass,
           !hasAnyChange && "border-mineshaft-500"
         );
 
-        // Key: grey background with colored ring if changed
         const keyBgClass = twMerge(
           "bg-mineshaft-500",
-          keyHighlighted &&
-            (isOldVersion
-              ? "bg-red-500/30 ring-1 ring-red-500/60 ring-inset"
-              : "bg-green-500/30 ring-1 ring-green-500/60 ring-inset")
+          keyHighlighted && (isOldVersion ? "bg-red-500/30" : "bg-green-500/30")
         );
 
-        // Value: color background if changed
         const valueBgClass = twMerge(
           valueHighlighted && (isOldVersion ? "bg-red-900/30" : "bg-green-900/30"),
           !valueHighlighted && "bg-mineshaft-900"
+        );
+
+        const lockIconClass = twMerge(
+          "mr-1",
+          encryptionTurnedOff && "text-red-500",
+          encryptionTurnedOn && "text-green-500",
+          !encryptionTurnedOff && !encryptionTurnedOn && "text-mineshaft-300"
         );
 
         return (
@@ -181,7 +195,11 @@ export const MetadataDiffRenderer = ({
               size="xs"
               className={twMerge("mr-0 flex items-center rounded-r-none", borderClass, keyBgClass)}
             >
-              <FontAwesomeIcon icon={faKey} size="xs" className="mr-1" />
+              {el.isEncrypted && (
+                <Tooltip content="This value is encrypted">
+                  <FontAwesomeIcon icon={faLock} size="xs" className={lockIconClass} />
+                </Tooltip>
+              )}
               <Tooltip className="max-w-lg break-words whitespace-normal" content={el.key}>
                 <div className="max-w-[125px] overflow-hidden text-ellipsis whitespace-nowrap">
                   {el.key}
@@ -206,5 +224,84 @@ export const MetadataDiffRenderer = ({
         );
       })}
     </div>
+  );
+};
+
+export const SingleLineTextDiffRenderer = ({
+  text,
+  oldText,
+  newText,
+  hasChanges,
+  isOldVersion
+}: {
+  text: string;
+  oldText: string;
+  newText: string;
+  hasChanges: boolean;
+  isOldVersion: boolean;
+}) => {
+  if (!text) {
+    return <span className="text-sm text-mineshaft-300">-</span>;
+  }
+
+  if (!hasChanges) {
+    return (
+      <DiffContainer isSingleLine>
+        <span className="text-sm">{text}</span>
+      </DiffContainer>
+    );
+  }
+
+  const variant = isOldVersion ? "removed" : "added";
+
+  return (
+    <DiffContainer variant={variant} isSingleLine>
+      <SingleLineDiff oldText={oldText} newText={newText} isOldVersion={isOldVersion} />
+    </DiffContainer>
+  );
+};
+
+export const MultiLineTextDiffRenderer = ({
+  text,
+  oldText,
+  newText,
+  hasChanges,
+  isOldVersion,
+  containerRef
+}: {
+  text: string;
+  oldText: string;
+  newText: string;
+  hasChanges: boolean;
+  isOldVersion: boolean;
+  containerRef?: React.RefObject<HTMLDivElement>;
+}) => {
+  if (!text) {
+    return <span className="text-sm text-mineshaft-300">-</span>;
+  }
+
+  if (!hasChanges) {
+    return (
+      <DiffContainer containerRef={containerRef}>
+        <span className="text-sm whitespace-pre-wrap">{text}</span>
+      </DiffContainer>
+    );
+  }
+
+  const variant = isOldVersion ? "removed" : "added";
+  const isBothSingleLine = isSingleLine(oldText) && isSingleLine(newText);
+
+  if (isBothSingleLine) {
+    return (
+      <DiffContainer variant={variant} isSingleLine>
+        <SingleLineDiff oldText={oldText} newText={newText} isOldVersion={isOldVersion} />
+      </DiffContainer>
+    );
+  }
+
+  return (
+    <DiffContainer variant={variant} containerRef={containerRef}>
+      <MultiLineDiff oldText={oldText} newText={newText} isOldVersion={isOldVersion} />
+    </DiffContainer>
   );
 };
