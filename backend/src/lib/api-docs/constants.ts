@@ -831,8 +831,8 @@ export const ORG_IDENTITY_MEMBERSHIP = {
 
 export const SUB_ORGANIZATIONS = {
   CREATE: {
-    name: "The display name of the sub organization (e.g. 'Acme Corp'). Allows alphanumeric characters, spaces, dashes, and underscores.",
-    slug: "Optional. The slug of the sub organization (e.g. 'acme-corp'). If not provided, it is auto-generated from the name. Must be lowercase with hyphens only."
+    name: "The display name of the sub-organization (e.g. 'Acme Corp'). Allows alphanumeric characters, spaces, dashes, and underscores.",
+    slug: "Optional. The slug of the sub-organization (e.g. 'acme-corp'). If not provided, it is auto-generated from the name. Must be lowercase with hyphens only."
   },
   UPDATE: {
     name: "Optional. The display name of the sub-organization. When only the name is provided (no slug), both name and slug are updated.",
