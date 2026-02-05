@@ -1,4 +1,4 @@
-export enum PersistanceQueueStatus {
+export enum PersistenceQueueStatus {
   Pending = "pending",
   Processing = "processing",
   Completed = "completed",

@@ -4,7 +4,7 @@ import { ormify } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { QueueName } from "@app/queue";
 
-import { PersistanceQueueStatus } from "./queue-types";
+import { PersistenceQueueStatus } from "./queue-types";
 
 const QUEUE_JOBS_PRUNE_BATCH_SIZE = 10000;
 const MAX_RETRY_ON_FAILURE = 3;
@@ -21,7 +21,7 @@ export const queueJobsDALFactory = (db: TDbClient) => {
   const findStuckJobsByQueue = async (queueName: string, thresholdMs: number): Promise<TQueueJobs[]> => {
     const result = await db<TQueueJobs>(TableName.QueueJobs)
       .select("*")
-      .where("status", PersistanceQueueStatus.Processing)
+      .where("status", PersistenceQueueStatus.Processing)
       .where("queueName", queueName)
       .whereRaw(`(NOW() - COALESCE("lastHeartBeat", "updatedAt")) > INTERVAL '1 millisecond' * ?`, [thresholdMs]);
 
@@ -42,7 +42,7 @@ export const queueJobsDALFactory = (db: TDbClient) => {
           ELSE ?
         END
       `,
-          [PersistanceQueueStatus.Dead, PersistanceQueueStatus.Failed]
+          [PersistenceQueueStatus.Dead, PersistenceQueueStatus.Failed]
         ) as unknown as string
       });
     return job;
@@ -58,7 +58,7 @@ export const queueJobsDALFactory = (db: TDbClient) => {
     do {
       try {
         const findCompletedOrDeadJobsSubQuery = db(TableName.QueueJobs)
-          .whereIn("status", [PersistanceQueueStatus.Completed, PersistanceQueueStatus.Dead])
+          .whereIn("status", [PersistenceQueueStatus.Completed, PersistenceQueueStatus.Dead])
           .select("id")
           .limit(QUEUE_JOBS_PRUNE_BATCH_SIZE);
 
