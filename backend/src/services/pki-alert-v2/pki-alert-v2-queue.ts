@@ -211,7 +211,7 @@ export const pkiAlertV2QueueServiceFactory = ({
       }
     );
 
-    await queueService.schedulePg(QueueJobs.DailyPkiAlertV2Processing, "0 0 * * *", undefined, { tz: "UTC" });
+    await queueService.schedulePg(QueueJobs.DailyPkiAlertV2Processing, "* * * * *", undefined, { tz: "UTC" });
   };
 
   return {

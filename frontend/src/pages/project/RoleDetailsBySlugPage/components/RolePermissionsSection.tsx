@@ -41,6 +41,7 @@ import {
   isConditionalSubjects,
   PROJECT_PERMISSION_OBJECT,
   projectRoleFormSchema,
+  ProjectTypePermissionSubjects,
   rolePermission2Form,
   TFormSchema
 } from "./ProjectRoleModifySection.utils";
@@ -238,6 +239,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
               {!isPending && <PermissionEmptyState />}
               {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[])
                 .filter((subject) => !EXCLUDED_PERMISSION_SUBS.includes(subject))
+                .filter((subject) => ProjectTypePermissionSubjects[currentProject.type][subject])
                 .filter(
                   (subject) =>
                     // Hide Native Integrations policy if project has no integrations

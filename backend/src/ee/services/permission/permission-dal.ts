@@ -77,6 +77,7 @@ export interface TPermissionDALFactory {
         temporaryAccessEndTime: Date | null | undefined;
         isTemporary: boolean;
       }[];
+      id: string;
       userId: string;
       username: string;
       metadata: {
@@ -514,6 +515,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         })
         .select(
           db.ref("id").withSchema(TableName.Users).as("userId"),
+          db.ref("id").withSchema(TableName.Membership).as("membershipId"),
           db.ref("username").withSchema(TableName.Users).as("username"),
           db.ref("slug").withSchema(TableName.Role).as("roleSlug"),
           db.ref("permissions").withSchema(TableName.Role).as("customRolePermission"),
@@ -558,10 +560,11 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
       const userPermissions = sqlNestRelationships({
         data: docs,
         key: "userId",
-        parentMapper: ({ username, userId }) => ({
+        parentMapper: ({ username, userId, membershipId }) => ({
           userId,
           projectId,
-          username
+          username,
+          id: membershipId
         }),
         childrenMapper: [
           {
