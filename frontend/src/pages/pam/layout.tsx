@@ -8,7 +8,7 @@ import { PamLayout } from "@app/layouts/PamLayout";
 import { ProjectSelect } from "@app/layouts/ProjectLayout/components/ProjectSelect";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layou t"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout"
 )({
   component: PamLayout,
   beforeLoad: async ({ params, context }) => {

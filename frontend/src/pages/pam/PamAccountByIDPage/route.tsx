@@ -3,7 +3,7 @@ import { createFileRoute, linkOptions } from "@tanstack/react-router";
 import { PamAccountByIDPage } from "./PamAccountByIDPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layou t/accounts/$accountId"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/accounts/$accountId"
 )({
   component: PamAccountByIDPage,
   beforeLoad: ({ context, params }) => {

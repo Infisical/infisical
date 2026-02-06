@@ -1,0 +1,87 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: issuer-infisical
+spec:
+  acme:
+    email: sheen@infisical.com
+    enableDurationFeature: true
+    # ACME server URL from your Infisical certificate profile (Step 1)
+    # server: https://sheen.ngrok.app/api/v1/cert-manager/acme/profiles/d102e21d-7842-40c8-951b-f515577ada0d/directory
+    # Email address for ACME account
+    # (any valid email works; currently ignored by Infisical)
+    externalAccountBinding:
+      # EAB Key ID from Step 1
+      keyID: d102e21d-7842-40c8-951b-f515577ada0d
+      # Reference to the Kubernetes Secret containing the EAB
+      # HMAC key (created in Step 3)
+      keySecretRef:
+        name: infisical-acme-eab-secret
+        key: eabSecret
+    privateKeySecretRef:
+      name: issuer-infisical-account-key
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: certificate-by-issuer
+spec:
+  dnsNames:
+    - certificate-by-issuer.example.com
+  # name of the resulting Kubernetes Secret
+  secretName: certificate-by-issuer
+  # total validity period of the certificate
+  duration: 480h
+  # cert-manager will attempt renewal 12 hours before expiry
+  renewBefore: 12h
+  privateKey:
+    algorithm: RSA
+    # 2048-bit RSA key
+    size: 2048
+  issuerRef:
+    name: issuer-infisical
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: infisical-ca-cert
+  namespace: cert-manager
+type: Opaque
+stringData:
+  ca.crt: |
+    -----BEGIN CERTIFICATE-----
+    MIIDWzCCAkOgAwIBAgIUJsnD46rmNGOb4nJE5mbprPDPI4EwDQYJKoZIhvcNAQEL
+    BQAwRDESMBAGA1UEChMJQWNtZSBDb3JwMS4wLAYDVQQDEyVFbnRlcnByaXNlIFJv
+    b3QgQ2VydGlmaWNhdGUgQXV0aG9yaXR5MB4XDTI0MDEwMTAwMDAwMFoXDTMyMDEw
+    MTAwMDAwMFowRDESMBAGA1UEChMJQWNtZSBDb3JwMS4wLAYDVQQDEyVFbnRlcnBy
+    aXNlIFJvb3QgQ2VydGlmaWNhdGUgQXV0aG9yaXR5MIIBIjANBgkqhkiG9w0BAQEF
+    AAOCAQ8AMIIBCgKCAQEAlCfeClp0uSueJO8mDmC/GZIQUlz9RdHUmneBEelT4TvX
+    q73Wt56x8wR6LI5XakhmP/DnldbAHZupvB0031xx7OTdysfldWYcvmo32nI8iHDG
+    NW8f7eZC2E3mFowgp5VqVbhBa3uGtkCP79RbVEDm2IGDeVnkfhPh9rDtb09w99LP
+    Tb7brnNypiSx0NHFIFCfRljVN56Nrk1MlW3J4c8d6xsRLhe3r55XLr/iObeoQJML
+    a5wKZu+peC38n5zqbk8fLp9bqVQu9hpwH3/427iBR01DxQ5Nqth32gJs5KIoqDyc
+    D3QDXEvunm3m/C9lg0jOzn1yftqIVSO0mHgGTl2yvwIDAQABo0UwQzASBgNVHRMB
+    Af8ECDAGAQH/AgEDMA4GA1UdDwEB/wQEAwIBBjAdBgNVHQ4EFgQU+5G1bqlt4AbN
+    i6fI6BtQGx/3HJ0wDQYJKoZIhvcNAQELBQADggEBAJBRXx3yxhopkNLuFoFzLoWM
+    Qu63ItAJ4vJU0hWcDx7Mam2OJoFCqlL+sLhabFWSqFBLEed/U1sI3woVAGlNKTmE
+    /5k1ulI4w986oMx4AtjydQkjDOlTMv+w4ezoWoPKyntjl/Dwsnghqk0OEbLOr9hF
+    e9ydNhxwcs5nmDhGbr6xukqyVBAb7Hyzr9cu+0tRa7RC/dAIH/froQ3Gj4R8rSyN
+    Krmk81HvvxRBDbgVbfd1yEyLdLHL74iOfUbaQkIWfXph6n9gAfPpOaxEet8FGKgO
+    600lkVmxobAdAaNnPqo+N68fusNfLOylP46Up7XWDhsAWyB2+odHa8Sdgm4xjA0=
+    -----END CERTIFICATE-----
+---
+apiVersion: trust.cert-manager.io/v1alpha1
+kind: Bundle
+metadata:
+  name: certificate-by-issuer
+spec:
+  sources:
+    - secret:
+        name: infisical-ca-cert
+        key: ca.crt
+  target:
+    secret:
+      key: ca.crt
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: default # change to your namespace

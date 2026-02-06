@@ -5,7 +5,7 @@ import { ProjectAccessControlTabs } from "@app/types/project";
 import { RoleDetailsBySlugPage } from "./RoleDetailsBySlugPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layou t/roles/$roleSlug"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/roles/$roleSlug"
 )({
   component: RoleDetailsBySlugPage,
   beforeLoad: ({ context, params }) => {
