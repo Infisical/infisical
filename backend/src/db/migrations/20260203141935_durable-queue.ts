@@ -31,7 +31,6 @@ const migratePgBossJobsToQueueJobs = async <TData>(
   let jobCount = 0;
 
   do {
-    console.log(">>>> pg boss trigger");
     const jobs = await db.query<{ id: string; name: string; data: TData; start_after: Date }>(
       `
         SELECT id, name, data, start_after
@@ -45,7 +44,6 @@ const migratePgBossJobsToQueueJobs = async <TData>(
     );
 
     jobCount = jobs.rows.length;
-    console.log(jobCount);
     if (jobCount > 0) {
       await knex(TableName.QueueJobs).insert(
         jobs.rows.map((job) => {
@@ -157,16 +155,12 @@ export async function up(knex: Knex): Promise<void> {
       );
 
       if (schemaCheck.rows[0].exists) {
-        console.log("trigger 1");
         await migratePamSessionExpirationToQueueJobs(knex, db);
-
-        console.log("trigger 2");
         await migrateDynamicSecretRevocationToQueueJobs(knex, db);
       }
     } finally {
       await db.end();
     }
-    console.log("trigger 3");
   }
 }
 
