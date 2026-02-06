@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { faCircleCheck, faCircleXmark, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { isSingleLine } from "@app/components/utilities/diff";
+import { isSingleLine, scrollToFirstChange } from "@app/components/utilities/diff";
 import { Tooltip } from "@app/components/v2";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
@@ -74,30 +74,40 @@ const SecretValueRenderer = ({
         </div>
       );
     }
+    const handleToggleVisibility = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const newVisibility = !isVisible;
+      setIsVisible(newVisibility);
 
-    if (value) {
-      return (
-        <div className="absolute top-1.5 right-1.5 z-10">
-          <Tooltip content={isVisible ? "Hide value" : "Reveal value"}>
-            <FontAwesomeIcon
-              icon={isVisible ? faEyeSlash : faEye}
-              className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsVisible(!isVisible);
-              }}
-            />
-          </Tooltip>
-        </div>
-      );
-    }
+      // Scroll to first change when revealing multi-line content
+      if (newVisibility && !isBothSingleLine && containerRef?.current) {
+        // Allow DOM to update before scrolling
+        setTimeout(() => {
+          if (containerRef.current) {
+            scrollToFirstChange(containerRef.current);
+          }
+        }, 100);
+      }
+    };
 
-    return null;
+    return (
+      <div className="absolute top-1 right-1.5 z-10">
+        <Tooltip content={isVisible ? "Hide value" : "Reveal value"}>
+          <FontAwesomeIcon
+            icon={isVisible ? faEyeSlash : faEye}
+            className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
+            onClick={handleToggleVisibility}
+          />
+        </Tooltip>
+      </div>
+    );
   };
 
   const renderContent = () => {
     if (!isVisible) {
-      return <span className="text-sm text-bunker-300">{HIDDEN_SECRET_VALUE}</span>;
+      return (
+        <div className="font-mono text-sm break-words text-bunker-300">{HIDDEN_SECRET_VALUE}</div>
+      );
     }
 
     // Show revealed value with diff highlighting if there are changes
@@ -108,10 +118,14 @@ const SecretValueRenderer = ({
       return <MultiLineDiff oldText={oldValue} newText={newValue} isOldVersion={isOldVersion} />;
     }
 
-    return <span className="text-sm whitespace-pre-wrap">{value}</span>;
+    return <div className="font-mono text-sm break-words whitespace-pre-wrap">{value}</div>;
   };
 
   const containerVariant = hasValueChanges ? variant : undefined;
+
+  if (!value) {
+    return <span className="text-sm text-mineshaft-300">-</span>;
+  }
 
   return (
     <div className="relative">
@@ -181,18 +195,16 @@ export const SecretDiffView = ({
           </div>
           <div className="mb-2">
             <div className="text-sm font-medium text-mineshaft-300">Value</div>
-            {oldVersion?.secretValue && (
-              <SecretValueRenderer
-                value={oldVersion?.secretValue}
-                isValueHidden={oldVersion?.secretValueHidden}
-                isOldVersion
-                oldValue={oldSecretValue}
-                newValue={newSecretValue}
-                hasValueChanges={hasValueChanges}
-                isBothSingleLine={isBothSingleLine}
-                containerRef={oldDiffContainerRef}
-              />
-            )}
+            <SecretValueRenderer
+              value={oldVersion?.secretValue}
+              isValueHidden={oldVersion?.secretValueHidden}
+              isOldVersion
+              oldValue={oldSecretValue}
+              newValue={newSecretValue}
+              hasValueChanges={hasValueChanges}
+              isBothSingleLine={isBothSingleLine}
+              containerRef={oldDiffContainerRef}
+            />
           </div>
           <div className="mb-2">
             <div className="text-sm font-medium text-mineshaft-300">Comment</div>
@@ -261,18 +273,16 @@ export const SecretDiffView = ({
           </div>
           <div className="mb-2">
             <div className="text-sm font-medium text-mineshaft-300">Value</div>
-            {newVersion?.secretValue && (
-              <SecretValueRenderer
-                value={newVersion?.secretValue}
-                oldValue={oldSecretValue}
-                newValue={newSecretValue}
-                isValueHidden={newVersion?.secretValueHidden}
-                isOldVersion={false}
-                hasValueChanges={hasValueChanges}
-                isBothSingleLine={isBothSingleLine}
-                containerRef={newDiffContainerRef}
-              />
-            )}
+            <SecretValueRenderer
+              value={newVersion?.secretValue}
+              oldValue={oldSecretValue}
+              newValue={newSecretValue}
+              isValueHidden={newVersion?.secretValueHidden}
+              isOldVersion={false}
+              hasValueChanges={hasValueChanges}
+              isBothSingleLine={isBothSingleLine}
+              containerRef={newDiffContainerRef}
+            />
           </div>
           <div className="mb-2">
             <div className="text-sm font-medium text-mineshaft-300">Comment</div>
