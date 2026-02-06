@@ -151,6 +151,7 @@ export enum EventType {
   MOVE_SECRETS = "move-secrets",
   DELETE_SECRET = "delete-secret",
   DELETE_SECRETS = "delete-secrets",
+  REDACT_SECRET_VERSION_VALUE = "redact-secret-version-value",
   GET_PROJECT_KEY = "get-project-key",
   AUTHORIZE_INTEGRATION = "authorize-integration",
   UPDATE_INTEGRATION_AUTH = "update-integration-auth",
@@ -880,6 +881,18 @@ interface DeleteSecretBatchEvent {
     environment: string;
     secretPath: string;
     secrets: Array<{ secretId: string; secretKey: string; secretVersion: number }>;
+  };
+}
+
+interface RedactSecretVersionValueEvent {
+  type: EventType.REDACT_SECRET_VERSION_VALUE;
+  metadata: {
+    environment: string;
+    secretPath: string;
+    secretId: string;
+    secretKey: string;
+    secretVersionId: string;
+    secretVersion: number;
   };
 }
 
@@ -4966,6 +4979,7 @@ export type Event =
   | MoveSecretsEvent
   | DeleteSecretEvent
   | DeleteSecretBatchEvent
+  | RedactSecretVersionValueEvent
   | GetProjectKeyEvent
   | AuthorizeIntegrationEvent
   | UpdateIntegrationAuthEvent

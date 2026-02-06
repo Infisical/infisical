@@ -1,6 +1,11 @@
 /* eslint-disable no-nested-ternary */
 import { useCallback, useRef, useState } from "react";
-import { faChevronDown, faChevronUp, faTrash } from "@fortawesome/free-solid-svg-icons";
+import {
+  faChevronDown,
+  faChevronUp,
+  faTrash,
+  faTriangleExclamation
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -9,6 +14,9 @@ import { IconButton, Tooltip } from "@app/components/v2";
 export interface Version {
   id?: string;
   version: number;
+  isRedacted?: boolean;
+  redactedAt?: Date | null;
+  redactedByUserId?: string | null;
   [key: string]: any;
 }
 
@@ -467,7 +475,14 @@ const formatDeletedJson = (json: JsonValue): JSX.Element => {
 };
 
 const cleanVersionForComparison = (version: Version): JsonValue => {
-  const { id, version: versionNumber, ...cleanVersion } = version;
+  const {
+    id,
+    version: versionNumber,
+    isRedacted,
+    redactedAt,
+    redactedByUserId,
+    ...cleanVersion
+  } = version;
   return Object.fromEntries(
     Object.entries(cleanVersion).filter((entry) => typeof entry[1] !== "undefined")
   );
@@ -605,6 +620,8 @@ export const SecretVersionDiffView = ({
       );
     }
 
+    const hasRedactedVersion = isSecret && item.versions?.some((v) => v.isRedacted);
+
     return (
       <div
         className="flex cursor-pointer items-center justify-between p-4 hover:bg-mineshaft-700"
@@ -622,6 +639,14 @@ export const SecretVersionDiffView = ({
         <div className="flex min-w-0 flex-1 items-center">
           <p className={twMerge(textStyle, "truncate")}>{key}</p>
           {changeBadge}
+          {hasRedactedVersion && (
+            <Tooltip
+              side="top"
+              content="This secret version has been redacted. Rolling back to this version will result in an empty secret value."
+            >
+              <FontAwesomeIcon icon={faTriangleExclamation} className="ml-2 text-yellow-500" />
+            </Tooltip>
+          )}
           {headerExtra}
         </div>
         {onDiscard && (

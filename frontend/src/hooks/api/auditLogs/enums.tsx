@@ -29,6 +29,7 @@ export enum EventType {
   CREATE_SECRET = "create-secret",
   UPDATE_SECRET = "update-secret",
   DELETE_SECRET = "delete-secret",
+  REDACT_SECRET_VERSION_VALUE = "redact-secret-version-value",
   GET_PROJECT_KEY = "get-project-key",
   AUTHORIZE_INTEGRATION = "authorize-integration",
   UPDATE_INTEGRATION_AUTH = "update-integration-auth",
