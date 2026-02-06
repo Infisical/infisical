@@ -255,7 +255,29 @@ export const SecretItem = memo(
 
         isAutoSavingRef.current = true;
         try {
-          await onSaveSecret(secret, { ...secret, ...data }, () => {
+          let dataWithValue = data;
+          let secretWithValue = secret;
+
+          // If the secret value hasn't been fetched yet and we can fetch it, fetch it now
+          // This ensures the commit diff modal will show the actual secret value
+          if (!hasFetchedSecretValue && canFetchSecretValue) {
+            const fetchedData = await refetchSecretValueData();
+            if (fetchedData.data) {
+              dataWithValue = {
+                ...data,
+                value: data.value ?? fetchedData.data.value,
+                valueOverride: data.valueOverride ?? fetchedData.data.valueOverride
+              };
+              // Also update the original secret reference so originalValue is correctly set
+              secretWithValue = {
+                ...secret,
+                value: secret.value ?? fetchedData.data.value,
+                valueOverride: secret.valueOverride ?? fetchedData.data.valueOverride
+              };
+            }
+          }
+
+          await onSaveSecret(secretWithValue, { ...secretWithValue, ...dataWithValue }, () => {
             reset();
           });
         } catch (error) {
@@ -264,7 +286,15 @@ export const SecretItem = memo(
           isAutoSavingRef.current = false;
         }
       },
-      [secret, onSaveSecret, importedBy, reset]
+      [
+        secret,
+        onSaveSecret,
+        importedBy,
+        reset,
+        hasFetchedSecretValue,
+        canFetchSecretValue,
+        refetchSecretValueData
+      ]
     );
 
     const formValues = watch();
