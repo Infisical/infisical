@@ -327,7 +327,7 @@ export const SecretDetailSidebar = ({
           };
         }
       } catch {
-        // ignore error
+        // Continue with save - the diff modal will show the value as hidden
       }
     }
 
