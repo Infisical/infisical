@@ -1,7 +1,6 @@
 /* eslint-disable no-console */
 import { Knex } from "knex";
 import pg from "pg";
-import PgBoss from "pg-boss";
 
 import { QueueJobs, QueueName } from "@app/queue";
 
@@ -135,13 +134,6 @@ export async function up(knex: Knex): Promise<void> {
           }
         : false
     };
-
-    // this stop pg boss from taking any new job
-    const pgboss = new PgBoss({
-      connectionString: config.connectionString,
-      ssl: config.ssl
-    });
-    await pgboss.stop({ close: true });
 
     const db = new pg.Client(config);
     await db.connect();
