@@ -1,7 +1,4 @@
-import { useEffect } from "react";
 import { twMerge } from "tailwind-merge";
-
-import { scrollToFirstChange } from "@app/components/utilities/diff";
 
 export interface DiffContainerProps {
   variant?: "added" | "removed";
@@ -12,7 +9,7 @@ export interface DiffContainerProps {
 }
 
 /**
- * Styled container with scroll-to-first-change behavior and consistent backgrounds
+ * Styled container with consistent backgrounds for diff views
  */
 export const DiffContainer = ({
   variant,
@@ -27,16 +24,6 @@ export const DiffContainer = ({
   };
 
   const backgroundColor = getBackgroundColor();
-
-  useEffect(() => {
-    if (!isSingleLine && containerRef?.current) {
-      const timeout = setTimeout(() => {
-        scrollToFirstChange(containerRef.current);
-      }, 100);
-      return () => clearTimeout(timeout);
-    }
-    return undefined;
-  }, [containerRef, isSingleLine]);
 
   if (isSingleLine) {
     return (
