@@ -13,12 +13,17 @@ import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types"
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 
 const FlyioSyncDestinationConfigSchema = z.object({
-  appId: z.string().trim().min(1, "App required").max(255).describe(SecretSyncs.DESTINATION_CONFIG.FLYIO.appId)
+  appId: z.string().trim().min(1, "App required").max(255).describe(SecretSyncs.DESTINATION_CONFIG.FLYIO.appId),
+  appName: z.string().trim().optional().describe(SecretSyncs.DESTINATION_CONFIG.FLYIO.appName)
+});
+
+const FlyioSyncOptionsSchema = z.object({
+  autoRedeploy: z.boolean().optional().describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.FLYIO.autoRedeploy)
 });
 
 const FlyioSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
 
-export const FlyioSyncSchema = BaseSecretSyncSchema(SecretSync.Flyio, FlyioSyncOptionsConfig)
+export const FlyioSyncSchema = BaseSecretSyncSchema(SecretSync.Flyio, FlyioSyncOptionsConfig, FlyioSyncOptionsSchema)
   .extend({
     destination: z.literal(SecretSync.Flyio),
     destinationConfig: FlyioSyncDestinationConfigSchema
@@ -27,14 +32,16 @@ export const FlyioSyncSchema = BaseSecretSyncSchema(SecretSync.Flyio, FlyioSyncO
 
 export const CreateFlyioSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.Flyio,
-  FlyioSyncOptionsConfig
+  FlyioSyncOptionsConfig,
+  FlyioSyncOptionsSchema
 ).extend({
   destinationConfig: FlyioSyncDestinationConfigSchema
 });
 
 export const UpdateFlyioSyncSchema = GenericUpdateSecretSyncFieldsSchema(
   SecretSync.Flyio,
-  FlyioSyncOptionsConfig
+  FlyioSyncOptionsConfig,
+  FlyioSyncOptionsSchema
 ).extend({
   destinationConfig: FlyioSyncDestinationConfigSchema.optional()
 });

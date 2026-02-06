@@ -2723,6 +2723,9 @@ export const SecretSyncs = {
     RENDER: {
       autoRedeployServices:
         "Whether Infisical should automatically redeploy the configured Render service upon secret changes."
+    },
+    FLYIO: {
+      autoRedeploy: "Whether Infisical should automatically redeploy the configured Fly.io app upon secret changes."
     }
   },
   DESTINATION_CONFIG: {
@@ -2842,7 +2845,9 @@ export const SecretSyncs = {
       type: "The Render resource type to sync secrets to."
     },
     FLYIO: {
-      appId: "The ID of the Fly.io app to sync secrets to."
+      appId: "The ID of the Fly.io app to sync secrets to.",
+      appName:
+        "The name of the Fly.io app (required for auto redeploy). Populated from the app list when creating the sync."
     },
     GITLAB: {
       projectId: "The GitLab Project ID to sync secrets to.",

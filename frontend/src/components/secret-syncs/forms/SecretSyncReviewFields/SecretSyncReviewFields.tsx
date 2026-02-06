@@ -30,7 +30,7 @@ import { CloudflarePagesSyncReviewFields } from "./CloudflarePagesReviewFields";
 import { CloudflareWorkersSyncReviewFields } from "./CloudflareWorkersReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
 import { DigitalOceanAppPlatformSyncReviewFields } from "./DigitalOceanAppPlatformSyncReviewFields";
-import { FlyioSyncReviewFields } from "./FlyioSyncReviewFields";
+import { FlyioSyncOptionsReviewFields, FlyioSyncReviewFields } from "./FlyioSyncReviewFields";
 import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
 import { GitLabSyncReviewFields } from "./GitLabSyncReviewFields";
@@ -143,6 +143,7 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Flyio:
       DestinationFieldsComponent = <FlyioSyncReviewFields />;
+      AdditionalSyncOptionsFieldsComponent = <FlyioSyncOptionsReviewFields />;
       break;
     case SecretSync.GitLab:
       DestinationFieldsComponent = <GitLabSyncReviewFields />;
