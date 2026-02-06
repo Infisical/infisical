@@ -113,7 +113,14 @@ const invertDependencyTree = (tree: TSecretDependencyTreeNode): TSecretDependenc
     visited: Set<string>
   ) => {
     const nodeKey = `${node.environment}:${node.secretPath}:${node.key}`;
-    if (visited.has(nodeKey)) return;
+
+    // if circular reference, save path up to this point (including circular node) and stop
+    if (visited.has(nodeKey)) {
+      if (currentPath.length > 0) {
+        paths.push([...currentPath, node]);
+      }
+      return;
+    }
 
     const newPath = [...currentPath, node];
     const newVisited = new Set([...visited, nodeKey]);
@@ -213,15 +220,25 @@ const convertDependencyTreeToItems = (
     const nodeKey = `${node.environment}:${node.secretPath}:${node.key}`;
     const nodeId = parentId ? `${parentId}>${nodeKey}` : nodeKey;
 
-    // Check for circular reference
+    // check if this is the original root secret (the one being viewed)
+    const isOriginalRoot = node.key === rootSecretKey && depth > 0;
+    const displayName = `${node.environment}${node.secretPath === "/" ? "" : node.secretPath.split("/").join(".")}.${node.key}`;
+
+    // check for circular reference - still create the item but with no children
     if (visited.has(nodeKey)) {
+      items[nodeId] = {
+        index: nodeId,
+        isFolder: false,
+        children: [],
+        data: {
+          title: displayName,
+          isRoot: isOriginalRoot,
+          isNested: depth > 0
+        }
+      };
       return nodeId;
     }
     const newVisited = new Set([...visited, nodeKey]);
-
-    // Check if this is the original root secret (the one being viewed)
-    const isOriginalRoot = node.key === rootSecretKey && depth > 0;
-    const displayName = `${node.environment}${node.secretPath === "/" ? "" : node.secretPath.split("/").join(".")}.${node.key}`;
 
     const childIds: string[] = [];
     node.children.forEach((child) => {
