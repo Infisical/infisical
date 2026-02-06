@@ -1,5 +1,4 @@
 /* eslint-disable no-console */
-/* eslint-disable no-await-in-loop */
 import { Knex } from "knex";
 import pg from "pg";
 import PgBoss from "pg-boss";
@@ -8,8 +7,6 @@ import { QueueJobs, QueueName } from "@app/queue";
 
 import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
-
-const BATCH_SIZE = 1000;
 
 interface MigrationConfig<TData> {
   pgBossQueueName: string;
@@ -27,45 +24,34 @@ const migratePgBossJobsToQueueJobs = async <TData>(
   db: pg.Client,
   config: MigrationConfig<TData>
 ): Promise<void> => {
-  let offset = 0;
-  let totalMigrated = 0;
-  let jobCount = 0;
+  const jobs = await db.query<{ id: string; name: string; data: TData; start_after: Date }>(
+    `
+      SELECT id, name, data, start_after
+      FROM pgboss.job
+      WHERE state = 'created'
+        AND name = $1
+      ORDER BY created_on ASC
+    `,
+    [config.pgBossQueueName]
+  );
 
-  do {
-    const jobs = await db.query<{ id: string; name: string; data: TData; start_after: Date }>(
-      `
-        SELECT id, name, data, start_after
-        FROM pgboss.job
-        WHERE state = 'created'
-          AND name = $1
-        ORDER BY created_on ASC
-        LIMIT $2 OFFSET $3
-      `,
-      [config.pgBossQueueName, BATCH_SIZE, offset]
+  if (jobs.rows.length > 0) {
+    await knex(TableName.QueueJobs).insert(
+      jobs.rows.map((job) => {
+        const { jobId, queueOptions } = config.transformJob(job);
+        return {
+          queueName: config.queueName,
+          queueJobName: config.queueJobName,
+          queueType: "bullmq",
+          queueData: job.data,
+          jobId,
+          queueOptions
+        };
+      })
     );
 
-    jobCount = jobs.rows.length;
-    if (jobCount > 0) {
-      await knex(TableName.QueueJobs).insert(
-        jobs.rows.map((job) => {
-          const { jobId, queueOptions } = config.transformJob(job);
-          return {
-            queueName: config.queueName,
-            queueJobName: config.queueJobName,
-            queueType: "bullmq",
-            queueData: job.data,
-            jobId,
-            queueOptions
-          };
-        })
-      );
-
-      totalMigrated += jobCount;
-      offset += BATCH_SIZE;
-
-      console.log(`Migrated ${config.logLabel} ${totalMigrated} jobs...`);
-    }
-  } while (jobCount > 0);
+    console.log(`Migrated ${config.logLabel} ${jobs.rows.length} jobs`);
+  }
 };
 
 const migratePamSessionExpirationToQueueJobs = async (knex: Knex, db: pg.Client) => {
