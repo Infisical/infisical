@@ -66,7 +66,13 @@ import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permissio
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import { PamAccountView } from "./pam-account-enums";
 import { decryptAccount, decryptAccountCredentials, encryptAccountCredentials } from "./pam-account-fns";
-import { TAccessAccountDTO, TCreateAccountDTO, TListAccountsDTO, TUpdateAccountDTO } from "./pam-account-types";
+import {
+  TAccessAccountDTO,
+  TCreateAccountDTO,
+  TGetAccountByIdDTO,
+  TListAccountsDTO,
+  TUpdateAccountDTO
+} from "./pam-account-types";
 
 type TPamAccountServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;
@@ -558,6 +564,47 @@ export const pamAccountServiceFactory = ({
       totalCount,
       folderId,
       folderPaths
+    };
+  };
+
+  const getById = async ({ accountId, actor, actorId, actorAuthMethod, actorOrgId }: TGetAccountByIdDTO) => {
+    const accountWithResource = await pamAccountDAL.findByIdWithResourceDetails(accountId);
+    if (!accountWithResource) throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: accountWithResource.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.PAM
+    });
+
+    const accountPath = await getFullPamFolderPath({
+      pamFolderDAL,
+      folderId: accountWithResource.folderId,
+      projectId: accountWithResource.projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionPamAccountActions.Read,
+      subject(ProjectPermissionSub.PamAccounts, {
+        resourceName: accountWithResource.resource.name,
+        accountName: accountWithResource.name,
+        accountPath
+      })
+    );
+
+    const decryptedAccount = await decryptAccount(accountWithResource, accountWithResource.projectId, kmsService);
+
+    return {
+      ...decryptedAccount,
+      resource: {
+        id: accountWithResource.resource.id,
+        name: accountWithResource.resource.name,
+        resourceType: accountWithResource.resource.resourceType,
+        rotationCredentialsConfigured: !!accountWithResource.resource.encryptedRotationAccountCredentials
+      }
     };
   };
 
@@ -1161,6 +1208,7 @@ export const pamAccountServiceFactory = ({
     updateById,
     deleteById,
     list,
+    getById,
     access,
     getSessionCredentials,
     rotateAllDueAccounts

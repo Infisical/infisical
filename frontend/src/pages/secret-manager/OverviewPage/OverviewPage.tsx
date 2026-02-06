@@ -519,8 +519,7 @@ export const OverviewPage = () => {
     key: string,
     value: string,
     secretValueHidden: boolean,
-    type = SecretType.Shared,
-    secretComment?: string
+    type = SecretType.Shared
   ) => {
     let secretValue: string | undefined = value;
 
@@ -537,8 +536,7 @@ export const OverviewPage = () => {
       secretPath,
       secretKey: key,
       secretValue,
-      type,
-      secretComment
+      type
     });
 
     if ("approval" in result) {

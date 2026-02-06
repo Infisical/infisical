@@ -6,47 +6,67 @@ import {
   CodeXmlIcon,
   CopyIcon,
   EditIcon,
+  EllipsisIcon,
   EyeOffIcon,
+  HistoryIcon,
   MessageSquareIcon,
   SaveIcon,
   TagsIcon,
   TrashIcon,
   Undo2Icon,
-  WorkflowIcon
+  UsersIcon,
+  WorkflowIcon,
+  WrapTextIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { SecretReferenceTree } from "@app/components/secrets/SecretReferenceDetails";
 import { DeleteActionModal, Modal, ModalContent, ModalTrigger } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
+  Badge,
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-  UnstableIconButton
+  UnstableDropdownMenu,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuTrigger,
+  UnstableIconButton,
+  UnstableSeparator
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useProject,
-  useProjectPermission
+  useProjectPermission,
+  useSubscription
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp, useToggle } from "@app/hooks";
+import { useUpdateSecretV3 } from "@app/hooks/api";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
 import { ProjectEnv, SecretType, SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
+import { SecretAccessInsights } from "./SecretAccessInsights";
 import { SecretCommentForm } from "./SecretCommentForm";
 import { SecretMetadataForm } from "./SecretMetadataForm";
 import { SecretTagForm } from "./SecretTagForm";
+import { SecretVersionHistory } from "./SecretVersionHistory";
 
 type Props = {
   defaultValue?: string | null;
@@ -59,7 +79,9 @@ type Props = {
   comment?: string;
   tags?: WsTag[];
   secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
+  skipMultilineEncoding?: boolean | null;
   environment: string;
+  environmentName: string;
   secretValueHidden: boolean;
   secretPath: string;
   onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
@@ -69,8 +91,7 @@ type Props = {
     value: string,
     secretValueHidden: boolean,
     type?: SecretType,
-    secretId?: string,
-    comment?: string
+    secretId?: string
   ) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
   isRotatedSecret?: boolean;
@@ -115,13 +136,17 @@ export const SecretEditTableRow = ({
   isSecretPresent,
   comment,
   tags,
-  secretMetadata
+  secretMetadata,
+  environmentName,
+  skipMultilineEncoding
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
-    "editSecret"
+    "editSecret",
+    "accessInsightsUpgrade"
   ] as const);
 
   const { currentProject } = useProject();
+  const { subscription } = useSubscription();
 
   const [isFieldFocused, setIsFieldFocused] = useToggle();
 
@@ -175,12 +200,16 @@ export const SecretEditTableRow = ({
   }, [secretValueData]);
 
   const { permission } = useProjectPermission();
+  const { mutateAsync: updateSecretV3, isPending: isUpdatingMultiline } = useUpdateSecretV3();
 
   const [isDeleting, setIsDeleting] = useToggle();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isCommentOpen, setIsCommentOpen] = useState(false);
   const [isTagOpen, setIsTagOpen] = useState(false);
   const [isMetadataOpen, setIsMetadataOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
+  const [isAccessInsightsOpen, setIsAccessInsightsOpen] = useState(false);
 
   const toggleModal = useCallback(() => {
     setIsModalOpen((prev) => !prev);
@@ -201,6 +230,37 @@ export const SecretEditTableRow = ({
       createNotification({
         type: "error",
         text: "Failed to fetch secret value."
+      });
+    }
+  };
+
+  const handleToggleMultilineEncoding = async () => {
+    try {
+      const result = await updateSecretV3({
+        environment,
+        projectId: currentProject.id,
+        secretPath,
+        secretKey: secretName,
+        type: isOverride ? SecretType.Personal : SecretType.Shared,
+        skipMultilineEncoding: !skipMultilineEncoding
+      });
+
+      if ("approval" in result) {
+        createNotification({
+          type: "info",
+          text: "Requested change has been sent for review"
+        });
+      } else {
+        createNotification({
+          type: "success",
+          text: `Multi-line encoding ${skipMultilineEncoding ? "disabled" : "enabled"}`
+        });
+      }
+    } catch (e) {
+      console.error(e);
+      createNotification({
+        type: "error",
+        text: "Failed to update multi-line encoding setting."
       });
     }
   };
@@ -301,10 +361,10 @@ export const SecretEditTableRow = ({
     isErrorFetchingSecretValue ||
     (isCreatable ? !canCreate : !canEditSecretValue);
 
-  const shouldStayExpanded = isCommentOpen || isTagOpen || isMetadataOpen;
+  const shouldStayExpanded = isCommentOpen || isTagOpen || isMetadataOpen || isDropdownOpen;
 
   return (
-    <div className="flex w-full cursor-text items-center space-x-2">
+    <div className="flex w-full cursor-text items-center space-x-2 py-1.5">
       <DeleteActionModal
         isOpen={isModalOpen}
         onClose={toggleModal}
@@ -354,7 +414,7 @@ export const SecretEditTableRow = ({
           )}
         />
       </div>
-      <div className={twMerge("flex w-fit justify-end space-x-2 pl-2 transition-all")}>
+      <div className="flex w-fit items-start justify-end space-x-2 self-start pl-2 transition-all">
         {isDirty && !isImportedSecret ? (
           <>
             <ProjectPermissionCan
@@ -600,6 +660,44 @@ export const SecretEditTableRow = ({
                 />
               </PopoverContent>
             </Popover>
+            <Tooltip delayDuration={300} disableHoverableContent>
+              <TooltipTrigger>
+                <UnstableIconButton
+                  variant="ghost"
+                  size="xs"
+                  isDisabled={
+                    isCreatable ||
+                    isImportedSecret ||
+                    isOverride ||
+                    !canEditSecretValue ||
+                    isUpdatingMultiline
+                  }
+                  onClick={handleToggleMultilineEncoding}
+                  className={twMerge(
+                    skipMultilineEncoding && !isOverride && !isImportedSecret
+                      ? "w-7 text-project opacity-100"
+                      : "w-0 opacity-0",
+                    "overflow-hidden border-0 group-hover:w-7 group-hover:opacity-100",
+                    shouldStayExpanded && "w-7 opacity-100"
+                  )}
+                >
+                  <WrapTextIcon />
+                </UnstableIconButton>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isOverride
+                  ? "Cannot Edit Multi-line Encoding on Personal Overrides"
+                  : isImportedSecret
+                    ? "Cannot Edit Multi-line Encoding on Imported Secret"
+                    : isCreatable
+                      ? "Create Secret to Edit Multi-line Encoding"
+                      : !canEditSecretValue
+                        ? "Access Denied"
+                        : skipMultilineEncoding
+                          ? "Disable Multi-line Encoding"
+                          : "Enable Multi-line Encoding"}
+              </TooltipContent>
+            </Tooltip>
             <Modal>
               <Tooltip delayDuration={300} disableHoverableContent>
                 <TooltipTrigger>
@@ -632,50 +730,185 @@ export const SecretEditTableRow = ({
               </ModalContent>
             </Modal>
 
-            <ProjectPermissionCan
-              I={ProjectPermissionActions.Delete}
-              a={subject(ProjectPermissionSub.Secrets, {
-                environment,
-                secretPath,
-                secretName,
-                secretTags: ["*"]
-              })}
-            >
-              {(isAllowed) => (
-                <Tooltip delayDuration={300} disableHoverableContent>
-                  <TooltipTrigger>
-                    <UnstableIconButton
-                      variant="ghost"
-                      size="xs"
-                      className={twMerge(
-                        "w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100",
-                        shouldStayExpanded && "w-7 opacity-100"
-                      )}
-                      onClick={toggleModal}
-                      isDisabled={
-                        isCreatable ||
-                        isDeleting ||
-                        !isAllowed ||
-                        isRotatedSecret ||
-                        isImportedSecret
-                      }
+            <UnstableDropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
+              <UnstableDropdownMenuTrigger asChild>
+                <UnstableIconButton
+                  variant="ghost"
+                  size="xs"
+                  className={twMerge(
+                    "w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100",
+                    shouldStayExpanded && "w-7 opacity-100"
+                  )}
+                >
+                  <EllipsisIcon />
+                </UnstableIconButton>
+              </UnstableDropdownMenuTrigger>
+              <UnstableDropdownMenuContent align="end">
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Read}
+                  a={ProjectPermissionSub.Commits}
+                >
+                  {(isAllowed) => (
+                    <Tooltip
+                      open={isImportedSecret || isCreatable || !isAllowed ? undefined : false}
+                      delayDuration={300}
+                      disableHoverableContent
                     >
-                      <TrashIcon />
-                    </UnstableIconButton>
+                      <TooltipTrigger className="block w-full">
+                        <UnstableDropdownMenuItem
+                          onClick={() => setIsVersionHistoryOpen(true)}
+                          isDisabled={!secretId || isCreatable || isImportedSecret || !isAllowed}
+                        >
+                          <HistoryIcon />
+                          Version History
+                        </UnstableDropdownMenuItem>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">
+                        {!isAllowed
+                          ? "Access Denied"
+                          : isImportedSecret
+                            ? "Cannot View Version History for Imported Secret"
+                            : "Create Secret to View History"}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </ProjectPermissionCan>
+                <Tooltip
+                  open={isImportedSecret || isCreatable ? undefined : false}
+                  delayDuration={300}
+                  disableHoverableContent
+                >
+                  <TooltipTrigger className="block w-full">
+                    <UnstableDropdownMenuItem
+                      onClick={() => {
+                        if (!subscription?.secretAccessInsights) {
+                          handlePopUpOpen("accessInsightsUpgrade");
+                        } else {
+                          setIsAccessInsightsOpen(true);
+                        }
+                      }}
+                      isDisabled={!secretId || isCreatable || isImportedSecret}
+                    >
+                      <UsersIcon />
+                      Access Insights
+                    </UnstableDropdownMenuItem>
                   </TooltipTrigger>
-                  <TooltipContent>
-                    {/* eslint-disable-next-line no-nested-ternary */}
-                    {isCreatable
-                      ? "No Secret to Delete"
-                      : isRotatedSecret
-                        ? "Cannot Delete Rotated Secret"
-                        : isImportedSecret
-                          ? "Cannot Delete Imported Secret"
-                          : "Delete"}
+                  <TooltipContent side="left">
+                    {isImportedSecret
+                      ? "Cannot View Access for Imported Secret"
+                      : "Create Secret to View Access"}
                   </TooltipContent>
                 </Tooltip>
-              )}
-            </ProjectPermissionCan>
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Delete}
+                  a={subject(ProjectPermissionSub.Secrets, {
+                    environment,
+                    secretPath,
+                    secretName,
+                    secretTags: ["*"]
+                  })}
+                >
+                  {(isAllowed) => (
+                    <Tooltip
+                      open={isRotatedSecret || isImportedSecret || isCreatable ? undefined : false}
+                      delayDuration={300}
+                      disableHoverableContent
+                    >
+                      <TooltipTrigger className="block w-full">
+                        <UnstableDropdownMenuItem
+                          onClick={toggleModal}
+                          isDisabled={
+                            isCreatable ||
+                            isDeleting ||
+                            !isAllowed ||
+                            isRotatedSecret ||
+                            isImportedSecret
+                          }
+                          variant="danger"
+                        >
+                          <TrashIcon />
+                          Delete Secret
+                        </UnstableDropdownMenuItem>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">
+                        {/* eslint-disable-next-line no-nested-ternary */}
+                        {isRotatedSecret
+                          ? "Cannot Delete Rotated Secret"
+                          : isImportedSecret
+                            ? "Cannot Delete Imported Secret"
+                            : isCreatable
+                              ? "No Secret to Delete"
+                              : "Delete"}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </ProjectPermissionCan>
+              </UnstableDropdownMenuContent>
+            </UnstableDropdownMenu>
+            <Sheet open={isVersionHistoryOpen} onOpenChange={setIsVersionHistoryOpen}>
+              <SheetContent
+                onOpenAutoFocus={(e) => e.preventDefault()}
+                className="gap-y-0"
+                side="right"
+              >
+                <SheetHeader>
+                  <SheetTitle>Version History</SheetTitle>
+                  <SheetDescription>Audit secret history and rollback changes</SheetDescription>
+                </SheetHeader>
+                <UnstableSeparator />
+                <div className="bg-container p-4 text-foreground">
+                  <p className="truncate">{secretName}</p>
+                  <Badge variant="neutral" className="mt-0.5">
+                    {environmentName}
+                  </Badge>
+                </div>
+                <UnstableSeparator />
+                {secretId && (
+                  <SecretVersionHistory
+                    secretId={secretId}
+                    secretKey={secretName}
+                    environment={environment}
+                    secretPath={secretPath}
+                    isRotatedSecret={isRotatedSecret ?? false}
+                    canReadValue={canReadSecretValue}
+                  />
+                )}
+              </SheetContent>
+            </Sheet>
+            <Sheet open={isAccessInsightsOpen} onOpenChange={setIsAccessInsightsOpen}>
+              <SheetContent
+                onOpenAutoFocus={(e) => e.preventDefault()}
+                className="gap-y-0"
+                side="right"
+              >
+                <SheetHeader>
+                  <SheetTitle>Access Insights</SheetTitle>
+                  <SheetDescription>
+                    View users, groups, and identities with access to this secret
+                  </SheetDescription>
+                </SheetHeader>
+                <UnstableSeparator />
+                <div className="bg-container p-4 text-foreground">
+                  <p className="truncate">{secretName}</p>
+                  <Badge variant="neutral" className="mt-0.5">
+                    {environmentName}
+                  </Badge>
+                </div>
+                <UnstableSeparator />
+                {secretId && (
+                  <SecretAccessInsights
+                    secretKey={secretName}
+                    environment={environment}
+                    secretPath={secretPath}
+                  />
+                )}
+              </SheetContent>
+            </Sheet>
+            <UpgradePlanModal
+              isOpen={popUp.accessInsightsUpgrade.isOpen}
+              onOpenChange={(isOpen) => handlePopUpToggle("accessInsightsUpgrade", isOpen)}
+              text="Secret access insights can be unlocked if you upgrade to Infisical Pro plan."
+            />
           </div>
         )}
       </div>

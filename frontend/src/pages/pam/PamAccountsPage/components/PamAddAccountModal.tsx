@@ -12,6 +12,11 @@ type Props = {
   projectId: string;
   onComplete?: (account: TPamAccount) => void;
   currentFolderId: string | null;
+  defaultResource?: {
+    id: string;
+    name: string;
+    resourceType: PamResourceType;
+  };
 };
 
 export const PamAddAccountModal = ({
@@ -19,18 +24,19 @@ export const PamAddAccountModal = ({
   onOpenChange,
   projectId,
   onComplete,
-  currentFolderId
+  currentFolderId,
+  defaultResource
 }: Props) => {
   const [selectedResource, setSelectedResource] = useState<{
     id: string;
     name: string;
     resourceType: PamResourceType;
-  } | null>(null);
+  } | null>(defaultResource ?? null);
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       // Reset state when modal closes
-      setSelectedResource(null);
+      setSelectedResource(defaultResource ?? null);
     }
     onOpenChange(open);
   };
@@ -40,7 +46,11 @@ export const PamAddAccountModal = ({
       <ModalContent
         className="max-w-2xl"
         title="Add Account"
-        subTitle="Select a resource to add an account under."
+        subTitle={
+          selectedResource
+            ? "Add account under a select resource."
+            : "Select a resource to add an account under."
+        }
         bodyClassName={selectedResource ? undefined : "overflow-visible"}
       >
         {selectedResource ? (
@@ -50,7 +60,7 @@ export const PamAddAccountModal = ({
               onOpenChange(false);
               setSelectedResource(null);
             }}
-            onBack={() => setSelectedResource(null)}
+            onBack={defaultResource ? undefined : () => setSelectedResource(null)}
             resourceId={selectedResource.id}
             resourceName={selectedResource.name}
             resourceType={selectedResource.resourceType}

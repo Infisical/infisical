@@ -27,11 +27,11 @@ import { ReservedFolders } from "@app/services/secret-folder/secret-folder-types
 import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { fnSecretsFromImports, fnSecretsV2FromImports } from "@app/services/secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
+import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import {
   fnSecretBulkInsert as fnSecretV2BridgeBulkInsert,
-  fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate,
-  getAllSecretReferences
+  fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";

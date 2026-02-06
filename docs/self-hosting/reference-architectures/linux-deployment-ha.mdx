@@ -315,9 +315,7 @@ backend infisical_backend
   <Tab title="Debian/Ubuntu">
     First, add the Infisical repository:
     ```bash
-    curl -1sLf \
-    'https://dl.cloudsmith.io/public/infisical/infisical-core/setup.deb.sh' \
-    | sudo -E bash
+    curl -1sLf 'https://artifacts-infisical-core.infisical.com/setup.deb.sh' | sudo -E bash
     ```
 
     Then install Infisical:
@@ -326,16 +324,14 @@ backend infisical_backend
     ```
 
     <Info>
-      For production environments, we strongly recommend installing a specific version of the package to maintain consistency across reinstalls. View available versions at [Infisical Package Versions](https://cloudsmith.io/~infisical/repos/infisical-core/packages/).
+      For production environments, we strongly recommend installing a specific version of the package to maintain consistency across reinstalls. [View available versions](https://github.com/Infisical/infisical/releases).
     </Info>
   </Tab>
 
   <Tab title="RedHat/CentOS/Amazon Linux">
     First, add the Infisical repository:
     ```bash
-    curl -1sLf \
-    'https://dl.cloudsmith.io/public/infisical/infisical-core/setup.rpm.sh' \
-    | sudo -E bash
+    curl -1sLf 'https://artifacts-infisical-core.infisical.com/setup.rpm.sh' | sudo -E bash
     ```
 
     Then install Infisical:
@@ -344,7 +340,7 @@ backend infisical_backend
     ```
 
     <Info>
-      For production environments, we strongly recommend installing a specific version of the package to maintain consistency across reinstalls. View available versions at [Infisical Package Versions](https://cloudsmith.io/~infisical/repos/infisical-core/packages/).
+      For production environments, we strongly recommend installing a specific version of the package to maintain consistency across reinstalls. [View available versions](https://github.com/Infisical/infisical/releases).
     </Info>
 
   </Tab>

@@ -66,3 +66,26 @@ export const useDeletePkiAlertV2 = () => {
     }
   });
 };
+
+export interface TTestPkiWebhookConfigV2 {
+  projectId: string;
+  url: string;
+  signingSecret?: string;
+}
+
+export interface TTestPkiWebhookConfigV2Response {
+  success: boolean;
+  error?: string;
+}
+
+export const useTestPkiWebhookConfigV2 = () => {
+  return useMutation<TTestPkiWebhookConfigV2Response, unknown, TTestPkiWebhookConfigV2>({
+    mutationFn: async ({ projectId, url, signingSecret }) => {
+      const { data } = await apiRequest.post<TTestPkiWebhookConfigV2Response>(
+        "/api/v2/pki/alerts/test-webhook",
+        { projectId, url, signingSecret }
+      );
+      return data;
+    }
+  });
+};

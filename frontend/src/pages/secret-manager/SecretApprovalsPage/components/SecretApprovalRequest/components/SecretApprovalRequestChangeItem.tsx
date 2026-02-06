@@ -320,7 +320,7 @@ export type Props = {
   newVersion?: Omit<TSecretApprovalSecChange, "tags"> & {
     tags?: WsTag[];
     secretMetadata?: { key: string; value: string }[];
-    skipMultilineEncoding?: boolean;
+    skipMultilineEncoding?: boolean | null;
   };
   presentSecretVersionNumber: number;
   hasMerged?: boolean;

@@ -39,7 +39,7 @@ interface Version {
   secretKey?: string;
   secretValue?: string;
   secretComment?: string;
-  skipMultilineEncoding?: boolean;
+  skipMultilineEncoding?: boolean | null;
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
   secretReminderRecipients?: string[];
