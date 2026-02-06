@@ -82,11 +82,11 @@ const SecretValueRenderer = ({
       // Scroll to first change when revealing multi-line content
       if (newVisibility && !isBothSingleLine && containerRef?.current) {
         // Allow DOM to update before scrolling
-        setTimeout(() => {
+        requestAnimationFrame(() => {
           if (containerRef.current) {
             scrollToFirstChange(containerRef.current);
           }
-        }, 100);
+        });
       }
     };
 
@@ -306,7 +306,7 @@ export const SecretDiffView = ({
           <div className="mb-2">
             <div className="text-sm font-medium text-mineshaft-300">Metadata</div>
             <MetadataDiffRenderer
-              metadata={newVersion?.secretMetadata ?? oldVersion?.secretMetadata}
+              metadata={newVersion?.secretMetadata}
               otherMetadata={oldVersion?.secretMetadata}
               isOldVersion={false}
             />
