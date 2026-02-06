@@ -748,7 +748,7 @@ export const SecretDetailSidebar = ({
                     secretVersion={version}
                     secret={secret}
                     currentVersion={secretVersion.length}
-                    onReactSecretValue={async (versionId) => {
+                    onRedactSecretValue={async (versionId) => {
                       await redactSecretValue({ versionId, secretId: secret.id });
 
                       createNotification({

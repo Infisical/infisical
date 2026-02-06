@@ -13,7 +13,8 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.alterTable(TableName.SecretVersionV2, (table) => {
       if (!hasIsRedactedColumn) table.boolean("isRedacted").defaultTo(false).notNullable();
       if (!hasRedactedAtColumn) table.timestamp("redactedAt").nullable();
-      if (!hasRedactedByUserColumn) table.uuid("redactedByUserId").references("id").inTable(TableName.Users);
+      if (!hasRedactedByUserColumn)
+        table.uuid("redactedByUserId").references("id").inTable(TableName.Users).onDelete("SET NULL");
     });
   }
 }

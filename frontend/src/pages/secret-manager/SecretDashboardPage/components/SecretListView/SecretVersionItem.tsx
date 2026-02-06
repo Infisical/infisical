@@ -30,7 +30,7 @@ interface SecretVersionItemProps {
   secret: SecretV3RawSanitized;
   currentVersion: number;
   onRevert: (secretValue: string) => void;
-  onReactSecretValue: (versionId: string) => Promise<void>;
+  onRedactSecretValue: (versionId: string) => Promise<void>;
   canReadValue: boolean;
   canEditSecret: boolean;
 }
@@ -50,7 +50,7 @@ export const SecretVersionItem = ({
   secret,
   currentVersion,
   onRevert,
-  onReactSecretValue,
+  onRedactSecretValue,
   canReadValue,
   canEditSecret
 }: SecretVersionItemProps) => {
@@ -197,7 +197,7 @@ export const SecretVersionItem = ({
         isOpen={popUp.redactSecretValue.isOpen}
         onChange={(isOpen) => handlePopUpToggle("redactSecretValue", isOpen)}
         onDeleteApproved={async () => {
-          await onReactSecretValue(versionId);
+          await onRedactSecretValue(versionId);
 
           handlePopUpToggle("redactSecretValue", false);
         }}
@@ -361,7 +361,11 @@ export const SecretVersionItem = ({
                                   members[redactedByUserId || ""]?.username || "Unknown User"
                                 )}
                               </b>{" "}
-                              on {format(new Date(redactedAt || ""), "Pp")}
+                              {redactedAt && (
+                                <span className="text-xs">
+                                  on {format(new Date(redactedAt || ""), "Pp")}
+                                </span>
+                              )}
                             </div>
                           </div>
                         }
