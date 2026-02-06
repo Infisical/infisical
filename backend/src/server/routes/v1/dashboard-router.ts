@@ -111,6 +111,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             .intersection(
               SecretRotationV2Schema,
               z.object({
+                // TODO (scott): think we can actually get rid of this and not query relations as we don't display secrets with rotations anymore
                 secrets: secretRawSchema
                   .omit({ secretValue: true })
                   .extend({
@@ -132,7 +133,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
               secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
-              tags: SanitizedTagSchema.array().optional()
+              tags: SanitizedTagSchema.array().optional(),
+              reminder: RemindersSchema.extend({
+                recipients: z.string().array().optional()
+              }).nullish()
             })
             .array()
             .optional(),
@@ -224,7 +228,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       let imports: Awaited<ReturnType<typeof server.services.secretImport.getImportsMultiEnv>> | undefined;
       let folders: Awaited<ReturnType<typeof server.services.folder.getFoldersMultiEnv>> | undefined;
       let secrets:
-        | (Awaited<ReturnType<typeof server.services.secret.getSecretsRawMultiEnv>>[number] & { isEmpty: boolean })[]
+        | (Awaited<ReturnType<typeof server.services.secret.getSecretsRawMultiEnv>>[number] & {
+            isEmpty: boolean;
+            reminder: Awaited<ReturnType<typeof server.services.reminder.getRemindersForDashboard>>[string] | null;
+          })[]
         | undefined;
       let dynamicSecrets:
         | Awaited<ReturnType<typeof server.services.dynamicSecret.listDynamicSecretsByEnvs>>
@@ -447,24 +454,33 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         });
 
         if (remainingLimit > 0 && totalSecretCount > adjustedOffset) {
-          secrets = (
-            await server.services.secret.getSecretsRawMultiEnv({
-              viewSecretValue: true,
-              actorId: req.permission.id,
-              actor: req.permission.type,
-              actorOrgId: req.permission.orgId,
-              environments,
-              actorAuthMethod: req.permission.authMethod,
-              projectId,
-              path: secretPath,
-              orderBy,
-              orderDirection,
-              search,
-              limit: remainingLimit,
-              offset: adjustedOffset,
-              isInternal: true
-            })
-          ).map((secret) => ({ ...secret, isEmpty: !secret.secretValue }));
+          const rawSecrets = await server.services.secret.getSecretsRawMultiEnv({
+            viewSecretValue: true,
+            actorId: req.permission.id,
+            actor: req.permission.type,
+            actorOrgId: req.permission.orgId,
+            environments,
+            actorAuthMethod: req.permission.authMethod,
+            projectId,
+            path: secretPath,
+            orderBy,
+            orderDirection,
+            search,
+            limit: remainingLimit,
+            offset: adjustedOffset,
+            isInternal: true
+          });
+
+          const reminders =
+            rawSecrets.length > 0
+              ? await server.services.reminder.getRemindersForDashboard(rawSecrets.map((s) => s.id))
+              : {};
+
+          secrets = rawSecrets.map((secret) => ({
+            ...secret,
+            isEmpty: !secret.secretValue,
+            reminder: reminders[secret.id] ?? null
+          }));
         }
       }
 
