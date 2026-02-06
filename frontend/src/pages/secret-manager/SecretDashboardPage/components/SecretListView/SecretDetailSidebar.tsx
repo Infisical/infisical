@@ -179,7 +179,7 @@ export const SecretDetailSidebar = ({
     formState: { isDirty }
   } = useForm<TFormSchema>({
     resolver: zodResolver(formSchema),
-    values: {
+    defaultValues: {
       ...secret,
       tags: secret?.tags?.map((tag) => ({ id: tag.id, slug: tag.slug, tagColor: tag.color })),
       valueOverride: getOverrideDefaultValue(),
@@ -187,6 +187,31 @@ export const SecretDetailSidebar = ({
     },
     disabled: !secret
   });
+
+  // Update value fields when secret value is fetched, but only if user hasn't modified them
+  useEffect(() => {
+    if (secretValueData) {
+      // Only update if the field hasn't been touched/modified by the user
+      if (!getFieldState("value").isDirty && secretValueData.value !== undefined) {
+        setValue("value", secretValueData.value, { shouldDirty: false });
+      }
+      if (!getFieldState("valueOverride").isDirty && secretValueData.valueOverride !== undefined) {
+        setValue("valueOverride", secretValueData.valueOverride, { shouldDirty: false });
+      }
+    }
+  }, [secretValueData, setValue, getFieldState]);
+
+  // Reset form when a different secret is opened
+  useEffect(() => {
+    if (originalSecret?.id) {
+      reset({
+        ...secret,
+        tags: secret?.tags?.map((tag) => ({ id: tag.id, slug: tag.slug, tagColor: tag.color })),
+        valueOverride: getOverrideDefaultValue(),
+        value: getDefaultValue()
+      });
+    }
+  }, [originalSecret?.id]);
 
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp([
     "secretAccessUpgradePlan",
@@ -276,13 +301,45 @@ export const SecretDetailSidebar = ({
   };
 
   const handleFormSubmit = async (data: TFormSchema) => {
+    let dataWithValue = data;
+    let secretWithValue = secret;
+
+    // If the secret value hasn't been fetched yet and we can fetch it, fetch it now
+    // This ensures the commit diff modal will show the actual secret value
+    if (!hasFetchedSecretValue && canFetchSecretValue) {
+      try {
+        const fetchedValue = await fetchSecretValue(fetchSecretValueParams);
+        if (fetchedValue) {
+          queryClient.setQueryData(
+            dashboardKeys.getSecretValue(fetchSecretValueParams),
+            fetchedValue
+          );
+          dataWithValue = {
+            ...data,
+            value: data.value ?? fetchedValue.value,
+            valueOverride: data.valueOverride ?? fetchedValue.valueOverride
+          };
+          // Also update the original secret reference so originalValue is correctly set
+          secretWithValue = {
+            ...secret,
+            value: secret.value ?? fetchedValue.value,
+            valueOverride: secret.valueOverride ?? fetchedValue.valueOverride
+          };
+        }
+      } catch {
+        // ignore error
+      }
+    }
+
     await onSaveSecret(
-      secret,
+      secretWithValue,
       {
-        ...secret,
-        ...data,
-        value: getFieldState("value").isDirty ? data.value : undefined,
-        valueOverride: getFieldState("valueOverride").isDirty ? data.valueOverride : undefined
+        ...secretWithValue,
+        ...dataWithValue,
+        value: getFieldState("value").isDirty ? dataWithValue.value : undefined,
+        valueOverride: getFieldState("valueOverride").isDirty
+          ? dataWithValue.valueOverride
+          : undefined
       },
       () => reset()
     );
