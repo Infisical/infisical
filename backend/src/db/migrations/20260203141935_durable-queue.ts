@@ -2,6 +2,7 @@
 /* eslint-disable no-await-in-loop */
 import { Knex } from "knex";
 import pg from "pg";
+import PgBoss from "pg-boss";
 
 import { QueueJobs, QueueName } from "@app/queue";
 
@@ -133,7 +134,7 @@ export async function up(knex: Knex): Promise<void> {
     });
 
     await createOnUpdateTrigger(knex, TableName.QueueJobs);
-    const db = new pg.Client({
+    const config = {
       application_name: "pgboss",
       connectionString: process.env.DB_CONNECTION_URI,
       host: process.env.DB_HOST,
@@ -147,7 +148,16 @@ export async function up(knex: Knex): Promise<void> {
             ca: Buffer.from(process.env.DB_ROOT_CERT, "base64").toString("ascii")
           }
         : false
+    };
+
+    // this stop pg boss from taking any new job
+    const pgboss = new PgBoss({
+      connectionString: config.connectionString,
+      ssl: config.ssl
     });
+    await pgboss.stop({ close: true });
+
+    const db = new pg.Client(config);
     await db.connect();
     try {
       const schemaCheck = await db.query(
