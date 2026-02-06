@@ -13,9 +13,14 @@ description: "Learn how to automatically rotate Windows local account passwords 
 
 ## Prerequisites
 
-- **Windows Server** with SMB3 support enabled
+- **Windows Server** with SMB3 support enabled (must be a member server or standalone machine, not a Domain Controller)
 - Create an [SMB Connection](/integrations/app-connections/smb) with administrator credentials
 - Ensure your network security policies allow SMB connections from Infisical to this rotation provider
+- The target local account must exist on the Windows server before configuring the rotation
+
+<Note>
+  This rotation manages **local accounts** stored in the Windows machine's local SAM database. Domain Controllers do not have local accounts — if you need to manage accounts on a Domain Controller, those are domain accounts managed through Active Directory, which is not supported by this rotation type.
+</Note>
 
 <Accordion title="Open firewall on Windows Defender for SMB connection">
     Run the following PowerShell command as Administrator on the Windows server to allow inbound SMB connections:
