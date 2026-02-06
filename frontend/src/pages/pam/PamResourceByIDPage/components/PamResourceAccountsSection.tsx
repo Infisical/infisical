@@ -366,7 +366,6 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
         isOpen={popUp.accessAccount.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("accessAccount", isOpen)}
         account={popUp.accessAccount.data?.account}
-        accountPath={popUp.accessAccount.data?.accountPath}
         projectId={projectId!}
       />
 
