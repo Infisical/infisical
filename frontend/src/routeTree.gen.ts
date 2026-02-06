@@ -1167,7 +1167,6 @@ const projectAuditLogsPageRouteKmsRoute =
     path: '/audit-logs',
     getParentRoute: () => kmsLayoutRoute,
   } as any)
-
 const projectAccessControlPageRouteKmsRoute =
   projectAccessControlPageRouteKmsImport.update({
     id: '/access-management',
@@ -1640,7 +1639,6 @@ const pamApprovalRequestDetailPageRouteRoute =
     path: '/approval-requests/$approvalRequestId',
     getParentRoute: () => pamLayoutRoute,
   } as any)
-
 const pamPamAccountByIDPageRouteRoute = pamPamAccountByIDPageRouteImport.update(
   {
     id: '/$accountId',
@@ -4635,7 +4633,6 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsProjectI
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsProjectIdRoute._addFileChildren(
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsProjectIdRouteChildren,
   )
-
 interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutAccountsRouteChildren {
   pamPamAccountByIDPageRouteRoute: typeof pamPamAccountByIDPageRouteRoute
 }
@@ -4718,8 +4715,6 @@ const pamLayoutRouteChildren: pamLayoutRouteChildren = {
   pamApprovalsPageRouteRoute: pamApprovalsPageRouteRoute,
   pamSettingsPageRouteRoute: pamSettingsPageRouteRoute,
   projectAccessControlPageRoutePamRoute: projectAccessControlPageRoutePamRoute,
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutAccountsRoute:
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutAccountsRouteWithChildren,
   projectAuditLogsPageRoutePamRoute: projectAuditLogsPageRoutePamRoute,
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesRoute:
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdPamLayoutResourcesRouteWithChildren,
