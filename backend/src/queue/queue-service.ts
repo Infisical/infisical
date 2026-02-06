@@ -571,6 +571,36 @@ export const queueServiceFactory = (
   >();
 
   /**
+   * Wraps a job function with heartbeat support for persistent queues.
+   * The heartbeat runs every 1 minute to signal the job is still alive.
+   */
+  const wrapJobWithHeartbeat = <T extends QueueName>(
+    name: T,
+    jobFn: (job: Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>, token?: string) => Promise<void>
+  ) => {
+    return async (job: Job<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>, token?: string) => {
+      let heartbeatInterval: ReturnType<typeof setInterval> | undefined;
+
+      try {
+        // Start heartbeat interval (every 1 minute)
+        if (job.id) {
+          heartbeatInterval = setInterval(() => {
+            void queueJobsDAL.update({ jobId: job.id, queueName: name }, { lastHeartBeat: new Date() }).catch((err) => {
+              logger.error(err, "Failed to update job heartbeat");
+            });
+          }, 60 * 1000);
+        }
+
+        await jobFn(job, token);
+      } finally {
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval);
+        }
+      }
+    };
+  };
+
+  /**
    * Startup Recovery Function
    * Recovers pending and failed jobs from PostgreSQL after server restart
    * - Pending jobs: Jobs that were queued but not yet processed
@@ -867,7 +897,12 @@ export const queueServiceFactory = (
       return;
     }
 
-    workerContainer[name] = new Worker(name, jobFn, {
+    // Check if persistence is enabled (either true or an object with enabled: true)
+    const isPersistenceEnabled = persistence === true || (typeof persistence === "object" && persistence.enabled);
+
+    const wrappedJobFn = isPersistenceEnabled ? wrapJobWithHeartbeat(name, jobFn) : jobFn;
+
+    workerContainer[name] = new Worker(name, wrappedJobFn, {
       prefix: isClusterMode ? `{${name}}` : undefined,
       ...restQueueSettings,
       ...(crypto.isFipsModeEnabled()
@@ -880,9 +915,6 @@ export const queueServiceFactory = (
         : {}),
       connection
     });
-
-    // Check if persistence is enabled (either true or an object with enabled: true)
-    const isPersistenceEnabled = persistence === true || (typeof persistence === "object" && persistence.enabled);
 
     if (isPersistenceEnabled) {
       // Normalize persistence config (supports boolean or object)
