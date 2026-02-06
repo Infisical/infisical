@@ -52,6 +52,7 @@ description: "Learn how to configure a Fly.io Sync for Infisical."
                     We highly recommend using a Key Schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
                 </Note>
                 - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
+                - **Auto Redeploy On Secret Change**: If enabled, the Fly.io app will be automatically redeployed after secrets are synced or removed. This ensures running machines pick up the new secret values, similar to the `secrets.infisical.com/auto-reload` annotation in Kubernetes.
                 - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
             </Step>
             <Step title="Configure details">
@@ -92,10 +93,12 @@ description: "Learn how to configure a Fly.io Sync for Infisical."
                     "secretPath": "/my-secrets",
                     "isEnabled": true,
                     "syncOptions": {
-                        "initialSyncBehavior": "overwrite-destination"
+                        "initialSyncBehavior": "overwrite-destination",
+                        "autoRedeploy": true
                     },
                     "destinationConfig": {
-                        "appId": "..."
+                        "appId": "...",
+                        "appName": "my-app-name"
                     }
                 }'
         ```
@@ -127,7 +130,8 @@ description: "Learn how to configure a Fly.io Sync for Infisical."
                 "lastRemoveMessage": null,
                 "lastRemovedAt": null,
                 "syncOptions": {
-                    "initialSyncBehavior": "overwrite-destination"
+                    "initialSyncBehavior": "overwrite-destination",
+                    "autoRedeploy": true
                 },
                 "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
                 "connection": {
@@ -146,7 +150,8 @@ description: "Learn how to configure a Fly.io Sync for Infisical."
                 },
                 "destination": "flyio",
                 "destinationConfig": {
-                  "appId": "..."
+                  "appId": "...",
+                  "appName": "my-app-name"
                 }
             }
         }
