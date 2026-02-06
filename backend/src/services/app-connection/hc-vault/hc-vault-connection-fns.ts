@@ -133,7 +133,7 @@ export const requestWithHCVaultGateway = async <T>(
 
   const url = new URL(requestConfig.url as string);
   await blockLocalAndPrivateIpAddresses(url.toString(), Boolean(gatewayId));
-  
+
   // If gateway isn't set up, don't proxy request
   if (!gatewayId) {
     return request.request(requestConfig);
