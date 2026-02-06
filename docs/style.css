@@ -119,3 +119,18 @@
 .flex-1 .flex .items-center {
   /* background-color: #f5f5f5; */
 }
+
+/* Changelog inline tag pills */
+#content-area .changelog-pill {
+  display: inline-block;
+  padding: 0.2em 0.6em;
+  margin-right: 0.35em;
+  margin-bottom: 0.35em;
+  font-size: 0.8em;
+  font-weight: 500;
+  line-height: 1.4;
+  color: #374151;
+  background-color: #F4F3EF;
+  border: 1px solid #ebebeb;
+  border-radius: 9999px;
+}
