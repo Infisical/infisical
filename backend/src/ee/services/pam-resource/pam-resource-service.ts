@@ -1,8 +1,12 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, TPamResources } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionPamAccountActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { createSshKeyPair } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { PgSqlLock } from "@app/keystore/keystore";
@@ -12,7 +16,10 @@ import { OrgServiceActor } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import { PamAccountView } from "../pam-account/pam-account-enums";
 import { decryptAccountCredentials, encryptAccountCredentials } from "../pam-account/pam-account-fns";
+import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamResourceDALFactory } from "./pam-resource-dal";
 import { PamResource } from "./pam-resource-enums";
 import { PAM_RESOURCE_FACTORY_MAP } from "./pam-resource-factory";
@@ -29,6 +36,8 @@ import { TSSHResourceMetadata } from "./ssh/ssh-resource-types";
 
 type TPamResourceServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "findByProjectIdWithResourceDetails">;
+  pamFolderDAL: Pick<TPamFolderDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2Service: Pick<
@@ -41,6 +50,8 @@ export type TPamResourceServiceFactory = ReturnType<typeof pamResourceServiceFac
 
 export const pamResourceServiceFactory = ({
   pamResourceDAL,
+  pamAccountDAL,
+  pamFolderDAL,
   permissionService,
   kmsService,
   gatewayV2Service
@@ -58,7 +69,56 @@ export const pamResourceServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PamResources);
+    const canReadResources = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.PamResources);
+
+    if (!canReadResources) {
+      // Check if user can read at least one account in this resource
+      const { accounts } = await pamAccountDAL.findByProjectIdWithResourceDetails({
+        projectId: resource.projectId,
+        accountView: PamAccountView.Flat,
+        filterResourceIds: [id]
+      });
+
+      // Compute folder paths for account path resolution
+      const uniqueFolderIds = [...new Set(accounts.filter((a) => a.folderId).map((a) => a.folderId!))];
+      const folderPathMap: Record<string, string> = {};
+
+      if (uniqueFolderIds.length > 0) {
+        const allFolders = await pamFolderDAL.find({ projectId: resource.projectId });
+        const folderMap = new Map(allFolders.map((f) => [f.id, f]));
+
+        for (const folderId of uniqueFolderIds) {
+          const pathSegments: string[] = [];
+          let currentId: string | null | undefined = folderId;
+          while (currentId) {
+            const folder = folderMap.get(currentId);
+            if (!folder) break;
+            pathSegments.unshift(folder.name);
+            currentId = folder.parentId;
+          }
+          folderPathMap[folderId] = `/${pathSegments.join("/")}`;
+        }
+      }
+
+      const hasAccountAccess = accounts.some((account) => {
+        const accountPath = account.folderId ? folderPathMap[account.folderId] || "/" : "/";
+        return permission.can(
+          ProjectPermissionPamAccountActions.Read,
+          subject(ProjectPermissionSub.PamAccounts, {
+            resourceName: resource.name,
+            accountName: account.name,
+            accountPath
+          })
+        );
+      });
+
+      if (!hasAccountAccess) {
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionActions.Read,
+          ProjectPermissionSub.PamResources
+        );
+      }
+    }
 
     if (resource.resourceType !== resourceType) {
       throw new BadRequestError({
@@ -275,12 +335,95 @@ export const pamResourceServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PamResources);
+    const canReadResources = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.PamResources);
 
-    const { resources, totalCount } = await pamResourceDAL.findByProjectId({ projectId, ...params });
+    if (canReadResources) {
+      const { resources, totalCount } = await pamResourceDAL.findByProjectId({ projectId, ...params });
+      return {
+        resources: await Promise.all(resources.map((resource) => decryptResource(resource, projectId, kmsService))),
+        totalCount
+      };
+    }
+
+    // Fallback: include resources where the user can read at least one account.
+    // Fetch all resources (without pagination) so we can filter by account-level access
+    // and then apply pagination on the permitted results.
+    const { resources: allResources } = await pamResourceDAL.findByProjectId({
+      projectId,
+      search: params.search,
+      orderBy: params.orderBy,
+      orderDirection: params.orderDirection,
+      filterResourceTypes: params.filterResourceTypes
+    });
+
+    if (allResources.length === 0) {
+      return { resources: [], totalCount: 0 };
+    }
+
+    // Fetch all accounts for the project (flat view, no pagination) for permission checking
+    const { accounts: allAccounts } = await pamAccountDAL.findByProjectIdWithResourceDetails({
+      projectId,
+      accountView: PamAccountView.Flat
+    });
+
+    if (allAccounts.length === 0) {
+      return { resources: [], totalCount: 0 };
+    }
+
+    // Compute folder paths so we can build the accountPath for each account
+    const uniqueFolderIds = [...new Set(allAccounts.filter((a) => a.folderId).map((a) => a.folderId!))];
+    const folderPathMap: Record<string, string> = {};
+
+    if (uniqueFolderIds.length > 0) {
+      const allFolders = await pamFolderDAL.find({ projectId });
+      const folderMap = new Map(allFolders.map((f) => [f.id, f]));
+
+      for (const folderId of uniqueFolderIds) {
+        const pathSegments: string[] = [];
+        let currentId: string | null | undefined = folderId;
+        while (currentId) {
+          const folder = folderMap.get(currentId);
+          if (!folder) break;
+          pathSegments.unshift(folder.name);
+          currentId = folder.parentId;
+        }
+        folderPathMap[folderId] = `/${pathSegments.join("/")}`;
+      }
+    }
+
+    // Group accounts by resource ID
+    const accountsByResourceId = new Map<string, Array<{ accountName: string; accountPath: string }>>();
+    for (const account of allAccounts) {
+      const accountPath = account.folderId ? folderPathMap[account.folderId] || "/" : "/";
+      const existing = accountsByResourceId.get(account.resourceId) || [];
+      existing.push({ accountName: account.name, accountPath });
+      accountsByResourceId.set(account.resourceId, existing);
+    }
+
+    // Filter to only resources where the user can read at least one account
+    const permittedResources = allResources.filter((resource) => {
+      const accounts = accountsByResourceId.get(resource.id) || [];
+      return accounts.some((account) =>
+        permission.can(
+          ProjectPermissionPamAccountActions.Read,
+          subject(ProjectPermissionSub.PamAccounts, {
+            resourceName: resource.name,
+            accountName: account.accountName,
+            accountPath: account.accountPath
+          })
+        )
+      );
+    });
+
+    const totalCount = permittedResources.length;
+    const offset = params.offset || 0;
+    const limit = params.limit || 100;
+    const paginatedResources = permittedResources.slice(offset, offset + limit);
 
     return {
-      resources: await Promise.all(resources.map((resource) => decryptResource(resource, projectId, kmsService))),
+      resources: await Promise.all(
+        paginatedResources.map((resource) => decryptResource(resource, projectId, kmsService))
+      ),
       totalCount
     };
   };
