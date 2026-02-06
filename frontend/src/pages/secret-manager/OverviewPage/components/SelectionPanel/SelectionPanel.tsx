@@ -227,7 +227,7 @@ export const SelectionPanel = ({
     <>
       <div
         className={twMerge(
-          "h-0 shrink-0 overflow-hidden transition-all",
+          "mb-2 h-0 shrink-0 overflow-hidden transition-all",
           isMultiSelectActive && "h-16"
         )}
       >

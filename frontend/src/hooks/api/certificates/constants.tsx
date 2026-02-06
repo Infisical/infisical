@@ -30,6 +30,15 @@ export const certKeyAlgorithmToNameMap: { [K in CertKeyAlgorithm]: string } = {
   [CertKeyAlgorithm.ECDSA_P384]: "ECDSA P384"
 };
 
+export const certSignatureAlgorithmToNameMap: Record<string, string> = {
+  "RSA-SHA256": "RSA with SHA-256",
+  "RSA-SHA384": "RSA with SHA-384",
+  "RSA-SHA512": "RSA with SHA-512",
+  "ECDSA-SHA256": "ECDSA with SHA-256",
+  "ECDSA-SHA384": "ECDSA with SHA-384",
+  "ECDSA-SHA512": "ECDSA with SHA-512"
+};
+
 export const certKeyAlgorithms = [
   { label: certKeyAlgorithmToNameMap[CertKeyAlgorithm.RSA_2048], value: CertKeyAlgorithm.RSA_2048 },
   { label: certKeyAlgorithmToNameMap[CertKeyAlgorithm.RSA_3072], value: CertKeyAlgorithm.RSA_3072 },

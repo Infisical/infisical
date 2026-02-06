@@ -43,29 +43,32 @@ User authentication is designed for individual developers and supports multiple 
 <Accordion title="User">
   The User authentication method allows you to log in with your email and password. This method supports three different login flows:
 
-  - **Browser Login** (default): Opens a browser for authentication
-  - **Direct Login**: Provide credentials via flags or environment variables for CI/CD
-  - **Interactive CLI Login**: Enter credentials via CLI prompts using `--interactive`
+- **Browser Login** (default): Opens a browser for authentication
+- **Direct Login**: Provide credentials via flags or environment variables for CI/CD
+- **Interactive CLI Login**: Enter credentials via CLI prompts using `--interactive`
 
-  <ParamField query="Flags">
-    <Expandable title="properties">
-        <ParamField query="email" type="string" optional>
-          Your email address. Required for direct login along with `--password` and `--organization-id`.
-        </ParamField>
-        <ParamField query="password" type="string" optional>
-          Your password. Required for direct login along with `--email` and `--organization-id`.
-        </ParamField>
-        <ParamField query="organization-id" type="string" optional>
-          Your organization id. Required for direct login along with `--password` and `--email`.
-        </ParamField>
-        <ParamField query="interactive" type="boolean" optional>
-          Force interactive CLI login instead of browser-based authentication.
-        </ParamField>
-        <ParamField query="plain" type="boolean" optional>
-          Output only the JWT token (useful for scripting and CI/CD).
-        </ParamField>
-    </Expandable>
-  </ParamField>
+<ParamField query="Flags">
+  <Expandable title="properties">
+    <ParamField query="email" type="string" optional>
+      Your email address. Required for direct login along with `--password` and
+      `--organization-id`.
+    </ParamField>
+    <ParamField query="password" type="string" optional>
+      Your password. Required for direct login along with `--email` and
+      `--organization-id`.
+    </ParamField>
+    <ParamField query="organization-id" type="string" optional>
+      Your organization id. Required for direct login along with `--password`
+      and `--email`.
+    </ParamField>
+    <ParamField query="interactive" type="boolean" optional>
+      Force interactive CLI login instead of browser-based authentication.
+    </ParamField>
+    <ParamField query="plain" type="boolean" optional>
+      Output only the JWT token (useful for scripting and CI/CD).
+    </ParamField>
+  </Expandable>
+</ParamField>
 
   <AccordionGroup>
       <Accordion title="Browser Login (Default)">
@@ -292,6 +295,7 @@ Machine identity authentication methods are designed for automated systems, serv
       ```
       </Step>
     </Steps>
+
   </Accordion>
 
   <Accordion title="JWT Auth">
@@ -317,6 +321,7 @@ Machine identity authentication methods are designed for automated systems, serv
       ```
       </Step>
     </Steps>
+
   </Accordion>
 </AccordionGroup>
 
@@ -340,6 +345,22 @@ The login command supports a number of flags that you can use for different auth
     - `aws-iam`: Login using an AWS IAM native auth.
     - `oidc-auth`: Login using OIDC auth.
     - `jwt-auth`: Login using a plain JWT token.
+
+  </Accordion>
+  <Accordion title="--organization-slug">
+    ```bash
+    infisical login --method=<auth-method> --organization-slug="team2" 
+    ```
+   #### Description
+    This authenticates the machine identity against the specified sub-organization.
+
+    <Tip>
+      The `organization-slug` flag can be substituted with the `INFISICAL_AUTH_ORGANIZATION_SLUG` environment variable.
+    </Tip>
+
+    <Info>
+       If no organization slug is provided, the authentication session defaults to the organization where the machine identity was originally created.
+    </Info>
 
   </Accordion>
   <Accordion title="--client-id">

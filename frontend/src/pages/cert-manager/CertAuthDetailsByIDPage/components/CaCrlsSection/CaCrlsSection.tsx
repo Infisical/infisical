@@ -1,3 +1,10 @@
+import {
+  UnstableCard,
+  UnstableCardContent,
+  UnstableCardHeader,
+  UnstableCardTitle
+} from "@app/components/v3";
+
 import { CaCrlsTable } from "./CaCrlsTable";
 
 type Props = {
@@ -6,15 +13,13 @@ type Props = {
 
 export const CaCrlsSection = ({ caId }: Props) => {
   return (
-    <div className="mt-4 w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-medium text-mineshaft-100">
-          CA Certificate Revocation Lists (CRLs)
-        </h3>
-      </div>
-      <div className="py-4">
+    <UnstableCard className="w-full">
+      <UnstableCardHeader className="border-b">
+        <UnstableCardTitle>CA Certificate Revocation Lists (CRLs)</UnstableCardTitle>
+      </UnstableCardHeader>
+      <UnstableCardContent>
         <CaCrlsTable caId={caId} />
-      </div>
-    </div>
+      </UnstableCardContent>
+    </UnstableCard>
   );
 };

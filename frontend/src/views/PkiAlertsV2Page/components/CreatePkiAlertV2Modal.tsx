@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { FieldError, FormProvider, useForm } from "react-hook-form";
 import { Tab } from "@headlessui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { twMerge } from "tailwind-merge";
@@ -11,8 +11,11 @@ import {
   createPkiAlertV2Schema,
   PkiAlertChannelTypeV2,
   PkiAlertEventTypeV2,
+  SIGNING_SECRET_MASK,
   TCreatePkiAlertV2,
   TPkiAlertChannelConfigEmail,
+  TPkiAlertChannelConfigWebhook,
+  TPkiAlertChannelConfigWebhookResponse,
   TPkiAlertV2,
   TUpdatePkiAlertV2,
   updatePkiAlertV2Schema,
@@ -33,11 +36,10 @@ interface Props {
 type TFormData = TCreatePkiAlertV2;
 
 const FORM_TABS: { name: string; key: string; fields: (keyof TFormData)[] }[] = [
-  { name: "Alert Type", key: "alertType", fields: ["eventType"] },
   {
     name: "Details",
     key: "basicInfo",
-    fields: ["name", "description", "alertBefore"]
+    fields: ["eventType", "name", "description", "alertBefore"]
   },
   { name: "Filters", key: "filterRules", fields: ["filters"] },
   { name: "Preview", key: "preview", fields: [] },
@@ -45,9 +47,12 @@ const FORM_TABS: { name: string; key: string; fields: (keyof TFormData)[] }[] = 
   { name: "Review", key: "review", fields: [] }
 ];
 
+const CHANNELS_TAB_INDEX = 3;
+
 export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alertId }: Props) => {
   const { currentProject } = useProject();
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
+  const [expandedChannel, setExpandedChannel] = useState<string | undefined>(undefined);
 
   const { data: fetchedAlert } = useGetPkiAlertV2ById(
     { alertId: alertId || "" },
@@ -67,18 +72,17 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
       alertBefore: "30d",
       filters: [],
       enabled: true,
-      channels: [
-        {
-          channelType: PkiAlertChannelTypeV2.EMAIL,
-          config: { recipients: [] },
-          enabled: true
-        }
-      ]
+      channels: []
     },
     reValidateMode: "onBlur"
   });
 
-  const { handleSubmit, trigger, reset } = formMethods;
+  const {
+    handleSubmit,
+    trigger,
+    reset,
+    formState: { errors }
+  } = formMethods;
 
   const { mutateAsync: createAlert } = useCreatePkiAlertV2();
   const { mutateAsync: updateAlert } = useUpdatePkiAlertV2();
@@ -86,6 +90,7 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
   const handleModalClose = () => {
     reset();
     setSelectedTabIndex(0);
+    setExpandedChannel(undefined);
     onOpenChange(false);
   };
 
@@ -99,24 +104,30 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
         alertBefore: editingAlert.alertBefore || "30d",
         filters: editingAlert.filters || [],
         enabled: editingAlert.enabled,
-        channels: editingAlert.channels?.map(({ id, createdAt, updatedAt, ...channel }) => {
-          if (channel.channelType === PkiAlertChannelTypeV2.EMAIL) {
-            const emailConfig = channel.config as TPkiAlertChannelConfigEmail;
-            return {
-              ...channel,
-              config: {
-                recipients: Array.isArray(emailConfig.recipients) ? emailConfig.recipients : []
-              }
-            };
-          }
-          return channel;
-        }) || [
-          {
-            channelType: PkiAlertChannelTypeV2.EMAIL,
-            config: { recipients: [] },
-            enabled: true
-          }
-        ]
+        channels:
+          editingAlert.channels?.map(({ createdAt, updatedAt, ...channel }) => {
+            if (channel.channelType === PkiAlertChannelTypeV2.EMAIL) {
+              const emailConfig = channel.config as TPkiAlertChannelConfigEmail;
+              return {
+                ...channel,
+                config: {
+                  recipients: Array.isArray(emailConfig.recipients) ? emailConfig.recipients : []
+                }
+              };
+            }
+            if (channel.channelType === PkiAlertChannelTypeV2.WEBHOOK) {
+              const webhookConfig = channel.config as TPkiAlertChannelConfigWebhookResponse;
+              return {
+                ...channel,
+                config: {
+                  url: webhookConfig.url,
+                  // Show mask if secret exists, otherwise undefined
+                  signingSecret: webhookConfig.hasSigningSecret ? SIGNING_SECRET_MASK : undefined
+                }
+              };
+            }
+            return channel;
+          }) || []
       });
     } else if (!isEditing) {
       reset({
@@ -127,13 +138,7 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
         alertBefore: "30d",
         filters: [],
         enabled: true,
-        channels: [
-          {
-            channelType: PkiAlertChannelTypeV2.EMAIL,
-            config: { recipients: [] },
-            enabled: true
-          }
-        ]
+        channels: []
       });
     }
   }, [editingAlert, isEditing, currentProject?.id, reset]);
@@ -150,6 +155,30 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
             ...channel,
             config: {
               recipients: Array.isArray(emailConfig.recipients) ? emailConfig.recipients : []
+            }
+          };
+        }
+        if (channel.channelType === PkiAlertChannelTypeV2.WEBHOOK) {
+          const webhookConfig = channel.config as TPkiAlertChannelConfigWebhook;
+
+          // Determine what to send for signingSecret
+          let signingSecret: string | null | undefined;
+          if (webhookConfig.signingSecret === SIGNING_SECRET_MASK) {
+            // User didn't change it - send undefined to preserve existing
+            signingSecret = undefined;
+          } else if (!webhookConfig.signingSecret) {
+            // User cleared it - send null to remove from DB
+            signingSecret = null;
+          } else {
+            // User entered a new value (or appended to mask)
+            signingSecret = webhookConfig.signingSecret;
+          }
+
+          return {
+            ...channel,
+            config: {
+              url: webhookConfig.url,
+              signingSecret
             }
           };
         }
@@ -196,6 +225,13 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
 
   const isFinalStep = selectedTabIndex === FORM_TABS.length - 1;
 
+  // Helper to find first channel with error and expand it
+  const getFirstChannelErrorIndex = (): number => {
+    if (!errors.channels) return -1;
+    const channelsErrors = errors.channels as Array<FieldError | undefined>;
+    return channelsErrors.findIndex((err) => err !== undefined);
+  };
+
   const handleNext = async () => {
     if (isFinalStep) {
       await handleSubmit(onSubmit)();
@@ -203,7 +239,16 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
     }
 
     const isValid = await isStepValid(selectedTabIndex);
-    if (!isValid) return;
+    if (!isValid) {
+      // If on channels tab and validation failed, expand first channel with error
+      if (selectedTabIndex === CHANNELS_TAB_INDEX) {
+        const firstErrorIdx = getFirstChannelErrorIndex();
+        if (firstErrorIdx >= 0) {
+          setExpandedChannel(`channel-${firstErrorIdx}`);
+        }
+      }
+      return;
+    }
 
     setSelectedTabIndex((prev) => prev + 1);
   };
@@ -222,36 +267,47 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
       <ModalContent
         title={`${isEditing ? "Update" : "Create"} Certificate Alert`}
         className="max-w-2xl"
+        closeOnOutsideClick={false}
       >
-        <form className={twMerge(isFinalStep && "max-h-[70vh] overflow-y-auto")}>
-          <FormProvider {...formMethods}>
-            <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
-              <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-mineshaft-600">
-                {FORM_TABS.map((tab, index) => (
-                  <Tab
-                    onClick={async (e) => {
-                      e.preventDefault();
-                      const isEnabled = await isTabEnabled(index);
-                      setSelectedTabIndex((prev) => (isEnabled ? index : prev));
-                    }}
-                    className={({ selected }) =>
-                      `-mb-[0.14rem] whitespace-nowrap ${index > selectedTabIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
-                        selected
-                          ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
-                          : "text-bunker-300"
-                      }`
-                    }
-                    key={tab.key}
-                  >
-                    {index + 1}. {tab.name}
-                  </Tab>
-                ))}
-              </Tab.List>
-              <Tab.Panels>
-                <CreatePkiAlertV2FormSteps />
-              </Tab.Panels>
-            </Tab.Group>
-          </FormProvider>
+        <form
+          className={twMerge(
+            "flex min-h-[60vh] flex-col",
+            isFinalStep && "max-h-[70vh] overflow-y-auto"
+          )}
+        >
+          <div className="flex-1 overflow-y-auto">
+            <FormProvider {...formMethods}>
+              <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
+                <Tab.List className="-pb-1 mb-6 flex w-full justify-center border-b-2 border-mineshaft-600">
+                  {FORM_TABS.map((tab, index) => (
+                    <Tab
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        const isEnabled = await isTabEnabled(index);
+                        setSelectedTabIndex((prev) => (isEnabled ? index : prev));
+                      }}
+                      className={({ selected }) =>
+                        `-mb-[0.14rem] w-28 whitespace-nowrap ${index > selectedTabIndex ? "opacity-30" : ""} px-2 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
+                          selected
+                            ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
+                            : "text-bunker-300"
+                        }`
+                      }
+                      key={tab.key}
+                    >
+                      {index + 1}. {tab.name}
+                    </Tab>
+                  ))}
+                </Tab.List>
+                <Tab.Panels>
+                  <CreatePkiAlertV2FormSteps
+                    expandedChannel={expandedChannel}
+                    setExpandedChannel={setExpandedChannel}
+                  />
+                </Tab.Panels>
+              </Tab.Group>
+            </FormProvider>
+          </div>
 
           <div className="flex w-full flex-row-reverse justify-between gap-4 pt-4">
             <Button onClick={handleNext} colorSchema="secondary">

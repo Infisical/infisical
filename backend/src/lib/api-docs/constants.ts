@@ -16,6 +16,9 @@ import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "@app/services/certificate-auth
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 
+const IDENTITY_AUTH_SUB_ORGANIZATION_NAME =
+  "When set, this will scope the login session to the specified organization the machine identity has access to. If omitted, the session defaults to the organization where the machine identity was created in.";
+
 export enum ApiDocsTags {
   Identities = "Identities",
   IdentityTemplates = "Identity Templates",
@@ -200,13 +203,11 @@ export const IDENTITIES = {
   }
 } as const;
 
-const IDENTITY_AUTH_SUB_ORGANIZATION_NAME = "sub-organization name to scope the token to";
-
 export const UNIVERSAL_AUTH = {
   LOGIN: {
     clientId: "Your Machine Identity Client ID.",
     clientSecret: "Your Machine Identity Client Secret.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -281,7 +282,7 @@ export const LDAP_AUTH = {
     identityId: "The ID of the machine identity to login.",
     username: "The username of the LDAP user to login.",
     password: "The password of the LDAP user to login.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     templateId: "The ID of the identity auth template to attach the configuration onto.",
@@ -347,7 +348,7 @@ export const ALICLOUD_AUTH = {
     SignatureVersion: "The signature version. For STS GetCallerIdentity, this should be '1.0'.",
     SignatureNonce: "A unique random string to prevent replay attacks.",
     Signature: "The signature string calculated based on the request parameters and AccessKey Secret.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -376,7 +377,7 @@ export const ALICLOUD_AUTH = {
 export const TLS_CERT_AUTH = {
   LOGIN: {
     identityId: "The ID of the machine identity to login.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -415,7 +416,7 @@ export const AWS_AUTH = {
     iamRequestBody:
       "The base64-encoded body of the signed request. Most likely, the base64-encoding of Action=GetCallerIdentity&Version=2011-06-15.",
     iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -454,7 +455,7 @@ export const OCI_AUTH = {
     identityId: "The ID of the machine identity to login.",
     userOcid: "The OCID of the user attempting login.",
     headers: "The headers of the signed request.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -487,7 +488,7 @@ export const OCI_AUTH = {
 export const AZURE_AUTH = {
   LOGIN: {
     identityId: "The ID of the machine identity to login.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -522,7 +523,7 @@ export const AZURE_AUTH = {
 export const GCP_AUTH = {
   LOGIN: {
     identityId: "The ID of the machine identity to login.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -561,7 +562,7 @@ export const GCP_AUTH = {
 export const KUBERNETES_AUTH = {
   LOGIN: {
     identityId: "The ID of the machine identity to login.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -642,7 +643,7 @@ export const TOKEN_AUTH = {
   CREATE_TOKEN: {
     identityId: "The ID of the machine identity to create the token for.",
     name: "The name of the token to create.",
-    subOrganizationName: "The sub organization name to scope the token to."
+    organizationSlug: "The sub organization name to scope the token to."
   },
   UPDATE_TOKEN: {
     tokenId: "The ID of the token to update metadata for.",
@@ -656,7 +657,7 @@ export const TOKEN_AUTH = {
 export const OIDC_AUTH = {
   LOGIN: {
     identityId: "The ID of the machine identity to login.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -697,7 +698,7 @@ export const OIDC_AUTH = {
 export const JWT_AUTH = {
   LOGIN: {
     identityId: "The ID of the machine identity to login.",
-    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
+    organizationSlug: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -830,10 +831,12 @@ export const ORG_IDENTITY_MEMBERSHIP = {
 
 export const SUB_ORGANIZATIONS = {
   CREATE: {
-    name: "The name of the sub organization to create."
+    name: "The display name of the sub-organization (e.g. 'Acme Corp'). Allows alphanumeric characters, spaces, dashes, and underscores.",
+    slug: "Optional. The slug of the sub-organization (e.g. 'acme-corp'). If not provided, it is auto-generated from the name. Must be lowercase with hyphens only."
   },
   UPDATE: {
-    name: "The name of the sub organization to update.",
+    name: "Optional. The display name of the sub-organization. When only the name is provided (no slug), both name and slug are updated.",
+    slug: "Optional. The slug of the sub-organization. Can be updated independently when both name and slug are provided.",
     subOrgId: "The id of the sub organization to update."
   },
   LIST: {
@@ -2624,6 +2627,21 @@ export const AppConnections = {
       password: "The password for SSH authentication (required when authMethod is 'password').",
       privateKey: "The private key in PEM format for SSH authentication (required when authMethod is 'ssh-key').",
       passphrase: "The passphrase for the private key, if encrypted (optional, only for 'ssh-key' authMethod)."
+    },
+    DBT: {
+      apiToken: "The API token used to authenticate with DBT.",
+      accountId: "The account ID of your DBT account.",
+      instanceUrl: "The base URL of your DBT instance."
+    },
+    SMB: {
+      host: "The hostname or IP address of the Windows server.",
+      port: "The SMB port (defaults to 445).",
+      domain: "The Windows domain name (optional).",
+      username: "The username for SMB authentication.",
+      password: "The password for SMB authentication."
+    },
+    OPEN_ROUTER: {
+      apiKey: "The OpenRouter Provisioning API key used to manage API keys."
     }
   }
 };
@@ -2886,6 +2904,11 @@ export const SecretSyncs = {
       projectName: "The name of the Northflank project to sync secrets to.",
       secretGroupId: "The ID of the Northflank secret group to sync secrets to.",
       secretGroupName: "The name of the Northflank secret group to sync secrets to."
+    },
+    CIRCLECI: {
+      orgName: "The CircleCI organization name to sync secrets to.",
+      projectId: "The CircleCI project ID to sync secrets to.",
+      projectName: "The CircleCI project name to sync secrets to."
     }
   }
 };
@@ -2969,8 +2992,16 @@ export const SecretRotations = {
     UNIX_LINUX_LOCAL_ACCOUNT: {
       username: "The username of the Unix/Linux user account to rotate the password for.",
       rotationMethod:
-        'Whether the rotation should be performed using "self" (the target user\'s own credentials) or "managed" (the SSH connection\'s admin credentials). Defaults to "managed".',
-      password: 'The current password of the target user if "parameters.rotationMethod" is set to "managed".'
+        'Whether the rotation should be performed using "login-as-target" (the target user\'s own credentials) or "login-as-root" (the SSH connection\'s admin credentials). Defaults to "login-as-target".',
+      password:
+        'The current password of the target user. Required if "parameters.rotationMethod" is set to "login-as-target".'
+    },
+    WINDOWS_LOCAL_ACCOUNT: {
+      username: "The username of the Windows user account to rotate the password for.",
+      rotationMethod:
+        'Whether the rotation should be performed using "login-as-target" (the target user\'s own credentials) or "login-as-root" (the SSH connection\'s admin credentials). Defaults to "login-as-target".',
+      password:
+        'The current password of the target user. Required if "parameters.rotationMethod" is set to "login-as-target".'
     },
     GENERAL: {
       PASSWORD_REQUIREMENTS: {
@@ -3010,6 +3041,17 @@ export const SecretRotations = {
       servicePrincipalId: "The ID of the Databricks Service Principal to rotate the OAuth secret for.",
       servicePrincipalName: "The name of the Databricks Service Principal to rotate the OAuth secret for.",
       clientId: "The client ID of the Databricks Service Principal to rotate the OAuth secret for."
+    },
+    DBT_SERVICE_TOKEN: {
+      permissionGrants: "The permission grants to apply to the service token.",
+      tokenName: "The name of the service token to create."
+    },
+    OPEN_ROUTER_API_KEY: {
+      name: "The name for the generated OpenRouter API key.",
+      limit: "The optional spending limit in USD for the generated API key.",
+      limitReset: "The type of limit reset for the API key (daily, weekly, monthly, or null for no reset).",
+      includeByokInLimit:
+        "Whether to include BYOK (Bring Your Own Key) usage in the spending limit. When enabled, usage from your own provider keys counts toward this key's limit. See OpenRouter BYOK docs for details."
     }
   },
   SECRETS_MAPPING: {
@@ -3037,6 +3079,10 @@ export const SecretRotations = {
       username: "The name of the secret that the username will be mapped to.",
       password: "The name of the secret that the rotated password will be mapped to."
     },
+    WINDOWS_LOCAL_ACCOUNT: {
+      username: "The name of the secret that the username will be mapped to.",
+      password: "The name of the secret that the rotated password will be mapped to."
+    },
     AWS_IAM_USER_SECRET: {
       accessKeyId: "The name of the secret that the access key ID will be mapped to.",
       secretAccessKey: "The name of the secret that the rotated secret access key will be mapped to."
@@ -3056,6 +3102,12 @@ export const SecretRotations = {
     DATABRICKS_SERVICE_ACCOUNT_SECRET: {
       clientId: "The name of the secret that the client ID will be mapped to.",
       clientSecret: "The name of the secret that the rotated OAuth client secret will be mapped to."
+    },
+    DBT_SERVICE_TOKEN: {
+      serviceToken: "The name of the secret that the service token will be mapped to."
+    },
+    OPEN_ROUTER_API_KEY: {
+      apiKey: "The name of the secret that the rotated OpenRouter API key will be mapped to."
     }
   }
 };

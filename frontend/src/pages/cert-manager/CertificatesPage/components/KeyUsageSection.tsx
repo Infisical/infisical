@@ -20,6 +20,7 @@ type KeyUsageSectionProps = {
   namePrefix: "keyUsages" | "extendedKeyUsages";
   options: KeyUsageOption[];
   requiredUsages: string[];
+  shouldUnregister?: boolean;
 };
 
 export const KeyUsageSection = ({
@@ -28,7 +29,8 @@ export const KeyUsageSection = ({
   accordionValue,
   namePrefix,
   options,
-  requiredUsages
+  requiredUsages,
+  shouldUnregister
 }: KeyUsageSectionProps) => {
   if (options.length === 0) return null;
 
@@ -44,6 +46,7 @@ export const KeyUsageSection = ({
                 key={label}
                 control={control}
                 name={`${namePrefix}.${value}` as any}
+                shouldUnregister={shouldUnregister}
                 render={({ field }) => (
                   <div className="flex items-center space-x-3">
                     <Checkbox

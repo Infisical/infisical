@@ -91,6 +91,49 @@ export const mockKeyStore = (): TKeyStoreFactory => {
         release: () => {}
       }) as Promise<Lock>;
     },
-    waitTillReady: async () => {}
+    waitTillReady: async () => {},
+    listPush: async (key, value) => {
+      const existing = store[key];
+      let list: string[] = [];
+      if (typeof existing === "string") {
+        list = JSON.parse(existing) as string[];
+      }
+      list.push(value);
+      store[key] = JSON.stringify(list);
+      return list.length;
+    },
+    listRange: async (key, start, stop) => {
+      const existing = store[key];
+      let list: string[] = [];
+      if (typeof existing === "string") {
+        list = JSON.parse(existing) as string[];
+      }
+      return list.slice(start, stop + 1);
+    },
+    listRemove: async (key: string, count: number, value: string) => {
+      const existing = store[key];
+      let list: string[] = [];
+      if (typeof existing === "string") {
+        list = JSON.parse(existing) as string[];
+      }
+
+      let removed = 0;
+      const filtered = list.filter((item) => {
+        const shouldRemove = item === value && (count === 0 || removed < count);
+        if (shouldRemove) removed += 1;
+        return !shouldRemove;
+      });
+
+      store[key] = JSON.stringify(filtered);
+      return removed;
+    },
+    listLength: async (key) => {
+      const existing = store[key];
+      let list: string[] = [];
+      if (typeof existing === "string") {
+        list = JSON.parse(existing) as string[];
+      }
+      return list.length;
+    }
   };
 };

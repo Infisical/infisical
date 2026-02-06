@@ -487,6 +487,14 @@ export const scimServiceFactory = ({
             },
             tx
           );
+        } else if (!user.isEmailVerified && trustScimEmails) {
+          await userDAL.updateById(
+            user.id,
+            {
+              isEmailVerified: trustScimEmails
+            },
+            tx
+          );
         }
 
         await userAliasDAL.create(

@@ -327,6 +327,10 @@ export const ROUTE_PATHS = Object.freeze({
     PkiSyncDetailsByIDPage: setRoute(
       "/organizations/$orgId/projects/cert-manager/$projectId/integrations/$syncId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/integrations/$syncId"
+    ),
+    CertificateDetailsByIDPage: setRoute(
+      "/organizations/$orgId/projects/cert-manager/$projectId/certificates/$certificateId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificates/$certificateId"
     )
   },
   Ssh: {
@@ -355,8 +359,8 @@ export const ROUTE_PATHS = Object.freeze({
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/accounts"
     ),
     ResourcesPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/resources",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources"
+      "/organizations/$orgId/projects/pam/$projectId/resources/",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/"
     ),
     SessionsPage: setRoute(
       "/organizations/$orgId/projects/pam/$projectId/sessions",
@@ -369,6 +373,14 @@ export const ROUTE_PATHS = Object.freeze({
     PamSessionByIDPage: setRoute(
       "/organizations/$orgId/projects/pam/$projectId/sessions/$sessionId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/$sessionId"
+    ),
+    PamResourceByIDPage: setRoute(
+      "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId"
+    ),
+    PamAccountByIDPage: setRoute(
+      "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/accounts/$accountId"
     )
   },
   Public: {

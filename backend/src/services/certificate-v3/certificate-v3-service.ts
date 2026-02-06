@@ -24,6 +24,7 @@ import {
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { extractCertificateFields } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -86,6 +87,7 @@ import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { addRenewedCertificateToSyncs, triggerAutoSyncForCertificate } from "../pki-sync/pki-sync-utils";
+import { resolveEffectiveTtl } from "./certificate-v3-fns";
 import {
   TCertificateIssuanceResponse,
   TDisableRenewalConfigDTO,
@@ -116,7 +118,7 @@ type TCertificateV3ServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
-    "findPkiSyncIdsByCertificateId" | "addCertificates" | "findByPkiSyncAndCertificate"
+    "findPkiSyncIdsByCertificateId" | "addCertificates" | "findByPkiSyncAndCertificate" | "updateSyncMetadata"
   >;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
@@ -404,10 +406,14 @@ const createSelfSignedCertificateRecord = async ({
         }
       : {};
 
+  // Extract certificate fields for storage
+  const parsedFields = extractCertificateFields(selfSignedResult.certificate);
+
   return certificateDAL.create(
     {
       ...baseRecord,
-      ...renewalRecord
+      ...renewalRecord,
+      ...parsedFields
     },
     tx
   );
@@ -722,6 +728,13 @@ export const certificateV3ServiceFactory = ({
       const policySteps = await approvalPolicyDAL.findStepsByPolicyId(approvalPolicy.id);
       const { requesterName, requesterEmail } = await resolveRequesterInfo(actor, actorId, EnrollmentType.API);
 
+      const resolvedTtl = resolveEffectiveTtl({
+        requestTtl: certificateRequest.validity.ttl || undefined,
+        profileDefaultTtlDays: profile.defaultTtlDays,
+        policyMaxValidity: policy?.validity?.max,
+        flowDefaultTtl: ""
+      });
+
       const { certRequestId, approvalRequestId } = await certificateRequestDAL.transaction(async (tx) => {
         const certRequest = await certificateRequestDAL.create(
           {
@@ -735,7 +748,7 @@ export const certificateV3ServiceFactory = ({
             notAfter: certificateRequest.notAfter || null,
             keyAlgorithm: certificateRequest.keyAlgorithm || null,
             signatureAlgorithm: certificateRequest.signatureAlgorithm || null,
-            ttl: certificateRequest.validity.ttl,
+            ttl: resolvedTtl,
             status: CertificateRequestStatus.PENDING_APPROVAL,
             organization: certificateRequest.organization || null,
             organizationalUnit: certificateRequest.organizationalUnit || null,
@@ -877,11 +890,21 @@ export const certificateV3ServiceFactory = ({
     const issuerType = profile?.issuerType || (profile?.caId ? IssuerType.CA : IssuerType.SELF_SIGNED);
 
     if (issuerType === IssuerType.SELF_SIGNED) {
+      const resolvedTtl = resolveEffectiveTtl({
+        requestTtl: certificateRequest.validity.ttl || undefined,
+        profileDefaultTtlDays: profile.defaultTtlDays,
+        policyMaxValidity: policy?.validity?.max,
+        flowDefaultTtl: ""
+      });
+
       const result = await certificateDAL.transaction(async (tx) => {
         const effectiveAlgorithms = getEffectiveAlgorithms(effectiveSignatureAlgorithm, effectiveKeyAlgorithm);
 
         const processResult = await processSelfSignedCertificate({
-          certificateRequest,
+          certificateRequest: {
+            ...certificateRequest,
+            validity: { ttl: resolvedTtl }
+          },
           policy,
           profile,
           effectiveAlgorithms,
@@ -911,7 +934,7 @@ export const certificateV3ServiceFactory = ({
           signatureAlgorithm: effectiveSignatureAlgorithm,
           status: CertificateRequestStatus.ISSUED,
           certificateId: processResult.certificateData.id,
-          ttl: certificateRequest.validity.ttl,
+          ttl: resolvedTtl,
           enrollmentType: EnrollmentType.API,
           organization: certificateRequest.organization,
           organizationalUnit: certificateRequest.organizationalUnit,
@@ -922,7 +945,7 @@ export const certificateV3ServiceFactory = ({
 
         const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
           profile,
-          certificateRequest.validity.ttl,
+          resolvedTtl,
           processResult.selfSignedResult.notAfter
         );
 
@@ -1022,7 +1045,12 @@ export const certificateV3ServiceFactory = ({
         altNames: subjectAlternativeNames,
         basicConstraints: caBasicConstraints,
         pathLength: certificateRequest.basicConstraints?.pathLength,
-        ttl: certificateRequest.validity.ttl,
+        ttl: resolveEffectiveTtl({
+          requestTtl: certificateRequest.validity.ttl,
+          profileDefaultTtlDays: profile.defaultTtlDays,
+          policyMaxValidity: policy?.validity?.max,
+          flowDefaultTtl: ""
+        }),
         keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || [],
         extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || [],
         notBefore: normalizeDateForApi(certificateRequest.notBefore),
@@ -1030,6 +1058,11 @@ export const certificateV3ServiceFactory = ({
         signatureAlgorithm: effectiveSignatureAlgorithm,
         keyAlgorithm: effectiveKeyAlgorithm,
         isFromProfile: true,
+        organization: certificateRequest.organization,
+        organizationalUnit: certificateRequest.organizationalUnit,
+        country: certificateRequest.country,
+        state: certificateRequest.state,
+        locality: certificateRequest.locality,
         tx
       };
 
@@ -1043,10 +1076,16 @@ export const certificateV3ServiceFactory = ({
       if (!certificateRecord) {
         throw new NotFoundError({ message: "Certificate was issued but could not be found in database" });
       }
+      const effectiveTtl = resolveEffectiveTtl({
+        requestTtl: certificateRequest.validity.ttl,
+        profileDefaultTtlDays: profile.defaultTtlDays,
+        policyMaxValidity: policy?.validity?.max,
+        flowDefaultTtl: ""
+      });
 
       const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
         profile,
-        certificateRequest.validity.ttl,
+        effectiveTtl,
         new Date(certificateRecord.notAfter)
       );
 
@@ -1186,7 +1225,27 @@ export const certificateV3ServiceFactory = ({
 
     mappedCertificateRequest.keyAlgorithm = extractedKeyAlgorithm;
     mappedCertificateRequest.signatureAlgorithm = extractedSignatureAlgorithm;
-    mappedCertificateRequest.validity = validity;
+
+    // When notAfter is explicitly provided, validate using date range (notAfter overrides TTL in cert generation).
+    // Otherwise, validate using TTL. These are mutually exclusive to avoid "Cannot specify both" validation error.
+    if (notAfter) {
+      mappedCertificateRequest.notBefore = notBefore;
+      mappedCertificateRequest.notAfter = notAfter;
+    } else {
+      mappedCertificateRequest.validity = validity;
+    }
+
+    // Determine effective basicConstraints early (before approval flow)
+    // so it's available for both the approval path and direct signing path.
+    // Per RFC 5280, keyCertSign in key usage implies CA certificate. We add this because some clients will not send basicConstraints in the CSR.
+    const csrHasKeyCertSign = certificateRequest.keyUsages?.includes(CertKeyUsageType.KEY_CERT_SIGN) ?? false;
+    const effectiveBasicConstraints = basicConstraints ?? certificateRequest.basicConstraints;
+    const shouldIssueAsCA = effectiveBasicConstraints?.isCA === true || csrHasKeyCertSign;
+
+    // Compute the final basicConstraints to store/use
+    const resolvedBasicConstraints = shouldIssueAsCA
+      ? { isCA: true, pathLength: effectiveBasicConstraints?.pathLength }
+      : effectiveBasicConstraints;
 
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
@@ -1235,7 +1294,7 @@ export const certificateV3ServiceFactory = ({
             ttl: validity.ttl,
             enrollmentType,
             status: CertificateRequestStatus.PENDING_APPROVAL,
-            basicConstraints: basicConstraints ? JSON.stringify(basicConstraints) : null
+            basicConstraints: resolvedBasicConstraints ? JSON.stringify(resolvedBasicConstraints) : null
           },
           tx
         );
@@ -1258,7 +1317,7 @@ export const certificateV3ServiceFactory = ({
             notAfter: notAfter?.toISOString(),
             signatureAlgorithm: extractedSignatureAlgorithm,
             keyAlgorithm: extractedKeyAlgorithm,
-            basicConstraints
+            basicConstraints: resolvedBasicConstraints
           },
           certificateRequestId: certRequest.id
         };
@@ -1315,7 +1374,6 @@ export const certificateV3ServiceFactory = ({
     const effectiveSignatureAlgorithm = extractedSignatureAlgorithm;
     const effectiveKeyAlgorithm = extractedKeyAlgorithm;
 
-    const shouldIssueAsCA = basicConstraints?.isCA === true;
     const policyIsCAState: CertPolicyState =
       (policy.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
 
@@ -1331,6 +1389,13 @@ export const certificateV3ServiceFactory = ({
       ? { isCA: true, pathLength: policy.basicConstraints?.maxPathLength }
       : undefined;
 
+    const effectiveTtl = resolveEffectiveTtl({
+      requestTtl: validity.ttl,
+      profileDefaultTtlDays: profile.defaultTtlDays,
+      policyMaxValidity: policy?.validity?.max,
+      flowDefaultTtl: ""
+    });
+
     const { certificate, certificateChain, issuingCaCertificate, serialNumber, cert, certificateRequestId } =
       await certificateDAL.transaction(async (tx) => {
         const certResult = await internalCaService.signCertFromCa({
@@ -1338,8 +1403,8 @@ export const certificateV3ServiceFactory = ({
           caId: ca.id,
           csr,
           basicConstraints: caBasicConstraints,
-          pathLength: basicConstraints?.pathLength,
-          ttl: validity.ttl,
+          pathLength: effectiveBasicConstraints?.pathLength,
+          ttl: effectiveTtl,
           altNames: undefined,
           notBefore: normalizeDateForApi(notBefore),
           notAfter: normalizeDateForApi(notAfter),
@@ -1356,7 +1421,7 @@ export const certificateV3ServiceFactory = ({
 
         const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
           profile,
-          validity.ttl,
+          effectiveTtl,
           new Date(signedCertRecord.notAfter)
         );
 
@@ -1463,7 +1528,10 @@ export const certificateV3ServiceFactory = ({
       };
     }
 
-    if (certificateRequest.basicConstraints?.isCA) {
+    // Check if this is a CA certificate request (either explicit basicConstraints or keyCertSign in key usages)
+    // Per RFC 5280, keyCertSign implies CA certificate. Some clients (like cert-manager) only send keyCertSign without basicConstraints.
+    const orderCsrHasKeyCertSign = certificateRequest.keyUsages?.includes(CertKeyUsageType.KEY_CERT_SIGN) ?? false;
+    if (certificateRequest.basicConstraints?.isCA || orderCsrHasKeyCertSign) {
       throw new BadRequestError({
         message: "CA certificate issuance is not supported for external certificate authorities."
       });

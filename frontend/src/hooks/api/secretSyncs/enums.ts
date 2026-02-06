@@ -32,7 +32,8 @@ export enum SecretSync {
   Bitbucket = "bitbucket",
   LaravelForge = "laravel-forge",
   Chef = "chef",
-  OctopusDeploy = "octopus-deploy"
+  OctopusDeploy = "octopus-deploy",
+  CircleCI = "circleci"
 }
 
 export enum SecretSyncStatus {

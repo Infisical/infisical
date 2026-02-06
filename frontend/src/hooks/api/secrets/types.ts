@@ -64,8 +64,8 @@ export type SecretV3Raw = {
   secretComment?: string;
   secretReminderNote?: string;
   secretReminderRepeatDays?: number;
-  secretMetadata?: { key: string; value: string }[];
-  skipMultilineEncoding?: boolean;
+  secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
+  skipMultilineEncoding?: boolean | null;
   metadata?: Record<string, string>;
   tags?: WsTag[];
   createdAt: string;
@@ -101,7 +101,7 @@ export type SecretVersions = {
   secretComment?: string;
   tags: WsTag[];
   __v: number;
-  skipMultilineEncoding?: boolean;
+  skipMultilineEncoding?: boolean | null;
   createdAt: string;
   updatedAt: string;
   actor?: {
@@ -181,7 +181,7 @@ export type TUpdateSecretsV3DTO = {
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
   tagIds?: string[];
-  secretMetadata?: { key: string; value: string }[];
+  secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
   secretReminderRecipients?: string[] | null;
 };
 
@@ -202,7 +202,7 @@ export type TCreateSecretBatchDTO = {
     secretKey: string;
     secretValue: string;
     secretComment: string;
-    skipMultilineEncoding?: boolean;
+    skipMultilineEncoding?: boolean | null;
     type: SecretType;
     tagIds?: string[];
     metadata?: {
@@ -220,7 +220,7 @@ export type TUpdateSecretBatchDTO = {
     secretKey: string;
     secretValue: string;
     secretComment?: string;
-    skipMultilineEncoding?: boolean;
+    skipMultilineEncoding?: boolean | null;
     tagIds?: string[];
     metadata?: {
       source?: string;
@@ -264,8 +264,24 @@ export type TSecretReferenceTraceNode = {
   children: TSecretReferenceTraceNode[];
 };
 
+export type TGetSecretReferencesDTO = {
+  secretKey: string;
+  secretPath: string;
+  environment: string;
+  projectId: string;
+};
+
+export type TSecretReference = {
+  secretKey: string;
+  secretId: string;
+  environment: string;
+  secretPath: string;
+  referenceType: "nested" | "local";
+};
+
 export type SecretAccessListEntry = {
   allowedActions: ProjectPermissionActions[];
   id: string;
+  membershipId: string;
   name: string;
 };

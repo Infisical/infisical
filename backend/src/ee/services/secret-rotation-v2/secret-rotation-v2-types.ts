@@ -36,6 +36,13 @@ import {
   TDatabricksServicePrincipalSecretRotationWithConnection
 } from "./databricks-service-principal-secret";
 import {
+  TDbtServiceTokenRotation,
+  TDbtServiceTokenRotationGeneratedCredentials,
+  TDbtServiceTokenRotationInput,
+  TDbtServiceTokenRotationListItem,
+  TDbtServiceTokenRotationWithConnection
+} from "./dbt-service-token/dbt-service-token-rotation-types";
+import {
   TLdapPasswordRotation,
   TLdapPasswordRotationGeneratedCredentials,
   TLdapPasswordRotationInput,
@@ -68,6 +75,13 @@ import {
   TOktaClientSecretRotationWithConnection
 } from "./okta-client-secret";
 import {
+  TOpenRouterApiKeyRotation,
+  TOpenRouterApiKeyRotationGeneratedCredentials,
+  TOpenRouterApiKeyRotationInput,
+  TOpenRouterApiKeyRotationListItem,
+  TOpenRouterApiKeyRotationWithConnection
+} from "./open-router-api-key";
+import {
   TOracleDBCredentialsRotation,
   TOracleDBCredentialsRotationInput,
   TOracleDBCredentialsRotationListItem,
@@ -95,6 +109,13 @@ import {
   TUnixLinuxLocalAccountRotationListItem,
   TUnixLinuxLocalAccountRotationWithConnection
 } from "./unix-linux-local-account-rotation";
+import {
+  TWindowsLocalAccountRotation,
+  TWindowsLocalAccountRotationGeneratedCredentials,
+  TWindowsLocalAccountRotationInput,
+  TWindowsLocalAccountRotationListItem,
+  TWindowsLocalAccountRotationWithConnection
+} from "./windows-local-account-rotation";
 
 export type TSecretRotationV2 =
   | TPostgresCredentialsRotation
@@ -109,7 +130,10 @@ export type TSecretRotationV2 =
   | TRedisCredentialsRotation
   | TMongoDBCredentialsRotation
   | TDatabricksServicePrincipalSecretRotation
-  | TUnixLinuxLocalAccountRotation;
+  | TUnixLinuxLocalAccountRotation
+  | TDbtServiceTokenRotation
+  | TWindowsLocalAccountRotation
+  | TOpenRouterApiKeyRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
@@ -124,7 +148,10 @@ export type TSecretRotationV2WithConnection =
   | TRedisCredentialsRotationWithConnection
   | TMongoDBCredentialsRotationWithConnection
   | TDatabricksServicePrincipalSecretRotationWithConnection
-  | TUnixLinuxLocalAccountRotationWithConnection;
+  | TUnixLinuxLocalAccountRotationWithConnection
+  | TDbtServiceTokenRotationWithConnection
+  | TWindowsLocalAccountRotationWithConnection
+  | TOpenRouterApiKeyRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
@@ -135,7 +162,10 @@ export type TSecretRotationV2GeneratedCredentials =
   | TOktaClientSecretRotationGeneratedCredentials
   | TRedisCredentialsRotationGeneratedCredentials
   | TDatabricksServicePrincipalSecretRotationGeneratedCredentials
-  | TUnixLinuxLocalAccountRotationGeneratedCredentials;
+  | TUnixLinuxLocalAccountRotationGeneratedCredentials
+  | TDbtServiceTokenRotationGeneratedCredentials
+  | TWindowsLocalAccountRotationGeneratedCredentials
+  | TOpenRouterApiKeyRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
@@ -150,7 +180,10 @@ export type TSecretRotationV2Input =
   | TRedisCredentialsRotationInput
   | TMongoDBCredentialsRotationInput
   | TDatabricksServicePrincipalSecretRotationInput
-  | TUnixLinuxLocalAccountRotationInput;
+  | TUnixLinuxLocalAccountRotationInput
+  | TDbtServiceTokenRotationInput
+  | TWindowsLocalAccountRotationInput
+  | TOpenRouterApiKeyRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
@@ -165,11 +198,15 @@ export type TSecretRotationV2ListItem =
   | TRedisCredentialsRotationListItem
   | TMongoDBCredentialsRotationListItem
   | TDatabricksServicePrincipalSecretRotationListItem
-  | TUnixLinuxLocalAccountRotationListItem;
+  | TUnixLinuxLocalAccountRotationListItem
+  | TDbtServiceTokenRotationListItem
+  | TWindowsLocalAccountRotationListItem
+  | TOpenRouterApiKeyRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters =
   | TLdapPasswordRotationInput["temporaryParameters"]
   | TUnixLinuxLocalAccountRotationInput["temporaryParameters"]
+  | TWindowsLocalAccountRotationInput["temporaryParameters"]
   | undefined;
 
 export type TSecretRotationV2Raw = NonNullable<Awaited<ReturnType<TSecretRotationV2DALFactory["findById"]>>>;
@@ -220,6 +257,13 @@ export type TDeleteSecretRotationV2DTO = {
   rotationId: string;
   deleteSecrets: boolean;
   revokeGeneratedCredentials: boolean;
+};
+
+/** Minimal rotation shape needed to build a permission subject (env, path, connectionId). */
+export type TSecretRotationV2PermissionContext = {
+  environment: { slug: string };
+  folder: { path: string };
+  connection: { id: string };
 };
 
 export type TGetDashboardSecretRotationV2Count = {

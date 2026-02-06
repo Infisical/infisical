@@ -14,8 +14,11 @@
     "prepare": "husky install"
   },
   "lint-staged": {
-    "./{frontend/backend}/**/*.{js,jsx,ts,tsx}": [
-      "eslint --fix"
+    "./frontend/**/*.{js,jsx,ts,tsx}": [
+      "bash -c 'cd frontend && npx eslint --fix --max-warnings 0 ${@#frontend/}' _"
+    ],
+    "./backend/**/*.{js,jsx,ts,tsx}": [
+      "bash -c 'cd backend && npx eslint --fix --max-warnings 0 ${@#backend/}' _"
     ]
   },
   "devDependencies": {

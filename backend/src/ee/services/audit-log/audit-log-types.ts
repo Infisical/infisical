@@ -460,6 +460,8 @@ export enum EventType {
   PKI_SYNC_SYNC_CERTIFICATES = "pki-sync-sync-certificates",
   PKI_SYNC_IMPORT_CERTIFICATES = "pki-sync-import-certificates",
   PKI_SYNC_REMOVE_CERTIFICATES = "pki-sync-remove-certificates",
+  PKI_SYNC_SET_DEFAULT_CERTIFICATE = "pki-sync-set-default-certificate",
+  PKI_SYNC_CLEAR_DEFAULT_CERTIFICATE = "pki-sync-clear-default-certificate",
   OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
   OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user",
   CREATE_KMIP_CLIENT = "create-kmip-client",
@@ -558,6 +560,7 @@ export enum EventType {
   PAM_FOLDER_UPDATE = "pam-folder-update",
   PAM_FOLDER_DELETE = "pam-folder-delete",
   PAM_ACCOUNT_LIST = "pam-account-list",
+  PAM_ACCOUNT_GET = "pam-account-get",
   PAM_ACCOUNT_ACCESS = "pam-account-access",
   PAM_ACCOUNT_CREATE = "pam-account-create",
   PAM_ACCOUNT_UPDATE = "pam-account-update",
@@ -763,6 +766,7 @@ interface CreateSubOrganizationEvent {
   type: EventType.CREATE_SUB_ORGANIZATION;
   metadata: {
     name: string;
+    slug: string;
     organizationId: string;
   };
 }
@@ -771,6 +775,7 @@ interface UpdateSubOrganizationEvent {
   type: EventType.UPDATE_SUB_ORGANIZATION;
   metadata: {
     name: string;
+    slug: string;
     organizationId: string;
   };
 }
@@ -3482,6 +3487,23 @@ interface PkiSyncRemoveCertificatesEvent {
   };
 }
 
+interface PkiSyncSetDefaultCertificateEvent {
+  type: EventType.PKI_SYNC_SET_DEFAULT_CERTIFICATE;
+  metadata: {
+    pkiSyncId: string;
+    name: string;
+    certificateId: string;
+  };
+}
+
+interface PkiSyncClearDefaultCertificateEvent {
+  type: EventType.PKI_SYNC_CLEAR_DEFAULT_CERTIFICATE;
+  metadata: {
+    pkiSyncId: string;
+    name: string;
+  };
+}
+
 interface OidcGroupMembershipMappingAssignUserEvent {
   type: EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER;
   metadata: {
@@ -4217,6 +4239,14 @@ interface PamAccountListEvent {
   metadata: {
     accountCount: number;
     folderCount: number;
+  };
+}
+
+interface PamAccountGetEvent {
+  type: EventType.PAM_ACCOUNT_GET;
+  metadata: {
+    accountId: string;
+    accountName: string;
   };
 }
 
@@ -5207,6 +5237,8 @@ export type Event =
   | PkiSyncSyncCertificatesEvent
   | PkiSyncImportCertificatesEvent
   | PkiSyncRemoveCertificatesEvent
+  | PkiSyncSetDefaultCertificateEvent
+  | PkiSyncClearDefaultCertificateEvent
   | OidcGroupMembershipMappingAssignUserEvent
   | OidcGroupMembershipMappingRemoveUserEvent
   | CreateKmipClientEvent
@@ -5293,6 +5325,7 @@ export type Event =
   | PamFolderUpdateEvent
   | PamFolderDeleteEvent
   | PamAccountListEvent
+  | PamAccountGetEvent
   | PamAccountAccessEvent
   | PamAccountCreateEvent
   | PamAccountUpdateEvent
