@@ -1682,6 +1682,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           secretVersions: secretRawSchema
             .omit({ secretValue: true })
             .extend({
+              isRedacted: z.boolean(),
+              redactedAt: z.date().nullable(),
+              redactedByUserId: z.string().uuid().nullable(),
               secretValueHidden: z.boolean()
             })
             .array()

@@ -19,6 +19,24 @@ export type TSecretVersionV2DALFactory = ReturnType<typeof secretVersionV2Bridge
 export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
   const secretVersionV2Orm = ormify(db, TableName.SecretVersionV2);
 
+  const findOne = async (filter: Partial<TSecretVersionsV2>, tx?: Knex) => {
+    try {
+      const doc = await (tx || db.replicaNode())(TableName.SecretVersionV2)
+        // eslint-disable-next-line
+        .where(buildFindFilter(filter, TableName.SecretVersionV2))
+        .leftJoin(TableName.SecretV2, `${TableName.SecretVersionV2}.secretId`, `${TableName.SecretV2}.id`)
+        .leftJoin(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .leftJoin(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .select(selectAllTableCols(TableName.SecretVersionV2))
+        .select(db.ref("projectId").withSchema(TableName.Environment).as("projectId"))
+        .first();
+
+      return doc;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindOne" });
+    }
+  };
+
   const findBySecretId = async (secretId: string, { offset, limit, sort, tx }: TFindOpt<TSecretVersionsV2> = {}) => {
     try {
       const query = (tx || db.replicaNode())(TableName.SecretVersionV2)
@@ -469,6 +487,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
     findVersionsBySecretIdWithActors,
     findBySecretId,
     findByIdsWithLatestVersion,
-    findByIdAndPreviousVersion
+    findByIdAndPreviousVersion,
+    findOne
   };
 };

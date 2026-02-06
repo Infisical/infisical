@@ -519,3 +519,16 @@ export const useCreateCommit = () => {
     }
   });
 };
+
+export const useRedactSecretValue = () => {
+  const queryClient = useQueryClient();
+  return useMutation<object, object, { versionId: string; secretId: string }>({
+    mutationFn: async ({ versionId }) => {
+      const { data } = await apiRequest.delete(`/api/v2/secret-versions/${versionId}/redact-value`);
+      return data;
+    },
+    onSuccess: (_, { secretId }) => {
+      queryClient.invalidateQueries({ queryKey: secretKeys.getSecretVersion(secretId) });
+    }
+  });
+};

@@ -1340,7 +1340,8 @@ export const secretQueueFactory = ({
               reminderNote: el.secretReminderNote,
               reminderRepeatDays: el.secretReminderRepeatDays,
               secretId: el.secretId,
-              envId: el.envId
+              envId: el.envId,
+              isRedacted: false
             };
             el.tags.forEach(({ secretTagId }) => {
               projectV3SecretVersionTags.push({ secret_tagsId: secretTagId, secret_versions_v2Id: el.id });
@@ -1402,7 +1403,8 @@ export const secretQueueFactory = ({
             reminderNote: el.secretReminderNote,
             reminderRepeatDays: el.secretReminderRepeatDays,
             secretId: el.secretId,
-            envId: el.envId
+            envId: el.envId,
+            isRedacted: false
           };
         });
 

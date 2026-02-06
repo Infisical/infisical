@@ -106,6 +106,9 @@ type SecretChange = BaseChange & {
     metadata?: unknown;
     tags?: string[] | null;
     secretValue?: string;
+    isRedacted: boolean;
+    redactedAt: Date | null;
+    redactedByUserId: string | null;
   }[];
 };
 

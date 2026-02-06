@@ -111,6 +111,9 @@ export type SecretVersions = {
     membershipId?: string | null;
     groupId?: string | null;
   } | null;
+  isRedacted: boolean;
+  redactedAt: string | null;
+  redactedByUserId: string | null;
 };
 
 // dto
