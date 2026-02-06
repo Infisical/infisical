@@ -875,7 +875,7 @@ export const SecretDetailSidebar = ({
                 leftIcon={<FontAwesomeIcon icon={faProjectDiagram} />}
                 onClick={() => handlePopUpOpen("secretReferenceTree", secretKey)}
               >
-                Secret Reference Tree
+                Secret References
               </Button>
               <Tooltip content="Copy Secret ID" className="z-100">
                 <IconButton

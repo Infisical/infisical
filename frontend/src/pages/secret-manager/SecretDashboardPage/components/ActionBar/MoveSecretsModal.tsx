@@ -94,25 +94,28 @@ export const MoveSecretsModal = ({
 
   // aggregate all references and so we can calculate total count including hidden ones
   const allReferences = referenceQueries
-    .filter((refQueries) => refQueries.data)
+    .filter((refQueries) => refQueries.data?.tree)
     .flatMap((q, idx) =>
-      (q.data?.references || []).map((ref) => ({ ...ref, movedSecretKey: secretsToMove[idx].key }))
+      (q.data?.tree.children || []).map((child) => ({
+        secretKey: child.key,
+        environment: child.environment,
+        secretPath: child.secretPath,
+        movedSecretKey: secretsToMove[idx].key
+      }))
     )
     .filter(
       (ref, index, self) =>
         index ===
         self.findIndex(
-          (r) => r.secretId === ref.secretId && r.movedSecretKey === ref.movedSecretKey
+          (r) =>
+            r.secretKey === ref.secretKey &&
+            r.environment === ref.environment &&
+            r.secretPath === ref.secretPath &&
+            r.movedSecretKey === ref.movedSecretKey
         )
     );
 
-  const totalReferenceCount = referenceQueries.reduce(
-    (sum, queryResult) => sum + (queryResult.data?.totalCount || 0),
-    0
-  );
-  const hiddenReferenceCount = totalReferenceCount - allReferences.length;
-
-  const hasReferences = totalReferenceCount > 0;
+  const hasReferences = allReferences.length > 0;
   const isLoadingReferences = referenceQueries.some((refQueries) => refQueries.isLoading);
 
   const handleFormSubmit = (data: TFormSchema) => {
@@ -193,7 +196,7 @@ export const MoveSecretsModal = ({
                     <FontAwesomeIcon icon={faWarning} className="h-5 w-5" />
                   </div>
                   <p className="text-sm text-yellow-500">
-                    {totalReferenceCount} secret{totalReferenceCount !== 1 ? "s" : ""} will have
+                    {allReferences.length} secret{allReferences.length !== 1 ? "s" : ""} will have
                     their references updated to match the path after the secret has been moved.
                   </p>
                 </div>
@@ -210,7 +213,9 @@ export const MoveSecretsModal = ({
                     </THead>
                     <TBody>
                       {allReferences.map((ref) => (
-                        <Tr key={`${ref.secretId}-${ref.movedSecretKey}`}>
+                        <Tr
+                          key={`${ref.secretKey}-${ref.environment}-${ref.secretPath}-${ref.movedSecretKey}`}
+                        >
                           <Td>
                             <FontAwesomeIcon icon={faKey} className="h-4 w-4 text-gray-400" />
                           </Td>
@@ -222,12 +227,6 @@ export const MoveSecretsModal = ({
                     </TBody>
                   </Table>
                 </div>
-              )}
-              {hiddenReferenceCount > 0 && (
-                <p className="mt-2 text-xs text-mineshaft-400">
-                  + {hiddenReferenceCount} additional secret{hiddenReferenceCount !== 1 ? "s" : ""}{" "}
-                  you don&apos;t have access to view
-                </p>
               )}
             </div>
           )}

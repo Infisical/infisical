@@ -367,8 +367,9 @@ export const CommitForm: React.FC<CommitFormProps> = ({
     const map: Record<string, number> = {};
     secretsBeingRenamed.forEach((secretKey, idx) => {
       const queryResult = referenceQueries[idx];
-      if (queryResult?.data) {
-        map[secretKey] = queryResult.data.totalCount;
+      if (queryResult?.data?.tree) {
+        // Count direct references from tree children
+        map[secretKey] = queryResult.data.tree.children?.length ?? 0;
       }
     });
     return map;
