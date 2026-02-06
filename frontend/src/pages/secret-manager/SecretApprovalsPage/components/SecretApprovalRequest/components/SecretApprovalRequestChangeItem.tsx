@@ -44,7 +44,7 @@ const convertToSecretVersionData = (
   change?: Omit<TSecretApprovalSecChange, "tags"> & {
     tags?: WsTag[];
     secretMetadata?: { key: string; value: string }[];
-    skipMultilineEncoding?: boolean;
+    skipMultilineEncoding?: boolean | null;
   }
 ): SecretVersionData | undefined => {
   if (secret && !change) {
@@ -55,7 +55,7 @@ const convertToSecretVersionData = (
       secretComment: secret.secretComment,
       tags: secret.tags?.map((t) => ({ slug: t.slug, color: t.color ?? "" })),
       secretMetadata: secret.secretMetadata,
-      skipMultilineEncoding: secret.skipMultilineEncoding
+      skipMultilineEncoding: secret.skipMultilineEncoding ?? undefined
     };
   }
 
@@ -69,7 +69,8 @@ const convertToSecretVersionData = (
         change.tags?.map((t) => ({ slug: t.slug, color: t.color ?? "" })) ??
         secret?.tags?.map((t) => ({ slug: t.slug, color: t.color ?? "" })),
       secretMetadata: change.secretMetadata ?? secret?.secretMetadata,
-      skipMultilineEncoding: change.skipMultilineEncoding ?? secret?.skipMultilineEncoding
+      skipMultilineEncoding:
+        change.skipMultilineEncoding ?? secret?.skipMultilineEncoding ?? undefined
     };
   }
 
