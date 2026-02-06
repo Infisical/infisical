@@ -1,13 +1,21 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
-import React, { useCallback, useState } from "react";
-import { faCodeCommit, faFolder, faKey, faSave } from "@fortawesome/free-solid-svg-icons";
+import React, { useCallback, useMemo, useState } from "react";
+import {
+  faCodeCommit,
+  faExclamationTriangle,
+  faFolder,
+  faKey,
+  faSave
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQueries } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { ClipboardCheckIcon } from "lucide-react";
 
-import { Button, Input, Modal, ModalContent } from "@app/components/v2";
+import { Button, Input, Modal, ModalContent, Tooltip } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
+import { fetchSecretReferences, secretKeys } from "@app/hooks/api/secrets/queries";
 import { SecretVersionDiffView } from "@app/pages/secret-manager/CommitDetailsPage/components/SecretVersionDiffView";
 import { HIDDEN_SECRET_VALUE_API_MASK } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
@@ -26,19 +34,13 @@ interface CommitFormProps {
   secretPath: string;
 }
 
-interface ResourceChangeProps {
-  change: PendingChange;
-  environment: string;
-  projectId: string;
-  secretPath: string;
-}
-
 type RenderResourceProps = {
   onDiscard: () => void;
   change: PendingChange;
+  referenceCount?: number;
 };
 
-const RenderSecretChanges = ({ onDiscard, change }: RenderResourceProps) => {
+const RenderSecretChanges = ({ onDiscard, change, referenceCount }: RenderResourceProps) => {
   if (change.resourceType !== "secret") return null;
 
   if (change.type === PendingAction.Create) {
@@ -89,9 +91,31 @@ const RenderSecretChanges = ({ onDiscard, change }: RenderResourceProps) => {
 
     if (!hasChanges) return null;
 
+    const showReferenceWarning = hasKeyChange && referenceCount && referenceCount > 0;
+
+    const referenceWarningElement = showReferenceWarning ? (
+      <Tooltip
+        content={
+          <div className="max-w-xs">
+            <p className="font-medium">References will be updated</p>
+            <p className="mt-1 text-xs text-mineshaft-300">
+              This secret is referenced by {referenceCount} secret{referenceCount !== 1 ? "s" : ""}.
+              References will be automatically updated to use the new key. This can trigger secret
+              syncs in the respective environments.
+            </p>
+          </div>
+        }
+      >
+        <Badge variant="warning" className="ml-2">
+          References affected <FontAwesomeIcon icon={faExclamationTriangle} />
+        </Badge>
+      </Tooltip>
+    ) : undefined;
+
     return (
       <SecretVersionDiffView
         onDiscard={onDiscard}
+        headerExtra={referenceWarningElement}
         item={{
           secretKey: change.secretKey,
           isUpdated: true,
@@ -161,7 +185,8 @@ const RenderSecretChanges = ({ onDiscard, change }: RenderResourceProps) => {
   return null;
 };
 
-const RenderFolderChanges = ({ onDiscard, change }: RenderResourceProps) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const RenderFolderChanges = ({ onDiscard, change, referenceCount: _ }: RenderResourceProps) => {
   if (change.resourceType !== "folder") return null;
 
   if (change.type === PendingAction.Create) {
@@ -241,11 +266,20 @@ const RenderFolderChanges = ({ onDiscard, change }: RenderResourceProps) => {
   return null;
 };
 
+interface ResourceChangeProps {
+  change: PendingChange;
+  environment: string;
+  projectId: string;
+  secretPath: string;
+  referenceCountMap: Record<string, number>;
+}
+
 const ResourceChange: React.FC<ResourceChangeProps> = ({
   change,
   environment,
   projectId,
-  secretPath
+  secretPath,
+  referenceCountMap
 }) => {
   const { removePendingChange } = useBatchModeActions();
 
@@ -260,11 +294,20 @@ const ResourceChange: React.FC<ResourceChangeProps> = ({
     [change.resourceType, change.id]
   );
 
+  const referenceCount =
+    change.resourceType === "secret" &&
+    change.type === PendingAction.Update &&
+    change.newSecretName &&
+    change.secretKey !== change.newSecretName
+      ? referenceCountMap[change.secretKey] || 0
+      : 0;
+
   return change.resourceType === "secret" ? (
     <RenderSecretChanges
       key={change.id}
       change={change}
       onDiscard={() => handleDeletePending(change.resourceType, change.id)}
+      referenceCount={referenceCount}
     />
   ) : (
     <RenderFolderChanges
@@ -287,6 +330,49 @@ export const CommitForm: React.FC<CommitFormProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [commitMessage, setCommitMessage] = useState("");
   const { clearAllPendingChanges } = useBatchModeActions();
+
+  const secretsBeingRenamed = useMemo(
+    () =>
+      pendingChanges.secrets
+        .filter(
+          (change) =>
+            change.type === PendingAction.Update &&
+            change.newSecretName &&
+            change.secretKey !== change.newSecretName
+        )
+        .map((change) => change.secretKey),
+    [pendingChanges.secrets]
+  );
+
+  const referenceQueries = useQueries({
+    queries: secretsBeingRenamed.map((secretKey) => ({
+      queryKey: secretKeys.getSecretReferences({
+        secretKey,
+        secretPath,
+        environment,
+        projectId
+      }),
+      queryFn: () =>
+        fetchSecretReferences({
+          secretKey,
+          secretPath,
+          environment,
+          projectId
+        }),
+      enabled: isModalOpen && secretsBeingRenamed.length > 0
+    }))
+  });
+
+  const referenceCountMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    secretsBeingRenamed.forEach((secretKey, idx) => {
+      const queryResult = referenceQueries[idx];
+      if (queryResult?.data) {
+        map[secretKey] = queryResult.data.totalCount;
+      }
+    });
+    return map;
+  }, [secretsBeingRenamed, referenceQueries]);
 
   if (!isBatchMode || totalChangesCount === 0) {
     return null;
@@ -397,6 +483,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                           environment={environment}
                           projectId={projectId}
                           secretPath={secretPath}
+                          referenceCountMap={referenceCountMap}
                         />
                       ))}
                     </div>
@@ -418,6 +505,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                           environment={environment}
                           projectId={projectId}
                           secretPath={secretPath}
+                          referenceCountMap={referenceCountMap}
                         />
                       ))}
                     </div>

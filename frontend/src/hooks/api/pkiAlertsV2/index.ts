@@ -20,6 +20,7 @@ export type {
   TGetPkiAlertV2CurrentMatchingCertificatesResponse,
   TGetPkiAlertV2MatchingCertificates,
   TPkiAlertChannelConfigEmail,
+  TPkiAlertChannelConfigSlack,
   TPkiAlertChannelConfigWebhook,
   TPkiAlertChannelConfigWebhookResponse,
   TPkiAlertChannelV2,

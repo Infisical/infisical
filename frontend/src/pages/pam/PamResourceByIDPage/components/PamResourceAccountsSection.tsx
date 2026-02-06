@@ -1,38 +1,40 @@
 import { useCallback } from "react";
-import {
-  faCheck,
-  faCopy,
-  faEdit,
-  faEllipsisV,
-  faPlus,
-  faRightToBracket,
-  faRotate,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
+import {
+  CheckIcon,
+  CopyIcon,
+  EllipsisVerticalIcon,
+  LogInIcon,
+  PencilIcon,
+  PlusIcon,
+  RefreshCwIcon,
+  TrashIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  EmptyState,
-  IconButton,
-  Table,
-  TableContainer,
-  TBody,
-  Td,
-  Th,
-  THead,
   Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+  TooltipContent,
+  TooltipTrigger,
+  UnstableDropdownMenu,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuTrigger,
+  UnstableEmpty,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle,
+  UnstableIconButton,
+  UnstableTable,
+  UnstableTableBody,
+  UnstableTableCell,
+  UnstableTableHead,
+  UnstableTableHeader,
+  UnstableTableRow
+} from "@app/components/v3";
 import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionPamAccountActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp, useToggle } from "@app/hooks";
@@ -94,8 +96,14 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
 
   const handleAccountClick = (account: TPamAccount) => {
     navigate({
-      to: "/organizations/$orgId/projects/pam/$projectId/accounts/$accountId",
-      params: { orgId: currentOrg.id, projectId: projectId!, accountId: account.id }
+      to: "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId",
+      params: {
+        orgId: currentOrg.id,
+        projectId: projectId!,
+        resourceType: resource.resourceType,
+        resourceId: resource.id,
+        accountId: account.id
+      }
     });
   };
 
@@ -134,11 +142,11 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
   };
 
   return (
-    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900">
-      <div className="flex items-center justify-between border-b border-mineshaft-600 px-4 py-3">
+    <div className="rounded-lg border border-border bg-container">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div>
-          <h3 className="text-lg font-medium text-mineshaft-100">Accounts</h3>
-          <p className="text-sm text-bunker-300">
+          <h3 className="text-lg font-medium">Accounts</h3>
+          <p className="text-sm text-muted">
             Accounts associated with this resource that can be used for access
           </p>
         </div>
@@ -148,197 +156,202 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
         >
           {(isAllowed) => (
             <Button
-              variant="outline_bg"
+              variant="neutral"
               size="sm"
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
               isDisabled={!isAllowed}
               onClick={() => handlePopUpOpen("addAccount")}
             >
+              <PlusIcon />
               Add Account
             </Button>
           )}
         </ProjectPermissionCan>
       </div>
       <div className="p-4">
-        <TableContainer>
-          <Table>
-            <THead>
-              <Tr>
-                <Th>Account Name</Th>
-                <Th>Rotation</Th>
-                <Th>Created</Th>
-                <Th className="w-5" />
-              </Tr>
-            </THead>
-            <TBody>
-              {isPending && (
-                <Tr>
-                  <Td colSpan={4} className="text-center text-mineshaft-400">
-                    Loading accounts...
-                  </Td>
-                </Tr>
-              )}
-              {!isPending && accounts.length === 0 && (
-                <Tr>
-                  <Td colSpan={4}>
-                    <EmptyState title="No accounts found" className="py-8" />
-                  </Td>
-                </Tr>
-              )}
-              {accounts.map((account) => {
-                const isAwsIamAccount = resource.resourceType === PamResourceType.AwsIam;
-                const rotationEnabled = !isAwsIamAccount
-                  ? (account as { rotationEnabled?: boolean }).rotationEnabled
-                  : undefined;
-                const rotationStatus = !isAwsIamAccount
-                  ? (account as { rotationStatus?: string | null }).rotationStatus
-                  : undefined;
-                const lastRotatedAt = !isAwsIamAccount
-                  ? (account as { lastRotatedAt?: string | null }).lastRotatedAt
-                  : undefined;
-                const lastRotationMessage = !isAwsIamAccount
-                  ? (account as { lastRotationMessage?: string | null }).lastRotationMessage
-                  : undefined;
+        <UnstableTable>
+          <UnstableTableHeader>
+            <UnstableTableRow>
+              <UnstableTableHead>Account Name</UnstableTableHead>
+              <UnstableTableHead>Rotation</UnstableTableHead>
+              <UnstableTableHead>Created</UnstableTableHead>
+              <UnstableTableHead className="w-5" />
+            </UnstableTableRow>
+          </UnstableTableHeader>
+          <UnstableTableBody>
+            {isPending && (
+              <UnstableTableRow>
+                <UnstableTableCell colSpan={4} className="text-center text-muted">
+                  Loading accounts...
+                </UnstableTableCell>
+              </UnstableTableRow>
+            )}
+            {!isPending && accounts.length === 0 && (
+              <UnstableTableRow>
+                <UnstableTableCell colSpan={4}>
+                  <UnstableEmpty className="border-0 bg-transparent py-8 shadow-none">
+                    <UnstableEmptyHeader>
+                      <UnstableEmptyTitle>No accounts found</UnstableEmptyTitle>
+                    </UnstableEmptyHeader>
+                  </UnstableEmpty>
+                </UnstableTableCell>
+              </UnstableTableRow>
+            )}
+            {accounts.map((account) => {
+              const isAwsIamAccount = resource.resourceType === PamResourceType.AwsIam;
+              const rotationEnabled = !isAwsIamAccount
+                ? (account as { rotationEnabled?: boolean }).rotationEnabled
+                : undefined;
+              const rotationStatus = !isAwsIamAccount
+                ? (account as { rotationStatus?: string | null }).rotationStatus
+                : undefined;
+              const lastRotatedAt = !isAwsIamAccount
+                ? (account as { lastRotatedAt?: string | null }).lastRotatedAt
+                : undefined;
+              const lastRotationMessage = !isAwsIamAccount
+                ? (account as { lastRotationMessage?: string | null }).lastRotationMessage
+                : undefined;
 
-                return (
-                  <Tr
-                    key={account.id}
-                    className="group cursor-pointer hover:bg-mineshaft-700"
-                    onClick={() => handleAccountClick(account)}
-                  >
-                    <Td>
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-3">
-                          <span className="font-medium text-mineshaft-100">{account.name}</span>
-                          {lastRotatedAt && (
-                            <Tooltip
-                              className="max-w-sm text-center"
-                              isDisabled={!lastRotationMessage}
-                              content={lastRotationMessage}
-                            >
+              return (
+                <UnstableTableRow
+                  key={account.id}
+                  className="group cursor-pointer"
+                  onClick={() => handleAccountClick(account)}
+                >
+                  <UnstableTableCell>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-3">
+                        <span className="font-medium">{account.name}</span>
+                        {lastRotatedAt && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
                               <Badge
                                 variant={rotationStatus === "failed" ? "danger" : "success"}
                                 className="text-xs"
                               >
-                                <FontAwesomeIcon icon={faRotate} />
+                                <RefreshCwIcon className="size-3" />
                                 <span>
                                   Rotated {formatDistance(new Date(), new Date(lastRotatedAt))} ago
                                 </span>
                               </Badge>
-                            </Tooltip>
-                          )}
-                        </div>
-                        {account.description && (
-                          <Tooltip content={account.description}>
-                            <span className="line-clamp-1 text-xs text-mineshaft-400">
-                              {account.description}
-                            </span>
+                            </TooltipTrigger>
+                            {lastRotationMessage && (
+                              <TooltipContent className="max-w-sm text-center">
+                                {lastRotationMessage}
+                              </TooltipContent>
+                            )}
                           </Tooltip>
                         )}
                       </div>
-                    </Td>
-                    <Td>
-                      {isAwsIamAccount ? (
-                        <Badge variant="neutral" className="text-xs">
-                          N/A
-                        </Badge>
-                      ) : (
-                        <Badge
-                          variant={rotationEnabled ? "success" : "neutral"}
-                          className="text-xs"
-                        >
-                          {rotationEnabled ? "Enabled" : "Disabled"}
-                        </Badge>
+                      {account.description && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="line-clamp-1 text-xs text-muted">
+                              {account.description}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>{account.description}</TooltipContent>
+                        </Tooltip>
                       )}
-                    </Td>
-                    <Td className="text-mineshaft-300">
-                      {format(new Date(account.createdAt), "yyyy-MM-dd")}
-                    </Td>
-                    <Td>
-                      <div className="flex items-center gap-2">
-                        <ProjectPermissionCan
-                          I={ProjectPermissionPamAccountActions.Access}
-                          a={ProjectPermissionSub.PamAccounts}
+                    </div>
+                  </UnstableTableCell>
+                  <UnstableTableCell>
+                    {isAwsIamAccount ? (
+                      <Badge variant="neutral" className="text-xs">
+                        N/A
+                      </Badge>
+                    ) : (
+                      <Badge variant={rotationEnabled ? "success" : "neutral"} className="text-xs">
+                        {rotationEnabled ? "Enabled" : "Disabled"}
+                      </Badge>
+                    )}
+                  </UnstableTableCell>
+                  <UnstableTableCell className="text-muted">
+                    {format(new Date(account.createdAt), "MM/dd/yyyy")}
+                  </UnstableTableCell>
+                  <UnstableTableCell>
+                    <div className="flex items-center gap-2">
+                      <ProjectPermissionCan
+                        I={ProjectPermissionPamAccountActions.Access}
+                        a={ProjectPermissionSub.PamAccounts}
+                      >
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            accessAccount(account);
+                          }}
+                          isPending={loadingAccountId === account.id}
+                          isDisabled={loadingAccountId === account.id}
                         >
-                          <Button
-                            colorSchema="secondary"
-                            leftIcon={<FontAwesomeIcon icon={faRightToBracket} />}
+                          <LogInIcon />
+                          Connect
+                        </Button>
+                      </ProjectPermissionCan>
+                      <UnstableDropdownMenu>
+                        <UnstableDropdownMenuTrigger asChild>
+                          <UnstableIconButton variant="ghost" size="xs">
+                            <EllipsisVerticalIcon />
+                          </UnstableIconButton>
+                        </UnstableDropdownMenuTrigger>
+                        <UnstableDropdownMenuContent sideOffset={2} align="end">
+                          <UnstableDropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
-                              accessAccount(account);
+                              handleCopyId(account.id);
                             }}
-                            size="xs"
-                            isLoading={loadingAccountId === account.id}
-                            isDisabled={loadingAccountId === account.id}
                           >
-                            Connect
-                          </Button>
-                        </ProjectPermissionCan>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <IconButton
-                              ariaLabel="Options"
-                              colorSchema="secondary"
-                              className="w-6"
-                              variant="plain"
-                            >
-                              <FontAwesomeIcon icon={faEllipsisV} />
-                            </IconButton>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent sideOffset={2} align="end">
-                            <DropdownMenuItem
-                              icon={<FontAwesomeIcon icon={copiedAccountId ? faCheck : faCopy} />}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCopyId(account.id);
-                              }}
-                            >
-                              Copy Account ID
-                            </DropdownMenuItem>
-                            <ProjectPermissionCan
-                              I={ProjectPermissionPamAccountActions.Edit}
-                              a={ProjectPermissionSub.PamAccounts}
-                            >
-                              {(isAllowed: boolean) => (
-                                <DropdownMenuItem
-                                  isDisabled={!isAllowed}
-                                  icon={<FontAwesomeIcon icon={faEdit} />}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePopUpOpen("updateAccount", account);
-                                  }}
-                                >
-                                  Edit Account
-                                </DropdownMenuItem>
-                              )}
-                            </ProjectPermissionCan>
-                            <ProjectPermissionCan
-                              I={ProjectPermissionPamAccountActions.Delete}
-                              a={ProjectPermissionSub.PamAccounts}
-                            >
-                              {(isAllowed: boolean) => (
-                                <DropdownMenuItem
-                                  isDisabled={!isAllowed}
-                                  icon={<FontAwesomeIcon icon={faTrash} />}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePopUpOpen("deleteAccount", account);
-                                  }}
-                                >
-                                  Delete Account
-                                </DropdownMenuItem>
-                              )}
-                            </ProjectPermissionCan>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </Td>
-                  </Tr>
-                );
-              })}
-            </TBody>
-          </Table>
-        </TableContainer>
+                            {copiedAccountId ? (
+                              <CheckIcon className="size-4" />
+                            ) : (
+                              <CopyIcon className="size-4" />
+                            )}
+                            Copy Account ID
+                          </UnstableDropdownMenuItem>
+                          <ProjectPermissionCan
+                            I={ProjectPermissionPamAccountActions.Edit}
+                            a={ProjectPermissionSub.PamAccounts}
+                          >
+                            {(isAllowed: boolean) => (
+                              <UnstableDropdownMenuItem
+                                isDisabled={!isAllowed}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePopUpOpen("updateAccount", account);
+                                }}
+                              >
+                                <PencilIcon className="size-4" />
+                                Edit Account
+                              </UnstableDropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
+                          <ProjectPermissionCan
+                            I={ProjectPermissionPamAccountActions.Delete}
+                            a={ProjectPermissionSub.PamAccounts}
+                          >
+                            {(isAllowed: boolean) => (
+                              <UnstableDropdownMenuItem
+                                isDisabled={!isAllowed}
+                                variant="danger"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePopUpOpen("deleteAccount", account);
+                                }}
+                              >
+                                <TrashIcon className="size-4" />
+                                Delete Account
+                              </UnstableDropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
+                        </UnstableDropdownMenuContent>
+                      </UnstableDropdownMenu>
+                    </div>
+                  </UnstableTableCell>
+                </UnstableTableRow>
+              );
+            })}
+          </UnstableTableBody>
+        </UnstableTable>
       </div>
 
       <PamAddAccountModal
@@ -346,6 +359,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
         onOpenChange={(isOpen) => handlePopUpToggle("addAccount", isOpen)}
         projectId={projectId!}
         currentFolderId={null}
+        defaultResource={resource}
       />
 
       <PamAccessAccountModal

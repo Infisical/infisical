@@ -17,6 +17,11 @@ import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TPkiAlertChannelDALFactory } from "./pki-alert-channel-dal";
 import { TPkiAlertHistoryDALFactory } from "./pki-alert-history-dal";
 import { sendEmailNotificationWithRetry } from "./pki-alert-v2-channel-email-fns";
+import {
+  maskSlackWebhookUrl,
+  sendSlackNotificationWithRetry,
+  validateSlackWebhookUrl
+} from "./pki-alert-v2-channel-slack-fns";
 import { sendWebhookNotification } from "./pki-alert-v2-channel-webhook-fns";
 import { TAlertWithChannels, TPkiAlertV2DALFactory } from "./pki-alert-v2-dal";
 import { parseTimeToDays, parseTimeToPostgresInterval } from "./pki-alert-v2-filter-utils";
@@ -40,6 +45,7 @@ import {
   TListMatchingCertificatesDTO,
   TListMatchingCertificatesResponse,
   TPkiFilterRule,
+  TSlackChannelConfig,
   TTestWebhookConfigDTO,
   TUpdateAlertV2DTO,
   TWebhookChannelConfig
@@ -187,12 +193,16 @@ export const pkiAlertV2ServiceFactory = ({
       throw new BadRequestError({ message: "Invalid alertBefore format. Use format like '30d', '1w', '3m', '1y'" });
     }
 
-    // Validate webhook URLs early to provide immediate SSRF feedback
+    // Validate webhook and Slack URLs early to provide immediate SSRF feedback
     for (const channel of channels) {
       if (channel.channelType === PkiAlertChannelType.WEBHOOK) {
         const webhookConfig = channel.config as TWebhookChannelConfig;
         // eslint-disable-next-line no-await-in-loop
         await blockLocalAndPrivateIpAddresses(webhookConfig.url);
+      } else if (channel.channelType === PkiAlertChannelType.SLACK) {
+        const slackConfig = channel.config as TSlackChannelConfig;
+        // eslint-disable-next-line no-await-in-loop
+        await validateSlackWebhookUrl(slackConfig.webhookUrl);
       }
     }
 
@@ -353,13 +363,17 @@ export const pkiAlertV2ServiceFactory = ({
     if (filters !== undefined) updateData.filters = filters;
     if (enabled !== undefined) updateData.enabled = enabled;
 
-    // Validate webhook URLs early to provide immediate SSRF feedback
+    // Validate webhook and Slack URLs early to provide immediate SSRF feedback
     if (channels) {
       for (const channel of channels) {
         if (channel.channelType === PkiAlertChannelType.WEBHOOK) {
           const webhookConfig = channel.config as TWebhookChannelConfig;
           // eslint-disable-next-line no-await-in-loop
           await blockLocalAndPrivateIpAddresses(webhookConfig.url);
+        } else if (channel.channelType === PkiAlertChannelType.SLACK) {
+          const slackConfig = channel.config as TSlackChannelConfig;
+          // eslint-disable-next-line no-await-in-loop
+          await validateSlackWebhookUrl(slackConfig.webhookUrl);
         }
       }
     }
@@ -631,8 +645,13 @@ export const pkiAlertV2ServiceFactory = ({
             return { ...result, channelType: channel.channelType, url: config.url };
           }
           case PkiAlertChannelType.SLACK: {
-            logger.info(`Slack channel not yet implemented for alert ${alertId}`);
-            return { success: false, channelType: channel.channelType, error: "Slack not yet implemented" };
+            const config = decryptChannelConfig<TSlackChannelConfig>(channel, decryptor);
+            const result = await sendSlackNotificationWithRetry(config, alertData, matchingCertificates);
+            return {
+              ...result,
+              channelType: channel.channelType,
+              webhookUrl: maskSlackWebhookUrl(config.webhookUrl)
+            };
           }
           default:
             return { success: false, channelType: channel.channelType, error: "Unknown channel type" };
@@ -674,6 +693,8 @@ export const pkiAlertV2ServiceFactory = ({
           errors.push(`EMAIL (recipients: ${r.recipients.join(", ")}): ${r.error}`);
         } else if (r.channelType === PkiAlertChannelType.WEBHOOK && "url" in r && r.url) {
           errors.push(`WEBHOOK (url: ${r.url}): ${r.error}`);
+        } else if (r.channelType === PkiAlertChannelType.SLACK && "webhookUrl" in r && r.webhookUrl) {
+          errors.push(`SLACK (url: ${r.webhookUrl}): ${r.error}`);
         } else {
           errors.push(`${r.channelType}: ${r.error}`);
         }

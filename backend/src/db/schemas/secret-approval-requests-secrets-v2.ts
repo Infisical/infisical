@@ -25,7 +25,8 @@ export const SecretApprovalRequestsSecretsV2Schema = z.object({
   op: z.string(),
   secretId: z.string().uuid().nullable().optional(),
   secretVersion: z.string().uuid().nullable().optional(),
-  secretMetadata: z.unknown().nullable().optional()
+  secretMetadata: z.unknown().nullable().optional(),
+  internalMetadata: z.unknown().nullable().optional()
 });
 
 export type TSecretApprovalRequestsSecretsV2 = z.infer<typeof SecretApprovalRequestsSecretsV2Schema>;

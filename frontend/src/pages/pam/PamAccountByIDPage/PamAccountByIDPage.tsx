@@ -1,28 +1,23 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
-import {
-  faBan,
-  faChevronLeft,
-  faEllipsisV,
-  faRightToBracket
-} from "@fortawesome/free-solid-svg-icons";
+import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
+import { BanIcon, EllipsisVerticalIcon, LogInIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
+import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import {
   Button,
-  ContentLoader,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  EmptyState,
-  Tab,
-  TabList,
-  TabPanel,
-  Tabs
-} from "@app/components/v2";
+  UnstableDropdownMenu,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuTrigger,
+  UnstableEmpty,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle,
+  UnstablePageLoader
+} from "@app/components/v3";
 import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionPamAccountActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
@@ -45,9 +40,15 @@ const PageContent = () => {
   const { currentOrg } = useOrganization();
   const params = useParams({
     strict: false
-  }) as { accountId?: string; projectId?: string; orgId?: string };
+  }) as {
+    accountId?: string;
+    projectId?: string;
+    orgId?: string;
+    resourceType?: string;
+    resourceId?: string;
+  };
 
-  const { accountId, projectId } = params;
+  const { accountId, projectId, resourceType, resourceId } = params;
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -63,21 +64,20 @@ const PageContent = () => {
   const { data: account, isPending } = useGetPamAccountById(accountId);
 
   if (isPending) {
-    return (
-      <div className="flex h-full w-full items-center justify-center">
-        <ContentLoader />
-      </div>
-    );
+    return <UnstablePageLoader />;
   }
 
   if (!account) {
     return (
       <div className="flex h-full w-full items-center justify-center px-20">
-        <EmptyState
-          className="max-w-2xl rounded-md text-center"
-          icon={faBan}
-          title={`Could not find PAM Account with ID ${accountId}`}
-        />
+        <UnstableEmpty className="max-w-2xl">
+          <UnstableEmptyHeader>
+            <BanIcon className="size-8 text-muted" />
+            <UnstableEmptyTitle className="text-muted">
+              Could not find PAM Account with ID {accountId}
+            </UnstableEmptyTitle>
+          </UnstableEmptyHeader>
+        </UnstableEmpty>
       </div>
     );
   }
@@ -86,8 +86,13 @@ const PageContent = () => {
 
   const handleBack = () => {
     navigate({
-      to: "/organizations/$orgId/projects/pam/$projectId/accounts",
-      params: { orgId: currentOrg.id, projectId: projectId! }
+      to: "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId",
+      params: {
+        orgId: currentOrg.id,
+        projectId: projectId!,
+        resourceType: resourceType!,
+        resourceId: resourceId!
+      }
     });
   };
 
@@ -129,7 +134,7 @@ const PageContent = () => {
         className="mb-4 flex items-center gap-1 text-sm text-bunker-300 hover:text-primary-400"
       >
         <FontAwesomeIcon icon={faChevronLeft} className="text-xs" />
-        Accounts
+        Back to resource
       </button>
 
       <div className="mb-6 flex items-center justify-between">
@@ -153,33 +158,29 @@ const PageContent = () => {
             I={ProjectPermissionPamAccountActions.Access}
             a={ProjectPermissionSub.PamAccounts}
           >
-            <Button
-              variant="outline_bg"
-              leftIcon={<FontAwesomeIcon icon={faRightToBracket} />}
-              onClick={handleAccess}
-              isLoading={isAwsAccessPending}
-            >
+            <Button variant="neutral" onClick={handleAccess} isPending={isAwsAccessPending}>
+              <LogInIcon />
               Access
             </Button>
           </ProjectPermissionCan>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" colorSchema="secondary">
-                <FontAwesomeIcon icon={faEllipsisV} />
+          <UnstableDropdownMenu>
+            <UnstableDropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <EllipsisVerticalIcon />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" sideOffset={2}>
+            </UnstableDropdownMenuTrigger>
+            <UnstableDropdownMenuContent align="end" sideOffset={2}>
               <ProjectPermissionCan
                 I={ProjectPermissionPamAccountActions.Edit}
                 a={ProjectPermissionSub.PamAccounts}
               >
                 {(isAllowed) => (
-                  <DropdownMenuItem
+                  <UnstableDropdownMenuItem
                     onClick={() => setIsEditModalOpen(true)}
                     isDisabled={!isAllowed}
                   >
                     Edit Account
-                  </DropdownMenuItem>
+                  </UnstableDropdownMenuItem>
                 )}
               </ProjectPermissionCan>
               <ProjectPermissionCan
@@ -187,17 +188,17 @@ const PageContent = () => {
                 a={ProjectPermissionSub.PamAccounts}
               >
                 {(isAllowed) => (
-                  <DropdownMenuItem
+                  <UnstableDropdownMenuItem
                     onClick={() => handlePopUpOpen("deleteAccount", account)}
-                    className="text-red-500"
+                    variant="danger"
                     isDisabled={!isAllowed}
                   >
                     Delete Account
-                  </DropdownMenuItem>
+                  </UnstableDropdownMenuItem>
                 )}
               </ProjectPermissionCan>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </UnstableDropdownMenuContent>
+          </UnstableDropdownMenu>
         </div>
       </div>
 

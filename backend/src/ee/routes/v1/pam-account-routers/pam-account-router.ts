@@ -20,11 +20,12 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 const SanitizedAccountSchema = z.union([
-  SanitizedSSHAccountWithResourceSchema, // ORDER MATTERS
+  // ORDER MATTERS
+  SanitizedKubernetesAccountWithResourceSchema,
+  SanitizedSSHAccountWithResourceSchema,
   SanitizedPostgresAccountWithResourceSchema,
   SanitizedMySQLAccountWithResourceSchema,
   SanitizedRedisAccountWithResourceSchema,
-  SanitizedKubernetesAccountWithResourceSchema,
   SanitizedAwsIamAccountWithResourceSchema
 ]);
 
@@ -77,7 +78,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return account;
+      return account as z.infer<typeof SanitizedAccountSchema>;
     }
   });
 
