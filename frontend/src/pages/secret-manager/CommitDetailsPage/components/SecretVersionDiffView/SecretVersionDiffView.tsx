@@ -620,7 +620,7 @@ export const SecretVersionDiffView = ({
       );
     }
 
-    const hasRedactedVersion = isSecret && item.versions?.some((v) => v.isRedacted);
+    const isRollingToRedactedVersion = isSecret && newVersion?.isRedacted;
 
     return (
       <div
@@ -639,7 +639,7 @@ export const SecretVersionDiffView = ({
         <div className="flex min-w-0 flex-1 items-center">
           <p className={twMerge(textStyle, "truncate")}>{key}</p>
           {changeBadge}
-          {hasRedactedVersion && (
+          {isRollingToRedactedVersion && (
             <Tooltip
               side="top"
               content="This secret version has been redacted. Rolling back to this version will result in an empty secret value."
