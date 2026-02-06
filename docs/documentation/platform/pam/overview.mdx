@@ -22,13 +22,13 @@ Here is how a typical access lifecycle looks:
 To successfully implement Infisical PAM, it is essential to understand the relationship between the following components:
 
 <CardGroup cols={3}>
-  <Card title="Gateway" icon="server">
+  <Card title="Gateway" icon="server" href="/documentation/platform/gateways/overview">
     A lightweight service deployed in your network that acts as a secure bridge to your private infrastructure.
   </Card>
-  <Card title="Resource" icon="database">
+  <Card title="Resource" icon="database" href="/documentation/platform/pam/getting-started/resources">
     The specific target you are protecting (e.g., a PostgreSQL database or an Ubuntu server).
   </Card>
-  <Card title="Account" icon="user-lock">
+  <Card title="Account" icon="user-lock" href="/documentation/platform/pam/getting-started/accounts">
     The specific identity on the Resource that the user is trying to access. One Resource can have multiple Accounts.
   </Card>
 </CardGroup>
@@ -59,6 +59,33 @@ Infisical PAM uses a secure proxy-based architecture to connect users to resourc
 When a user accesses a resource, their connection is routed securely through a Relay to your self-hosted Gateway, which then connects to the target resource. This ensures zero-trust access without exposing your infrastructure to the public internet.
 
 For a deep dive into the technical architecture and security model, see [Architecture](/documentation/platform/pam/architecture).
+
+## Getting Started
+
+Ready to set up Infisical PAM? Follow our step-by-step guide to deploy a gateway, define resources, and grant your team secure access to critical infrastructure.
+
+<Card title="Setup Guide" icon="rocket" href="/documentation/platform/pam/getting-started/setup">
+  Learn how to deploy a gateway, create resources, add accounts, and connect to your infrastructure.
+</Card>
+
+## Supported Resources
+
+Infisical PAM supports a variety of resource types:
+
+<CardGroup cols={2}>
+  <Card title="SSH Servers" icon="terminal" href="/documentation/platform/pam/getting-started/resources/ssh">
+    Secure access to Linux servers via SSH with session recording.
+  </Card>
+  <Card title="Kubernetes" icon="dharmachakra" href="/documentation/platform/pam/getting-started/resources/kubernetes">
+    Manage access to Kubernetes clusters.
+  </Card>
+  <Card title="AWS IAM" icon="aws" href="/documentation/platform/pam/getting-started/resources/aws-iam">
+    Broker access to AWS resources via IAM credentials.
+  </Card>
+  <Card title="Redis" icon="database" href="/documentation/platform/pam/getting-started/resources/redis">
+    Secure access to Redis databases.
+  </Card>
+</CardGroup>
 
 ## Core Capabilities
 
