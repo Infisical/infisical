@@ -12,7 +12,7 @@ const AccessControlPageQuerySchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layou t/access-management"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/access-management"
 )({
   component: AccessControlPage,
   validateSearch: zodValidator(AccessControlPageQuerySchema),

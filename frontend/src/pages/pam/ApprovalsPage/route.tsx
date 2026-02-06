@@ -11,7 +11,7 @@ const ApprovalPagePageQuerySchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layou t/approvals"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approvals"
 )({
   component: ApprovalsPage,
   validateSearch: zodValidator(ApprovalPagePageQuerySchema),
