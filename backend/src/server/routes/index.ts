@@ -87,6 +87,7 @@ import { pamResourceDALFactory } from "@app/ee/services/pam-resource/pam-resourc
 import { pamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
 import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { pamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
+import { pamTerminalServiceFactory } from "@app/ee/services/pam-terminal/pam-terminal-service";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { pitServiceFactory } from "@app/ee/services/pit/pit-service";
@@ -2600,6 +2601,14 @@ export const registerRoutes = async (
     kmsService
   });
 
+  const pamTerminalService = pamTerminalServiceFactory({
+    pamAccountDAL,
+    pamResourceDAL,
+    pamFolderDAL,
+    permissionService,
+    auditLogService
+  });
+
   const aiMcpServerService = aiMcpServerServiceFactory({
     aiMcpServerDAL,
     aiMcpServerToolDAL,
@@ -2819,6 +2828,7 @@ export const registerRoutes = async (
     pamResource: pamResourceService,
     pamAccount: pamAccountService,
     pamSession: pamSessionService,
+    pamTerminal: pamTerminalService,
     mfaSession: mfaSessionService,
     upgradePath: upgradePathService,
 

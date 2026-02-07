@@ -178,6 +178,18 @@ export const initLogger = () => {
           // node_version: process.version
         })
       },
+      serializers: {
+        req: pino.stdSerializers.wrapRequestSerializer((request) => {
+          // Strip auth token from PAM terminal WebSocket URLs to prevent log leakage
+          if (request.url?.includes("/pam/terminal/")) {
+            return {
+              ...request,
+              url: request.url.replace(/([?&])token=[^&]*/g, "$1token=REDACTED")
+            };
+          }
+          return request;
+        })
+      },
       // redact until depth of three
       redact: [...redactedKeys, ...redactedKeys.map((key) => `*.${key}`), ...redactedKeys.map((key) => `*.*.${key}`)]
     },

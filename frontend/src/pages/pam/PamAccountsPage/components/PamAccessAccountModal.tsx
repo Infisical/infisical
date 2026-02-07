@@ -1,24 +1,29 @@
 import { useMemo, useState } from "react";
 import { faCopy } from "@fortawesome/free-regular-svg-icons";
-import { faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { faTerminal, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import ms from "ms";
 
 import { createNotification } from "@app/components/notifications";
-import { FormLabel, IconButton, Input, Modal, ModalContent } from "@app/components/v2";
+import { Button, FormLabel, IconButton, Input, Modal, ModalContent } from "@app/components/v2";
 import { PamResourceType, TPamAccount } from "@app/hooks/api/pam";
+
+// Feature flag — set to false to hide the browser terminal option while it's in development
+const ENABLE_BROWSER_TERMINAL = true;
 
 type Props = {
   account?: TPamAccount;
   accountPath?: string;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  onOpenTerminal?: () => void;
   projectId: string;
 };
 
 export const PamAccessAccountModal = ({
   isOpen,
   onOpenChange,
+  onOpenTerminal,
   account,
   projectId,
   accountPath
@@ -96,13 +101,19 @@ export const PamAccessAccountModal = ({
 
   if (!account) return null;
 
+  const showBrowserTerminal =
+    ENABLE_BROWSER_TERMINAL &&
+    account.resource.resourceType === PamResourceType.Postgres &&
+    onOpenTerminal;
+
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
         className="max-w-2xl pb-2"
         title="Access Account"
-        subTitle={`Access ${account.name} using a CLI command.`}
+        subTitle={`Connect to ${account.name}`}
       >
+        <p className="mb-2 text-sm text-mineshaft-300">Connect using the Infisical CLI</p>
         <FormLabel
           label="Duration"
           tooltipText="The maximum duration of your session. Ex: 1h, 3w, 30d"
@@ -144,6 +155,23 @@ export const PamAccessAccountModal = ({
           <span>Install the Infisical CLI</span>
           <FontAwesomeIcon icon={faUpRightFromSquare} className="size-3" />
         </a>
+        {showBrowserTerminal && (
+          <>
+            <div className="my-4 border-t border-mineshaft-600" />
+            <p className="mb-2 text-sm text-mineshaft-300">Connect directly from your browser</p>
+            <Button
+              onClick={() => {
+                onOpenChange(false);
+                onOpenTerminal();
+              }}
+              leftIcon={<FontAwesomeIcon icon={faTerminal} />}
+              className="w-full"
+              colorSchema="primary"
+            >
+              Connect in Browser
+            </Button>
+          </>
+        )}
       </ModalContent>
     </Modal>
   );

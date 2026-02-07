@@ -32,6 +32,7 @@ import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-acco
 import { TPamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { TPamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
 import { TPamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
+import { TPamTerminalServiceFactory } from "@app/ee/services/pam-terminal/pam-terminal-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TPitServiceFactory } from "@app/ee/services/pit/pit-service";
 import { TPkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-types";
@@ -362,6 +363,7 @@ declare module "fastify" {
       pamResource: TPamResourceServiceFactory;
       pamAccount: TPamAccountServiceFactory;
       pamSession: TPamSessionServiceFactory;
+      pamTerminal: TPamTerminalServiceFactory;
       mfaSession: TMfaSessionServiceFactory;
       upgradePath: TUpgradePathService;
 

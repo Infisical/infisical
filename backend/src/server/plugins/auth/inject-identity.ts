@@ -76,9 +76,18 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
     return { authMode: AuthMode.API_KEY, token: apiKey, actor: ActorType.USER } as const;
   }
   const authHeader = req.headers?.authorization;
-  if (!authHeader) return { authMode: null, token: null };
 
-  const authTokenValue = authHeader.slice(7); // slice of after Bearer
+  // For WebSocket connections, check for token in query string as fallback
+  // Scoped to PAM terminal routes only to limit attack surface
+  let queryToken: string | undefined;
+  if (!authHeader && req.url?.includes("/pam/terminal/") && req.headers?.upgrade?.toLowerCase() === "websocket") {
+    queryToken = (req.query as { token?: string })?.token;
+  }
+  const tokenSource = authHeader || (queryToken ? `Bearer ${queryToken}` : null);
+
+  if (!tokenSource) return { authMode: null, token: null };
+
+  const authTokenValue = tokenSource.slice(7); // slice of after Bearer
   if (authTokenValue.startsWith("st.")) {
     return {
       authMode: AuthMode.SERVICE_TOKEN,
