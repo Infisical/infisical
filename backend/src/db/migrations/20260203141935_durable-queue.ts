@@ -1,6 +1,5 @@
 /* eslint-disable no-console */
 import { Knex } from "knex";
-import pg from "pg";
 
 import { QueueJobs, QueueName } from "@app/queue";
 
@@ -18,22 +17,17 @@ interface MigrationConfig<TData> {
   };
 }
 
-const migratePgBossJobsToQueueJobs = async <TData>(
-  knex: Knex,
-  db: pg.Client,
-  config: MigrationConfig<TData>
-): Promise<void> => {
-  const jobs = await db.query<{ id: string; name: string; data: TData; start_after: Date }>(
+const migratePgBossJobsToQueueJobs = async <TData>(knex: Knex, config: MigrationConfig<TData>): Promise<void> => {
+  const jobs = await knex.raw<{ rows: { id: string; name: string; data: TData; start_after: Date }[] }>(
     `
       SELECT id, name, data, start_after
       FROM pgboss.job
       WHERE state = 'created'
-        AND name = $1
+        AND name = ?
       ORDER BY created_on ASC
     `,
     [config.pgBossQueueName]
   );
-
   if (jobs.rows.length > 0) {
     await knex(TableName.QueueJobs).insert(
       jobs.rows.map((job) => {
@@ -53,8 +47,8 @@ const migratePgBossJobsToQueueJobs = async <TData>(
   }
 };
 
-const migratePamSessionExpirationToQueueJobs = async (knex: Knex, db: pg.Client) => {
-  await migratePgBossJobsToQueueJobs<{ sessionId: string }>(knex, db, {
+const migratePamSessionExpirationToQueueJobs = async (knex: Knex) => {
+  await migratePgBossJobsToQueueJobs<{ sessionId: string }>(knex, {
     pgBossQueueName: QueueName.PamSessionExpiration,
     queueName: QueueName.PamSessionExpiration,
     queueJobName: QueueJobs.PamSessionExpiration,
@@ -69,8 +63,8 @@ const migratePamSessionExpirationToQueueJobs = async (knex: Knex, db: pg.Client)
   });
 };
 
-const migrateDynamicSecretRevocationToQueueJobs = async (knex: Knex, db: pg.Client) => {
-  await migratePgBossJobsToQueueJobs<{ leaseId: string; dynamicSecretId: string }>(knex, db, {
+const migrateDynamicSecretRevocationToQueueJobs = async (knex: Knex) => {
+  await migratePgBossJobsToQueueJobs<{ leaseId: string; dynamicSecretId: string }>(knex, {
     pgBossQueueName: QueueName.DynamicSecretRevocation,
     queueName: QueueName.DynamicSecretRevocation,
     queueJobName: QueueJobs.DynamicSecretRevocation,
@@ -119,35 +113,13 @@ export async function up(knex: Knex): Promise<void> {
     });
 
     await createOnUpdateTrigger(knex, TableName.QueueJobs);
-    const config = {
-      application_name: "pgboss",
-      connectionString: process.env.DB_CONNECTION_URI,
-      host: process.env.DB_HOST,
-      port: process.env.DB_PORT ? Number(process.env.DB_PORT) : undefined,
-      user: process.env.DB_USER,
-      database: process.env.DB_NAME,
-      password: process.env.DB_PASSWORD,
-      ssl: process.env.DB_ROOT_CERT
-        ? {
-            rejectUnauthorized: true,
-            ca: Buffer.from(process.env.DB_ROOT_CERT, "base64").toString("ascii")
-          }
-        : false
-    };
+    const schemaCheck = await knex.raw(
+      `SELECT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'pgboss') AS exists`
+    );
 
-    const db = new pg.Client(config);
-    await db.connect();
-    try {
-      const schemaCheck = await db.query(
-        `SELECT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'pgboss') AS exists`
-      );
-
-      if (schemaCheck.rows[0].exists) {
-        await migratePamSessionExpirationToQueueJobs(knex, db);
-        await migrateDynamicSecretRevocationToQueueJobs(knex, db);
-      }
-    } finally {
-      await db.end();
+    if (schemaCheck?.rows[0]?.exists) {
+      await migratePamSessionExpirationToQueueJobs(knex);
+      await migrateDynamicSecretRevocationToQueueJobs(knex);
     }
   }
 }
