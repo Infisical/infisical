@@ -1,3 +1,5 @@
+import { randomUUID } from "crypto";
+
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -34,7 +36,8 @@ export const auditLogQueueServiceFactory = async ({
       removeOnFail: {
         count: 3
       },
-      removeOnComplete: true
+      removeOnComplete: true,
+      jobId: randomUUID()
     });
   };
 

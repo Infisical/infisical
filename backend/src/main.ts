@@ -19,6 +19,7 @@ import { removeTemporaryBaseDirectory } from "./lib/files";
 import { initLogger } from "./lib/logger";
 import { CustomLogger } from "./lib/logger/logger";
 import { queueServiceFactory } from "./queue";
+import { queueJobsDALFactory } from "./queue/queue-jobs-dal";
 import { main } from "./server/app";
 import { bootstrapCheck } from "./server/boot-strap-check";
 import { kmsRootConfigDALFactory } from "./services/kms/kms-root-config-dal";
@@ -71,12 +72,8 @@ const run = async () => {
 
   const smtp = smtpServiceFactory(formatSmtpConfig());
 
-  const queue = queueServiceFactory(envConfig, {
-    dbConnectionUrl: envConfig.DB_CONNECTION_URI,
-    dbRootCert: envConfig.DB_ROOT_CERT
-  });
-
-  await queue.initialize();
+  const queueJobsDAL = queueJobsDALFactory(db);
+  const queue = queueServiceFactory(envConfig, queueJobsDAL);
 
   const keyValueStoreDAL = keyValueStoreDALFactory(db);
   const keyStore = keyStoreFactory(envConfig, keyValueStoreDAL);
@@ -95,6 +92,8 @@ const run = async () => {
     redis,
     envConfig
   });
+
+  await queue.initialize();
   const bootstrap = await bootstrapCheck({ db });
 
   // eslint-disable-next-line

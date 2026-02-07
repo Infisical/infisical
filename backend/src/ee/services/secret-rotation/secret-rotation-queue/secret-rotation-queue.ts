@@ -83,24 +83,7 @@ export const secretRotationQueueFactory = ({
   folderCommitService,
   kmsService
 }: TSecretRotationQueueFactoryDep) => {
-  const addToQueue = async (rotationId: string, interval: number) => {
-    const appCfg = getConfig();
-    await queue.queue(
-      QueueName.SecretRotation,
-      QueueJobs.SecretRotation,
-      { rotationId },
-      {
-        jobId: rotationId,
-        repeat: {
-          // on prod it this will be in days, in development this will be second
-          every: appCfg.NODE_ENV === "development" ? secondsToMillis(interval) : daysToMillisecond(interval),
-          immediately: true
-        },
-        removeOnComplete: true,
-        removeOnFail: true
-      }
-    );
-  };
+  const addToQueue = async () => {};
 
   const removeFromQueue = async (rotationId: string, interval: number) => {
     const appCfg = getConfig();

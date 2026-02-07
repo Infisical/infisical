@@ -172,7 +172,7 @@ export const pkiSubscriberQueueServiceFactory = ({
       delay: 5000,
       jobId: QueueName.PkiSubscriber,
       // { pattern: "*/30 * * * * *", utc: true } // for testing
-      repeat: { pattern: "0 0 * * *", utc: true }
+      repeat: { pattern: "0 0 * * *", utc: true, key: QueueName.PkiSubscriber }
     });
   };
 

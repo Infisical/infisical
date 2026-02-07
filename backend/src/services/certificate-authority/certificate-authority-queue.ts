@@ -133,7 +133,8 @@ export const certificateAuthorityQueueFactory = ({
             appCfg.NODE_ENV === "development"
               ? secondsToMillis(rotationIntervalDays)
               : daysToMillisecond(rotationIntervalDays),
-          immediately: true
+          immediately: true,
+          key: `ca-crl-rotation-${caId}`
         }
       }
     );
@@ -155,7 +156,8 @@ export const certificateAuthorityQueueFactory = ({
       {
         attempts: 1,
         removeOnComplete: true,
-        removeOnFail: true
+        removeOnFail: true,
+        jobId: `ca-order-certificate-for-subscriber-${subscriberId}`
       }
     );
   };
