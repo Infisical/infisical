@@ -42,7 +42,9 @@ const getAppName = async ({
   return data.data.app.name;
 };
 
-const restartAppMachines = async (secretSync: TFlyioSyncWithCredentials) => {
+const FLYIO_MACHINE_WAIT_TIMEOUT_MS = 60_000;
+
+const deployAppMachines = async (secretSync: TFlyioSyncWithCredentials) => {
   const {
     connection: {
       credentials: { accessToken }
@@ -52,35 +54,38 @@ const restartAppMachines = async (secretSync: TFlyioSyncWithCredentials) => {
 
   const appNameResolved = await getAppName({ accessToken, appId, appName });
 
-  const { data: machinesData } = await request.get<{ id: string }[]>(
+  const headers = {
+    Authorization: `Bearer ${accessToken}`,
+    "Content-Type": "application/json",
+    Accept: "application/json"
+  };
+
+  const { data: machinesData } = await request.get<{ id: string; config: Record<string, unknown> }[]>(
     `${IntegrationUrls.FLYIO_MACHINES_API_URL}/apps/${appNameResolved}/machines`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        Accept: "application/json"
-      }
-    }
+    { headers }
   );
 
   const machines = Array.isArray(machinesData) ? machinesData : [];
   if (machines.length === 0) return;
 
-  await Promise.all(
-    machines.map((machine) =>
-      request.post(
-        `${IntegrationUrls.FLYIO_MACHINES_API_URL}/apps/${appNameResolved}/machines/${machine.id}/restart`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-            Accept: "application/json"
-          }
-        }
-      )
-    )
-  );
+  // Perform a machine update (not just a restart) for each machine.
+  // This is equivalent to what `fly secrets deploy` does: it updates each
+  // machine with its existing config, which triggers a proper deployment
+  // cycle that marks secrets as deployed rather than staged.
+  for (const machine of machines) {
+    await request.post(
+      `${IntegrationUrls.FLYIO_MACHINES_API_URL}/apps/${appNameResolved}/machines/${machine.id}`,
+      { config: machine.config },
+      { headers }
+    );
+
+    // Wait for the machine to reach the "started" state before proceeding
+    // to the next one, ensuring a rolling deploy.
+    await request.get(
+      `${IntegrationUrls.FLYIO_MACHINES_API_URL}/apps/${appNameResolved}/machines/${machine.id}/wait?state=started&timeout=${FLYIO_MACHINE_WAIT_TIMEOUT_MS}`,
+      { headers }
+    );
+  }
 };
 
 const listFlyioSecrets = async ({ accessToken, appId }: TFlyioListVariables) => {
@@ -178,7 +183,7 @@ export const FlyioSyncFns = {
     }
 
     if (secretSync.syncOptions.autoRedeploy) {
-      await restartAppMachines(secretSync);
+      await deployAppMachines(secretSync);
     }
   },
   removeSecrets: async (secretSync: TFlyioSyncWithCredentials, secretMap: TSecretMap) => {
@@ -202,7 +207,7 @@ export const FlyioSyncFns = {
     }
 
     if (secretSync.syncOptions.autoRedeploy) {
-      await restartAppMachines(secretSync);
+      await deployAppMachines(secretSync);
     }
   },
   getSecrets: async (secretSync: TFlyioSyncWithCredentials) => {
