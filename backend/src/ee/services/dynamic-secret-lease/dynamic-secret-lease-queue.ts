@@ -149,14 +149,14 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
 
         const dynamicSecretLease = await dynamicSecretLeaseDAL.findById(leaseId);
         if (!dynamicSecretLease) {
-          throw new DisableRotationErrors({ message: "Dynamic secret lease not found" });
+          return;
         }
 
         const folder = await folderDAL.findById(dynamicSecretLease.dynamicSecret.folderId);
-        if (!folder)
-          throw new NotFoundError({
-            message: `Failed to find folder with ${dynamicSecretLease.dynamicSecret.folderId}`
-          });
+        if (!folder) {
+          logger.info(`Failed to find folder with ${dynamicSecretLease.dynamicSecret.folderId}`);
+          return;
+        }
 
         const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
@@ -180,15 +180,20 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
         const { dynamicSecretCfgId } = data as { dynamicSecretCfgId: string };
         logger.info("Dynamic secret pruning started: ", dynamicSecretCfgId, jobId);
         const dynamicSecretCfg = await dynamicSecretDAL.findById(dynamicSecretCfgId);
-        if (!dynamicSecretCfg) throw new DisableRotationErrors({ message: "Dynamic secret not found" });
-        if ((dynamicSecretCfg.status as DynamicSecretStatus) !== DynamicSecretStatus.Deleting)
-          throw new DisableRotationErrors({ message: "Document not deleted" });
+        if (!dynamicSecretCfg) {
+          logger.info(`Failed to find dynamic secret with ${dynamicSecretCfgId}`);
+          return;
+        }
+        if ((dynamicSecretCfg.status as DynamicSecretStatus) !== DynamicSecretStatus.Deleting) {
+          logger.info(`Dynamic secret ${dynamicSecretCfgId} is not in deleting status`);
+          return;
+        }
 
         const folder = await folderDAL.findById(dynamicSecretCfg.folderId);
-        if (!folder)
-          throw new NotFoundError({
-            message: `Failed to find folder with ${dynamicSecretCfg.folderId}`
-          });
+        if (!folder) {
+          logger.info(`Failed to find folder with ${dynamicSecretCfg.folderId}`);
+          return;
+        }
 
         const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
