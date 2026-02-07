@@ -8,12 +8,14 @@ import {
   faSave
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useQueries } from "@tanstack/react-query";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { ClipboardCheckIcon } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import { Button, Input, Modal, ModalContent, Tooltip } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
+import { dashboardKeys, fetchSecretValue } from "@app/hooks/api/dashboard/queries";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { fetchSecretReferences, secretKeys } from "@app/hooks/api/secrets/queries";
 import { SecretVersionDiffView } from "@app/pages/secret-manager/CommitDetailsPage/components/SecretVersionDiffView";
@@ -22,6 +24,7 @@ import { HIDDEN_SECRET_VALUE_API_MASK } from "@app/pages/secret-manager/SecretDa
 import {
   PendingChange,
   PendingChanges,
+  PendingSecretUpdate,
   useBatchMode,
   useBatchModeActions
 } from "../../SecretMainPage.store";
@@ -34,19 +37,35 @@ interface CommitFormProps {
   secretPath: string;
 }
 
+/* eslint-disable react/no-unused-prop-types */
 type RenderResourceProps = {
   onDiscard: () => void;
   change: PendingChange;
   referenceCount?: number;
+  onRevealOldValue?: () => Promise<void>;
+  onRevealNewValue?: () => Promise<void>;
+  isLoadingOldValue?: boolean;
+  isLoadingNewValue?: boolean;
 };
+/* eslint-enable react/no-unused-prop-types */
 
-const RenderSecretChanges = ({ onDiscard, change, referenceCount }: RenderResourceProps) => {
+const RenderSecretChanges = ({
+  onDiscard,
+  change,
+  referenceCount,
+  onRevealOldValue,
+  onRevealNewValue,
+  isLoadingOldValue,
+  isLoadingNewValue
+}: RenderResourceProps) => {
   if (change.resourceType !== "secret") return null;
 
   if (change.type === PendingAction.Create) {
     return (
       <SecretVersionDiffView
         onDiscard={onDiscard}
+        onRevealNewValue={onRevealNewValue}
+        isLoadingNewValue={isLoadingNewValue}
         item={{
           secretKey: change.secretKey,
           isAdded: true,
@@ -112,10 +131,22 @@ const RenderSecretChanges = ({ onDiscard, change, referenceCount }: RenderResour
       </Tooltip>
     ) : undefined;
 
+    // Determine original value: use fetched value, or show mask if not fetched yet
+    const originalSecretValue = change.existingSecret.secretValueHidden
+      ? HIDDEN_SECRET_VALUE_API_MASK
+      : (change.originalValue ?? existingSecret.value ?? HIDDEN_SECRET_VALUE_API_MASK);
+
+    // Determine new value: use modified value, or fall back to original
+    const newSecretValue = change.secretValue ?? change.originalValue ?? originalSecretValue;
+
     return (
       <SecretVersionDiffView
         onDiscard={onDiscard}
         headerExtra={referenceWarningElement}
+        onRevealOldValue={onRevealOldValue}
+        onRevealNewValue={onRevealNewValue}
+        isLoadingOldValue={isLoadingOldValue}
+        isLoadingNewValue={isLoadingNewValue}
         item={{
           secretKey: change.secretKey,
           isUpdated: true,
@@ -125,9 +156,8 @@ const RenderSecretChanges = ({ onDiscard, change, referenceCount }: RenderResour
             {
               version: 1, // placeholder, not used
               secretKey: existingSecret.key,
-              secretValue: change.existingSecret.secretValueHidden
-                ? HIDDEN_SECRET_VALUE_API_MASK
-                : (change.originalValue ?? existingSecret.value ?? ""),
+              secretValue: originalSecretValue,
+              secretValueHidden: change.existingSecret.secretValueHidden,
               tags: existingSecret.tags?.map((tag) => tag.slug) ?? [],
               secretMetadata: existingSecret.secretMetadata,
               skipMultilineEncoding: existingSecret.skipMultilineEncoding,
@@ -136,7 +166,8 @@ const RenderSecretChanges = ({ onDiscard, change, referenceCount }: RenderResour
             {
               version: 2, // placeholder, not used
               secretKey: change.newSecretName ?? existingSecret.key,
-              secretValue: change.secretValue ?? change.originalValue,
+              secretValue: newSecretValue,
+              secretValueHidden: change.existingSecret.secretValueHidden,
               tags:
                 change.tags?.map((tag) => tag.slug) ??
                 existingSecret.tags?.map((tag) => tag.slug) ??
@@ -165,6 +196,8 @@ const RenderSecretChanges = ({ onDiscard, change, referenceCount }: RenderResour
     return (
       <SecretVersionDiffView
         onDiscard={onDiscard}
+        onRevealOldValue={onRevealOldValue}
+        isLoadingOldValue={isLoadingOldValue}
         item={{
           secretKey: change.secretKey,
           isDeleted: true,
@@ -290,7 +323,9 @@ const ResourceChange: React.FC<ResourceChangeProps> = ({
   secretPath,
   referenceCountMap
 }) => {
-  const { removePendingChange } = useBatchModeActions();
+  const queryClient = useQueryClient();
+  const { removePendingChange, updatePendingChangeValue } = useBatchModeActions();
+  const [isLoadingValue, setIsLoadingValue] = useState(false);
 
   const handleDeletePending = useCallback(
     (changeType: string, id: string) => {
@@ -300,8 +335,62 @@ const ResourceChange: React.FC<ResourceChangeProps> = ({
         secretPath
       });
     },
-    [change.resourceType, change.id]
+    [removePendingChange, projectId, environment, secretPath]
   );
+
+  // Handler to fetch and reveal secret value when eye icon is clicked
+  const handleRevealValue = useCallback(async () => {
+    if (change.resourceType !== "secret" || change.type !== PendingAction.Update) return;
+
+    const updateChange = change as PendingSecretUpdate;
+
+    // Check if value is already fetched
+    const hasOriginalValue =
+      updateChange.originalValue !== undefined &&
+      updateChange.originalValue !== HIDDEN_SECRET_VALUE_API_MASK;
+
+    // Check if user has permission to view
+    const canFetchValue = !updateChange.existingSecret.secretValueHidden;
+
+    if (hasOriginalValue || !canFetchValue) {
+      // Already fetched or no permission - nothing to do
+      return;
+    }
+
+    setIsLoadingValue(true);
+    try {
+      const fetchParams = {
+        environment,
+        secretPath,
+        secretKey: updateChange.secretKey,
+        projectId,
+        isOverride: Boolean(updateChange.existingSecret.idOverride)
+      };
+
+      const fetchedValue = await fetchSecretValue(fetchParams);
+
+      if (fetchedValue) {
+        queryClient.setQueryData(dashboardKeys.getSecretValue(fetchParams), fetchedValue);
+
+        // Update the pending change with the fetched value
+        updatePendingChangeValue(
+          change.id,
+          {
+            originalValue: fetchedValue.value,
+            secretValue: updateChange.secretValue ?? fetchedValue.value
+          },
+          { projectId, environment, secretPath }
+        );
+      }
+    } catch {
+      createNotification({
+        type: "error",
+        text: "Failed to fetch secret value"
+      });
+    } finally {
+      setIsLoadingValue(false);
+    }
+  }, [change, environment, secretPath, projectId, queryClient, updatePendingChangeValue]);
 
   const referenceCount =
     change.resourceType === "secret" &&
@@ -317,6 +406,10 @@ const ResourceChange: React.FC<ResourceChangeProps> = ({
       change={change}
       onDiscard={() => handleDeletePending(change.resourceType, change.id)}
       referenceCount={referenceCount}
+      onRevealOldValue={handleRevealValue}
+      onRevealNewValue={handleRevealValue}
+      isLoadingOldValue={isLoadingValue}
+      isLoadingNewValue={isLoadingValue}
     />
   ) : (
     <RenderFolderChanges

@@ -38,6 +38,10 @@ interface SecretVersionDiffViewProps {
   customHeader?: JSX.Element;
   onDiscard?: VoidFunction;
   headerExtra?: JSX.Element;
+  onRevealOldValue?: () => Promise<void>;
+  onRevealNewValue?: () => Promise<void>;
+  isLoadingOldValue?: boolean;
+  isLoadingNewValue?: boolean;
 }
 
 export const SecretVersionDiffView = ({
@@ -47,7 +51,11 @@ export const SecretVersionDiffView = ({
   showHeader = true,
   customHeader,
   onDiscard,
-  headerExtra
+  headerExtra,
+  onRevealOldValue,
+  onRevealNewValue,
+  isLoadingOldValue,
+  isLoadingNewValue
 }: SecretVersionDiffViewProps) => {
   const [internalCollapsed, setInternalCollapsed] = useState(isCollapsed);
 
@@ -215,6 +223,10 @@ export const SecretVersionDiffView = ({
               operationType={operationType}
               oldVersion={oldSecretData}
               newVersion={newSecretData}
+              onRevealOldValue={onRevealOldValue}
+              onRevealNewValue={onRevealNewValue}
+              isLoadingOldValue={isLoadingOldValue}
+              isLoadingNewValue={isLoadingNewValue}
             />
           ) : (
             <FolderDiffView
