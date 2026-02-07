@@ -25,6 +25,7 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
     rotationEnabled?: C["rotationEnabled"];
     rotationIntervalSeconds?: C["rotationIntervalSeconds"];
     requireMfa?: C["requireMfa"];
+    metadata?: Record<string, unknown>;
   }>;
   updateAccountSchema: z.ZodType<{
     credentials?: C["credentials"];
@@ -33,6 +34,7 @@ export const registerPamAccountEndpoints = <C extends TPamAccount>({
     rotationEnabled?: C["rotationEnabled"];
     rotationIntervalSeconds?: C["rotationIntervalSeconds"];
     requireMfa?: C["requireMfa"];
+    metadata?: Record<string, unknown>;
   }>;
   accountResponseSchema: z.ZodTypeAny;
 }) => {
