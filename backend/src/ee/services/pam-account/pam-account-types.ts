@@ -9,6 +9,7 @@ export type TCreateAccountDTO = Pick<
   "name" | "description" | "credentials" | "folderId" | "resourceId" | "rotationIntervalSeconds" | "requireMfa"
 > & {
   rotationEnabled?: boolean;
+  metadata?: Record<string, unknown>;
 };
 
 export type TUpdateAccountDTO = Partial<Omit<TCreateAccountDTO, "folderId" | "resourceId">> & {
