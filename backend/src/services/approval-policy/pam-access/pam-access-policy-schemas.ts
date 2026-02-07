@@ -14,7 +14,9 @@ import {
 
 // Inputs
 export const PamAccessPolicyInputsSchema = z.object({
-  accountPath: z.string()
+  accountPath: z.string().optional(),
+  resourceName: z.string().optional(),
+  accountName: z.string().optional()
 });
 
 const accountPathGlob = z.string().refine(
@@ -30,14 +32,43 @@ const accountPathGlob = z.string().refine(
 );
 
 // Conditions
+const resourceNameGlob = z.string().refine(
+  (el) => {
+    try {
+      picomatch.parse([el]);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  { message: "Invalid glob pattern for resource name" }
+);
+
+const accountNameGlob = z.string().refine(
+  (el) => {
+    try {
+      picomatch.parse([el]);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  { message: "Invalid glob pattern for account name" }
+);
+
 export const PamAccessPolicyConditionsSchema = z
   .object({
-    accountPaths: accountPathGlob.array()
+    // Deprecated: use resourceNames and accountNames instead
+    accountPaths: accountPathGlob.array().optional(),
+    // New fields for matching
+    resourceNames: resourceNameGlob.array().optional(),
+    accountNames: accountNameGlob.array().optional()
   })
   .array();
 
 const MutatePamAccessPolicyConditionsSchema = z
   .object({
+    // Deprecated: use resourceNames and accountNames instead (kept for backwards compatibility)
     accountPaths: accountPathGlob
       .refine((el) => el.startsWith("/"), {
         message: "Path must start with /"
@@ -46,7 +77,22 @@ const MutatePamAccessPolicyConditionsSchema = z
         message: "Path cannot end with /"
       })
       .array()
+      .optional(),
+    resourceNames: resourceNameGlob.array().optional(),
+    accountNames: accountNameGlob.array().optional()
   })
+  .refine(
+    (data) => {
+      // At least one condition type must be provided
+      const hasAccountPaths = data.accountPaths && data.accountPaths.length > 0;
+      const hasResourceNames = data.resourceNames && data.resourceNames.length > 0;
+      const hasAccountNames = data.accountNames && data.accountNames.length > 0;
+      return hasAccountPaths || hasResourceNames || hasAccountNames;
+    },
+    {
+      message: "At least one condition type must be provided (resourceNames, accountNames, or accountPaths)"
+    }
+  )
   .array();
 
 const DurationSchema = z.string().refine(
@@ -67,22 +113,41 @@ export const PamAccessPolicyConstraintsSchema = z.object({
   })
 });
 
-// Request Data
+// Request Data - Base schema for stored data (used by grants, etc.)
 export const PamAccessPolicyRequestDataSchema = z.object({
-  accountPath: accountPathGlob,
-  accessDuration: DurationSchema
+  accountPath: accountPathGlob.optional(),
+  accessDuration: DurationSchema,
+  resourceName: resourceNameGlob.optional(),
+  accountName: accountNameGlob.optional()
 });
 
-const CreatePamAccessPolicyRequestDataSchema = z.object({
-  accountPath: accountPathGlob
-    .refine((el) => el.startsWith("/"), {
-      message: "Path must start with /"
-    })
-    .refine((el) => !el.endsWith("/"), {
-      message: "Path cannot end with /"
-    }),
-  accessDuration: DurationSchema
-});
+// Schema with validation for creating requests
+const CreatePamAccessPolicyRequestDataSchema = z
+  .object({
+    accountPath: accountPathGlob
+      .refine((el) => el.startsWith("/"), {
+        message: "Path must start with /"
+      })
+      .refine((el) => !el.endsWith("/"), {
+        message: "Path cannot end with /"
+      })
+      .optional(),
+    accessDuration: DurationSchema,
+    resourceName: resourceNameGlob.optional(),
+    accountName: accountNameGlob.optional()
+  })
+  .refine(
+    (data) => {
+      // At least one identifier must be provided
+      const hasAccountPath = Boolean(data.accountPath);
+      const hasResourceName = Boolean(data.resourceName);
+      const hasAccountName = Boolean(data.accountName);
+      return hasAccountPath || hasResourceName || hasAccountName;
+    },
+    {
+      message: "At least one identifier must be provided (accountPath, resourceName, or accountName)"
+    }
+  );
 
 // Policy
 export const PamAccessPolicySchema = BaseApprovalPolicySchema.extend({

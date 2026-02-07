@@ -27,15 +27,6 @@ export const PamLayout = () => {
             <Tabs value="selected">
               <TabList className="border-b-0">
                 <Link
-                  to="/organizations/$orgId/projects/pam/$projectId/accounts"
-                  params={{
-                    orgId: currentOrg.id,
-                    projectId: currentProject.id
-                  }}
-                >
-                  {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Accounts</Tab>}
-                </Link>
-                <Link
                   to="/organizations/$orgId/projects/pam/$projectId/resources"
                   params={{
                     orgId: currentOrg.id,

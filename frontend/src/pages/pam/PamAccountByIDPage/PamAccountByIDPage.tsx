@@ -103,12 +103,19 @@ const PageContent = () => {
       policyType: ApprovalPolicyType.PamAccess,
       projectId: projectId!,
       inputs: {
-        accountPath: fullAccountPath
+        accountPath: fullAccountPath,
+        resourceName: account.resource.name,
+        accountName: account.name
       }
     });
 
     if (requiresApproval) {
-      handlePopUpOpen("requestAccount", { accountPath: fullAccountPath, accountAccessed: true });
+      handlePopUpOpen("requestAccount", {
+        accountPath: fullAccountPath,
+        resourceName: account.resource.name,
+        accountName: account.name,
+        accountAccessed: true
+      });
       return;
     }
 
@@ -225,7 +232,6 @@ const PageContent = () => {
         isOpen={popUp.accessAccount.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("accessAccount", isOpen)}
         account={popUp.accessAccount.data?.account}
-        accountPath={popUp.accessAccount.data?.accountPath}
         projectId={projectId!}
       />
 
@@ -233,6 +239,8 @@ const PageContent = () => {
         isOpen={popUp.requestAccount.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("requestAccount", isOpen)}
         accountPath={popUp.requestAccount.data?.accountPath}
+        resourceName={popUp.requestAccount.data?.resourceName}
+        accountName={popUp.requestAccount.data?.accountName}
         accountAccessed={popUp.requestAccount.data?.accountAccessed}
       />
 

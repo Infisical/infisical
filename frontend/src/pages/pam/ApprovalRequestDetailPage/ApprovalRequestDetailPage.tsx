@@ -104,7 +104,13 @@ const PageContent = () => {
         <PageHeader
           scope={ProjectType.PAM}
           title="Approval Request"
-          description={`Request to access account ${(request.requestData.requestData as PamAccessRequestData).accountPath} for ${(request.requestData.requestData as PamAccessRequestData).accessDuration} by ${request.requesterName || "Unknown"}`}
+          description={(() => {
+            const data = request.requestData.requestData as PamAccessRequestData;
+            const target = data.resourceName
+              ? `${data.resourceName}${data.accountName ? ` / ${data.accountName}` : ""}`
+              : data.accountPath || "account";
+            return `Request to access ${target} for ${data.accessDuration} by ${request.requesterName || "Unknown"}`;
+          })()}
         >
           <div>
             {request.requesterId === currentUser.id &&

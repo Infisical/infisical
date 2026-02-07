@@ -210,37 +210,68 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
                                 Approval Conditions
                               </div>
                               {(policy.conditions.conditions as PamAccessPolicyConditions).map(
-                                (step, index) => (
-                                  <Fragment key={`${policy.id}--${index + 1}`}>
-                                    <div
-                                      className={twMerge(
-                                        "rounded border border-mineshaft-600 bg-mineshaft-900 p-3"
+                                (condition, index) => {
+                                  const hasResourceNames =
+                                    condition.resourceNames && condition.resourceNames.length > 0;
+                                  const hasAccountNames =
+                                    condition.accountNames && condition.accountNames.length > 0;
+                                  const hasAccountPaths =
+                                    condition.accountPaths && condition.accountPaths.length > 0;
+
+                                  return (
+                                    <Fragment key={`${policy.id}--${index + 1}`}>
+                                      <div
+                                        className={twMerge(
+                                          "rounded border border-mineshaft-600 bg-mineshaft-900 p-3"
+                                        )}
+                                      >
+                                        <div className="space-y-2">
+                                          {hasResourceNames && (
+                                            <div>
+                                              <span className="text-sm font-medium text-mineshaft-300">
+                                                Resource Names:
+                                              </span>
+                                              <p className="text-sm text-mineshaft-100">
+                                                {condition.resourceNames!.join(", ")}
+                                              </p>
+                                            </div>
+                                          )}
+                                          {hasAccountNames && (
+                                            <div>
+                                              <span className="text-sm font-medium text-mineshaft-300">
+                                                Account Names:
+                                              </span>
+                                              <p className="text-sm text-mineshaft-100">
+                                                {condition.accountNames!.join(", ")}
+                                              </p>
+                                            </div>
+                                          )}
+                                          {hasAccountPaths && (
+                                            <div>
+                                              <span className="text-sm font-medium text-mineshaft-300">
+                                                Account Paths:
+                                              </span>
+                                              <p className="text-sm text-mineshaft-100">
+                                                {condition.accountPaths!.join(", ")}
+                                              </p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                      {index < policy.conditions.conditions.length - 1 && (
+                                        <div className="flex items-center">
+                                          <div className="flex flex-col items-center">
+                                            <div className="h-3 w-px bg-mineshaft-500" />
+                                            <span className="px-2 text-xs font-medium text-mineshaft-400">
+                                              OR
+                                            </span>
+                                            <div className="h-3 w-px bg-mineshaft-500" />
+                                          </div>
+                                        </div>
                                       )}
-                                    >
-                                      <div className="space-y-2">
-                                        <div>
-                                          <span className="text-sm font-medium text-mineshaft-300">
-                                            Account Paths:
-                                          </span>
-                                          <p className="text-sm text-mineshaft-100">
-                                            {step.accountPaths.join(", ")}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    </div>
-                                    {index < policy.conditions.conditions.length - 1 && (
-                                      <div className="flex items-center">
-                                        <div className="flex flex-col items-center">
-                                          <div className="h-3 w-px bg-mineshaft-500" />
-                                          <span className="px-2 text-xs font-medium text-mineshaft-400">
-                                            OR
-                                          </span>
-                                          <div className="h-3 w-px bg-mineshaft-500" />
-                                        </div>
-                                      </div>
-                                    )}
-                                  </Fragment>
-                                )
+                                    </Fragment>
+                                  );
+                                }
                               )}
                             </div>
                             <div className="flex-2">
