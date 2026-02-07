@@ -301,45 +301,13 @@ export const SecretDetailSidebar = ({
   };
 
   const handleFormSubmit = async (data: TFormSchema) => {
-    let dataWithValue = data;
-    let secretWithValue = secret;
-
-    // If the secret value hasn't been fetched yet and we can fetch it, fetch it now
-    // This ensures the commit diff modal will show the actual secret value
-    if (!hasFetchedSecretValue && canFetchSecretValue) {
-      try {
-        const fetchedValue = await fetchSecretValue(fetchSecretValueParams);
-        if (fetchedValue) {
-          queryClient.setQueryData(
-            dashboardKeys.getSecretValue(fetchSecretValueParams),
-            fetchedValue
-          );
-          dataWithValue = {
-            ...data,
-            value: data.value ?? fetchedValue.value,
-            valueOverride: data.valueOverride ?? fetchedValue.valueOverride
-          };
-          // Also update the original secret reference so originalValue is correctly set
-          secretWithValue = {
-            ...secret,
-            value: secret.value ?? fetchedValue.value,
-            valueOverride: secret.valueOverride ?? fetchedValue.valueOverride
-          };
-        }
-      } catch {
-        // Continue with save - the diff modal will show the value as hidden
-      }
-    }
-
     await onSaveSecret(
-      secretWithValue,
+      secret,
       {
-        ...secretWithValue,
-        ...dataWithValue,
-        value: getFieldState("value").isDirty ? dataWithValue.value : undefined,
-        valueOverride: getFieldState("valueOverride").isDirty
-          ? dataWithValue.valueOverride
-          : undefined
+        ...secret,
+        ...data,
+        value: getFieldState("value").isDirty ? data.value : undefined,
+        valueOverride: getFieldState("valueOverride").isDirty ? data.valueOverride : undefined
       },
       () => reset()
     );

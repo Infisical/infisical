@@ -6,7 +6,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { isSingleLine, scrollToFirstChange } from "@app/components/utilities/diff";
 import { Tooltip } from "@app/components/v2";
-import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
+import {
+  HIDDEN_SECRET_VALUE,
+  HIDDEN_SECRET_VALUE_API_MASK
+} from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 import { DiffContainer } from "./DiffContainer";
 import {
@@ -33,8 +36,10 @@ export interface SecretDiffViewProps {
   operationType: "create" | "update" | "delete";
   oldVersion?: SecretVersionData;
   newVersion?: SecretVersionData;
-  oldVersionLabel?: string;
-  newVersionLabel?: string;
+  onRevealOldValue?: () => Promise<void>;
+  onRevealNewValue?: () => Promise<void>;
+  isLoadingOldValue?: boolean;
+  isLoadingNewValue?: boolean;
 }
 
 const SecretValueRenderer = ({
@@ -45,7 +50,9 @@ const SecretValueRenderer = ({
   isBothSingleLine,
   oldValue,
   newValue,
-  containerRef
+  containerRef,
+  onReveal,
+  isLoading
 }: {
   isOldVersion: boolean;
   isValueHidden?: boolean;
@@ -55,6 +62,8 @@ const SecretValueRenderer = ({
   oldValue: string;
   newValue: string;
   containerRef: React.RefObject<HTMLDivElement>;
+  onReveal?: () => Promise<void>;
+  isLoading?: boolean;
 }) => {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -74,9 +83,14 @@ const SecretValueRenderer = ({
         </div>
       );
     }
-    const handleToggleVisibility = (e: React.MouseEvent) => {
+    const handleToggleVisibility = async (e: React.MouseEvent) => {
       e.stopPropagation();
       const newVisibility = !isVisible;
+
+      if (newVisibility && onReveal) {
+        await onReveal();
+      }
+
       setIsVisible(newVisibility);
 
       // Scroll to first change when revealing multi-line content
@@ -95,7 +109,7 @@ const SecretValueRenderer = ({
         <Tooltip content={isVisible ? "Hide value" : "Reveal value"}>
           <FontAwesomeIcon
             icon={isVisible ? faEyeSlash : faEye}
-            className="cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700"
+            className={`cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-800 p-1.5 text-mineshaft-300 hover:bg-mineshaft-700 ${isLoading ? "animate-pulse" : ""}`}
             onClick={handleToggleVisibility}
           />
         </Tooltip>
@@ -104,7 +118,7 @@ const SecretValueRenderer = ({
   };
 
   const renderContent = () => {
-    if (!isVisible) {
+    if (isLoading || !isVisible || value === HIDDEN_SECRET_VALUE_API_MASK) {
       return (
         <div className="font-mono text-sm break-words text-bunker-300">{HIDDEN_SECRET_VALUE}</div>
       );
@@ -123,7 +137,7 @@ const SecretValueRenderer = ({
 
   const containerVariant = hasValueChanges ? variant : undefined;
 
-  if (!value) {
+  if (!value && !(value === HIDDEN_SECRET_VALUE_API_MASK)) {
     return <span className="text-sm text-mineshaft-300">-</span>;
   }
 
@@ -141,8 +155,10 @@ export const SecretDiffView = ({
   operationType,
   oldVersion,
   newVersion,
-  oldVersionLabel = "Previous Secret",
-  newVersionLabel = "New Secret"
+  onRevealOldValue,
+  onRevealNewValue,
+  isLoadingOldValue,
+  isLoadingNewValue
 }: SecretDiffViewProps) => {
   const oldDiffContainerRef = useRef<HTMLDivElement>(null);
   const newDiffContainerRef = useRef<HTMLDivElement>(null);
@@ -177,7 +193,7 @@ export const SecretDiffView = ({
       {showOldVersion ? (
         <div className="flex w-full min-w-0 cursor-default flex-col rounded-lg border border-red-600/60 bg-red-600/10 p-4 xl:w-1/2">
           <div className="mb-4 flex flex-row justify-between">
-            <span className="text-md font-medium">{oldVersionLabel}</span>
+            <span className="text-md font-medium">Previous Secret</span>
             <div className="rounded-full bg-red px-2 pt-[0.2rem] pb-[0.14rem] text-xs font-medium">
               <FontAwesomeIcon icon={faCircleXmark} className="pr-1 text-white" />
               Previous
@@ -204,6 +220,8 @@ export const SecretDiffView = ({
               hasValueChanges={hasValueChanges}
               isBothSingleLine={isBothSingleLine}
               containerRef={oldDiffContainerRef}
+              onReveal={onRevealOldValue}
+              isLoading={isLoadingOldValue}
             />
           </div>
           <div className="mb-2">
@@ -255,7 +273,7 @@ export const SecretDiffView = ({
       {showNewVersion ? (
         <div className="flex w-full min-w-0 cursor-default flex-col rounded-lg border border-green-600/60 bg-green-600/10 p-4 xl:w-1/2">
           <div className="mb-4 flex flex-row justify-between">
-            <span className="text-md font-medium">{newVersionLabel}</span>
+            <span className="text-md font-medium">New Secret</span>
             <div className="rounded-full bg-green-600 px-2 pt-[0.2rem] pb-[0.14rem] text-xs font-medium">
               <FontAwesomeIcon icon={faCircleCheck} className="pr-1 text-white" />
               New
@@ -282,6 +300,8 @@ export const SecretDiffView = ({
               hasValueChanges={hasValueChanges}
               isBothSingleLine={isBothSingleLine}
               containerRef={newDiffContainerRef}
+              onReveal={onRevealNewValue}
+              isLoading={isLoadingNewValue}
             />
           </div>
           <div className="mb-2">
