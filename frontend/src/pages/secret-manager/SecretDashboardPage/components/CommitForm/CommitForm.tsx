@@ -24,6 +24,7 @@ import { HIDDEN_SECRET_VALUE_API_MASK } from "@app/pages/secret-manager/SecretDa
 import {
   PendingChange,
   PendingChanges,
+  PendingSecretDelete,
   PendingSecretUpdate,
   useBatchMode,
   useBatchModeActions
@@ -193,6 +194,13 @@ const RenderSecretChanges = ({
       skipMultilineEncoding,
       comment
     } = change;
+    const getDeleteSecretValue = () => {
+      if (secretValueHidden) {
+        return HIDDEN_SECRET_VALUE_API_MASK;
+      }
+      return secretValue;
+    };
+
     return (
       <SecretVersionDiffView
         onDiscard={onDiscard}
@@ -207,12 +215,8 @@ const RenderSecretChanges = ({
             {
               version: 1, // placeholder, not used
               secretKey,
-              // eslint-disable-next-line no-nested-ternary
-              secretValue: secretValue
-                ? secretValueHidden
-                  ? HIDDEN_SECRET_VALUE_API_MASK
-                  : secretValue
-                : undefined,
+              secretValue: getDeleteSecretValue(),
+              secretValueHidden,
               tags: tags?.map((tag) => tag.slug),
               secretMetadata,
               skipMultilineEncoding,
@@ -340,31 +344,42 @@ const ResourceChange: React.FC<ResourceChangeProps> = ({
 
   // Handler to fetch and reveal secret value when eye icon is clicked
   const handleRevealValue = useCallback(async () => {
-    if (change.resourceType !== "secret" || change.type !== PendingAction.Update) return;
+    if (change.resourceType !== "secret") return;
+    if (change.type !== PendingAction.Update && change.type !== PendingAction.Delete) return;
 
-    const updateChange = change as PendingSecretUpdate;
+    // Determine if value is already fetched and if user has permission
+    let hasValue = false;
+    let canFetchValue = false;
+    let secretKey = "";
+    let isOverride = false;
 
-    // Check if value is already fetched
-    const hasOriginalValue =
-      updateChange.originalValue !== undefined &&
-      updateChange.originalValue !== HIDDEN_SECRET_VALUE_API_MASK;
-
-    // Check if user has permission to view
-    const canFetchValue = !updateChange.existingSecret.secretValueHidden;
-
-    if (hasOriginalValue || !canFetchValue) {
-      // Already fetched or no permission - nothing to do
-      return;
+    if (change.type === PendingAction.Update) {
+      const updateChange = change as PendingSecretUpdate;
+      hasValue =
+        updateChange.originalValue !== undefined &&
+        updateChange.originalValue !== HIDDEN_SECRET_VALUE_API_MASK;
+      canFetchValue = !updateChange.existingSecret.secretValueHidden;
+      secretKey = updateChange.secretKey;
+      isOverride = Boolean(updateChange.existingSecret.idOverride);
+    } else {
+      const deleteChange = change as PendingSecretDelete;
+      hasValue =
+        deleteChange.secretValue !== undefined &&
+        deleteChange.secretValue !== HIDDEN_SECRET_VALUE_API_MASK;
+      canFetchValue = !deleteChange.secretValueHidden;
+      secretKey = deleteChange.secretKey;
     }
+
+    if (hasValue || !canFetchValue) return;
 
     setIsLoadingValue(true);
     try {
       const fetchParams = {
         environment,
         secretPath,
-        secretKey: updateChange.secretKey,
+        secretKey,
         projectId,
-        isOverride: Boolean(updateChange.existingSecret.idOverride)
+        isOverride
       };
 
       const fetchedValue = await fetchSecretValue(fetchParams);
@@ -372,15 +387,23 @@ const ResourceChange: React.FC<ResourceChangeProps> = ({
       if (fetchedValue) {
         queryClient.setQueryData(dashboardKeys.getSecretValue(fetchParams), fetchedValue);
 
-        // Update the pending change with the fetched value
-        updatePendingChangeValue(
-          change.id,
-          {
-            originalValue: fetchedValue.value,
-            secretValue: updateChange.secretValue ?? fetchedValue.value
-          },
-          { projectId, environment, secretPath }
-        );
+        if (change.type === PendingAction.Update) {
+          const updateChange = change as PendingSecretUpdate;
+          updatePendingChangeValue(
+            change.id,
+            {
+              originalValue: fetchedValue.value,
+              secretValue: updateChange.secretValue ?? fetchedValue.value
+            },
+            { projectId, environment, secretPath }
+          );
+        } else {
+          updatePendingChangeValue(
+            change.id,
+            { secretValue: fetchedValue.value },
+            { projectId, environment, secretPath }
+          );
+        }
       }
     } catch {
       createNotification({

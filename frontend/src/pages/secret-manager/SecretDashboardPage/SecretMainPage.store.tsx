@@ -633,13 +633,23 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
         const newChanges = { ...existingChanges };
 
         newChanges.secrets = newChanges.secrets.map((secret) => {
-          if (secret.id === changeId && secret.type === PendingAction.Update) {
+          if (secret.id !== changeId) return secret;
+
+          if (secret.type === PendingAction.Update) {
             return {
               ...secret,
               originalValue: values.originalValue ?? secret.originalValue,
               secretValue: values.secretValue ?? secret.secretValue
             };
           }
+
+          if (secret.type === PendingAction.Delete && values.secretValue !== undefined) {
+            return {
+              ...secret,
+              secretValue: values.secretValue
+            };
+          }
+
           return secret;
         });
 
