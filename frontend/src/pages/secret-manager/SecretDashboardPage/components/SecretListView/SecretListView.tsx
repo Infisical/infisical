@@ -487,11 +487,13 @@ export const SecretListView = ({
       comment
     } = popUp.deleteSecret?.data as SecretV3RawSanitized;
     if (isBatchMode) {
+      const secretValueForDelete = value !== undefined ? value : HIDDEN_SECRET_VALUE_API_MASK;
+
       const deleteChange: PendingSecretDelete = {
         id: `${secretId}`,
         type: PendingAction.Delete,
         secretKey: key,
-        secretValue: value || "",
+        secretValue: secretValueForDelete,
         timestamp: Date.now(),
         resourceType: "secret",
         secretValueHidden,
