@@ -400,9 +400,16 @@ export const secretSharingServiceFactory = ({
     const encryptWithRoot = kmsService.encryptWithRootKey();
     const encryptedSecret = encryptWithRoot(Buffer.from(secretValue));
 
-    const request = await secretSharingDAL.transaction(async (tx) => {
-      const updatedRequest = await secretSharingDAL.updateById(id, { encryptedSecret }, tx);
+    // 1. Perform the DB update inside the transaction (Atomic & Fast)
+    // We explicitly name it 'updatedRequest' for clarity
+    const updatedRequest = await secretSharingDAL.transaction(async (tx) => {
+      return secretSharingDAL.updateById(id, { encryptedSecret }, tx);
+    });
 
+    // 2. Send email outside the transaction to release DB locks early.
+    // Note: We await this to ensure delivery attempts before responding,
+    // but we catch errors so a failing email service doesn't rollback the saved secret.
+    try {
       await smtpService.sendMail({
         recipients: [secretRequest.requesterUsername],
         subjectLine: "Secret Request Completed",
@@ -413,11 +420,13 @@ export const secretSharingServiceFactory = ({
         },
         template: SmtpTemplates.SecretRequestCompleted
       });
+    } catch (error) {
+      // Ideally, this should go to a retry queue/DLQ.
+      // For now, we log the error to avoid blocking the user flow after successful persistence.
+      logger.error(error, "Failed to send secret request completion email");
+    }
 
-      return updatedRequest;
-    });
-
-    return request;
+    return updatedRequest;
   };
 
   const createPublicSharedSecret = async ({
