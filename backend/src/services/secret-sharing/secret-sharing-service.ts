@@ -421,13 +421,15 @@ export const secretSharingServiceFactory = ({
         template: SmtpTemplates.SecretRequestCompleted
       });
     } catch (error) {
-      // Ideally, this should go to a retry queue/DLQ.
-      // For now, we log the error to avoid blocking the user flow after successful persistence.
-      logger.error(error, "Failed to send secret request completion email");
-    }
+      // Improved logging with structured context for easier debugging
+      logger.error({
+        error,
+        secretRequestId: id,
+        requesterUsername: secretRequest.requesterUsername,
+      }, "Failed to send secret request completion email");
 
-    return updatedRequest;
-  };
+      return updatedRequest;
+    };
 
   const createPublicSharedSecret = async ({
     password,
