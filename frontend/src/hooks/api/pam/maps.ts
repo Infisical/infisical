@@ -21,5 +21,6 @@ export const PAM_RESOURCE_TYPE_MAP: Record<
   [PamResourceType.Elasticsearch]: { name: "Elasticsearch", image: "Elastic.png" },
   [PamResourceType.Snowflake]: { name: "Snowflake", image: "Snowflake.png" },
   [PamResourceType.DynamoDB]: { name: "DynamoDB", image: "DynamoDB.png", size: 55 },
-  [PamResourceType.AwsIam]: { name: "AWS IAM", image: "Amazon Web Services.png" }
+  [PamResourceType.AwsIam]: { name: "AWS IAM", image: "Amazon Web Services.png" },
+  [PamResourceType.Windows]: { name: "Windows Server", image: "Windows.png" }
 };

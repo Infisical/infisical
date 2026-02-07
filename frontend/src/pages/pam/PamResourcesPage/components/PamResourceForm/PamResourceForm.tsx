@@ -15,6 +15,7 @@ import { MySQLResourceForm } from "./MySQLResourceForm";
 import { PostgresResourceForm } from "./PostgresResourceForm";
 import { RedisResourceForm } from "./RedisResourceForm";
 import { SSHResourceForm } from "./SSHResourceForm";
+import { WindowsResourceForm } from "./WindowsResourceForm";
 
 type FormProps = {
   onComplete: (resource: TPamResource) => void;
@@ -63,6 +64,8 @@ const CreateForm = ({ resourceType, onComplete, projectId }: CreateFormProps) =>
       return <KubernetesResourceForm onSubmit={onSubmit} />;
     case PamResourceType.AwsIam:
       return <AwsIamResourceForm onSubmit={onSubmit} />;
+    case PamResourceType.Windows:
+      return <WindowsResourceForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled resource: ${resourceType}`);
   }
@@ -99,6 +102,8 @@ const UpdateForm = ({ resource, onComplete }: UpdateFormProps) => {
       return <KubernetesResourceForm resource={resource} onSubmit={onSubmit} />;
     case PamResourceType.AwsIam:
       return <AwsIamResourceForm resource={resource} onSubmit={onSubmit} />;
+    case PamResourceType.Windows:
+      return <WindowsResourceForm resource={resource} onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled resource: ${(resource as any).resourceType}`);
   }

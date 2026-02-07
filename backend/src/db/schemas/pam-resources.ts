@@ -19,7 +19,8 @@ export const PamResourcesSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   encryptedRotationAccountCredentials: zodBuffer.nullable().optional(),
-  encryptedResourceMetadata: zodBuffer.nullable().optional()
+  encryptedResourceMetadata: zodBuffer.nullable().optional(),
+  adServerResourceId: z.string().uuid().nullable().optional()
 });
 
 export type TPamResources = z.infer<typeof PamResourcesSchema>;

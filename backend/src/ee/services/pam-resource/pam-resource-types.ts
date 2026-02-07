@@ -39,6 +39,12 @@ import {
   TSSHResourceConnectionDetails,
   TSSHResourceMetadata
 } from "./ssh/ssh-resource-types";
+import {
+  TWindowsAccount,
+  TWindowsAccountCredentials,
+  TWindowsResource,
+  TWindowsResourceConnectionDetails
+} from "./windows-server/windows-server-resource-types";
 
 // Resource types
 export type TPamResource =
@@ -47,14 +53,16 @@ export type TPamResource =
   | TSSHResource
   | TAwsIamResource
   | TKubernetesResource
-  | TRedisResource;
+  | TRedisResource
+  | TWindowsResource;
 export type TPamResourceConnectionDetails =
   | TPostgresResourceConnectionDetails
   | TMySQLResourceConnectionDetails
   | TSSHResourceConnectionDetails
   | TKubernetesResourceConnectionDetails
   | TAwsIamResourceConnectionDetails
-  | TRedisResourceConnectionDetails;
+  | TRedisResourceConnectionDetails
+  | TWindowsResourceConnectionDetails;
 export type TPamResourceMetadata = TSSHResourceMetadata;
 
 // Account types
@@ -64,7 +72,8 @@ export type TPamAccount =
   | TSSHAccount
   | TAwsIamAccount
   | TKubernetesAccount
-  | TRedisAccount;
+  | TRedisAccount
+  | TWindowsAccount;
 
 export type TPamAccountCredentials =
   | TPostgresAccountCredentials
@@ -73,7 +82,8 @@ export type TPamAccountCredentials =
   | TSSHAccountCredentials
   | TKubernetesAccountCredentials
   | TAwsIamAccountCredentials
-  | TRedisAccountCredentials;
+  | TRedisAccountCredentials
+  | TWindowsAccountCredentials;
 
 // Resource DTOs
 export type TCreateResourceDTO = Pick<TPamResource, "name" | "connectionDetails" | "resourceType" | "projectId"> & {

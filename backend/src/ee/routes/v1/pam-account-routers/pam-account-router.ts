@@ -11,6 +11,7 @@ import { GatewayAccessResponseSchema } from "@app/ee/services/pam-resource/pam-r
 import { SanitizedPostgresAccountWithResourceSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
 import { SanitizedRedisAccountWithResourceSchema } from "@app/ee/services/pam-resource/redis/redis-resource-schemas";
 import { SanitizedSSHAccountWithResourceSchema } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
+import { SanitizedWindowsAccountWithResourceSchema } from "@app/ee/services/pam-resource/windows-server/windows-server-resource-schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
@@ -26,7 +27,8 @@ const SanitizedAccountSchema = z.union([
   SanitizedPostgresAccountWithResourceSchema,
   SanitizedMySQLAccountWithResourceSchema,
   SanitizedRedisAccountWithResourceSchema,
-  SanitizedAwsIamAccountWithResourceSchema
+  SanitizedAwsIamAccountWithResourceSchema,
+  SanitizedWindowsAccountWithResourceSchema
 ]);
 
 const ListPamAccountsResponseSchema = z.object({
