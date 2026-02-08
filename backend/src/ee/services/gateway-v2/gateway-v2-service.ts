@@ -560,6 +560,7 @@ export const gatewayV2ServiceFactory = ({
 
     return {
       relayHost: relayCredentials.relayHost,
+      gatewayName: gateway.name,
       gateway: {
         clientCertificate: clientCert.toString("pem"),
         clientPrivateKey: gatewayClientCertPrivateKey.export({ format: "pem", type: "pkcs8" }).toString(),

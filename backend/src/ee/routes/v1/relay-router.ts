@@ -57,9 +57,10 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      return server.services.relay.registerRelay({
+      const result = await server.services.relay.registerRelay({
         ...req.body
       });
+      return result;
     }
   });
 
@@ -86,18 +87,19 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
             serverCertificate: z.string(),
             serverPrivateKey: z.string(),
             clientCAPublicKey: z.string()
-          })
+          }),
         })
       }
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.relay.registerRelay({
+      const result = await server.services.relay.registerRelay({
         ...req.body,
         identityId: req.permission.id,
         orgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
+      return result;
     }
   });
 

@@ -125,32 +125,48 @@ export type TAccessPamAccountDTO = {
   accountPath: string;
   projectId: string;
   duration: string;
+  clientType?: "cli" | "web";
 };
 
-export type TAccessPamAccountResponse = {
+type TAccessPamAccountBaseResponse = {
   sessionId: string;
   resourceType: string;
-  consoleUrl?: string;
   metadata?: Record<string, string | undefined>;
-  relayClientCertificate?: string;
-  relayClientPrivateKey?: string;
-  relayServerCertificateChain?: string;
-  gatewayClientCertificate?: string;
-  gatewayClientPrivateKey?: string;
-  gatewayServerCertificateChain?: string;
-  relayHost?: string;
 };
+
+type TCliAccessResponse = TAccessPamAccountBaseResponse & {
+  relayClientCertificate: string;
+  relayClientPrivateKey: string;
+  relayServerCertificateChain: string;
+  gatewayClientCertificate: string;
+  gatewayClientPrivateKey: string;
+  gatewayServerCertificateChain: string;
+  relayHost: string;
+};
+
+export type TWebAccessResponse = TAccessPamAccountBaseResponse & {
+  sharedSecret: string;
+  relayClientCertificate: string;
+  relayHost: string;
+};
+
+type TAwsIamAccessResponse = TAccessPamAccountBaseResponse & {
+  consoleUrl: string;
+};
+
+export type TAccessPamAccountResponse = TCliAccessResponse | TWebAccessResponse | TAwsIamAccessResponse;
 
 export const useAccessPamAccount = () => {
   return useMutation({
-    mutationFn: async ({ accountId, accountPath, projectId, duration }: TAccessPamAccountDTO) => {
+    mutationFn: async ({ accountId, accountPath, projectId, duration, clientType = "cli" }: TAccessPamAccountDTO) => {
       const { data } = await apiRequest.post<TAccessPamAccountResponse>(
         "/api/v1/pam/accounts/access",
         {
           accountId,
           accountPath,
           projectId,
-          duration
+          duration,
+          clientType
         }
       );
 

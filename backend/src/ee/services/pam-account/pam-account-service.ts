@@ -1,5 +1,6 @@
 import path from "node:path";
 
+
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope, TPamAccounts, TPamFolders, TPamResources } from "@app/db/schemas";
@@ -24,6 +25,8 @@ import {
 import { createSshCert, createSshKeyPair } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
 import { SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
+import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import {
   BadRequestError,
@@ -100,6 +103,17 @@ type TPamAccountServiceFactoryDep = {
 export type TPamAccountServiceFactory = ReturnType<typeof pamAccountServiceFactory>;
 
 const ROTATION_CONCURRENCY_LIMIT = 10;
+
+const derivePamSessionSecret = (sessionId: string): Buffer => {
+  const appCfg = getConfig();
+  const secret = appCfg.PAM_WEB_SESSION_SECRET;
+  if (!secret) {
+    throw new BadRequestError({ message: "PAM_WEB_SESSION_SECRET is not configured" });
+  }
+  return Buffer.from(
+    crypto.nativeCrypto.createHmac("sha256", secret).update(`pam-web-session:${sessionId}`).digest()
+  );
+};
 
 export const pamAccountServiceFactory = ({
   pamResourceDAL,
@@ -617,7 +631,8 @@ export const pamAccountServiceFactory = ({
       actorName,
       actorUserAgent,
       duration,
-      mfaSessionId
+      mfaSessionId,
+      clientType = "cli"
     }: TAccessAccountDTO,
     actor: OrgServiceActor
   ) => {
@@ -946,6 +961,21 @@ export const pamAccountServiceFactory = ({
         break;
     }
 
+    if (clientType === "web") {
+      const sharedSecret = derivePamSessionSecret(session.id);
+
+      return {
+        sessionId: session.id,
+        resourceType,
+        sharedSecret: sharedSecret.toString("base64"),
+        relayClientCertificate: gatewayConnectionDetails.relay.clientCertificate,
+        relayHost: gatewayConnectionDetails.relayHost,
+        projectId,
+        account,
+        metadata
+      };
+    }
+
     return {
       sessionId: session.id,
       resourceType,
@@ -1022,6 +1052,11 @@ export const pamAccountServiceFactory = ({
       sessionStarted = true;
     }
 
+    const appCfg = getConfig();
+    const sharedSecret = appCfg.PAM_WEB_SESSION_SECRET
+      ? derivePamSessionSecret(sessionId).toString("base64")
+      : undefined;
+
     // Handle SSH certificate-based authentication
     if (decryptedResource.resourceType === PamResource.SSH) {
       const accountCredentials = decryptedAccount.credentials as TSSHAccountCredentials;
@@ -1066,6 +1101,7 @@ export const pamAccountServiceFactory = ({
             privateKey,
             certificate: signedPublicKey
           },
+          sharedSecret,
           projectId: project.id,
           account,
           sessionStarted
@@ -1078,6 +1114,7 @@ export const pamAccountServiceFactory = ({
         ...decryptedResource.connectionDetails,
         ...decryptedAccount.credentials
       },
+      sharedSecret,
       projectId: project.id,
       account,
       sessionStarted

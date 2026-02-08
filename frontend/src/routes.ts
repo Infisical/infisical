@@ -393,7 +393,8 @@ const pamRoutes = route("/organizations/$orgId/projects/pam/$projectId", [
     route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-pam.tsx"),
     route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-pam.tsx"),
     route("/members/$membershipId", "project/MemberDetailsByIDPage/route-pam.tsx"),
-    route("/groups/$groupId", "project/GroupDetailsByIDPage/route-pam.tsx")
+    route("/groups/$groupId", "project/GroupDetailsByIDPage/route-pam.tsx"),
+    route("/terminal", "pam/PamTerminalPage/route.tsx")
   ])
 ]);
 

@@ -7,7 +7,7 @@ import { SanitizedAwsIamAccountWithResourceSchema } from "@app/ee/services/pam-r
 import { SanitizedKubernetesAccountWithResourceSchema } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
 import { SanitizedMySQLAccountWithResourceSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
-import { GatewayAccessResponseSchema } from "@app/ee/services/pam-resource/pam-resource-schemas";
+import { GatewayAccessResponseSchema, WebAccessResponseSchema } from "@app/ee/services/pam-resource/pam-resource-schemas";
 import { SanitizedPostgresAccountWithResourceSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
 import { SanitizedRedisAccountWithResourceSchema } from "@app/ee/services/pam-resource/redis/redis-resource-schemas";
 import { SanitizedSSHAccountWithResourceSchema } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
@@ -163,6 +163,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         accountPath: z.string().trim(),
         projectId: z.string().uuid(),
         mfaSessionId: z.string().optional(),
+        clientType: z.enum(["cli", "web"]).optional().default("cli"),
         duration: z
           .string()
           .min(1)
@@ -180,13 +181,19 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           })
       }),
       response: {
-        200: z.discriminatedUnion("resourceType", [
-          // Gateway-based resources (Postgres, MySQL, Redis, SSH)
+        200: z.union([
+          // Gateway-based resources — CLI (mTLS certs)
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Postgres) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.MySQL) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Redis) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.SSH) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Kubernetes) }),
+          // Gateway-based resources — Web (ECDH shared secret + relay JWT)
+          WebAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Postgres) }),
+          WebAccessResponseSchema.extend({ resourceType: z.literal(PamResource.MySQL) }),
+          WebAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Redis) }),
+          WebAccessResponseSchema.extend({ resourceType: z.literal(PamResource.SSH) }),
+          WebAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Kubernetes) }),
           // AWS IAM (no gateway, returns console URL)
           z.object({
             sessionId: z.string(),
@@ -213,7 +220,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           accountPath: req.body.accountPath,
           projectId: req.body.projectId,
           duration: req.body.duration,
-          mfaSessionId: req.body.mfaSessionId
+          mfaSessionId: req.body.mfaSessionId,
+          clientType: req.body.clientType
         },
         req.permission
       );

@@ -40,13 +40,14 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          credentials: SessionCredentialsSchema
+          credentials: SessionCredentialsSchema,
+          sharedSecret: z.string().optional()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { credentials, projectId, account, sessionStarted } =
+      const { credentials, sharedSecret, projectId, account, sessionStarted } =
         await server.services.pamAccount.getSessionCredentials(req.params.sessionId, req.permission);
 
       await server.services.auditLog.createAuditLog({
@@ -77,7 +78,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         });
       }
 
-      return { credentials: credentials as z.infer<typeof SessionCredentialsSchema> };
+      return { credentials: credentials as z.infer<typeof SessionCredentialsSchema>, sharedSecret };
     }
   });
 

@@ -1,11 +1,14 @@
 import { useMemo, useState } from "react";
 import { faCopy } from "@fortawesome/free-regular-svg-icons";
-import { faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { faTerminal, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Tab } from "@headlessui/react";
+import { useNavigate } from "@tanstack/react-router";
 import ms from "ms";
 
 import { createNotification } from "@app/components/notifications";
-import { FormLabel, IconButton, Input, Modal, ModalContent } from "@app/components/v2";
+import { Button, FormLabel, IconButton, Input, Modal, ModalContent } from "@app/components/v2";
+import { useOrganization } from "@app/context";
 import { PamResourceType, TPamAccount } from "@app/hooks/api/pam";
 
 type Props = {
@@ -24,6 +27,8 @@ export const PamAccessAccountModal = ({
   accountPath
 }: Props) => {
   const [duration, setDuration] = useState("4h");
+  const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
 
   const { protocol, hostname, port } = window.location;
   const portSuffix = port && port !== "80" && port !== "443" ? `:${port}` : "";
@@ -101,7 +106,7 @@ export const PamAccessAccountModal = ({
       <ModalContent
         className="max-w-2xl pb-2"
         title="Access Account"
-        subTitle={`Access ${account.name} using a CLI command.`}
+        subTitle={`Access ${account.name} to start a session.`}
       >
         <FormLabel
           label="Duration"
@@ -113,37 +118,93 @@ export const PamAccessAccountModal = ({
           placeholder="permanent"
           isError={!isDurationValid}
         />
-        <FormLabel label="CLI Command" className="mt-4" />
-        <div className="flex gap-2">
-          <Input value={command} isDisabled />
-          <IconButton
-            ariaLabel="copy"
-            variant="outline_bg"
-            colorSchema="secondary"
-            onClick={() => {
-              navigator.clipboard.writeText(command);
 
-              createNotification({
-                text: "Command copied to clipboard",
-                type: "info"
-              });
+        <Tab.Group>
+          <Tab.List className="mt-4 flex gap-1 border-b border-mineshaft-600">
+            <Tab
+              className={({ selected }) =>
+                `px-4 py-2 text-sm font-medium outline-none ${
+                  selected
+                    ? "border-b-2 border-primary-500 text-white"
+                    : "text-mineshaft-400 hover:text-white"
+                }`
+              }
+            >
+              CLI
+            </Tab>
+            <Tab
+              className={({ selected }) =>
+                `px-4 py-2 text-sm font-medium outline-none ${
+                  selected
+                    ? "border-b-2 border-primary-500 text-white"
+                    : "text-mineshaft-400 hover:text-white"
+                }`
+              }
+            >
+              Web
+            </Tab>
+          </Tab.List>
+          <Tab.Panels className="mt-4">
+            <Tab.Panel>
+              <FormLabel label="CLI Command" />
+              <div className="flex gap-2">
+                <Input value={command} isDisabled />
+                <IconButton
+                  ariaLabel="copy"
+                  variant="outline_bg"
+                  colorSchema="secondary"
+                  onClick={() => {
+                    navigator.clipboard.writeText(command);
 
-              onOpenChange(false);
-            }}
-            className="w-10"
-          >
-            <FontAwesomeIcon icon={faCopy} />
-          </IconButton>
-        </div>
-        <a
-          href="https://infisical.com/docs/cli/overview"
-          target="_blank"
-          className="mt-2 flex h-4 w-fit items-center gap-2 border-b border-mineshaft-400 text-sm text-mineshaft-400 transition-colors duration-100 hover:border-yellow-400 hover:text-yellow-400"
-          rel="noreferrer"
-        >
-          <span>Install the Infisical CLI</span>
-          <FontAwesomeIcon icon={faUpRightFromSquare} className="size-3" />
-        </a>
+                    createNotification({
+                      text: "Command copied to clipboard",
+                      type: "info"
+                    });
+
+                    onOpenChange(false);
+                  }}
+                  className="w-10"
+                >
+                  <FontAwesomeIcon icon={faCopy} />
+                </IconButton>
+              </div>
+              <a
+                href="https://infisical.com/docs/cli/overview"
+                target="_blank"
+                className="mt-2 flex h-4 w-fit items-center gap-2 border-b border-mineshaft-400 text-sm text-mineshaft-400 transition-colors duration-100 hover:border-yellow-400 hover:text-yellow-400"
+                rel="noreferrer"
+              >
+                <span>Install the Infisical CLI</span>
+                <FontAwesomeIcon icon={faUpRightFromSquare} className="size-3" />
+              </a>
+            </Tab.Panel>
+            <Tab.Panel>
+              <p className="mb-4 text-sm text-mineshaft-300">
+                Open a web-based terminal session to access this account directly in your browser.
+              </p>
+              <Button
+                leftIcon={<FontAwesomeIcon icon={faTerminal} />}
+                isDisabled={!isDurationValid}
+                onClick={() => {
+                  onOpenChange(false);
+                  navigate({
+                    to: "/organizations/$orgId/projects/pam/$projectId/terminal",
+                    params: {
+                      orgId: currentOrg.id,
+                      projectId
+                    },
+                    search: {
+                      accountId: account.id,
+                      accountPath: fullAccountPath
+                    }
+                  });
+                }}
+              >
+                Open Terminal
+              </Button>
+            </Tab.Panel>
+          </Tab.Panels>
+        </Tab.Group>
       </ModalContent>
     </Modal>
   );

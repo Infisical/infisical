@@ -24,6 +24,7 @@ export type TAccessAccountDTO = {
   actorUserAgent: string;
   duration: number;
   mfaSessionId?: string;
+  clientType?: "cli" | "web";
 };
 
 export type TListAccountsDTO = {

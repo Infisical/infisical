@@ -8,7 +8,7 @@
       http-equiv="Content-Security-Policy"
       content="
     default-src 'self'; 
-    connect-src 'self' https://*.posthog.com http://127.0.0.1:* https://cdn.jsdelivr.net/npm/@lottiefiles/dotlottie-web@0.38.2/dist/dotlottie-player.wasm; 
+    connect-src 'self' https://*.posthog.com http://127.0.0.1:* ws://127.0.0.1:* ws://192.168.0.0:8444 https://cdn.jsdelivr.net/npm/@lottiefiles/dotlottie-web@0.38.2/dist/dotlottie-player.wasm; 
     script-src 'self' https://*.posthog.com https://js.stripe.com https://api.stripe.com https://widget.intercom.io https://js.intercomcdn.com https://hcaptcha.com https://*.hcaptcha.com 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net/npm/@lottiefiles/dotlottie-web@0.38.2/dist/dotlottie-player.wasm; 
     style-src 'self' 'unsafe-inline' https://hcaptcha.com https://*.hcaptcha.com; 
     child-src https://api.stripe.com; 

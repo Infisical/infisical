@@ -15,6 +15,14 @@ export const GatewayAccessResponseSchema = z.object({
   metadata: z.record(z.string(), z.string().optional()).optional()
 });
 
+export const WebAccessResponseSchema = z.object({
+  sessionId: z.string(),
+  sharedSecret: z.string(),
+  relayClientCertificate: z.string(),
+  relayHost: z.string(),
+  metadata: z.record(z.string(), z.string().optional()).optional()
+});
+
 // Resources
 export const BasePamResourceSchema = PamResourcesSchema.omit({
   encryptedConnectionDetails: true,
