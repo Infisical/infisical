@@ -585,11 +585,6 @@ export const PamAccountsTable = ({ projectId }: Props) => {
         isOpen={popUp.terminalAccess.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("terminalAccess", isOpen)}
         account={popUp.terminalAccess.data}
-        accountPath={
-          popUp.terminalAccess.data?.folderId
-            ? folderPaths[popUp.terminalAccess.data.folderId]
-            : undefined
-        }
         projectId={projectId}
       />
     </div>

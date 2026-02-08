@@ -13,17 +13,10 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   account?: TPamAccount;
-  accountPath?: string;
   projectId: string;
 };
 
-export const PamTerminalModal = ({
-  isOpen,
-  onOpenChange,
-  account,
-  accountPath,
-  projectId
-}: Props) => {
+export const PamTerminalModal = ({ isOpen, onOpenChange, account, projectId }: Props) => {
   const [modalState, setModalState] = useState<ModalState>("connecting");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const handleMessageRef = useRef<((message: WebSocketServerMessage) => void) | null>(null);
@@ -122,10 +115,6 @@ export const PamTerminalModal = ({
 
   if (!account) return null;
 
-  const fullAccountPath = accountPath
-    ? `/${accountPath.replace(/^\/+|\/+$/g, "")}/${account.name}`
-    : `/${account.name}`;
-
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
@@ -137,7 +126,7 @@ export const PamTerminalModal = ({
           <div className="flex flex-col items-center gap-4 py-8">
             <Spinner size="lg" />
             <p className="text-mineshaft-300">Establishing connection...</p>
-            <p className="text-sm text-mineshaft-400">Connecting to {fullAccountPath}</p>
+            <p className="text-sm text-mineshaft-400">Connecting to {account.name}</p>
           </div>
         )}
 
