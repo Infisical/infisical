@@ -9,7 +9,7 @@ import { Button, FormLabel, IconButton, Input, Modal, ModalContent } from "@app/
 import { PamResourceType, TPamAccount } from "@app/hooks/api/pam";
 
 // Feature flag — set to false to hide the browser terminal option while it's in development
-const ENABLE_BROWSER_TERMINAL = false;
+const ENABLE_BROWSER_TERMINAL = true;
 
 type Props = {
   account?: TPamAccount;

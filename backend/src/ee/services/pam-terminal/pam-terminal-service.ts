@@ -146,7 +146,14 @@ export const pamTerminalServiceFactory = ({
       socket.on("message", (rawData: Buffer | ArrayBuffer | Buffer[]) => {
         const handleMessage = async () => {
           try {
-            const data = Buffer.isBuffer(rawData) ? rawData.toString() : String(rawData);
+            let data: string;
+            if (Buffer.isBuffer(rawData)) {
+              data = rawData.toString();
+            } else if (Array.isArray(rawData)) {
+              data = Buffer.concat(rawData).toString();
+            } else {
+              data = Buffer.from(rawData).toString();
+            }
             const parsed: unknown = JSON.parse(data);
 
             const result = WebSocketClientMessageSchema.safeParse(parsed);

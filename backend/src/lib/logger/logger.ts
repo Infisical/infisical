@@ -4,6 +4,7 @@
 // easier to use it that's all.
 import { requestContext } from "@fastify/request-context";
 import pino, { Logger } from "pino";
+import RE2 from "re2";
 import { z } from "zod";
 
 const logLevelToSeverityLookup: Record<string, string> = {
@@ -184,7 +185,7 @@ export const initLogger = () => {
           if (request.url?.includes("/pam/terminal/")) {
             return {
               ...request,
-              url: request.url.replace(/([?&])token=[^&]*/g, "$1token=REDACTED")
+              url: new RE2(/([?&])token=[^&]*/g).replace(request.url, "$1token=REDACTED")
             };
           }
           return request;

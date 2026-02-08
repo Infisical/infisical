@@ -10,7 +10,6 @@ export const useTerminalWebSocket = ({
   projectId,
   onConnect,
   onDisconnect,
-  onError,
   onMessage
 }: UseTerminalWebSocketOptions) => {
   const websocketRef = useRef<WebSocket | null>(null);
@@ -19,15 +18,13 @@ export const useTerminalWebSocket = ({
   // Ref-ify callbacks to avoid stale closures and unnecessary reconnects
   const onConnectRef = useRef(onConnect);
   const onDisconnectRef = useRef(onDisconnect);
-  const onErrorRef = useRef(onError);
   const onMessageRef = useRef(onMessage);
 
   useEffect(() => {
     onConnectRef.current = onConnect;
     onDisconnectRef.current = onDisconnect;
-    onErrorRef.current = onError;
     onMessageRef.current = onMessage;
-  }, [onConnect, onDisconnect, onError, onMessage]);
+  }, [onConnect, onDisconnect, onMessage]);
 
   const connect = useCallback(() => {
     if (websocketRef.current?.readyState === WebSocket.OPEN) {
@@ -38,7 +35,6 @@ export const useTerminalWebSocket = ({
 
     const token = getAuthToken();
     if (!token) {
-      onErrorRef.current?.("Not authenticated");
       return;
     }
 
@@ -67,33 +63,35 @@ export const useTerminalWebSocket = ({
     };
 
     ws.onerror = () => {
-      if (isStale()) return;
-      onErrorRef.current?.("WebSocket connection error");
+      // no-op: onclose will fire after onerror
     };
 
     ws.onclose = () => {
       if (isStale()) return;
       websocketRef.current = null;
-      if (isConnectedRef.current) {
-        onDisconnectRef.current?.();
-      }
+      onDisconnectRef.current?.();
       isConnectedRef.current = false;
     };
   }, [accountId, projectId]);
 
   const disconnect = useCallback(() => {
     const ws = websocketRef.current;
-    if (ws) {
-      // Nullify ref first to prevent onclose from double-firing onDisconnect
-      websocketRef.current = null;
+    const wasConnected = isConnectedRef.current;
 
+    // Reset state before closing so onclose (via isStale) won't double-fire
+    websocketRef.current = null;
+    isConnectedRef.current = false;
+
+    if (ws) {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: WsMessageType.Control, data: "quit" }));
       }
       ws.close();
     }
-    isConnectedRef.current = false;
-    onDisconnectRef.current?.();
+
+    if (wasConnected) {
+      onDisconnectRef.current?.();
+    }
   }, []);
 
   const send = useCallback((data: WebSocketClientMessage) => {
@@ -114,7 +112,7 @@ export const useTerminalWebSocket = ({
     return () => {
       if (websocketRef.current) {
         if (websocketRef.current.readyState === WebSocket.OPEN) {
-          websocketRef.current.send(JSON.stringify({ type: "control", data: "quit" }));
+          websocketRef.current.send(JSON.stringify({ type: WsMessageType.Control, data: "quit" }));
         }
         websocketRef.current.close();
         websocketRef.current = null;

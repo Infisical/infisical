@@ -7,8 +7,6 @@ export enum WsMessageType {
   Control = "control"
 }
 
-export type ModalState = "connecting" | "connected" | "error" | "disconnected";
-
 export const WebSocketServerMessageSchema = z.object({
   type: z.enum([WsMessageType.Ready, WsMessageType.Output]),
   data: z.string(),
@@ -29,7 +27,6 @@ export type UseTerminalWebSocketOptions = {
   projectId: string;
   onConnect?: () => void;
   onDisconnect?: () => void;
-  onError?: (error: string) => void;
   onMessage?: (data: WebSocketServerMessage) => void;
 };
 
