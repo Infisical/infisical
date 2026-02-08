@@ -1,13 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import { getAuthToken } from "@app/hooks/api/reactQuery";
 
-import type {
-  ConnectionState,
-  UseTerminalWebSocketOptions,
-  WebSocketClientMessage
-} from "./pam-terminal-types";
-import { WebSocketServerMessageSchema } from "./pam-terminal-types";
+import type { UseTerminalWebSocketOptions, WebSocketClientMessage } from "./pam-terminal-types";
+import { WebSocketServerMessageSchema, WsMessageType } from "./pam-terminal-types";
 
 export const useTerminalWebSocket = ({
   accountId,
@@ -17,7 +13,6 @@ export const useTerminalWebSocket = ({
   onError,
   onMessage
 }: UseTerminalWebSocketOptions) => {
-  const [connectionState, setConnectionState] = useState<ConnectionState>("idle");
   const websocketRef = useRef<WebSocket | null>(null);
   const isConnectedRef = useRef(false);
 
@@ -40,11 +35,9 @@ export const useTerminalWebSocket = ({
     }
 
     isConnectedRef.current = false;
-    setConnectionState("connecting");
 
     const token = getAuthToken();
     if (!token) {
-      setConnectionState("error");
       onErrorRef.current?.("Not authenticated");
       return;
     }
@@ -65,9 +58,8 @@ export const useTerminalWebSocket = ({
 
       const message = parsed.data;
 
-      if (message.type === "ready") {
+      if (message.type === WsMessageType.Ready) {
         isConnectedRef.current = true;
-        setConnectionState("connected");
         onConnectRef.current?.();
       }
 
@@ -76,7 +68,6 @@ export const useTerminalWebSocket = ({
 
     ws.onerror = () => {
       if (isStale()) return;
-      setConnectionState("error");
       onErrorRef.current?.("WebSocket connection error");
     };
 
@@ -84,7 +75,6 @@ export const useTerminalWebSocket = ({
       if (isStale()) return;
       websocketRef.current = null;
       if (isConnectedRef.current) {
-        setConnectionState("disconnected");
         onDisconnectRef.current?.();
       }
       isConnectedRef.current = false;
@@ -98,12 +88,11 @@ export const useTerminalWebSocket = ({
       websocketRef.current = null;
 
       if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: "control", data: "quit" }));
+        ws.send(JSON.stringify({ type: WsMessageType.Control, data: "quit" }));
       }
       ws.close();
     }
     isConnectedRef.current = false;
-    setConnectionState("disconnected");
     onDisconnectRef.current?.();
   }, []);
 
@@ -113,9 +102,9 @@ export const useTerminalWebSocket = ({
     }
   }, []);
 
-  const sendSql = useCallback(
-    (sql: string) => {
-      send({ type: "input", data: sql });
+  const sendInput = useCallback(
+    (input: string) => {
+      send({ type: WsMessageType.Input, data: input });
     },
     [send]
   );
@@ -134,9 +123,8 @@ export const useTerminalWebSocket = ({
   }, []);
 
   return {
-    connectionState,
     connect,
     disconnect,
-    sendSql
+    sendInput
   };
 };

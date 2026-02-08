@@ -1,11 +1,16 @@
 import { z } from "zod";
 
-export type ConnectionState = "idle" | "connecting" | "connected" | "disconnected" | "error";
+export enum WsMessageType {
+  Ready = "ready",
+  Output = "output",
+  Input = "input",
+  Control = "control"
+}
 
 export type ModalState = "connecting" | "connected" | "error" | "disconnected";
 
 export const WebSocketServerMessageSchema = z.object({
-  type: z.enum(["ready", "output"]),
+  type: z.enum([WsMessageType.Ready, WsMessageType.Output]),
   data: z.string(),
   prompt: z.string()
 });
@@ -13,7 +18,7 @@ export const WebSocketServerMessageSchema = z.object({
 export type WebSocketServerMessage = z.infer<typeof WebSocketServerMessageSchema>;
 
 export const WebSocketClientMessageSchema = z.object({
-  type: z.enum(["input", "control"]),
+  type: z.enum([WsMessageType.Input, WsMessageType.Control]),
   data: z.string()
 });
 

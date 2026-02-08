@@ -7,6 +7,7 @@ import type {
   UsePamTerminalProps,
   WebSocketServerMessage
 } from "./pam-terminal-types";
+import { WsMessageType } from "./pam-terminal-types";
 
 import "@xterm/xterm/css/xterm.css";
 
@@ -45,8 +46,8 @@ export const usePamTerminal = ({ onInput, onReady }: UsePamTerminalProps) => {
       if (!xtermRef.current) return;
 
       switch (message.type) {
-        case "ready":
-        case "output":
+        case WsMessageType.Ready:
+        case WsMessageType.Output:
           if (message.data) {
             writeToTerminal(message.data);
           }
@@ -170,7 +171,7 @@ export const usePamTerminal = ({ onInput, onReady }: UsePamTerminalProps) => {
       xtermRef.current = null;
       fitAddonRef.current = null;
     };
-  }, [containerEl]);
+  }, [containerEl, handleMessage, writeToTerminal, clear, focus]);
 
   // Callback ref to capture when the div is mounted
   const containerRefCallback = useCallback((node: HTMLDivElement | null) => {

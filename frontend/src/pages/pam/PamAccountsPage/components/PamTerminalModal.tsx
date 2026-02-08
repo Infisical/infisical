@@ -33,7 +33,7 @@ export const PamTerminalModal = ({ isOpen, onOpenChange, account, projectId }: P
   const modalStateRef = useRef<ModalState>(modalState);
   modalStateRef.current = modalState;
 
-  const { connect, disconnect, sendSql } = useTerminalWebSocket({
+  const { connect, disconnect, sendInput } = useTerminalWebSocket({
     accountId: account?.id || "",
     projectId,
     onConnect: () => {
@@ -90,9 +90,9 @@ export const PamTerminalModal = ({ isOpen, onOpenChange, account, projectId }: P
 
   const handleInputFromTerminal = useCallback(
     (input: string) => {
-      sendSql(input);
+      sendInput(input);
     },
-    [sendSql]
+    [sendInput]
   );
 
   const terminal = usePamTerminal({
@@ -111,7 +111,7 @@ export const PamTerminalModal = ({ isOpen, onOpenChange, account, projectId }: P
     if (modalState === "connected") {
       setTimeout(() => terminal.focus(), 100);
     }
-  }, [modalState]);
+  }, [modalState, terminal.focus]);
 
   if (!account) return null;
 
