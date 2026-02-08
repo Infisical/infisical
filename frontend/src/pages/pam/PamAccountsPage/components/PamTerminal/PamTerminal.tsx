@@ -20,7 +20,6 @@ export const usePamTerminal = ({ onInput, onReady }: UsePamTerminalProps) => {
   const onInputRef = useRef(onInput);
   const onReadyRef = useRef(onReady);
 
-  // Keep refs up to date
   useEffect(() => {
     onInputRef.current = onInput;
     onReadyRef.current = onReady;
@@ -28,8 +27,7 @@ export const usePamTerminal = ({ onInput, onReady }: UsePamTerminalProps) => {
 
   const writeToTerminal = useCallback((text: string) => {
     if (xtermRef.current) {
-      // xterm.js requires \r\n for proper line breaks; bare \n only moves
-      // the cursor down without returning to column 0, causing misaligned output.
+      // xterm requires \r\n; bare \n moves the cursor down without returning to column 0
       xtermRef.current.write(text.replace(/\r?\n/g, "\r\n"));
     }
   }, []);
@@ -75,11 +73,9 @@ export const usePamTerminal = ({ onInput, onReady }: UsePamTerminalProps) => {
     }
   }, []);
 
-  // Initialize terminal when container element is available
   useEffect(() => {
     if (!containerEl || xtermRef.current) return undefined;
 
-    // Initialize terminal with dark theme matching Infisical
     const terminal = new Terminal({
       cursorBlink: true,
       fontSize: 14,
@@ -120,45 +116,34 @@ export const usePamTerminal = ({ onInput, onReady }: UsePamTerminalProps) => {
     xtermRef.current = terminal;
     fitAddonRef.current = fitAddon;
 
-    // Handle user input
     terminal.onData((data) => {
-      // Handle special keys
       if (data === "\r") {
-        // Enter key - send the current input
         terminal.write("\r\n");
         onInputRef.current(inputBufferRef.current);
         inputBufferRef.current = "";
       } else if (data === "\x7f") {
-        // Backspace
         if (inputBufferRef.current.length > 0) {
           inputBufferRef.current = inputBufferRef.current.slice(0, -1);
           terminal.write("\b \b");
         }
       } else if (data === "\x03") {
-        // Ctrl+C - clear current input
         terminal.write("^C\r\n");
         inputBufferRef.current = "";
         terminal.write(currentPromptRef.current);
       } else if (data >= " " || data === "\t") {
-        // Printable characters, tab, and pasted text (including multi-line)
-        // Normalize any embedded newlines from paste so the buffer stores \n
-        // and the terminal displays proper \r\n line breaks
+        // Normalize embedded newlines from paste
         const normalized = data.replace(/\r\n|\r/g, "\n");
         inputBufferRef.current += normalized;
         terminal.write(normalized.replace(/\n/g, "\r\n"));
       }
     });
 
-    // Handle resize
     const handleResize = () => {
-      if (fitAddonRef.current) {
-        fitAddonRef.current.fit();
-      }
+      fitAddonRef.current?.fit();
     };
 
     const resizeObserver = new ResizeObserver(handleResize);
     resizeObserver.observe(containerEl);
-
     window.addEventListener("resize", handleResize);
 
     const api: PamTerminalApi = { handleMessage, writeToTerminal, clear, focus };
@@ -173,7 +158,6 @@ export const usePamTerminal = ({ onInput, onReady }: UsePamTerminalProps) => {
     };
   }, [containerEl, handleMessage, writeToTerminal, clear, focus]);
 
-  // Callback ref to capture when the div is mounted
   const containerRefCallback = useCallback((node: HTMLDivElement | null) => {
     setContainerEl(node);
   }, []);

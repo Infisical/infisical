@@ -35,10 +35,8 @@ export const PamTerminalModal = ({ isOpen, onOpenChange, account, projectId }: P
     onMessage: handleMessage
   });
 
-  // Keep connectRef in sync so onReady can call connect()
   connectRef.current = connect;
 
-  // Cleanup when modal closes
   useEffect(() => {
     if (!isOpen) {
       disconnect();
@@ -47,7 +45,6 @@ export const PamTerminalModal = ({ isOpen, onOpenChange, account, projectId }: P
     }
   }, [isOpen, disconnect]);
 
-  // Warn user before page unload when connected
   useEffect(() => {
     if (!isSessionActive) return undefined;
 
@@ -79,7 +76,6 @@ export const PamTerminalModal = ({ isOpen, onOpenChange, account, projectId }: P
     }
   });
 
-  // Focus terminal when session becomes active
   const focusTerminal = terminal.focus;
   useEffect(() => {
     if (!isSessionActive) return undefined;

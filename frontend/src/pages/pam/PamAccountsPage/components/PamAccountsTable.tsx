@@ -71,7 +71,7 @@ import { PamDeleteAccountModal } from "./PamDeleteAccountModal";
 import { PamDeleteFolderModal } from "./PamDeleteFolderModal";
 import { PamFolderRow } from "./PamFolderRow";
 import { PamRequestAccountAccessModal } from "./PamRequestAccountAccessModal";
-import { PamTerminalModal } from "./PamTerminalModal";
+import { PamTerminalModal } from "./PamTerminal";
 import { PamUpdateAccountModal } from "./PamUpdateAccountModal";
 import { PamUpdateFolderModal } from "./PamUpdateFolderModal";
 import { useAccessAwsIamAccount } from "./useAccessAwsIamAccount";

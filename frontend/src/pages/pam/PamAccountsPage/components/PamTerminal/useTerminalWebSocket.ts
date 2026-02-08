@@ -15,7 +15,6 @@ export const useTerminalWebSocket = ({
   const websocketRef = useRef<WebSocket | null>(null);
   const isConnectedRef = useRef(false);
 
-  // Ref-ify callbacks to avoid stale closures and unnecessary reconnects
   const onConnectRef = useRef(onConnect);
   const onDisconnectRef = useRef(onDisconnect);
   const onMessageRef = useRef(onMessage);
@@ -63,7 +62,7 @@ export const useTerminalWebSocket = ({
     };
 
     ws.onerror = () => {
-      // no-op: onclose will fire after onerror
+      // no-op: onclose always fires after onerror
     };
 
     ws.onclose = () => {
@@ -78,7 +77,7 @@ export const useTerminalWebSocket = ({
     const ws = websocketRef.current;
     const wasConnected = isConnectedRef.current;
 
-    // Reset state before closing so onclose (via isStale) won't double-fire
+    // Nullify ref before closing so onclose handler (via isStale) won't double-fire onDisconnect
     websocketRef.current = null;
     isConnectedRef.current = false;
 
@@ -107,7 +106,6 @@ export const useTerminalWebSocket = ({
     [send]
   );
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (websocketRef.current) {
