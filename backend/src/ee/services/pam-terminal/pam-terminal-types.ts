@@ -21,3 +21,11 @@ export const WebSocketClientMessageSchema = z.object({
 });
 
 export type TWebSocketClientMessage = z.infer<typeof WebSocketClientMessageSchema>;
+
+export type TIssueWebSocketTicketDTO = {
+  accountId: string;
+  projectId: string;
+  orgId: string;
+  actor: import("@app/lib/types").ProjectServiceActor;
+  auditLogInfo: import("@app/ee/services/audit-log/audit-log-types").AuditLogInfo;
+};

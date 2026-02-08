@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 
-import { getAuthToken } from "@app/hooks/api/reactQuery";
+import { useCreatePamTerminalTicket } from "@app/hooks/api/pam";
 
 import type { UseTerminalWebSocketOptions, WebSocketClientMessage } from "./pam-terminal-types";
 import { WebSocketServerMessageSchema, WsMessageType } from "./pam-terminal-types";
@@ -14,6 +14,7 @@ export const useTerminalWebSocket = ({
 }: UseTerminalWebSocketOptions) => {
   const websocketRef = useRef<WebSocket | null>(null);
   const isConnectedRef = useRef(false);
+  const createTicket = useCreatePamTerminalTicket();
 
   const onConnectRef = useRef(onConnect);
   const onDisconnectRef = useRef(onDisconnect);
@@ -25,21 +26,18 @@ export const useTerminalWebSocket = ({
     onMessageRef.current = onMessage;
   }, [onConnect, onDisconnect, onMessage]);
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (websocketRef.current?.readyState === WebSocket.OPEN) {
       return;
     }
 
     isConnectedRef.current = false;
 
-    const token = getAuthToken();
-    if (!token) {
-      return;
-    }
+    const ticket = await createTicket.mutateAsync({ accountId, projectId });
 
     const { protocol, host } = window.location;
     const wsProtocol = protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${wsProtocol}//${host}/api/v1/pam/terminal/accounts/${accountId}/terminal-access?projectId=${encodeURIComponent(projectId)}&token=${encodeURIComponent(token)}`;
+    const wsUrl = `${wsProtocol}//${host}/api/v1/pam/accounts/${accountId}/terminal-access?ticket=${encodeURIComponent(ticket)}`;
 
     const ws = new WebSocket(wsUrl);
     websocketRef.current = ws;
@@ -71,7 +69,7 @@ export const useTerminalWebSocket = ({
       onDisconnectRef.current?.();
       isConnectedRef.current = false;
     };
-  }, [accountId, projectId]);
+  }, [accountId, projectId, createTicket]);
 
   const disconnect = useCallback(() => {
     const ws = websocketRef.current;

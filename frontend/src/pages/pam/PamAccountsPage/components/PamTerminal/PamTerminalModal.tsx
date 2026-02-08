@@ -17,7 +17,7 @@ type Props = {
 export const PamTerminalModal = ({ isOpen, onOpenChange, account, projectId }: Props) => {
   const [isSessionActive, setIsSessionActive] = useState(false);
   const handleMessageRef = useRef<((message: WebSocketServerMessage) => void) | null>(null);
-  const connectRef = useRef<(() => void) | null>(null);
+  const connectRef = useRef<(() => void | Promise<void>) | null>(null);
 
   const handleMessage = useCallback((message: WebSocketServerMessage) => {
     handleMessageRef.current?.(message);

@@ -81,6 +81,12 @@ export const getTokenConfig = (tokenType: TokenType) => {
       const expiresAt = new Date(new Date().getTime() + 60000); // 60 seconds
       return { token, triesLeft, expiresAt };
     }
+    case TokenType.TOKEN_PAM_WS_TICKET: {
+      const token = crypto.randomBytes(32).toString("hex");
+      const triesLeft = 1;
+      const expiresAt = new Date(new Date().getTime() + 30000); // 30 seconds
+      return { token, triesLeft, expiresAt };
+    }
     default: {
       const token = crypto.randomBytes(16).toString("hex");
       const expiresAt = new Date();

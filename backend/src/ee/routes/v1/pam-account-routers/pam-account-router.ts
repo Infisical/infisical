@@ -1,3 +1,4 @@
+import type WebSocket from "ws";
 import { z } from "zod";
 
 import { PamFoldersSchema } from "@app/db/schemas";
@@ -13,11 +14,13 @@ import { SanitizedRedisAccountWithResourceSchema } from "@app/ee/services/pam-re
 import { SanitizedSSHAccountWithResourceSchema } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { TokenType } from "@app/services/auth-token/auth-token-types";
 
 const SanitizedAccountSchema = z.union([
   SanitizedSSHAccountWithResourceSchema, // ORDER MATTERS
@@ -189,6 +192,103 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       });
 
       return response;
+    }
+  });
+
+  // Terminal ticket endpoint
+  server.route({
+    method: "POST",
+    url: "/:accountId/terminal-ticket",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Issue a one-time ticket for WebSocket terminal access",
+      params: z.object({
+        accountId: z.string().uuid()
+      }),
+      body: z.object({
+        projectId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({ ticket: z.string() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { ticket } = await server.services.pamTerminal.issueWebSocketTicket({
+        accountId: req.params.accountId,
+        projectId: req.body.projectId,
+        orgId: req.permission.orgId,
+        actor: req.permission,
+        auditLogInfo: req.auditLogInfo
+      });
+
+      return { ticket };
+    }
+  });
+
+  // WebSocket endpoint for terminal access (ticket-based auth)
+  server.route({
+    method: "GET",
+    url: "/:accountId/terminal-access",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "WebSocket endpoint for browser-based terminal access to PAM accounts",
+      params: z.object({
+        accountId: z.string().uuid()
+      }),
+      querystring: z.object({
+        ticket: z.string()
+      }),
+      response: {
+        200: z.object({ message: z.string() })
+      }
+    },
+    wsHandler: async (connection: WebSocket, req) => {
+      try {
+        const ticketValue = req.query.ticket;
+        const separatorIndex = ticketValue.indexOf(":");
+        if (separatorIndex === -1) {
+          connection.close(4001, "Invalid or expired ticket");
+          return;
+        }
+
+        const userId = ticketValue.slice(0, separatorIndex);
+        const tokenCode = ticketValue.slice(separatorIndex + 1);
+
+        const tokenRecord = await server.services.authToken.validateTokenForUser({
+          type: TokenType.TOKEN_PAM_WS_TICKET,
+          userId,
+          code: tokenCode
+        });
+
+        if (!tokenRecord?.payload) {
+          connection.close(4001, "Invalid or expired ticket");
+          return;
+        }
+
+        const payload = JSON.parse(tokenRecord.payload) as { accountId: string; projectId: string; orgId: string };
+
+        if (payload.accountId !== req.params.accountId) {
+          connection.close(4001, "Invalid or expired ticket");
+          return;
+        }
+
+        await server.services.pamTerminal.handleWebSocketConnection({
+          socket: connection,
+          accountId: payload.accountId,
+          projectId: payload.projectId
+        });
+      } catch (err) {
+        logger.error(err, "WebSocket ticket validation failed");
+        connection.close(4001, "Invalid or expired ticket");
+      }
+    },
+    handler: async () => {
+      return { message: "WebSocket upgrade required" };
     }
   });
 };

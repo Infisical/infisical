@@ -2606,7 +2606,8 @@ export const registerRoutes = async (
     pamResourceDAL,
     pamFolderDAL,
     permissionService,
-    auditLogService
+    auditLogService,
+    tokenService
   });
 
   const aiMcpServerService = aiMcpServerServiceFactory({

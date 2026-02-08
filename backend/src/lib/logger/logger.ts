@@ -4,7 +4,6 @@
 // easier to use it that's all.
 import { requestContext } from "@fastify/request-context";
 import pino, { Logger } from "pino";
-import RE2 from "re2";
 import { z } from "zod";
 
 const logLevelToSeverityLookup: Record<string, string> = {
@@ -180,16 +179,7 @@ export const initLogger = () => {
         })
       },
       serializers: {
-        req: pino.stdSerializers.wrapRequestSerializer((request) => {
-          // Strip auth token from PAM terminal WebSocket URLs to prevent log leakage
-          if (request.url?.includes("/pam/terminal/")) {
-            return {
-              ...request,
-              url: new RE2(/([?&])token=[^&]*/g).replace(request.url, "$1token=REDACTED")
-            };
-          }
-          return request;
-        })
+        req: pino.stdSerializers.req
       },
       // redact until depth of three
       redact: [...redactedKeys, ...redactedKeys.map((key) => `*.${key}`), ...redactedKeys.map((key) => `*.*.${key}`)]

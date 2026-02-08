@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import type WebSocket from "ws";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -11,13 +11,15 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { ProjectServiceActor } from "@app/lib/types";
+import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { TokenType } from "@app/services/auth-token/auth-token-types";
 
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { getFullPamFolderPath } from "../pam-folder/pam-folder-fns";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import {
+  TIssueWebSocketTicketDTO,
   TWebSocketClientMessage,
   TWebSocketServerMessage,
   WebSocketClientMessageSchema,
@@ -32,6 +34,7 @@ type TPamTerminalServiceFactoryDep = {
   pamFolderDAL: TPamFolderDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
 };
 
 export type TPamTerminalServiceFactory = ReturnType<typeof pamTerminalServiceFactory>;
@@ -40,9 +43,6 @@ type THandleWebSocketConnectionDTO = {
   socket: WebSocket;
   accountId: string;
   projectId: string;
-  orgId: string;
-  actor: ProjectServiceActor;
-  auditLogInfo: AuditLogInfo;
 };
 
 export const pamTerminalServiceFactory = ({
@@ -50,7 +50,8 @@ export const pamTerminalServiceFactory = ({
   pamResourceDAL,
   pamFolderDAL,
   permissionService,
-  auditLogService
+  auditLogService,
+  tokenService
 }: TPamTerminalServiceFactoryDep) => {
   const sendMessage = (socket: WebSocket, message: TWebSocketServerMessage): void => {
     try {
@@ -62,78 +63,94 @@ export const pamTerminalServiceFactory = ({
     }
   };
 
-  const handleWebSocketConnection = async ({
-    socket,
+  const issueWebSocketTicket = async ({
     accountId,
     projectId,
     orgId,
     actor,
     auditLogInfo
+  }: TIssueWebSocketTicketDTO) => {
+    const account = await pamAccountDAL.findById(accountId);
+
+    if (!account) {
+      throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
+    }
+
+    if (account.projectId !== projectId) {
+      throw new BadRequestError({ message: "Account does not belong to the specified project" });
+    }
+
+    const resource = await pamResourceDAL.findById(account.resourceId);
+
+    if (!resource) {
+      throw new NotFoundError({ message: `Resource with ID '${account.resourceId}' not found` });
+    }
+
+    if (resource.resourceType !== PamResource.Postgres) {
+      throw new BadRequestError({
+        message: "Web terminal is currently only supported for PostgreSQL accounts"
+      });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      projectId: account.projectId,
+      actionProjectType: ActionProjectType.PAM
+    });
+
+    const accountPath = await getFullPamFolderPath({
+      pamFolderDAL,
+      folderId: account.folderId,
+      projectId: account.projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionPamAccountActions.Access,
+      subject(ProjectPermissionSub.PamAccounts, {
+        resourceName: resource.name,
+        accountName: account.name,
+        accountPath
+      })
+    );
+
+    await auditLogService.createAuditLog({
+      ...auditLogInfo,
+      orgId,
+      projectId,
+      event: {
+        type: EventType.PAM_ACCOUNT_ACCESS,
+        metadata: {
+          accountId,
+          accountPath,
+          accountName: account.name,
+          duration: DEFAULT_SESSION_DURATION
+        }
+      }
+    });
+
+    const token = await tokenService.createTokenForUser({
+      type: TokenType.TOKEN_PAM_WS_TICKET,
+      userId: actor.id,
+      payload: JSON.stringify({ accountId, projectId, orgId })
+    });
+
+    return { ticket: `${actor.id}:${token}` };
+  };
+
+  const handleWebSocketConnection = async ({
+    socket,
+    accountId,
+    projectId
   }: THandleWebSocketConnectionDTO): Promise<void> => {
     try {
-      const duration = DEFAULT_SESSION_DURATION;
-      // TODO: enforce session duration limit
-
       const account = await pamAccountDAL.findById(accountId);
 
-      if (!account) {
-        throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
+      if (!account || account.projectId !== projectId) {
+        throw new BadRequestError({ message: "Invalid account or project" });
       }
-
-      if (account.projectId !== projectId) {
-        throw new BadRequestError({ message: "Account does not belong to the specified project" });
-      }
-
-      const resource = await pamResourceDAL.findById(account.resourceId);
-
-      if (!resource) {
-        throw new NotFoundError({ message: `Resource with ID '${account.resourceId}' not found` });
-      }
-
-      if (resource.resourceType !== PamResource.Postgres) {
-        throw new BadRequestError({
-          message: "Web terminal is currently only supported for PostgreSQL accounts"
-        });
-      }
-
-      const { permission } = await permissionService.getProjectPermission({
-        actor: actor.type,
-        actorId: actor.id,
-        actorAuthMethod: actor.authMethod,
-        actorOrgId: actor.orgId,
-        projectId: account.projectId,
-        actionProjectType: ActionProjectType.PAM
-      });
-
-      const accountPath = await getFullPamFolderPath({
-        pamFolderDAL,
-        folderId: account.folderId,
-        projectId: account.projectId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionPamAccountActions.Access,
-        subject(ProjectPermissionSub.PamAccounts, {
-          resourceName: resource.name,
-          accountName: account.name,
-          accountPath
-        })
-      );
-
-      await auditLogService.createAuditLog({
-        ...auditLogInfo,
-        orgId,
-        projectId,
-        event: {
-          type: EventType.PAM_ACCOUNT_ACCESS,
-          metadata: {
-            accountId,
-            accountPath,
-            accountName: account.name,
-            duration
-          }
-        }
-      });
 
       sendMessage(socket, {
         type: WsMessageType.Ready,
@@ -254,6 +271,7 @@ export const pamTerminalServiceFactory = ({
   };
 
   return {
+    issueWebSocketTicket,
     handleWebSocketConnection
   };
 };

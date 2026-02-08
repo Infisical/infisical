@@ -33,7 +33,6 @@ import { registerPamFolderRouter } from "./pam-folder-router";
 import { PAM_RESOURCE_REGISTER_ROUTER_MAP } from "./pam-resource-routers";
 import { registerPamResourceRouter } from "./pam-resource-routers/pam-resource-router";
 import { registerPamSessionRouter } from "./pam-session-router";
-import { registerPamTerminalRouter } from "./pam-terminal-router";
 import { registerPITRouter } from "./pit-router";
 import { registerPkiAcmeRouter } from "./pki-acme-router";
 import { registerProjectRoleRouter } from "./project-role-router";
@@ -196,7 +195,6 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     async (pamRouter) => {
       await pamRouter.register(registerPamFolderRouter, { prefix: "/folders" });
       await pamRouter.register(registerPamSessionRouter, { prefix: "/sessions" });
-      await pamRouter.register(registerPamTerminalRouter, { prefix: "/terminal" });
 
       await pamRouter.register(
         async (pamAccountRouter) => {
