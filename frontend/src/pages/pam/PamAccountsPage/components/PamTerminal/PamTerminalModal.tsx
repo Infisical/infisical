@@ -1,11 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
 
 import { Button, Modal, ModalContent } from "@app/components/v2";
 import { TPamAccount } from "@app/hooks/api/pam";
 
-import type { WebSocketServerMessage } from "./pam-terminal-types";
-import { usePamTerminal } from "./PamTerminal";
-import { useTerminalWebSocket } from "./useTerminalWebSocket";
+import { usePamTerminalSession } from "./usePamTerminalSession";
 
 type Props = {
   isOpen: boolean;
@@ -15,74 +13,34 @@ type Props = {
 };
 
 export const PamTerminalModal = ({ isOpen, onOpenChange, account, projectId }: Props) => {
-  const [isSessionActive, setIsSessionActive] = useState(false);
-  const handleMessageRef = useRef<((message: WebSocketServerMessage) => void) | null>(null);
-  const connectRef = useRef<(() => void | Promise<void>) | null>(null);
-
-  const handleMessage = useCallback((message: WebSocketServerMessage) => {
-    handleMessageRef.current?.(message);
-  }, []);
-
-  const { connect, disconnect, sendInput } = useTerminalWebSocket({
+  const { containerRef, isConnected, disconnect } = usePamTerminalSession({
     accountId: account?.id || "",
-    projectId,
-    onConnect: () => {
-      setIsSessionActive(true);
-    },
-    onDisconnect: () => {
-      setIsSessionActive(false);
-    },
-    onMessage: handleMessage
+    projectId
   });
 
-  connectRef.current = connect;
-
+  // Warn before navigating away from an active session
   useEffect(() => {
-    if (!isOpen) {
-      disconnect();
-      setIsSessionActive(false);
-      handleMessageRef.current = null;
-    }
-  }, [isOpen, disconnect]);
+    if (!isConnected) return undefined;
 
-  useEffect(() => {
-    if (!isSessionActive) return undefined;
-
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+    const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault();
     };
 
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [isSessionActive]);
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isConnected]);
+
+  // Disconnect when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      disconnect();
+    }
+  }, [isOpen, disconnect]);
 
   const handleDisconnect = () => {
     disconnect();
     onOpenChange(false);
   };
-
-  const handleInputFromTerminal = useCallback(
-    (input: string) => {
-      sendInput(input);
-    },
-    [sendInput]
-  );
-
-  const terminal = usePamTerminal({
-    onInput: handleInputFromTerminal,
-    onReady: (api) => {
-      handleMessageRef.current = api.handleMessage;
-      connectRef.current?.();
-    }
-  });
-
-  const focusTerminal = terminal.focus;
-  useEffect(() => {
-    if (!isSessionActive) return undefined;
-
-    const timerId = setTimeout(() => focusTerminal(), 100);
-    return () => clearTimeout(timerId);
-  }, [isSessionActive, focusTerminal]);
 
   if (!account) return null;
 
@@ -95,11 +53,16 @@ export const PamTerminalModal = ({ isOpen, onOpenChange, account, projectId }: P
       >
         <div className="flex flex-col gap-4">
           <div className="h-[70vh] overflow-hidden rounded-md border border-mineshaft-600">
-            {terminal.terminalElement}
+            <div
+              className="h-full w-full overflow-hidden rounded-md bg-[#0d1117] p-2 [&_.xterm-viewport]:thin-scrollbar"
+              style={{ minHeight: "300px" }}
+            >
+              <div ref={containerRef} className="h-full w-full" />
+            </div>
           </div>
 
           <div className="flex justify-end">
-            {isSessionActive ? (
+            {isConnected ? (
               <Button onClick={handleDisconnect} variant="outline_bg">
                 Disconnect
               </Button>
