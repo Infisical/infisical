@@ -76,11 +76,9 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
     return { authMode: AuthMode.API_KEY, token: apiKey, actor: ActorType.USER } as const;
   }
   const authHeader = req.headers?.authorization;
-  const tokenSource = authHeader || null;
+  if (!authHeader) return { authMode: null, token: null };
 
-  if (!tokenSource) return { authMode: null, token: null };
-
-  const authTokenValue = tokenSource.slice(7); // slice of after Bearer
+  const authTokenValue = authHeader.slice(7); // slice of after Bearer
   if (authTokenValue.startsWith("st.")) {
     return {
       authMode: AuthMode.SERVICE_TOKEN,

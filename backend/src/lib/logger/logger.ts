@@ -178,9 +178,6 @@ export const initLogger = () => {
           // node_version: process.version
         })
       },
-      serializers: {
-        req: pino.stdSerializers.req
-      },
       // redact until depth of three
       redact: [...redactedKeys, ...redactedKeys.map((key) => `*.${key}`), ...redactedKeys.map((key) => `*.*.${key}`)]
     },

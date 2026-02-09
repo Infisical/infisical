@@ -270,7 +270,9 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           return;
         }
 
-        const payload = JSON.parse(tokenRecord.payload) as { accountId: string; projectId: string; orgId: string };
+        const payload = z
+          .object({ accountId: z.string(), projectId: z.string(), orgId: z.string() })
+          .parse(JSON.parse(tokenRecord.payload));
 
         if (payload.accountId !== req.params.accountId) {
           connection.close(4001, "Invalid or expired ticket");

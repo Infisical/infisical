@@ -46,7 +46,13 @@ export const useTerminalWebSocket = ({
 
     ws.onmessage = (event) => {
       if (isStale()) return;
-      const parsed = WebSocketServerMessageSchema.safeParse(JSON.parse(event.data));
+      let raw: unknown;
+      try {
+        raw = JSON.parse(event.data);
+      } catch {
+        return;
+      }
+      const parsed = WebSocketServerMessageSchema.safeParse(raw);
       if (!parsed.success) return;
 
       const message = parsed.data;

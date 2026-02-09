@@ -147,7 +147,7 @@ export const main = async ({
     await server.register(fastifySwagger);
     await server.register(fastifyFormBody);
     await server.register(websocket, {
-      options: { maxPayload: 1024 * 1024 }
+      options: { maxPayload: 64 * 1024 } // 64 KB
     });
     await server.register(fastifyErrHandler);
 
