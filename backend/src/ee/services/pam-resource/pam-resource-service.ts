@@ -171,16 +171,25 @@ export const pamResourceServiceFactory = ({
       });
     }
 
-    const resource = await pamResourceDAL.create({
-      resourceType,
-      encryptedConnectionDetails,
-      gatewayId,
-      name,
-      projectId,
-      encryptedRotationAccountCredentials
-    });
+    try {
+      const resource = await pamResourceDAL.create({
+        resourceType,
+        encryptedConnectionDetails,
+        gatewayId,
+        name,
+        projectId,
+        encryptedRotationAccountCredentials
+      });
 
-    return decryptResource(resource, projectId, kmsService);
+      return await decryptResource(resource, projectId, kmsService);
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+        throw new BadRequestError({
+          message: `Resource with name '${name}' already exists for this project`
+        });
+      }
+      throw err;
+    }
   };
 
   const updateById = async (
@@ -289,9 +298,18 @@ export const pamResourceServiceFactory = ({
       return decryptResource(resource, resource.projectId, kmsService);
     }
 
-    const updatedResource = await pamResourceDAL.updateById(resourceId, updateDoc);
+    try {
+      const updatedResource = await pamResourceDAL.updateById(resourceId, updateDoc);
 
-    return decryptResource(updatedResource, resource.projectId, kmsService);
+      return await decryptResource(updatedResource, resource.projectId, kmsService);
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+        throw new BadRequestError({
+          message: `Resource with name '${name}' already exists for this project`
+        });
+      }
+      throw err;
+    }
   };
 
   const deleteById = async (id: string, actor: OrgServiceActor) => {

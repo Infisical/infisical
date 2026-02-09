@@ -224,7 +224,7 @@ export const pamAccountServiceFactory = ({
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({
-          message: `Account with name '${name}' already exists for this path`
+          message: `Account with name '${name}' already exists for this resource`
         });
       }
 
@@ -365,7 +365,7 @@ export const pamAccountServiceFactory = ({
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({
-          message: `Account with name '${name}' already exists for this path`
+          message: `Account with name '${name}' already exists for this resource`
         });
       }
 
