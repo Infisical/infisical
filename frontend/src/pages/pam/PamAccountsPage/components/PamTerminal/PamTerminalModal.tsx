@@ -18,7 +18,6 @@ export const PamTerminalModal = ({ isOpen, onOpenChange, account, projectId }: P
     projectId
   });
 
-  // Warn before navigating away from an active session
   useEffect(() => {
     if (!isConnected) return undefined;
 
