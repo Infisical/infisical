@@ -68,24 +68,22 @@ const deployAppMachines = async (secretSync: TFlyioSyncWithCredentials) => {
   const machines = Array.isArray(machinesData) ? machinesData : [];
   if (machines.length === 0) return;
 
-  // Deploy secrets by cycling each machine (stop → start). When a machine
-  // boots, the Fly.io agent issues a temporary auth token to the host,
-  // decrypts the latest secrets from the vault, and injects them as
-  // environment variables. This guarantees the running process picks up
-  // the new secret values.
+  // Deploy secrets by restarting each machine. When a machine boots, the
+  // Fly.io agent issues a temporary auth token to the host, decrypts the
+  // latest secrets from the vault, and injects them as environment variables.
+  //
+  // Uses restart for running machines (handles stop+start atomically) and
+  // start for already-stopped machines. Only waits for the final "started"
+  // state — avoids waiting for intermediate "stopped" which can 400 if the
+  // machine has a restart policy that transitions past it instantly.
   //
   // Machines are processed sequentially (rolling deploy) to avoid downtime.
   for (const machine of machines) {
     if (machine.state === "started") {
-      await request.post(`${machinesApiBase}/${machine.id}/stop`, {}, { headers });
-
-      await request.get(
-        `${machinesApiBase}/${machine.id}/wait?state=stopped&timeout=${FLYIO_MACHINE_WAIT_TIMEOUT_SECONDS}`,
-        { headers }
-      );
+      await request.post(`${machinesApiBase}/${machine.id}/restart`, {}, { headers });
+    } else {
+      await request.post(`${machinesApiBase}/${machine.id}/start`, {}, { headers });
     }
-
-    await request.post(`${machinesApiBase}/${machine.id}/start`, {}, { headers });
 
     await request.get(
       `${machinesApiBase}/${machine.id}/wait?state=started&timeout=${FLYIO_MACHINE_WAIT_TIMEOUT_SECONDS}`,
