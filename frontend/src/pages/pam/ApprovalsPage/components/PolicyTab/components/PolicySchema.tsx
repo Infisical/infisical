@@ -3,7 +3,6 @@ import { z } from "zod";
 
 import { ApprovalStepsSchema } from "@app/components/approvals";
 
-// 30 to  7 days
 const DurationSchema = (
   min = 30,
   max = 604800,
@@ -12,8 +11,6 @@ const DurationSchema = (
   z.string().refine(
     (val) => {
       const duration = ms(val) / 1000;
-
-      // 30 seconds to 7 days
       return duration >= min && duration <= max;
     },
     { message: msg }
@@ -28,35 +25,18 @@ export const PolicyFormSchema = z.object({
   ).nullish(),
   conditions: z
     .object({
-      // Deprecated: use resourceNames and accountNames instead (kept for backwards compatibility during editing)
-      accountPaths: z
-        .string()
-        .array()
-        .refine((val) => val.every((path) => path.length > 0), {
-          message: "All account paths must be non-empty"
-        })
-        .refine((val) => val.every((path) => path.startsWith("/")), {
-          message: "All account paths must start with /"
-        })
-        .refine((val) => val.every((path) => !path.endsWith("/")), {
-          message: "All account paths cannot end with /"
-        })
-        .optional(),
-      // New fields for matching (independent criteria, AND logic when both defined)
       resourceNames: z.string().array().optional(),
       accountNames: z.string().array().optional()
     })
     .refine(
       (data) => {
         // At least one condition type must be provided
-        const hasAccountPaths = data.accountPaths && data.accountPaths.length > 0;
         const hasResourceNames = data.resourceNames && data.resourceNames.length > 0;
         const hasAccountNames = data.accountNames && data.accountNames.length > 0;
-        return hasAccountPaths || hasResourceNames || hasAccountNames;
+        return hasResourceNames || hasAccountNames;
       },
       {
-        message:
-          "At least one condition type must be provided (Resource Names, Account Names, or Account Paths)"
+        message: "At least one condition type must be provided (Resource Names or Account Names)"
       }
     )
     .array()

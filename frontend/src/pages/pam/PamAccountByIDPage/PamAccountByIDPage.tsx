@@ -97,13 +97,10 @@ const PageContent = () => {
   };
 
   const handleAccess = async () => {
-    const fullAccountPath = `/${account.name}`;
-
     const { requiresApproval } = await checkPolicyMatch({
       policyType: ApprovalPolicyType.PamAccess,
       projectId: projectId!,
       inputs: {
-        accountPath: fullAccountPath,
         resourceName: account.resource.name,
         accountName: account.name
       }
@@ -111,7 +108,6 @@ const PageContent = () => {
 
     if (requiresApproval) {
       handlePopUpOpen("requestAccount", {
-        accountPath: fullAccountPath,
         resourceName: account.resource.name,
         accountName: account.name,
         accountAccessed: true
@@ -120,9 +116,9 @@ const PageContent = () => {
     }
 
     if (account.resource.resourceType === PamResourceType.AwsIam) {
-      accessAwsIam(account, fullAccountPath);
+      accessAwsIam(account);
     } else {
-      handlePopUpOpen("accessAccount", { account, accountPath: undefined });
+      handlePopUpOpen("accessAccount", { account });
     }
   };
 
@@ -241,7 +237,6 @@ const PageContent = () => {
       <PamRequestAccountAccessModal
         isOpen={popUp.requestAccount.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("requestAccount", isOpen)}
-        accountPath={popUp.requestAccount.data?.accountPath}
         resourceName={popUp.requestAccount.data?.resourceName}
         accountName={popUp.requestAccount.data?.accountName}
         accountAccessed={popUp.requestAccount.data?.accountAccessed}

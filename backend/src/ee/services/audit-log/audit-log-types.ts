@@ -4254,8 +4254,7 @@ interface PamAccountAccessEvent {
   type: EventType.PAM_ACCOUNT_ACCESS;
   metadata: {
     accountId: string;
-    accountPath?: string;
-    resourceName?: string;
+    resourceName: string;
     accountName: string;
     duration?: string;
   };

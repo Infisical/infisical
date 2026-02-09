@@ -161,39 +161,27 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       description: "Access PAM account",
-      body: z
-        .object({
-          accountPath: z.string().trim().optional(),
-          resourceName: z.string().trim().optional(),
-          accountName: z.string().trim().optional(),
-          projectId: z.string().uuid(),
-          mfaSessionId: z.string().optional(),
-          duration: z
-            .string()
-            .min(1)
-            .transform((val, ctx) => {
-              const parsedMs = ms(val);
+      body: z.object({
+        resourceName: z.string().trim(),
+        accountName: z.string().trim(),
+        projectId: z.string().uuid(),
+        mfaSessionId: z.string().optional(),
+        duration: z
+          .string()
+          .min(1)
+          .transform((val, ctx) => {
+            const parsedMs = ms(val);
 
-              if (typeof parsedMs !== "number" || parsedMs <= 0) {
-                ctx.addIssue({
-                  code: z.ZodIssueCode.custom,
-                  message: "Invalid duration format. Must be a positive duration (e.g., '1h', '30m', '2d')."
-                });
-                return z.NEVER;
-              }
-              return parsedMs;
-            })
-        })
-        .refine(
-          (data) => {
-            const hasResourceAndAccount = data.resourceName && data.accountName;
-            const hasAccountPath = data.accountPath;
-            return hasResourceAndAccount || hasAccountPath;
-          },
-          {
-            message: "Either (resourceName and accountName) or accountPath must be provided"
-          }
-        ),
+            if (typeof parsedMs !== "number" || parsedMs <= 0) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Invalid duration format. Must be a positive duration (e.g., '1h', '30m', '2d')."
+              });
+              return z.NEVER;
+            }
+            return parsedMs;
+          })
+      }),
       response: {
         200: z.discriminatedUnion("resourceType", [
           // Gateway-based resources (Postgres, MySQL, Redis, SSH)
@@ -225,7 +213,6 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           actorIp: req.realIp,
           actorName: `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim(),
           actorUserAgent: req.auditLogInfo.userAgent ?? "",
-          accountPath: req.body.accountPath,
           resourceName: req.body.resourceName,
           accountName: req.body.accountName,
           projectId: req.body.projectId,
@@ -243,7 +230,6 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           type: EventType.PAM_ACCOUNT_ACCESS,
           metadata: {
             accountId: response.account.id,
-            accountPath: req.body.accountPath,
             resourceName: req.body.resourceName,
             accountName: response.account.name,
             duration: req.body.duration ? new Date(req.body.duration).toISOString() : undefined

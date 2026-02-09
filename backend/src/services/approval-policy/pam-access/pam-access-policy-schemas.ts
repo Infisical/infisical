@@ -14,22 +14,9 @@ import {
 
 // Inputs
 export const PamAccessPolicyInputsSchema = z.object({
-  accountPath: z.string().optional(),
   resourceName: z.string().optional(),
   accountName: z.string().optional()
 });
-
-const accountPathGlob = z.string().refine(
-  (el) => {
-    try {
-      picomatch.parse([el]);
-      return true;
-    } catch {
-      return false;
-    }
-  },
-  { message: "Invalid glob pattern" }
-);
 
 // Conditions
 const resourceNameGlob = z.string().refine(
@@ -58,9 +45,6 @@ const accountNameGlob = z.string().refine(
 
 export const PamAccessPolicyConditionsSchema = z
   .object({
-    // Deprecated: use resourceNames and accountNames instead
-    accountPaths: accountPathGlob.array().optional(),
-    // New fields for matching
     resourceNames: resourceNameGlob.array().optional(),
     accountNames: accountNameGlob.array().optional()
   })
@@ -68,29 +52,18 @@ export const PamAccessPolicyConditionsSchema = z
 
 const MutatePamAccessPolicyConditionsSchema = z
   .object({
-    // Deprecated: use resourceNames and accountNames instead (kept for backwards compatibility)
-    accountPaths: accountPathGlob
-      .refine((el) => el.startsWith("/"), {
-        message: "Path must start with /"
-      })
-      .refine((el) => !el.endsWith("/"), {
-        message: "Path cannot end with /"
-      })
-      .array()
-      .optional(),
     resourceNames: resourceNameGlob.array().optional(),
     accountNames: accountNameGlob.array().optional()
   })
   .refine(
     (data) => {
       // At least one condition type must be provided
-      const hasAccountPaths = data.accountPaths && data.accountPaths.length > 0;
       const hasResourceNames = data.resourceNames && data.resourceNames.length > 0;
       const hasAccountNames = data.accountNames && data.accountNames.length > 0;
-      return hasAccountPaths || hasResourceNames || hasAccountNames;
+      return hasResourceNames || hasAccountNames;
     },
     {
-      message: "At least one condition type must be provided (resourceNames, accountNames, or accountPaths)"
+      message: "At least one condition type must be provided (resourceNames or accountNames)"
     }
   )
   .array();
@@ -115,7 +88,6 @@ export const PamAccessPolicyConstraintsSchema = z.object({
 
 // Request Data - Base schema for stored data (used by grants, etc.)
 export const PamAccessPolicyRequestDataSchema = z.object({
-  accountPath: accountPathGlob.optional(),
   accessDuration: DurationSchema,
   resourceName: resourceNameGlob.optional(),
   accountName: accountNameGlob.optional()
@@ -124,14 +96,6 @@ export const PamAccessPolicyRequestDataSchema = z.object({
 // Schema with validation for creating requests
 const CreatePamAccessPolicyRequestDataSchema = z
   .object({
-    accountPath: accountPathGlob
-      .refine((el) => el.startsWith("/"), {
-        message: "Path must start with /"
-      })
-      .refine((el) => !el.endsWith("/"), {
-        message: "Path cannot end with /"
-      })
-      .optional(),
     accessDuration: DurationSchema,
     resourceName: resourceNameGlob.optional(),
     accountName: accountNameGlob.optional()
@@ -139,13 +103,12 @@ const CreatePamAccessPolicyRequestDataSchema = z
   .refine(
     (data) => {
       // At least one identifier must be provided
-      const hasAccountPath = Boolean(data.accountPath);
       const hasResourceName = Boolean(data.resourceName);
       const hasAccountName = Boolean(data.accountName);
-      return hasAccountPath || hasResourceName || hasAccountName;
+      return hasResourceName || hasAccountName;
     },
     {
-      message: "At least one identifier must be provided (accountPath, resourceName, or accountName)"
+      message: "At least one identifier must be provided (resourceName or accountName)"
     }
   );
 

@@ -28,7 +28,7 @@ const getStatusBadgeColor = (status: ApprovalRequestStatus) => {
 };
 
 export const RequestDetailsSection = ({ request }: Props) => {
-  const { accountPath, accessDuration, resourceName, accountName } = request.requestData
+  const { accessDuration, resourceName, accountName } = request.requestData
     .requestData as PamAccessRequestData;
 
   return (
@@ -51,9 +51,6 @@ export const RequestDetailsSection = ({ request }: Props) => {
             <GenericFieldLabel label="Resource Name">{resourceName}</GenericFieldLabel>
           )}
           {accountName && <GenericFieldLabel label="Account Name">{accountName}</GenericFieldLabel>}
-          {accountPath && !resourceName && !accountName && (
-            <GenericFieldLabel label="Account Path">{accountPath}</GenericFieldLabel>
-          )}
           <GenericFieldLabel label="Access Duration">{accessDuration}</GenericFieldLabel>
           {request.justification && (
             <GenericFieldLabel label="Justification">
