@@ -256,9 +256,7 @@ kubectl get secret infisical-token-reviewer-token -n default -o jsonpath='{.data
 kubectl get secret infisical-token-reviewer-token -n default -o jsonpath='{.data.ca\.crt}' | base64 -d
 ```
 
-Go back to the Machine Identity's **Kubernetes Auth** settings in Infisical:
-- Paste the JWT output into the **Token Reviewer JWT** field.
-- Paste the CA certificate output into the **CA Certificate** field (under the **Advanced** tab).
+Go back to the Machine Identity's **Kubernetes Auth** settings in Infisical and paste the JWT output into the **Token Reviewer JWT** field. Then paste the CA certificate output into the **CA Certificate** field (found under the **Advanced** tab).
 
   </Step>
 
