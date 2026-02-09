@@ -124,7 +124,6 @@ export const ApprovalRequestTab = () => {
           request.requesterName?.toLowerCase().includes(searchLower) ||
           request.requesterEmail?.toLowerCase().includes(searchLower) ||
           request.justification?.toLowerCase().includes(searchLower) ||
-          data.accountPath?.toLowerCase().includes(searchLower) ||
           data.resourceName?.toLowerCase().includes(searchLower) ||
           data.accountName?.toLowerCase().includes(searchLower)
         );
@@ -290,8 +289,8 @@ export const ApprovalRequestTab = () => {
               {!isRequestsLoading &&
                 paginatedRequests.map((request) => {
                   const needsApproval = checkIfUserNeedsToApprove(request, userId, userGroups);
-                  const { accountPath, accessDuration, resourceName, accountName } = request
-                    .requestData.requestData as PamAccessRequestData;
+                  const { accessDuration, resourceName, accountName } = request.requestData
+                    .requestData as PamAccessRequestData;
 
                   return (
                     <Tr
@@ -317,11 +316,6 @@ export const ApprovalRequestTab = () => {
                           {accountName && (
                             <div className="text-sm text-mineshaft-200">
                               <span className="text-mineshaft-400">Account:</span> {accountName}
-                            </div>
-                          )}
-                          {accountPath && !resourceName && !accountName && (
-                            <div className="text-sm text-mineshaft-200">
-                              <span className="text-mineshaft-400">Path:</span> {accountPath}
                             </div>
                           )}
                         </div>

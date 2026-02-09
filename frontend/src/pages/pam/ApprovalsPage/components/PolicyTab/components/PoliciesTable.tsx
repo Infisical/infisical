@@ -215,8 +215,6 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
                                     condition.resourceNames && condition.resourceNames.length > 0;
                                   const hasAccountNames =
                                     condition.accountNames && condition.accountNames.length > 0;
-                                  const hasAccountPaths =
-                                    condition.accountPaths && condition.accountPaths.length > 0;
 
                                   return (
                                     <Fragment key={`${policy.id}--${index + 1}`}>
@@ -243,16 +241,6 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
                                               </span>
                                               <p className="text-sm text-mineshaft-100">
                                                 {condition.accountNames!.join(", ")}
-                                              </p>
-                                            </div>
-                                          )}
-                                          {hasAccountPaths && (
-                                            <div>
-                                              <span className="text-sm font-medium text-mineshaft-300">
-                                                Account Paths:
-                                              </span>
-                                              <p className="text-sm text-mineshaft-100">
-                                                {condition.accountPaths!.join(", ")}
                                               </p>
                                             </div>
                                           )}

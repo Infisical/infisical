@@ -1,5 +1,3 @@
-import path from "node:path";
-
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope, TPamAccounts, TPamFolders, TPamResources } from "@app/db/schemas";
@@ -610,7 +608,6 @@ export const pamAccountServiceFactory = ({
 
   const access = async (
     {
-      accountPath,
       resourceName: inputResourceName,
       accountName: inputAccountName,
       projectId,
@@ -623,78 +620,22 @@ export const pamAccountServiceFactory = ({
     }: TAccessAccountDTO,
     actor: OrgServiceActor
   ) => {
-    let account;
-    let resource;
-    let folderPath = "/";
-
-    // New approach: Use resourceName + accountName to find the account directly
-    if (inputResourceName && inputAccountName) {
-      // Find resource by name
-      resource = await pamResourceDAL.findOne({ projectId, name: inputResourceName });
-      if (!resource) {
-        throw new NotFoundError({ message: `Resource with name '${inputResourceName}' not found` });
-      }
-
-      // Find account by name within the resource
-      account = await pamAccountDAL.findOne({
-        projectId,
-        resourceId: resource.id,
-        name: inputAccountName
-      });
-
-      if (!account) {
-        throw new NotFoundError({
-          message: `Account with name '${inputAccountName}' not found for resource '${inputResourceName}'`
-        });
-      }
-
-      // Get folder path if account has a folder
-      if (account.folderId) {
-        folderPath = await getFullPamFolderPath({
-          pamFolderDAL,
-          folderId: account.folderId,
-          projectId
-        });
-      }
+    // Find resource by name
+    const resource = await pamResourceDAL.findOne({ projectId, name: inputResourceName });
+    if (!resource) {
+      throw new NotFoundError({ message: `Resource with name '${inputResourceName}' not found` });
     }
-    // Legacy approach: Use accountPath to find the account
-    else if (accountPath) {
-      const pathSegments: string[] = accountPath.split("/").filter(Boolean);
-      if (pathSegments.length === 0) {
-        throw new BadRequestError({ message: "Invalid accountPath. Path must contain at least the account name." });
-      }
 
-      const accountName: string = pathSegments[pathSegments.length - 1] ?? "";
-      const folderPathSegments: string[] = pathSegments.slice(0, -1);
+    // Find account by name within the resource
+    const account = await pamAccountDAL.findOne({
+      projectId,
+      resourceId: resource.id,
+      name: inputAccountName
+    });
 
-      folderPath = folderPathSegments.length > 0 ? `/${folderPathSegments.join("/")}` : "/";
-
-      let folderId: string | null = null;
-      if (folderPath !== "/") {
-        const folder = await pamFolderDAL.findByPath(projectId, folderPath);
-        if (!folder) {
-          throw new NotFoundError({ message: `Folder at path '${folderPath}' not found` });
-        }
-        folderId = folder.id;
-      }
-
-      account = await pamAccountDAL.findOne({
-        projectId,
-        folderId,
-        name: accountName
-      });
-
-      if (!account) {
-        throw new NotFoundError({
-          message: `Account with name '${accountName}' not found at path '${accountPath}'`
-        });
-      }
-
-      resource = await pamResourceDAL.findById(account.resourceId);
-      if (!resource) throw new NotFoundError({ message: `Resource with ID '${account.resourceId}' not found` });
-    } else {
-      throw new BadRequestError({
-        message: "Either (resourceName and accountName) or accountPath must be provided"
+    if (!account) {
+      throw new NotFoundError({
+        message: `Account with name '${inputAccountName}' not found for resource '${inputResourceName}'`
       });
     }
 
@@ -702,7 +643,6 @@ export const pamAccountServiceFactory = ({
 
     const inputs = {
       resourceId: resource.id,
-      accountPath: path.join(folderPath, account.name),
       resourceName: resource.name,
       accountName: account.name
     };
@@ -738,8 +678,7 @@ export const pamAccountServiceFactory = ({
         ProjectPermissionPamAccountActions.Access,
         subject(ProjectPermissionSub.PamAccounts, {
           resourceName: resource.name,
-          accountName: account.name,
-          accountPath: folderPath
+          accountName: account.name
         })
       );
     }
@@ -948,7 +887,7 @@ export const pamAccountServiceFactory = ({
             username: credentials.username,
             database: connectionCredentials.database,
             accountName: account.name,
-            accountPath: folderPath
+            resourceName: resource.name
           };
         }
         break;
@@ -963,7 +902,7 @@ export const pamAccountServiceFactory = ({
           metadata = {
             username: credentials.username,
             accountName: account.name,
-            accountPath: folderPath
+            resourceName: resource.name
           };
         }
         break;
@@ -983,8 +922,7 @@ export const pamAccountServiceFactory = ({
       case PamResource.Kubernetes:
         metadata = {
           resourceName: resource.name,
-          accountName: account.name,
-          accountPath
+          accountName: account.name
         };
         break;
       default:

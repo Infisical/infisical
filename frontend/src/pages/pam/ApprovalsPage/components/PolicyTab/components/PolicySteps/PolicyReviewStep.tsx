@@ -16,19 +16,21 @@ const ReviewField = ({ label, value }: { label: string; value: string | number }
   </div>
 );
 
-type Props = {
-  hasLegacyAccountPaths?: boolean;
-};
-
-export const PolicyReviewStep = ({ hasLegacyAccountPaths }: Props) => {
-  const { watch } = useFormContext<TPolicyForm>();
+export const PolicyReviewStep = () => {
+  const { getValues } = useFormContext<TPolicyForm>();
   const { currentProject } = useProject();
   const projectId = currentProject?.id || "";
 
   const { data: members = [] } = useGetWorkspaceUsers(projectId);
   const { data: groups = [] } = useListWorkspaceGroups(projectId);
 
-  const { name, conditions, constraints, steps } = watch();
+  const name = getValues("name");
+  const conditions = getValues("conditions") as {
+    resourceNames?: string[];
+    accountNames?: string[];
+  }[];
+  const constraints = getValues("constraints");
+  const steps = getValues("steps");
 
   const getApproverLabel = (approverId: string, approverType: ApproverType) => {
     if (approverType === ApproverType.User) {
@@ -47,7 +49,6 @@ export const PolicyReviewStep = ({ hasLegacyAccountPaths }: Props) => {
 
   const resourceNames = conditions[0]?.resourceNames || [];
   const accountNames = conditions[0]?.accountNames || [];
-  const accountPaths = conditions[0]?.accountPaths || [];
 
   return (
     <div className="space-y-6">
@@ -64,11 +65,8 @@ export const PolicyReviewStep = ({ hasLegacyAccountPaths }: Props) => {
           {accountNames.length > 0 && (
             <ReviewField label="Account Names" value={accountNames.join(", ")} />
           )}
-          {resourceNames.length === 0 && accountNames.length === 0 && !hasLegacyAccountPaths && (
+          {resourceNames.length === 0 && accountNames.length === 0 && (
             <ReviewField label="Conditions" value="Not set" />
-          )}
-          {hasLegacyAccountPaths && accountPaths.length > 0 && (
-            <ReviewField label="Account Paths (Legacy)" value={accountPaths.join(", ")} />
           )}
         </div>
       </div>

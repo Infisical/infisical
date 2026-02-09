@@ -38,13 +38,6 @@ export const pamAccessPolicyFactory: TApprovalResourceFactory<
 
     let bestMatch: { policy: TPamAccessPolicy; wildcardCount: number; patternLength: number } | null = null;
 
-    let normalizedAccountPath: string | undefined;
-    if (inputs.accountPath) {
-      normalizedAccountPath = inputs.accountPath.startsWith("/") ? inputs.accountPath.slice(1) : inputs.accountPath;
-    } else {
-      normalizedAccountPath = undefined;
-    }
-
     for (const policy of policies) {
       const p = policy as TPamAccessPolicy;
       for (const c of p.conditions.conditions) {
@@ -52,19 +45,16 @@ export const pamAccessPolicyFactory: TApprovalResourceFactory<
         let totalWildcards = 0;
         let totalPatternLength = 0;
 
-        // Check new resource/account name based matching
         const hasResourceNames = c.resourceNames && c.resourceNames.length > 0;
         const hasAccountNames = c.accountNames && c.accountNames.length > 0;
 
         if (hasResourceNames || hasAccountNames) {
-          // New matching logic: resourceNames AND/OR accountNames
           let resourceMatches = true;
           let accountMatches = true;
 
           if (hasResourceNames && inputs.resourceName) {
             resourceMatches = matchesAnyPattern(inputs.resourceName, c.resourceNames!);
             if (resourceMatches) {
-              // Find the best matching pattern for specificity calculation
               for (const pattern of c.resourceNames!) {
                 if (picomatch(pattern)(inputs.resourceName)) {
                   const spec = calculateSpecificity(pattern);
@@ -75,14 +65,12 @@ export const pamAccessPolicyFactory: TApprovalResourceFactory<
               }
             }
           } else if (hasResourceNames && !inputs.resourceName) {
-            // Resource names required but not provided in inputs
             resourceMatches = false;
           }
 
           if (hasAccountNames && inputs.accountName) {
             accountMatches = matchesAnyPattern(inputs.accountName, c.accountNames!);
             if (accountMatches) {
-              // Find the best matching pattern for specificity calculation
               for (const pattern of c.accountNames!) {
                 if (picomatch(pattern)(inputs.accountName)) {
                   const spec = calculateSpecificity(pattern);
@@ -93,30 +81,13 @@ export const pamAccessPolicyFactory: TApprovalResourceFactory<
               }
             }
           } else if (hasAccountNames && !inputs.accountName) {
-            // Account names required but not provided in inputs
             accountMatches = false;
           }
 
           conditionMatches = resourceMatches && accountMatches;
         }
 
-        // Legacy matching: accountPaths (for backwards compatibility)
-        const hasAccountPaths = c.accountPaths && c.accountPaths.length > 0;
-        if (hasAccountPaths && !conditionMatches && normalizedAccountPath) {
-          for (const pathPattern of c.accountPaths!) {
-            const normalizedPathPattern = pathPattern.startsWith("/") ? pathPattern.slice(1) : pathPattern;
-            if (picomatch(normalizedPathPattern)(normalizedAccountPath)) {
-              const spec = calculateSpecificity(pathPattern);
-              totalWildcards = spec.wildcardCount;
-              totalPatternLength = spec.length;
-              conditionMatches = true;
-              break;
-            }
-          }
-        }
-
         if (conditionMatches) {
-          // Use specificity to determine the best match (fewer wildcards = more specific)
           if (
             !bestMatch ||
             totalWildcards < bestMatch.wildcardCount ||
@@ -145,18 +116,10 @@ export const pamAccessPolicyFactory: TApprovalResourceFactory<
       revokedAt: null
     });
 
-    let normalizedAccountPath: string | undefined;
-    if (inputs.accountPath) {
-      normalizedAccountPath = inputs.accountPath.startsWith("/") ? inputs.accountPath.slice(1) : inputs.accountPath;
-    } else {
-      normalizedAccountPath = undefined;
-    }
-
     // TODO(andrey): Move some of this check to be part of SQL query
     return grants.some((grant) => {
       const grantAttributes = grant.attributes as TPamAccessPolicyInputs;
 
-      // Check new-style matching (resourceName and/or accountName)
       if (inputs.resourceName || inputs.accountName) {
         let resourceMatches = true;
         let accountMatches = true;
@@ -174,17 +137,6 @@ export const pamAccessPolicyFactory: TApprovalResourceFactory<
         }
 
         if (resourceMatches && accountMatches && (!grant.expiresAt || grant.expiresAt > new Date())) {
-          return true;
-        }
-      }
-
-      // Legacy matching: accountPath
-      if (normalizedAccountPath && grantAttributes.accountPath) {
-        const normalizedGrantPath = grantAttributes.accountPath.startsWith("/")
-          ? grantAttributes.accountPath.slice(1)
-          : grantAttributes.accountPath;
-        const isMatch = picomatch(normalizedGrantPath);
-        if (isMatch(normalizedAccountPath) && (!grant.expiresAt || grant.expiresAt > new Date())) {
           return true;
         }
       }

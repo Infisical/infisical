@@ -108,7 +108,7 @@ const PageContent = () => {
             const data = request.requestData.requestData as PamAccessRequestData;
             const target = data.resourceName
               ? `${data.resourceName}${data.accountName ? ` / ${data.accountName}` : ""}`
-              : data.accountPath || "account";
+              : "account";
             return `Request to access ${target} for ${data.accessDuration} by ${request.requesterName || "Unknown"}`;
           })()}
         >

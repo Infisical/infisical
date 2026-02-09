@@ -19,9 +19,6 @@ export type ApprovalPolicyStep = {
 };
 
 export type PamAccessPolicyConditions = {
-  // Deprecated: use resourceNames and accountNames instead
-  accountPaths?: string[];
-  // New fields for matching
   resourceNames?: string[];
   accountNames?: string[];
 }[];
@@ -99,9 +96,7 @@ export type TDeleteApprovalPolicyDTO = {
 export type TCheckPolicyMatchDTO = {
   policyType: ApprovalPolicyType;
   projectId: string;
-  inputs:
-    | { accountPath?: string; resourceName?: string; accountName?: string }
-    | { profileName: string };
+  inputs: { resourceName: string; accountName: string } | { profileName: string };
 };
 
 export type TCheckPolicyMatchResult = {

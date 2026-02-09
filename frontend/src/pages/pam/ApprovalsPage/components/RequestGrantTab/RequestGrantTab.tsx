@@ -121,7 +121,6 @@ export const RequestGrantTab = () => {
         if (grant.type !== ApprovalPolicyType.PamAccess) return false;
         const searchLower = search.toLowerCase();
         return (
-          grant.attributes.accountPath?.toLowerCase().includes(searchLower) ||
           grant.attributes.resourceName?.toLowerCase().includes(searchLower) ||
           grant.attributes.accountName?.toLowerCase().includes(searchLower) ||
           grant.id.toLowerCase().includes(searchLower)
@@ -310,14 +309,6 @@ export const RequestGrantTab = () => {
                               {grant.attributes.accountName}
                             </div>
                           )}
-                          {grant.attributes.accountPath &&
-                            !grant.attributes.resourceName &&
-                            !grant.attributes.accountName && (
-                              <div className="text-sm text-mineshaft-200">
-                                <span className="text-mineshaft-400">Path:</span>{" "}
-                                {grant.attributes.accountPath}
-                              </div>
-                            )}
                         </div>
                       </Td>
                       <Td>

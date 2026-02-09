@@ -5,16 +5,8 @@ import { FormControl, Input } from "@app/components/v2";
 
 import { TPolicyForm } from "../PolicySchema";
 
-type Props = {
-  isEditing?: boolean;
-  hasLegacyAccountPaths?: boolean;
-};
-
-export const PolicyDetailsStep = ({ isEditing, hasLegacyAccountPaths }: Props) => {
+export const PolicyDetailsStep = () => {
   const { control, formState } = useFormContext<TPolicyForm>();
-
-  // Show account paths only if editing an existing policy that already has account paths
-  const showAccountPaths = isEditing && hasLegacyAccountPaths;
 
   return (
     <div className="flex flex-col gap-4">
@@ -59,7 +51,7 @@ export const PolicyDetailsStep = ({ isEditing, hasLegacyAccountPaths }: Props) =
             className="mb-0"
             label="Resource Names"
             isError={Boolean(error)}
-            errorText={error?.message ?? formState.errors.conditions?.[0]?.message}
+            errorText={error?.message ?? (formState.errors.conditions as any)?.[0]?.message}
             helperText="Match accounts on resources with these names (supports glob patterns)"
           >
             <Input
@@ -96,30 +88,6 @@ export const PolicyDetailsStep = ({ isEditing, hasLegacyAccountPaths }: Props) =
           </FormControl>
         )}
       />
-      {showAccountPaths && (
-        <Controller
-          control={control}
-          name="conditions.0.accountPaths"
-          render={({ field: pathField, fieldState: { error } }) => (
-            <FormControl
-              className="mb-0"
-              label="Account Paths (Legacy)"
-              isError={Boolean(error)}
-              errorText={error?.message}
-              helperText="Deprecated: This field is kept for backwards compatibility. Consider migrating to Resource Names or Account Names"
-            >
-              <Input
-                value={pathField.value?.join(",") ?? ""}
-                onChange={(e) => {
-                  const { value } = e.target;
-                  pathField.onChange(value ? value.split(",").map((path) => path.trim()) : []);
-                }}
-                placeholder="e.g., /admin/**, /users/john, /**"
-              />
-            </FormControl>
-          )}
-        />
-      )}
     </div>
   );
 };

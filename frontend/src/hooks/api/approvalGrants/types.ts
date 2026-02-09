@@ -8,7 +8,6 @@ export enum ApprovalGrantStatus {
 
 // PAM Access Grant Attributes
 export type PamAccessGrantAttributes = {
-  accountPath?: string;
   accessDuration: string;
   resourceName?: string;
   accountName?: string;
