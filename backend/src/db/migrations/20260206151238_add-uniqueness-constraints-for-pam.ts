@@ -16,7 +16,7 @@ export async function up(knex: Knex): Promise<void> {
       // Rename any duplicate resources (keep oldest, append random suffix to newer ones)
       await knex.raw(`
         UPDATE ${TableName.PamResource} r1
-        SET "name" = r1."name" || '-' || substr(md5(random()::text), 1, 3)
+        SET "name" = r1."name" || '-' || substr(md5(random()::text), 1, 4)
         WHERE EXISTS (
           SELECT 1 FROM ${TableName.PamResource} r2
           WHERE r2."projectId" = r1."projectId"
@@ -38,10 +38,15 @@ export async function up(knex: Knex): Promise<void> {
     const hasResourceId = await knex.schema.hasColumn(TableName.PamAccount, "resourceId");
 
     if (hasName && hasResourceId) {
+      // Drop the old project/folder-level uniqueness constraints from the original PAM migration,
+      // since accounts should only be unique within a resource, not across the entire project.
+      await dropConstraintIfExists(TableName.PamAccount, "uidx_pam_account_children_name", knex);
+      await dropConstraintIfExists(TableName.PamAccount, "uidx_pam_account_root_name", knex);
+
       // Rename any duplicate accounts (keep oldest, append random suffix to newer ones)
       await knex.raw(`
         UPDATE ${TableName.PamAccount} a1
-        SET "name" = a1."name" || '-' || substr(md5(random()::text), 1, 3)
+        SET "name" = a1."name" || '-' || substr(md5(random()::text), 1, 4)
         WHERE EXISTS (
           SELECT 1 FROM ${TableName.PamAccount} a2
           WHERE a2."resourceId" = a1."resourceId"
@@ -65,5 +70,28 @@ export async function down(knex: Knex): Promise<void> {
 
   if (await knex.schema.hasTable(TableName.PamAccount)) {
     await dropConstraintIfExists(TableName.PamAccount, ACCOUNT_CONSTRAINT_NAME, knex);
+
+    // Restore the original project/folder-level uniqueness constraints
+    const hasFolderId = await knex.schema.hasColumn(TableName.PamAccount, "folderId");
+    const hasProjectId = await knex.schema.hasColumn(TableName.PamAccount, "projectId");
+    const hasName = await knex.schema.hasColumn(TableName.PamAccount, "name");
+
+    if (hasName && hasProjectId) {
+      if (hasFolderId) {
+        await knex.schema.alterTable(TableName.PamAccount, (table) => {
+          table.unique(["projectId", "folderId", "name"], {
+            indexName: "uidx_pam_account_children_name",
+            predicate: knex.whereNotNull("folderId")
+          });
+        });
+      }
+
+      await knex.schema.alterTable(TableName.PamAccount, (table) => {
+        table.unique(["projectId", "name"], {
+          indexName: "uidx_pam_account_root_name",
+          predicate: knex.whereNull("folderId")
+        });
+      });
+    }
   }
 }
