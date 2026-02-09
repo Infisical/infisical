@@ -2642,7 +2642,8 @@ export const registerRoutes = async (
     appConnectionService,
     vaultExternalMigrationConfigDAL,
     secretService,
-    auditLogService
+    auditLogService,
+    gatewayV2Service
   });
 
   // setup the communication with license key server
