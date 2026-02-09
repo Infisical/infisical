@@ -166,8 +166,7 @@ export const requestWithHCVaultGateway = async <T>(
           },
           ...(isHttps && {
             httpsAgent: new https.Agent({
-              servername: targetHost,
-              rejectUnauthorized: false
+              servername: targetHost
             })
           })
         };
