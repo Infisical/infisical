@@ -31,14 +31,14 @@ flowchart LR
 
     subgraph Your Pod
         INIT(Agent Init/Sidecar Container)
-        V(Shared Volume<br/>/infisical/secrets)
+        V(Shared Volume)
         APP(Your Application)
     end
 
     S --> INJ
     INJ --> INIT
     INIT --> V
-    V <--> APP
+    V --> APP
 ```
 
 <Note>
