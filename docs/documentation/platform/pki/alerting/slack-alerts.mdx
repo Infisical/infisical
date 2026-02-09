@@ -4,7 +4,9 @@ sidebarTitle: "Slack Alerts"
 description: "Learn how to set up Slack notifications for PKI certificate alerts"
 ---
 
-PKI alerts can be sent to Slack channels using [Incoming Webhooks](https://api.slack.com/messaging/webhooks). For general alerting setup, see the [Alerting Overview](/documentation/platform/pki/alerting/overview). Follow these steps to set up Slack notifications:
+Infisical can send PKI certificate alert notifications to a Slack channel using [Incoming Webhooks](https://api.slack.com/messaging/webhooks). This guide walks through creating a Slack app and configuring a Slack alert.
+
+## Guide to Creating a Slack Alert
 
 <Steps>
   <Step title="Create a Slack App">
@@ -24,9 +26,23 @@ PKI alerts can be sent to Slack channels using [Incoming Webhooks](https://api.s
 
     ![slack enable webhooks](/images/platform/pki/alerting/slack-enable-webhooks.png)
   </Step>
-  <Step title="Configure the Alert in Infisical">
-    1. When creating or editing a PKI alert, add a **Slack** notification channel
-    2. Paste the webhook URL you copied from Slack
+  <Step title="Create the Alert in Infisical">
+    Head to your Certificate Management Project > Alerting and press **Create Certificate Alert**.
+
+    ![pki alerting](/images/platform/pki/alerting/alert-create.png)
+
+    ![pki alerting modal](/images/platform/pki/alerting/alert-create-modal.png)
+
+    Here's some guidance for each field in the alert configuration sequence:
+
+    - **Alert Type**: The type of alert to create such as **Certificate Expiration**.
+    - **Alert Name**: A slug-friendly name for the alert such as `tls-expiry-alert`.
+    - **Description**: An optional description for the alert.
+    - **Alert Before**: The time before certificate expiration to trigger the alert such as 30 days denoted by `30d`.
+    - **Filters**: A list of filters that determine which certificates the alert applies to. Each row includes a **Field**, **Operator**, and **Value** to match against. For example, you can filter for certificates with a common name containing `example.com` by setting the field to **Common Name**, the operator to **Contains**, and the value to `example.com`.
+  </Step>
+  <Step title="Add a Slack Notification Channel">
+    Add a **Slack** notification channel and paste the webhook URL you copied from Slack.
 
     ![slack configure alert](/images/platform/pki/alerting/slack-configure-alert.png)
   </Step>

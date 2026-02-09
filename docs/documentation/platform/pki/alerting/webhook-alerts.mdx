@@ -1,10 +1,30 @@
 ---
 title: "Webhook Alerts"
 sidebarTitle: "Webhook Alerts"
-description: "Learn about webhook payload format and signature verification for PKI alerting"
+description: "Learn how to set up webhook notifications for PKI certificate alerts"
 ---
 
-This page covers the webhook payload format and signature verification for PKI certificate alerts. For general alerting setup, see the [Alerting Overview](/documentation/platform/pki/alerting/overview).
+Infisical can send PKI certificate alert notifications to a webhook URL. This guide walks through creating a webhook alert, the payload format, and how to verify webhook signatures.
+
+## Guide to Creating a Webhook Alert
+
+To create an alert, head to your Certificate Management Project > Alerting and press **Create Certificate Alert**.
+
+![pki alerting](/images/platform/pki/alerting/alert-create.png)
+
+![pki alerting modal](/images/platform/pki/alerting/alert-create-modal.png)
+
+Here's some guidance for each field in the alert configuration sequence:
+
+- **Alert Type**: The type of alert to create such as **Certificate Expiration**.
+- **Alert Name**: A slug-friendly name for the alert such as `tls-expiry-alert`.
+- **Description**: An optional description for the alert.
+- **Alert Before**: The time before certificate expiration to trigger the alert such as 30 days denoted by `30d`.
+- **Filters**: A list of filters that determine which certificates the alert applies to. Each row includes a **Field**, **Operator**, and **Value** to match against. For example, you can filter for certificates with a common name containing `example.com` by setting the field to **Common Name**, the operator to **Contains**, and the value to `example.com`.
+
+Next, add a **Webhook** notification channel. The URL must use HTTPS. Optionally configure a signing secret to verify the authenticity of webhook payloads.
+
+![pki alerting channels](/images/platform/pki/alerting/alert-create-channels.png)
 
 ## Webhook Payload Format
 
