@@ -2,7 +2,7 @@ import type WebSocket from "ws";
 import { z } from "zod";
 
 import { PamFoldersSchema } from "@app/db/schemas";
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AuditLogInfo, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountOrderBy, PamAccountView } from "@app/ee/services/pam-account/pam-account-enums";
 import { SanitizedAwsIamAccountWithResourceSchema } from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
 import { SanitizedKubernetesAccountWithResourceSchema } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
@@ -271,7 +271,22 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         }
 
         const payload = z
-          .object({ accountId: z.string(), projectId: z.string(), orgId: z.string() })
+          .object({
+            accountId: z.string(),
+            projectId: z.string(),
+            orgId: z.string(),
+            accountPath: z.string(),
+            accountName: z.string(),
+            auditLogInfo: z.object({
+              ipAddress: z.string().optional(),
+              userAgent: z.string().optional(),
+              userAgentType: z.string().optional(),
+              actor: z.object({
+                type: z.string(),
+                metadata: z.record(z.unknown())
+              })
+            })
+          })
           .parse(JSON.parse(tokenRecord.payload));
 
         if (payload.accountId !== req.params.accountId) {
@@ -282,7 +297,11 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         await server.services.pamTerminal.handleWebSocketConnection({
           socket: connection,
           accountId: payload.accountId,
-          projectId: payload.projectId
+          projectId: payload.projectId,
+          orgId: payload.orgId,
+          accountPath: payload.accountPath,
+          accountName: payload.accountName,
+          auditLogInfo: payload.auditLogInfo as AuditLogInfo
         });
       } catch (err) {
         logger.error(err, "WebSocket ticket validation failed");

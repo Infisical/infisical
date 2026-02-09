@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import type WebSocket from "ws";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -42,6 +42,10 @@ type THandleWebSocketConnectionDTO = {
   socket: WebSocket;
   accountId: string;
   projectId: string;
+  orgId: string;
+  accountPath: string;
+  accountName: string;
+  auditLogInfo: AuditLogInfo;
 };
 
 export const pamTerminalServiceFactory = ({
@@ -118,7 +122,7 @@ export const pamTerminalServiceFactory = ({
     const token = await tokenService.createTokenForUser({
       type: TokenType.TOKEN_PAM_WS_TICKET,
       userId: actor.id,
-      payload: JSON.stringify({ accountId, projectId, orgId })
+      payload: JSON.stringify({ accountId, projectId, orgId, accountPath, accountName: account.name, auditLogInfo })
     });
 
     await auditLogService.createAuditLog({
@@ -141,7 +145,11 @@ export const pamTerminalServiceFactory = ({
   const handleWebSocketConnection = async ({
     socket,
     accountId,
-    projectId
+    projectId,
+    orgId,
+    accountPath,
+    accountName,
+    auditLogInfo
   }: THandleWebSocketConnectionDTO): Promise<void> => {
     try {
       const account = await pamAccountDAL.findById(accountId);
@@ -157,6 +165,21 @@ export const pamTerminalServiceFactory = ({
       });
 
       logger.info({ accountId }, "Terminal session established (echo mode)");
+
+      await auditLogService.createAuditLog({
+        ...auditLogInfo,
+        orgId,
+        projectId,
+        event: {
+          type: EventType.PAM_ACCOUNT_ACCESS,
+          metadata: {
+            accountId,
+            accountPath,
+            accountName,
+            duration: new Date(Date.now() + 60 * 60 * 1000).toISOString()
+          }
+        }
+      });
 
       socket.on("message", (rawData: Buffer | ArrayBuffer | Buffer[]) => {
         const handleMessage = async () => {
