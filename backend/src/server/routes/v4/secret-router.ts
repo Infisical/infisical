@@ -124,7 +124,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         viewSecretValue: convertStringBoolean(true).describe(RAW_SECRETS.LIST.viewSecretValue),
         expandSecretReferences: convertStringBoolean().describe(RAW_SECRETS.LIST.expand),
         recursive: convertStringBoolean().describe(RAW_SECRETS.LIST.recursive),
-        usePersonalReferences: convertStringBoolean().describe(RAW_SECRETS.LIST.usePersonalReferences),
+        expandPersonalOverrides: convertStringBoolean().describe(RAW_SECRETS.LIST.expandPersonalOverrides),
         include_imports: convertStringBoolean().describe(RAW_SECRETS.LIST.includeImports),
         tagSlugs: z
           .string()
@@ -183,7 +183,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         environment,
         expandSecretReferences: req.query.expandSecretReferences,
-        usePersonalReferences: req.query.usePersonalReferences,
+        expandPersonalOverrides: req.query.expandPersonalOverrides,
         actorAuthMethod: req.permission.authMethod,
         projectId,
         viewSecretValue: req.query.viewSecretValue,
@@ -291,7 +291,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.GET.type),
         viewSecretValue: convertStringBoolean(true).describe(RAW_SECRETS.GET.viewSecretValue),
         expandSecretReferences: convertStringBoolean().describe(RAW_SECRETS.GET.expand),
-        usePersonalReferences: convertStringBoolean().describe(RAW_SECRETS.GET.usePersonalReferences),
+        expandPersonalOverrides: convertStringBoolean().describe(RAW_SECRETS.GET.expandPersonalOverrides),
         include_imports: convertStringBoolean().describe(RAW_SECRETS.GET.includeImports)
       }),
       response: {
@@ -329,7 +329,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         expandSecretReferences: req.query.expandSecretReferences,
-        usePersonalReferences: req.query.usePersonalReferences,
+        expandPersonalOverrides: req.query.expandPersonalOverrides,
         environment,
         projectId,
         viewSecretValue: req.query.viewSecretValue,

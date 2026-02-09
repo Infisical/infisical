@@ -1109,7 +1109,7 @@ export const secretV2BridgeServiceFactory = ({
       includeImports,
       recursive,
       expandSecretReferences: shouldExpandSecretReferences,
-      usePersonalReferences,
+      expandPersonalOverrides,
       throwOnMissingReadValuePermission = true,
       ...params
     } = dto;
@@ -1303,7 +1303,7 @@ export const secretV2BridgeServiceFactory = ({
           secretName: expandSecretKey,
           secretTags: expandSecretTags
         }),
-      userId: usePersonalReferences ? actorId : undefined
+      userId: expandPersonalOverrides ? actorId : undefined
     });
 
     if (shouldExpandSecretReferences) {
@@ -1505,7 +1505,7 @@ export const secretV2BridgeServiceFactory = ({
     viewSecretValue,
     includeImports,
     expandSecretReferences: shouldExpandSecretReferences,
-    usePersonalReferences
+    expandPersonalOverrides
   }: TGetASecretDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -1595,7 +1595,7 @@ export const secretV2BridgeServiceFactory = ({
           secretTags: expandSecretTags
         });
       },
-      userId: usePersonalReferences ? actorId : undefined
+      userId: expandPersonalOverrides ? actorId : undefined
     });
 
     // now if secret is not found
