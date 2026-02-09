@@ -42,7 +42,8 @@ const getAppName = async ({
   return data.data.app.name;
 };
 
-const FLYIO_MACHINE_WAIT_TIMEOUT_MS = 60_000;
+// Fly.io Machines API wait endpoint expects timeout in seconds
+const FLYIO_MACHINE_WAIT_TIMEOUT_SECONDS = 60;
 
 const deployAppMachines = async (secretSync: TFlyioSyncWithCredentials) => {
   const {
@@ -79,7 +80,7 @@ const deployAppMachines = async (secretSync: TFlyioSyncWithCredentials) => {
       await request.post(`${machinesApiBase}/${machine.id}/stop`, {}, { headers });
 
       await request.get(
-        `${machinesApiBase}/${machine.id}/wait?state=stopped&timeout=${FLYIO_MACHINE_WAIT_TIMEOUT_MS}`,
+        `${machinesApiBase}/${machine.id}/wait?state=stopped&timeout=${FLYIO_MACHINE_WAIT_TIMEOUT_SECONDS}`,
         { headers }
       );
     }
@@ -87,7 +88,7 @@ const deployAppMachines = async (secretSync: TFlyioSyncWithCredentials) => {
     await request.post(`${machinesApiBase}/${machine.id}/start`, {}, { headers });
 
     await request.get(
-      `${machinesApiBase}/${machine.id}/wait?state=started&timeout=${FLYIO_MACHINE_WAIT_TIMEOUT_MS}`,
+      `${machinesApiBase}/${machine.id}/wait?state=started&timeout=${FLYIO_MACHINE_WAIT_TIMEOUT_SECONDS}`,
       { headers }
     );
   }
