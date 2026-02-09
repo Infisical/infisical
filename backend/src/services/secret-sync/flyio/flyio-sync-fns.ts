@@ -60,29 +60,49 @@ const deployAppMachines = async (secretSync: TFlyioSyncWithCredentials) => {
     Accept: "application/json"
   };
 
+  const machinesApiBase = `${IntegrationUrls.FLYIO_MACHINES_API_URL}/apps/${appNameResolved}/machines`;
+
   const { data: machinesData } = await request.get<{ id: string; config: Record<string, unknown> }[]>(
-    `${IntegrationUrls.FLYIO_MACHINES_API_URL}/apps/${appNameResolved}/machines`,
+    machinesApiBase,
     { headers }
   );
 
   const machines = Array.isArray(machinesData) ? machinesData : [];
   if (machines.length === 0) return;
 
-  // Perform a machine update (not just a restart) for each machine.
-  // This is equivalent to what `fly secrets deploy` does: it updates each
-  // machine with its existing config, which triggers a proper deployment
-  // cycle that marks secrets as deployed rather than staged.
+  // Two-phase deploy for each machine to ensure secrets are both marked
+  // as deployed AND actually picked up by the running machines:
+  //
+  // Phase 1: Machine update (POST /machines/{id}) with the existing config.
+  //   This creates a new Fly.io deployment release, which transitions
+  //   secrets from "staged" to "deployed" in the Fly.io dashboard.
+  //   This is what `fly secrets deploy` does under the hood.
+  //
+  // Phase 2: Machine restart (POST /machines/{id}/restart).
+  //   Forces the machine to fully reboot, which causes the Fly.io agent
+  //   to re-fetch and decrypt secrets from the vault and inject them as
+  //   fresh environment variables. This guarantees the running process
+  //   sees the new secret values.
+  //
+  // Machines are processed sequentially (rolling deploy) to avoid downtime.
   for (const machine of machines) {
+    // Phase 1: Update machine to register a new deployment
     await request.post(
-      `${IntegrationUrls.FLYIO_MACHINES_API_URL}/apps/${appNameResolved}/machines/${machine.id}`,
+      `${machinesApiBase}/${machine.id}`,
       { config: machine.config },
       { headers }
     );
 
-    // Wait for the machine to reach the "started" state before proceeding
-    // to the next one, ensuring a rolling deploy.
     await request.get(
-      `${IntegrationUrls.FLYIO_MACHINES_API_URL}/apps/${appNameResolved}/machines/${machine.id}/wait?state=started&timeout=${FLYIO_MACHINE_WAIT_TIMEOUT_MS}`,
+      `${machinesApiBase}/${machine.id}/wait?state=started&timeout=${FLYIO_MACHINE_WAIT_TIMEOUT_MS}`,
+      { headers }
+    );
+
+    // Phase 2: Restart machine to force secret re-injection
+    await request.post(`${machinesApiBase}/${machine.id}/restart`, {}, { headers });
+
+    await request.get(
+      `${machinesApiBase}/${machine.id}/wait?state=started&timeout=${FLYIO_MACHINE_WAIT_TIMEOUT_MS}`,
       { headers }
     );
   }
