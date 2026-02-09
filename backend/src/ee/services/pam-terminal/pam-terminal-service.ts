@@ -224,7 +224,7 @@ export const pamTerminalServiceFactory = ({
               }
 
               // Echo mode: split on newlines, combine output, single prompt at end
-              const echoLines = message.data
+              const echoLines = input
                 .split("\n")
                 .map((l) => l.trim())
                 .filter((l) => l.length > 0)
