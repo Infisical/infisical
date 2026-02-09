@@ -117,19 +117,23 @@ export const usePamTerminal = ({ onInput, onReady }: UsePamTerminalProps) => {
     fitAddonRef.current = fitAddon;
 
     terminal.onData((data) => {
+      // Enter — submit the current input buffer
       if (data === "\r") {
         terminal.write("\r\n");
         onInputRef.current(inputBufferRef.current);
         inputBufferRef.current = "";
+        // Backspace — erase the last character
       } else if (data === "\x7f") {
         if (inputBufferRef.current.length > 0) {
           inputBufferRef.current = inputBufferRef.current.slice(0, -1);
           terminal.write("\b \b");
         }
+        // Ctrl+C — cancel the current input
       } else if (data === "\x03") {
         terminal.write("^C\r\n");
         inputBufferRef.current = "";
         terminal.write(currentPromptRef.current);
+        // Printable characters and tab — append to input buffer
       } else if (data >= " " || data === "\t") {
         // Normalize embedded newlines from paste
         const normalized = data.replace(/\r\n|\r/g, "\n");
