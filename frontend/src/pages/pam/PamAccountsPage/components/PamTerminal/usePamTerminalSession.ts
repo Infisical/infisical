@@ -209,9 +209,6 @@ export const usePamTerminalSession = ({
       }
       ws.close();
     }
-
-    setIsConnected(false);
-    onSessionEndRef.current?.();
   }, []);
 
   const containerRef = useCallback((node: HTMLDivElement | null) => {
