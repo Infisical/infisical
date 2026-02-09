@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop */
 import { request } from "@app/lib/config/request";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import {
@@ -6,6 +7,7 @@ import {
   TFlyioListVariables,
   TFlyioSecret,
   TFlyioSyncWithCredentials,
+  TGetAppNameVariables,
   TPutFlyioVariable
 } from "@app/services/secret-sync/flyio/flyio-sync-types";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
@@ -14,15 +16,7 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 
-const getAppName = async ({
-  accessToken,
-  appId,
-  appName
-}: {
-  accessToken: string;
-  appId: string;
-  appName?: string;
-}) => {
+const getAppName = async ({ accessToken, appId, appName }: TGetAppNameVariables) => {
   if (appName) return appName;
 
   const { data } = await request.post<{ data: { app: { name: string } } }>(
@@ -52,37 +46,22 @@ type TFlyioMachineListItem = {
   config?: Record<string, unknown>;
 };
 
-/** GET /apps/{name}/machines can return a raw array or { machines: [], next_cursor?: string } */
+/**
+ * Parse list machines response. Per Fly.io docs, GET /v1/apps/{app_name}/machines returns
+ * "A JSON array of machine objects" (see https://fly.io/docs/machines/api/machines-resource/).
+ */
 function parseMachinesListResponse(data: unknown): TFlyioMachineListItem[] {
-  if (Array.isArray(data)) return data as TFlyioMachineListItem[];
-  if (
-    data &&
-    typeof data === "object" &&
-    "machines" in data &&
-    Array.isArray((data as { machines: unknown }).machines)
-  ) {
-    return (data as { machines: TFlyioMachineListItem[] }).machines;
-  }
-  return [];
+  if (!Array.isArray(data)) return [];
+  return data as TFlyioMachineListItem[];
 }
 
-/** Fetch all machines for the app, handling list shape and pagination */
+/** Fetch all machines for the app. App-level list returns a single array (no pagination). */
 async function listAllMachines(
   machinesApiBase: string,
   headers: Record<string, string>
 ): Promise<TFlyioMachineListItem[]> {
-  const all: TFlyioMachineListItem[] = [];
-  let cursor: string | undefined;
-  do {
-    const url = cursor ? `${machinesApiBase}?cursor=${encodeURIComponent(cursor)}` : machinesApiBase;
-    // eslint-disable-next-line no-await-in-loop -- pagination requires sequential requests
-    const { data: raw } = await request.get<unknown>(url, { headers });
-    const page = parseMachinesListResponse(raw);
-    all.push(...page);
-    const obj = raw && typeof raw === "object" && "next_cursor" in raw ? (raw as { next_cursor?: string }) : null;
-    cursor = obj?.next_cursor;
-  } while (cursor);
-  return all;
+  const { data: raw } = await request.get<unknown>(machinesApiBase, { headers });
+  return parseMachinesListResponse(raw);
 }
 
 /**
@@ -114,7 +93,6 @@ const deployAppMachines = async (secretSync: TFlyioSyncWithCredentials, releaseV
   if (toUpdate.length === 0) return;
 
   for (const item of toUpdate) {
-    // eslint-disable-next-line no-await-in-loop -- update then wait started per machine to avoid leaving any down
     const { data: machine } = await request.get<{
       id: string;
       state: string;
@@ -136,10 +114,8 @@ const deployAppMachines = async (secretSync: TFlyioSyncWithCredentials, releaseV
     }
     body.skip_launch = false;
 
-    // eslint-disable-next-line no-await-in-loop -- update then wait started per machine to avoid leaving any down
     await request.post(`${machinesApiBase}/${machine.id}`, body, { headers });
 
-    // eslint-disable-next-line no-await-in-loop -- wait for this machine to be started before next
     await request.get(
       `${machinesApiBase}/${machine.id}/wait?state=started&timeout=${FLYIO_MACHINE_WAIT_TIMEOUT_SECONDS}`,
       { headers }
@@ -215,7 +191,6 @@ const deleteFlyioSecrets = async ({ accessToken, appId, keys }: TDeleteFlyioVari
 
   let lastVersion: number | undefined;
   for (const key of keys) {
-    // eslint-disable-next-line no-await-in-loop -- sequential deletes to capture last Version
     const { data } = await request.delete<{ Version: number }>(
       `${IntegrationUrls.FLYIO_MACHINES_API_URL}/apps/${appName}/secrets/${key}`,
       {
