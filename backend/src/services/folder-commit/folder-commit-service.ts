@@ -873,7 +873,7 @@ export const folderCommitServiceFactory = ({
    */
   const createCommit = async (data: TCreateCommitDTO, tx?: Knex) => {
     try {
-      const metadata = { ...data.actor.metadata } || {};
+      const { metadata = {} } = data.actor;
 
       if (data.actor.type === ActorType.USER && data.actor.metadata?.id) {
         const user = await userDAL.findById(data.actor.metadata?.id, tx);
@@ -1024,13 +1024,14 @@ export const folderCommitServiceFactory = ({
             ];
             await secretV2BridgeDAL.insertMany(newSecret, tx);
 
-            const metadata: { key: string; value: string }[] =
-              (secretVersion.metadata as { key: string; value: string }[]) || [];
+            const metadata: { key: string; value?: string; encryptedValue?: string }[] =
+              (secretVersion.metadata as { key: string; value?: string; encryptedValue?: string }[]) || [];
             if (metadata.length > 0) {
               await resourceMetadataDAL.insertMany(
-                metadata.map(({ key, value }) => ({
+                metadata.map(({ key, value, encryptedValue }) => ({
                   key,
                   value,
+                  encryptedValue: encryptedValue ? Buffer.from(encryptedValue, "base64") : null,
                   secretId: change.id,
                   orgId: project.orgId
                 })),
@@ -1052,7 +1053,7 @@ export const folderCommitServiceFactory = ({
                 userId: secretVersion.userId,
                 actorType: actorInfo.actorType,
                 envId: secretVersion.envId,
-                metadata: JSON.stringify(metadata),
+                metadata: metadata ? JSON.stringify(metadata) : null,
                 ...(actorInfo.actorType === ActorType.IDENTITY && { identityActorId: actorInfo.actorId }),
                 ...(actorInfo.actorType === ActorType.USER && { userActorId: actorInfo.actorId })
               },
@@ -1098,13 +1099,14 @@ export const folderCommitServiceFactory = ({
               tx
             );
 
-            const metadata: { key: string; value: string }[] =
-              (secretVersion.metadata as { key: string; value: string }[]) || [];
+            const metadata: { key: string; value?: string; encryptedValue?: string }[] =
+              (secretVersion.metadata as { key: string; value?: string; encryptedValue?: string }[]) || [];
             await resourceMetadataDAL.delete({ secretId: change.id }, tx);
             if (metadata.length > 0) {
               await resourceMetadataDAL.insertMany(
-                metadata.map(({ key, value }) => ({
+                metadata.map(({ key, value, encryptedValue }) => ({
                   key,
+                  encryptedValue: encryptedValue ? Buffer.from(encryptedValue, "base64") : null,
                   value,
                   secretId: change.id,
                   orgId: project.orgId

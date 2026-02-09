@@ -38,6 +38,7 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { OrgServiceActor } from "@app/lib/types";
 import {
   SecretUpdateMode,
+  TGetSecretReferencesDTO,
   TGetSecretsRawByFolderMappingsDTO
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 
@@ -1259,6 +1260,19 @@ export const secretServiceFactory = ({
       });
 
     return secretV2BridgeService.getSecretReferenceTree(dto);
+  };
+
+  const getSecretReferenceDependencyTree = async (dto: TGetSecretReferencesDTO) => {
+    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(dto.projectId);
+
+    if (!shouldUseSecretV2Bridge) {
+      throw new BadRequestError({
+        message: "Project version does not support secret references",
+        name: "SecretReferencesNotSupported"
+      });
+    }
+
+    return secretV2BridgeService.getSecretReferenceDependencyTree(dto);
   };
 
   const getSecretAccessList = async (dto: TGetSecretAccessListDTO) => {
@@ -3500,7 +3514,7 @@ export const secretServiceFactory = ({
       secretComment: v.secretComment,
       skipMultilineEncoding: v.skipMultilineEncoding,
       tags: v.tags?.map((tag) => tag.slug),
-      metadata: v.metadata,
+      metadata: v.secretMetadata,
       secretValue: v.secretValue
     }));
   };
@@ -3537,6 +3551,7 @@ export const secretServiceFactory = ({
     getSecretByIdRaw,
     getAccessibleSecrets,
     getSecretVersionsV2ByIds,
-    getChangeVersions
+    getChangeVersions,
+    getSecretReferenceDependencyTree
   };
 };

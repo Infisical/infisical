@@ -57,6 +57,14 @@
   --color-card: #16181a;
   --color-accent: #7d7f80;
   --color-container: #1a1c1e;
+  --color-container-hover: #1f2123;
+
+  /* secret management product colors */
+  --color-folder: #a4873e;
+  --color-secret: #7d7f80;
+  --color-dynamic-secret: #a6702b;
+  --color-import: #457d91;
+  --color-secret-rotation: #4c6081;
 
   /*legacy color schema */
   --color-org-v1: #30b3ff;
@@ -456,8 +464,8 @@
 }
 
 /* Hide the default number input spin buttons */
-input[type=number]::-webkit-inner-spin-button,
-input[type=number]::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }

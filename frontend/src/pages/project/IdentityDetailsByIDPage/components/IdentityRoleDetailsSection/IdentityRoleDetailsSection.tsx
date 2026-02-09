@@ -7,7 +7,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, Lottie, Modal, ModalContent, Tooltip } from "@app/components/v2";
 import {
   Badge,
-  UnstableButton,
+  Button,
   UnstableCard,
   UnstableCardAction,
   UnstableCardContent,
@@ -110,7 +110,7 @@ export const IdentityRoleDetailsSection = ({
                 })}
               >
                 {(isAllowed) => (
-                  <UnstableButton
+                  <Button
                     size="xs"
                     variant="outline"
                     onClick={() => {
@@ -120,7 +120,7 @@ export const IdentityRoleDetailsSection = ({
                   >
                     <PencilIcon />
                     Edit Roles
-                  </UnstableButton>
+                  </Button>
                 )}
               </ProjectPermissionCan>
             </UnstableCardAction>
@@ -246,7 +246,7 @@ export const IdentityRoleDetailsSection = ({
                     })}
                   >
                     {(isAllowed) => (
-                      <UnstableButton
+                      <Button
                         variant="project"
                         size="xs"
                         onClick={() => {
@@ -256,7 +256,7 @@ export const IdentityRoleDetailsSection = ({
                       >
                         <PencilIcon />
                         Edit Roles
-                      </UnstableButton>
+                      </Button>
                     )}
                   </ProjectPermissionCan>
                 </UnstableEmptyContent>

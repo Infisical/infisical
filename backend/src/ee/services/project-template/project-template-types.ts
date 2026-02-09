@@ -13,15 +13,46 @@ export type TProjectTemplateRole = {
   permissions: TProjectPermissionV2Schema[];
 };
 
+export type TProjectTemplateUser = {
+  username: string;
+  roles: string[]; // role slugs
+};
+
+export type TProjectTemplateGroup = {
+  groupSlug: string;
+  roles: string[]; // role slugs
+};
+
+export type TProjectTemplateOrgManagedIdentity = {
+  identityId: string;
+  roles: string[]; // role slugs
+};
+
+export type TProjectTemplateProjectManagedIdentity = {
+  name: string;
+  roles: string[]; // role slugs
+};
+
 export type TCreateProjectTemplateDTO = {
   name: string;
   type: ProjectType;
   description?: string;
   roles: TProjectTemplateRole[];
   environments?: TProjectTemplateEnvironment[] | null;
+  users?: TProjectTemplateUser[] | null;
+  groups?: TProjectTemplateGroup[] | null;
+  identities?: TProjectTemplateOrgManagedIdentity[] | null;
+  projectManagedIdentities?: TProjectTemplateProjectManagedIdentity[] | null;
 };
 
-export type TUpdateProjectTemplateDTO = Partial<TCreateProjectTemplateDTO>;
+export type TUpdateProjectTemplateDTO = Partial<
+  Omit<TCreateProjectTemplateDTO, "users" | "groups" | "identities" | "projectManagedIdentities">
+> & {
+  users?: TProjectTemplateUser[] | null;
+  groups?: TProjectTemplateGroup[] | null;
+  identities?: TProjectTemplateOrgManagedIdentity[] | null;
+  projectManagedIdentities?: TProjectTemplateProjectManagedIdentity[] | null;
+};
 
 export type TUnpackedPermission = z.infer<typeof UnpackedPermissionSchema>;
 
@@ -59,6 +90,10 @@ export type TProjectTemplateServiceFactory = {
               inverted?: boolean | undefined;
             }[];
           }[];
+          users: TProjectTemplateUser[] | null;
+          groups: TProjectTemplateGroup[] | null;
+          identities: TProjectTemplateOrgManagedIdentity[] | null;
+          projectManagedIdentities: TProjectTemplateProjectManagedIdentity[] | null;
           orgId: string;
         }
       | {
@@ -74,6 +109,10 @@ export type TProjectTemplateServiceFactory = {
             slug: string;
             name: string;
           }[];
+          users: TProjectTemplateUser[] | null;
+          groups: TProjectTemplateGroup[] | null;
+          identities: TProjectTemplateOrgManagedIdentity[] | null;
+          projectManagedIdentities: TProjectTemplateProjectManagedIdentity[] | null;
           name: string;
           orgId: string;
           id: string;
@@ -98,6 +137,10 @@ export type TProjectTemplateServiceFactory = {
       slug: string;
       name: string;
     }[];
+    users: TProjectTemplateUser[] | null;
+    groups: TProjectTemplateGroup[] | null;
+    identities: TProjectTemplateOrgManagedIdentity[] | null;
+    projectManagedIdentities: TProjectTemplateProjectManagedIdentity[] | null;
     name: string;
     orgId: string;
     type: string;
@@ -122,6 +165,10 @@ export type TProjectTemplateServiceFactory = {
       slug: string;
       name: string;
     }[];
+    users: TProjectTemplateUser[] | null;
+    groups: TProjectTemplateGroup[] | null;
+    identities: TProjectTemplateOrgManagedIdentity[] | null;
+    projectManagedIdentities: TProjectTemplateProjectManagedIdentity[] | null;
     name: string;
     orgId: string;
     id: string;
@@ -145,6 +192,10 @@ export type TProjectTemplateServiceFactory = {
       slug: string;
       name: string;
     }[];
+    users: TProjectTemplateUser[] | null;
+    groups: TProjectTemplateGroup[] | null;
+    identities: TProjectTemplateOrgManagedIdentity[] | null;
+    projectManagedIdentities: TProjectTemplateProjectManagedIdentity[] | null;
     name: string;
     orgId: string;
     id: string;
@@ -169,6 +220,10 @@ export type TProjectTemplateServiceFactory = {
       slug: string;
       name: string;
     }[];
+    users: TProjectTemplateUser[] | null;
+    groups: TProjectTemplateGroup[] | null;
+    identities: TProjectTemplateOrgManagedIdentity[] | null;
+    projectManagedIdentities: TProjectTemplateProjectManagedIdentity[] | null;
     name: string;
     orgId: string;
     type: string;
@@ -193,6 +248,10 @@ export type TProjectTemplateServiceFactory = {
       slug: string;
       name: string;
     }[];
+    users: TProjectTemplateUser[] | null;
+    groups: TProjectTemplateGroup[] | null;
+    identities: TProjectTemplateOrgManagedIdentity[] | null;
+    projectManagedIdentities: TProjectTemplateProjectManagedIdentity[] | null;
     name: string;
     type: string;
     orgId: string;

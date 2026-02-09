@@ -56,8 +56,8 @@ import {
   TSendSecretSyncFailedNotificationsJobDTO
 } from "@app/services/secret-sync/secret-sync-types";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
+import { expandSecretReferencesFactory } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
-import { expandSecretReferencesFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
@@ -302,7 +302,11 @@ export const secretSyncQueueFactory = ({
         }
 
         secretMap[secretKey].skipMultilineEncoding = Boolean(secret.skipMultilineEncoding);
-        secretMap[secretKey].secretMetadata = secret.secretMetadata;
+        secretMap[secretKey].secretMetadata = secret.secretMetadata.map((el) => ({
+          isEncrypted: Boolean(el.encryptedValue),
+          key: el.key,
+          value: el.encryptedValue ? decryptSecretValue(el.encryptedValue) : el.value || ""
+        }));
       })
     );
 

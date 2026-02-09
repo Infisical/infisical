@@ -113,7 +113,8 @@ export const AddMCPServerModal = ({ isOpen, onOpenChange }: Props) => {
         authMethod: data.authMethod as unknown as AiMcpServerAuthMethod,
         credentials: data.credentials,
         oauthClientId: data.oauthClientId || undefined,
-        oauthClientSecret: data.oauthClientSecret || undefined
+        oauthClientSecret: data.oauthClientSecret || undefined,
+        gatewayId: data.gatewayId || undefined
       } as TCreateAiMcpServerDTO);
 
       createNotification({

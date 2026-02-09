@@ -25,5 +25,6 @@ Here's some guidance on each field:
 - Issuing CA: The [issuing CA](/documentation/platform/pki/ca/overview) that should be used to issue certificates for the profile when the **Issuer Type** is set to `Certificate Authority`.
 - Certificate Policy: The [certificate policy](/documentation/platform/pki/certificates/policies) that should be used to validate certificate requests for the profile.
 - Enrollment Method: The enrollment method that should be used to enroll certificates for the profile such as ACME, EST, API, etc.
+- Default Certificate TTL: An optional fallback validity period used when a TTL is not explicitly specified in the certificate request. The default TTL must not exceed the maximum validity defined in the associated [certificate policy](/documentation/platform/pki/certificates/policies).
 
 Depending on which enrollment method you choose, you may be presented with additional enrollment-specific configuration fields.

@@ -63,7 +63,7 @@ export const identityAzureAuthServiceFactory = ({
   licenseService,
   orgDAL
 }: TIdentityAzureAuthServiceFactoryDep) => {
-  const login = async ({ identityId, jwt: azureJwt, subOrganizationName }: TLoginAzureAuthDTO) => {
+  const login = async ({ identityId, jwt: azureJwt, organizationSlug }: TLoginAzureAuthDTO) => {
     const appCfg = getConfig();
     const identityAzureAuth = await identityAzureAuthDAL.findOne({ identityId });
     if (!identityAzureAuth) {
@@ -76,7 +76,7 @@ export const identityAzureAuthServiceFactory = ({
     const org = await orgDAL.findById(identity.orgId);
     const isSubOrgIdentity = Boolean(org.rootOrgId);
 
-    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a subOrganizationName is specified
+    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a organizationSlug is specified
     let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
     try {
@@ -102,12 +102,12 @@ export const identityAzureAuthServiceFactory = ({
         }
       }
 
-      if (subOrganizationName) {
+      if (organizationSlug) {
         if (!isSubOrgIdentity) {
-          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: subOrganizationName });
+          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
 
           if (!subOrg) {
-            throw new NotFoundError({ message: `Sub organization with name ${subOrganizationName} not found` });
+            throw new NotFoundError({ message: `Sub organization with slug ${organizationSlug} not found` });
           }
 
           const subOrgMembership = await membershipIdentityDAL.findOne({
@@ -118,7 +118,7 @@ export const identityAzureAuthServiceFactory = ({
 
           if (!subOrgMembership) {
             throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${subOrganizationName}`
+              message: `Identity not authorized to access sub organization ${organizationSlug}`
             });
           }
 

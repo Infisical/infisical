@@ -6,6 +6,7 @@ import {
   IdentityProjectAdditionalPrivilegeSchema,
   IntegrationAuthsSchema,
   InternalCertificateAuthoritiesSchema,
+  OrgRolesSchema,
   ProjectRolesSchema,
   ProjectsSchema,
   SecretApprovalPoliciesSchema,
@@ -13,7 +14,7 @@ import {
   UsersSchema
 } from "@app/db/schemas";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
+import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 import { UnpackedPermissionSchema } from "./sanitizedSchema/permission";
 
@@ -211,6 +212,10 @@ export const SanitizedIdentityPrivilegeSchema = IdentityProjectAdditionalPrivile
   )
 });
 
+export const SanitizedOrgRoleSchema = OrgRolesSchema.extend({
+  permissions: UnpackedPermissionSchema.array()
+});
+
 export const SanitizedRoleSchema = ProjectRolesSchema.omit({ version: true }).extend({
   permissions: UnpackedPermissionSchema.array()
 });
@@ -245,7 +250,7 @@ export const SanitizedDynamicSecretSchema = DynamicSecretsSchema.omit({
   inputTag: true,
   algorithm: true
 }).extend({
-  metadata: ResourceMetadataSchema.optional()
+  metadata: ResourceMetadataNonEncryptionSchema.optional()
 });
 
 export const SanitizedProjectSchema = ProjectsSchema.pick({
@@ -267,7 +272,8 @@ export const SanitizedProjectSchema = ProjectsSchema.pick({
   hasDeleteProtection: true,
   secretSharing: true,
   showSnapshotsLegacy: true,
-  secretDetectionIgnoreValues: true
+  secretDetectionIgnoreValues: true,
+  enforceEncryptedSecretManagerSecretMetadata: true
 });
 
 export const SanitizedTagSchema = SecretTagsSchema.pick({

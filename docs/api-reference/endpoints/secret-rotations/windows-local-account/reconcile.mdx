@@ -1,0 +1,9 @@
+---
+title: "Reconcile"
+openapi: "POST /api/v2/secret-rotations/windows-local-account/{rotationId}/reconcile"
+---
+
+<Note>
+    The reconcile endpoint is used to reset the target user's password when credentials are out of sync.
+    This uses the SMB Connection's administrator credentials to reset the target user's password and sync it with Infisical.
+</Note>

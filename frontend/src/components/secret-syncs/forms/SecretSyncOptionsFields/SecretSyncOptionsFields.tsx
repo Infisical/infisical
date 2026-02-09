@@ -77,6 +77,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.LaravelForge:
     case SecretSync.Chef:
     case SecretSync.OctopusDeploy:
+    case SecretSync.CircleCI:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     default:

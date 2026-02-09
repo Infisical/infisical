@@ -4,7 +4,7 @@ import { twMerge } from "tailwind-merge";
 
 import { Lottie } from "@app/components/v2";
 import {
-  UnstableButton,
+  Button,
   UnstableEmpty,
   UnstableEmptyContent,
   UnstableEmptyDescription,
@@ -154,14 +154,14 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
             </UnstableEmptyDescription>
             {!projectMemberships.length && (
               <UnstableEmptyContent>
-                <UnstableButton
+                <Button
                   variant={isSubOrganization ? "sub-org" : "org"}
                   size="xs"
                   onClick={() => handlePopUpOpen("addIdentityToProject")}
                 >
                   <PlusIcon />
                   Add to Project
-                </UnstableButton>
+                </Button>
               </UnstableEmptyContent>
             )}
           </UnstableEmptyHeader>

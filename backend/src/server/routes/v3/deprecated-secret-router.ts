@@ -4,6 +4,7 @@ import { z } from "zod";
 import { SecretApprovalRequestsSchema, SecretsSchema, SecretType, ServiceTokenScopes } from "@app/db/schemas";
 import { EventType, SecretApprovalEvent, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, RAW_SECRETS, SECRETS } from "@app/lib/api-docs";
+import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { secretsLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -12,7 +13,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
-import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
+import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretOperations, SecretProtectionType } from "@app/services/secret/secret-types";
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -251,7 +252,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
             .extend({
               secretPath: z.string().optional(),
               secretValueHidden: z.boolean(),
-              secretMetadata: ResourceMetadataSchema.optional(),
+              secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
               tags: SanitizedTagSchema.array().optional()
             })
             .array(),
@@ -264,7 +265,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
                 .omit({ createdAt: true, updatedAt: true })
                 .extend({
                   secretValueHidden: z.boolean(),
-                  secretMetadata: ResourceMetadataSchema.optional()
+                  secretMetadata: ResourceMetadataWithEncryptionSchema.optional()
                 })
                 .array()
             })
@@ -366,7 +367,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           secret: secretRawSchema.extend({
             secretPath: z.string(),
             tags: SanitizedTagSchema.array().optional(),
-            secretMetadata: ResourceMetadataSchema.optional()
+            secretMetadata: ResourceMetadataWithEncryptionSchema.optional()
           })
         })
       }
@@ -421,7 +422,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
             secretValueHidden: z.boolean(),
             secretPath: z.string(),
             tags: SanitizedTagSchema.array().optional(),
-            secretMetadata: ResourceMetadataSchema.optional()
+            secretMetadata: ResourceMetadataWithEncryptionSchema.optional()
           })
         })
       }
@@ -483,7 +484,12 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
             secretId: secret.id,
             secretKey: req.params.secretName,
             secretVersion: secret.version,
-            secretMetadata: secret.secretMetadata
+            secretMetadata:
+              secret.secretMetadata?.map((item) => ({
+                key: item.key,
+                isEncrypted: item.isEncrypted,
+                value: item.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : item.value
+              })) || []
           }
         }
       });
@@ -540,9 +546,9 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
           .describe(RAW_SECRETS.CREATE.secretValue),
         secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
-        secretMetadata: ResourceMetadataSchema.optional(),
+        secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
         tagIds: z.string().array().optional().describe(RAW_SECRETS.CREATE.tagIds),
-        skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
+        skipMultilineEncoding: z.boolean().nullish().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
         type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.CREATE.type),
         secretReminderRepeatDays: z
           .number()
@@ -627,7 +633,11 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
             secretId: secret.id,
             secretKey: req.params.secretName,
             secretVersion: secret.version,
-            secretMetadata: req.body.secretMetadata,
+            secretMetadata: req.body.secretMetadata?.map((meta) => ({
+              key: meta.key,
+              isEncrypted: meta.isEncrypted,
+              value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value
+            })),
             secretTags: secret.tags?.map((tag) => tag.name)
           }
         }
@@ -688,7 +698,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.UPDATE.type),
         tagIds: z.string().array().optional().describe(RAW_SECRETS.UPDATE.tagIds),
         metadata: z.record(z.string()).optional(),
-        secretMetadata: ResourceMetadataSchema.optional(),
+        secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
         secretReminderNote: z
           .string()
           .max(1024, "Secret reminder note cannot exceed 1024 characters")
@@ -781,7 +791,11 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
             secretId: secret.id,
             secretKey: req.params.secretName,
             secretVersion: secret.version,
-            secretMetadata: req.body.secretMetadata,
+            secretMetadata: req.body.secretMetadata?.map((meta) => ({
+              key: meta.key,
+              isEncrypted: meta.isEncrypted,
+              value: meta.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : meta.value
+            })),
             secretTags: secret.tags?.map((tag) => tag.name)
           }
         }
@@ -2085,9 +2099,9 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
               .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
               .describe(RAW_SECRETS.CREATE.secretValue),
             secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
-            skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
+            skipMultilineEncoding: z.boolean().nullish().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
             metadata: z.record(z.string()).optional(),
-            secretMetadata: ResourceMetadataSchema.optional(),
+            secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
             tagIds: z.string().array().optional().describe(RAW_SECRETS.CREATE.tagIds)
           })
           .array()
@@ -2156,7 +2170,11 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
               secretId: secret.id,
               secretKey: secret.secretKey,
               secretVersion: secret.version,
-              secretMetadata: secretMetadataMap.get(secret.secretKey),
+              secretMetadata: secretMetadataMap.get(secret.secretKey)?.map((item) => ({
+                key: item.key,
+                isEncrypted: item.isEncrypted,
+                value: item.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : item.value
+              })),
               secretTags: secret.tags?.map((tag) => tag.name)
             }))
           }
@@ -2234,7 +2252,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
               .optional()
               .nullable()
               .describe(RAW_SECRETS.UPDATE.secretReminderNote),
-            secretMetadata: ResourceMetadataSchema.optional(),
+            secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
             secretReminderRepeatDays: z
               .number()
               .optional()
@@ -2310,7 +2328,11 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
                 secretPath: secret.secretPath,
                 secretKey: secret.secretKey,
                 secretVersion: secret.version,
-                secretMetadata: secretMetadataMap.get(secret.secretKey),
+                secretMetadata: secretMetadataMap.get(secret.secretKey)?.map((item) => ({
+                  key: item.key,
+                  isEncrypted: item.isEncrypted,
+                  value: item.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : item.value
+                })),
                 secretTags: secret.tags?.map((tag) => tag.name)
               }))
           }
@@ -2331,7 +2353,11 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
                 secretPath: secret.secretPath,
                 secretKey: secret.secretKey,
                 secretVersion: secret.version,
-                secretMetadata: secretMetadataMap.get(secret.secretKey),
+                secretMetadata: secretMetadataMap.get(secret.secretKey)?.map((item) => ({
+                  key: item.key,
+                  isEncrypted: item.isEncrypted,
+                  value: item.isEncrypted ? AUDIT_LOG_SENSITIVE_VALUE : item.value
+                })),
                 secretTags: secret.tags?.map((tag) => tag.name)
               }))
             }

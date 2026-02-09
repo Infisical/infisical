@@ -14,7 +14,7 @@ WORKDIR /app
 COPY frontend/package.json frontend/package-lock.json  ./
 
 # Install dependencies
-RUN npm ci --only-production --ignore-scripts
+RUN npm ci --ignore-scripts
 
 # Rebuild the source code only when needed
 FROM base AS frontend-builder
@@ -79,11 +79,11 @@ RUN apt-get update && apt-get install -y \
 RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
 
 COPY backend/package*.json ./
-RUN npm ci --only-production
+RUN npm ci
 
 COPY /backend .
 COPY --chown=non-root-user:nodejs standalone-entrypoint.sh standalone-entrypoint.sh
-RUN npm i -D tsconfig-paths
+RUN npm i -g tsconfig-paths
 RUN npm run build
 
 # Production stage
@@ -108,10 +108,9 @@ RUN apt-get update && apt-get install -y \
 # Configure ODBC
 RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
 
-COPY backend/package*.json ./
-RUN npm ci --only-production
-
 COPY --from=backend-build /app .
+RUN rm -rf ./node_modules
+RUN npm ci --omit=dev
 
 RUN mkdir frontend-build
 
@@ -182,6 +181,9 @@ RUN wget https://www.openssl.org/source/openssl-3.1.2.tar.gz \
     && rm -rf /openssl-build \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Install smbclient for Windows SMB operations
+RUN apt-get update && apt-get install -y smbclient && rm -rf /var/lib/apt/lists/*
 
 # Install Infisical CLI
 RUN curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \

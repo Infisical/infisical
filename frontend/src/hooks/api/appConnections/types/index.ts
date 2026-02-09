@@ -12,8 +12,10 @@ import { TBitbucketConnection } from "./bitbucket-connection";
 import { TCamundaConnection } from "./camunda-connection";
 import { TChecklyConnection } from "./checkly-connection";
 import { TChefConnection } from "./chef-connection";
+import { TCircleCIConnection } from "./circleci-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TDatabricksConnection } from "./databricks-connection";
+import { TDbtConnection } from "./dbt-connection";
 import { TDigitalOceanConnection } from "./digital-ocean";
 import { TDNSMadeEasyConnection } from "./dns-made-easy-connection";
 import { TFlyioConnection } from "./flyio-connection";
@@ -34,11 +36,13 @@ import { TNorthflankConnection } from "./northflank-connection";
 import { TOCIConnection } from "./oci-connection";
 import { TOctopusDeployConnection } from "./octopus-deploy-connection";
 import { TOktaConnection } from "./okta-connection";
+import { TOpenRouterConnection } from "./open-router-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
 import { TPostgresConnection } from "./postgres-connection";
 import { TRailwayConnection } from "./railway-connection";
 import { TRedisConnection } from "./redis-connection";
 import { TRenderConnection } from "./render-connection";
+import { TSmbConnection } from "./smb-connection";
 import { TSshConnection } from "./ssh-connection";
 import { TSupabaseConnection } from "./supabase-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
@@ -59,8 +63,10 @@ export * from "./bitbucket-connection";
 export * from "./camunda-connection";
 export * from "./checkly-connection";
 export * from "./chef-connection";
+export * from "./circleci-connection";
 export * from "./cloudflare-connection";
 export * from "./databricks-connection";
+export * from "./dbt-connection";
 export * from "./dns-made-easy-connection";
 export * from "./flyio-connection";
 export * from "./gcp-connection";
@@ -80,11 +86,13 @@ export * from "./northflank-connection";
 export * from "./oci-connection";
 export * from "./octopus-deploy-connection";
 export * from "./okta-connection";
+export * from "./open-router-connection";
 export * from "./oracledb-connection";
 export * from "./postgres-connection";
 export * from "./railway-connection";
 export * from "./redis-connection";
 export * from "./render-connection";
+export * from "./smb-connection";
 export * from "./ssh-connection";
 export * from "./supabase-connection";
 export * from "./teamcity-connection";
@@ -139,7 +147,11 @@ export type TAppConnection =
   | TMongoDBConnection
   | TChefConnection
   | TDNSMadeEasyConnection
-  | TSshConnection;
+  | TSshConnection
+  | TDbtConnection
+  | TSmbConnection
+  | TOpenRouterConnection
+  | TCircleCIConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

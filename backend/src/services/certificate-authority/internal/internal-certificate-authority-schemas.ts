@@ -11,16 +11,35 @@ import {
 } from "../certificate-authority-schemas";
 import { validateCaDateField } from "../certificate-authority-validators";
 
+type TInternalCertificateAuthorityConfiguration = {
+  type: InternalCaType;
+  friendlyName?: string;
+  commonName: string;
+  organization: string;
+  ou: string;
+  country: string;
+  province: string;
+  locality: string;
+  notBefore?: string;
+  notAfter?: string;
+  maxPathLength?: number | null;
+  keyAlgorithm: CertKeyAlgorithm;
+  dn?: string | null;
+  parentCaId?: string | null;
+  serialNumber?: string | null;
+  activeCaCertId?: string | null;
+};
+
 export const InternalCertificateAuthorityConfigurationSchema = z
   .object({
     type: z.nativeEnum(InternalCaType).describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.type),
     friendlyName: z.string().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.friendlyName),
-    commonName: z.string().trim().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.commonName),
-    organization: z.string().trim().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.organization),
-    ou: z.string().trim().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.ou),
-    country: z.string().trim().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.country),
-    province: z.string().trim().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.province),
-    locality: z.string().trim().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.locality),
+    commonName: z.string().trim().default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.commonName),
+    organization: z.string().trim().default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.organization),
+    ou: z.string().trim().default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.ou),
+    country: z.string().trim().default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.country),
+    province: z.string().trim().default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.province),
+    locality: z.string().trim().default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.locality),
     notBefore: validateCaDateField.optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.notBefore),
     notAfter: validateCaDateField.optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.notAfter),
     maxPathLength: z.number().min(-1).nullish().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.maxPathLength),
@@ -42,7 +61,7 @@ export const InternalCertificateAuthorityConfigurationSchema = z
         "At least one of the fields commonName, organization, ou, country, province, or locality must be non-empty",
       path: []
     }
-  );
+  ) as unknown as z.ZodType<TInternalCertificateAuthorityConfiguration>;
 
 export const InternalCertificateAuthoritySchema = BaseCertificateAuthoritySchema.extend({
   type: z.literal(CaType.INTERNAL),

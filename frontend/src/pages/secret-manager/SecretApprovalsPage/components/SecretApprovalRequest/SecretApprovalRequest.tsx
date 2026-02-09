@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   faCheck,
   faCheckCircle,
@@ -8,7 +8,7 @@ import {
   faSearch
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useSearch } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
 import { GitMergeIcon, XIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -55,13 +55,15 @@ import {
 
 export const SecretApprovalRequest = () => {
   const { currentProject, projectId } = useProject();
-  const [selectedApprovalId, setSelectedApprovalId] = useState<string | null>(null);
+
+  const navigate = useNavigate({
+    from: ROUTE_PATHS.SecretManager.ApprovalPage.path
+  });
 
   // filters
   const [statusFilter, setStatusFilter] = useState<"open" | "close">("open");
   const [envFilter, setEnvFilter] = useState<string>();
   const [committerFilter, setCommitterFilter] = useState<string>();
-  const [usingUrlRequestId, setUsingUrlRequestId] = useState(false);
 
   const {
     debouncedSearch: debouncedSearchFilter,
@@ -114,18 +116,11 @@ export const SecretApprovalRequest = () => {
 
   const { permission } = useProjectPermission();
   const { data: members } = useGetWorkspaceUsers(projectId, true);
-  const isSecretApprovalScreen = Boolean(selectedApprovalId);
   const { requestId } = search;
-
-  useEffect(() => {
-    if (!requestId || usingUrlRequestId) return;
-
-    setSelectedApprovalId(requestId as string);
-    setUsingUrlRequestId(true);
-  }, [requestId]);
+  const isSecretApprovalScreen = Boolean(requestId);
 
   const handleGoBackSecretRequestDetail = () => {
-    setSelectedApprovalId(null);
+    navigate({ search: { requestId: "" } });
     refetch();
   };
 
@@ -135,7 +130,7 @@ export const SecretApprovalRequest = () => {
 
   return isSecretApprovalScreen ? (
     <SecretApprovalRequestChanges
-      approvalRequestId={selectedApprovalId || ""}
+      approvalRequestId={requestId || ""}
       onGoBack={handleGoBackSecretRequestDetail}
     />
   ) : (
@@ -153,7 +148,7 @@ export const SecretApprovalRequest = () => {
         value={searchFilter}
         onChange={(e) => setSearchFilter(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search change requests by author, environment or policy path..."
+        placeholder="Search change requests by author, environment, path, policy path or secret name..."
         className="flex-1"
         containerClassName="mb-4"
       />
@@ -274,21 +269,27 @@ export const SecretApprovalRequest = () => {
             status,
             committerUser,
             hasMerged,
-            updatedAt
+            updatedAt,
+            policy
           } = secretApproval;
-          const isReviewed = reviewers.some(
-            ({ status: reviewStatus, userId }) =>
-              userId === userSession.id && reviewStatus === ApprovalStatus.APPROVED
-          );
+
+          const isMergable =
+            reviewers.filter(({ status: reviewStatus }) => reviewStatus === ApprovalStatus.APPROVED)
+              .length >= policy.approvals;
+
+          const requiresUserReview =
+            policy.approvers.find((approver) => approver.userId === userSession.id) &&
+            !reviewers.find(({ userId }) => userId === userSession.id);
+
           return (
             <div
               key={reqId}
               className="flex border-b border-mineshaft-600 px-8 py-3 last:border-b-0 hover:bg-mineshaft-700"
               role="button"
               tabIndex={0}
-              onClick={() => setSelectedApprovalId(secretApproval.id)}
+              onClick={() => navigate({ search: { requestId: secretApproval.id } })}
               onKeyDown={(evt) => {
-                if (evt.key === "Enter") setSelectedApprovalId(secretApproval.id);
+                if (evt.key === "Enter") navigate({ search: { requestId: secretApproval.id } });
               }}
             >
               <div className="flex flex-col">
@@ -313,7 +314,13 @@ export const SecretApprovalRequest = () => {
                   ) : (
                     <span className="text-gray-600">Deleted User</span>
                   )}
-                  {!isReviewed && status === "open" && " - Review required"}
+                  {status === "open" &&
+                    // eslint-disable-next-line no-nested-ternary
+                    (isMergable
+                      ? " - Pending merge"
+                      : requiresUserReview
+                        ? " - Review required"
+                        : " - Review in progress")}
                 </span>
               </div>
               {status === "close" && (

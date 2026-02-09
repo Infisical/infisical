@@ -1,4 +1,5 @@
 export * from "./accessApproval";
+export * from "./accountRecovery";
 export * from "./admin";
 export * from "./aiMcpActivityLogs";
 export * from "./aiMcpEndpoints";

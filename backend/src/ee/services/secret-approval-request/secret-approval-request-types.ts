@@ -1,6 +1,6 @@
 import { TImmutableDBKeys, TSecretApprovalPolicies, TSecretApprovalRequestsSecrets } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
-import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-metadata-schema";
+import { ResourceMetadataWithEncryptionDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretOperations } from "@app/services/secret/secret-types";
 
 export enum RequestState {
@@ -34,9 +34,9 @@ export type TApprovalCreateSecretV2Bridge = {
   reminderNote?: string | null;
   reminderRepeatDays?: number | null;
   secretReminderRecipients?: string[] | null;
-  skipMultilineEncoding?: boolean;
+  skipMultilineEncoding?: boolean | null;
   metadata?: Record<string, string>;
-  secretMetadata?: ResourceMetadataDTO;
+  secretMetadata?: ResourceMetadataWithEncryptionDTO;
   tagIds?: string[];
 };
 
@@ -99,3 +99,19 @@ export type TListApprovalsDTO = {
 export type TSecretApprovalDetailsDTO = {
   id: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export enum InternalMetadataType {
+  MoveSecret = "move-secret"
+}
+
+export type TInternalMetadataMoveSecret = {
+  type: InternalMetadataType.MoveSecret;
+  payload: {
+    source: {
+      environment: string;
+      secretPath: string;
+    };
+  };
+};
+
+export type TInternalMetadata = TInternalMetadataMoveSecret;

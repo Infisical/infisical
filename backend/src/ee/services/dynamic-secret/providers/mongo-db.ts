@@ -19,7 +19,7 @@ const generatePassword = (size = 48) => {
 export const MongoDBProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretMongoDBSchema.parseAsync(inputs);
-    await verifyHostInputValidity(providerInputs.host);
+    await verifyHostInputValidity({ host: providerInputs.host, isDynamicSecret: true });
     return { ...providerInputs };
   };
 

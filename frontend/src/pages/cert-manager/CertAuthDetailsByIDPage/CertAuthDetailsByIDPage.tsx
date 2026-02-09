@@ -3,21 +3,18 @@ import { subject } from "@casl/ability";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { twMerge } from "tailwind-merge";
+import { EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
+import { AccessRestrictedBanner, DeleteActionModal, PageHeader } from "@app/components/v2";
 import {
-  AccessRestrictedBanner,
   Button,
-  DeleteActionModal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  PageHeader,
-  Tooltip
-} from "@app/components/v2";
+  UnstableDropdownMenu,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuTrigger
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionCertificateAuthorityActions,
@@ -33,9 +30,11 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { CaInstallCertModal } from "../CertificateAuthoritiesPage/components/CaInstallCertModal";
 import { CaModal } from "../CertificateAuthoritiesPage/components/CaModal";
 import {
+  CaCertDetailsSection,
   CaCertificatesSection,
   CaCrlsSection,
   CaDetailsSection,
+  CaGenerateRootCertModal,
   CaRenewalModal
 } from "./components";
 
@@ -60,7 +59,8 @@ const Page = () => {
     "ca",
     "deleteCa",
     "installCaCert",
-    "renewCa"
+    "renewCa",
+    "generateRootCaCert"
   ] as const);
 
   const onRemoveCaSubmit = async () => {
@@ -115,15 +115,14 @@ const Page = () => {
                   description="Manage certificate authority"
                   title={data.name}
                 >
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild className="rounded-lg">
-                      <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                        <Tooltip content="More options">
-                          <Button variant="outline_bg">More</Button>
-                        </Tooltip>
-                      </div>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="p-1">
+                  <UnstableDropdownMenu>
+                    <UnstableDropdownMenuTrigger asChild>
+                      <Button variant="outline">
+                        Options
+                        <EllipsisIcon />
+                      </Button>
+                    </UnstableDropdownMenuTrigger>
+                    <UnstableDropdownMenuContent align="end">
                       <ProjectPermissionCan
                         I={ProjectPermissionCertificateAuthorityActions.Delete}
                         a={subject(ProjectPermissionSub.CertificateAuthorities, {
@@ -131,28 +130,29 @@ const Page = () => {
                         })}
                       >
                         {(canDelete) => (
-                          <DropdownMenuItem
-                            className={twMerge(
-                              canDelete
-                                ? "hover:bg-red-500! hover:text-white!"
-                                : "pointer-events-none cursor-not-allowed opacity-50"
-                            )}
+                          <UnstableDropdownMenuItem
+                            variant="danger"
+                            isDisabled={!canDelete}
                             onClick={() => handlePopUpOpen("deleteCa")}
-                            disabled={!canDelete}
                           >
                             Delete CA
-                          </DropdownMenuItem>
+                          </UnstableDropdownMenuItem>
                         )}
                       </ProjectPermissionCan>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                    </UnstableDropdownMenuContent>
+                  </UnstableDropdownMenu>
                 </PageHeader>
-                <div className="flex">
-                  <div className="mr-4 w-96">
-                    <CaDetailsSection caId={data.id} handlePopUpOpen={handlePopUpOpen} />
+                <div className="flex flex-col gap-5 lg:flex-row">
+                  <div className="w-full lg:max-w-[24rem]">
+                    <CaDetailsSection caId={data.id} />
+                    <CaCertDetailsSection caId={data.id} />
                   </div>
-                  <div className="w-full">
-                    <CaCertificatesSection caId={data.id} caName={data.name} />
+                  <div className="flex flex-1 flex-col gap-y-5">
+                    <CaCertificatesSection
+                      caId={data.id}
+                      caName={data.name}
+                      handlePopUpOpen={handlePopUpOpen}
+                    />
                     <CaCrlsSection caId={data.id} />
                   </div>
                 </div>
@@ -168,6 +168,7 @@ const Page = () => {
       <CaModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaInstallCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <CaGenerateRootCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteCa.isOpen}
         title={`Are you sure you want to remove the CA ${

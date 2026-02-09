@@ -185,3 +185,28 @@ export enum CertificateOrderStatus {
   VALID = "valid",
   INVALID = "invalid"
 }
+
+export type TCertificateSubject = {
+  commonName?: string;
+  organization?: string;
+  organizationalUnit?: string;
+  country?: string;
+  state?: string;
+  locality?: string;
+};
+
+export type TCertificateFingerprints = {
+  sha256: string;
+  sha1: string;
+};
+
+export type TCertificateBasicConstraints = {
+  isCA: boolean;
+  pathLength?: number;
+};
+
+export type TParsedCertificateBody = {
+  subject?: TCertificateSubject;
+  fingerprints?: TCertificateFingerprints;
+  basicConstraints?: TCertificateBasicConstraints;
+};

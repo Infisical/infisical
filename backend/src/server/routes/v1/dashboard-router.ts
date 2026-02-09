@@ -21,7 +21,7 @@ import {
   secretRawSchema
 } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
+import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -116,7 +116,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                   .extend({
                     secretValueHidden: z.boolean(),
                     secretPath: z.string().optional(),
-                    secretMetadata: ResourceMetadataSchema.optional(),
+                    secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
                     tags: SanitizedTagSchema.array().optional()
                   })
                   .nullable()
@@ -131,7 +131,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               isEmpty: z.boolean(),
               secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
-              secretMetadata: ResourceMetadataSchema.optional(),
+              secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
               tags: SanitizedTagSchema.array().optional()
             })
             .array()
@@ -640,7 +640,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                     isEmpty: z.boolean(),
                     secretValueHidden: z.boolean(),
                     secretPath: z.string().optional(),
-                    secretMetadata: ResourceMetadataSchema.optional(),
+                    secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
                     tags: SanitizedTagSchema.array().optional(),
                     reminder: RemindersSchema.extend({
                       recipients: z.string().array()
@@ -664,7 +664,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                 .array(),
               secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
-              secretMetadata: ResourceMetadataSchema.optional(),
+              secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
               tags: SanitizedTagSchema.array().optional(),
               reminder: RemindersSchema.extend({
                 recipients: z.string().array().optional()
@@ -1162,7 +1162,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             .extend({
               secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
-              secretMetadata: ResourceMetadataSchema.optional(),
+              secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
               tags: SanitizedTagSchema.array().optional()
             })
             .array()
@@ -1440,7 +1440,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             .extend({
               secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
-              secretMetadata: ResourceMetadataSchema.optional(),
+              secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
               tags: SanitizedTagSchema.array().optional()
             })
             .array()

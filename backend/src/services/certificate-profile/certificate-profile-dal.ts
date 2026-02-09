@@ -126,6 +126,11 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           `${TableName.CertificateAuthority}.id`
         )
         .leftJoin(
+          TableName.ExternalCertificateAuthority,
+          `${TableName.CertificateAuthority}.id`,
+          `${TableName.ExternalCertificateAuthority}.caId`
+        )
+        .leftJoin(
           TableName.PkiCertificatePolicy,
           `${TableName.PkiCertificateProfile}.certificatePolicyId`,
           `${TableName.PkiCertificatePolicy}.id`
@@ -153,6 +158,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db.ref("projectId").withSchema(TableName.CertificateAuthority).as("caProjectId"),
           db.ref("status").withSchema(TableName.CertificateAuthority).as("caStatus"),
           db.ref("name").withSchema(TableName.CertificateAuthority).as("caName"),
+          db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
+          db.ref("type").withSchema(TableName.ExternalCertificateAuthority).as("externalCaType"),
           db.ref("id").withSchema(TableName.PkiCertificatePolicy).as("policyId"),
           db.ref("projectId").withSchema(TableName.PkiCertificatePolicy).as("policyProjectId"),
           db.ref("name").withSchema(TableName.PkiCertificatePolicy).as("policyName"),
@@ -172,7 +179,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db
             .ref("skipDnsOwnershipVerification")
             .withSchema(TableName.PkiAcmeEnrollmentConfig)
-            .as("acmeConfigSkipDnsOwnershipVerification")
+            .as("acmeConfigSkipDnsOwnershipVerification"),
+          db.ref("skipEabBinding").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeConfigSkipEabBinding")
         )
         .where(`${TableName.PkiCertificateProfile}.id`, id)
         .first();
@@ -203,7 +211,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         ? ({
             id: result.acmeConfigId,
             encryptedEabSecret: result.acmeConfigEncryptedEabSecret,
-            skipDnsOwnershipVerification: result.acmeConfigSkipDnsOwnershipVerification ?? false
+            skipDnsOwnershipVerification: result.acmeConfigSkipDnsOwnershipVerification ?? false,
+            skipEabBinding: result.acmeConfigSkipEabBinding ?? false
           } as TCertificateProfileWithConfigs["acmeConfig"])
         : undefined;
 
@@ -212,7 +221,9 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
             id: result.caId,
             projectId: result.caProjectId,
             status: result.caStatus,
-            name: result.caName
+            name: result.caName,
+            isExternal: !!result.externalCaId,
+            externalType: result.externalCaType as string | undefined
           } as TCertificateProfileWithConfigs["certificateAuthority"])
         : undefined;
 
@@ -248,6 +259,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           : null,
         createdAt: result.createdAt,
         updatedAt: result.updatedAt,
+        defaultTtlDays: result.defaultTtlDays,
         estConfig,
         apiConfig,
         acmeConfig,
@@ -367,7 +379,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db
             .ref("skipDnsOwnershipVerification")
             .withSchema(TableName.PkiAcmeEnrollmentConfig)
-            .as("acmeSkipDnsOwnershipVerification")
+            .as("acmeSkipDnsOwnershipVerification"),
+          db.ref("skipEabBinding").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeSkipEabBinding")
         );
 
       if (processedRules) {
@@ -405,7 +418,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         const acmeConfig = result.acmeId
           ? {
               id: result.acmeId as string,
-              skipDnsOwnershipVerification: !!result.acmeSkipDnsOwnershipVerification
+              skipDnsOwnershipVerification: !!result.acmeSkipDnsOwnershipVerification,
+              skipEabBinding: !!result.acmeSkipEabBinding
             }
           : undefined;
 
@@ -436,6 +450,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
             : null,
           createdAt: result.createdAt,
           updatedAt: result.updatedAt,
+          defaultTtlDays: result.defaultTtlDays as number | null,
           estConfig,
           apiConfig,
           acmeConfig,

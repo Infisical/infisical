@@ -11,7 +11,7 @@ export const SecretEventPermissionConditions = ({ position = 0, isDisabled }: Pr
   return (
     <ConditionsFields
       isDisabled={isDisabled}
-      subject={ProjectPermissionSub.SecretEvents}
+      subject={ProjectPermissionSub.SecretEventSubscriptions}
       position={position}
       selectOptions={[
         { value: "environment", label: "Environment Slug" },

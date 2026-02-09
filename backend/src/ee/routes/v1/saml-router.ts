@@ -83,6 +83,10 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             }
             if (ssoConfig.authProvider === SamlProviders.AZURE_SAML) {
               samlConfig.disableRequestedAuthnContext = true;
+              // Azure AD/Entra ID can be configured to sign only the assertion (not the response).
+              // Setting wantAuthnResponseSigned to false allows both "Sign SAML assertion" and
+              // "Sign SAML response and assertion" configurations to work.
+              samlConfig.wantAuthnResponseSigned = false;
               if (req.body?.RelayState && JSON.parse(req.body.RelayState).spInitiated) {
                 samlConfig.audience = `spn:${ssoConfig.issuer}`;
               }

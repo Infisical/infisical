@@ -1,66 +1,27 @@
 import path from "node:path";
 
+import { Knex } from "knex";
 import RE2 from "re2";
 
 import { SecretType, TableName, TSecretFolders, TSecretsV2 } from "@app/db/schemas";
-import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
 import { ActorType } from "../auth/auth-type";
-import { CommitType } from "../folder-commit/folder-commit-service";
+import { CommitType, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
-import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
+import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
+import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretReminderRecipient } from "../secret-reminder-recipients/secret-reminder-recipients-types";
+import { getAllSecretReferences } from "./secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { TFnSecretBulkDelete, TFnSecretBulkInsert, TFnSecretBulkUpdate } from "./secret-v2-bridge-types";
-
-const INTERPOLATION_PATTERN_STRING = String.raw`\${([a-zA-Z0-9-_.]+)}`;
-const INTERPOLATION_TEST_REGEX = new RE2(INTERPOLATION_PATTERN_STRING);
+import { TSecretVersionV2DALFactory } from "./secret-version-dal";
 
 export const shouldUseSecretV2Bridge = (version: number) => version === 3;
-
-/**
- * Grabs and processes nested secret references from a string
- *
- * This function looks for patterns that match the interpolation syntax in the input string.
- * It filters out references that include nested paths, splits them into environment and
- * secret path parts, and then returns an array of objects with the environment and the
- * joined secret path.
- * @example
- * const value = "Hello ${dev.someFolder.OtherFolder.SECRET_NAME} and ${prod.anotherFolder.SECRET_NAME}";
- * const result = getAllNestedSecretReferences(value);
- * // result will be:
- * // [
- * //   { environment: 'dev', secretPath: '/someFolder/OtherFolder' },
- * //   { environment: 'prod', secretPath: '/anotherFolder' }
- * // ]
- */
-export const getAllSecretReferences = (maybeSecretReference: string) => {
-  const references = [];
-  let match;
-
-  const regex = new RE2(INTERPOLATION_PATTERN_STRING, "g");
-  // eslint-disable-next-line no-cond-assign
-  while ((match = regex.exec(maybeSecretReference)) !== null) {
-    references.push(match[1]);
-  }
-
-  const nestedReferences = references
-    .filter((el) => el.includes("."))
-    .map((el) => {
-      const [environment, ...secretPathList] = el.split(".");
-      return {
-        environment,
-        secretPath: path.join("/", ...secretPathList.slice(0, -1)),
-        secretKey: secretPathList[secretPathList.length - 1]
-      };
-    });
-  const localReferences = references.filter((el) => !el.includes("."));
-  return { nestedReferences, localReferences };
-};
 
 // these functions are special functions shared by a couple of resources
 // used by secret approval, rotation or anywhere in which secret needs to modified
@@ -87,7 +48,6 @@ export const fnSecretBulkInsert = async ({
       userId,
       encryptedComment,
       version,
-      metadata,
       reminderNote,
       encryptedValue,
       reminderRepeatDays
@@ -98,7 +58,6 @@ export const fnSecretBulkInsert = async ({
       userId,
       encryptedComment,
       version,
-      metadata,
       reminderNote,
       encryptedValue,
       reminderRepeatDays
@@ -110,7 +69,7 @@ export const fnSecretBulkInsert = async ({
   const actorType = actor?.type || ActorType.PLATFORM;
 
   const newSecrets = await secretDAL.insertMany(
-    sanitizedInputSecrets.map(({ metadata, ...el }) => ({ ...el, folderId })),
+    sanitizedInputSecrets.map((el) => ({ ...el, folderId })),
     tx
   );
 
@@ -123,13 +82,21 @@ export const fnSecretBulkInsert = async ({
   );
 
   const secretVersions = await secretVersionDAL.insertMany(
-    sanitizedInputSecrets.map((el) => ({
+    sanitizedInputSecrets.map((el, index) => ({
       ...el,
       folderId,
       userActorId,
       identityActorId,
       actorType,
-      metadata: el.metadata ? JSON.stringify(el.metadata) : [],
+      metadata: inputSecrets?.[index]?.secretMetadata
+        ? JSON.stringify(
+            inputSecrets?.[index]?.secretMetadata?.map((meta) => ({
+              key: meta.key,
+              value: meta?.value,
+              encryptedValue: meta?.encryptedValue?.toString("base64")
+            }))
+          )
+        : null,
       secretId: newSecretGroupedByKeyName[el.key][0].id
     })),
     tx
@@ -174,9 +141,10 @@ export const fnSecretBulkInsert = async ({
   await resourceMetadataDAL.insertMany(
     inputSecrets.flatMap(({ key: secretKey, secretMetadata }) => {
       if (secretMetadata) {
-        return secretMetadata.map(({ key, value }) => ({
+        return secretMetadata.map(({ key, value, encryptedValue }) => ({
           key,
           value,
+          encryptedValue,
           secretId: newSecretGroupedByKeyName[secretKey][0].id,
           orgId
         }));
@@ -229,10 +197,7 @@ export const fnSecretBulkUpdate = async ({
   const actorType = actor?.type || ActorType.PLATFORM;
 
   const sanitizedInputSecrets = inputSecrets.map(
-    ({
-      filter,
-      data: { skipMultilineEncoding, type, key, encryptedValue, userId, encryptedComment, metadata, secretMetadata }
-    }) => ({
+    ({ filter, data: { skipMultilineEncoding, type, key, encryptedValue, userId, encryptedComment } }) => ({
       filter: { ...filter, folderId },
       data: {
         skipMultilineEncoding,
@@ -240,7 +205,6 @@ export const fnSecretBulkUpdate = async ({
         key,
         userId,
         encryptedComment,
-        metadata: JSON.stringify(metadata || secretMetadata || []),
         encryptedValue
       }
     })
@@ -249,24 +213,24 @@ export const fnSecretBulkUpdate = async ({
   const newSecrets = await secretDAL.bulkUpdate(sanitizedInputSecrets, tx);
   const secretVersions = await secretVersionDAL.insertMany(
     newSecrets.map(
-      ({
+      (
+        { skipMultilineEncoding, type, key, userId, encryptedComment, version, encryptedValue, id: secretId },
+        index
+      ) => ({
         skipMultilineEncoding,
         type,
         key,
         userId,
         encryptedComment,
         version,
-        metadata,
-        encryptedValue,
-        id: secretId
-      }) => ({
-        skipMultilineEncoding,
-        type,
-        key,
-        userId,
-        encryptedComment,
-        version,
-        metadata: metadata ? JSON.stringify(metadata) : [],
+        metadata:
+          JSON.stringify(
+            inputSecrets?.[index]?.data?.secretMetadata?.map((meta) => ({
+              key: meta.key,
+              value: meta?.value,
+              encryptedValue: meta?.encryptedValue?.toString("base64")
+            }))
+          ) || null,
         encryptedValue,
         folderId,
         secretId,
@@ -328,9 +292,10 @@ export const fnSecretBulkUpdate = async ({
   await resourceMetadataDAL.insertMany(
     inputSecrets.flatMap(({ filter: { id }, data: { secretMetadata } }) => {
       if (secretMetadata) {
-        return secretMetadata.map(({ key, value }) => ({
+        return secretMetadata.map(({ key, value, encryptedValue }) => ({
           key,
           value,
+          encryptedValue,
           secretId: id,
           orgId
         }));
@@ -558,12 +523,6 @@ export const recursivelyGetSecretPaths = async ({
 
   return pathsInCurrentDirectory;
 };
-// used to convert multi line ones to quotes ones with \n
-const formatMultiValueEnv = (val?: string) => {
-  if (!val) return "";
-  if (!val.match("\n")) return val;
-  return `"${val.replaceAll("\n", "\\n")}"`;
-};
 
 export type TSecretReferenceTraceNode = {
   key: string;
@@ -571,215 +530,6 @@ export type TSecretReferenceTraceNode = {
   environment: string;
   secretPath: string;
   children: TSecretReferenceTraceNode[];
-};
-type TInterpolateSecretArg = {
-  projectId: string;
-  decryptSecretValue: (encryptedValue?: Buffer | null) => string | undefined;
-  secretDAL: Pick<TSecretV2BridgeDALFactory, "findByFolderId">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
-  canExpandValue: (environment: string, secretPath: string, secretName: string, secretTagSlugs: string[]) => boolean;
-};
-
-const MAX_SECRET_REFERENCE_DEPTH = 10;
-export const expandSecretReferencesFactory = ({
-  projectId,
-  decryptSecretValue: decryptSecret,
-  secretDAL,
-  folderDAL,
-  canExpandValue
-}: TInterpolateSecretArg) => {
-  const secretCache: Record<string, Record<string, { value: string; tags: string[] }>> = {};
-  const getCacheUniqueKey = (environment: string, secretPath: string) => `${environment}-${secretPath}`;
-
-  const fetchSecret = async (environment: string, secretPath: string, secretKey: string) => {
-    const cacheKey = getCacheUniqueKey(environment, secretPath);
-
-    if (secretCache?.[cacheKey]) {
-      return secretCache[cacheKey][secretKey] || { value: "", tags: [] };
-    }
-
-    try {
-      const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-      if (!folder) return { value: "", tags: [] };
-      const secrets = await secretDAL.findByFolderId({ folderId: folder.id });
-
-      const decryptedSecret = secrets.reduce<Record<string, { value: string; tags: string[] }>>((prev, secret) => {
-        // eslint-disable-next-line no-param-reassign
-        prev[secret.key] = {
-          value: decryptSecret(secret.encryptedValue) || "",
-          tags: secret.tags?.map((el) => el.slug)
-        };
-        return prev;
-      }, {});
-
-      secretCache[cacheKey] = decryptedSecret;
-
-      return secretCache[cacheKey][secretKey] || { value: "", tags: [] };
-    } catch (error) {
-      secretCache[cacheKey] = {};
-      return { value: "", tags: [] };
-    }
-  };
-
-  const recursivelyExpandSecret = async (dto: {
-    value?: string;
-    secretPath: string;
-    environment: string;
-    shouldStackTrace?: boolean;
-    secretKey: string;
-  }) => {
-    const stackTrace = { ...dto, key: "root", children: [] } as TSecretReferenceTraceNode;
-
-    if (!dto.value) return { expandedValue: "", stackTrace };
-
-    // Track visited secrets to prevent circular references
-    const createSecretId = (env: string, secretPath: string, key: string) => `${env}:${secretPath}:${key}`;
-
-    const currentSecretId = createSecretId(dto.environment, dto.secretPath, dto.secretKey);
-    const stack = [{ ...dto, depth: 0, trace: stackTrace, visitedSecrets: new Set<string>([currentSecretId]) }];
-    let expandedValue = dto.value;
-
-    while (stack.length) {
-      const { value, secretPath, environment, depth, trace, visitedSecrets } = stack.pop()!;
-
-      // eslint-disable-next-line no-continue
-      if (depth > MAX_SECRET_REFERENCE_DEPTH) continue;
-
-      const matchRegex = new RE2(INTERPOLATION_PATTERN_STRING, "g");
-      const refs = [];
-      let match;
-
-      // eslint-disable-next-line no-cond-assign
-      while ((match = matchRegex.exec(value || "")) !== null) {
-        refs.push(match[0]);
-      }
-
-      if (refs.length > 0) {
-        for (const interpolationSyntax of refs) {
-          const interpolationKey = interpolationSyntax.slice(2, interpolationSyntax.length - 1);
-          const entities = interpolationKey.trim().split(".");
-
-          // eslint-disable-next-line no-continue
-          if (!entities.length) continue;
-
-          let referencedSecretPath = "";
-          let referencedSecretKey = "";
-          let referencedSecretEnvironmentSlug = "";
-          let referencedSecretValue = "";
-
-          if (entities.length === 1) {
-            const [secretKey] = entities;
-
-            // eslint-disable-next-line no-continue,no-await-in-loop
-            const referredValue = await fetchSecret(environment, secretPath, secretKey);
-            if (!canExpandValue(environment, secretPath, secretKey, referredValue.tags))
-              throw new ForbiddenRequestError({
-                message: `You do not have permission to read secret '${secretKey}' in environment '${environment}' at path '${secretPath}', which is referenced by secret '${dto.secretKey}' in environment '${dto.environment}' at path '${dto.secretPath}'.`
-              });
-
-            const cacheKey = getCacheUniqueKey(environment, secretPath);
-            if (!secretCache[cacheKey]) secretCache[cacheKey] = {};
-            secretCache[cacheKey][secretKey] = referredValue;
-
-            referencedSecretValue = referredValue.value;
-            referencedSecretKey = secretKey;
-            referencedSecretPath = secretPath;
-            referencedSecretEnvironmentSlug = environment;
-          } else {
-            const secretReferenceEnvironment = entities[0];
-            const secretReferencePath = path.join("/", ...entities.slice(1, entities.length - 1));
-            const secretReferenceKey = entities[entities.length - 1];
-
-            // eslint-disable-next-line no-await-in-loop
-            const referedValue = await fetchSecret(secretReferenceEnvironment, secretReferencePath, secretReferenceKey);
-            if (!canExpandValue(secretReferenceEnvironment, secretReferencePath, secretReferenceKey, referedValue.tags))
-              throw new ForbiddenRequestError({
-                message: `You do not have permission to read secret '${secretReferenceKey}' in environment '${secretReferenceEnvironment}' at path '${secretReferencePath}', which is referenced by secret '${dto.secretKey}' in environment '${dto.environment}' at path '${dto.secretPath}'.`
-              });
-
-            const cacheKey = getCacheUniqueKey(secretReferenceEnvironment, secretReferencePath);
-            if (!secretCache[cacheKey]) secretCache[cacheKey] = {};
-            secretCache[cacheKey][secretReferenceKey] = referedValue;
-
-            referencedSecretValue = referedValue.value;
-            referencedSecretKey = secretReferenceKey;
-            referencedSecretPath = secretReferencePath;
-            referencedSecretEnvironmentSlug = secretReferenceEnvironment;
-          }
-
-          const node = {
-            value: referencedSecretValue,
-            secretPath: referencedSecretPath,
-            environment: referencedSecretEnvironmentSlug,
-            depth: depth + 1,
-            secretKey: referencedSecretKey,
-            trace
-          };
-
-          // Check for circular reference
-          const referencedSecretId = createSecretId(
-            referencedSecretEnvironmentSlug,
-            referencedSecretPath,
-            referencedSecretKey
-          );
-          const isCircular = visitedSecrets.has(referencedSecretId);
-
-          const newVisitedSecrets = new Set([...visitedSecrets, referencedSecretId]);
-
-          const shouldExpandMore = INTERPOLATION_TEST_REGEX.test(referencedSecretValue) && !isCircular;
-          if (dto.shouldStackTrace) {
-            const stackTraceNode = { ...node, children: [], key: referencedSecretKey, trace: null };
-            trace?.children.push(stackTraceNode);
-            // if stack trace this would be child node
-            if (shouldExpandMore) {
-              stack.push({ ...node, trace: stackTraceNode, visitedSecrets: newVisitedSecrets });
-            }
-          } else if (shouldExpandMore) {
-            // if no stack trace is needed we just keep going with root node
-            stack.push({ ...node, visitedSecrets: newVisitedSecrets });
-          }
-
-          if (referencedSecretValue) {
-            expandedValue = expandedValue.replaceAll(
-              interpolationSyntax,
-              () => referencedSecretValue // prevents special characters from triggering replacement patterns
-            );
-          }
-        }
-      }
-    }
-
-    return { expandedValue, stackTrace };
-  };
-
-  const expandSecret = async (inputSecret: {
-    value?: string;
-    skipMultilineEncoding?: boolean | null;
-    secretPath: string;
-    environment: string;
-    secretKey: string;
-  }) => {
-    if (!inputSecret.value) return inputSecret.value;
-
-    const shouldExpand = INTERPOLATION_TEST_REGEX.test(inputSecret.value);
-    if (!shouldExpand) return inputSecret.value;
-
-    const { expandedValue } = await recursivelyExpandSecret(inputSecret);
-
-    return inputSecret.skipMultilineEncoding ? formatMultiValueEnv(expandedValue) : expandedValue;
-  };
-
-  const getExpandedSecretStackTrace = async (inputSecret: {
-    value?: string;
-    secretPath: string;
-    environment: string;
-    secretKey: string;
-  }) => {
-    const { stackTrace, expandedValue } = await recursivelyExpandSecret({ ...inputSecret, shouldStackTrace: true });
-    return { stackTrace, expandedValue };
-  };
-
-  return { expandSecretReferences: expandSecret, getExpandedSecretStackTrace };
 };
 
 export const reshapeBridgeSecret = (
@@ -802,7 +552,7 @@ export const reshapeBridgeSecret = (
       color?: string | null;
       name: string;
     }[];
-    secretMetadata?: ResourceMetadataDTO;
+    secretMetadata?: ResourceMetadataWithEncryptionDTO;
     isRotatedSecret?: boolean;
     rotationId?: string;
     secretReminderRecipients?: TSecretReminderRecipient[];
@@ -850,3 +600,536 @@ export const reshapeBridgeSecret = (
         secretValueHidden: false
       })
 });
+
+function escapeRegex(str: string): string {
+  return str.replace(new RE2(/[.*+?^${}()|[\]\\]/g), "\\$&");
+}
+
+type TFnUpdateSecretLinkedReferences = {
+  orgId: string;
+  projectId: string;
+  environment: string;
+  secretPath: string;
+  folderId: string;
+  oldSecretKey: string;
+  newSecretKey: string;
+  secretId: string;
+  secretDAL: Pick<
+    TSecretV2BridgeDALFactory,
+    | "find"
+    | "updateById"
+    | "upsertSecretReferences"
+    | "findReferencedSecretReferencesBySecretKey"
+    | "updateSecretReferenceSecretKey"
+  >;
+  secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany">;
+  folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
+  secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
+  encryptor: (data: { plainText: Buffer }) => { cipherTextBlob: Buffer };
+  decryptor: (data: { cipherTextBlob: Buffer }) => Buffer;
+  tx?: Knex;
+};
+
+/**
+ * Updates secret references when a secret key is renamed.
+ * Handles both local references (same folder) and nested references (cross-folder/environment).
+ */
+export const fnUpdateSecretLinkedReferences = async ({
+  orgId,
+  projectId,
+  environment,
+  secretPath,
+  folderId,
+  oldSecretKey,
+  newSecretKey,
+  secretId,
+  secretDAL,
+  secretVersionDAL,
+  folderCommitService,
+  folderDAL,
+  secretQueueService,
+  encryptor,
+  decryptor,
+  tx
+}: TFnUpdateSecretLinkedReferences) => {
+  // case: nested references, can be inferred directly from the secret references table
+  const nestedSecretReferences = await secretDAL.findReferencedSecretReferencesBySecretKey(
+    projectId,
+    environment,
+    secretPath,
+    oldSecretKey,
+    tx
+  );
+
+  // case: local references, not stored in the db, we need to scan the folder to find secrets that reference the old secret ky
+  const secretsInSameFolder = await secretDAL.find(
+    {
+      folderId,
+      $notEqual: { [`${TableName.SecretV2}.id` as "id"]: secretId }
+    },
+    { tx }
+  );
+
+  const secretIdsToUpdateFromNested = nestedSecretReferences.map((el) => el.secretId);
+
+  // for local refs, we need to check each secret in the folder
+  const secretsToCheck = secretsInSameFolder.filter((s) => !secretIdsToUpdateFromNested.includes(s.id));
+
+  const nestedSecretsToUpdate =
+    secretIdsToUpdateFromNested.length > 0
+      ? await secretDAL.find({ $in: { [`${TableName.SecretV2}.id` as "id"]: secretIdsToUpdateFromNested } }, { tx })
+      : [];
+
+  const allSecretsToUpdate: Array<TSecretsV2> = [...nestedSecretsToUpdate, ...secretsToCheck];
+
+  // we track updated secrets grouped by folder for the commit creation
+  const updatedSecretsByFolder: Map<string, Array<{ secret: TSecretsV2; newEncryptedValue: Buffer }>> = new Map();
+
+  for await (const secretToUpdate of allSecretsToUpdate) {
+    if (!secretToUpdate.encryptedValue) {
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+
+    const originalValue = decryptor({ cipherTextBlob: secretToUpdate.encryptedValue }).toString();
+    let newValue = originalValue;
+
+    const { localReferences, nestedReferences } = getAllSecretReferences(originalValue);
+
+    // checkk if this secret references the renamed secret at all (either locally or nested)
+    const hasLocalRef = localReferences.includes(oldSecretKey);
+    const hasNestedRef = nestedReferences.some(
+      (ref) => ref.environment === environment && ref.secretPath === secretPath && ref.secretKey === oldSecretKey
+    );
+
+    if (!hasLocalRef && !hasNestedRef) {
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+
+    if (hasLocalRef) {
+      newValue = newValue.replace(new RE2(`\\$\\{${escapeRegex(oldSecretKey)}\\}`, "g"), `\${${newSecretKey}}`);
+    }
+
+    if (hasNestedRef) {
+      const pathPart = secretPath === "/" ? "" : `.${secretPath.slice(1).replace(/\//g, ".")}`;
+
+      const oldRef = `\${${environment}${pathPart}.${oldSecretKey}}`;
+      const newRef = `\${${environment}${pathPart}.${newSecretKey}}`;
+
+      newValue = newValue.split(oldRef).join(newRef);
+    }
+
+    if (newValue !== originalValue) {
+      const newEncryptedValue = encryptor({ plainText: Buffer.from(newValue) }).cipherTextBlob;
+
+      await secretDAL.updateById(secretToUpdate.id, { encryptedValue: newEncryptedValue }, tx);
+
+      // group by folder for commit creation
+      const folderSecrets = updatedSecretsByFolder.get(secretToUpdate.folderId) || [];
+      folderSecrets.push({ secret: secretToUpdate, newEncryptedValue });
+      updatedSecretsByFolder.set(secretToUpdate.folderId, folderSecrets);
+    }
+  }
+
+  for await (const [updateFolderId, folderSecrets] of updatedSecretsByFolder) {
+    const secretVersions = await secretVersionDAL.insertMany(
+      folderSecrets.map(({ secret, newEncryptedValue }) => ({
+        secretId: secret.id,
+        version: secret.version + 1,
+        key: secret.key,
+        encryptedValue: newEncryptedValue,
+        encryptedComment: secret.encryptedComment,
+        skipMultilineEncoding: secret.skipMultilineEncoding,
+        type: secret.type,
+        metadata: secret.metadata,
+        folderId: secret.folderId,
+        userId: secret.userId,
+        actorType: ActorType.PLATFORM
+      })),
+      tx
+    );
+
+    const changes = secretVersions.map((sv) => ({
+      type: CommitType.ADD,
+      isUpdate: true,
+      secretVersionId: sv.id
+    }));
+
+    if (changes.length > 0) {
+      await folderCommitService.createCommit(
+        {
+          actor: {
+            type: ActorType.PLATFORM
+          },
+          message: "Secret references updated after referenced secret(s) was renamed",
+          folderId: updateFolderId,
+          changes
+        },
+        tx
+      );
+    }
+  }
+
+  // update the secret references table (only for nested refs)
+  await secretDAL.updateSecretReferenceSecretKey(projectId, environment, secretPath, oldSecretKey, newSecretKey, tx);
+
+  const updatedFolderIds = Array.from(updatedSecretsByFolder.keys());
+  if (updatedFolderIds.length > 0) {
+    const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, updatedFolderIds, tx);
+
+    await Promise.all(
+      folderPaths.map(async (folder) => {
+        if (folder) {
+          await secretQueueService.syncSecrets({
+            projectId,
+            orgId,
+            environmentSlug: folder.environmentSlug,
+            secretPath: folder.path,
+            actor: ActorType.PLATFORM,
+            actorId: ""
+          });
+        }
+      })
+    );
+  }
+};
+
+type TFnUpdateMovedSecretReferences = {
+  orgId: string;
+  projectId: string;
+  sourceEnvironment: string;
+  sourceSecretPath: string;
+  sourceFolderId: string;
+  destinationEnvironment: string;
+  destinationSecretPath: string;
+  destinationFolderId: string;
+  secretKey: string;
+  secretId: string;
+  secretDAL: Pick<
+    TSecretV2BridgeDALFactory,
+    | "find"
+    | "findOne"
+    | "updateById"
+    | "upsertSecretReferences"
+    | "findReferencedSecretReferencesBySecretKey"
+    | "updateSecretReferenceEnvAndPath"
+  >;
+  secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany">;
+  folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
+  secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
+  encryptor: (data: { plainText: Buffer }) => { cipherTextBlob: Buffer };
+  decryptor: (data: { cipherTextBlob: Buffer }) => Buffer;
+  tx?: Knex;
+};
+
+/**
+ * Updates secret references when a secret is moved from one location to another.
+ * Handles three cases:
+ * 1. Local to nested: Secret moved out of folder, convert ${secretKey} to ${env.path.secretKey}
+ * 2. Nested to nested: Secret moved between folders, update ${oldEnv.oldPath.secretKey} to ${newEnv.newPath.secretKey}
+ * 3. Nested to local: Secret moved back to same folder, convert ${env.path.secretKey} to ${secretKey}
+ */
+export const fnUpdateMovedSecretReferences = async ({
+  orgId,
+  projectId,
+  sourceEnvironment,
+  sourceSecretPath,
+  sourceFolderId,
+  destinationEnvironment,
+  destinationSecretPath,
+  destinationFolderId,
+  secretKey,
+  secretId,
+  secretDAL,
+  secretVersionDAL,
+  folderCommitService,
+  folderDAL,
+  secretQueueService,
+  encryptor,
+  decryptor,
+  tx
+}: TFnUpdateMovedSecretReferences) => {
+  const updatedSecretsByFolder: Map<string, Array<{ secret: TSecretsV2; newEncryptedValue: Buffer }>> = new Map();
+
+  const destPathPart = destinationSecretPath === "/" ? "" : `.${destinationSecretPath.slice(1).replace(/\//g, ".")}`;
+  const newNestedRef = `\${${destinationEnvironment}${destPathPart}.${secretKey}}`;
+
+  // case: local references, not stored in the db, we need to scan the folder to find secrets that reference the old secret ky
+  const secretsInSourceFolder = await secretDAL.find(
+    {
+      folderId: sourceFolderId,
+      $notEqual: { [`${TableName.SecretV2}.id` as "id"]: secretId }
+    },
+    { tx }
+  );
+
+  const destinationMovedSecret = await secretDAL.findOne({ id: secretId }, tx);
+
+  for await (const secretToUpdate of secretsInSourceFolder) {
+    if (!secretToUpdate.encryptedValue) {
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+
+    const originalValue = decryptor({ cipherTextBlob: secretToUpdate.encryptedValue }).toString();
+    const { localReferences, nestedReferences } = getAllSecretReferences(originalValue);
+
+    const hasLocalRef = localReferences.includes(secretKey);
+    if (!hasLocalRef) {
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+
+    // convert local reference ${secretKey} to nested reference ${destEnv.destPath.secretKey}
+    const newValue = originalValue.replace(new RE2(`\\$\\{${escapeRegex(secretKey)}\\}`, "g"), newNestedRef);
+
+    if (newValue !== originalValue) {
+      const newEncryptedValue = encryptor({ plainText: Buffer.from(newValue) }).cipherTextBlob;
+
+      await secretDAL.updateById(secretToUpdate.id, { encryptedValue: newEncryptedValue }, tx);
+
+      // group by folder for commit creation
+      const folderSecrets = updatedSecretsByFolder.get(secretToUpdate.folderId) || [];
+      folderSecrets.push({ secret: secretToUpdate, newEncryptedValue });
+      updatedSecretsByFolder.set(secretToUpdate.folderId, folderSecrets);
+
+      // update the secret references table (only for nested refs)
+      const updatedNestedRefs = [
+        ...nestedReferences,
+        { environment: destinationEnvironment, secretPath: destinationSecretPath, secretKey }
+      ];
+
+      await secretDAL.upsertSecretReferences([{ secretId: secretToUpdate.id, references: updatedNestedRefs }], tx);
+    }
+  }
+
+  // case: nested references, can be inferred directly from the secret references table
+  const nestedSecretReferences = await secretDAL.findReferencedSecretReferencesBySecretKey(
+    projectId,
+    sourceEnvironment,
+    sourceSecretPath,
+    secretKey,
+    tx
+  );
+
+  if (nestedSecretReferences.length > 0) {
+    const sourcePathPart = sourceSecretPath === "/" ? "" : `.${sourceSecretPath.slice(1).replace(/\//g, ".")}`;
+    const oldNestedRef = `\${${sourceEnvironment}${sourcePathPart}.${secretKey}}`;
+
+    // local reference format (for when moved to same folder)
+    const localRef = `\${${secretKey}}`;
+
+    const refsInDestFolder = nestedSecretReferences.filter((ref) => ref.folderId === destinationFolderId);
+    const refsInOtherFolders = nestedSecretReferences.filter((ref) => ref.folderId !== destinationFolderId);
+
+    if (refsInDestFolder.length > 0) {
+      const secretIdsInDestFolder = refsInDestFolder.map((el) => el.secretId);
+      const secretsInDestFolder = await secretDAL.find(
+        { $in: { [`${TableName.SecretV2}.id` as "id"]: secretIdsInDestFolder } },
+        { tx }
+      );
+
+      for await (const secretToUpdate of secretsInDestFolder) {
+        if (!secretToUpdate.encryptedValue) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
+        const originalValue = decryptor({ cipherTextBlob: secretToUpdate.encryptedValue }).toString();
+        const { nestedReferences } = getAllSecretReferences(originalValue);
+
+        // convert nested ref to local ref
+        const newValue = originalValue.split(oldNestedRef).join(localRef);
+
+        if (newValue !== originalValue) {
+          const newEncryptedValue = encryptor({ plainText: Buffer.from(newValue) }).cipherTextBlob;
+
+          await secretDAL.updateById(secretToUpdate.id, { encryptedValue: newEncryptedValue }, tx);
+
+          const folderSecrets = updatedSecretsByFolder.get(secretToUpdate.folderId) || [];
+          folderSecrets.push({ secret: secretToUpdate, newEncryptedValue });
+          updatedSecretsByFolder.set(secretToUpdate.folderId, folderSecrets);
+
+          const updatedNestedRefs = nestedReferences.filter(
+            (ref) =>
+              !(
+                ref.environment === sourceEnvironment &&
+                ref.secretPath === sourceSecretPath &&
+                ref.secretKey === secretKey
+              )
+          );
+
+          await secretDAL.upsertSecretReferences([{ secretId: secretToUpdate.id, references: updatedNestedRefs }], tx);
+        }
+      }
+    }
+
+    // update nested ref to point to new location
+    if (refsInOtherFolders.length > 0) {
+      const secretIdsInOtherFolders = refsInOtherFolders.map((el) => el.secretId);
+      const secretsInOtherFolders = await secretDAL.find(
+        { $in: { [`${TableName.SecretV2}.id` as "id"]: secretIdsInOtherFolders } },
+        { tx }
+      );
+
+      for await (const secretToUpdate of secretsInOtherFolders) {
+        if (!secretToUpdate.encryptedValue) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
+        const originalValue = decryptor({ cipherTextBlob: secretToUpdate.encryptedValue }).toString();
+        const { nestedReferences } = getAllSecretReferences(originalValue);
+
+        // replace old nested ref with new nested ref
+        const newValue = originalValue.split(oldNestedRef).join(newNestedRef);
+
+        if (newValue !== originalValue) {
+          const newEncryptedValue = encryptor({ plainText: Buffer.from(newValue) }).cipherTextBlob;
+
+          await secretDAL.updateById(secretToUpdate.id, { encryptedValue: newEncryptedValue }, tx);
+
+          const folderSecrets = updatedSecretsByFolder.get(secretToUpdate.folderId) || [];
+          folderSecrets.push({ secret: secretToUpdate, newEncryptedValue });
+          updatedSecretsByFolder.set(secretToUpdate.folderId, folderSecrets);
+
+          const updatedNestedRefs = nestedReferences.map((ref) => {
+            if (
+              ref.environment === sourceEnvironment &&
+              ref.secretPath === sourceSecretPath &&
+              ref.secretKey === secretKey
+            ) {
+              return { environment: destinationEnvironment, secretPath: destinationSecretPath, secretKey };
+            }
+            return ref;
+          });
+
+          await secretDAL.upsertSecretReferences([{ secretId: secretToUpdate.id, references: updatedNestedRefs }], tx);
+        }
+      }
+    }
+  }
+
+  // update the moved secret's own references:
+  // case 1: local references should become nested references (pointing back to source folder, but only if the referenced secret wasan'tt also moved)
+  // case 2: nested references should become local references (if they point to the destination folder)
+  if (destinationMovedSecret?.encryptedValue) {
+    const movedSecretValue = decryptor({ cipherTextBlob: destinationMovedSecret.encryptedValue }).toString();
+    const { localReferences, nestedReferences } = getAllSecretReferences(movedSecretValue);
+
+    let updatedValue = movedSecretValue;
+    let valueChanged = false;
+
+    // case 1: convert local references to nested references pointing back to source
+    if (localReferences.length > 0) {
+      const destinationSecrets = await secretDAL.find({ folderId: destinationFolderId }, { tx });
+      const destinationSecretKeys = new Set(destinationSecrets.map((s) => s.key));
+
+      // Build the nested reference prefix for source
+      const sourcePathPart = sourceSecretPath === "/" ? "" : `.${sourceSecretPath.slice(1).replace(/\//g, ".")}`;
+      const sourceNestedPrefix = `${sourceEnvironment}${sourcePathPart}.`;
+
+      for (const localRef of localReferences) {
+        // only convert to nested if the referenced secret doesn't exist in the destination
+        if (!destinationSecretKeys.has(localRef)) {
+          const localPattern = new RE2(`\\$\\{${escapeRegex(localRef)}\\}`, "g");
+          const nestedRef = `\${${sourceNestedPrefix}${localRef}}`;
+          updatedValue = updatedValue.replace(localPattern, nestedRef);
+          valueChanged = true;
+        }
+      }
+    }
+
+    // case 2: convert nested references to local if they point to the destination folder
+    for (const nestedRef of nestedReferences) {
+      if (nestedRef.environment === destinationEnvironment && nestedRef.secretPath === destinationSecretPath) {
+        // this nested reference points to the destination folder, convert to local
+        const nestedPathPart =
+          nestedRef.secretPath === "/" ? "" : `.${nestedRef.secretPath.slice(1).replace(/\//g, ".")}`;
+        const oldNestedRefStr = `\${${nestedRef.environment}${nestedPathPart}.${nestedRef.secretKey}}`;
+        const localRefStr = `\${${nestedRef.secretKey}}`;
+
+        updatedValue = updatedValue.split(oldNestedRefStr).join(localRefStr);
+        valueChanged = true;
+      }
+    }
+
+    if (valueChanged) {
+      const newEncryptedValue = encryptor({ plainText: Buffer.from(updatedValue) }).cipherTextBlob;
+
+      await secretDAL.updateById(destinationMovedSecret.id, { encryptedValue: newEncryptedValue }, tx);
+
+      const folderSecrets = updatedSecretsByFolder.get(destinationMovedSecret.folderId) || [];
+      folderSecrets.push({ secret: destinationMovedSecret, newEncryptedValue });
+      updatedSecretsByFolder.set(destinationMovedSecret.folderId, folderSecrets);
+
+      const { nestedReferences: finalNestedReferences } = getAllSecretReferences(updatedValue);
+      await secretDAL.upsertSecretReferences(
+        [{ secretId: destinationMovedSecret.id, references: finalNestedReferences }],
+        tx
+      );
+    }
+  }
+
+  for await (const [updateFolderId, folderSecrets] of updatedSecretsByFolder) {
+    const secretVersions = await secretVersionDAL.insertMany(
+      folderSecrets.map(({ secret, newEncryptedValue }) => ({
+        secretId: secret.id,
+        version: secret.version + 1,
+        key: secret.key,
+        encryptedValue: newEncryptedValue,
+        encryptedComment: secret.encryptedComment,
+        skipMultilineEncoding: secret.skipMultilineEncoding,
+        type: secret.type,
+        metadata: secret.metadata,
+        folderId: secret.folderId,
+        userId: secret.userId,
+        actorType: ActorType.PLATFORM
+      })),
+      tx
+    );
+
+    const changes = secretVersions.map((sv) => ({
+      type: CommitType.ADD,
+      isUpdate: true,
+      secretVersionId: sv.id
+    }));
+
+    if (changes.length > 0) {
+      await folderCommitService.createCommit(
+        {
+          actor: {
+            type: ActorType.PLATFORM
+          },
+          message: "Secret references updated after referenced secret(s) was moved to a new location",
+          folderId: updateFolderId,
+          changes
+        },
+        tx
+      );
+    }
+  }
+
+  const updatedFolderIds = Array.from(updatedSecretsByFolder.keys());
+  if (updatedFolderIds.length > 0) {
+    const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, updatedFolderIds, tx);
+
+    await Promise.all(
+      folderPaths.map(async (folder) => {
+        if (folder) {
+          await secretQueueService.syncSecrets({
+            projectId,
+            orgId,
+            environmentSlug: folder.environmentSlug,
+            secretPath: folder.path,
+            actor: ActorType.PLATFORM,
+            actorId: ""
+          });
+        }
+      })
+    );
+  }
+};

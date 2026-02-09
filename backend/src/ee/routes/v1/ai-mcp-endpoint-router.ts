@@ -72,7 +72,8 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         server: mcpServer,
         transport,
         projectId,
-        endpointName
+        endpointName,
+        cleanup
       } = await server.services.aiMcpEndpoint.interactWithMcp({
         endpointId: req.params.endpointId,
         userId: req.permission.id,
@@ -95,11 +96,18 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         }
       });
 
-      // Close transport when client disconnects
+      // Close transport and cleanup gateway proxies when client disconnects
       res.raw.on("close", () => {
         void transport.close().catch((err) => {
           logger.error(err, "Failed to close transport for mcp endpoint");
         });
+
+        // Cleanup gateway proxies
+        if (cleanup) {
+          void cleanup().catch((err) => {
+            logger.error(err, "Failed to cleanup gateway proxies for mcp endpoint");
+          });
+        }
       });
 
       await mcpServer.connect(transport);
@@ -201,7 +209,9 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
             AiMcpEndpointsSchema.extend({
               connectedServers: z.number(),
               activeTools: z.number(),
-              piiFiltering: z.boolean().optional()
+              piiRequestFiltering: z.boolean().optional(),
+              piiResponseFiltering: z.boolean().optional(),
+              piiEntityTypes: z.array(z.string()).nullable().optional()
             })
           ),
           totalCount: z.number()
@@ -252,7 +262,9 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
             connectedServers: z.number(),
             activeTools: z.number(),
             serverIds: z.array(z.string()),
-            piiFiltering: z.boolean().optional()
+            piiRequestFiltering: z.boolean().optional(),
+            piiResponseFiltering: z.boolean().optional(),
+            piiEntityTypes: z.array(z.string()).nullable().optional()
           })
         })
       }
@@ -297,7 +309,9 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         name: z.string().trim().min(1).max(64).optional(),
         description: z.string().trim().max(256).optional(),
         serverIds: z.array(z.string().uuid()).optional(),
-        piiFiltering: z.boolean().optional()
+        piiRequestFiltering: z.boolean().optional(),
+        piiResponseFiltering: z.boolean().optional(),
+        piiEntityTypes: z.array(z.string()).optional()
       }),
       response: {
         200: z.object({
@@ -326,7 +340,9 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
             name: req.body.name,
             description: req.body.description,
             serverIds: req.body.serverIds,
-            piiFiltering: req.body.piiFiltering
+            piiRequestFiltering: req.body.piiRequestFiltering,
+            piiResponseFiltering: req.body.piiResponseFiltering,
+            piiEntityTypes: req.body.piiEntityTypes?.join(",")
           }
         }
       });
@@ -638,7 +654,7 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         code_challenge: z.string(),
         code_challenge_method: z.enum(["S256"]),
         redirect_uri: z.string(),
-        resource: z.string(),
+        resource: z.string().optional(),
         state: z.string().optional()
       })
     },
@@ -672,7 +688,7 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         code_challenge: z.string(),
         code_challenge_method: z.enum(["S256"]),
         redirect_uri: z.string(),
-        resource: z.string(),
+        resource: z.string().optional(),
         expireIn: z.string().refine((val) => ms(val) > 0, "Max TTL must be a positive number")
       }),
       response: {

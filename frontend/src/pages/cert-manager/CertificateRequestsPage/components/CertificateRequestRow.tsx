@@ -1,6 +1,8 @@
 import { faEllipsis } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
+import { ExternalLinkIcon } from "lucide-react";
 
 import { getCertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
 import { truncateSerialNumber } from "@app/components/utilities/serialNumberUtils";
@@ -15,7 +17,8 @@ import {
   Tr
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { TCertificateRequestListItem } from "@app/hooks/api/certificates";
+import { useOrganization, useProject } from "@app/context";
+import { CertificateRequestStatus, TCertificateRequestListItem } from "@app/hooks/api/certificates";
 
 type Props = {
   request: TCertificateRequestListItem;
@@ -23,14 +26,51 @@ type Props = {
 };
 
 export const CertificateRequestRow = ({ request, onViewCertificates }: Props) => {
-  const getStatusBadge = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "pending":
-        return <Badge variant="warning">Pending</Badge>;
-      case "issued":
+  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
+
+  const getStatusBadge = (
+    status: string,
+    approvalRequestId: string | null,
+    errorMessage: string | null
+  ) => {
+    switch (status) {
+      case CertificateRequestStatus.ISSUED:
         return <Badge variant="success">Issued</Badge>;
-      case "failed":
-        return <Badge variant="danger">Failed</Badge>;
+      case CertificateRequestStatus.FAILED:
+      case CertificateRequestStatus.REJECTED:
+        return (
+          <Tooltip
+            position="top"
+            content={errorMessage || "Certificate request failed"}
+            className="max-w-sm break-words"
+          >
+            <div>
+              <Badge variant="danger">Failed</Badge>
+            </div>
+          </Tooltip>
+        );
+      case CertificateRequestStatus.PENDING:
+        return <Badge variant="info">Pending Issuance</Badge>;
+      case CertificateRequestStatus.PENDING_APPROVAL:
+        if (approvalRequestId && currentOrg?.id && currentProject?.id) {
+          return (
+            <Badge variant="warning" asChild>
+              <Link
+                to="/organizations/$orgId/projects/cert-manager/$projectId/approval-requests/$approvalRequestId"
+                params={{
+                  orgId: currentOrg.id,
+                  projectId: currentProject.id,
+                  approvalRequestId
+                }}
+              >
+                Pending Approval
+                <ExternalLinkIcon />
+              </Link>
+            </Badge>
+          );
+        }
+        return <Badge variant="project">Pending Approval</Badge>;
       default:
         return <Badge variant="outline">{status.charAt(0).toUpperCase() + status.slice(1)}</Badge>;
     }
@@ -57,7 +97,7 @@ export const CertificateRequestRow = ({ request, onViewCertificates }: Props) =>
           {truncateSerialNumber(request.certificate?.serialNumber)}
         </div>
       </Td>
-      <Td>{getStatusBadge(request.status)}</Td>
+      <Td>{getStatusBadge(request.status, request.approvalRequestId, request.errorMessage)}</Td>
       <Td>
         <div className="max-w-xs truncate">{request.profileName || "N/A"}</div>
       </Td>
@@ -69,33 +109,27 @@ export const CertificateRequestRow = ({ request, onViewCertificates }: Props) =>
         </Tooltip>
       </Td>
       <Td>
-        <Tooltip content={format(new Date(request.updatedAt), "MMM dd, yyyy HH:mm:ss")}>
-          <time dateTime={request.updatedAt}>
-            {format(new Date(request.updatedAt), "yyyy-MM-dd")}
-          </time>
-        </Tooltip>
-      </Td>
-      <Td>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild className="rounded-lg">
-            <IconButton
-              variant="plain"
-              ariaLabel="More options"
-              className="h-max bg-transparent p-0"
-            >
-              <FontAwesomeIcon size="lg" icon={faEllipsis} />
-            </IconButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" sideOffset={3}>
-            <DropdownMenuItem
-              onClick={() => request.certificateId && onViewCertificates?.(request.certificateId)}
-              disabled={!request.certificateId}
-              className="flex items-center gap-2"
-            >
-              View Certificate
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {request.status === CertificateRequestStatus.ISSUED && request.certificateId && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild className="rounded-lg">
+              <IconButton
+                variant="plain"
+                ariaLabel="More options"
+                className="h-max bg-transparent p-0"
+              >
+                <FontAwesomeIcon size="lg" icon={faEllipsis} />
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" sideOffset={3}>
+              <DropdownMenuItem
+                onClick={() => onViewCertificates?.(request.certificateId!)}
+                className="flex items-center gap-2"
+              >
+                View Certificate
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </Td>
     </Tr>
   );

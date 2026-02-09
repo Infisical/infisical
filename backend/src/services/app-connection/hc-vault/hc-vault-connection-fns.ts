@@ -106,8 +106,6 @@ const createConcurrencyLimiter = (limit: number) => {
 export const getHCVaultInstanceUrl = async (config: THCVaultConnectionConfig) => {
   const instanceUrl = removeTrailingSlash(config.credentials.instanceUrl);
 
-  await blockLocalAndPrivateIpAddresses(instanceUrl);
-
   return instanceUrl;
 };
 
@@ -133,16 +131,15 @@ export const requestWithHCVaultGateway = async <T>(
 ): Promise<AxiosResponse<T>> => {
   const { gatewayId } = appConnection;
 
+  const url = new URL(requestConfig.url as string);
+  await blockLocalAndPrivateIpAddresses(url.toString(), Boolean(gatewayId));
+
   // If gateway isn't set up, don't proxy request
   if (!gatewayId) {
     return request.request(requestConfig);
   }
 
-  const url = new URL(requestConfig.url as string);
-
-  await blockLocalAndPrivateIpAddresses(url.toString());
-
-  const [targetHost] = await verifyHostInputValidity(url.hostname, true);
+  const [targetHost] = await verifyHostInputValidity({ host: url.hostname, isGateway: true, isDynamicSecret: false });
   const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(gatewayId);
   const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
 

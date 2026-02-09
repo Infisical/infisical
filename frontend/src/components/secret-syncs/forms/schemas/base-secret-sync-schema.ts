@@ -45,7 +45,7 @@ export const BaseSecretSyncSchema = <T extends AnyZodObject | undefined = undefi
         : typeof baseSyncOptionsSchema);
 
   return z.object({
-    name: slugSchema({ field: "Name" }),
+    name: slugSchema({ field: "Name", max: 256 }),
     description: z.string().trim().max(256, "Cannot exceed 256 characters").optional(),
     connection: z.object({ name: z.string(), id: z.string().uuid() }),
     environment: z.object({ slug: z.string(), id: z.string(), name: z.string() }),

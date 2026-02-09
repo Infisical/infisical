@@ -282,7 +282,13 @@ const certManagerRoutes = route("/organizations/$orgId/projects/cert-manager/$pr
     route("/certificate-templates", [index("cert-manager/PkiTemplateListPage/route.tsx")]),
     route("/certificate-authorities", "cert-manager/CertificateAuthoritiesPage/route.tsx"),
     route("/alerting", "cert-manager/AlertingPage/route.tsx"),
+    route("/approvals", "cert-manager/ApprovalsPage/route.tsx"),
+    route(
+      "/approval-requests/$approvalRequestId",
+      "cert-manager/ApprovalRequestDetailPage/route.tsx"
+    ),
     route("/ca/$caId", "cert-manager/CertAuthDetailsByIDPage/route.tsx"),
+    route("/certificates/$certificateId", "cert-manager/CertificateDetailsByIDPage/route.tsx"),
     route("/pki-collections/$collectionId", "cert-manager/PkiCollectionDetailsByIDPage/routes.tsx"),
     route("/integrations", [
       index("cert-manager/IntegrationsListPage/route.tsx"),
@@ -370,7 +376,13 @@ const pamRoutes = route("/organizations/$orgId/projects/pam/$projectId", [
       index("pam/PamSessionsPage/route.tsx"),
       route("/$sessionId", "pam/PamSessionsByIDPage/route.tsx")
     ]),
-    route("/resources", "pam/PamResourcesPage/route.tsx"),
+    route("/resources", [
+      index("pam/PamResourcesPage/route.tsx"),
+      route("/$resourceType/$resourceId", [
+        index("pam/PamResourceByIDPage/route.tsx"),
+        route("/accounts/$accountId", "pam/PamAccountByIDPage/route.tsx")
+      ])
+    ]),
     route("/audit-logs", "project/AuditLogsPage/route-pam.tsx"),
     route("/settings", "pam/SettingsPage/route.tsx"),
     route("/approvals", "pam/ApprovalsPage/route.tsx"),
@@ -436,10 +448,10 @@ export const routes = rootRoute("root.tsx", [
       route("/sso", "auth/SignUpSsoPage/route.tsx")
     ]),
     route("/email-not-verified", "auth/EmailNotVerifiedPage/route.tsx"),
-    route("/password-reset", "auth/PasswordResetPage/route.tsx"),
+    route("/account-recovery-reset", "auth/AccountRecoveryResetPage/route.tsx"),
     route("/requestnewinvite", "auth/RequestNewInvitePage/route.tsx"),
     route("/signupinvite", "auth/SignUpInvitePage/route.tsx"),
-    route("/verify-email", "auth/VerifyEmailPage/route.tsx")
+    route("/account-recovery", "auth/AccountRecoveryEmailPage/route.tsx")
   ]),
   middleware("authenticate.tsx", [
     route("/password-setup", "auth/PasswordSetupPage/route.tsx"),

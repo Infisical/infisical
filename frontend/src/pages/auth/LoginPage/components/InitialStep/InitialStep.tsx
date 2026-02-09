@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { faGithub, faGitlab, faGoogle } from "@fortawesome/free-brands-svg-icons";
-import { faLock } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faEyeSlash, faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -46,6 +46,7 @@ export const InitialStep = ({
   const queryParams = new URLSearchParams(window.location.search);
   const [captchaToken, setCaptchaToken] = useState("");
   const [shouldShowCaptcha, setShouldShowCaptcha] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const captchaRef = useRef<HCaptcha>(null);
   const { data: serverDetails } = useFetchServerStatus();
 
@@ -374,12 +375,22 @@ export const InitialStep = ({
             <Input
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              type="password"
+              type={showPassword ? "text" : "password"}
               placeholder="Enter your password..."
               isRequired
               autoComplete="current-password"
               id="current-password"
               className="select:-webkit-autofill:focus h-10"
+              rightIcon={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="cursor-pointer text-gray-400"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  <FontAwesomeIcon size="sm" icon={showPassword ? faEyeSlash : faEye} />
+                </button>
+              }
             />
           </div>
           {shouldShowCaptcha && envConfig.CAPTCHA_SITE_KEY && (
@@ -427,9 +438,9 @@ export const InitialStep = ({
       )}
       {shouldDisplayLoginMethod(LoginMethod.EMAIL) && (
         <div className="mt-2 flex flex-row text-sm text-bunker-400">
-          <Link to="/verify-email">
+          <Link to="/account-recovery">
             <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
-              Forgot password? Recover your account
+              Recover your account
             </span>
           </Link>
         </div>

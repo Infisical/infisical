@@ -73,6 +73,11 @@ import {
 } from "./bitbucket";
 import { CamundaConnectionMethod, getCamundaConnectionListItem, validateCamundaConnectionCredentials } from "./camunda";
 import { ChecklyConnectionMethod, getChecklyConnectionListItem, validateChecklyConnectionCredentials } from "./checkly";
+import {
+  CircleCIConnectionMethod,
+  getCircleCIConnectionListItem,
+  validateCircleCIConnectionCredentials
+} from "./circleci";
 import { CloudflareConnectionMethod } from "./cloudflare/cloudflare-connection-enum";
 import {
   getCloudflareConnectionListItem,
@@ -83,6 +88,7 @@ import {
   getDatabricksConnectionListItem,
   validateDatabricksConnectionCredentials
 } from "./databricks";
+import { DbtConnectionMethod, getDbtConnectionListItem, validateDbtConnectionCredentials } from "./dbt";
 import {
   DigitalOceanConnectionMethod,
   getDigitalOceanConnectionListItem,
@@ -135,11 +141,17 @@ import {
   validateOctopusDeployConnectionCredentials
 } from "./octopus-deploy";
 import { getOktaConnectionListItem, OktaConnectionMethod, validateOktaConnectionCredentials } from "./okta";
+import {
+  getOpenRouterConnectionListItem,
+  OpenRouterConnectionMethod,
+  validateOpenRouterConnectionCredentials
+} from "./open-router";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
 import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } from "./railway";
 import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnectionCredentials } from "./redis";
 import { RenderConnectionMethod } from "./render/render-connection-enums";
 import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
+import { getSmbConnectionListItem, SmbConnectionMethod, validateSmbConnectionCredentials } from "./smb";
 import { getSshConnectionListItem, SshConnectionMethod, validateSshConnectionCredentials } from "./ssh";
 import {
   getSupabaseConnectionListItem,
@@ -234,7 +246,11 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getRedisConnectionListItem(),
     getMongoDBConnectionListItem(),
     getChefConnectionListItem(),
-    getSshConnectionListItem()
+    getSshConnectionListItem(),
+    getDbtConnectionListItem(),
+    getSmbConnectionListItem(),
+    getOpenRouterConnectionListItem(),
+    getCircleCIConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -370,7 +386,11 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Redis]: validateRedisConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.MongoDB]: validateMongoDBConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OctopusDeploy]: validateOctopusDeployConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.SSH]: validateSshConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.SSH]: validateSshConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Dbt]: validateDbtConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.SMB]: validateSmbConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.OpenRouter]: validateOpenRouterConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -415,6 +435,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case NorthflankConnectionMethod.ApiToken:
     case OktaConnectionMethod.ApiToken:
     case LaravelForgeConnectionMethod.ApiToken:
+    case DbtConnectionMethod.ApiToken:
+    case CircleCIConnectionMethod.ApiToken:
       return "API Token";
     case DNSMadeEasyConnectionMethod.APIKeySecret:
       return "API Key & Secret";
@@ -442,9 +464,12 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "Password";
     case SshConnectionMethod.SshKey:
       return "SSH Key";
+    case SmbConnectionMethod.Credentials:
+      return "Credentials";
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
     case OctopusDeployConnectionMethod.ApiKey:
+    case OpenRouterConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
@@ -527,7 +552,11 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.LaravelForge]: platformManagedCredentialsNotSupported,
   [AppConnection.Chef]: platformManagedCredentialsNotSupported,
   [AppConnection.OctopusDeploy]: platformManagedCredentialsNotSupported,
-  [AppConnection.SSH]: platformManagedCredentialsNotSupported
+  [AppConnection.SSH]: platformManagedCredentialsNotSupported,
+  [AppConnection.Dbt]: platformManagedCredentialsNotSupported,
+  [AppConnection.SMB]: platformManagedCredentialsNotSupported,
+  [AppConnection.OpenRouter]: platformManagedCredentialsNotSupported,
+  [AppConnection.CircleCI]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

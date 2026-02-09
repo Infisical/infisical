@@ -14,12 +14,7 @@ export const pkiAlertChannelDALFactory = (db: TDbClient) => {
     try {
       if (!data.length) return [];
 
-      const serializedData = data.map((item) => ({
-        ...item,
-        config: item.config ? JSON.stringify(item.config) : null
-      }));
-
-      const res = await (tx || db)(TableName.PkiAlertChannels).insert(serializedData).returning("*");
+      const res = await (tx || db)(TableName.PkiAlertChannels).insert(data).returning("*");
 
       return res as TPkiAlertChannels[];
     } catch (error) {

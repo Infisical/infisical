@@ -124,7 +124,7 @@ export const pamResourceServiceFactory = ({
   };
 
   const updateById = async (
-    { connectionDetails, resourceId, name, rotationAccountCredentials }: TUpdateResourceDTO,
+    { connectionDetails, resourceId, name, rotationAccountCredentials, gatewayId }: TUpdateResourceDTO,
     actor: OrgServiceActor
   ) => {
     const resource = await pamResourceDAL.findById(resourceId);
@@ -143,6 +143,12 @@ export const pamResourceServiceFactory = ({
 
     const updateDoc: Partial<TPamResources> = {};
 
+    const effectiveGatewayId = gatewayId !== undefined ? gatewayId : resource.gatewayId;
+
+    if (gatewayId !== undefined) {
+      updateDoc.gatewayId = gatewayId;
+    }
+
     if (name !== undefined) {
       updateDoc.name = name;
     }
@@ -151,7 +157,7 @@ export const pamResourceServiceFactory = ({
       const factory = PAM_RESOURCE_FACTORY_MAP[resource.resourceType as PamResource](
         resource.resourceType as PamResource,
         connectionDetails,
-        resource.gatewayId,
+        effectiveGatewayId,
         gatewayV2Service,
         resource.projectId
       );
@@ -179,7 +185,7 @@ export const pamResourceServiceFactory = ({
         const factory = PAM_RESOURCE_FACTORY_MAP[resource.resourceType as PamResource](
           resource.resourceType as PamResource,
           decryptedConnectionDetails,
-          resource.gatewayId,
+          effectiveGatewayId,
           gatewayV2Service,
           resource.projectId
         );

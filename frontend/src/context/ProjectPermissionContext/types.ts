@@ -145,7 +145,7 @@ export enum ProjectPermissionCertificateAuthorityActions {
   Edit = "edit",
   Delete = "delete",
   List = "list",
-  Renew = "renew",
+  IssueCACertificate = "issue-ca-certificate",
   SignIntermediate = "sign-intermediate"
 }
 
@@ -190,10 +190,10 @@ export enum ProjectPermissionSecretScanningConfigActions {
 }
 
 export enum ProjectPermissionSecretEventActions {
-  SubscribeCreated = "subscribe-on-created",
-  SubscribeUpdated = "subscribe-on-updated",
-  SubscribeDeleted = "subscribe-on-deleted",
-  SubscribeImportMutations = "subscribe-on-import-mutations"
+  SubscribeToCreationEvents = "subscribe-to-creation-events",
+  SubscribeToUpdateEvents = "subscribe-to-update-events",
+  SubscribeToDeletionEvents = "subscribe-to-deletion-events",
+  SubscribeToImportMutationEvents = "subscribe-to-import-mutation-events"
 }
 
 export enum ProjectPermissionAuditLogsActions {
@@ -254,6 +254,10 @@ export enum ProjectPermissionApprovalRequestGrantActions {
   Revoke = "revoke"
 }
 
+export enum ProjectPermissionSecretApprovalRequestActions {
+  Read = "read"
+}
+
 export type IdentityManagementSubjectFields = {
   identityId: string;
 };
@@ -278,9 +282,10 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.SecretFolders
   | ProjectPermissionSub.SecretImports
   | ProjectPermissionSub.SecretRotation
-  | ProjectPermissionSub.SecretEvents
+  | ProjectPermissionSub.SecretEventSubscriptions
   | ProjectPermissionSub.AppConnections
-  | ProjectPermissionSub.PamAccounts;
+  | ProjectPermissionSub.PamAccounts
+  | ProjectPermissionSub.McpEndpoints;
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
   [PermissionConditionOperators.$EQ]: "equal to",
@@ -338,6 +343,7 @@ export enum ProjectPermissionSub {
   DynamicSecrets = "dynamic-secrets",
   SecretRollback = "secret-rollback",
   SecretApproval = "secret-approval",
+  SecretApprovalRequest = "secret-approval-request",
   SecretRotation = "secret-rotation",
   Identity = "identity",
   CertificateAuthorities = "certificate-authorities",
@@ -362,7 +368,7 @@ export enum ProjectPermissionSub {
   SecretScanningDataSources = "secret-scanning-data-sources",
   SecretScanningFindings = "secret-scanning-findings",
   SecretScanningConfigs = "secret-scanning-configs",
-  SecretEvents = "secret-events",
+  SecretEventSubscriptions = "secret-event-subscriptions",
   AppConnections = "app-connections",
   PamFolders = "pam-folders",
   PamResources = "pam-resources",
@@ -407,8 +413,9 @@ export type SecretImportSubjectFields = {
 };
 
 export type SecretSyncSubjectFields = {
-  environment: string;
-  secretPath: string;
+  environment?: string;
+  secretPath?: string;
+  connectionId?: string;
 };
 
 export type PkiSyncSubjectFields = {
@@ -433,6 +440,7 @@ export type CertificateProfileSubjectFields = {
 export type SecretRotationSubjectFields = {
   environment: string;
   secretPath: string;
+  connectionId?: string;
 };
 
 export type SshHostSubjectFields = {
@@ -456,6 +464,10 @@ export type PamAccountSubjectFields = {
   resourceName: string;
   accountName: string;
   accountPath: string;
+};
+
+export type McpEndpointSubjectFields = {
+  name: string;
 };
 
 export type ProjectPermissionSet =
@@ -601,8 +613,8 @@ export type ProjectPermissionSet =
   | [
       ProjectPermissionSecretEventActions,
       (
-        | ProjectPermissionSub.SecretEvents
-        | (ForcedSubject<ProjectPermissionSub.SecretEvents> & SecretEventSubjectFields)
+        | ProjectPermissionSub.SecretEventSubscriptions
+        | (ForcedSubject<ProjectPermissionSub.SecretEventSubscriptions> & SecretEventSubjectFields)
       )
     ]
   | [
@@ -624,7 +636,14 @@ export type ProjectPermissionSet =
   | [ProjectPermissionPamSessionActions, ProjectPermissionSub.PamSessions]
   | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
-  | [ProjectPermissionMcpEndpointActions, ProjectPermissionSub.McpEndpoints]
+  | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest]
+  | [
+      ProjectPermissionMcpEndpointActions,
+      (
+        | ProjectPermissionSub.McpEndpoints
+        | (ForcedSubject<ProjectPermissionSub.McpEndpoints> & McpEndpointSubjectFields)
+      )
+    ]
   | [ProjectPermissionActions, ProjectPermissionSub.McpServers]
   | [ProjectPermissionActions, ProjectPermissionSub.McpActivityLogs];
 

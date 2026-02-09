@@ -2,17 +2,16 @@ import * as x509 from "@peculiar/x509";
 
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { ActorType } from "@app/services/auth/auth-type";
 import { isCertChainValid } from "@app/services/certificate/certificate-fns";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { getCaCertChain, getCaCertChains } from "@app/services/certificate-authority/certificate-authority-fns";
-import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
-import { CertPolicyState } from "@app/services/certificate-common/certificate-constants";
-import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
-import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
-import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
+import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
+import { resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
+import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TEstEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -23,9 +22,7 @@ import { TLicenseServiceFactory } from "../../ee/services/license/license-servic
 import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
 
 type TCertificateEstV3ServiceFactoryDep = {
-  internalCertificateAuthorityService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa">;
-  certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest">;
-  certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
+  certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
@@ -33,22 +30,69 @@ type TCertificateEstV3ServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
   estEnrollmentConfigDAL: Pick<TEstEnrollmentConfigDALFactory, "findById">;
+  certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
 };
 
 export type TCertificateEstV3ServiceFactory = ReturnType<typeof certificateEstV3ServiceFactory>;
 
 export const certificateEstV3ServiceFactory = ({
-  internalCertificateAuthorityService,
-  certificatePolicyService,
-  certificatePolicyDAL,
+  certificateV3Service,
   certificateAuthorityCertDAL,
   certificateAuthorityDAL,
   projectDAL,
   kmsService,
   licenseService,
   certificateProfileDAL,
-  estEnrollmentConfigDAL
+  estEnrollmentConfigDAL,
+  certificatePolicyDAL
 }: TCertificateEstV3ServiceFactoryDep) => {
+  const validateEstClientCertificate = async (
+    estConfig: { disableBootstrapCaValidation?: boolean | null; encryptedCaChain?: Buffer | null },
+    projectId: string,
+    sslClientCert: string
+  ) => {
+    if (estConfig.disableBootstrapCaValidation) {
+      return;
+    }
+
+    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+      projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
+
+    const decryptedCaChain = estConfig.encryptedCaChain
+      ? (
+          await kmsDecryptor({
+            cipherTextBlob: estConfig.encryptedCaChain
+          })
+        ).toString()
+      : "";
+
+    const caCerts = extractX509CertFromChain(decryptedCaChain)?.map((cert) => {
+      return new x509.X509Certificate(cert);
+    });
+
+    if (!caCerts) {
+      throw new BadRequestError({ message: "Failed to parse certificate chain" });
+    }
+
+    const leafCertificate = extractX509CertFromChain(decodeURIComponent(sslClientCert))?.[0];
+
+    if (!leafCertificate) {
+      throw new UnauthorizedError({ message: "Missing client certificate" });
+    }
+
+    const certObj = new x509.X509Certificate(leafCertificate);
+    if (!(await isCertChainValid([certObj, ...caCerts]))) {
+      throw new BadRequestError({ message: "Invalid certificate chain" });
+    }
+  };
+
   const simpleEnrollByProfile = async ({
     csr,
     profileId,
@@ -95,91 +139,38 @@ export const certificateEstV3ServiceFactory = ({
       });
     }
 
-    if (!estConfig.disableBootstrapCaValidation) {
-      const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-        projectId: profile.projectId,
-        projectDAL,
-        kmsService
-      });
-
-      const kmsDecryptor = await kmsService.decryptWithKmsKey({
-        kmsId: certificateManagerKmsId
-      });
-
-      const decryptedCaChain = estConfig.encryptedCaChain
-        ? (
-            await kmsDecryptor({
-              cipherTextBlob: estConfig.encryptedCaChain
-            })
-          ).toString()
-        : "";
-
-      const caCerts = extractX509CertFromChain(decryptedCaChain)?.map((cert) => {
-        return new x509.X509Certificate(cert);
-      });
-
-      if (!caCerts) {
-        throw new BadRequestError({ message: "Failed to parse certificate chain" });
-      }
-
-      const leafCertificate = extractX509CertFromChain(decodeURIComponent(sslClientCert))?.[0];
-
-      if (!leafCertificate) {
-        throw new UnauthorizedError({ message: "Missing client certificate" });
-      }
-
-      const certObj = new x509.X509Certificate(leafCertificate);
-      if (!(await isCertChainValid([certObj, ...caCerts]))) {
-        throw new BadRequestError({ message: "Invalid certificate chain" });
-      }
-    }
-
-    const certificateRequest = extractCertificateRequestFromCSR(csr);
-    const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
-    const validationResult = await certificatePolicyService.validateCertificateRequest(
-      profile.certificatePolicyId,
-      mappedCertificateRequest
-    );
-
-    if (!validationResult.isValid) {
-      throw new BadRequestError({
-        message: `Certificate request validation failed: ${validationResult.errors.join(", ")}`
-      });
-    }
-
-    // Fetch the policy to get basicConstraints for CA certificate support
+    await validateEstClientCertificate(estConfig, profile.projectId, sslClientCert);
     const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
-
-    const csrRequestsCA = certificateRequest.basicConstraints?.isCA === true;
-    const policyIsCAState: CertPolicyState =
-      (policy?.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
-
-    if (csrRequestsCA && policyIsCAState === CertPolicyState.DENIED) {
-      throw new BadRequestError({
-        message:
-          "CA certificate issuance is not allowed by this policy. The policy's basicConstraints must be set to 'allowed' or 'required'."
-      });
-    }
-
-    if (policyIsCAState === CertPolicyState.REQUIRED && !csrRequestsCA) {
-      throw new BadRequestError({
-        message:
-          "CA certificate issuance is required by this policy. The CSR must include basicConstraints with CA:TRUE."
-      });
-    }
-
-    const caBasicConstraints = csrRequestsCA ? { maxPathLength: policy?.basicConstraints?.maxPathLength } : undefined;
-
-    const { certificate } = await internalCertificateAuthorityService.signCertFromCa({
-      isInternal: true,
-      caId: profile.caId,
-      csr,
-      isFromProfile: true,
-      // Pass CA settings to the CA service (undefined for leaf certificates, object for CA certificates)
-      basicConstraints: caBasicConstraints
+    const ttl = resolveEffectiveTtl({
+      requestTtl: undefined, // EST doesn't accept TTL in request
+      profileDefaultTtlDays: profile.defaultTtlDays,
+      policyMaxValidity: policy?.validity?.max,
+      flowDefaultTtl: "90d"
     });
 
-    return convertRawCertsToPkcs7([certificate.rawData]);
+    const result = await certificateV3Service.signCertificateFromProfile({
+      actor: ActorType.EST_ACCOUNT,
+      actorId: profileId,
+      actorAuthMethod: null,
+      actorOrgId: project.orgId,
+      profileId,
+      csr,
+      validity: { ttl },
+      enrollmentType: EnrollmentType.EST
+    });
+
+    if (result.status === CertificateRequestStatus.PENDING_APPROVAL) {
+      throw new BadRequestError({
+        message: `Certificate request requires approval. Certificate Request ID: ${result.certificateRequestId}. Manage the approval request in the Infisical UI.`
+      });
+    }
+
+    if (!result.certificate) {
+      throw new BadRequestError({ message: "There was an error issuing the certificate" });
+    }
+
+    const certObj = new x509.X509Certificate(result.certificate);
+    return convertRawCertsToPkcs7([certObj.rawData]);
   };
 
   const simpleReenrollByProfile = async ({
@@ -285,54 +276,37 @@ export const certificateEstV3ServiceFactory = ({
       });
     }
 
-    const certificateRequest = extractCertificateRequestFromCSR(csr);
-    const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
-    const validationResult = await certificatePolicyService.validateCertificateRequest(
-      profile.certificatePolicyId,
-      mappedCertificateRequest
-    );
-
-    if (!validationResult.isValid) {
-      throw new BadRequestError({
-        message: `Certificate request validation failed: ${validationResult.errors.join(", ")}`
-      });
-    }
-
-    // Fetch the policy to get basicConstraints for CA certificate support
     const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
-
-    // Check if the CSR requests CA certificate
-    const csrRequestsCA = certificateRequest.basicConstraints?.isCA === true;
-    const policyIsCAState: CertPolicyState =
-      (policy?.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
-
-    // Validate CA request against policy
-    if (csrRequestsCA && policyIsCAState === CertPolicyState.DENIED) {
-      throw new BadRequestError({
-        message:
-          "CA certificate issuance is not allowed by this policy. The policy's basicConstraints must be set to 'allowed' or 'required'."
-      });
-    }
-
-    if (policyIsCAState === CertPolicyState.REQUIRED && !csrRequestsCA) {
-      throw new BadRequestError({
-        message:
-          "CA certificate issuance is required by this policy. The CSR must include basicConstraints with CA:TRUE."
-      });
-    }
-
-    const caBasicConstraints = csrRequestsCA ? { maxPathLength: policy?.basicConstraints?.maxPathLength } : undefined;
-
-    const { certificate } = await internalCertificateAuthorityService.signCertFromCa({
-      isInternal: true,
-      caId: profile.caId,
-      csr,
-      isFromProfile: true,
-      // Pass CA settings to the CA service (undefined for leaf certificates, object for CA certificates)
-      basicConstraints: caBasicConstraints
+    const ttl = resolveEffectiveTtl({
+      requestTtl: undefined, // EST doesn't accept TTL in request
+      profileDefaultTtlDays: profile.defaultTtlDays,
+      policyMaxValidity: policy?.validity?.max,
+      flowDefaultTtl: "90d"
     });
 
-    return convertRawCertsToPkcs7([certificate.rawData]);
+    const result = await certificateV3Service.signCertificateFromProfile({
+      actor: ActorType.EST_ACCOUNT,
+      actorId: profileId,
+      actorAuthMethod: null,
+      actorOrgId: project.orgId,
+      profileId,
+      csr,
+      validity: { ttl },
+      enrollmentType: EnrollmentType.EST
+    });
+
+    if (result.status === CertificateRequestStatus.PENDING_APPROVAL) {
+      throw new BadRequestError({
+        message: `Certificate re-enrollment request requires approval. Certificate Request ID: ${result.certificateRequestId}. Manage the approval request in the Infisical UI.`
+      });
+    }
+
+    if (!result.certificate) {
+      throw new BadRequestError({ message: "Certificate was not returned from issuance" });
+    }
+
+    const certObj = new x509.X509Certificate(result.certificate);
+    return convertRawCertsToPkcs7([certObj.rawData]);
   };
 
   const getCaCertsByProfile = async ({ profileId }: { profileId: string }) => {

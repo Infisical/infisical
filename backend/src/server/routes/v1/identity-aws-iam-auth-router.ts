@@ -31,7 +31,7 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
         iamHttpRequestMethod: z.string().default("POST").describe(AWS_AUTH.LOGIN.iamHttpRequestMethod),
         iamRequestBody: z.string().describe(AWS_AUTH.LOGIN.iamRequestBody),
         iamRequestHeaders: z.string().describe(AWS_AUTH.LOGIN.iamRequestHeaders),
-        subOrganizationName: slugSchema().optional().describe(AWS_AUTH.LOGIN.subOrganizationName)
+        organizationSlug: slugSchema().optional().describe(AWS_AUTH.LOGIN.organizationSlug)
       }),
       response: {
         200: z.object({

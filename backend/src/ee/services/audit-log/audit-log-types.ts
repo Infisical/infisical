@@ -81,7 +81,8 @@ export type TCreateAuditLogDTO = {
     | UnknownUserActor
     | KmipClientActor
     | AcmeProfileActor
-    | AcmeAccountActor;
+    | AcmeAccountActor
+    | EstAccountActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -327,6 +328,7 @@ export enum EventType {
   SIGN_INTERMEDIATE = "sign-intermediate",
   IMPORT_CA_CERT = "import-certificate-authority-cert",
   GET_CA_CRLS = "get-certificate-authority-crls",
+  GENERATE_CA_CERTIFICATE = "generate-ca-certificate",
   ISSUE_CERT = "issue-cert",
   IMPORT_CERT = "import-cert",
   SIGN_CERT = "sign-cert",
@@ -458,6 +460,8 @@ export enum EventType {
   PKI_SYNC_SYNC_CERTIFICATES = "pki-sync-sync-certificates",
   PKI_SYNC_IMPORT_CERTIFICATES = "pki-sync-import-certificates",
   PKI_SYNC_REMOVE_CERTIFICATES = "pki-sync-remove-certificates",
+  PKI_SYNC_SET_DEFAULT_CERTIFICATE = "pki-sync-set-default-certificate",
+  PKI_SYNC_CLEAR_DEFAULT_CERTIFICATE = "pki-sync-clear-default-certificate",
   OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
   OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user",
   CREATE_KMIP_CLIENT = "create-kmip-client",
@@ -556,6 +560,7 @@ export enum EventType {
   PAM_FOLDER_UPDATE = "pam-folder-update",
   PAM_FOLDER_DELETE = "pam-folder-delete",
   PAM_ACCOUNT_LIST = "pam-account-list",
+  PAM_ACCOUNT_GET = "pam-account-get",
   PAM_ACCOUNT_ACCESS = "pam-account-access",
   PAM_ACCOUNT_CREATE = "pam-account-create",
   PAM_ACCOUNT_UPDATE = "pam-account-update",
@@ -682,6 +687,10 @@ interface AcmeAccountActorMetadata {
   accountId: string;
 }
 
+interface EstAccountActorMetadata {
+  profileId: string;
+}
+
 interface UnknownUserActorMetadata {}
 
 export interface UserActor {
@@ -729,6 +738,10 @@ export interface AcmeAccountActor {
   metadata: AcmeAccountActorMetadata;
 }
 
+export interface EstAccountActor {
+  type: ActorType.EST_ACCOUNT;
+  metadata: EstAccountActorMetadata;
+}
 export type Actor =
   | UserActor
   | ServiceActor
@@ -737,7 +750,8 @@ export type Actor =
   | PlatformActor
   | KmipClientActor
   | AcmeProfileActor
-  | AcmeAccountActor;
+  | AcmeAccountActor
+  | EstAccountActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -752,6 +766,7 @@ interface CreateSubOrganizationEvent {
   type: EventType.CREATE_SUB_ORGANIZATION;
   metadata: {
     name: string;
+    slug: string;
     organizationId: string;
   };
 }
@@ -760,6 +775,7 @@ interface UpdateSubOrganizationEvent {
   type: EventType.UPDATE_SUB_ORGANIZATION;
   metadata: {
     name: string;
+    slug: string;
     organizationId: string;
   };
 }
@@ -2403,6 +2419,16 @@ interface GetCaCrls {
   };
 }
 
+interface GenerateCaCertificate {
+  type: EventType.GENERATE_CA_CERTIFICATE;
+  metadata: {
+    caId: string;
+    dn: string;
+    serialNumber: string;
+    parentCaId?: string;
+  };
+}
+
 interface IssueCert {
   type: EventType.ISSUE_CERT;
   metadata: {
@@ -3461,6 +3487,23 @@ interface PkiSyncRemoveCertificatesEvent {
   };
 }
 
+interface PkiSyncSetDefaultCertificateEvent {
+  type: EventType.PKI_SYNC_SET_DEFAULT_CERTIFICATE;
+  metadata: {
+    pkiSyncId: string;
+    name: string;
+    certificateId: string;
+  };
+}
+
+interface PkiSyncClearDefaultCertificateEvent {
+  type: EventType.PKI_SYNC_CLEAR_DEFAULT_CERTIFICATE;
+  metadata: {
+    pkiSyncId: string;
+    name: string;
+  };
+}
+
 interface OidcGroupMembershipMappingAssignUserEvent {
   type: EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER;
   metadata: {
@@ -4199,6 +4242,14 @@ interface PamAccountListEvent {
   };
 }
 
+interface PamAccountGetEvent {
+  type: EventType.PAM_ACCOUNT_GET;
+  metadata: {
+    accountId: string;
+    accountName: string;
+  };
+}
+
 interface PamAccountAccessEvent {
   type: EventType.PAM_ACCOUNT_ACCESS;
   metadata: {
@@ -4580,7 +4631,9 @@ interface McpEndpointUpdateEvent {
     name?: string;
     description?: string;
     serverIds?: string[];
-    piiFiltering?: boolean;
+    piiRequestFiltering?: boolean;
+    piiResponseFiltering?: boolean;
+    piiEntityTypes?: string;
   };
 }
 
@@ -5060,6 +5113,7 @@ export type Event =
   | SignIntermediate
   | ImportCaCert
   | GetCaCrls
+  | GenerateCaCertificate
   | IssueCert
   | ImportCert
   | SignCert
@@ -5183,6 +5237,8 @@ export type Event =
   | PkiSyncSyncCertificatesEvent
   | PkiSyncImportCertificatesEvent
   | PkiSyncRemoveCertificatesEvent
+  | PkiSyncSetDefaultCertificateEvent
+  | PkiSyncClearDefaultCertificateEvent
   | OidcGroupMembershipMappingAssignUserEvent
   | OidcGroupMembershipMappingRemoveUserEvent
   | CreateKmipClientEvent
@@ -5269,6 +5325,7 @@ export type Event =
   | PamFolderUpdateEvent
   | PamFolderDeleteEvent
   | PamAccountListEvent
+  | PamAccountGetEvent
   | PamAccountAccessEvent
   | PamAccountCreateEvent
   | PamAccountUpdateEvent

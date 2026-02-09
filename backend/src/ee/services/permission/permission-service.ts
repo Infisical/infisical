@@ -10,7 +10,8 @@ import {
   OrganizationActionScope,
   OrgMembershipRole,
   ProjectMembershipRole,
-  ServiceTokenScopes
+  ServiceTokenScopes,
+  TProjects
 } from "@app/db/schemas";
 import {
   cryptographicOperatorPermissions,
@@ -255,6 +256,15 @@ export const permissionServiceFactory = ({
     };
   };
 
+  const $checkProjectEnforcement = (projectDetails: TProjects) => {
+    return (enforcement: "enforceEncryptedSecretManagerSecretMetadata") => {
+      if (enforcement === "enforceEncryptedSecretManagerSecretMetadata") {
+        return Boolean(projectDetails.enforceEncryptedSecretManagerSecretMetadata);
+      }
+      return false;
+    };
+  };
+
   const getServiceTokenProjectPermission = async ({
     serviceTokenId,
     projectId,
@@ -290,7 +300,8 @@ export const permissionServiceFactory = ({
     return {
       permission: buildServiceTokenProjectPermission(scopes, serviceToken.permissions),
       memberships: [],
-      hasRole: () => false
+      hasRole: () => false,
+      hasProjectEnforcement: $checkProjectEnforcement(serviceTokenProject)
     };
   };
 
@@ -438,7 +449,8 @@ export const permissionServiceFactory = ({
     return {
       permission,
       memberships: permissionData,
-      hasRole
+      hasRole,
+      hasProjectEnforcement: $checkProjectEnforcement(projectDetails)
     };
   };
 
@@ -484,6 +496,7 @@ export const permissionServiceFactory = ({
       return {
         permission,
         id: userProjectPermission.userId,
+        membershipId: userProjectPermission.id,
         name: userProjectPermission.username
       };
     });
@@ -529,6 +542,7 @@ export const permissionServiceFactory = ({
       return {
         permission,
         id: identityProjectPermission.identityId,
+        membershipId: identityProjectPermission.id,
         name: identityProjectPermission.username
       };
     });
@@ -546,6 +560,7 @@ export const permissionServiceFactory = ({
       return {
         permission,
         id: groupProjectPermission.groupId,
+        membershipId: groupProjectPermission.id,
         name: groupProjectPermission.username
       };
     });

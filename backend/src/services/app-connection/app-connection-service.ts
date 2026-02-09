@@ -69,10 +69,14 @@ import { ValidateCamundaConnectionCredentialsSchema } from "./camunda";
 import { camundaConnectionService } from "./camunda/camunda-connection-service";
 import { ValidateChecklyConnectionCredentialsSchema } from "./checkly";
 import { checklyConnectionService } from "./checkly/checkly-connection-service";
+import { ValidateCircleCIConnectionCredentialsSchema } from "./circleci";
+import { circleciConnectionService } from "./circleci/circleci-connection-service";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
 import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-service";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
+import { ValidateDbtConnectionCredentialsSchema } from "./dbt";
+import { dbtConnectionService } from "./dbt/dbt-connection-service";
 import { ValidateDigitalOceanConnectionCredentialsSchema } from "./digital-ocean";
 import { digitalOceanAppPlatformConnectionService } from "./digital-ocean/digital-ocean-connection-service";
 import { ValidateDNSMadeEasyConnectionCredentialsSchema } from "./dns-made-easy/dns-made-easy-connection-schema";
@@ -107,12 +111,14 @@ import { ValidateOctopusDeployConnectionCredentialsSchema } from "./octopus-depl
 import { octopusDeployConnectionService } from "./octopus-deploy/octopus-deploy-connection-service";
 import { ValidateOktaConnectionCredentialsSchema } from "./okta";
 import { oktaConnectionService } from "./okta/okta-connection-service";
+import { ValidateOpenRouterConnectionCredentialsSchema } from "./open-router";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { ValidateRailwayConnectionCredentialsSchema } from "./railway";
 import { railwayConnectionService } from "./railway/railway-connection-service";
 import { ValidateRedisConnectionCredentialsSchema } from "./redis";
 import { ValidateRenderConnectionCredentialsSchema } from "./render/render-connection-schema";
 import { renderConnectionService } from "./render/render-connection-service";
+import { ValidateSmbConnectionCredentialsSchema } from "./smb";
 import { ValidateSshConnectionCredentialsSchema } from "./ssh";
 import { ValidateSupabaseConnectionCredentialsSchema } from "./supabase";
 import { supabaseConnectionService } from "./supabase/supabase-connection-service";
@@ -183,11 +189,15 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Netlify]: ValidateNetlifyConnectionCredentialsSchema,
   [AppConnection.Northflank]: ValidateNorthflankConnectionCredentialsSchema,
   [AppConnection.Okta]: ValidateOktaConnectionCredentialsSchema,
+  [AppConnection.OpenRouter]: ValidateOpenRouterConnectionCredentialsSchema,
   [AppConnection.Redis]: ValidateRedisConnectionCredentialsSchema,
   [AppConnection.MongoDB]: ValidateMongoDBConnectionCredentialsSchema,
   [AppConnection.Chef]: ValidateChefConnectionCredentialsSchema,
   [AppConnection.OctopusDeploy]: ValidateOctopusDeployConnectionCredentialsSchema,
-  [AppConnection.SSH]: ValidateSshConnectionCredentialsSchema
+  [AppConnection.SSH]: ValidateSshConnectionCredentialsSchema,
+  [AppConnection.Dbt]: ValidateDbtConnectionCredentialsSchema,
+  [AppConnection.SMB]: ValidateSmbConnectionCredentialsSchema,
+  [AppConnection.CircleCI]: ValidateCircleCIConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -905,6 +915,8 @@ export const appConnectionServiceFactory = ({
     okta: oktaConnectionService(connectAppConnectionById),
     laravelForge: laravelForgeConnectionService(connectAppConnectionById),
     chef: chefConnectionService(connectAppConnectionById, licenseService),
-    octopusDeploy: octopusDeployConnectionService(connectAppConnectionById)
+    octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),
+    dbt: dbtConnectionService(connectAppConnectionById),
+    circleci: circleciConnectionService(connectAppConnectionById)
   };
 };

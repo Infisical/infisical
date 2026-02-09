@@ -117,7 +117,11 @@ export const AzureSqlDatabaseProvider = ({
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretAzureSqlDBSchema.parseAsync(inputs);
 
-    const [hostIp] = await verifyHostInputValidity(providerInputs.host, Boolean(providerInputs.gatewayId));
+    const [hostIp] = await verifyHostInputValidity({
+      host: providerInputs.host,
+      isGateway: Boolean(providerInputs.gatewayId),
+      isDynamicSecret: true
+    });
     validateHandlebarTemplate("Azure SQL master creation", providerInputs.masterCreationStatement, {
       allowedExpressions: (val) => ["username", "password", "expiration", "database"].includes(val)
     });

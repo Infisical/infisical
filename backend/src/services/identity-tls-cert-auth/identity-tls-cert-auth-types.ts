@@ -4,7 +4,7 @@ import { TProjectPermission } from "@app/lib/types";
 export type TLoginTlsCertAuthDTO = {
   identityId: string;
   clientCertificate: string;
-  subOrganizationName?: string;
+  organizationSlug?: string;
 };
 
 export type TAttachTlsCertAuthDTO = {

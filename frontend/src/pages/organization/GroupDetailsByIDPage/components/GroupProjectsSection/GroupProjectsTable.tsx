@@ -3,7 +3,7 @@ import { twMerge } from "tailwind-merge";
 
 import { Lottie } from "@app/components/v2";
 import {
-  UnstableButton,
+  Button,
   UnstableEmpty,
   UnstableEmptyContent,
   UnstableEmptyDescription,
@@ -146,7 +146,7 @@ export const GroupProjectsTable = ({ groupId, groupSlug, handlePopUpOpen }: Prop
             </UnstableEmptyDescription>
             {!debouncedSearch && (
               <UnstableEmptyContent>
-                <UnstableButton
+                <Button
                   variant={isSubOrganization ? "sub-org" : "org"}
                   size="xs"
                   onClick={() =>
@@ -158,7 +158,7 @@ export const GroupProjectsTable = ({ groupId, groupSlug, handlePopUpOpen }: Prop
                 >
                   <PlusIcon />
                   Add to Project
-                </UnstableButton>
+                </Button>
               </UnstableEmptyContent>
             )}
           </UnstableEmptyHeader>

@@ -8,7 +8,15 @@ import { Logger } from "pino";
 
 import { applyJitter, delay } from "@app/lib/delay";
 
+import {
+  acquireSanitizedSchemaLock,
+  createSanitizedSchema,
+  dropSanitizedSchema,
+  grantSanitizedSchemaAccess
+} from "./db/sanitized-schema";
 import { PgSqlLock } from "./keystore/keystore";
+
+const SANITIZED_SCHEMA_ERROR = "SANITIZED_SCHEMA_ERROR";
 
 dotenv.config();
 
@@ -284,6 +292,8 @@ const withStartupLock = async (db: Knex, logger: Logger, doMigrations: () => Pro
 };
 
 export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs) => {
+  const generateSanitizedSchema = process.env.GENERATE_SANITIZED_SCHEMA === "true";
+
   try {
     // akhilmhdh(Feb 10 2025): 2 years  from now remove this
     if (isProduction) {
@@ -315,6 +325,28 @@ export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs
     ); // db.length - code.length
     if (!shouldRunMigration) {
       logger.info("No migrations pending: Skipping migration process.");
+
+      if (generateSanitizedSchema) {
+        const sanitizedSchemaRole = process.env.SANITIZED_SCHEMA_ROLE;
+        try {
+          await applicationDb.transaction(async (tx) => {
+            const isLocked = await acquireSanitizedSchemaLock({ db: tx, logger });
+            if (isLocked) {
+              await dropSanitizedSchema({ db: tx, logger });
+              await createSanitizedSchema({ db: tx, logger });
+              if (sanitizedSchemaRole) {
+                await grantSanitizedSchemaAccess({ db: tx, logger, role: sanitizedSchemaRole });
+              }
+              logger.info("Finished sanitized schema generation.");
+            }
+          });
+        } catch (err) {
+          logger.error(
+            { err, errorId: SANITIZED_SCHEMA_ERROR, phase: "recreate" },
+            `${SANITIZED_SCHEMA_ERROR}: Failed to recreate sanitized schema`
+          );
+        }
+      }
       return;
     }
 
@@ -348,9 +380,27 @@ export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs
 
     // Use startup lock to ensure only one instance runs migrations at a time
     await withStartupLock(applicationDb, logger, async () => {
+      if (generateSanitizedSchema) await dropSanitizedSchema({ db: applicationDb, logger });
       await applicationDb.migrate.latest(migrationConfig);
     });
     logger.info("Finished application migrations.");
+
+    // we create the sanitized schema after migrations to avoid conflicts with the migrations
+    if (generateSanitizedSchema) {
+      const sanitizedSchemaRole = process.env.SANITIZED_SCHEMA_ROLE;
+      try {
+        await createSanitizedSchema({ db: applicationDb, logger });
+        if (sanitizedSchemaRole) {
+          await grantSanitizedSchemaAccess({ db: applicationDb, logger, role: sanitizedSchemaRole });
+        }
+        logger.info("Finished sanitized schema generation.");
+      } catch (err) {
+        logger.error(
+          { err, errorId: SANITIZED_SCHEMA_ERROR, phase: "create" },
+          `${SANITIZED_SCHEMA_ERROR}: Failed to create sanitized schema after migrations`
+        );
+      }
+    }
   } catch (err) {
     logger.error(err, "Boot up migration failed");
     process.exit(1);

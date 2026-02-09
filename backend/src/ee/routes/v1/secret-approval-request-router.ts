@@ -7,7 +7,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedTagSchema, secretRawSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { ResourceMetadataSchema } from "@app/services/resource-metadata/resource-metadata-schema";
+import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 
 const approvalRequestUser = z.object({ userId: z.string().nullable().optional() }).merge(
   UsersSchema.pick({
@@ -337,7 +337,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
                   isRotatedSecret: z.boolean().optional(),
                   op: z.string(),
                   tags: SanitizedTagSchema.array().optional(),
-                  secretMetadata: ResourceMetadataSchema.nullish(),
+                  secretMetadata: ResourceMetadataWithEncryptionSchema.nullish(),
                   secret: z
                     .object({
                       id: z.string(),
@@ -358,7 +358,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
                       secretValueHidden: z.boolean(),
                       secretComment: z.string().optional(),
                       tags: SanitizedTagSchema.array().optional(),
-                      secretMetadata: ResourceMetadataSchema.nullish(),
+                      secretMetadata: ResourceMetadataWithEncryptionSchema.nullish(),
                       skipMultilineEncoding: z.boolean().nullish()
                     })
                     .optional()

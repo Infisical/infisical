@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { subject } from "@casl/ability";
 import { faEdit } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
@@ -7,9 +6,9 @@ import { format } from "date-fns";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { GenericFieldLabel, SecretSyncStatusBadge } from "@app/components/secret-syncs";
 import { IconButton } from "@app/components/v2";
-import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { SecretSyncStatus, TSecretSync } from "@app/hooks/api/secretSyncs";
+import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 
 type Props = {
   secretSync: TSecretSync;
@@ -17,8 +16,7 @@ type Props = {
 };
 
 export const SecretSyncDetailsSection = ({ secretSync, onEditDetails }: Props) => {
-  const { syncStatus, lastSyncMessage, lastSyncedAt, name, description, environment, folder } =
-    secretSync;
+  const { syncStatus, lastSyncMessage, lastSyncedAt, name, description } = secretSync;
 
   const failureMessage = useMemo(() => {
     if (syncStatus === SecretSyncStatus.Failed) {
@@ -34,13 +32,7 @@ export const SecretSyncDetailsSection = ({ secretSync, onEditDetails }: Props) =
     return null;
   }, [syncStatus, lastSyncMessage]);
 
-  const permissionSubject =
-    environment && folder
-      ? subject(ProjectPermissionSub.SecretSyncs, {
-          environment: environment.slug,
-          secretPath: folder.path
-        })
-      : ProjectPermissionSub.SecretSyncs;
+  const permissionSubject = getSecretSyncPermissionSubject(secretSync);
 
   return (
     <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
@@ -62,7 +54,9 @@ export const SecretSyncDetailsSection = ({ secretSync, onEditDetails }: Props) =
       </div>
       <div>
         <div className="space-y-3">
-          <GenericFieldLabel label="Name">{name}</GenericFieldLabel>
+          <GenericFieldLabel label="Name" truncate>
+            {name}
+          </GenericFieldLabel>
           <GenericFieldLabel label="Description">{description}</GenericFieldLabel>
           {syncStatus && (
             <GenericFieldLabel label="Status">
