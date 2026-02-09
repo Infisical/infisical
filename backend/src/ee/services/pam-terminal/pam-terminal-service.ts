@@ -76,7 +76,7 @@ export const pamTerminalServiceFactory = ({
     }
 
     if (account.projectId !== projectId) {
-      throw new BadRequestError({ message: "Account does not belong to the specified project" });
+      throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
 
     const resource = await pamResourceDAL.findById(account.resourceId);
