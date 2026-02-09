@@ -311,11 +311,11 @@ data:
       auth:
         type: "kubernetes"
         config:
-          identity-id: "<your-machine-identity-id>"
+          identity-id: "YOUR_MACHINE_IDENTITY_ID"
     templates:
       - destination-path: "/infisical/secrets"
         template-content: |
-          {{- with secret "<your-project-id>" "dev" "/" }}
+          {{- with secret "YOUR_PROJECT_ID" "dev" "/" }}
           {{- range . }}
           {{ .Key }}={{ .Value }}
           {{- end }}
@@ -339,12 +339,12 @@ data:
       auth:
         type: "kubernetes"
         config:
-          identity-id: "<your-machine-identity-id>"
+          identity-id: "YOUR_MACHINE_IDENTITY_ID"
     templates:
       - destination-path: "/infisical/secrets.json"
         template-content: |
           {
-          {{- with secret "<your-project-id>" "dev" "/" }}
+          {{- with secret "YOUR_PROJECT_ID" "dev" "/" }}
           {{- range $i, $secret := . }}
           {{- if $i }},{{ end }}
             "{{ .Key }}": "{{ .Value }}"
@@ -370,11 +370,11 @@ data:
       auth:
         type: "kubernetes"
         config:
-          identity-id: "<your-machine-identity-id>"
+          identity-id: "YOUR_MACHINE_IDENTITY_ID"
     templates:
       - destination-path: "/infisical/api-key"
         template-content: |
-          {{- with getSecretByName "<your-project-id>" "dev" "/" "API_KEY" }}
+          {{- with getSecretByName "YOUR_PROJECT_ID" "dev" "/" "API_KEY" }}
           {{ .Value }}
           {{- end }}
 ```
@@ -705,18 +705,18 @@ data:
       auth:
         type: "kubernetes"
         config:
-          identity-id: "<your-machine-identity-id>"
+          identity-id: "YOUR_MACHINE_IDENTITY_ID"
     templates:
       - destination-path: "/infisical/secrets"
         template-content: |
-          {{- with secret "<your-project-id>" "dev" "/" }}
+          {{- with secret "YOUR_PROJECT_ID" "dev" "/" }}
           {{- range . }}
           {{ .Key }}={{ .Value }}
           {{- end }}
           {{- end }}
       - destination-path: "/infisical/db-creds"
         template-content: |
-          {{- with dynamic_secret "<your-project-slug>" "dev" "/" "pg-dynamic-creds" "1h" }}
+          {{- with dynamic_secret "YOUR_PROJECT_SLUG" "dev" "/" "pg-dynamic-creds" "1h" }}
           DB_USERNAME={{ .DB_USERNAME }}
           DB_PASSWORD={{ .DB_PASSWORD }}
           {{- end }}
