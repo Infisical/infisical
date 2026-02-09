@@ -383,8 +383,8 @@ data:
 </Tabs>
 
 Replace the placeholder values:
-- `<your-machine-identity-id>`: The Identity ID you copied in Step 2.
-- `<your-project-id>`: Found in your Infisical project under **Settings > General**.
+- **your-machine-identity-id**: The Identity ID you copied in Step 2.
+- **your-project-id**: Found in your Infisical project under **Settings > General**.
 
 <Note>
   If you are using a self-hosted Infisical instance, change the `infisical.address` field to your instance's URL.
@@ -771,7 +771,7 @@ helm uninstall $(helm list --short | grep infisical-agent-injector)
     If your pod is stuck in `Init:0/1` state, the Agent init container is failing. Check its logs:
 
     ```bash
-    kubectl logs <pod-name> -c infisical-agent-init
+    kubectl logs POD_NAME -c infisical-agent-init
     ```
 
     Common causes:
