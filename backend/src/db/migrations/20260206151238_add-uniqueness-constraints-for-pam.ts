@@ -38,10 +38,10 @@ export async function up(knex: Knex): Promise<void> {
     const hasResourceId = await knex.schema.hasColumn(TableName.PamAccount, "resourceId");
 
     if (hasName && hasResourceId) {
-      // Drop the old project/folder-level uniqueness constraints from the original PAM migration,
+      // Drop the old project/folder-level unique indexes from the original PAM migration,
       // since accounts should only be unique within a resource, not across the entire project.
-      await dropConstraintIfExists(TableName.PamAccount, "uidx_pam_account_children_name", knex);
-      await dropConstraintIfExists(TableName.PamAccount, "uidx_pam_account_root_name", knex);
+      await knex.raw("DROP INDEX IF EXISTS ??", ["uidx_pam_account_children_name"]);
+      await knex.raw("DROP INDEX IF EXISTS ??", ["uidx_pam_account_root_name"]);
 
       // Rename any duplicate accounts (keep oldest, append random suffix to newer ones)
       await knex.raw(`
