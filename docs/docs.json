@@ -440,6 +440,7 @@
                       "documentation/guides/python",
                       "documentation/guides/nextjs-vercel",
                       "documentation/guides/kubernetes-operator",
+                      "documentation/guides/kubernetes-agent-injector",
                       "documentation/guides/microsoft-power-apps"
                     ]
                   }
