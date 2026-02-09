@@ -1,10 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { AxiosError } from "axios";
-
 import { request } from "@app/lib/config/request";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import {
-  FlyioGraphQLError,
   FlyioGraphQLResponse,
   TDeleteFlyioVariable,
   TFlyioListVariables,
@@ -18,24 +14,6 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 
-const assertNoGraphQLErrors = <T>(response: FlyioGraphQLResponse<T>) => {
-  if (response.errors?.length) {
-    const messages = response.errors.map((e) => e.message).join("; ");
-    throw new SecretSyncError({ message: `Fly.io API error: ${messages}` });
-  }
-};
-
-const extractErrorMessage = (error: unknown): string => {
-  if (error instanceof AxiosError && error.response?.data) {
-    const data = error.response.data as { message?: string; error?: string; errors?: FlyioGraphQLError[] };
-    if (typeof data.message === "string") return data.message;
-    if (typeof data.error === "string") return data.error;
-    if (Array.isArray(data.errors) && data.errors[0]?.message) return data.errors[0].message;
-    if (typeof data === "object") return JSON.stringify(data);
-  }
-  return error instanceof Error ? error.message : String(error);
-};
-
 const getAppName = async ({
   accessToken,
   appId,
@@ -44,10 +22,10 @@ const getAppName = async ({
   accessToken: string;
   appId: string;
   appName?: string;
-}): Promise<string> => {
+}) => {
   if (appName) return appName;
 
-  const response = await request.post<FlyioGraphQLResponse<{ app: { name: string } }>>(
+  const { data } = await request.post<{ data: { app: { name: string } } }>(
     IntegrationUrls.FLYIO_API_URL,
     {
       query: "query GetAppName($appId: String!) { app(id: $appId) { name } }",
@@ -62,22 +40,58 @@ const getAppName = async ({
     }
   );
 
-  const body = response.data as FlyioGraphQLResponse<{ app: { name: string } }>;
-  assertNoGraphQLErrors(body);
-  if (!body.data?.app?.name) {
-    throw new SecretSyncError({ message: "Fly.io API returned invalid response: missing app name" });
-  }
-  return body.data.app.name;
+  return data.data.app.name;
 };
 
-/** Machine shape from Fly.io Machines API list response (id only needed for restart) */
-type FlyioMachine = { id: string };
+const FLYIO_MACHINE_WAIT_TIMEOUT_SECONDS = 60;
+
+type TFlyioMachineListItem = {
+  id: string;
+  state?: string;
+  region?: string;
+  config?: Record<string, unknown>;
+};
+
+/** GET /apps/{name}/machines can return a raw array or { machines: [], next_cursor?: string } */
+function parseMachinesListResponse(data: unknown): TFlyioMachineListItem[] {
+  if (Array.isArray(data)) return data as TFlyioMachineListItem[];
+  if (
+    data &&
+    typeof data === "object" &&
+    "machines" in data &&
+    Array.isArray((data as { machines: unknown }).machines)
+  ) {
+    return (data as { machines: TFlyioMachineListItem[] }).machines;
+  }
+  return [];
+}
+
+/** Fetch all machines for the app, handling list shape and pagination */
+async function listAllMachines(
+  machinesApiBase: string,
+  headers: Record<string, string>
+): Promise<TFlyioMachineListItem[]> {
+  const all: TFlyioMachineListItem[] = [];
+  let cursor: string | undefined;
+  do {
+    const url = cursor ? `${machinesApiBase}?cursor=${encodeURIComponent(cursor)}` : machinesApiBase;
+    // eslint-disable-next-line no-await-in-loop -- pagination requires sequential requests
+    const { data: raw } = await request.get<unknown>(url, { headers });
+    const page = parseMachinesListResponse(raw);
+    all.push(...page);
+    const obj = raw && typeof raw === "object" && "next_cursor" in raw ? (raw as { next_cursor?: string }) : null;
+    cursor = obj?.next_cursor;
+  } while (cursor);
+  return all;
+}
 
 /**
- * Restarts app machines so they pick up newly set secrets.
- * Uses Machines API restart endpoint (fire-and-forget, no wait).
+ * Deploy secrets to machines: update each machine with the new secrets version so they
+ * reboot and pick up secrets, and Fly marks the release as "deployed". Uses GET per
+ * machine then POST update with full config + min_secrets_version so we never send
+ * partial config (which can leave a machine stopped or broken).
  */
-const restartAppMachinesForSecrets = async (secretSync: TFlyioSyncWithCredentials) => {
+const deployAppMachines = async (secretSync: TFlyioSyncWithCredentials, releaseVersion: number | undefined) => {
   const {
     connection: {
       credentials: { accessToken }
@@ -85,28 +99,7 @@ const restartAppMachinesForSecrets = async (secretSync: TFlyioSyncWithCredential
     destinationConfig: { appId, appName }
   } = secretSync;
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- accessToken/appId/appName from TFlyioSyncWithCredentials may be inferred as any by zod
   const appNameResolved = await getAppName({ accessToken, appId, appName });
-
-  let machines: FlyioMachine[];
-  try {
-    const { data } = await request.get<FlyioMachine[]>(
-      `${IntegrationUrls.FLYIO_MACHINES_API_URL}/apps/${appNameResolved}/machines`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          Accept: "application/json"
-        }
-      }
-    );
-    machines = Array.isArray(data) ? data : [];
-  } catch (error) {
-    throw new SecretSyncError({
-      message: `Failed to list Fly.io machines: ${extractErrorMessage(error)}`,
-      error
-    });
-  }
 
   const headers = {
     Authorization: `Bearer ${accessToken}`,
@@ -114,25 +107,50 @@ const restartAppMachinesForSecrets = async (secretSync: TFlyioSyncWithCredential
     Accept: "application/json"
   };
 
-  for (const machine of machines) {
-    try {
-      // eslint-disable-next-line no-await-in-loop -- sequential restart
-      await request.post(
-        `${IntegrationUrls.FLYIO_MACHINES_API_URL}/apps/${appNameResolved}/machines/${machine.id}/restart`,
-        {},
-        { headers }
-      );
-    } catch (error) {
-      throw new SecretSyncError({
-        message: `Failed to restart Fly.io machine ${machine.id}: ${extractErrorMessage(error)}`,
-        error
-      });
+  const machinesApiBase = `${IntegrationUrls.FLYIO_MACHINES_API_URL}/apps/${appNameResolved}/machines`;
+
+  const machineList = await listAllMachines(machinesApiBase, headers);
+  const toUpdate = machineList.filter((m) => m.state !== "destroyed" && m.state !== "destroying");
+  if (toUpdate.length === 0) return;
+
+  for (const item of toUpdate) {
+    // eslint-disable-next-line no-await-in-loop -- update then wait started per machine to avoid leaving any down
+    const { data: machine } = await request.get<{
+      id: string;
+      state: string;
+      region: string;
+      config: Record<string, unknown>;
+    }>(`${machinesApiBase}/${item.id}`, { headers });
+
+    const body: {
+      config: Record<string, unknown>;
+      region: string;
+      skip_launch?: boolean;
+      min_secrets_version?: number;
+    } = {
+      config: machine.config ?? {},
+      region: machine.region
+    };
+    if (releaseVersion != null) {
+      body.min_secrets_version = releaseVersion;
     }
+    body.skip_launch = false;
+
+    // eslint-disable-next-line no-await-in-loop -- update then wait started per machine to avoid leaving any down
+    await request.post(`${machinesApiBase}/${machine.id}`, body, { headers });
+
+    // eslint-disable-next-line no-await-in-loop -- wait for this machine to be started before next
+    await request.get(
+      `${machinesApiBase}/${machine.id}/wait?state=started&timeout=${FLYIO_MACHINE_WAIT_TIMEOUT_SECONDS}`,
+      { headers }
+    );
   }
 };
 
 const listFlyioSecrets = async ({ accessToken, appId }: TFlyioListVariables) => {
-  const response = await request.post<FlyioGraphQLResponse<{ app: { secrets: TFlyioSecret[] } }>>(
+  // Keep using GraphQL for listing — the Machines REST API list endpoint
+  // has known issues (returns empty arrays in some cases).
+  const { data } = await request.post<{ data: { app: { secrets: TFlyioSecret[] } } }>(
     IntegrationUrls.FLYIO_API_URL,
     {
       query: "query GetAppSecrets($appId: String!) { app(id: $appId) { id name secrets { name createdAt } } }",
@@ -147,17 +165,23 @@ const listFlyioSecrets = async ({ accessToken, appId }: TFlyioListVariables) => 
     }
   );
 
-  const body = response.data as FlyioGraphQLResponse<{ app: { secrets: TFlyioSecret[] } }>;
-  assertNoGraphQLErrors(body);
-  return (body.data?.app?.secrets ?? []).map((s) => s.name);
+  return data.data.app.secrets.map((s) => s.name);
 };
 
+// App secrets (NAME=VALUE env vars) must be set via the GraphQL API. The
+// Machines API POST /apps/{name}/secrets is for KMS/secret-key types, not
+// plain app secrets — see https://community.fly.io/t/how-to-create-secrets-via-the-machine-api/24603
 const putFlyioSecrets = async ({ accessToken, appId, secretMap }: TPutFlyioVariable) => {
-  const response = await request.post<FlyioGraphQLResponse<{ setSecrets?: unknown }>>(
+  const response = await request.post<FlyioGraphQLResponse<{ setSecrets?: { release?: { version: number } } }>>(
     IntegrationUrls.FLYIO_API_URL,
     {
-      query:
-        "mutation SetAppSecrets($appId: ID!, $secrets: [SecretInput!]!) { setSecrets(input: { appId: $appId, secrets: $secrets }) { app { name } release { version } } }",
+      query: `
+        mutation SetAppSecrets($appId: ID!, $secrets: [SecretInput!]!) {
+          setSecrets(input: { appId: $appId, secrets: $secrets }) {
+            release { version }
+          }
+        }
+      `,
       variables: {
         appId,
         secrets: Object.entries(secretMap).map(([key, { value }]) => ({ key, value }))
@@ -166,36 +190,45 @@ const putFlyioSecrets = async ({ accessToken, appId, secretMap }: TPutFlyioVaria
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        Accept: "application/json"
       }
     }
   );
 
-  const body = response.data as FlyioGraphQLResponse;
-  assertNoGraphQLErrors(body);
+  const body = response.data as FlyioGraphQLResponse<{
+    setSecrets?: { release?: { version: number } };
+  }>;
+  if (body.errors?.length) {
+    const messages = body.errors.map((e) => e.message).join("; ");
+    throw new SecretSyncError({ message: `Fly.io setSecrets failed: ${messages}` });
+  }
+  return body.data?.setSecrets?.release?.version;
 };
 
+// Use the Machines REST API (DELETE /apps/{name}/secrets/{key}) instead of
+// GraphQL. Returns the updated secrets version.
 const deleteFlyioSecrets = async ({ accessToken, appId, keys }: TDeleteFlyioVariable) => {
-  const response = await request.post<FlyioGraphQLResponse<{ unsetSecrets?: unknown }>>(
-    IntegrationUrls.FLYIO_API_URL,
-    {
-      query:
-        "mutation UnsetAppSecrets($appId: ID!, $keys: [String!]!) { unsetSecrets(input: { appId: $appId, keys: $keys }) { app { name } release { version } } }",
-      variables: {
-        appId,
-        keys
-      }
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json"
-      }
-    }
-  );
+  if (keys.length === 0) return;
 
-  const body = response.data as FlyioGraphQLResponse;
-  assertNoGraphQLErrors(body);
+  const appName = await getAppName({ accessToken, appId });
+
+  let lastVersion: number | undefined;
+  for (const key of keys) {
+    // eslint-disable-next-line no-await-in-loop -- sequential deletes to capture last Version
+    const { data } = await request.delete<{ Version: number }>(
+      `${IntegrationUrls.FLYIO_MACHINES_API_URL}/apps/${appName}/secrets/${key}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+    lastVersion = data.Version;
+  }
+
+  return lastVersion;
 };
 
 export const FlyioSyncFns = {
@@ -208,11 +241,11 @@ export const FlyioSyncFns = {
 
     const { accessToken } = connection.credentials;
 
+    let releaseVersion: number | undefined;
     try {
-      await putFlyioSecrets({ accessToken, appId, secretMap });
+      releaseVersion = await putFlyioSecrets({ accessToken, appId, secretMap });
     } catch (error) {
       throw new SecretSyncError({
-        message: `Failed to sync secrets to Fly.io: ${extractErrorMessage(error)}`,
         error
       });
     }
@@ -229,14 +262,13 @@ export const FlyioSyncFns = {
         await deleteFlyioSecrets({ accessToken, appId, keys });
       } catch (error) {
         throw new SecretSyncError({
-          message: `Failed to remove secrets from Fly.io: ${extractErrorMessage(error)}`,
           error
         });
       }
     }
 
     if (secretSync.syncOptions.autoRedeploy) {
-      await restartAppMachinesForSecrets(secretSync);
+      await deployAppMachines(secretSync, releaseVersion);
     }
   },
   removeSecrets: async (secretSync: TFlyioSyncWithCredentials, secretMap: TSecretMap) => {
@@ -251,17 +283,17 @@ export const FlyioSyncFns = {
 
     const keys = secrets.filter((secret) => secret in secretMap);
 
+    let releaseVersion: number | undefined;
     try {
-      await deleteFlyioSecrets({ accessToken, appId, keys });
+      releaseVersion = await deleteFlyioSecrets({ accessToken, appId, keys });
     } catch (error) {
       throw new SecretSyncError({
-        message: `Failed to remove secrets from Fly.io: ${extractErrorMessage(error)}`,
         error
       });
     }
 
     if (secretSync.syncOptions.autoRedeploy) {
-      await restartAppMachinesForSecrets(secretSync);
+      await deployAppMachines(secretSync, releaseVersion);
     }
   },
   getSecrets: async (secretSync: TFlyioSyncWithCredentials) => {
