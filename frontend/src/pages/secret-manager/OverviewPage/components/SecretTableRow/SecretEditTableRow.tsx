@@ -700,7 +700,7 @@ export const SecretEditTableRow = ({
               <PopoverContent
                 onCloseAutoFocus={(e) => e.preventDefault()}
                 className="w-[420px]"
-                align="end"
+                side="left"
               >
                 {secretId && (
                   <SecretReminderForm
