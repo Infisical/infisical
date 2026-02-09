@@ -86,7 +86,9 @@ const redactedKeys = [
   "password",
   "config",
   "bindPass",
-  "bindDN"
+  "bindDN",
+  "x-vault-token",
+  "X-VAULT-TOKEN"
 ];
 
 const UNKNOWN_REQUEST_ID = "UNKNOWN_REQUEST_ID";
