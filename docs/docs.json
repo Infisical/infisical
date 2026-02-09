@@ -732,7 +732,14 @@
                       "documentation/platform/pki/enrollment-methods/est"
                     ]
                   },
-                  "documentation/platform/pki/alerting",
+                  {
+                    "group": "Alerting",
+                    "pages": [
+                      "documentation/platform/pki/alerting/overview",
+                      "documentation/platform/pki/alerting/webhook-alerts",
+                      "documentation/platform/pki/alerting/slack-alerts"
+                    ]
+                  },
                   "documentation/platform/pki/approvals"
                 ]
               },
@@ -3270,6 +3277,10 @@
     {
       "source": "/documentation/platform/pki/est",
       "destination": "/documentation/platform/pki/enrollment-methods/est"
+    },
+    {
+      "source": "/documentation/platform/pki/alerting",
+      "destination": "/documentation/platform/pki/alerting/overview"
     },
     {
       "source": "/api-reference/endpoints/integrations/create-auth",

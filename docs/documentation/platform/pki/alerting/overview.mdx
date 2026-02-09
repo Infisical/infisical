@@ -1,0 +1,39 @@
+---
+title: "Alerting"
+sidebarTitle: "Overview"
+description: "Learn how to set up alerting for expiring certificates with Infisical"
+---
+
+## Concept
+
+In order to ensure that your certificates are always up-to-date and not expired, you can set up alerting in Infisical for expiring CA and leaf certificates based on customizable filters.
+
+## Guide to Creating an Alert
+
+To create an alert, head to your Certificate Management Project > Alerting and press **Create Certificate Alert**.
+
+![pki alerting](/images/platform/pki/alerting/alert-create.png)
+
+![pki alerting modal](/images/platform/pki/alerting/alert-create-modal.png)
+
+### Field Descriptions
+
+Here's some guidance for each field in the alert configuration sequence:
+
+- **Alert Type**: The type of alert to create such as **Certificate Expiration**.
+- **Alert Name**: A slug-friendly name for the alert such as `tls-expiry-alert`.
+- **Description**: An optional description for the alert.
+- **Alert Before**: The time before certificate expiration to trigger the alert such as 30 days denoted by `30d`.
+- **Filters**: A list of filters that determine which certificates the alert applies to. Each row includes a **Field**, **Operator**, and **Value** to match against. For example, you can filter for certificates with a common name containing `example.com` by setting the field to **Common Name**, the operator to **Contains**, and the value to `example.com`.
+
+### Notification Channels
+
+Alerts can be delivered through one or more notification channels:
+
+- **Email**: Send alert notifications to a list of email recipients. Enter one or more email addresses to notify when the alert triggers.
+- **Webhook**: Send alert notifications to a webhook URL. The URL must use HTTPS. Optionally configure a signing secret to verify the authenticity of webhook payloads. See [Webhook Alerts](/documentation/platform/pki/alerting/webhook-alerts) for payload format and signature verification details.
+- **Slack**: Send alert notifications to a Slack channel via an Incoming Webhook. See [Slack Alerts](/documentation/platform/pki/alerting/slack-alerts) for detailed setup steps.
+
+You can configure up to 10 notification channels per alert.
+
+![pki alerting channels](/images/platform/pki/alerting/alert-create-channels.png)
