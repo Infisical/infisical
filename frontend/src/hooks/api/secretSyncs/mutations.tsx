@@ -39,9 +39,14 @@ export const useUpdateSecretSync = () => {
 
       return data.secretSync;
     },
-    onSuccess: (_, { syncId, destination, projectId }) => {
-      queryClient.invalidateQueries({ queryKey: secretSyncKeys.list(projectId) });
-      queryClient.invalidateQueries({ queryKey: secretSyncKeys.byId(destination, syncId) });
+    onSuccess: (updatedSecretSync, { syncId, destination, projectId }) => {
+      queryClient.setQueryData(secretSyncKeys.byId(destination, syncId), updatedSecretSync);
+      queryClient.setQueryData(secretSyncKeys.list(projectId), (prev: unknown) => {
+        if (!Array.isArray(prev)) return prev;
+        return prev.map((sync: { id: string }) =>
+          sync.id === syncId ? { ...sync, ...updatedSecretSync } : sync
+        );
+      });
     }
   });
 };
