@@ -1,1 +1,0 @@
-export { PamTerminalModal } from "./PamTerminalModal";

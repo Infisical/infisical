@@ -2,29 +2,29 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
 
-import { useCreatePamTerminalTicket } from "@app/hooks/api/pam";
+import { useCreatePamWebAccessTicket } from "@app/hooks/api/pam";
 
-import { WebSocketServerMessageSchema, WsMessageType } from "./pam-terminal-types";
+import { WebSocketServerMessageSchema, WsMessageType } from "./pam-web-access-types";
 
 import "@xterm/xterm/css/xterm.css";
 
-type UsePamTerminalSessionOptions = {
+type UsePamWebAccessSessionOptions = {
   accountId: string;
   projectId: string;
   onSessionStart?: () => void;
   onSessionEnd?: () => void;
 };
 
-export const usePamTerminalSession = ({
+export const usePamWebAccessSession = ({
   accountId,
   projectId,
   onSessionStart,
   onSessionEnd
-}: UsePamTerminalSessionOptions) => {
+}: UsePamWebAccessSessionOptions) => {
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
-  const createTicket = useCreatePamTerminalTicket();
+  const createTicket = useCreatePamWebAccessTicket();
 
   const onSessionStartRef = useRef(onSessionStart);
   const onSessionEndRef = useRef(onSessionEnd);
@@ -128,7 +128,7 @@ export const usePamTerminalSession = ({
 
         const { protocol, host } = window.location;
         const wsProtocol = protocol === "https:" ? "wss:" : "ws:";
-        const wsUrl = `${wsProtocol}//${host}/api/v1/pam/accounts/${accountId}/terminal-access?ticket=${encodeURIComponent(ticket)}`;
+        const wsUrl = `${wsProtocol}//${host}/api/v1/pam/accounts/${accountId}/web-access?ticket=${encodeURIComponent(ticket)}`;
         const ws = new WebSocket(wsUrl);
         wsRef.current = ws;
 

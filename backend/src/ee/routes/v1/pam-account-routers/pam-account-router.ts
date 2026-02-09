@@ -195,15 +195,15 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // Terminal ticket endpoint
+  // Web access ticket endpoint
   server.route({
     method: "POST",
-    url: "/:accountId/terminal-ticket",
+    url: "/:accountId/web-access-ticket",
     config: {
       rateLimit: writeLimit
     },
     schema: {
-      description: "Issue a one-time ticket for WebSocket terminal access",
+      description: "Issue a one-time ticket for WebSocket web access",
       params: z.object({
         accountId: z.string().uuid()
       }),
@@ -216,7 +216,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { ticket } = await server.services.pamTerminal.issueWebSocketTicket({
+      const { ticket } = await server.services.pamWebAccess.issueWebSocketTicket({
         accountId: req.params.accountId,
         projectId: req.body.projectId,
         orgId: req.permission.orgId,
@@ -228,15 +228,15 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // WebSocket endpoint for terminal access (ticket-based auth)
+  // WebSocket endpoint for web access (ticket-based auth)
   server.route({
     method: "GET",
-    url: "/:accountId/terminal-access",
+    url: "/:accountId/web-access",
     config: {
       rateLimit: readLimit
     },
     schema: {
-      description: "WebSocket endpoint for browser-based terminal access to PAM accounts",
+      description: "WebSocket endpoint for browser-based web access to PAM accounts",
       params: z.object({
         accountId: z.string().uuid()
       }),
@@ -294,7 +294,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           return;
         }
 
-        await server.services.pamTerminal.handleWebSocketConnection({
+        await server.services.pamWebAccess.handleWebSocketConnection({
           socket: connection,
           accountId: payload.accountId,
           projectId: payload.projectId,

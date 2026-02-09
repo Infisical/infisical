@@ -19,15 +19,15 @@ import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { getFullPamFolderPath } from "../pam-folder/pam-folder-fns";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import {
-  PAM_TERMINAL_PROMPT,
+  PAM_WEB_ACCESS_PROMPT,
   TIssueWebSocketTicketDTO,
   TWebSocketClientMessage,
   TWebSocketServerMessage,
   WebSocketClientMessageSchema,
   WsMessageType
-} from "./pam-terminal-types";
+} from "./pam-web-access-types";
 
-type TPamTerminalServiceFactoryDep = {
+type TPamWebAccessServiceFactoryDep = {
   pamAccountDAL: Pick<TPamAccountDALFactory, "findById">;
   pamResourceDAL: Pick<TPamResourceDALFactory, "findById">;
   pamFolderDAL: TPamFolderDALFactory;
@@ -36,7 +36,7 @@ type TPamTerminalServiceFactoryDep = {
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
 };
 
-export type TPamTerminalServiceFactory = ReturnType<typeof pamTerminalServiceFactory>;
+export type TPamWebAccessServiceFactory = ReturnType<typeof pamWebAccessServiceFactory>;
 
 type THandleWebSocketConnectionDTO = {
   socket: WebSocket;
@@ -48,14 +48,14 @@ type THandleWebSocketConnectionDTO = {
   auditLogInfo: AuditLogInfo;
 };
 
-export const pamTerminalServiceFactory = ({
+export const pamWebAccessServiceFactory = ({
   pamAccountDAL,
   pamResourceDAL,
   pamFolderDAL,
   permissionService,
   auditLogService,
   tokenService
-}: TPamTerminalServiceFactoryDep) => {
+}: TPamWebAccessServiceFactoryDep) => {
   const sendMessage = (socket: WebSocket, message: TWebSocketServerMessage): void => {
     try {
       if (socket.readyState === socket.OPEN) {
@@ -91,7 +91,7 @@ export const pamTerminalServiceFactory = ({
 
     if (resource.resourceType !== PamResource.Postgres) {
       throw new BadRequestError({
-        message: "Web terminal is currently only supported for PostgreSQL accounts"
+        message: "Web access is currently only supported for PostgreSQL accounts"
       });
     }
 
@@ -130,7 +130,7 @@ export const pamTerminalServiceFactory = ({
       orgId,
       projectId,
       event: {
-        type: EventType.PAM_TERMINAL_SESSION_TICKET_CREATED,
+        type: EventType.PAM_WEB_ACCESS_SESSION_TICKET_CREATED,
         metadata: {
           accountId,
           accountPath,
@@ -161,10 +161,10 @@ export const pamTerminalServiceFactory = ({
       sendMessage(socket, {
         type: WsMessageType.Ready,
         data: "Connected (echo mode)...\n",
-        prompt: PAM_TERMINAL_PROMPT
+        prompt: PAM_WEB_ACCESS_PROMPT
       });
 
-      logger.info({ accountId }, "Terminal session established (echo mode)");
+      logger.info({ accountId }, "Web access session established (echo mode)");
 
       await auditLogService.createAuditLog({
         ...auditLogInfo,
@@ -199,7 +199,7 @@ export const pamTerminalServiceFactory = ({
               sendMessage(socket, {
                 type: WsMessageType.Output,
                 data: "Invalid message format\n",
-                prompt: PAM_TERMINAL_PROMPT
+                prompt: PAM_WEB_ACCESS_PROMPT
               });
               return;
             }
@@ -228,7 +228,7 @@ export const pamTerminalServiceFactory = ({
                 sendMessage(socket, {
                   type: WsMessageType.Output,
                   data: "",
-                  prompt: PAM_TERMINAL_PROMPT
+                  prompt: PAM_WEB_ACCESS_PROMPT
                 });
                 return;
               }
@@ -254,7 +254,7 @@ export const pamTerminalServiceFactory = ({
               sendMessage(socket, {
                 type: WsMessageType.Output,
                 data: echoLines,
-                prompt: PAM_TERMINAL_PROMPT
+                prompt: PAM_WEB_ACCESS_PROMPT
               });
             }
           } catch (err) {
@@ -262,7 +262,7 @@ export const pamTerminalServiceFactory = ({
             sendMessage(socket, {
               type: WsMessageType.Output,
               data: "Failed to process message\n",
-              prompt: PAM_TERMINAL_PROMPT
+              prompt: PAM_WEB_ACCESS_PROMPT
             });
           }
         };
@@ -278,10 +278,10 @@ export const pamTerminalServiceFactory = ({
         logger.error(err, "WebSocket error");
       });
     } catch (err) {
-      logger.error(err, "Failed to establish terminal session");
+      logger.error(err, "Failed to establish web access session");
 
       // TODO: always provide generic message to users when database/gateway errors occur
-      const errorMessage = err instanceof Error ? err.message : "Failed to establish terminal session";
+      const errorMessage = err instanceof Error ? err.message : "Failed to establish web access session";
       sendMessage(socket, {
         type: WsMessageType.Output,
         data: `${errorMessage}\n`,

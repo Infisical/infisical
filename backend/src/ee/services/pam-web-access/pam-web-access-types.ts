@@ -3,7 +3,7 @@ import { z } from "zod";
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { ProjectServiceActor } from "@app/lib/types";
 
-export const PAM_TERMINAL_PROMPT = "=> ";
+export const PAM_WEB_ACCESS_PROMPT = "=> ";
 
 export enum WsMessageType {
   Ready = "ready",

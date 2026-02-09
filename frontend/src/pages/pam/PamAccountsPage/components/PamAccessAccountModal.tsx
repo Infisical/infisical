@@ -8,22 +8,22 @@ import { createNotification } from "@app/components/notifications";
 import { Button, FormLabel, IconButton, Input, Modal, ModalContent } from "@app/components/v2";
 import { PamResourceType, TPamAccount } from "@app/hooks/api/pam";
 
-// Feature flag — set to false to hide the browser terminal option while it's in development
-const ENABLE_BROWSER_TERMINAL = false;
+// Feature flag — set to false to hide the browser web access option while it's in development
+const ENABLE_WEB_ACCESS = false;
 
 type Props = {
   account?: TPamAccount;
   accountPath?: string;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onOpenTerminal?: () => void;
+  onOpenWebAccess?: () => void;
   projectId: string;
 };
 
 export const PamAccessAccountModal = ({
   isOpen,
   onOpenChange,
-  onOpenTerminal,
+  onOpenWebAccess,
   account,
   projectId,
   accountPath
@@ -101,10 +101,10 @@ export const PamAccessAccountModal = ({
 
   if (!account) return null;
 
-  const showBrowserTerminal =
-    ENABLE_BROWSER_TERMINAL &&
+  const showWebAccess =
+    ENABLE_WEB_ACCESS &&
     account.resource.resourceType === PamResourceType.Postgres &&
-    onOpenTerminal;
+    onOpenWebAccess;
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -155,14 +155,14 @@ export const PamAccessAccountModal = ({
           <span>Install the Infisical CLI</span>
           <FontAwesomeIcon icon={faUpRightFromSquare} className="size-3" />
         </a>
-        {showBrowserTerminal && (
+        {showWebAccess && (
           <>
             <div className="my-4 border-t border-mineshaft-600" />
             <p className="mb-2 text-sm text-mineshaft-300">Connect directly from your browser</p>
             <Button
               onClick={() => {
                 onOpenChange(false);
-                onOpenTerminal();
+                onOpenWebAccess();
               }}
               leftIcon={<FontAwesomeIcon icon={faTerminal} />}
               className="w-full"

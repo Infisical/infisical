@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { Button, Modal, ModalContent } from "@app/components/v2";
 import { TPamAccount } from "@app/hooks/api/pam";
 
-import { usePamTerminalSession } from "./usePamTerminalSession";
+import { usePamWebAccessSession } from "./usePamWebAccessSession";
 
 type Props = {
   isOpen: boolean;
@@ -12,8 +12,8 @@ type Props = {
   projectId: string;
 };
 
-export const PamTerminalModal = ({ isOpen, onOpenChange, account, projectId }: Props) => {
-  const { containerRef, isConnected, disconnect } = usePamTerminalSession({
+export const PamWebAccessModal = ({ isOpen, onOpenChange, account, projectId }: Props) => {
+  const { containerRef, isConnected, disconnect } = usePamWebAccessSession({
     accountId: account?.id || "",
     projectId
   });

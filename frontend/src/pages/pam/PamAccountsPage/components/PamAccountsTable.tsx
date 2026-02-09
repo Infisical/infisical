@@ -71,9 +71,9 @@ import { PamDeleteAccountModal } from "./PamDeleteAccountModal";
 import { PamDeleteFolderModal } from "./PamDeleteFolderModal";
 import { PamFolderRow } from "./PamFolderRow";
 import { PamRequestAccountAccessModal } from "./PamRequestAccountAccessModal";
-import { PamTerminalModal } from "./PamTerminal";
 import { PamUpdateAccountModal } from "./PamUpdateAccountModal";
 import { PamUpdateFolderModal } from "./PamUpdateFolderModal";
+import { PamWebAccessModal } from "./PamWebAccess";
 import { useAccessAwsIamAccount } from "./useAccessAwsIamAccount";
 
 type PamAccountFilter = {
@@ -99,7 +99,7 @@ export const PamAccountsTable = ({ projectId }: Props) => {
     "requestAccount",
     "updateAccount",
     "deleteAccount",
-    "terminalAccess"
+    "webAccess"
   ] as const);
 
   const {
@@ -553,10 +553,10 @@ export const PamAccountsTable = ({ projectId }: Props) => {
             : undefined
         }
         projectId={projectId}
-        onOpenTerminal={() => {
+        onOpenWebAccess={() => {
           const account = popUp.accessAccount.data;
           handlePopUpClose("accessAccount");
-          handlePopUpOpen("terminalAccess", account);
+          handlePopUpOpen("webAccess", account);
         }}
       />
       <PamRequestAccountAccessModal
@@ -581,10 +581,10 @@ export const PamAccountsTable = ({ projectId }: Props) => {
         projectId={projectId}
         currentFolderId={currentFolderId}
       />
-      <PamTerminalModal
-        isOpen={popUp.terminalAccess.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("terminalAccess", isOpen)}
-        account={popUp.terminalAccess.data}
+      <PamWebAccessModal
+        isOpen={popUp.webAccess.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("webAccess", isOpen)}
+        account={popUp.webAccess.data}
         projectId={projectId}
       />
     </div>
