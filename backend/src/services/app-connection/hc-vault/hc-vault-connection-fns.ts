@@ -222,6 +222,7 @@ export const getHCVaultAccessToken = async (
 
     return tokenResp.data.auth.client_token;
   } catch (e: unknown) {
+    logger.error(e, "Failed to validate connection");
     throw new BadRequestError({
       message: "Unable to validate connection: verify credentials"
     });
