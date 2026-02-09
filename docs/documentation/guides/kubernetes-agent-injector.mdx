@@ -52,17 +52,14 @@ Before we begin, make sure your environment is ready:
 1. **Installed tools**
     - [Helm](https://helm.sh/docs/intro/install/) (package manager for Kubernetes)
     - [kubectl](https://kubernetes.io/docs/tasks/tools/) (Kubernetes command-line tool)
-    - [git](https://git-scm.com/downloads) (to clone the sample code)
 2. **Kubernetes cluster**
     - A running cluster that you can connect to with `kubectl`. If you don't have one, you can use [minikube](https://minikube.sigs.k8s.io/docs/start/), [kind](https://kind.sigs.k8s.io/), or a managed cluster (EKS, GKE, AKS).
 3. **Access to an Infisical instance**
     - Either [Infisical Cloud](https://app.infisical.com/) (free tier available) or a [self-hosted instance](/self-hosting/overview).
-4. **Clone the sample source code**
-    - Clone the [infisical-guides-source-code](https://github.com/Infisical/infisical-guides-source-code) repository, which contains all the YAML manifests used in this guide:
-    ```bash
-    git clone https://github.com/Infisical/infisical-guides-source-code.git
-    cd infisical-guides-source-code/kubernetes-agent-injector-demo
-    ```
+
+<Note>
+  All YAML manifests used in this guide are provided inline. You can copy and paste each block directly, or save them to local files before applying.
+</Note>
 
 ## Step-By-Step Guide
 
@@ -166,44 +163,17 @@ The Agent Injector authenticates with Infisical using a [Machine Identity](https
 
 For Kubernetes Auth to work, Infisical needs to validate the service account tokens presented by pods. This requires a token reviewer service account with the `system:auth-delegator` ClusterRole.
 
-Navigate to the sample code directory:
-
-```bash
-cd infisical-guides-source-code/kubernetes-agent-injector-demo
-```
-
 <Tabs>
   <Tab title="Apply all at once">
-    Apply all the RBAC manifests in one command:
+    Save the following YAML to a file called `rbac.yaml` and apply it:
 
-    ```bash
-    kubectl apply -f rbac/
-    ```
-  </Tab>
-  <Tab title="Apply step-by-step">
-    If you prefer to understand each resource, apply them individually:
-
-**1. Create the Token Reviewer Service Account**
-
-This service account is used by Infisical to validate Kubernetes tokens during authentication:
-
-```yaml rbac/infisical-reviewer-service-account.yaml
+```yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: infisical-token-reviewer
   namespace: default
-```
-
-```bash
-kubectl apply -f rbac/infisical-reviewer-service-account.yaml
-```
-
-**2. Create a Token for the Reviewer Service Account**
-
-This generates a long-lived JWT token that Infisical will use to perform token review requests:
-
-```yaml rbac/service-account-reviewer-token.yaml
+---
 apiVersion: v1
 kind: Secret
 metadata:
@@ -212,17 +182,7 @@ metadata:
   annotations:
     kubernetes.io/service-account.name: infisical-token-reviewer
 type: kubernetes.io/service-account-token
-```
-
-```bash
-kubectl apply -f rbac/service-account-reviewer-token.yaml
-```
-
-**3. Create the ClusterRoleBinding**
-
-This binds the `infisical-token-reviewer` service account to the built-in `system:auth-delegator` ClusterRole. Without this, the service account cannot validate tokens:
-
-```yaml rbac/cluster-role-binding.yaml
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -237,8 +197,75 @@ subjects:
     namespace: default
 ```
 
+    ```bash
+    kubectl apply -f rbac.yaml
+    ```
+  </Tab>
+  <Tab title="Apply step-by-step">
+    If you prefer to understand each resource, apply them individually:
+
+**1. Create the Token Reviewer Service Account**
+
+This service account is used by Infisical to validate Kubernetes tokens during authentication:
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: infisical-token-reviewer
+  namespace: default
+```
+
+Save the above to `service-account.yaml` and apply:
+
 ```bash
-kubectl apply -f rbac/cluster-role-binding.yaml
+kubectl apply -f service-account.yaml
+```
+
+**2. Create a Token for the Reviewer Service Account**
+
+This generates a long-lived JWT token that Infisical will use to perform token review requests:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: infisical-token-reviewer-token
+  namespace: default
+  annotations:
+    kubernetes.io/service-account.name: infisical-token-reviewer
+type: kubernetes.io/service-account-token
+```
+
+Save the above to `reviewer-token.yaml` and apply:
+
+```bash
+kubectl apply -f reviewer-token.yaml
+```
+
+**3. Create the ClusterRoleBinding**
+
+This binds the `infisical-token-reviewer` service account to the built-in `system:auth-delegator` ClusterRole. Without this, the service account cannot validate tokens:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: infisical-token-reviewer-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+  - kind: ServiceAccount
+    name: infisical-token-reviewer
+    namespace: default
+```
+
+Save the above to `cluster-role-binding.yaml` and apply:
+
+```bash
+kubectl apply -f cluster-role-binding.yaml
 ```
 
   </Tab>
@@ -296,7 +323,7 @@ The ConfigMap tells the Infisical Agent what secrets to fetch and where to write
   <Tab title="Basic Secrets (Key=Value)">
     This configuration fetches all secrets and renders them as `KEY=VALUE` pairs:
 
-```yaml configmap/agent-config.yaml
+```yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -324,7 +351,7 @@ data:
   <Tab title="JSON Format">
     Render secrets as a JSON object for applications that prefer JSON config:
 
-```yaml configmap/agent-config-json.yaml
+```yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -355,7 +382,7 @@ data:
   <Tab title="Specific Secret">
     Fetch a single secret by name using the `getSecretByName` function:
 
-```yaml configmap/agent-config-single.yaml
+```yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -381,17 +408,17 @@ data:
 </Tabs>
 
 Replace the placeholder values:
-- **your-machine-identity-id**: The Identity ID you copied in Step 2.
-- **your-project-id**: Found in your Infisical project under **Settings > General**.
+- **YOUR_MACHINE_IDENTITY_ID**: The Identity ID you copied in Step 2.
+- **YOUR_PROJECT_ID**: Found in your Infisical project under **Settings > General**.
 
 <Note>
   If you are using a self-hosted Infisical instance, change the `infisical.address` field to your instance's URL.
 </Note>
 
-Apply the ConfigMap:
+Save the ConfigMap YAML above to a file called `agent-config.yaml` and apply it:
 
 ```bash
-kubectl apply -f configmap/agent-config.yaml
+kubectl apply -f agent-config.yaml
 ```
 
   </Step>
@@ -404,7 +431,7 @@ Now let's deploy a sample nginx application that uses the Agent Injector to fetc
 - `org.infisical.com/inject-mode: "init"` — Uses an init container to fetch secrets before the main container starts.
 - `org.infisical.com/agent-config-map: "infisical-agent-config"` — Points to the ConfigMap we created.
 
-```yaml app/demo-deployment.yaml
+```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -436,16 +463,16 @@ spec:
               cat /infisical/secrets
               echo ""
               echo "--- Loading secrets as environment variables ---"
-              export $(cat /infisical/secrets | xargs)
+              set -a && . /infisical/secrets && set +a
               echo "API_KEY is: $API_KEY"
               echo "--- Starting nginx ---"
               nginx -g "daemon off;"
 ```
 
-Apply the deployment:
+Save the above to `demo-deployment.yaml` and apply:
 
 ```bash
-kubectl apply -f app/demo-deployment.yaml
+kubectl apply -f demo-deployment.yaml
 ```
 
 Wait for the pod to become ready (this may take 30-60 seconds as the init container fetches secrets):
@@ -506,6 +533,10 @@ APP_SECRET=my-super-secret-value
 API_KEY is: sk_test_abc123
 --- Starting nginx ---
 ```
+
+<Note>
+  The demo uses `set -a && . /infisical/secrets && set +a` to source secrets as environment variables. The `set -a` flag automatically exports all variables defined in the file. This approach handles values with spaces more reliably than `export $(cat ... | xargs)`.
+</Note>
 
   </Step>
 
@@ -690,7 +721,11 @@ The Agent Injector can also render [Dynamic Secrets](/documentation/platform/dyn
   <Step title="Update the ConfigMap">
     Use the `dynamic_secret` template function to render dynamic secret credentials:
 
-```yaml configmap/agent-config-dynamic.yaml
+<Warning>
+  The `secret` function takes a **Project ID** (UUID format), while `dynamic_secret` takes a **Project Slug** (human-readable string). These are different values. You can find both in your Infisical project under **Settings > General**.
+</Warning>
+
+```yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -720,10 +755,10 @@ data:
           {{- end }}
 ```
 
-    Apply the updated ConfigMap:
+    Save the above to `agent-config-dynamic.yaml` and apply:
 
     ```bash
-    kubectl apply -f configmap/agent-config-dynamic.yaml
+    kubectl apply -f agent-config-dynamic.yaml
     ```
   </Step>
   <Step title="Enable Caching for Dynamic Secrets">
