@@ -566,6 +566,7 @@ export enum EventType {
   PAM_ACCOUNT_DELETE = "pam-account-delete",
   PAM_ACCOUNT_CREDENTIAL_ROTATION = "pam-account-credential-rotation",
   PAM_ACCOUNT_CREDENTIAL_ROTATION_FAILED = "pam-account-credential-rotation-failed",
+  PAM_TERMINAL_SESSION_TICKET_CREATED = "pam-terminal-session-ticket-created",
   PAM_RESOURCE_LIST = "pam-resource-list",
   PAM_RESOURCE_GET = "pam-resource-get",
   PAM_RESOURCE_CREATE = "pam-resource-create",
@@ -4249,6 +4250,15 @@ interface PamAccountAccessEvent {
   };
 }
 
+interface PamTerminalSessionTicketCreatedEvent {
+  type: EventType.PAM_TERMINAL_SESSION_TICKET_CREATED;
+  metadata: {
+    accountId: string;
+    accountPath: string;
+    accountName: string;
+  };
+}
+
 interface PamAccountCreateEvent {
   type: EventType.PAM_ACCOUNT_CREATE;
   metadata: {
@@ -5315,6 +5325,7 @@ export type Event =
   | PamFolderDeleteEvent
   | PamAccountListEvent
   | PamAccountAccessEvent
+  | PamTerminalSessionTicketCreatedEvent
   | PamAccountCreateEvent
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent

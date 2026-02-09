@@ -27,8 +27,6 @@ import {
   WsMessageType
 } from "./pam-terminal-types";
 
-const DEFAULT_SESSION_DURATION = "1h";
-
 type TPamTerminalServiceFactoryDep = {
   pamAccountDAL: Pick<TPamAccountDALFactory, "findById">;
   pamResourceDAL: Pick<TPamResourceDALFactory, "findById">;
@@ -117,25 +115,24 @@ export const pamTerminalServiceFactory = ({
       })
     );
 
+    const token = await tokenService.createTokenForUser({
+      type: TokenType.TOKEN_PAM_WS_TICKET,
+      userId: actor.id,
+      payload: JSON.stringify({ accountId, projectId, orgId })
+    });
+
     await auditLogService.createAuditLog({
       ...auditLogInfo,
       orgId,
       projectId,
       event: {
-        type: EventType.PAM_ACCOUNT_ACCESS,
+        type: EventType.PAM_TERMINAL_SESSION_TICKET_CREATED,
         metadata: {
           accountId,
           accountPath,
-          accountName: account.name,
-          duration: DEFAULT_SESSION_DURATION
+          accountName: account.name
         }
       }
-    });
-
-    const token = await tokenService.createTokenForUser({
-      type: TokenType.TOKEN_PAM_WS_TICKET,
-      userId: actor.id,
-      payload: JSON.stringify({ accountId, projectId, orgId })
     });
 
     return { ticket: `${actor.id}:${token}` };
