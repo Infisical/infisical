@@ -1170,7 +1170,9 @@ export const RAW_SECRETS = {
     includeImports: "Weather to include imported secrets or not.",
     tagSlugs: "The comma separated tag slugs to filter secrets.",
     metadataFilter:
-      "Unencrypted secret metadata key–value pairs used to filter secrets. Only metadata with unencrypted values is supported. When querying for multiple metadata pairs, the query is treated as an AND operation. Secret metadata format is key=value1,value=value2|key=value3,value=value4."
+      "Unencrypted secret metadata key–value pairs used to filter secrets. Only metadata with unencrypted values is supported. When querying for multiple metadata pairs, the query is treated as an AND operation. Secret metadata format is key=value1,value=value2|key=value3,value=value4.",
+    usePersonalReferences:
+      "Whether or not to use personal secret overrides when expanding secret references. When enabled, personal overrides will propagate through the reference chain. Only applicable when expandSecretReferences is true."
   },
   CREATE: {
     secretName: "The name of the secret to create.",
@@ -1196,7 +1198,9 @@ export const RAW_SECRETS = {
     version: "The version of the secret to get.",
     type: "The type of the secret to get.",
     viewSecretValue: "Whether or not to retrieve the secret value.",
-    includeImports: "Weather to include imported secrets or not."
+    includeImports: "Weather to include imported secrets or not.",
+    usePersonalReferences:
+      "Whether or not to use personal secret overrides when expanding secret references. When enabled, personal overrides will propagate through the reference chain. Only applicable when expandSecretReferences is true."
   },
   UPDATE: {
     secretName: "The name of the secret to update.",

@@ -33,6 +33,7 @@ export enum SecretUpdateMode {
 
 export type TGetSecretsDTO = {
   expandSecretReferences?: boolean;
+  usePersonalReferences?: boolean;
   path: string;
   environment: string;
   includeImports?: boolean;
@@ -63,6 +64,7 @@ export type TGetASecretDTO = {
   path: string;
   environment: string;
   expandSecretReferences?: boolean;
+  usePersonalReferences?: boolean;
   type: "shared" | "personal";
   includeImports?: boolean;
   version?: number;

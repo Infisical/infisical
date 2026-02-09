@@ -195,6 +195,7 @@ export type TGetAccessibleSecretsDTO = {
 
 export type TGetSecretsRawDTO = {
   expandSecretReferences?: boolean;
+  usePersonalReferences?: boolean;
   path: string;
   environment: string;
   viewSecretValue: boolean;
@@ -229,6 +230,7 @@ export type TGetASecretRawDTO = {
   environment: string;
   viewSecretValue: boolean;
   expandSecretReferences?: boolean;
+  usePersonalReferences?: boolean;
   type: "shared" | "personal";
   includeImports?: boolean;
   version?: number;

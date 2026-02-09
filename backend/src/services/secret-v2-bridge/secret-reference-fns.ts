@@ -71,6 +71,9 @@ type TInterpolateSecretArg = {
   secretDAL: Pick<TSecretV2BridgeDALFactory, "findByFolderId">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
   canExpandValue: (environment: string, secretPath: string, secretName: string, secretTagSlugs: string[]) => boolean;
+  // When provided, personal secret overrides for this user will be preferred
+  // over shared secrets when resolving references during expansion.
+  userId?: string;
 };
 
 const MAX_SECRET_REFERENCE_DEPTH = 10;
@@ -79,7 +82,8 @@ export const expandSecretReferencesFactory = ({
   decryptSecretValue: decryptSecret,
   secretDAL,
   folderDAL,
-  canExpandValue
+  canExpandValue,
+  userId
 }: TInterpolateSecretArg) => {
   const secretCache: Record<string, Record<string, { value: string; tags: string[] }>> = {};
   const getCacheUniqueKey = (environment: string, secretPath: string) => `${environment}-${secretPath}`;
@@ -94,9 +98,18 @@ export const expandSecretReferencesFactory = ({
     try {
       const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
       if (!folder) return { value: "", tags: [] };
-      const secrets = await secretDAL.findByFolderId({ folderId: folder.id });
+      // When userId is provided, findByFolderId returns both shared and personal secrets.
+      // Personal overrides will take precedence over shared secrets in the reduce below.
+      const secrets = await secretDAL.findByFolderId({ folderId: folder.id, userId });
 
       const decryptedSecret = secrets.reduce<Record<string, { value: string; tags: string[] }>>((prev, secret) => {
+        // When userId is set, personal overrides (userId !== null) should take precedence
+        // over shared secrets for the same key. We skip overwriting if a personal override
+        // is already stored and the current secret is a shared one.
+        if (userId && prev[secret.key] && !secret.userId) {
+          return prev;
+        }
+
         // eslint-disable-next-line no-param-reassign
         prev[secret.key] = {
           value: decryptSecret(secret.encryptedValue) || "",

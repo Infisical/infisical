@@ -1401,6 +1401,7 @@ export const secretServiceFactory = ({
     environment,
     includeImports,
     expandSecretReferences,
+    usePersonalReferences,
     recursive,
     tagSlugs = [],
     throwOnMissingReadValuePermission = true,
@@ -1411,6 +1412,7 @@ export const secretServiceFactory = ({
       const { secrets, imports } = await secretV2BridgeService.getSecrets({
         projectId,
         expandSecretReferences,
+        usePersonalReferences,
         actorId,
         actor,
         actorOrgId,
@@ -1579,6 +1581,7 @@ export const secretServiceFactory = ({
     viewSecretValue,
     projectId,
     expandSecretReferences,
+    usePersonalReferences,
     actorId,
     actorOrgId,
     actorAuthMethod,
@@ -1600,6 +1603,7 @@ export const secretServiceFactory = ({
         actorId,
         version,
         expandSecretReferences,
+        usePersonalReferences,
         type,
         secretName
       });
