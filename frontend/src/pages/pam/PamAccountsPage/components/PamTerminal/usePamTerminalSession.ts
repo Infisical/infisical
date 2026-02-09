@@ -41,6 +41,7 @@ export const usePamTerminalSession = ({
     if (!containerEl || !accountId) return undefined;
 
     let disposed = false;
+    let focusTimeout: ReturnType<typeof setTimeout> | null = null;
     const inputBuffer = { current: "" };
     const currentPrompt = { current: "" };
 
@@ -146,7 +147,7 @@ export const usePamTerminalSession = ({
           if (msg.type === WsMessageType.Ready) {
             setIsConnected(true);
             onSessionStartRef.current?.();
-            setTimeout(() => terminal.focus(), 100);
+            focusTimeout = setTimeout(() => terminal.focus(), 100);
           }
 
           // Write directly to terminal — no indirection
@@ -182,6 +183,7 @@ export const usePamTerminalSession = ({
     // 5. Cleanup
     return () => {
       disposed = true;
+      if (focusTimeout) clearTimeout(focusTimeout);
       window.removeEventListener("resize", handleResize);
       resizeObserver.disconnect();
 
