@@ -15,6 +15,8 @@ export const useTerminalWebSocket = ({
   const websocketRef = useRef<WebSocket | null>(null);
   const isConnectedRef = useRef(false);
   const createTicket = useCreatePamTerminalTicket();
+  const createTicketRef = useRef(createTicket);
+  createTicketRef.current = createTicket;
 
   const onConnectRef = useRef(onConnect);
   const onDisconnectRef = useRef(onDisconnect);
@@ -33,7 +35,7 @@ export const useTerminalWebSocket = ({
 
     isConnectedRef.current = false;
 
-    const ticket = await createTicket.mutateAsync({ accountId, projectId });
+    const ticket = await createTicketRef.current.mutateAsync({ accountId, projectId });
 
     const { protocol, host } = window.location;
     const wsProtocol = protocol === "https:" ? "wss:" : "ws:";
@@ -75,7 +77,7 @@ export const useTerminalWebSocket = ({
       onDisconnectRef.current?.();
       isConnectedRef.current = false;
     };
-  }, [accountId, projectId, createTicket]);
+  }, [accountId, projectId]);
 
   const disconnect = useCallback(() => {
     const ws = websocketRef.current;

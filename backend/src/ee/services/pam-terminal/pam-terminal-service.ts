@@ -19,6 +19,7 @@ import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { getFullPamFolderPath } from "../pam-folder/pam-folder-fns";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import {
+  PAM_TERMINAL_PROMPT,
   TIssueWebSocketTicketDTO,
   TWebSocketClientMessage,
   TWebSocketServerMessage,
@@ -155,7 +156,7 @@ export const pamTerminalServiceFactory = ({
       sendMessage(socket, {
         type: WsMessageType.Ready,
         data: "Connected (echo mode)...\n",
-        prompt: "=> "
+        prompt: PAM_TERMINAL_PROMPT
       });
 
       logger.info({ accountId }, "Terminal session established (echo mode)");
@@ -178,7 +179,7 @@ export const pamTerminalServiceFactory = ({
               sendMessage(socket, {
                 type: WsMessageType.Output,
                 data: "Invalid message format\n",
-                prompt: "=> "
+                prompt: PAM_TERMINAL_PROMPT
               });
               return;
             }
@@ -207,7 +208,7 @@ export const pamTerminalServiceFactory = ({
                 sendMessage(socket, {
                   type: WsMessageType.Output,
                   data: "",
-                  prompt: "=> "
+                  prompt: PAM_TERMINAL_PROMPT
                 });
                 return;
               }
@@ -233,7 +234,7 @@ export const pamTerminalServiceFactory = ({
               sendMessage(socket, {
                 type: WsMessageType.Output,
                 data: echoLines,
-                prompt: "=> "
+                prompt: PAM_TERMINAL_PROMPT
               });
             }
           } catch (err) {
@@ -241,7 +242,7 @@ export const pamTerminalServiceFactory = ({
             sendMessage(socket, {
               type: WsMessageType.Output,
               data: "Failed to process message\n",
-              prompt: "=> "
+              prompt: PAM_TERMINAL_PROMPT
             });
           }
         };

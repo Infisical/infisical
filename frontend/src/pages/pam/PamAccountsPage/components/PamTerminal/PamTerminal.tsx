@@ -16,7 +16,7 @@ export const usePamTerminal = ({ onInput, onReady }: UsePamTerminalProps) => {
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const inputBufferRef = useRef<string>("");
-  const currentPromptRef = useRef<string>("=> ");
+  const currentPromptRef = useRef<string>("");
   const onInputRef = useRef(onInput);
   const onReadyRef = useRef(onReady);
 
@@ -72,6 +72,19 @@ export const usePamTerminal = ({ onInput, onReady }: UsePamTerminalProps) => {
       xtermRef.current.focus();
     }
   }, []);
+
+  // Store callback refs so the effect closure always calls the latest version
+  const handleMessageRef = useRef(handleMessage);
+  const writeToTerminalRef = useRef(writeToTerminal);
+  const clearRef = useRef(clear);
+  const focusRef = useRef(focus);
+
+  useEffect(() => {
+    handleMessageRef.current = handleMessage;
+    writeToTerminalRef.current = writeToTerminal;
+    clearRef.current = clear;
+    focusRef.current = focus;
+  }, [handleMessage, writeToTerminal, clear, focus]);
 
   useEffect(() => {
     if (!containerEl || xtermRef.current) return undefined;
@@ -150,7 +163,12 @@ export const usePamTerminal = ({ onInput, onReady }: UsePamTerminalProps) => {
     resizeObserver.observe(containerEl);
     window.addEventListener("resize", handleResize);
 
-    const api: PamTerminalApi = { handleMessage, writeToTerminal, clear, focus };
+    const api: PamTerminalApi = {
+      handleMessage: (msg) => handleMessageRef.current(msg),
+      writeToTerminal: (text) => writeToTerminalRef.current(text),
+      clear: () => clearRef.current(),
+      focus: () => focusRef.current()
+    };
     onReadyRef.current?.(api);
 
     return () => {
@@ -160,7 +178,7 @@ export const usePamTerminal = ({ onInput, onReady }: UsePamTerminalProps) => {
       xtermRef.current = null;
       fitAddonRef.current = null;
     };
-  }, [containerEl, handleMessage, writeToTerminal, clear, focus]);
+  }, [containerEl]);
 
   const containerRefCallback = useCallback((node: HTMLDivElement | null) => {
     setContainerEl(node);

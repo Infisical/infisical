@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
+import { ProjectServiceActor } from "@app/lib/types";
+
+export const PAM_TERMINAL_PROMPT = "=> ";
+
 export enum WsMessageType {
   Ready = "ready",
   Output = "output",
@@ -26,6 +31,6 @@ export type TIssueWebSocketTicketDTO = {
   accountId: string;
   projectId: string;
   orgId: string;
-  actor: import("@app/lib/types").ProjectServiceActor;
-  auditLogInfo: import("@app/ee/services/audit-log/audit-log-types").AuditLogInfo;
+  actor: ProjectServiceActor;
+  auditLogInfo: AuditLogInfo;
 };
