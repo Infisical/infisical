@@ -9,6 +9,7 @@ import {
   PencilIcon,
   PlusIcon,
   RefreshCwIcon,
+  RotateCwIcon,
   TrashIcon
 } from "lucide-react";
 
@@ -187,6 +188,9 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
             )}
             {accounts.map((account) => {
               const isAwsIamAccount = resource.resourceType === PamResourceType.AwsIam;
+              const rotationEnabled = !isAwsIamAccount
+                ? (account as { rotationEnabled?: boolean }).rotationEnabled
+                : undefined;
               const rotationStatus = !isAwsIamAccount
                 ? (account as { rotationStatus?: string | null }).rotationStatus
                 : undefined;
@@ -207,6 +211,11 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                     <div className="flex flex-col">
                       <div className="flex items-center gap-3">
                         <span className="font-medium">{account.name}</span>
+                        {rotationEnabled && (
+                          <Badge variant="success" isSquare>
+                            <RotateCwIcon />
+                          </Badge>
+                        )}
                         {lastRotatedAt && (
                           <Tooltip>
                             <TooltipTrigger asChild>
