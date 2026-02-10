@@ -146,6 +146,7 @@ export * from "./project-templates";
 export * from "./project-user-additional-privilege";
 export * from "./project-user-membership-roles";
 export * from "./projects";
+export * from "./queue-jobs";
 export * from "./rate-limit";
 export * from "./relays";
 export * from "./resource-metadata";
