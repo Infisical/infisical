@@ -4264,7 +4264,7 @@ interface PamWebAccessSessionTicketCreatedEvent {
   type: EventType.PAM_WEB_ACCESS_SESSION_TICKET_CREATED;
   metadata: {
     accountId: string;
-    accountPath: string;
+    resourceName: string;
     accountName: string;
   };
 }

@@ -15,8 +15,6 @@ import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-se
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
-import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
-import { getFullPamFolderPath } from "../pam-folder/pam-folder-fns";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import {
   PAM_WEB_ACCESS_PROMPT,
@@ -30,7 +28,6 @@ import {
 type TPamWebAccessServiceFactoryDep = {
   pamAccountDAL: Pick<TPamAccountDALFactory, "findById">;
   pamResourceDAL: Pick<TPamResourceDALFactory, "findById">;
-  pamFolderDAL: TPamFolderDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
@@ -43,7 +40,7 @@ type THandleWebSocketConnectionDTO = {
   accountId: string;
   projectId: string;
   orgId: string;
-  accountPath: string;
+  resourceName: string;
   accountName: string;
   auditLogInfo: AuditLogInfo;
 };
@@ -51,7 +48,6 @@ type THandleWebSocketConnectionDTO = {
 export const pamWebAccessServiceFactory = ({
   pamAccountDAL,
   pamResourceDAL,
-  pamFolderDAL,
   permissionService,
   auditLogService,
   tokenService
@@ -104,25 +100,25 @@ export const pamWebAccessServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    const accountPath = await getFullPamFolderPath({
-      pamFolderDAL,
-      folderId: account.folderId,
-      projectId: account.projectId
-    });
-
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPamAccountActions.Access,
       subject(ProjectPermissionSub.PamAccounts, {
         resourceName: resource.name,
-        accountName: account.name,
-        accountPath
+        accountName: account.name
       })
     );
 
     const token = await tokenService.createTokenForUser({
       type: TokenType.TOKEN_PAM_WS_TICKET,
       userId: actor.id,
-      payload: JSON.stringify({ accountId, projectId, orgId, accountPath, accountName: account.name, auditLogInfo })
+      payload: JSON.stringify({
+        accountId,
+        projectId,
+        orgId,
+        resourceName: resource.name,
+        accountName: account.name,
+        auditLogInfo
+      })
     });
 
     await auditLogService.createAuditLog({
@@ -133,7 +129,7 @@ export const pamWebAccessServiceFactory = ({
         type: EventType.PAM_WEB_ACCESS_SESSION_TICKET_CREATED,
         metadata: {
           accountId,
-          accountPath,
+          resourceName: resource.name,
           accountName: account.name
         }
       }
@@ -147,7 +143,7 @@ export const pamWebAccessServiceFactory = ({
     accountId,
     projectId,
     orgId,
-    accountPath,
+    resourceName,
     accountName,
     auditLogInfo
   }: THandleWebSocketConnectionDTO): Promise<void> => {
@@ -174,7 +170,7 @@ export const pamWebAccessServiceFactory = ({
           type: EventType.PAM_ACCOUNT_ACCESS,
           metadata: {
             accountId,
-            accountPath,
+            resourceName,
             accountName,
             duration: new Date(Date.now() + 60 * 60 * 1000).toISOString()
           }

@@ -312,7 +312,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
             accountId: z.string(),
             projectId: z.string(),
             orgId: z.string(),
-            accountPath: z.string(),
+            resourceName: z.string(),
             accountName: z.string(),
             auditLogInfo: z.object({
               ipAddress: z.string().optional(),
@@ -336,7 +336,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           accountId: payload.accountId,
           projectId: payload.projectId,
           orgId: payload.orgId,
-          accountPath: payload.accountPath,
+          resourceName: payload.resourceName,
           accountName: payload.accountName,
           auditLogInfo: payload.auditLogInfo as AuditLogInfo
         });

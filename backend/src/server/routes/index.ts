@@ -2607,7 +2607,6 @@ export const registerRoutes = async (
   const pamWebAccessService = pamWebAccessServiceFactory({
     pamAccountDAL,
     pamResourceDAL,
-    pamFolderDAL,
     permissionService,
     auditLogService,
     tokenService

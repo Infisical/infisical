@@ -46,6 +46,7 @@ import { PamAddAccountModal } from "../../PamAccountsPage/components/PamAddAccou
 import { PamDeleteAccountModal } from "../../PamAccountsPage/components/PamDeleteAccountModal";
 import { PamRequestAccountAccessModal } from "../../PamAccountsPage/components/PamRequestAccountAccessModal";
 import { PamUpdateAccountModal } from "../../PamAccountsPage/components/PamUpdateAccountModal";
+import { PamWebAccessModal } from "../../PamAccountsPage/components/PamWebAccess";
 import { useAccessAwsIamAccount } from "../../PamAccountsPage/components/useAccessAwsIamAccount";
 
 type Props = {
@@ -64,6 +65,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "addAccount",
     "accessAccount",
+    "webAccess",
     "requestAccount",
     "updateAccount",
     "deleteAccount"
@@ -357,6 +359,16 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
         isOpen={popUp.accessAccount.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("accessAccount", isOpen)}
         account={popUp.accessAccount.data?.account}
+        projectId={projectId!}
+        onOpenWebAccess={() => {
+          handlePopUpOpen("webAccess", { account: popUp.accessAccount.data?.account });
+        }}
+      />
+
+      <PamWebAccessModal
+        isOpen={popUp.webAccess.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("webAccess", isOpen)}
+        account={popUp.webAccess.data?.account}
         projectId={projectId!}
       />
 
