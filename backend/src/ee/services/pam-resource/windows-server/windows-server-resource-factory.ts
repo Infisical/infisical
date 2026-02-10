@@ -4,7 +4,6 @@ import { BadRequestError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
-import { verifyWindowsCredentials } from "@app/lib/smb-rpc";
 
 import { verifyHostInputValidity } from "../../dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
@@ -17,7 +16,6 @@ import {
 import { TWindowsAccountCredentials, TWindowsResourceConnectionDetails } from "./windows-server-resource-types";
 
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
-const SMB_PORT = 445;
 
 const executeWithGateway = async <T>(
   config: {
@@ -123,27 +121,7 @@ export const windowsResourceFactory: TPamResourceFactory<
   const validateAccountCredentials: TPamResourceFactoryValidateAccountCredentials<TWindowsAccountCredentials> = async (
     credentials
   ) => {
-    if (!gatewayId) {
-      throw new BadRequestError({ message: "Gateway ID is required" });
-    }
-
-    try {
-      await executeWithGateway(
-        { connectionDetails, gatewayId, resourceType, targetPortOverride: SMB_PORT },
-        gatewayV2Service,
-        async (proxyPort) => {
-          await verifyWindowsCredentials("localhost", proxyPort, credentials.username, credentials.password);
-        }
-      );
-    } catch (error) {
-      if (error instanceof BadRequestError) throw error;
-
-      const errMsg = error instanceof Error ? error.message : String(error);
-      throw new BadRequestError({
-        message: `Unable to validate account credentials via SMB: ${errMsg}`
-      });
-    }
-
+    // Temporarily allow all credentials. Later on we'll implement a check with RDP
     return credentials;
   };
 
