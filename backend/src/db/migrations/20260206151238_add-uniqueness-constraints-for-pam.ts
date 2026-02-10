@@ -7,7 +7,15 @@ const RESOURCE_CONSTRAINT_NAME = "pam_resources_name_project_id_unique";
 const ACCOUNT_CONSTRAINT_NAME = "pam_accounts_name_resource_id_unique";
 
 export async function up(knex: Knex): Promise<void> {
-  // Delete all existing PAM access approval policies because we're moving away from FOLDERS
+  // Delete all existing PAM access approval requests, grants, and policies because we're moving away from FOLDERS
+  if (await knex.schema.hasTable(TableName.ApprovalRequestGrants)) {
+    await knex(TableName.ApprovalRequestGrants).where("type", "pam-access").del();
+  }
+
+  if (await knex.schema.hasTable(TableName.ApprovalRequests)) {
+    await knex(TableName.ApprovalRequests).where("type", "pam-access").del();
+  }
+
   if (await knex.schema.hasTable(TableName.ApprovalPolicies)) {
     await knex(TableName.ApprovalPolicies).where("type", "pam-access").del();
   }

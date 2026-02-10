@@ -28,17 +28,18 @@ export const PolicyFormSchema = z.object({
       resourceNames: z.string().array().optional(),
       accountNames: z.string().array().optional()
     })
-    .refine(
-      (data) => {
-        // At least one condition type must be provided
-        const hasResourceNames = data.resourceNames && data.resourceNames.length > 0;
-        const hasAccountNames = data.accountNames && data.accountNames.length > 0;
-        return hasResourceNames || hasAccountNames;
-      },
-      {
-        message: "At least one condition type must be provided (Resource Names or Account Names)"
+    .superRefine((data, ctx) => {
+      // At least one condition type must be provided
+      const hasResourceNames = data.resourceNames && data.resourceNames.length > 0;
+      const hasAccountNames = data.accountNames && data.accountNames.length > 0;
+      if (!hasResourceNames && !hasAccountNames) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "At least one condition type must be provided (Resource Names or Account Names)",
+          path: ["resourceNames"]
+        });
       }
-    )
+    })
     .array()
     .min(1, "At least one condition is required"),
   constraints: z.object({

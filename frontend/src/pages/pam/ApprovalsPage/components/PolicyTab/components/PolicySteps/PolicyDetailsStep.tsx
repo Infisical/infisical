@@ -6,7 +6,7 @@ import { FormControl, Input } from "@app/components/v2";
 import { TPolicyForm } from "../PolicySchema";
 
 export const PolicyDetailsStep = () => {
-  const { control, formState } = useFormContext<TPolicyForm>();
+  const { control } = useFormContext<TPolicyForm>();
 
   return (
     <div className="flex flex-col gap-4">
@@ -51,7 +51,7 @@ export const PolicyDetailsStep = () => {
             className="mb-0"
             label="Resource Names"
             isError={Boolean(error)}
-            errorText={error?.message ?? (formState.errors.conditions as any)?.[0]?.message}
+            errorText={error?.message}
             helperText="Match accounts on resources with these names (supports glob patterns)"
           >
             <Input
