@@ -13,9 +13,14 @@ description: "Learn how to automatically rotate Windows local account passwords 
 
 ## Prerequisites
 
-- **Windows Server** with SMB3 support enabled
+- **Windows Server** with SMB3 support enabled (must be a member server or standalone machine, not a Domain Controller)
 - Create an [SMB Connection](/integrations/app-connections/smb) with administrator credentials
 - Ensure your network security policies allow SMB connections from Infisical to this rotation provider
+- The target local account must exist on the Windows server before configuring the rotation
+
+<Note>
+  This rotation manages **local accounts** stored in the Windows machine's local SAM database. Domain Controllers do not have local accounts — if you need to manage accounts on a Domain Controller, those are domain accounts managed through Active Directory, which is not supported by this rotation type.
+</Note>
 
 <Accordion title="Open firewall on Windows Defender for SMB connection">
     Run the following PowerShell command as Administrator on the Windows server to allow inbound SMB connections:
@@ -57,8 +62,8 @@ description: "Learn how to automatically rotate Windows local account passwords 
         ![Rotation Parameters](/images/secret-rotations-v2/windows-local-account/windows-local-account-parameters.png)
 
         - **Rotation Method** - The method to use when rotating the target user's password.
-            - **Login as Target** - Infisical will use the target user's current credentials to authenticate and rotate its own password. The target user must have administrator privileges on the Windows machine to be able to rotate its own password.
-            - **Login as Root** - Infisical will use the administrator credentials provided in the SMB Connection to rotate the target user's password.
+            - **Login as Target** - Infisical will use the target user's current credentials to authenticate and rotate its own password. See the [Login as Target Requirements](#login-as-target-requirements) section below for important configuration details.
+            - **Login as Root** - Infisical will use the administrator credentials provided in the SMB Connection to rotate the target user's password. This is the recommended method for most use cases.
         - **Username** - The target Windows username whose password will be rotated.
         - **Current Password** - The current password of the target user (required when **Rotation Method** is set to **Login as Target**).
         - **Password Requirements** - The constraints to apply when generating new passwords.
@@ -80,6 +85,32 @@ description: "Learn how to automatically rotate Windows local account passwords 
 
         8. Your **Windows Local Account** credentials are now available for use via the mapped secrets.
         ![Rotation Created](/images/secret-rotations-v2/windows-local-account/windows-local-account-created.png)
+
+        ### Login as Target Requirements
+
+        The **Login as Target** method allows a user to rotate their own password without requiring separate administrator credentials in the SMB Connection. However, this method has specific requirements due to Windows security restrictions:
+
+        1. **Local Administrator Privileges** - The target user must be a member of the local `Administrators` group on the Windows machine.
+
+        2. **Disable Remote UAC Token Filtering** - By default, Windows filters administrative tokens for remote connections, even for local administrators. You must disable this by setting the following registry key on the target Windows server:
+
+            ```powershell
+            Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name "LocalAccountTokenFilterPolicy" -Value 1 -Type DWord
+            ```
+
+            After setting this, restart the server or the LanmanServer service:
+
+            ```powershell
+            Restart-Service LanmanServer
+            ```
+
+        <Warning>
+          Disabling Remote UAC token filtering reduces security by allowing remote connections with full administrative privileges. Only enable this setting if you understand the security implications and have other compensating controls in place (e.g., network segmentation, firewall rules).
+        </Warning>
+
+        <Note>
+          If you cannot or prefer not to disable Remote UAC token filtering, use the **Login as Root** method instead, which uses domain administrator or built-in Administrator credentials from the SMB Connection.
+        </Note>
 
         ### Reconcile Windows Local Account
 
