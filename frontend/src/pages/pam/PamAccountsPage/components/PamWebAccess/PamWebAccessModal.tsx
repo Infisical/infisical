@@ -18,17 +18,6 @@ export const PamWebAccessModal = ({ isOpen, onOpenChange, account, projectId }: 
     projectId
   });
 
-  useEffect(() => {
-    if (!isConnected) return undefined;
-
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-    };
-
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [isConnected]);
-
   // Disconnect when modal closes
   useEffect(() => {
     if (!isOpen) {
@@ -48,7 +37,13 @@ export const PamWebAccessModal = ({ isOpen, onOpenChange, account, projectId }: 
       <ModalContent
         className="max-w-[90vw]"
         title="Web Launcher"
-        subTitle={`${account.name} (${account.resource.name})`}
+        subTitle={
+          <>
+            Account: {account.name}
+            <br />
+            Resource: {account.resource.name}
+          </>
+        }
       >
         <div className="flex flex-col gap-4">
           <div className="h-[70vh] overflow-hidden rounded-md border border-mineshaft-600">

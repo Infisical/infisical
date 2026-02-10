@@ -36,6 +36,18 @@ export const usePamWebAccessSession = ({
     createTicketRef.current = createTicket;
   }, [onSessionStart, onSessionEnd, createTicket]);
 
+  const disconnect = useCallback(() => {
+    const ws = wsRef.current;
+    wsRef.current = null;
+
+    if (ws) {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: WsMessageType.Control, data: "quit" }));
+      }
+      ws.close();
+    }
+  }, []);
+
   // Main lifecycle effect — fires when containerEl becomes non-null
   useEffect(() => {
     if (!containerEl || !accountId) return undefined;
@@ -99,10 +111,13 @@ export const usePamWebAccessSession = ({
           inputBuffer.current = inputBuffer.current.slice(0, -1);
           terminal.write("\b \b");
         }
-        // Ctrl+C — cancel the current input
+        // Ctrl+C — cancel the current input and sync backend buffer
       } else if (data === "\x03") {
         terminal.write("^C\r\n");
         inputBuffer.current = "";
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({ type: WsMessageType.Control, data: "clear-buffer" }));
+        }
         terminal.write(currentPrompt.current);
         // Printable characters and tab — append to input buffer
       } else if (data >= " " || data === "\t") {
@@ -150,6 +165,11 @@ export const usePamWebAccessSession = ({
             focusTimeout = setTimeout(() => terminal.focus(), 100);
           }
 
+          if (msg.type === WsMessageType.SessionEnd) {
+            terminal.write(`\r\n${msg.reason.replace(/\r?\n/g, "\r\n")}\r\n`);
+            return;
+          }
+
           // Write directly to terminal — no indirection
           if (msg.data) {
             // xterm requires \r\n; bare \n moves the cursor down without returning to column 0
@@ -186,32 +206,11 @@ export const usePamWebAccessSession = ({
       if (focusTimeout) clearTimeout(focusTimeout);
       window.removeEventListener("resize", handleResize);
       resizeObserver.disconnect();
-
-      const ws = wsRef.current;
-      if (ws) {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: WsMessageType.Control, data: "quit" }));
-        }
-        ws.close();
-        wsRef.current = null;
-      }
-
+      disconnect();
       terminal.dispose();
       setIsConnected(false);
     };
-  }, [containerEl, accountId, projectId]);
-
-  const disconnect = useCallback(() => {
-    const ws = wsRef.current;
-    wsRef.current = null;
-
-    if (ws) {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: WsMessageType.Control, data: "quit" }));
-      }
-      ws.close();
-    }
-  }, []);
+  }, [containerEl, accountId, projectId, disconnect]);
 
   const containerRef = useCallback((node: HTMLDivElement | null) => {
     setContainerEl(node);

@@ -2609,7 +2609,12 @@ export const registerRoutes = async (
     pamResourceDAL,
     permissionService,
     auditLogService,
-    tokenService
+    tokenService,
+    pamSessionDAL,
+    pamSessionExpirationService,
+    gatewayV2Service,
+    kmsService,
+    userDAL
   });
 
   const aiMcpServerService = aiMcpServerServiceFactory({
