@@ -245,6 +245,7 @@ export const pamWebAccessServiceFactory = ({
             GatewayProxyProtocol.PamSessionCancellation
           );
           cancelConn.end();
+          relayConn.destroy();
         } catch (err) {
           logger.debug(err, "Session cancellation signal failed (best-effort)");
         }
