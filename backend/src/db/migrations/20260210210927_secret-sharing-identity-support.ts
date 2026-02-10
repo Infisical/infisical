@@ -16,7 +16,7 @@ export async function down(knex: Knex): Promise<void> {
   const hasIdentityIdColumn = await knex.schema.hasColumn(TableName.SecretSharing, "identityId");
   if (hasIdentityIdColumn) {
     await knex.schema.alterTable(TableName.SecretSharing, (t) => {
-      t.dropForeign("identityId");
+      t.dropForeign(["identityId"]);
       t.dropColumn("identityId");
     });
   }

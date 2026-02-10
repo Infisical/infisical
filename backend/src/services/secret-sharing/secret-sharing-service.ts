@@ -514,7 +514,6 @@ export const secretSharingServiceFactory = ({
 
     const count = await secretSharingDAL.countAllUserOrgSharedSecrets({
       orgId: actorOrgId,
-      userId: actorId,
       type,
       ...(actor === ActorType.USER && { userId: actorId }),
       ...(actor === ActorType.IDENTITY && { identityId: actorId })
@@ -725,6 +724,8 @@ export const secretSharingServiceFactory = ({
           message: "Identity does not have permission to delete shared secret"
         });
       }
+    } else {
+      throw new ForbiddenRequestError({ message: "User does not have permission to delete shared secret" });
     }
 
     if (sharedSecret.orgId && sharedSecret.orgId !== orgId) {

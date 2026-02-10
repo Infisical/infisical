@@ -337,10 +337,10 @@
                   "self-hosting/deployment-options/linux-upgrade"
                 ]
               },
-                            "self-hosting/guides/replication",
-                            "self-hosting/guides/upgrading-infisical",
-                            "self-hosting/configuration/envars",
-                            "self-hosting/configuration/requirements",
+              "self-hosting/guides/replication",
+              "self-hosting/guides/upgrading-infisical",
+              "self-hosting/configuration/envars",
+              "self-hosting/configuration/requirements",
               {
                 "group": "Guides",
                 "pages": [
@@ -3047,7 +3047,7 @@
     "href": "https://infisical.com"
   },
   "api": {
-    "openapi": "https://abbigail-rotund-harmonically.ngrok-free.dev/api/docs/json",
+    "openapi": "https://app.infisical.com/api/docs/json",
     "mdx": {
       "server": ["https://app.infisical.com"]
     }

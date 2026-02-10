@@ -180,6 +180,14 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         .superRefine((data, ctx) => {
           const duration = ms(data.expiresIn);
 
+          if (duration === undefined) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Invalid duration format",
+              path: ["expiresIn"]
+            });
+          }
+
           if (duration > ms("30d")) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
@@ -244,6 +252,14 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         })
         .superRefine((data, ctx) => {
           const duration = ms(data.expiresIn);
+
+          if (duration === undefined) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Invalid duration format",
+              path: ["expiresIn"]
+            });
+          }
 
           if (duration > ms("30d")) {
             ctx.addIssue({

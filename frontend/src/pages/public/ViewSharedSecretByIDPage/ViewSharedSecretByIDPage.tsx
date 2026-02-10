@@ -123,10 +123,11 @@ export const ViewSharedSecretByIDPage = () => {
     }
   }, [activeError]);
 
-  // UI state
   const secret = accessMutation.data;
   const isPasswordProtected = secretDetails?.isPasswordProtected ?? false;
-  const showPasswordPrompt = isPasswordProtected && !secret;
+  // only show password prompt if no critical error (403/404) occurred after submission
+  const hasCriticalError = accessMutation.isError && (isForbidden || isNotFound);
+  const showPasswordPrompt = isPasswordProtected && !secret && !hasCriticalError;
   const isLoading = isLoadingDetails || (!isPasswordProtected && accessMutation.isPending);
 
   const hasCustomBranding = !!brandingConfig;

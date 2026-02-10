@@ -55,14 +55,9 @@ export const secretSharingDALFactory = (db: TDbClient) => {
   }: {
     orgId: string;
     type: SecretSharingType;
-  } & (
-    | {
-        userId: string;
-      }
-    | {
-        identityId: string;
-      }
-  )) => {
+    userId?: string;
+    identityId?: string;
+  }) => {
     try {
       interface CountResult {
         count: string;
