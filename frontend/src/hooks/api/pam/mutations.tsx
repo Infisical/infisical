@@ -167,6 +167,19 @@ export const useAccessPamAccount = () => {
   });
 };
 
+// Web Access
+export const useCreatePamWebAccessTicket = () => {
+  return useMutation({
+    mutationFn: async ({ accountId, projectId }: { accountId: string; projectId: string }) => {
+      const { data } = await apiRequest.post<{ ticket: string }>(
+        `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
+        { projectId }
+      );
+      return data.ticket;
+    }
+  });
+};
+
 // Folders
 export const useCreatePamFolder = () => {
   const queryClient = useQueryClient();

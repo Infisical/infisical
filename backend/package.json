@@ -65,7 +65,7 @@
     "react-email": {
       "glob": "^11.1.0"
     },
-    "ts-node":{
+    "ts-node": {
       "diff": "^4.0.4"
     }
   },
@@ -144,6 +144,7 @@
     "@fastify/static": "^7.0.4",
     "@fastify/swagger": "^8.14.0",
     "@fastify/swagger-ui": "^3.1.0",
+    "@fastify/websocket": "^10.0.1",
     "@gitbeaker/rest": "^42.5.0",
     "@google-cloud/kms": "^4.5.0",
     "@infisical/pg-view-generator": "^1.1.0",
@@ -246,12 +247,12 @@
     "snowflake-sdk": "^2.0.4",
     "ssh2": "^1.17.0",
     "tedious": "^18.2.1",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",
     "uuid": "^9.0.1",
     "zod": "^3.22.4",
-    "zod-to-json-schema": "^3.24.5",
-    "ts-node": "^10.9.2",
-    "tsconfig-paths": "^4.2.0"
+    "zod-to-json-schema": "^3.24.5"
   }
 }

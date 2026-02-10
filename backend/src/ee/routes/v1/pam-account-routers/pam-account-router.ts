@@ -1,6 +1,7 @@
+import type WebSocket from "ws";
 import { z } from "zod";
 
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AuditLogInfo, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountOrderBy, PamAccountView } from "@app/ee/services/pam-account/pam-account-enums";
 import { SanitizedAwsIamAccountWithResourceSchema } from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
 import { SanitizedKubernetesAccountWithResourceSchema } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
@@ -12,11 +13,13 @@ import { SanitizedRedisAccountWithResourceSchema } from "@app/ee/services/pam-re
 import { SanitizedSSHAccountWithResourceSchema } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
 import { SanitizedWindowsAccountWithResourceSchema } from "@app/ee/services/pam-resource/windows-server/windows-server-resource-schemas";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { TokenType } from "@app/services/auth-token/auth-token-types";
 
 const SanitizedAccountSchema = z.discriminatedUnion("resourceType", [
   SanitizedKubernetesAccountWithResourceSchema,
@@ -228,6 +231,124 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       });
 
       return response;
+    }
+  });
+
+  // Web access ticket endpoint
+  server.route({
+    method: "POST",
+    url: "/:accountId/web-access-ticket",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Issue a one-time ticket for WebSocket web access",
+      params: z.object({
+        accountId: z.string().uuid()
+      }),
+      body: z.object({
+        projectId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({ ticket: z.string() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { ticket } = await server.services.pamWebAccess.issueWebSocketTicket({
+        accountId: req.params.accountId,
+        projectId: req.body.projectId,
+        orgId: req.permission.orgId,
+        actor: req.permission,
+        auditLogInfo: req.auditLogInfo
+      });
+
+      return { ticket };
+    }
+  });
+
+  // WebSocket endpoint for web access (ticket-based auth)
+  server.route({
+    method: "GET",
+    url: "/:accountId/web-access",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "WebSocket endpoint for browser-based web access to PAM accounts",
+      params: z.object({
+        accountId: z.string().uuid()
+      }),
+      querystring: z.object({
+        ticket: z.string()
+      }),
+      response: {
+        200: z.object({ message: z.string() })
+      }
+    },
+    wsHandler: async (connection: WebSocket, req) => {
+      try {
+        const ticketValue = req.query.ticket;
+        const separatorIndex = ticketValue.indexOf(":");
+        if (separatorIndex === -1) {
+          connection.close(4001, "Invalid or expired ticket");
+          return;
+        }
+
+        const userId = ticketValue.slice(0, separatorIndex);
+        const tokenCode = ticketValue.slice(separatorIndex + 1);
+
+        const tokenRecord = await server.services.authToken.validateTokenForUser({
+          type: TokenType.TOKEN_PAM_WS_TICKET,
+          userId,
+          code: tokenCode
+        });
+
+        if (!tokenRecord?.payload) {
+          connection.close(4001, "Invalid or expired ticket");
+          return;
+        }
+
+        const payload = z
+          .object({
+            accountId: z.string(),
+            projectId: z.string(),
+            orgId: z.string(),
+            resourceName: z.string(),
+            accountName: z.string(),
+            auditLogInfo: z.object({
+              ipAddress: z.string().optional(),
+              userAgent: z.string().optional(),
+              userAgentType: z.string().optional(),
+              actor: z.object({
+                type: z.string(),
+                metadata: z.record(z.unknown())
+              })
+            })
+          })
+          .parse(JSON.parse(tokenRecord.payload));
+
+        if (payload.accountId !== req.params.accountId) {
+          connection.close(4001, "Invalid or expired ticket");
+          return;
+        }
+
+        await server.services.pamWebAccess.handleWebSocketConnection({
+          socket: connection,
+          accountId: payload.accountId,
+          projectId: payload.projectId,
+          orgId: payload.orgId,
+          resourceName: payload.resourceName,
+          accountName: payload.accountName,
+          auditLogInfo: payload.auditLogInfo as AuditLogInfo
+        });
+      } catch (err) {
+        logger.error(err, "WebSocket ticket validation failed");
+        connection.close(4001, "Invalid or expired ticket");
+      }
+    },
+    handler: async () => {
+      return { message: "WebSocket upgrade required" };
     }
   });
 };
