@@ -19,7 +19,6 @@ import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { PamAccountView } from "../pam-account/pam-account-enums";
 import { decryptAccountCredentials, encryptAccountCredentials } from "../pam-account/pam-account-fns";
-import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamResourceDALFactory } from "./pam-resource-dal";
 import { PamResource } from "./pam-resource-enums";
 import { PAM_RESOURCE_FACTORY_MAP } from "./pam-resource-factory";
@@ -37,7 +36,6 @@ import { TSSHResourceMetadata } from "./ssh/ssh-resource-types";
 type TPamResourceServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByProjectIdWithResourceDetails">;
-  pamFolderDAL: Pick<TPamFolderDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2Service: Pick<
@@ -51,7 +49,6 @@ export type TPamResourceServiceFactory = ReturnType<typeof pamResourceServiceFac
 export const pamResourceServiceFactory = ({
   pamResourceDAL,
   pamAccountDAL,
-  pamFolderDAL,
   permissionService,
   kmsService,
   gatewayV2Service
@@ -79,35 +76,12 @@ export const pamResourceServiceFactory = ({
         filterResourceIds: [id]
       });
 
-      // Compute folder paths for account path resolution
-      const uniqueFolderIds = [...new Set(accounts.filter((a) => a.folderId).map((a) => a.folderId!))];
-      const folderPathMap: Record<string, string> = {};
-
-      if (uniqueFolderIds.length > 0) {
-        const allFolders = await pamFolderDAL.find({ projectId: resource.projectId });
-        const folderMap = new Map(allFolders.map((f) => [f.id, f]));
-
-        for (const folderId of uniqueFolderIds) {
-          const pathSegments: string[] = [];
-          let currentId: string | null | undefined = folderId;
-          while (currentId) {
-            const folder = folderMap.get(currentId);
-            if (!folder) break;
-            pathSegments.unshift(folder.name);
-            currentId = folder.parentId;
-          }
-          folderPathMap[folderId] = `/${pathSegments.join("/")}`;
-        }
-      }
-
       const hasAccountAccess = accounts.some((account) => {
-        const accountPath = account.folderId ? folderPathMap[account.folderId] || "/" : "/";
         return permission.can(
           ProjectPermissionPamAccountActions.Read,
           subject(ProjectPermissionSub.PamAccounts, {
             resourceName: resource.name,
-            accountName: account.name,
-            accountPath
+            accountName: account.name
           })
         );
       });
@@ -388,33 +362,11 @@ export const pamResourceServiceFactory = ({
       return { resources: [], totalCount: 0 };
     }
 
-    // Compute folder paths so we can build the accountPath for each account
-    const uniqueFolderIds = [...new Set(allAccounts.filter((a) => a.folderId).map((a) => a.folderId!))];
-    const folderPathMap: Record<string, string> = {};
-
-    if (uniqueFolderIds.length > 0) {
-      const allFolders = await pamFolderDAL.find({ projectId });
-      const folderMap = new Map(allFolders.map((f) => [f.id, f]));
-
-      for (const folderId of uniqueFolderIds) {
-        const pathSegments: string[] = [];
-        let currentId: string | null | undefined = folderId;
-        while (currentId) {
-          const folder = folderMap.get(currentId);
-          if (!folder) break;
-          pathSegments.unshift(folder.name);
-          currentId = folder.parentId;
-        }
-        folderPathMap[folderId] = `/${pathSegments.join("/")}`;
-      }
-    }
-
     // Group accounts by resource ID
-    const accountsByResourceId = new Map<string, Array<{ accountName: string; accountPath: string }>>();
+    const accountsByResourceId = new Map<string, Array<{ accountName: string }>>();
     for (const account of allAccounts) {
-      const accountPath = account.folderId ? folderPathMap[account.folderId] || "/" : "/";
       const existing = accountsByResourceId.get(account.resourceId) || [];
-      existing.push({ accountName: account.name, accountPath });
+      existing.push({ accountName: account.name });
       accountsByResourceId.set(account.resourceId, existing);
     }
 
@@ -426,8 +378,7 @@ export const pamResourceServiceFactory = ({
           ProjectPermissionPamAccountActions.Read,
           subject(ProjectPermissionSub.PamAccounts, {
             resourceName: resource.name,
-            accountName: account.accountName,
-            accountPath: account.accountPath
+            accountName: account.accountName
           })
         )
       );

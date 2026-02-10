@@ -278,6 +278,7 @@ export const ApprovalRequestTab = () => {
             <THead>
               <Tr>
                 <Th>Requester</Th>
+                <Th>Resource</Th>
                 <Th>Account</Th>
                 <Th>Access Duration</Th>
                 <Th>Status</Th>
@@ -285,7 +286,7 @@ export const ApprovalRequestTab = () => {
               </Tr>
             </THead>
             <TBody>
-              {isRequestsLoading && <TableSkeleton columns={5} innerKey="approval-requests" />}
+              {isRequestsLoading && <TableSkeleton columns={6} innerKey="approval-requests" />}
               {!isRequestsLoading &&
                 paginatedRequests.map((request) => {
                   const needsApproval = checkIfUserNeedsToApprove(request, userId, userGroups);
@@ -307,18 +308,10 @@ export const ApprovalRequestTab = () => {
                         </div>
                       </Td>
                       <Td>
-                        <div className="space-y-0.5">
-                          {resourceName && (
-                            <div className="text-sm text-mineshaft-200">
-                              <span className="text-mineshaft-400">Resource:</span> {resourceName}
-                            </div>
-                          )}
-                          {accountName && (
-                            <div className="text-sm text-mineshaft-200">
-                              <span className="text-mineshaft-400">Account:</span> {accountName}
-                            </div>
-                          )}
-                        </div>
+                        <span className="text-sm text-mineshaft-200">{resourceName || "-"}</span>
+                      </Td>
+                      <Td>
+                        <span className="text-sm text-mineshaft-200">{accountName || "-"}</span>
                       </Td>
                       <Td>
                         <span className="text-sm text-mineshaft-200">{accessDuration}</span>

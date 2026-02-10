@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { PamFoldersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountOrderBy, PamAccountView } from "@app/ee/services/pam-account/pam-account-enums";
 import { SanitizedAwsIamAccountWithResourceSchema } from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
@@ -13,7 +12,6 @@ import { SanitizedRedisAccountWithResourceSchema } from "@app/ee/services/pam-re
 import { SanitizedSSHAccountWithResourceSchema } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
 import { SanitizedWindowsAccountWithResourceSchema } from "@app/ee/services/pam-resource/windows-server/windows-server-resource-schemas";
 import { BadRequestError } from "@app/lib/errors";
-import { removeTrailingSlash } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -33,10 +31,7 @@ const SanitizedAccountSchema = z.union([
 
 const ListPamAccountsResponseSchema = z.object({
   accounts: SanitizedAccountSchema.array(),
-  folders: PamFoldersSchema.array(),
-  totalCount: z.number().default(0),
-  folderId: z.string().optional(),
-  folderPaths: z.record(z.string(), z.string())
+  totalCount: z.number().default(0)
 });
 
 export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
@@ -94,7 +89,6 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       description: "List PAM accounts",
       querystring: z.object({
         projectId: z.string().uuid(),
-        accountPath: z.string().trim().default("/").transform(removeTrailingSlash),
         accountView: z.nativeEnum(PamAccountView).default(PamAccountView.Flat),
         offset: z.coerce.number().min(0).default(0),
         limit: z.coerce.number().min(1).max(100).default(100),
@@ -117,16 +111,14 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { projectId, accountPath, accountView, limit, offset, search, orderBy, orderDirection, filterResourceIds } =
-        req.query;
+      const { projectId, accountView, limit, offset, search, orderBy, orderDirection, filterResourceIds } = req.query;
 
-      const { accounts, folders, totalCount, folderId, folderPaths } = await server.services.pamAccount.list({
+      const { accounts, totalCount } = await server.services.pamAccount.list({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId,
-        accountPath,
         accountView,
         limit,
         offset,
@@ -143,13 +135,12 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.PAM_ACCOUNT_LIST,
           metadata: {
-            accountCount: accounts.length,
-            folderCount: folders.length
+            accountCount: accounts.length
           }
         }
       });
 
-      return { accounts, folders, totalCount, folderId, folderPaths } as z.infer<typeof ListPamAccountsResponseSchema>;
+      return { accounts, totalCount } as z.infer<typeof ListPamAccountsResponseSchema>;
     }
   });
 

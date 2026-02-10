@@ -29,7 +29,6 @@ export type TAccessAccountDTO = {
 };
 
 export type TListAccountsDTO = {
-  accountPath: string;
   accountView: PamAccountView;
   search?: string;
   orderBy?: PamAccountOrderBy;

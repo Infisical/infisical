@@ -2555,7 +2555,6 @@ export const registerRoutes = async (
   const pamResourceService = pamResourceServiceFactory({
     pamResourceDAL,
     pamAccountDAL,
-    pamFolderDAL,
     permissionService,
     kmsService,
     gatewayV2Service
@@ -2577,7 +2576,6 @@ export const registerRoutes = async (
     pamAccountDAL,
     gatewayV2Service,
     kmsService,
-    pamFolderDAL,
     pamResourceDAL,
     pamSessionDAL,
     permissionService,
