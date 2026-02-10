@@ -25,8 +25,10 @@ export const SupabaseSyncFns = {
       syncOptions: { disableSecretDeletion, keySchema }
     } = secretSync;
     const config = secretSync.destinationConfig;
+    // Supabase treats project branches as separate projects
+    const projectId = config?.projectBranchId || config.projectId;
 
-    const variables = await SupabasePublicAPI.getVariables(secretSync.connection, config.projectId);
+    const variables = await SupabasePublicAPI.getVariables(secretSync.connection, projectId);
 
     const supabaseSecrets = new Map(variables!.map((variable) => [variable.name, variable]));
 
@@ -39,7 +41,7 @@ export const SupabaseSyncFns = {
 
     for await (const batch of chunkArray(toCreate, 100)) {
       try {
-        await SupabasePublicAPI.createVariables(secretSync.connection, config.projectId, ...batch);
+        await SupabasePublicAPI.createVariables(secretSync.connection, projectId, ...batch);
       } catch (error) {
         throw new SecretSyncError({
           error,
@@ -63,7 +65,7 @@ export const SupabaseSyncFns = {
 
     for await (const batch of chunkArray(toDelete, 100)) {
       try {
-        await SupabasePublicAPI.deleteVariables(secretSync.connection, config.projectId, ...batch);
+        await SupabasePublicAPI.deleteVariables(secretSync.connection, projectId, ...batch);
       } catch (error) {
         throw new SecretSyncError({
           error,
@@ -75,8 +77,9 @@ export const SupabaseSyncFns = {
 
   async removeSecrets(secretSync: TSupabaseSyncWithCredentials, secretMap: TSecretMap) {
     const config = secretSync.destinationConfig;
+    const projectId = config?.projectBranchId || config.projectId;
 
-    const variables = await SupabasePublicAPI.getVariables(secretSync.connection, config.projectId);
+    const variables = await SupabasePublicAPI.getVariables(secretSync.connection, projectId);
 
     const supabaseSecrets = new Map(variables!.map((variable) => [variable.name, variable]));
 
@@ -90,7 +93,7 @@ export const SupabaseSyncFns = {
 
     for await (const batch of chunkArray(toDelete, 100)) {
       try {
-        await SupabasePublicAPI.deleteVariables(secretSync.connection, config.projectId, ...batch);
+        await SupabasePublicAPI.deleteVariables(secretSync.connection, projectId, ...batch);
       } catch (error) {
         throw new SecretSyncError({
           error,
