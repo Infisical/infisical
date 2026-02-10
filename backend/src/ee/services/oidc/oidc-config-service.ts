@@ -18,6 +18,7 @@ import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
+import { matchesAllowedEmailDomain } from "@app/lib/validator";
 import { ActorType, AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
@@ -737,13 +738,10 @@ export const oidcConfigServiceFactory = ({
           });
         }
 
-        if (oidcCfg.allowedEmailDomains) {
-          const allowedDomains = oidcCfg.allowedEmailDomains.split(", ");
-          if (!allowedDomains.includes(claims.email.split("@")[1])) {
-            throw new ForbiddenRequestError({
-              message: "Email not allowed."
-            });
-          }
+        if (!matchesAllowedEmailDomain(claims.email, oidcCfg.allowedEmailDomains ?? "")) {
+          throw new ForbiddenRequestError({
+            message: "Email not allowed."
+          });
         }
 
         const name = claims?.given_name || claims?.name;

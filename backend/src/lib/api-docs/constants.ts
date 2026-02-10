@@ -3211,7 +3211,7 @@ export const OidcSSo = {
   UPDATE_CONFIG: {
     organizationId: "The ID of the organization to update the OIDC config for.",
     allowedEmailDomains:
-      "A list of allowed email domains that users can use to authenticate with. This field is comma separated. Example: 'example.com,acme.com'",
+      "A list of allowed email domains that users can use to authenticate with. This field is comma separated. Supports wildcards (e.g. *.example.com). Example: 'example.com, *.acme.com'",
     discoveryURL: "The URL of the OIDC discovery endpoint.",
     configurationType: "The configuration type to use for the OIDC configuration.",
     issuer:
@@ -3231,7 +3231,7 @@ export const OidcSSo = {
   CREATE_CONFIG: {
     organizationId: "The ID of the organization to create the OIDC config for.",
     allowedEmailDomains:
-      "A list of allowed email domains that users can use to authenticate with. This field is comma separated.",
+      "A list of allowed email domains that users can use to authenticate with. This field is comma separated. Supports wildcards (e.g. *.example.com).",
     discoveryURL: "The URL of the OIDC discovery endpoint.",
     configurationType: "The configuration type to use for the OIDC configuration.",
     issuer:
