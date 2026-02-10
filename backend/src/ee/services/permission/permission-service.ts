@@ -197,7 +197,7 @@ export const permissionServiceFactory = ({
     }
 
     if (orgId !== actorOrgId) {
-      throw new ForbiddenRequestError({ name: "You are not allowed to access organization resource" });
+      throw new ForbiddenRequestError({ message: "You are not allowed to access organization resource" });
     }
 
     const permissionData = await permissionDAL.getPermission({
@@ -208,7 +208,10 @@ export const permissionServiceFactory = ({
       actorId,
       actorType: actor
     });
-    if (!permissionData?.length) throw new ForbiddenRequestError({ name: "You are not member of this organization" });
+    if (!permissionData?.length)
+      throw new ForbiddenRequestError({
+        message: `You are not a member of this project. Please make sure this ${actor} is assigned to the project with the required role.`
+      });
 
     const rootOrgId = permissionData?.[0]?.rootOrgId;
     const isChild = Boolean(rootOrgId);
@@ -280,7 +283,7 @@ export const permissionServiceFactory = ({
 
     if (serviceToken.projectId !== projectId) {
       throw new ForbiddenRequestError({
-        name: `Service token not a part of the specified project with ID ${projectId}`
+        message: `Service token not a part of the specified project with ID ${projectId}`
       });
     }
 
@@ -373,7 +376,10 @@ export const permissionServiceFactory = ({
       actorId,
       actorType: actor
     });
-    if (!permissionData?.length) throw new ForbiddenRequestError({ name: "You are not member of this project" });
+    if (!permissionData?.length)
+      throw new ForbiddenRequestError({
+        message: `You are not a member of this project. Please make sure this ${actor} is assigned to the project with the required role.`
+      });
 
     const permissionFromRoles = permissionData.flatMap((membership) => {
       const activeRoles = membership?.roles
