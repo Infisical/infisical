@@ -210,7 +210,7 @@ const ServiceTokenForm = () => {
           onClick={() =>
             append({
               environment: currentProject?.environments?.[0]?.slug || "",
-              secretPath: ""
+              secretPath: "/"
             })
           }
           leftIcon={<FontAwesomeIcon icon={faPlus} />}
