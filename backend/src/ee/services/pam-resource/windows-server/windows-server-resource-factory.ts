@@ -1,11 +1,10 @@
 import net from "node:net";
 
-import axios from "axios";
-
 import { BadRequestError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
+import { verifyWindowsCredentials } from "@app/lib/smb-rpc";
 
 import { verifyHostInputValidity } from "../../dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
@@ -18,7 +17,7 @@ import {
 import { TWindowsAccountCredentials, TWindowsResourceConnectionDetails } from "./windows-server-resource-types";
 
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
-const WINRM_HTTP_PORT = 5985;
+const SMB_PORT = 445;
 
 const executeWithGateway = async <T>(
   config: {
@@ -129,32 +128,19 @@ export const windowsResourceFactory: TPamResourceFactory<
     }
 
     try {
-      const statusCode = await executeWithGateway(
-        { connectionDetails, gatewayId, resourceType, targetPortOverride: WINRM_HTTP_PORT },
+      await executeWithGateway(
+        { connectionDetails, gatewayId, resourceType, targetPortOverride: SMB_PORT },
         gatewayV2Service,
         async (proxyPort) => {
-          const resp = await axios.post(`http://localhost:${proxyPort}/wsman`, "", {
-            headers: { "Content-Type": "application/soap+xml;charset=UTF-8" },
-            auth: { username: credentials.username, password: credentials.password },
-            timeout: EXTERNAL_REQUEST_TIMEOUT,
-            validateStatus: () => true
-          });
-          return resp.status;
+          await verifyWindowsCredentials("localhost", proxyPort, credentials.username, credentials.password);
         }
       );
-
-      if (statusCode === 401) {
-        throw new BadRequestError({
-          message:
-            "Account credentials invalid: username or password is incorrect, or the account does not have WinRM access (only administrators can authenticate via WinRM by default)"
-        });
-      }
     } catch (error) {
       if (error instanceof BadRequestError) throw error;
 
       const errMsg = error instanceof Error ? error.message : String(error);
       throw new BadRequestError({
-        message: `Unable to validate account credentials via WinRM (port 5985): ${errMsg}. Ensure WinRM is enabled (run 'winrm quickconfig' on the server) and that port 5985 is open.`
+        message: `Unable to validate account credentials via SMB: ${errMsg}`
       });
     }
 
