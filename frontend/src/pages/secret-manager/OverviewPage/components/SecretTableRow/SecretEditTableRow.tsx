@@ -9,6 +9,7 @@ import {
   EditIcon,
   EllipsisIcon,
   EyeOffIcon,
+  ForwardIcon,
   GitBranchIcon,
   HistoryIcon,
   MessageSquareIcon,
@@ -62,6 +63,7 @@ import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
 import { Reminder } from "@app/hooks/api/reminders/types";
 import { ProjectEnv, SecretType, SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
+import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
@@ -150,7 +152,8 @@ export const SecretEditTableRow = ({
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
-    "accessInsightsUpgrade"
+    "accessInsightsUpgrade",
+    "createSharedSecret"
   ] as const);
 
   const { currentProject } = useProject();
@@ -736,6 +739,46 @@ export const SecretEditTableRow = ({
                           : "Enable Multi-line Encoding"}
                 </TooltipContent>
               </Tooltip>
+              <Tooltip delayDuration={300} disableHoverableContent>
+                <TooltipTrigger>
+                  <UnstableIconButton
+                    isDisabled={
+                      secretValueHidden ||
+                      !currentProject.secretSharing ||
+                      (isCreatable && !isImportedSecret)
+                    }
+                    onClick={async () => {
+                      if (sharedValueData) {
+                        handlePopUpOpen("createSharedSecret", {
+                          value: sharedValueData.value
+                        });
+                        return;
+                      }
+                      const { data } = await refetchSharedValue();
+                      if (data) {
+                        handlePopUpOpen("createSharedSecret", { value: data.value });
+                      }
+                    }}
+                    variant="ghost"
+                    size="xs"
+                    className={twMerge(
+                      "w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100",
+                      shouldStayExpanded && "w-7 opacity-100"
+                    )}
+                  >
+                    <ForwardIcon />
+                  </UnstableIconButton>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {!currentProject.secretSharing
+                    ? "Secret Sharing Disabled"
+                    : secretValueHidden
+                      ? "Access Denied"
+                      : isCreatable && !importedSecret
+                        ? "Create Secret to Share"
+                        : "Share Secret"}
+                </TooltipContent>
+              </Tooltip>
               <UnstableDropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
                 <UnstableDropdownMenuTrigger asChild>
                   <UnstableIconButton
@@ -1018,6 +1061,7 @@ export const SecretEditTableRow = ({
           )
         }
       />
+      <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
     </div>
   );
 };
