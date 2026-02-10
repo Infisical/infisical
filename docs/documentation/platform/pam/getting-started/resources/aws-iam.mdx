@@ -201,8 +201,8 @@ A PAM Account represents a specific Target Role that users can request access to
   </Step>
 
   <Step title="Create the Account in Infisical">
-    1. Navigate to the **Accounts** tab in your PAM project
-    2. Click **Add Account** and select the AWS IAM resource you created
+    1. Navigate to the **Resources** tab in your PAM project and open the AWS IAM resource you created
+    2. Click **Add Account**
     3. Fill in the account details:
 
     ![Create AWS IAM Account](/images/pam/resources/aws-iam/create-account.png)
@@ -236,16 +236,16 @@ Once your resource and accounts are configured, users can request access through
 ![Create AWS IAM Resource](/images/pam/resources/aws-iam/access-account.png)
 
 <Steps>
-  <Step title="Navigate to Accounts">
-    Go to the **Accounts** tab in your PAM project.
+  <Step title="Navigate to the resource">
+    Go to the **Resources** tab in your PAM project and open the AWS IAM resource.
   </Step>
 
-  <Step title="Find the Account">
-    Find the AWS Console account you want to access.
+  <Step title="Select the account">
+    In the resource’s accounts section, find the AWS Console account you want to access.
   </Step>
 
   <Step title="Request Access">
-    Click the **Access** button.
+    Click the **Access** button for that account.
 
     Infisical will:
     1. Assume the Resource Role using your project's External ID
