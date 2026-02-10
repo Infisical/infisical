@@ -413,7 +413,6 @@ export type McpEndpointSubjectFields = {
 export type PamAccountSubjectFields = {
   resourceName: string;
   accountName: string;
-  accountPath: string;
 };
 
 export type ProjectPermissionSet =
@@ -585,27 +584,7 @@ const SECRET_PATH_PERMISSION_OPERATOR_SCHEMA = z.union([
     })
     .partial()
 ]);
-const PAM_ACCOUNT_PATH_MISSING_SLASH_ERR_MSG = "Invalid Secret Path; it must start with a '/'";
-const PAM_ACCOUNT_PATH_PERMISSION_OPERATOR_SCHEMA = z.union([
-  z.string().refine((val) => val.startsWith("/"), SECRET_PATH_MISSING_SLASH_ERR_MSG),
-  z
-    .object({
-      [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ].refine(
-        (val) => val.startsWith("/"),
-        PAM_ACCOUNT_PATH_MISSING_SLASH_ERR_MSG
-      ),
-      [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ].refine(
-        (val) => val.startsWith("/"),
-        PAM_ACCOUNT_PATH_MISSING_SLASH_ERR_MSG
-      ),
-      [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN].refine(
-        (val) => val.every((el) => el.startsWith("/")),
-        PAM_ACCOUNT_PATH_MISSING_SLASH_ERR_MSG
-      ),
-      [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
-    })
-    .partial()
-]);
+
 // akhilmhdh: don't modify this for v2
 // if you want to update create a new schema
 const SecretConditionV1Schema = z
@@ -933,8 +912,7 @@ const PamAccountConditionSchema = z
           [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
         })
         .partial()
-    ]),
-    accountPath: PAM_ACCOUNT_PATH_PERMISSION_OPERATOR_SCHEMA
+    ])
   })
   .partial();
 

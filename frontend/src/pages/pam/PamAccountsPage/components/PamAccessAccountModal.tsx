@@ -13,7 +13,6 @@ const ENABLE_WEB_ACCESS = false;
 
 type Props = {
   account?: TPamAccount;
-  accountPath?: string;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onOpenWebAccess?: () => void;
@@ -25,20 +24,13 @@ export const PamAccessAccountModal = ({
   onOpenChange,
   onOpenWebAccess,
   account,
-  projectId,
-  accountPath
+  projectId
 }: Props) => {
   const [duration, setDuration] = useState("4h");
 
   const { protocol, hostname, port } = window.location;
   const portSuffix = port && port !== "80" && port !== "443" ? `:${port}` : "";
   const siteURL = `${protocol}//${hostname}${portSuffix}`;
-
-  let fullAccountPath = `/${account?.name ?? ""}`;
-  if (accountPath) {
-    const path = accountPath.replace(/^\/+|\/+$/g, "");
-    fullAccountPath = `/${path}/${account?.name ?? ""}`;
-  }
 
   const isDurationValid = useMemo(() => duration && ms(duration || "1s") > 0, [duration]);
 
@@ -87,17 +79,17 @@ export const PamAccessAccountModal = ({
     switch (account.resource.resourceType) {
       case PamResourceType.Postgres:
       case PamResourceType.MySQL:
-        return `infisical pam db access-account ${fullAccountPath} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
+        return `infisical pam db access --resource ${account.resource.name} --account ${account.name} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
       case PamResourceType.Redis:
-        return `infisical pam redis access-account ${fullAccountPath} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
+        return `infisical pam redis access --resource ${account.resource.name} --account ${account.name} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
       case PamResourceType.SSH:
-        return `infisical pam ssh access-account ${fullAccountPath} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
+        return `infisical pam ssh access --resource ${account.resource.name} --account ${account.name} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
       case PamResourceType.Kubernetes:
-        return `infisical pam kubernetes access-account ${fullAccountPath} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
+        return `infisical pam kubernetes access --resource ${account.resource.name} --account ${account.name} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
       default:
         return "";
     }
-  }, [account, fullAccountPath, projectId, cliDuration, siteURL]);
+  }, [account, projectId, cliDuration, siteURL]);
 
   if (!account) return null;
 

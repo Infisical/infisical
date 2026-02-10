@@ -831,10 +831,12 @@ export const ORG_IDENTITY_MEMBERSHIP = {
 
 export const SUB_ORGANIZATIONS = {
   CREATE: {
-    name: "The name of the sub organization to create."
+    name: "The display name of the sub-organization (e.g. 'Acme Corp'). Allows alphanumeric characters, spaces, dashes, and underscores.",
+    slug: "Optional. The slug of the sub-organization (e.g. 'acme-corp'). If not provided, it is auto-generated from the name. Must be lowercase with hyphens only."
   },
   UPDATE: {
-    name: "The name of the sub organization to update.",
+    name: "Optional. The display name of the sub-organization. When only the name is provided (no slug), both name and slug are updated.",
+    slug: "Optional. The slug of the sub-organization. Can be updated independently when both name and slug are provided.",
     subOrgId: "The id of the sub organization to update."
   },
   LIST: {
@@ -3209,7 +3211,7 @@ export const OidcSSo = {
   UPDATE_CONFIG: {
     organizationId: "The ID of the organization to update the OIDC config for.",
     allowedEmailDomains:
-      "A list of allowed email domains that users can use to authenticate with. This field is comma separated. Example: 'example.com,acme.com'",
+      "A list of allowed email domains that users can use to authenticate with. This field is comma separated. Supports wildcards (e.g. *.example.com). Example: 'example.com, *.acme.com'",
     discoveryURL: "The URL of the OIDC discovery endpoint.",
     configurationType: "The configuration type to use for the OIDC configuration.",
     issuer:
@@ -3229,7 +3231,7 @@ export const OidcSSo = {
   CREATE_CONFIG: {
     organizationId: "The ID of the organization to create the OIDC config for.",
     allowedEmailDomains:
-      "A list of allowed email domains that users can use to authenticate with. This field is comma separated.",
+      "A list of allowed email domains that users can use to authenticate with. This field is comma separated. Supports wildcards (e.g. *.example.com).",
     discoveryURL: "The URL of the OIDC discovery endpoint.",
     configurationType: "The configuration type to use for the OIDC configuration.",
     issuer:

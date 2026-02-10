@@ -560,6 +560,7 @@ export enum EventType {
   PAM_FOLDER_UPDATE = "pam-folder-update",
   PAM_FOLDER_DELETE = "pam-folder-delete",
   PAM_ACCOUNT_LIST = "pam-account-list",
+  PAM_ACCOUNT_GET = "pam-account-get",
   PAM_ACCOUNT_ACCESS = "pam-account-access",
   PAM_ACCOUNT_CREATE = "pam-account-create",
   PAM_ACCOUNT_UPDATE = "pam-account-update",
@@ -766,6 +767,7 @@ interface CreateSubOrganizationEvent {
   type: EventType.CREATE_SUB_ORGANIZATION;
   metadata: {
     name: string;
+    slug: string;
     organizationId: string;
   };
 }
@@ -774,6 +776,7 @@ interface UpdateSubOrganizationEvent {
   type: EventType.UPDATE_SUB_ORGANIZATION;
   metadata: {
     name: string;
+    slug: string;
     organizationId: string;
   };
 }
@@ -4236,7 +4239,14 @@ interface PamAccountListEvent {
   type: EventType.PAM_ACCOUNT_LIST;
   metadata: {
     accountCount: number;
-    folderCount: number;
+  };
+}
+
+interface PamAccountGetEvent {
+  type: EventType.PAM_ACCOUNT_GET;
+  metadata: {
+    accountId: string;
+    accountName: string;
   };
 }
 
@@ -4244,7 +4254,7 @@ interface PamAccountAccessEvent {
   type: EventType.PAM_ACCOUNT_ACCESS;
   metadata: {
     accountId: string;
-    accountPath: string;
+    resourceName: string;
     accountName: string;
     duration?: string;
   };
@@ -5324,6 +5334,7 @@ export type Event =
   | PamFolderUpdateEvent
   | PamFolderDeleteEvent
   | PamAccountListEvent
+  | PamAccountGetEvent
   | PamAccountAccessEvent
   | PamWebAccessSessionTicketCreatedEvent
   | PamAccountCreateEvent

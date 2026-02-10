@@ -2065,7 +2065,11 @@ export const secretV2BridgeServiceFactory = ({
         });
 
         // get all tags
-        const sanitizedTagIds = [...new Set(secretsToUpdate.flatMap(({ tagIds = [] }) => tagIds))];
+        // get all tags (include create + update in upsert)
+        const allInputSecrets = [...secretsToUpdate, ...secretsToCreate];
+
+        const sanitizedTagIds = [...new Set(allInputSecrets.flatMap(({ tagIds = [] }) => tagIds))];
+
         const tags = sanitizedTagIds.length ? await secretTagDAL.findManyTagsById(projectId, sanitizedTagIds, tx) : [];
         if (tags.length !== sanitizedTagIds.length) throw new NotFoundError({ message: "Tag not found" });
         const tagsGroupByID = groupBy(tags, (i) => i.id);
@@ -3244,7 +3248,7 @@ export const secretV2BridgeServiceFactory = ({
     return { tree: stackTrace, value: expandedValue, secret };
   };
 
-  const getSecretReferences = async ({
+  const getSecretReferenceDependencyTree = async ({
     projectId,
     secretName,
     environment,
@@ -3293,96 +3297,142 @@ export const secretV2BridgeServiceFactory = ({
       projectId
     });
 
-    const nestedSecretReferences = await secretDAL.findReferencedSecretReferencesBySecretKey(
-      projectId,
-      environment,
-      secretPath,
-      secretName
-    );
+    const findSecretsReferencingSecret = async (env: string, path: string, key: string) => {
+      const secretFolder = await folderDAL.findBySecretPath(projectId, env, path);
+      if (!secretFolder) return [];
 
-    const nestedSecretIds = nestedSecretReferences.map((ref) => ref.secretId);
-    const nestedSecrets =
-      nestedSecretIds.length > 0
-        ? await secretDAL.find({ $in: { [`${TableName.SecretV2}.id` as "id"]: nestedSecretIds } })
-        : [];
+      const targetSecret = await secretDAL.findOne({
+        folderId: secretFolder.id,
+        key,
+        type: SecretType.Shared
+      });
 
-    const nestedFolderIds = [...new Set(nestedSecrets.map((s) => s.folderId))];
-    const folderPaths =
-      nestedFolderIds.length > 0 ? await folderDAL.findSecretPathByFolderIds(projectId, nestedFolderIds) : [];
-    const folderPathMap = new Map(folderPaths.filter(Boolean).map((fp) => [fp!.id, fp]));
+      if (!targetSecret) return [];
 
-    const secretsInSameFolder = await secretDAL.find({
-      folderId: folder.id,
-      $notEqual: { [`${TableName.SecretV2}.id` as "id"]: secret.id }
-    });
+      const nestedSecretReferences = await secretDAL.findReferencedSecretReferencesBySecretKey(
+        projectId,
+        env,
+        path,
+        key
+      );
 
-    const localReferencingSecrets = secretsInSameFolder.filter((s) => {
-      if (!s.encryptedValue) return false;
-      const decryptedValue = secretManagerDecryptor({ cipherTextBlob: s.encryptedValue }).toString();
-      const { localReferences } = getAllSecretReferences(decryptedValue);
-      return localReferences.includes(secretName);
-    });
+      const nestedSecretIds = nestedSecretReferences.map((ref) => ref.secretId);
+      const nestedSecrets =
+        nestedSecretIds.length > 0
+          ? await secretDAL.find({ $in: { [`${TableName.SecretV2}.id` as "id"]: nestedSecretIds } })
+          : [];
 
-    const totalCount = nestedSecrets.length + localReferencingSecrets.length;
+      const nestedFolderIds = [...new Set(nestedSecrets.map((s) => s.folderId))];
+      const nestedFolderPaths =
+        nestedFolderIds.length > 0 ? await folderDAL.findSecretPathByFolderIds(projectId, nestedFolderIds) : [];
+      const nestedFolderPathMap = new Map(nestedFolderPaths.filter(Boolean).map((fp) => [fp!.id, fp]));
 
-    const referencingSecrets: {
-      secretKey: string;
-      secretId: string;
+      const secretsInSameFolder = await secretDAL.find({
+        folderId: secretFolder.id,
+        $notEqual: { [`${TableName.SecretV2}.id` as "id"]: targetSecret.id }
+      });
+
+      const localReferencingSecrets = secretsInSameFolder.filter((s) => {
+        if (!s.encryptedValue) return false;
+        const decryptedValue = secretManagerDecryptor({ cipherTextBlob: s.encryptedValue }).toString();
+        const { localReferences } = getAllSecretReferences(decryptedValue);
+        return localReferences.includes(key);
+      });
+
+      const results: Array<{
+        key: string;
+        environment: string;
+        secretPath: string;
+        tags: Array<{ slug: string }>;
+      }> = [];
+
+      for (const nestedSecret of nestedSecrets) {
+        const folderPath = nestedFolderPathMap.get(nestedSecret.folderId);
+        if (folderPath) {
+          results.push({
+            key: nestedSecret.key,
+            environment: folderPath.environmentSlug,
+            secretPath: folderPath.path,
+            tags: nestedSecret.tags || []
+          });
+        }
+      }
+
+      for (const localSecret of localReferencingSecrets) {
+        results.push({
+          key: localSecret.key,
+          environment: env,
+          secretPath: path,
+          tags: localSecret.tags || []
+        });
+      }
+
+      return results;
+    };
+
+    const createSecretId = (env: string, path: string, key: string) => `${env}:${path}:${key}`;
+    const visitedSecrets = new Set<string>();
+    const MAX_DEPTH = 10;
+
+    type DependencyNode = {
+      key: string;
       environment: string;
       secretPath: string;
-      referenceType: "nested" | "local";
-    }[] = [];
+      children: DependencyNode[];
+    };
 
-    for (const nestedSecret of nestedSecrets) {
-      const folderPath = folderPathMap.get(nestedSecret.folderId);
-      if (folderPath) {
+    const buildDependencyTree = async (
+      env: string,
+      path: string,
+      key: string,
+      depth: number
+    ): Promise<DependencyNode> => {
+      const node: DependencyNode = {
+        key,
+        environment: env,
+        secretPath: path,
+        children: []
+      };
+
+      const secretId = createSecretId(env, path, key);
+
+      if (visitedSecrets.has(secretId) || depth >= MAX_DEPTH) {
+        return node;
+      }
+
+      visitedSecrets.add(secretId);
+
+      const referencingSecrets = await findSecretsReferencingSecret(env, path, key);
+
+      for await (const refSecret of referencingSecrets) {
         const hasAccess = hasSecretReadValueOrDescribePermission(
           permission,
           ProjectPermissionSecretActions.DescribeSecret,
           {
-            environment: folderPath.environmentSlug,
-            secretPath: folderPath.path,
-            secretName: nestedSecret.key,
-            secretTags: (nestedSecret.tags || []).map((t) => t.slug)
+            environment: refSecret.environment,
+            secretPath: refSecret.secretPath,
+            secretName: refSecret.key,
+            secretTags: refSecret.tags.map((t) => t.slug)
           }
         );
 
         if (hasAccess) {
-          referencingSecrets.push({
-            secretKey: nestedSecret.key,
-            secretId: nestedSecret.id,
-            environment: folderPath.environmentSlug,
-            secretPath: folderPath.path,
-            referenceType: "nested"
-          });
+          const childNode = await buildDependencyTree(
+            refSecret.environment,
+            refSecret.secretPath,
+            refSecret.key,
+            depth + 1
+          );
+          node.children.push(childNode);
         }
       }
-    }
 
-    for (const localSecret of localReferencingSecrets) {
-      const hasAccess = hasSecretReadValueOrDescribePermission(
-        permission,
-        ProjectPermissionSecretActions.DescribeSecret,
-        {
-          environment,
-          secretPath,
-          secretName: localSecret.key,
-          secretTags: (localSecret.tags || []).map((t) => t.slug)
-        }
-      );
+      return node;
+    };
 
-      if (hasAccess) {
-        referencingSecrets.push({
-          secretKey: localSecret.key,
-          secretId: localSecret.id,
-          environment,
-          secretPath,
-          referenceType: "local"
-        });
-      }
-    }
+    const tree = await buildDependencyTree(environment, secretPath, secretName, 0);
 
-    return { references: referencingSecrets, totalCount };
+    return { tree };
   };
 
   const getAccessibleSecrets = async ({
@@ -3608,7 +3658,7 @@ export const secretV2BridgeServiceFactory = ({
     getSecretsCountMultiEnv,
     getSecretsMultiEnv,
     getSecretReferenceTree,
-    getSecretReferences,
+    getSecretReferenceDependencyTree,
     getSecretsByFolderMappings,
     getSecretById,
     getAccessibleSecrets,

@@ -410,7 +410,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
         secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
         tagIds: z.string().array().optional().describe(RAW_SECRETS.CREATE.tagIds),
-        skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
+        skipMultilineEncoding: z.boolean().nullish().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
         type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.CREATE.type),
         secretReminderRepeatDays: z
           .number()
@@ -863,7 +863,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
               .describe(RAW_SECRETS.CREATE.secretValue),
             secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
-            skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
+            skipMultilineEncoding: z.boolean().nullish().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
             metadata: z.record(z.string()).optional(),
             secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
             tagIds: z.string().array().optional().describe(RAW_SECRETS.CREATE.tagIds)
@@ -1259,7 +1259,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:secretName/secret-references",
+    url: "/:secretName/reference-dependency-tree",
     config: {
       rateLimit: secretsLimit
     },
@@ -1267,7 +1267,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       hide: false,
       operationId: "getSecretReferencesV4",
       tags: [ApiDocsTags.Secrets],
-      description: "Get secret references",
+      description: "Get secret reference dependency tree",
       security: [
         {
           bearerAuth: []
@@ -1288,16 +1288,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          references: z.array(
-            z.object({
-              secretKey: z.string(),
-              secretId: z.string(),
-              environment: z.string(),
-              secretPath: z.string(),
-              referenceType: z.string()
-            })
-          ),
-          totalCount: z.number()
+          tree: SecretReferenceNodeTree
         })
       }
     },
@@ -1305,7 +1296,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { secretName } = req.params;
       const { secretPath, environment, projectId } = req.query;
-      const { references, totalCount } = await server.services.secret.getSecretReferences({
+
+      const { tree } = await server.services.secret.getSecretReferenceDependencyTree({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
@@ -1315,7 +1307,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretPath,
         environment
       });
-      return { references, totalCount };
+
+      return { tree };
     }
   });
 

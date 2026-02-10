@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import {
+  BellIcon,
   CodeXmlIcon,
   CopyIcon,
   EditIcon,
@@ -14,11 +15,13 @@ import {
   TagsIcon,
   TrashIcon,
   Undo2Icon,
+  UsersIcon,
   WorkflowIcon,
   WrapTextIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { SecretReferenceTree } from "@app/components/secrets/SecretReferenceDetails";
@@ -48,19 +51,23 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useProject,
-  useProjectPermission
+  useProjectPermission,
+  useSubscription
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp, useToggle } from "@app/hooks";
 import { useUpdateSecretV3 } from "@app/hooks/api";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
+import { Reminder } from "@app/hooks/api/reminders/types";
 import { ProjectEnv, SecretType, SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
+import { SecretAccessInsights } from "./SecretAccessInsights";
 import { SecretCommentForm } from "./SecretCommentForm";
 import { SecretMetadataForm } from "./SecretMetadataForm";
+import { SecretReminderForm } from "./SecretReminderForm";
 import { SecretTagForm } from "./SecretTagForm";
 import { SecretVersionHistory } from "./SecretVersionHistory";
 
@@ -76,6 +83,7 @@ type Props = {
   tags?: WsTag[];
   secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
   skipMultilineEncoding?: boolean | null;
+  reminder?: Reminder;
   environment: string;
   environmentName: string;
   secretValueHidden: boolean;
@@ -134,13 +142,16 @@ export const SecretEditTableRow = ({
   tags,
   secretMetadata,
   environmentName,
-  skipMultilineEncoding
+  skipMultilineEncoding,
+  reminder
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
-    "editSecret"
+    "editSecret",
+    "accessInsightsUpgrade"
   ] as const);
 
   const { currentProject } = useProject();
+  const { subscription } = useSubscription();
 
   const [isFieldFocused, setIsFieldFocused] = useToggle();
 
@@ -201,8 +212,10 @@ export const SecretEditTableRow = ({
   const [isCommentOpen, setIsCommentOpen] = useState(false);
   const [isTagOpen, setIsTagOpen] = useState(false);
   const [isMetadataOpen, setIsMetadataOpen] = useState(false);
+  const [isReminderOpen, setIsReminderOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
+  const [isAccessInsightsOpen, setIsAccessInsightsOpen] = useState(false);
 
   const toggleModal = useCallback(() => {
     setIsModalOpen((prev) => !prev);
@@ -354,7 +367,8 @@ export const SecretEditTableRow = ({
     isErrorFetchingSecretValue ||
     (isCreatable ? !canCreate : !canEditSecretValue);
 
-  const shouldStayExpanded = isCommentOpen || isTagOpen || isMetadataOpen || isDropdownOpen;
+  const shouldStayExpanded =
+    isCommentOpen || isTagOpen || isMetadataOpen || isReminderOpen || isDropdownOpen;
 
   return (
     <div className="flex w-full cursor-text items-center space-x-2 py-1.5">
@@ -653,6 +667,53 @@ export const SecretEditTableRow = ({
                 />
               </PopoverContent>
             </Popover>
+            <Popover open={isReminderOpen} onOpenChange={setIsReminderOpen}>
+              <Tooltip delayDuration={300} disableHoverableContent>
+                <TooltipTrigger>
+                  <PopoverTrigger asChild>
+                    <UnstableIconButton
+                      variant="ghost"
+                      size="xs"
+                      isDisabled={isCreatable || isImportedSecret || isOverride || !secretId}
+                      className={twMerge(
+                        reminder && !isOverride && !isImportedSecret
+                          ? "w-7 text-project opacity-100"
+                          : "w-0 opacity-0",
+                        "overflow-hidden border-0 group-hover:w-7 group-hover:opacity-100",
+                        shouldStayExpanded && "w-7 opacity-100"
+                      )}
+                    >
+                      <BellIcon />
+                    </UnstableIconButton>
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isOverride
+                    ? "Cannot Set Reminder on Personal Overrides"
+                    : isImportedSecret
+                      ? "Cannot Set Reminder on Imported Secret"
+                      : isCreatable
+                        ? "Create Secret to Add Reminder"
+                        : `${reminder ? "View" : "Add"} Reminder`}
+                </TooltipContent>
+              </Tooltip>
+              <PopoverContent
+                onCloseAutoFocus={(e) => e.preventDefault()}
+                className="w-[420px]"
+                side="left"
+              >
+                {secretId && (
+                  <SecretReminderForm
+                    secretId={secretId}
+                    secretKey={secretName}
+                    secretPath={secretPath}
+                    environment={environment}
+                    reminder={reminder}
+                    onClose={() => setIsReminderOpen(false)}
+                  />
+                )}
+              </PopoverContent>
+            </Popover>
             <Tooltip delayDuration={300} disableHoverableContent>
               <TooltipTrigger>
                 <UnstableIconButton
@@ -766,6 +827,32 @@ export const SecretEditTableRow = ({
                     </Tooltip>
                   )}
                 </ProjectPermissionCan>
+                <Tooltip
+                  open={isImportedSecret || isCreatable ? undefined : false}
+                  delayDuration={300}
+                  disableHoverableContent
+                >
+                  <TooltipTrigger className="block w-full">
+                    <UnstableDropdownMenuItem
+                      onClick={() => {
+                        if (!subscription?.secretAccessInsights) {
+                          handlePopUpOpen("accessInsightsUpgrade");
+                        } else {
+                          setIsAccessInsightsOpen(true);
+                        }
+                      }}
+                      isDisabled={!secretId || isCreatable || isImportedSecret}
+                    >
+                      <UsersIcon />
+                      Access Insights
+                    </UnstableDropdownMenuItem>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">
+                    {isImportedSecret
+                      ? "Cannot View Access for Imported Secret"
+                      : "Create Secret to View Access"}
+                  </TooltipContent>
+                </Tooltip>
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Delete}
                   a={subject(ProjectPermissionSub.Secrets, {
@@ -842,6 +929,40 @@ export const SecretEditTableRow = ({
                 )}
               </SheetContent>
             </Sheet>
+            <Sheet open={isAccessInsightsOpen} onOpenChange={setIsAccessInsightsOpen}>
+              <SheetContent
+                onOpenAutoFocus={(e) => e.preventDefault()}
+                className="gap-y-0"
+                side="right"
+              >
+                <SheetHeader>
+                  <SheetTitle>Access Insights</SheetTitle>
+                  <SheetDescription>
+                    View users, groups, and identities with access to this secret
+                  </SheetDescription>
+                </SheetHeader>
+                <UnstableSeparator />
+                <div className="bg-container p-4 text-foreground">
+                  <p className="truncate">{secretName}</p>
+                  <Badge variant="neutral" className="mt-0.5">
+                    {environmentName}
+                  </Badge>
+                </div>
+                <UnstableSeparator />
+                {secretId && (
+                  <SecretAccessInsights
+                    secretKey={secretName}
+                    environment={environment}
+                    secretPath={secretPath}
+                  />
+                )}
+              </SheetContent>
+            </Sheet>
+            <UpgradePlanModal
+              isOpen={popUp.accessInsightsUpgrade.isOpen}
+              onOpenChange={(isOpen) => handlePopUpToggle("accessInsightsUpgrade", isOpen)}
+              text="Secret access insights can be unlocked if you upgrade to Infisical Pro plan."
+            />
           </div>
         )}
       </div>

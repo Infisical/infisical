@@ -1,7 +1,6 @@
 import type WebSocket from "ws";
 import { z } from "zod";
 
-import { PamFoldersSchema } from "@app/db/schemas";
 import { AuditLogInfo, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountOrderBy, PamAccountView } from "@app/ee/services/pam-account/pam-account-enums";
 import { SanitizedAwsIamAccountWithResourceSchema } from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
@@ -13,7 +12,6 @@ import { SanitizedPostgresAccountWithResourceSchema } from "@app/ee/services/pam
 import { SanitizedRedisAccountWithResourceSchema } from "@app/ee/services/pam-resource/redis/redis-resource-schemas";
 import { SanitizedSSHAccountWithResourceSchema } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
 import { BadRequestError } from "@app/lib/errors";
-import { removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { OrderByDirection } from "@app/lib/types";
@@ -22,24 +20,65 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 
-const SanitizedAccountSchema = z.union([
-  SanitizedSSHAccountWithResourceSchema, // ORDER MATTERS
+const SanitizedAccountSchema = z.discriminatedUnion("resourceType", [
+  SanitizedKubernetesAccountWithResourceSchema,
+  SanitizedSSHAccountWithResourceSchema,
   SanitizedPostgresAccountWithResourceSchema,
   SanitizedMySQLAccountWithResourceSchema,
   SanitizedRedisAccountWithResourceSchema,
-  SanitizedKubernetesAccountWithResourceSchema,
   SanitizedAwsIamAccountWithResourceSchema
 ]);
 
 const ListPamAccountsResponseSchema = z.object({
   accounts: SanitizedAccountSchema.array(),
-  folders: PamFoldersSchema.array(),
-  totalCount: z.number().default(0),
-  folderId: z.string().optional(),
-  folderPaths: z.record(z.string(), z.string())
+  totalCount: z.number().default(0)
 });
 
 export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "GET",
+    url: "/:accountId",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Get PAM account by ID",
+      params: z.object({
+        accountId: z.string().uuid()
+      }),
+      response: {
+        200: SanitizedAccountSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { accountId } = req.params;
+
+      const account = await server.services.pamAccount.getById({
+        accountId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: account.projectId,
+        event: {
+          type: EventType.PAM_ACCOUNT_GET,
+          metadata: {
+            accountId: account.id,
+            accountName: account.name
+          }
+        }
+      });
+
+      return account as z.infer<typeof SanitizedAccountSchema>;
+    }
+  });
+
   server.route({
     method: "GET",
     url: "/",
@@ -50,7 +89,6 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       description: "List PAM accounts",
       querystring: z.object({
         projectId: z.string().uuid(),
-        accountPath: z.string().trim().default("/").transform(removeTrailingSlash),
         accountView: z.nativeEnum(PamAccountView).default(PamAccountView.Flat),
         offset: z.coerce.number().min(0).default(0),
         limit: z.coerce.number().min(1).max(100).default(100),
@@ -73,16 +111,14 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { projectId, accountPath, accountView, limit, offset, search, orderBy, orderDirection, filterResourceIds } =
-        req.query;
+      const { projectId, accountView, limit, offset, search, orderBy, orderDirection, filterResourceIds } = req.query;
 
-      const { accounts, folders, totalCount, folderId, folderPaths } = await server.services.pamAccount.list({
+      const { accounts, totalCount } = await server.services.pamAccount.list({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId,
-        accountPath,
         accountView,
         limit,
         offset,
@@ -99,13 +135,12 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.PAM_ACCOUNT_LIST,
           metadata: {
-            accountCount: accounts.length,
-            folderCount: folders.length
+            accountCount: accounts.length
           }
         }
       });
 
-      return { accounts, folders, totalCount, folderId, folderPaths } as z.infer<typeof ListPamAccountsResponseSchema>;
+      return { accounts, totalCount } as z.infer<typeof ListPamAccountsResponseSchema>;
     }
   });
 
@@ -118,7 +153,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Access PAM account",
       body: z.object({
-        accountPath: z.string().trim(),
+        resourceName: z.string().trim(),
+        accountName: z.string().trim(),
         projectId: z.string().uuid(),
         mfaSessionId: z.string().optional(),
         duration: z
@@ -168,7 +204,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           actorIp: req.realIp,
           actorName: `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim(),
           actorUserAgent: req.auditLogInfo.userAgent ?? "",
-          accountPath: req.body.accountPath,
+          resourceName: req.body.resourceName,
+          accountName: req.body.accountName,
           projectId: req.body.projectId,
           duration: req.body.duration,
           mfaSessionId: req.body.mfaSessionId
@@ -184,7 +221,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           type: EventType.PAM_ACCOUNT_ACCESS,
           metadata: {
             accountId: response.account.id,
-            accountPath: req.body.accountPath,
+            resourceName: req.body.resourceName,
             accountName: response.account.name,
             duration: req.body.duration ? new Date(req.body.duration).toISOString() : undefined
           }

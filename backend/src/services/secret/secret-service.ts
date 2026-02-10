@@ -1262,7 +1262,7 @@ export const secretServiceFactory = ({
     return secretV2BridgeService.getSecretReferenceTree(dto);
   };
 
-  const getSecretReferences = async (dto: TGetSecretReferencesDTO) => {
+  const getSecretReferenceDependencyTree = async (dto: TGetSecretReferencesDTO) => {
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(dto.projectId);
 
     if (!shouldUseSecretV2Bridge) {
@@ -1272,7 +1272,7 @@ export const secretServiceFactory = ({
       });
     }
 
-    return secretV2BridgeService.getSecretReferences(dto);
+    return secretV2BridgeService.getSecretReferenceDependencyTree(dto);
   };
 
   const getSecretAccessList = async (dto: TGetSecretAccessListDTO) => {
@@ -3552,6 +3552,6 @@ export const secretServiceFactory = ({
     getAccessibleSecrets,
     getSecretVersionsV2ByIds,
     getChangeVersions,
-    getSecretReferences
+    getSecretReferenceDependencyTree
   };
 };

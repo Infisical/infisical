@@ -28,6 +28,7 @@ import {
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { ONEPASS_SYNC_LIST_OPTION, OnePassSyncFns } from "./1password";
+import { AwsSecretsManagerSyncMappingBehavior } from "./aws-secrets-manager/aws-secrets-manager-sync-enums";
 import { AZURE_APP_CONFIGURATION_SYNC_LIST_OPTION, azureAppConfigurationSyncFactory } from "./azure-app-configuration";
 import { AZURE_DEVOPS_SYNC_LIST_OPTION, azureDevOpsSyncFactory } from "./azure-devops";
 import { AZURE_KEY_VAULT_SYNC_LIST_OPTION, azureKeyVaultSyncFactory } from "./azure-key-vault";
@@ -113,6 +114,23 @@ type TSyncSecretDeps = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+};
+
+export const getKeyWithSchema = ({
+  key,
+  environment,
+  schema
+}: {
+  key: string;
+  environment: string;
+  schema?: string;
+}) => {
+  if (!schema) return key;
+
+  return handlebars.compile(schema)({
+    secretKey: key,
+    environment
+  });
 };
 
 // Add schema to secret keys
@@ -229,7 +247,7 @@ export const SecretSyncFns = {
       case SecretSync.AWSParameterStore:
         return AwsParameterStoreSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.AWSSecretsManager:
-        return AwsSecretsManagerSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return AwsSecretsManagerSyncFns.syncSecrets(secretSync, schemaSecretMap, secretMap);
       case SecretSync.GitHub:
         return GithubSyncFns.syncSecrets(secretSync, schemaSecretMap, gatewayService, gatewayV2Service);
       case SecretSync.GCPSecretManager:
@@ -270,7 +288,7 @@ export const SecretSyncFns = {
       case SecretSync.Windmill:
         return WindmillSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.HCVault:
-        return HCVaultSyncFns.syncSecrets(secretSync, schemaSecretMap, gatewayService);
+        return HCVaultSyncFns.syncSecrets(secretSync, schemaSecretMap, gatewayService, gatewayV2Service);
       case SecretSync.TeamCity:
         return TeamCitySyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.OCIVault:
@@ -319,7 +337,7 @@ export const SecretSyncFns = {
   },
   getSecrets: async (
     secretSync: TSecretSyncWithCredentials,
-    { kmsService, appConnectionDAL, gatewayService }: TSyncSecretDeps
+    { kmsService, appConnectionDAL, gatewayService, gatewayV2Service }: TSyncSecretDeps
   ): Promise<TSecretMap> => {
     let secretMap: TSecretMap;
     switch (secretSync.destination) {
@@ -328,6 +346,9 @@ export const SecretSyncFns = {
         break;
       case SecretSync.AWSSecretsManager:
         secretMap = await AwsSecretsManagerSyncFns.getSecrets(secretSync);
+        // if many-to-one we don't check for/strip schema, as schema is only applied to the secret name
+        if (secretSync.destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.ManyToOne)
+          return secretMap;
         break;
       case SecretSync.GitHub:
         secretMap = await GithubSyncFns.getSecrets(secretSync);
@@ -377,7 +398,7 @@ export const SecretSyncFns = {
         secretMap = await WindmillSyncFns.getSecrets(secretSync);
         break;
       case SecretSync.HCVault:
-        secretMap = await HCVaultSyncFns.getSecrets(secretSync, gatewayService);
+        secretMap = await HCVaultSyncFns.getSecrets(secretSync, gatewayService, gatewayV2Service);
         break;
       case SecretSync.TeamCity:
         secretMap = await TeamCitySyncFns.getSecrets(secretSync);
@@ -502,7 +523,7 @@ export const SecretSyncFns = {
       case SecretSync.Windmill:
         return WindmillSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.HCVault:
-        return HCVaultSyncFns.removeSecrets(secretSync, schemaSecretMap, gatewayService);
+        return HCVaultSyncFns.removeSecrets(secretSync, schemaSecretMap, gatewayService, gatewayV2Service);
       case SecretSync.TeamCity:
         return TeamCitySyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.OCIVault:

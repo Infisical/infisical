@@ -65,7 +65,7 @@ export type SecretV3Raw = {
   secretReminderNote?: string;
   secretReminderRepeatDays?: number;
   secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
-  skipMultilineEncoding?: boolean;
+  skipMultilineEncoding?: boolean | null;
   metadata?: Record<string, string>;
   tags?: WsTag[];
   createdAt: string;
@@ -101,7 +101,7 @@ export type SecretVersions = {
   secretComment?: string;
   tags: WsTag[];
   __v: number;
-  skipMultilineEncoding?: boolean;
+  skipMultilineEncoding?: boolean | null;
   createdAt: string;
   updatedAt: string;
   actor?: {
@@ -202,7 +202,7 @@ export type TCreateSecretBatchDTO = {
     secretKey: string;
     secretValue: string;
     secretComment: string;
-    skipMultilineEncoding?: boolean;
+    skipMultilineEncoding?: boolean | null;
     type: SecretType;
     tagIds?: string[];
     metadata?: {
@@ -220,7 +220,7 @@ export type TUpdateSecretBatchDTO = {
     secretKey: string;
     secretValue: string;
     secretComment?: string;
-    skipMultilineEncoding?: boolean;
+    skipMultilineEncoding?: boolean | null;
     tagIds?: string[];
     metadata?: {
       source?: string;
@@ -271,16 +271,16 @@ export type TGetSecretReferencesDTO = {
   projectId: string;
 };
 
-export type TSecretReference = {
-  secretKey: string;
-  secretId: string;
+export type TSecretDependencyTreeNode = {
+  key: string;
   environment: string;
   secretPath: string;
-  referenceType: "nested" | "local";
+  children: TSecretDependencyTreeNode[];
 };
 
 export type SecretAccessListEntry = {
   allowedActions: ProjectPermissionActions[];
   id: string;
+  membershipId: string;
   name: string;
 };

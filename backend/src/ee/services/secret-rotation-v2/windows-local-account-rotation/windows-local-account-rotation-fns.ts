@@ -30,9 +30,10 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
   const { username, passwordRequirements, rotationMethod = WindowsLocalAccountRotationMethod.LoginAsRoot } = parameters;
 
   // Helper to verify Windows credentials work via SMB
+  // Note: We don't pass the domain when verifying the rotated account because it's a local account,
+  // not a domain account. The domain is only used for the app connection (admin) credentials.
   const $verifyCredentials = async (targetUsername: string, targetPassword: string): Promise<void> => {
     const { credentials } = connection;
-    const credentialsDomain: string | undefined = credentials.domain;
 
     const verifyConfig: TSmbConnectionConfig = {
       method: SmbConnectionMethod.Credentials,
@@ -42,14 +43,15 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
       credentials: {
         host: credentials.host,
         port: credentials.port,
-        domain: credentialsDomain,
+        domain: undefined,
         username: targetUsername,
         password: targetPassword
       }
     };
 
     await executeSmbWithPotentialGateway(verifyConfig, gatewayV2Service, async (targetHost, targetPort) => {
-      await verifyWindowsCredentials(targetHost, targetPort, targetUsername, targetPassword, credentialsDomain);
+      // Verify without domain - local accounts don't belong to a domain
+      await verifyWindowsCredentials(targetHost, targetPort, targetUsername, targetPassword, undefined);
     });
   };
 
@@ -75,6 +77,8 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
     if (isSelfRotation && currentPassword) {
       smbConfig.adminUser = username;
       smbConfig.adminPassword = currentPassword;
+      // Clear domain for self-rotation - local accounts don't belong to a domain
+      smbConfig.domain = undefined;
     }
 
     // Determine which credentials to use for the SMB connection
@@ -95,7 +99,10 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
     if (isSelfRotation && currentPassword) {
       connectConfig.credentials.username = username;
       connectConfig.credentials.password = currentPassword;
+      // Clear domain for self-rotation - local accounts don't belong to a domain
+      connectConfig.credentials.domain = undefined;
     }
+
     await executeSmbWithPotentialGateway(connectConfig, gatewayV2Service, async (targetHost, targetPort) => {
       const configWithProxiedHost: SmbRpcConfig = {
         ...smbConfig,

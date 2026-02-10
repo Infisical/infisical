@@ -28,31 +28,24 @@ export const pamAccountRotationServiceFactory = ({
       QueueName.PamAccountRotation // job id
     );
 
-    await queueService.startPg<QueueName.PamAccountRotation>(
-      QueueJobs.PamAccountRotation,
-      async () => {
-        try {
-          logger.info(`${QueueName.PamAccountRotation}: pam account rotation task started`);
-          await pamAccountService.rotateAllDueAccounts();
-          logger.info(`${QueueName.PamAccountRotation}: pam account rotation task completed`);
-        } catch (error) {
-          logger.error(error, `${QueueName.PamAccountRotation}: pam account rotation failed`);
-          throw error;
-        }
-      },
-      {
-        batchSize: 1,
-        workerCount: 1,
-        pollingIntervalSeconds: 5 * 60
+    queueService.start(QueueName.PamAccountRotation, async () => {
+      try {
+        logger.info(`${QueueName.PamAccountRotation}: pam account rotation task started`);
+        await pamAccountService.rotateAllDueAccounts();
+        logger.info(`${QueueName.PamAccountRotation}: pam account rotation task completed`);
+      } catch (error) {
+        logger.error(error, `${QueueName.PamAccountRotation}: pam account rotation failed`);
+        throw error;
       }
-    );
+    });
 
-    await queueService.schedulePg(
-      QueueJobs.PamAccountRotation,
-      "0 * * * *", // Schedule to run every hour
-      undefined,
-      { tz: "UTC" }
-    );
+    await queueService.queue(QueueName.PamAccountRotation, QueueJobs.PamAccountRotation, undefined, {
+      jobId: QueueJobs.PamAccountRotation,
+      repeat: {
+        pattern: "0 * * * *",
+        key: QueueJobs.PamAccountRotation
+      }
+    });
   };
 
   return {

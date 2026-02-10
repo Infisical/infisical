@@ -205,7 +205,7 @@ export const secretRotationServiceFactory = ({
       }
       return { ...doc, outputs: outputSecretMapping, environment: folder.environment };
     });
-    await secretRotationQueue.addToQueue(secretRotation.id, secretRotation.interval);
+    await secretRotationQueue.addToQueue();
     return secretRotation;
   };
 
@@ -274,7 +274,7 @@ export const secretRotationServiceFactory = ({
       ProjectPermissionSub.SecretRotation
     );
     await secretRotationQueue.removeFromQueue(doc.id, doc.interval);
-    await secretRotationQueue.addToQueue(doc.id, doc.interval);
+    await secretRotationQueue.addToQueue();
     return doc;
   };
 

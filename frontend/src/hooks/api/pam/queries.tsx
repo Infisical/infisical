@@ -8,7 +8,6 @@ import {
   TListPamAccountsDTO,
   TListPamResourcesDTO,
   TPamAccount,
-  TPamFolder,
   TPamResource,
   TPamSession
 } from "./types";
@@ -37,6 +36,7 @@ export const pamKeys = {
     projectId,
     params
   ],
+  getAccount: (accountId: string) => [...pamKeys.account(), "get", accountId],
   getSession: (sessionId: string) => [...pamKeys.session(), "get", sessionId],
   listSessions: (projectId: string) => [...pamKeys.session(), "list", projectId]
 };
@@ -122,10 +122,7 @@ export const useGetPamResourceById = (
 // Accounts
 type TListPamAccountsResponse = {
   accounts: TPamAccount[];
-  folders: TPamFolder[];
   totalCount: number;
-  folderId?: string;
-  folderPaths: Record<string, string>;
 };
 
 export const useListPamAccounts = (
@@ -150,6 +147,25 @@ export const useListPamAccounts = (
       return data;
     },
     placeholderData: (prev) => prev,
+    ...options
+  });
+};
+
+export const useGetPamAccountById = (
+  accountId?: string,
+  options?: Omit<
+    UseQueryOptions<TPamAccount, unknown, TPamAccount, ReturnType<typeof pamKeys.getAccount>>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: pamKeys.getAccount(accountId || ""),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TPamAccount>(`/api/v1/pam/accounts/${accountId}`);
+
+      return data;
+    },
+    enabled: !!accountId && (options?.enabled ?? true),
     ...options
   });
 };
