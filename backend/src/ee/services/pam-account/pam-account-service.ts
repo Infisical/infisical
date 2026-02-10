@@ -201,6 +201,7 @@ export const pamAccountServiceFactory = ({
 
       return {
         ...(await decryptAccount(account, resource.projectId, kmsService)),
+        resourceType: resource.resourceType,
         resource: {
           id: resource.id,
           name: resource.name,
@@ -433,6 +434,7 @@ export const pamAccountServiceFactory = ({
         resource: Pick<TPamResources, "id" | "name" | "resourceType"> & { rotationCredentialsConfigured: boolean };
         credentials: TPamAccountCredentials;
         lastRotationMessage: string | null;
+        resourceType: string;
       }
     > = [];
 
@@ -452,6 +454,7 @@ export const pamAccountServiceFactory = ({
 
         decryptedAndPermittedAccounts.push({
           ...decryptedAccount,
+          resourceType: account.resource.resourceType,
           resource: {
             id: account.resource.id,
             name: account.resource.name,
@@ -493,6 +496,7 @@ export const pamAccountServiceFactory = ({
 
     return {
       ...decryptedAccount,
+      resourceType: accountWithResource.resource.resourceType,
       resource: {
         id: accountWithResource.resource.id,
         name: accountWithResource.resource.name,
