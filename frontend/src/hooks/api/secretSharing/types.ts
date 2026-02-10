@@ -32,7 +32,7 @@ export type TCreateSharedSecretRequest = {
   expiresIn: string;
   maxViews?: number;
   accessType?: SecretSharingAccessType;
-  emails?: string[];
+  authorizedEmails?: string[];
 };
 
 export type TCreateSecretRequestRequestDTO = {

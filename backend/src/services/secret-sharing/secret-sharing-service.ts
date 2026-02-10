@@ -717,8 +717,7 @@ export const secretSharingServiceFactory = ({
           message: "User does not have permission to delete shared secret"
         });
       }
-    }
-    if (actor === ActorType.IDENTITY) {
+    } else if (actor === ActorType.IDENTITY) {
       if (sharedSecret.identityId !== actorId) {
         throw new ForbiddenRequestError({
           message: "Identity does not have permission to delete shared secret"

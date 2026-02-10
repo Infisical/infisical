@@ -67,10 +67,13 @@ export const secretSharingDALFactory = (db: TDbClient) => {
         .replicaNode()(TableName.SecretSharing)
         .where(`${TableName.SecretSharing}.orgId`, orgId)
         .where((qb) => {
-          if ("userId" in actorFilters) {
+          if ("userId" in actorFilters && "identityId" in actorFilters) {
+            void qb
+              .where(`${TableName.SecretSharing}.userId`, actorFilters.userId)
+              .orWhere(`${TableName.SecretSharing}.identityId`, actorFilters.identityId);
+          } else if ("userId" in actorFilters) {
             void qb.where(`${TableName.SecretSharing}.userId`, actorFilters.userId);
-          }
-          if ("identityId" in actorFilters) {
+          } else if ("identityId" in actorFilters) {
             void qb.where(`${TableName.SecretSharing}.identityId`, actorFilters.identityId);
           }
         })

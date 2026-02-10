@@ -505,7 +505,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         orgId = await req.server.services.secretSharing.getSharedSecretOrgId(req.query.sharedSecretId);
 
         if (!orgId) {
-          throw new NotFoundError({ message: "Shared secret not found or has no organization" });
+          throw new NotFoundError({ message: "Shared secret not found" });
         }
       } else if (req.permission?.orgId) {
         orgId = req.permission.orgId;
