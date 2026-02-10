@@ -94,7 +94,7 @@
     "react": "^18.3.1",
     "react-code-input": "^3.10.1",
     "react-complex-tree": "^2.6.1",
-    "react-day-picker": "^9.4.3",
+    "react-day-picker": "^9.13.0",
     "react-dom": "^18.3.1",
     "react-helmet": "^6.1.0",
     "react-hook-form": "^7.56.3",
