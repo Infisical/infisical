@@ -22,7 +22,7 @@ export type TSharedSecretPermission = {
   accessType?: SecretSharingAccessType;
   name?: string;
   password?: string;
-  emails?: string[];
+  authorizedEmails?: string[];
 };
 
 export type TCreatePublicSharedSecretDTO = {

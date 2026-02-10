@@ -108,7 +108,7 @@ export const secretSharingServiceFactory = ({
     accessType,
     expiresIn,
     maxViews,
-    emails
+    authorizedEmails
   }: TCreateSharedSecretDTO) => {
     const appCfg = getConfig();
 
@@ -156,11 +156,11 @@ export const secretSharingServiceFactory = ({
 
     const orgEmails = [];
 
-    if (emails && emails.length > 0) {
+    if (authorizedEmails && authorizedEmails.length > 0) {
       const allOrgMembers = await orgDAL.findAllOrgMembers(orgId);
 
       // Check to see that all emails are a part of the organization (if enforced) while also collecting a list of emails which are in the org
-      for (const email of emails) {
+      for (const email of authorizedEmails) {
         if (allOrgMembers.some((v) => v.user.email === email)) {
           orgEmails.push(email);
           // If the email is not part of the org, but access type / org settings require it
@@ -195,20 +195,20 @@ export const secretSharingServiceFactory = ({
       ...(actor === ActorType.IDENTITY && { identityId: actorId }),
       orgId,
       accessType,
-      authorizedEmails: emails && emails.length > 0 ? JSON.stringify(emails) : undefined
+      authorizedEmails: authorizedEmails && authorizedEmails.length > 0 ? JSON.stringify(authorizedEmails) : undefined
     });
 
     const mappedSharedSecret = mapIdentifierToId(newSharedSecret);
 
     // Loop through recipients and send out emails with unique access links
-    if (emails) {
+    if (authorizedEmails) {
       const user = await userDAL.findById(actorId);
 
       if (!user) {
         throw new NotFoundError({ message: `User with ID '${actorId}' not found` });
       }
 
-      for await (const email of emails) {
+      for await (const email of authorizedEmails) {
         try {
           // Only show the username to emails which are part of the organization
           const respondentUsername = orgEmails.includes(email) ? user.username : undefined;
@@ -229,7 +229,10 @@ export const secretSharingServiceFactory = ({
       }
     }
 
-    return mappedSharedSecret;
+    return {
+      ...mappedSharedSecret,
+      sharedSecretLink: `${appCfg.SITE_URL}/shared/secret/${mappedSharedSecret.id}`
+    };
   };
 
   const createSecretRequest = async ({

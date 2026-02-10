@@ -2,6 +2,7 @@ import fastifyMultipart from "@fastify/multipart";
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ApiDocsTags, SECRET_SHARING } from "@app/lib/api-docs";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { SecretSharingAccessType } from "@app/lib/types";
@@ -44,12 +45,13 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      tags: [ApiDocsTags.SecretSharing],
       description:
         "List all shared secrets created by the authenticated user or identity in their current organization.",
       operationId: "listSharedSecrets",
       querystring: z.object({
-        offset: z.coerce.number().min(0).max(100).default(0),
-        limit: z.coerce.number().min(1).max(100).default(25)
+        offset: z.coerce.number().min(0).max(100).default(0).describe(SECRET_SHARING.LIST.offset),
+        limit: z.coerce.number().min(1).max(100).default(25).describe(SECRET_SHARING.LIST.limit)
       }),
       response: {
         200: z.object({
@@ -84,15 +86,16 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      tags: [ApiDocsTags.SecretSharing],
       description:
         "Returns the full shared secret object without revealing the secret value. Authentication is required for shared secrets that are scoped to an organization.",
       operationId: "getSharedSecretById",
       params: z.object({
-        id: z.string().describe("The ID of the shared secret")
+        id: z.string().describe(SECRET_SHARING.GET_BY_ID.id)
       }),
       response: {
         200: SanitizedSecretSharingSchema.extend({
-          isPasswordProtected: z.boolean()
+          isPasswordProtected: z.boolean().describe("Whether the shared secret is protected by a password.")
         })
       }
     },
@@ -114,19 +117,15 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
 
     schema: {
       hide: false,
+      tags: [ApiDocsTags.SecretSharing],
       description:
         "Access a shared secret by its ID. If the secret is password protected, you must provide the password in the request body. Returns the secret value if access is granted, or an error if access is denied. The endpoint requires authentication if the shared secret is scoped to an organization.",
       operationId: "accessSharedSecret",
       params: z.object({
-        id: z.string().describe("The ID of the shared secret to access")
+        id: z.string().describe(SECRET_SHARING.ACCESS.id)
       }),
       body: z.object({
-        password: z
-          .string()
-          .optional()
-          .describe(
-            "The password for accessing a password-protected shared secret. This field is only required if the secret is password protected."
-          )
+        password: z.string().optional().describe(SECRET_SHARING.ACCESS.password)
       }),
       response: {
         200: SanitizedSecretSharingSchema.extend({
@@ -220,23 +219,28 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      tags: [ApiDocsTags.SecretSharing],
       description: "Create a new shared secret that can be accessed by a link.",
       operationId: "createSharedSecret",
       body: z
         .object({
-          name: z.string().max(50).optional(),
-          password: z.string().optional(),
-          secretValue: z.string(),
-          expiresIn: z.string().default("30d"),
-          maxViews: z.number().min(1).optional(),
-          accessType: z.nativeEnum(SecretSharingAccessType).default(SecretSharingAccessType.Organization),
-          emails: z
+          name: z.string().max(50).optional().describe(SECRET_SHARING.CREATE.name),
+          password: z.string().optional().describe(SECRET_SHARING.CREATE.password),
+          secretValue: z.string().describe(SECRET_SHARING.CREATE.secretValue),
+          expiresIn: z.string().default("30d").describe(SECRET_SHARING.CREATE.expiresIn),
+          maxViews: z.number().min(1).optional().describe(SECRET_SHARING.CREATE.maxViews),
+          accessType: z
+            .nativeEnum(SecretSharingAccessType)
+            .default(SecretSharingAccessType.Organization)
+            .describe(SECRET_SHARING.CREATE.accessType),
+          authorizedEmails: z
             .string()
             .email()
             .array()
             .max(100)
             .optional()
             .transform((val) => (val ? [...new Set(val)] : undefined))
+            .describe(SECRET_SHARING.CREATE.authorizedEmails)
         })
         .superRefine((data, ctx) => {
           const duration = ms(data.expiresIn);
@@ -258,7 +262,9 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
           }
         }),
       response: {
-        200: SanitizedSecretSharingSchema
+        200: SanitizedSecretSharingSchema.extend({
+          sharedSecretLink: z.string()
+        })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -300,10 +306,11 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      tags: [ApiDocsTags.SecretSharing],
       description: "Delete a shared secret by its ID.",
       operationId: "deleteSharedSecret",
       params: z.object({
-        id: z.string().describe("The ID of the shared secret to delete")
+        id: z.string().describe(SECRET_SHARING.DELETE.id)
       }),
       response: {
         200: SanitizedSecretSharingSchema
