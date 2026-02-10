@@ -383,7 +383,7 @@ export const SecretTableRow = ({
                         </UnstableTableRow>
                         {showOverrideRow && (
                           <UnstableTableRow
-                            className="group to[99%] bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03]"
+                            className="group bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03] to-[99%]"
                             key={`secret-override-${slug}-${secretKey}`}
                           >
                             <UnstableTableCell />
