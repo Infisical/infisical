@@ -341,6 +341,7 @@ export const pamAccountServiceFactory = ({
 
       return {
         ...(await decryptAccount(updatedAccount, account.projectId, kmsService)),
+        resourceType: resource.resourceType,
         resource: {
           id: resource.id,
           name: resource.name,
@@ -387,6 +388,7 @@ export const pamAccountServiceFactory = ({
 
     return {
       ...(await decryptAccount(deletedAccount, account.projectId, kmsService)),
+      resourceType: resource.resourceType,
       resource: {
         id: resource.id,
         name: resource.name,
