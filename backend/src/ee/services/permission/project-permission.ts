@@ -1489,31 +1489,20 @@ export const buildServiceTokenProjectPermission = (
   const canRead = permission.includes("read");
   const { can, build } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
   scopes.forEach(({ secretPath, environment }) => {
+    const conditions = {
+      environment,
+      ...(secretPath ? { secretPath: { $glob: secretPath } } : {})
+    } as Record<string, unknown>;
+
     [ProjectPermissionSub.Secrets, ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach(
       (subject) => {
         if (canWrite) {
-          can(ProjectPermissionActions.Edit, subject, {
-            // @ts-expect-error type
-            secretPath: { $glob: secretPath },
-            environment
-          });
-          can(ProjectPermissionActions.Create, subject, {
-            // @ts-expect-error type
-            secretPath: { $glob: secretPath },
-            environment
-          });
-          can(ProjectPermissionActions.Delete, subject, {
-            // @ts-expect-error type
-            secretPath: { $glob: secretPath },
-            environment
-          });
+          can(ProjectPermissionActions.Edit, subject, conditions);
+          can(ProjectPermissionActions.Create, subject, conditions);
+          can(ProjectPermissionActions.Delete, subject, conditions);
         }
         if (canRead) {
-          can(ProjectPermissionActions.Read, subject, {
-            // @ts-expect-error type
-            secretPath: { $glob: secretPath },
-            environment
-          });
+          can(ProjectPermissionActions.Read, subject, conditions);
         }
       }
     );
