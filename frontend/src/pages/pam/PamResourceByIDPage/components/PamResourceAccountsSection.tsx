@@ -133,11 +133,11 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
   };
 
   return (
-    <div className="border-border bg-container rounded-lg border">
-      <div className="border-border flex items-center justify-between border-b px-4 py-3">
+    <div className="rounded-lg border border-border bg-container">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div>
           <h3 className="text-lg font-medium">Accounts</h3>
-          <p className="text-muted text-sm">
+          <p className="text-sm text-muted">
             Accounts associated with this resource that can be used for access
           </p>
         </div>
@@ -169,7 +169,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
           <UnstableTableBody>
             {isPending && (
               <UnstableTableRow>
-                <UnstableTableCell colSpan={2} className="text-muted text-center">
+                <UnstableTableCell colSpan={2} className="text-center text-muted">
                   Loading accounts...
                 </UnstableTableCell>
               </UnstableTableRow>
@@ -229,7 +229,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                         )}
                       </div>
                       {account.description && (
-                        <span className="text-muted line-clamp-1 text-xs">
+                        <span className="line-clamp-1 text-xs text-muted">
                           {account.description}
                         </span>
                       )}
