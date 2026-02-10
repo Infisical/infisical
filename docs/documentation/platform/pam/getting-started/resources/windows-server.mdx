@@ -35,9 +35,7 @@ sequenceDiagram
 
 2. **RDP Protocol**: Infisical connects to your Windows server using the Remote Desktop Protocol (RDP) on the configured port (default: 3389).
 
-3. **Credential Validation via SMB**: When creating or updating accounts, Infisical validates credentials by connecting to the Windows server's SMB service (port 445). This ensures credentials are correct before they are stored.
-
-4. **Account Types**: Windows accounts can be categorized as either **User** accounts or **Service** accounts, allowing you to organize and manage different types of access.
+3. **Account Types**: Windows accounts can be categorized as either **User** accounts or **Service** accounts, allowing you to organize and manage different types of access.
 
 ## Prerequisites
 
@@ -45,15 +43,10 @@ Before configuring Windows Server access in Infisical PAM, you need:
 
 1. **Infisical Gateway** - A Gateway deployed in your network with access to the Windows server
 2. **RDP Enabled** - Remote Desktop must be enabled on the Windows server (port 3389 by default)
-3. **SMB Enabled** - SMB (Server Message Block) must be accessible for credential validation (port 445)
-4. **Windows Credentials** - A username and password for a Windows account on the server
+3. **Windows Credentials** - A username and password for a Windows account on the server
 
 <Warning>
-  **SMB Required**: Infisical validates account credentials using SMB (Server Message Block) on port 445. SMB is enabled by default on Windows servers. Ensure port 445 is accessible from the Gateway and not blocked by a firewall.
-</Warning>
-
-<Warning>
-  **Gateway Required**: Windows Server access requires an Infisical Gateway to be deployed and registered with your Infisical instance. The Gateway must have network connectivity to your Windows server on both the RDP port (default: 3389) and SMB port (445).
+  **Gateway Required**: Windows Server access requires an Infisical Gateway to be deployed and registered with your Infisical instance. The Gateway must have network connectivity to your Windows server on the RDP port (default: 3389).
 </Warning>
 
 ## Create the PAM Resource
@@ -123,9 +116,5 @@ A PAM Account represents a specific Windows user account on the server. You can 
     <ParamField path="Password" type="string" required>
       The Windows password for this user
     </ParamField>
-
-    <Note>
-      When creating the account, Infisical will validate the credentials by connecting to the server via SMB (port 445).
-    </Note>
   </Step>
 </Steps>
