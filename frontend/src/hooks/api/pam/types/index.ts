@@ -12,6 +12,7 @@ import { TMySQLAccount, TMySQLResource } from "./mysql-resource";
 import { TPostgresAccount, TPostgresResource } from "./postgres-resource";
 import { TRedisAccount, TRedisResource } from "./redis-resource";
 import { TSSHAccount, TSSHResource } from "./ssh-resource";
+import { TWindowsAccount, TWindowsResource } from "./windows-server-resource";
 
 export * from "./aws-iam-resource";
 export * from "./kubernetes-resource";
@@ -19,6 +20,7 @@ export * from "./mysql-resource";
 export * from "./postgres-resource";
 export * from "./redis-resource";
 export * from "./ssh-resource";
+export * from "./windows-server-resource";
 
 export type TPamResource =
   | TPostgresResource
@@ -26,7 +28,8 @@ export type TPamResource =
   | TRedisResource
   | TSSHResource
   | TAwsIamResource
-  | TKubernetesResource;
+  | TKubernetesResource
+  | TWindowsResource;
 
 export type TPamAccount =
   | TPostgresAccount
@@ -34,7 +37,8 @@ export type TPamAccount =
   | TRedisAccount
   | TSSHAccount
   | TAwsIamAccount
-  | TKubernetesAccount;
+  | TKubernetesAccount
+  | TWindowsAccount;
 
 export type TPamFolder = {
   id: string;
@@ -149,6 +153,7 @@ export type TCreatePamAccountDTO = Pick<
   "name" | "description" | "credentials" | "projectId" | "resourceId" | "folderId" | "requireMfa"
 > & {
   resourceType: PamResourceType;
+  metadata?: Record<string, unknown>;
 };
 
 export type TUpdatePamAccountDTO = Partial<
@@ -156,6 +161,7 @@ export type TUpdatePamAccountDTO = Partial<
 > & {
   accountId: string;
   resourceType: PamResourceType;
+  metadata?: Record<string, unknown>;
 };
 
 export type TDeletePamAccountDTO = {

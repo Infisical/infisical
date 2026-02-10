@@ -119,7 +119,8 @@ export const pamAccountServiceFactory = ({
       folderId,
       rotationEnabled,
       rotationIntervalSeconds,
-      requireMfa
+      requireMfa,
+      metadata
     }: TCreateAccountDTO,
     actor: OrgServiceActor
   ) => {
@@ -194,7 +195,8 @@ export const pamAccountServiceFactory = ({
         folderId,
         rotationEnabled,
         rotationIntervalSeconds,
-        requireMfa
+        requireMfa,
+        metadata: metadata ?? null
       });
 
       return {
@@ -226,7 +228,8 @@ export const pamAccountServiceFactory = ({
       name,
       rotationEnabled,
       rotationIntervalSeconds,
-      requireMfa
+      requireMfa,
+      metadata
     }: TUpdateAccountDTO,
     actor: OrgServiceActor
   ) => {
@@ -276,6 +279,10 @@ export const pamAccountServiceFactory = ({
 
     if (rotationIntervalSeconds !== undefined) {
       updateDoc.rotationIntervalSeconds = rotationIntervalSeconds;
+    }
+
+    if (metadata !== undefined) {
+      updateDoc.metadata = metadata;
     }
 
     if (credentials !== undefined) {
@@ -651,6 +658,10 @@ export const pamAccountServiceFactory = ({
       account.projectId,
       kmsService
     );
+
+    // Temporarily disable access to Windows Server
+    if (resourceType === PamResource.Windows)
+      throw new BadRequestError({ message: `Windows resources cannot be accessed at this time` });
 
     const user = await userDAL.findById(actor.id);
     if (!user) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
