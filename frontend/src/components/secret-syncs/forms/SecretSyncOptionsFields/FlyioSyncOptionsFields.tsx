@@ -27,10 +27,18 @@ export const FlyioSyncOptionsFields = () => {
             <Tooltip
               className="max-w-md"
               content={
-                <p>
-                  If enabled, the Fly.io app will be automatically redeployed upon secret changes to
-                  ensure running machines pick up the new values.
-                </p>
+                <div className="space-y-2">
+                  <p>
+                    If enabled, Infisical will trigger a restart of all app machines after syncing
+                    or removing secrets so they pick up the new values immediately.
+                  </p>
+                  <p>
+                    Fly.io does not expose a way to mark secrets as &quot;deployed&quot;, so the
+                    Fly.io dashboard may show secrets as <strong>Staged</strong> even though they
+                    are already applied. To confirm deployment, check that your machines restarted
+                    after the sync (e.g. in the Fly.io Machines view or app logs).
+                  </p>
+                </div>
               }
             >
               <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
