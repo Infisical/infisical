@@ -25,7 +25,7 @@ Key features of approval policies include:
 - **Multi-step workflows**: Configure sequential approval steps where each step must be completed before the next begins.
 - **Flexible approvers**: Assign individual users or groups as eligible approvers for each step.
 - **Required approval count**: Specify how many approvals are needed per step (e.g., require 2 out of 5 eligible approvers).
-- **Access duration constraints**: Set minimum and maximum access durations for requests matching this policy.
+- **Access duration constraints**: Set maximum access durations for requests matching this policy.
 
 ### Guide to Creating an Approval Policy
 
@@ -42,7 +42,7 @@ To create an approval policy, navigate to your PAM Project > Approvals > Policie
       - **Resource name**: Glob pattern for matching resource names (e.g. `prod-db`, `*-redis`).
       - **Account name**: Glob pattern for matching account names (e.g. `admin`, `*readonly`).
       - At least one of resource name or account name must be specified. If both are provided, they are ANDed together.
-    - **Access Duration**: Configure the minimum and maximum access duration allowed for requests matching this policy.
+    - **Access Duration**: Configure the maximum access duration allowed for requests matching this policy.
 
     ![pam approval policy configuration](/images/pam/product-reference/access-policies/approval-policy-configuration.png)
   </Step>
@@ -52,7 +52,6 @@ To create an approval policy, navigate to your PAM Project > Approvals > Policie
     - **Step Name**: An optional name for the step such as `Manager Review`.
     - **Approvers**: Select individual users or groups who are eligible to approve this step.
     - **Required Approvals**: The number of approvals needed to complete this step.
-    - **Notify Approvers**: When enabled, eligible approvers receive a notification when their approval is required.
 
     You can add multiple steps to create a sequential approval workflow. For example:
     1. **Manager Review**: Requires 1 approval from the managers group
