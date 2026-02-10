@@ -1,4 +1,12 @@
-import { BanIcon, CheckIcon, CircleIcon, ImportIcon, LucideIcon, XIcon } from "lucide-react";
+import {
+  BanIcon,
+  CheckIcon,
+  CircleIcon,
+  GitBranchIcon,
+  ImportIcon,
+  LucideIcon,
+  XIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { Tooltip, TooltipContent, TooltipTrigger, UnstableTableCell } from "@app/components/v3";
@@ -7,9 +15,10 @@ export type EnvironmentStatus = "present" | "missing" | "empty" | "imported" | "
 
 type Props = {
   status: EnvironmentStatus;
+  hasOverride?: boolean;
 };
 
-export const ResourceEnvironmentStatusCell = ({ status }: Props) => {
+export const ResourceEnvironmentStatusCell = ({ status, hasOverride }: Props) => {
   let tooltipContent: string;
   let Icon: LucideIcon;
   let iconClassName: string;
@@ -47,7 +56,7 @@ export const ResourceEnvironmentStatusCell = ({ status }: Props) => {
   return (
     <UnstableTableCell
       className={twMerge(
-        "border-r text-center last:border-r-0",
+        "relative border-r text-center last:border-r-0",
         status === "present" && "text-success",
         status === "empty" && "text-warning",
         status === "missing" && "text-danger",
@@ -55,6 +64,16 @@ export const ResourceEnvironmentStatusCell = ({ status }: Props) => {
         status === "imported" && "text-import"
       )}
     >
+      {hasOverride && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="absolute top-5 right-0 bottom-0 flex w-5 flex-col rounded-tl border-t border-l border-override/50 bg-override/15">
+              <GitBranchIcon className="m-auto size-3 text-override" />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>Has personal override</TooltipContent>
+        </Tooltip>
+      )}
       <Tooltip>
         <TooltipTrigger asChild>
           <Icon className={twMerge(iconClassName, "inline-block")} />

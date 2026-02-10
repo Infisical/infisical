@@ -105,7 +105,7 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
     };
 
     if (el.type === SecretType.Personal) {
-      personalSecrets[decryptedSecret.key] = {
+      personalSecrets[`${decryptedSecret.key}_${el.environment}`] = {
         id: el.id,
         value: el.secretValue,
         env: el.environment,
@@ -117,8 +117,8 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
   });
 
   secrets.forEach((sec) => {
-    const personalSecret = personalSecrets?.[sec.key];
-    if (personalSecret && personalSecret.env === sec.env) {
+    const personalSecret = personalSecrets?.[`${sec.key}_${sec.env}`];
+    if (personalSecret) {
       sec.idOverride = personalSecret.id;
       sec.valueOverride = personalSecret.value;
       sec.overrideAction = "modified";

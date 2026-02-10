@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { subject } from "@casl/ability";
 import {
   ChevronDownIcon,
@@ -7,7 +7,6 @@ import {
   EditIcon,
   EyeIcon,
   EyeOffIcon,
-  GitBranchIcon,
   ImportIcon,
   KeyIcon,
   RefreshCcwIcon
@@ -41,6 +40,7 @@ import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPa
 
 import { EnvironmentStatus, ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
 import { SecretEditTableRow } from "./SecretEditTableRow";
+import { SecretOverrideRow } from "./SecretOverrideRow";
 import SecretRenameForm from "./SecretRenameForm";
 
 type Props = {
@@ -50,7 +50,7 @@ type Props = {
   isSelected: boolean;
   onToggleSecretSelect: (key: string) => void;
   getSecretByKey: (slug: string, key: string) => SecretV3RawSanitized | undefined;
-  onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
+  onSecretCreate: (env: string, key: string, value: string, type?: SecretType) => Promise<void>;
   onSecretUpdate: (
     env: string,
     key: string,
@@ -59,7 +59,7 @@ type Props = {
     type?: SecretType,
     secretId?: string
   ) => Promise<void>;
-  onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
+  onSecretDelete: (env: string, key: string, secretId?: string, type?: SecretType) => Promise<void>;
   isImportedSecretPresentInEnv: (env: string, secretName: string) => boolean;
   getImportedSecretByKey: (
     env: string,
@@ -103,6 +103,29 @@ export const SecretTableRow = ({
   const [isSecretVisible, setIsSecretVisible] = useToggle();
   const [isEditSecretNameOpen, setIsEditSecretNameOpen] = useState(false);
   const [isSecNameCopied, setIsSecNameCopied] = useToggle(false);
+  const [creatingOverrideEnvs, setCreatingOverrideEnvs] = useState<Set<string>>(new Set());
+
+  // Clean up creatingOverrideEnvs once the query refetch confirms the override exists.
+  // This prevents the override row from flickering between "creating" and "has override" states.
+  useEffect(() => {
+    if (creatingOverrideEnvs.size === 0) return;
+
+    const toRemove: string[] = [];
+    creatingOverrideEnvs.forEach((slug) => {
+      const secret = getSecretByKey(slug, secretKey);
+      if (secret?.idOverride) {
+        toRemove.push(slug);
+      }
+    });
+
+    if (toRemove.length > 0) {
+      setCreatingOverrideEnvs((prev) => {
+        const next = new Set(prev);
+        toRemove.forEach((slug) => next.delete(slug));
+        return next;
+      });
+    }
+  }, [creatingOverrideEnvs, getSecretByKey, secretKey]);
 
   const copyTokenToClipboard = () => {
     navigator.clipboard.writeText(secretKey);
@@ -125,10 +148,10 @@ export const SecretTableRow = ({
       })
     );
 
-    if (secret?.secretValueHidden && !secret?.valueOverride) {
+    if (secret?.secretValueHidden) {
       return canEditSecretValue ? HIDDEN_SECRET_VALUE : "";
     }
-    return secret?.valueOverride || secret?.value || importedSecret?.secret?.value || "";
+    return secret?.value || importedSecret?.secret?.value || "";
   };
 
   return (
@@ -232,6 +255,7 @@ export const SecretTableRow = ({
             <ResourceEnvironmentStatusCell
               key={`sec-overview-${slug}-${i + 1}-value`}
               status={status}
+              hasOverride={Boolean(secret?.idOverride)}
             />
           );
         })}
@@ -287,71 +311,111 @@ export const SecretTableRow = ({
                     const isImportedSecret = isImportedSecretPresentInEnv(slug, secretKey);
                     const importedSecret = getImportedSecretByKey(slug, secretKey);
 
+                    const hasOverride = Boolean(secret?.idOverride);
+                    const isCreatingOverride = creatingOverrideEnvs.has(slug);
+                    const showOverrideRow = hasOverride || isCreatingOverride;
+
                     return (
-                      <UnstableTableRow
-                        className="group"
-                        key={`secret-expanded-${slug}-${secretKey}`}
-                      >
-                        <UnstableTableCell>
-                          <div title={name} className="flex h-8 w-32 items-center space-x-2">
-                            <span className="truncate">{name}</span>
-                            {isImportedSecret && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <ImportIcon className="size-4 text-import" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  Imported from {importedSecret?.environmentInfo?.name} environment
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                            {secret?.isRotatedSecret && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <RefreshCcwIcon className="size-4 text-secret-rotation" />
-                                </TooltipTrigger>
-                                <TooltipContent>Rotated secret</TooltipContent>
-                              </Tooltip>
-                            )}
-                            {secret?.idOverride && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <GitBranchIcon className="size-4 text-secret" />
-                                </TooltipTrigger>
-                                <TooltipContent>Personal Override</TooltipContent>
-                              </Tooltip>
-                            )}
-                          </div>
-                        </UnstableTableCell>
-                        <UnstableTableCell className="col-span-2">
-                          <SecretEditTableRow
-                            secretPath={secretPath}
-                            isVisible={isSecretVisible}
-                            secretName={secretKey}
-                            isEmpty={secret?.isEmpty}
-                            secretValueHidden={secret?.secretValueHidden || false}
-                            defaultValue={getDefaultValue(secret, importedSecret)}
-                            secretId={secret?.id}
-                            isOverride={Boolean(secret?.idOverride)}
-                            isImportedSecret={isImportedSecret}
-                            importedSecret={importedSecret}
-                            isCreatable={isCreatable}
-                            onSecretDelete={onSecretDelete}
-                            onSecretCreate={onSecretCreate}
-                            onSecretUpdate={onSecretUpdate}
-                            environment={slug}
-                            environmentName={name}
-                            isRotatedSecret={secret?.isRotatedSecret}
-                            importedBy={importedBy}
-                            isSecretPresent={Boolean(secret)}
-                            comment={secret?.comment}
-                            tags={secret?.tags}
-                            secretMetadata={secret?.secretMetadata}
-                            skipMultilineEncoding={secret?.skipMultilineEncoding}
-                            reminder={secret?.reminder}
-                          />
-                        </UnstableTableCell>
-                      </UnstableTableRow>
+                      <>
+                        <UnstableTableRow
+                          className="group"
+                          key={`secret-expanded-${slug}-${secretKey}`}
+                        >
+                          <UnstableTableCell
+                            className={hasOverride ? "border-b-border/50" : undefined}
+                          >
+                            <div title={name} className="flex h-8 w-32 items-center space-x-2">
+                              <span className="truncate">{name}</span>
+                              {isImportedSecret && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <ImportIcon className="size-4 text-import" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    Imported from {importedSecret?.environmentInfo?.name}{" "}
+                                    environment
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                              {secret?.isRotatedSecret && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <RefreshCcwIcon className="size-4 text-secret-rotation" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>Rotated secret</TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
+                          </UnstableTableCell>
+                          <UnstableTableCell
+                            className={twMerge("col-span-2", hasOverride && "border-b-border/50")}
+                          >
+                            <SecretEditTableRow
+                              secretPath={secretPath}
+                              isVisible={isSecretVisible}
+                              secretName={secretKey}
+                              isEmpty={secret?.isEmpty}
+                              secretValueHidden={secret?.secretValueHidden || false}
+                              defaultValue={getDefaultValue(secret, importedSecret)}
+                              secretId={secret?.id}
+                              isOverride={Boolean(secret?.idOverride)}
+                              isImportedSecret={isImportedSecret}
+                              importedSecret={importedSecret}
+                              isCreatable={isCreatable}
+                              onSecretDelete={onSecretDelete}
+                              onSecretCreate={onSecretCreate}
+                              onSecretUpdate={onSecretUpdate}
+                              onAddOverride={() => {
+                                setCreatingOverrideEnvs((prev) => new Set([...prev, slug]));
+                              }}
+                              environment={slug}
+                              environmentName={name}
+                              isRotatedSecret={secret?.isRotatedSecret}
+                              importedBy={importedBy}
+                              isSecretPresent={Boolean(secret)}
+                              comment={secret?.comment}
+                              tags={secret?.tags}
+                              secretMetadata={secret?.secretMetadata}
+                              skipMultilineEncoding={secret?.skipMultilineEncoding}
+                              reminder={secret?.reminder}
+                            />
+                          </UnstableTableCell>
+                        </UnstableTableRow>
+                        {showOverrideRow && (
+                          <UnstableTableRow
+                            className="group to[99%] bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03]"
+                            key={`secret-override-${slug}-${secretKey}`}
+                          >
+                            <UnstableTableCell />
+                            <UnstableTableCell>
+                              <SecretOverrideRow
+                                secretName={secretKey}
+                                environment={slug}
+                                secretPath={secretPath}
+                                isVisible={isSecretVisible}
+                                isEmpty={secret?.isEmpty}
+                                idOverride={secret?.idOverride}
+                                valueOverride={secret?.valueOverride}
+                                isCreatingOverride={isCreatingOverride}
+                                onCreatingOverrideChange={(value) => {
+                                  setCreatingOverrideEnvs((prev) => {
+                                    const next = new Set(prev);
+                                    if (value) {
+                                      next.add(slug);
+                                    } else {
+                                      next.delete(slug);
+                                    }
+                                    return next;
+                                  });
+                                }}
+                                onSecretCreate={onSecretCreate}
+                                onSecretUpdate={onSecretUpdate}
+                                onSecretDelete={onSecretDelete}
+                              />
+                            </UnstableTableCell>
+                          </UnstableTableRow>
+                        )}
+                      </>
                     );
                   })}
                 </UnstableTableBody>
