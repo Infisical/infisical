@@ -81,6 +81,7 @@ export const UpdateWindowsAccountSchema = BaseUpdatePamAccountSchema.extend({
 });
 
 export const SanitizedWindowsAccountWithResourceSchema = BasePamAccountSchemaWithResource.extend({
+  resourceType: z.literal(PamResource.Windows),
   credentials: z.object({
     username: z.string()
   }),
