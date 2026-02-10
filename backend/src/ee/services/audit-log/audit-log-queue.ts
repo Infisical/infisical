@@ -1,4 +1,6 @@
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
+import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -47,7 +49,16 @@ export const auditLogQueueServiceFactory = async ({
     if (!orgId) {
       // it will never be undefined for both org and project id
       // TODO(akhilmhdh): use caching here in dal to avoid db calls
-      project = await projectDAL.findById(projectId as string);
+      if (!projectId) {
+        logger.error(
+          { jobData: job.data, actor: actor?.type, eventType: event?.type },
+          "Both orgId and projectId are undefined when creating audit log. This should not happen as validation occurs in the service layer."
+        );
+        throw new BadRequestError({
+          message: "Both orgId and projectId are undefined. At least one must be provided."
+        });
+      }
+      project = await projectDAL.findById(projectId);
       orgId = project.orgId;
     }
 
