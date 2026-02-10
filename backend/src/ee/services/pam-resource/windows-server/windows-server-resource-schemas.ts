@@ -25,7 +25,7 @@ export const WindowsResourceListItemSchema = z.object({
 export const WindowsResourceConnectionDetailsSchema = z.object({
   protocol: z.literal(WindowsProtocol.RDP),
   hostname: z.string().trim().min(1).max(255),
-  port: z.coerce.number()
+  port: z.coerce.number().int().min(1).max(65535)
 });
 
 // Credentials (username + password for RDP)
