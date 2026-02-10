@@ -13,6 +13,7 @@ import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 
 import { AwsParameterStoreSyncOptionsSection } from "./AwsParameterStoreSyncOptionsSection";
 import { AwsSecretsManagerSyncOptionsSection } from "./AwsSecretsManagerSyncOptionsSection";
+import { CoolifySyncOptionsSection } from "./CoolifySyncOptionsSection";
 import { RenderSyncOptionsSection } from "./RenderSyncOptionsSection";
 
 type Props = {
@@ -41,6 +42,9 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
       break;
     case SecretSync.Render:
       AdditionalSyncOptionsComponent = <RenderSyncOptionsSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Coolify:
+      AdditionalSyncOptionsComponent = <CoolifySyncOptionsSection secretSync={secretSync} />;
       break;
     case SecretSync.GitHub:
     case SecretSync.GCPSecretManager:
@@ -74,6 +78,7 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.Chef:
     case SecretSync.OctopusDeploy:
     case SecretSync.CircleCI:
+    case SecretSync.Coolify:
       AdditionalSyncOptionsComponent = null;
       break;
     default:

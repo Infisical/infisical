@@ -14,6 +14,7 @@ import { TChecklyConnection } from "./checkly-connection";
 import { TChefConnection } from "./chef-connection";
 import { TCircleCIConnection } from "./circleci-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
+import { TCoolifyConnection } from "./coolify-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TDbtConnection } from "./dbt-connection";
 import { TDigitalOceanConnection } from "./digital-ocean";
@@ -65,6 +66,7 @@ export * from "./checkly-connection";
 export * from "./chef-connection";
 export * from "./circleci-connection";
 export * from "./cloudflare-connection";
+export * from "./coolify-connection";
 export * from "./databricks-connection";
 export * from "./dbt-connection";
 export * from "./dns-made-easy-connection";
@@ -151,7 +153,8 @@ export type TAppConnection =
   | TDbtConnection
   | TSmbConnection
   | TOpenRouterConnection
-  | TCircleCIConnection;
+  | TCircleCIConnection
+  | TCoolifyConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 
@@ -229,6 +232,7 @@ export type TDeleteAppConnectionDTO = {
 //   [AppConnection.DigitalOcean]: TDigitalOceanConnection;
 //   [AppConnection.Netlify]: TNetlifyConnection;
 //   [AppConnection.Okta]: TOktaConnection;
+//   [AppConnection.Coolify]: TCoolifyConnection;
 // };
 
 // scott: we will need this once we have individual app connection page

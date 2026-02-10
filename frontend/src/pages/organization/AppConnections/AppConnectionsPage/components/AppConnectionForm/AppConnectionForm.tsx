@@ -23,6 +23,7 @@ import { ChecklyConnectionForm } from "./ChecklyConnectionForm";
 import { ChefConnectionForm } from "./ChefConnectionForm";
 import { CircleCIConnectionForm } from "./CircleCIConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
+import { CoolifyConnectionForm } from "./CoolifyConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { DbtConnectionForm } from "./DbtConnectionForm";
 import { DigitalOceanConnectionForm } from "./DigitalOceanConnectionForm";
@@ -194,6 +195,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       return <OpenRouterConnectionForm onSubmit={onSubmit} />;
     case AppConnection.CircleCI:
       return <CircleCIConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Coolify:
+      return <CoolifyConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -366,6 +369,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <OpenRouterConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.CircleCI:
       return <CircleCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Coolify:
+      return <CoolifyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

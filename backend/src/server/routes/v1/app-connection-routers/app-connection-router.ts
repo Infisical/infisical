@@ -58,6 +58,10 @@ import {
   SanitizedCloudflareConnectionSchema
 } from "@app/services/app-connection/cloudflare/cloudflare-connection-schema";
 import {
+  CoolifyConnectionListItemSchema,
+  SanitizedCoolifyConnectionSchema
+} from "@app/services/app-connection/coolify";
+import {
   DatabricksConnectionListItemSchema,
   SanitizedDatabricksConnectionSchema
 } from "@app/services/app-connection/databricks";
@@ -201,7 +205,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedSmbConnectionSchema.options,
   ...SanitizedSshConnectionSchema.options,
   ...SanitizedDbtConnectionSchema.options,
-  ...SanitizedOpenRouterConnectionSchema.options
+  ...SanitizedOpenRouterConnectionSchema.options,
+  ...SanitizedCoolifyConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -254,7 +259,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   SmbConnectionListItemSchema,
   SshConnectionListItemSchema,
   DbtConnectionListItemSchema,
-  OpenRouterConnectionListItemSchema
+  OpenRouterConnectionListItemSchema,
+  CoolifyConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

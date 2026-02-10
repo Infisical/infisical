@@ -41,9 +41,10 @@ export const SecretSyncsBrowser = () => {
     {"name": "Laravel Forge", "slug": "laravel-forge", "path": "/integrations/secret-syncs/laravel-forge", "description": "Learn how to sync secrets from Infisical to Laravel Forge.", "category": "Hosting"},
     {"name": "Chef", "slug": "chef", "path": "/integrations/secret-syncs/chef", "description": "Learn how to sync secrets from Infisical to Chef.", "category": "DevOps Tools"},
     {"name": "Northflank", "slug": "northflank", "path": "/integrations/secret-syncs/northflank", "description": "Learn how to sync secrets from Infisical to Northflank projects.", "category": "Hosting"},
-    {"name": "Octopus Deploy", "slug": "octopus-deploy", "path": "/integrations/secret-syncs/octopus-deploy", "description": "Learn how to sync secrets from Infisical to Octopus Deploy.", "category": "DevOps Tools"}
+    {"name": "Octopus Deploy", "slug": "octopus-deploy", "path": "/integrations/secret-syncs/octopus-deploy", "description": "Learn how to sync secrets from Infisical to Octopus Deploy.", "category": "DevOps Tools"},
+    { "name": "Coolify", "slug": "coolify", "path": "/integrations/secret-syncs/coolify", "description": "Learn how to sync secrets from Infisical to Coolify applications.", "category": "Hosting" }
   ].sort(function(a, b) {
-      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+    return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });
 
   const filteredSyncs = useMemo(() => {
@@ -91,11 +92,10 @@ export const SecretSyncsBrowser = () => {
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors shadow-sm ${
-                selectedCategory === category
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors shadow-sm ${selectedCategory === category
                   ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
                   : 'bg-white text-gray-700 border border-gray-200 hover:bg-yellow-50 hover:border-yellow-200'
-              }`}
+                }`}
             >
               {category}
             </button>
