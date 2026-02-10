@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { format, formatDistance } from "date-fns";
+import { formatDistance } from "date-fns";
 import {
   CheckIcon,
   CopyIcon,
@@ -165,22 +165,20 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
           <UnstableTableHeader>
             <UnstableTableRow>
               <UnstableTableHead>Account Name</UnstableTableHead>
-              <UnstableTableHead>Rotation</UnstableTableHead>
-              <UnstableTableHead>Created</UnstableTableHead>
               <UnstableTableHead className="w-5" />
             </UnstableTableRow>
           </UnstableTableHeader>
           <UnstableTableBody>
             {isPending && (
               <UnstableTableRow>
-                <UnstableTableCell colSpan={4} className="text-center text-muted">
+                <UnstableTableCell colSpan={2} className="text-center text-muted">
                   Loading accounts...
                 </UnstableTableCell>
               </UnstableTableRow>
             )}
             {!isPending && accounts.length === 0 && (
               <UnstableTableRow>
-                <UnstableTableCell colSpan={4}>
+                <UnstableTableCell colSpan={2}>
                   <UnstableEmpty className="border-0 bg-transparent py-8 shadow-none">
                     <UnstableEmptyHeader>
                       <UnstableEmptyTitle>No accounts found</UnstableEmptyTitle>
@@ -191,9 +189,6 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
             )}
             {accounts.map((account) => {
               const isAwsIamAccount = resource.resourceType === PamResourceType.AwsIam;
-              const rotationEnabled = !isAwsIamAccount
-                ? (account as { rotationEnabled?: boolean }).rotationEnabled
-                : undefined;
               const rotationStatus = !isAwsIamAccount
                 ? (account as { rotationStatus?: string | null }).rotationStatus
                 : undefined;
@@ -236,30 +231,11 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                         )}
                       </div>
                       {account.description && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="line-clamp-1 text-xs text-muted">
-                              {account.description}
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent>{account.description}</TooltipContent>
-                        </Tooltip>
+                        <span className="line-clamp-1 text-xs text-muted">
+                          {account.description}
+                        </span>
                       )}
                     </div>
-                  </UnstableTableCell>
-                  <UnstableTableCell>
-                    {isAwsIamAccount ? (
-                      <Badge variant="neutral" className="text-xs">
-                        N/A
-                      </Badge>
-                    ) : (
-                      <Badge variant={rotationEnabled ? "success" : "neutral"} className="text-xs">
-                        {rotationEnabled ? "Enabled" : "Disabled"}
-                      </Badge>
-                    )}
-                  </UnstableTableCell>
-                  <UnstableTableCell className="text-muted">
-                    {format(new Date(account.createdAt), "MM/dd/yyyy")}
                   </UnstableTableCell>
                   <UnstableTableCell>
                     <div className="flex items-center gap-2">
