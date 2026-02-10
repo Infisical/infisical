@@ -1,3 +1,4 @@
+import { builtins } from "pg-types";
 import { describe, expect, it } from "vitest";
 
 import { formatCommandResult, formatError, formatTable } from "./pam-web-access-sql-formatter";
@@ -8,8 +9,8 @@ describe("formatTable", () => {
       command: "SELECT",
       rowCount: 2,
       fields: [
-        { name: "id", dataTypeID: 23 },
-        { name: "name", dataTypeID: 25 }
+        { name: "id", dataTypeID: builtins.INT4 },
+        { name: "name", dataTypeID: builtins.TEXT }
       ],
       rows: [
         { id: 1, name: "Alice" },
@@ -30,7 +31,7 @@ describe("formatTable", () => {
     const result = formatTable({
       command: "SELECT",
       rowCount: 2,
-      fields: [{ name: "num", dataTypeID: 23 }],
+      fields: [{ name: "num", dataTypeID: builtins.INT4 }],
       rows: [{ num: 1 }, { num: 100 }]
     });
 
@@ -48,8 +49,8 @@ describe("formatTable", () => {
       command: "SELECT",
       rowCount: 1,
       fields: [
-        { name: "id", dataTypeID: 23 },
-        { name: "name", dataTypeID: 25 }
+        { name: "id", dataTypeID: builtins.INT4 },
+        { name: "name", dataTypeID: builtins.TEXT }
       ],
       rows: [{ id: 1, name: null }]
     });
@@ -62,8 +63,8 @@ describe("formatTable", () => {
       command: "SELECT",
       rowCount: 0,
       fields: [
-        { name: "id", dataTypeID: 23 },
-        { name: "name", dataTypeID: 25 }
+        { name: "id", dataTypeID: builtins.INT4 },
+        { name: "name", dataTypeID: builtins.TEXT }
       ],
       rows: []
     });
@@ -77,7 +78,7 @@ describe("formatTable", () => {
     const result = formatTable({
       command: "SELECT",
       rowCount: 1,
-      fields: [{ name: "val", dataTypeID: 23 }],
+      fields: [{ name: "val", dataTypeID: builtins.INT4 }],
       rows: [{ val: 42 }]
     });
 
@@ -89,7 +90,7 @@ describe("formatTable", () => {
     const result = formatTable({
       command: "SELECT",
       rowCount: 1,
-      fields: [{ name: "x", dataTypeID: 25 }],
+      fields: [{ name: "x", dataTypeID: builtins.TEXT }],
       rows: [{ x: "longvalue" }]
     });
 
@@ -104,7 +105,7 @@ describe("formatTable", () => {
     const result = formatTable({
       command: "SELECT",
       rowCount: 1,
-      fields: [{ name: "created_at", dataTypeID: 1184 }],
+      fields: [{ name: "created_at", dataTypeID: builtins.TIMESTAMPTZ }],
       rows: [{ created_at: new Date("2026-02-05T19:04:52.000Z") }]
     });
 
@@ -117,7 +118,7 @@ describe("formatTable", () => {
     const result = formatTable({
       command: "SELECT",
       rowCount: 1,
-      fields: [{ name: "ts", dataTypeID: 1184 }],
+      fields: [{ name: "ts", dataTypeID: builtins.TIMESTAMPTZ }],
       rows: [{ ts: "2026-02-05 19:04:52+00" }]
     });
 
@@ -128,7 +129,7 @@ describe("formatTable", () => {
     const result = formatTable({
       command: "SELECT",
       rowCount: 1,
-      fields: [{ name: "data", dataTypeID: 17 }],
+      fields: [{ name: "data", dataTypeID: builtins.BYTEA }],
       rows: [{ data: Buffer.from([0xde, 0xad, 0xbe, 0xef]) }]
     });
 

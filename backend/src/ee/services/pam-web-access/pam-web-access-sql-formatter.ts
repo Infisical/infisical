@@ -1,13 +1,15 @@
+import { builtins } from "pg-types";
+
 // PostgreSQL numeric type OIDs for right-alignment
 const NUMERIC_TYPE_IDS = new Set([
-  20, // int8
-  21, // int2
-  23, // int4
-  26, // oid
-  700, // float4
-  701, // float8
-  790, // money
-  1700 // numeric
+  builtins.INT8,
+  builtins.INT2,
+  builtins.INT4,
+  builtins.OID,
+  builtins.FLOAT4,
+  builtins.FLOAT8,
+  builtins.MONEY,
+  builtins.NUMERIC
 ]);
 
 type TQueryResult = {
