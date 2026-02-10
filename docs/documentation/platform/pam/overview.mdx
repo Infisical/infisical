@@ -12,8 +12,8 @@ At its core, Infisical PAM is designed to decouple **user identity** from **infr
 
 Here is how a typical access lifecycle looks:
 
-1.  **Discovery**: A user logs into Infisical and sees a catalog of resources (databases, servers) and accounts they are allowed to access.
-2.  **Connection**: The user selects a resource and an account (e.g., "Production DB" as `read_only`). They initiate the connection via the Infisical CLI.
+1.  **Discovery**: A user logs into Infisical and sees a catalog of resources (databases, servers) and the accounts under each resource they are allowed to access. Access is **resource-centric**: users navigate to a resource first, then select an account within that resource.
+2.  **Connection**: The user selects a resource and an account (e.g., `production-db` and `read-only`). They initiate the connection via the Infisical CLI.
 3.  **Credential Injection**: Infisical validates the request. If allowed, it establishes a secure tunnel and automatically injects the credentials for the target account. **The user never sees the underlying password or key.**
 4.  **Monitoring**: The session is established. All traffic is intercepted, logged, and recorded for audit purposes.
 
@@ -39,8 +39,8 @@ The hierarchy is structured as follows:
 
 ```mermaid
 graph TD
-    GW[Gateway] --> |Provides Access| DB[Resource: Production DB]
-    GW[Gateway] --> |Provides Access| SRV[Resource: Linux Server]
+    GW[Gateway] --> |Provides Access| DB[Resource: production-db]
+    GW[Gateway] --> |Provides Access| SRV[Resource: linux-server]
     
     DB --> A1[Account: admin]
     DB --> A2[Account: readonly]
@@ -62,6 +62,7 @@ For a deep dive into the technical architecture and security model, see [Archite
 
 ## Core Capabilities
 
+- **[Access Policies](/documentation/platform/pam/product-reference/access-policies)**: Configure approval policies for PAM account access using resource and account name matching.
 - **[Auditing](/documentation/platform/pam/product-reference/auditing)**: Track and review a comprehensive log of all user actions and system events.
 - **[Session Recording](/documentation/platform/pam/product-reference/session-recording)**: Record and playback user sessions for security reviews, compliance, and troubleshooting.
 - **[Automated Credential Rotation](/documentation/platform/pam/product-reference/credential-rotation)**: Automatically rotate credentials for supported resources to minimize the risk of compromised credentials.

@@ -112,12 +112,12 @@ Once you have configured the PAM resource, you'll need to configure a PAM accoun
 A PAM Account represents a specific set of credentials that users can request access to. You can create multiple accounts per resource, each with different permission levels.
 
 <Steps>
-  <Step title="Navigate to Accounts">
-    Go to the **Accounts** tab in your PAM project.
+  <Step title="Navigate to Resource">
+    Go to the **Resources** tab in your PAM project and open the Redis resource you created.
   </Step>
 
 <Step title="Add New Account">
-  Click **Add Account** and select the Redis resource you created.
+  Click **Add Account**.
 </Step>
 
   <Step title="Fill in Account Details">
@@ -153,9 +153,9 @@ Once your resource and accounts are configured, users can request access through
 
 <Steps>
   <Step title="Get the Access Command">
-    1. Navigate to the **Accounts** tab in your PAM project
-    2. Find the Redis account you want to access
-    3. Click the **Access** button
+    1. Navigate to the **Resources** tab in your PAM project and open the Redis resource
+    2. In the resource’s accounts section, find the account you want to access
+    3. Click the **Access** button for that account
     4. Copy the provided CLI command
 
   </Step>
