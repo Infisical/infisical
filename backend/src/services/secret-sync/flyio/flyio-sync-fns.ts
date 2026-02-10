@@ -182,28 +182,40 @@ const putFlyioSecrets = async ({ accessToken, appId, secretMap }: TPutFlyioVaria
   return body.data?.setSecrets?.release?.version;
 };
 
-// Use the Machines REST API (DELETE /apps/{name}/secrets/{key}) instead of
-// GraphQL. Returns the updated secrets version.
+// Use GraphQL unsetSecrets so keys are sent in the request body (no URL encoding issues).
+// Returns release.version when present (for auto-redeploy); Fly may return null.
 const deleteFlyioSecrets = async ({ accessToken, appId, keys }: TDeleteFlyioVariable) => {
   if (keys.length === 0) return;
 
-  const appName = await getAppName({ accessToken, appId });
-
-  let lastVersion: number | undefined;
-  for (const key of keys) {
-    const { data } = await request.delete<{ Version: number }>(
-      `${IntegrationUrls.FLYIO_MACHINES_API_URL}/apps/${appName}/secrets/${key}`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json"
+  const response = await request.post<FlyioGraphQLResponse<{ unsetSecrets?: { release?: { version: number } } }>>(
+    IntegrationUrls.FLYIO_API_URL,
+    {
+      query: `
+        mutation UnsetAppSecrets($appId: ID!, $keys: [String!]!) {
+          unsetSecrets(input: { appId: $appId, keys: $keys }) {
+            release { version }
+          }
         }
+      `,
+      variables: { appId, keys }
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        Accept: "application/json"
       }
-    );
-    lastVersion = data.Version;
-  }
+    }
+  );
 
-  return lastVersion;
+  const body = response.data as FlyioGraphQLResponse<{
+    unsetSecrets?: { release?: { version: number } };
+  }>;
+  if (body.errors?.length) {
+    const messages = body.errors.map((e) => e.message).join("; ");
+    throw new SecretSyncError({ message: `Fly.io unsetSecrets failed: ${messages}` });
+  }
+  return body.data?.unsetSecrets?.release?.version;
 };
 
 export const FlyioSyncFns = {

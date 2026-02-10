@@ -41,12 +41,7 @@ export const useUpdateSecretSync = () => {
     },
     onSuccess: (updatedSecretSync, { syncId, destination, projectId }) => {
       queryClient.setQueryData(secretSyncKeys.byId(destination, syncId), updatedSecretSync);
-      queryClient.setQueryData(secretSyncKeys.list(projectId), (prev: unknown) => {
-        if (!Array.isArray(prev)) return prev;
-        return prev.map((sync: { id: string }) =>
-          sync.id === syncId ? { ...sync, ...updatedSecretSync } : sync
-        );
-      });
+      queryClient.invalidateQueries({ queryKey: secretSyncKeys.list(projectId) });
     }
   });
 };
