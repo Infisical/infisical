@@ -189,9 +189,6 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
             )}
             {accounts.map((account) => {
               const isAwsIamAccount = resource.resourceType === PamResourceType.AwsIam;
-              const rotationEnabled = !isAwsIamAccount
-                ? (account as { rotationEnabled?: boolean }).rotationEnabled
-                : undefined;
               const rotationStatus = !isAwsIamAccount
                 ? (account as { rotationStatus?: string | null }).rotationStatus
                 : undefined;
