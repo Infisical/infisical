@@ -3,6 +3,7 @@ import { z } from "zod";
 import { SecretSharingSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { NotFoundError } from "@app/lib/errors";
+import { ms } from "@app/lib/ms";
 import { SecretSharingAccessType } from "@app/lib/types";
 import { publicEndpointLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -285,11 +286,31 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
     },
     schema: {
       operationId: "createSecretRequest",
-      body: z.object({
-        name: z.string().max(50).optional(),
-        expiresAt: z.string(),
-        accessType: z.nativeEnum(SecretSharingAccessType).default(SecretSharingAccessType.Organization)
-      }),
+      body: z
+        .object({
+          name: z.string().max(50).optional(),
+          expiresIn: z.string(),
+          accessType: z.nativeEnum(SecretSharingAccessType).default(SecretSharingAccessType.Organization)
+        })
+        .superRefine((data, ctx) => {
+          const duration = ms(data.expiresIn);
+
+          if (duration > ms("30d")) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Expiration time cannot exceed 30 days",
+              path: ["expiresIn"]
+            });
+          }
+
+          if (duration < ms("5m")) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Expiration time cannot be less than 5 minutes",
+              path: ["expiresIn"]
+            });
+          }
+        }),
       response: {
         200: z.object({
           id: z.string()

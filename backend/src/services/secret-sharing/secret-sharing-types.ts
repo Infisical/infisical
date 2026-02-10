@@ -27,8 +27,8 @@ export type TSharedSecretPermission = {
 
 export type TCreatePublicSharedSecretDTO = {
   secretValue: string;
-  expiresAt: string;
-  expiresAfterViews?: number;
+  expiresIn: string;
+  maxViews?: number;
   password?: string;
   accessType: SecretSharingAccessType;
 };
@@ -49,7 +49,7 @@ export type TCreateSharedSecretDTO = TSharedSecretPermission & TCreatePublicShar
 export type TCreateSecretRequestDTO = {
   name?: string;
   accessType: SecretSharingAccessType;
-  expiresAt: string;
+  expiresIn: string;
 } & TOrgPermission;
 
 export type TRevealSecretRequestValueDTO = {

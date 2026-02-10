@@ -5,6 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { secretSharingKeys } from "./queries";
 import {
   TAccessSharedSecretRequest,
+  TAccessSharedSecretResponse,
   TCreatedSharedSecret,
   TCreateSecretRequestRequestDTO,
   TCreateSharedSecretRequest,
@@ -13,8 +14,7 @@ import {
   TRevealedSecretRequest,
   TRevealSecretRequestValueRequest,
   TSetSecretRequestValueRequest,
-  TSharedSecret,
-  TViewSharedSecretResponse
+  TSharedSecret
 } from "./types";
 
 export const useCreateSharedSecret = () => {
@@ -34,11 +34,10 @@ export const useCreateSharedSecret = () => {
 
 export const useAccessSharedSecret = () => {
   return useMutation({
-    mutationFn: async ({ sharedSecretId, password, hashedHex }: TAccessSharedSecretRequest) => {
-      const { data } = await apiRequest.post<TViewSharedSecretResponse>(
+    mutationFn: async ({ sharedSecretId, password }: TAccessSharedSecretRequest) => {
+      const { data } = await apiRequest.post<TAccessSharedSecretResponse>(
         `/api/v1/secret-sharing/${sharedSecretId}/access`,
         {
-          ...(hashedHex && { hashedHex }),
           ...(password && { password })
         }
       );

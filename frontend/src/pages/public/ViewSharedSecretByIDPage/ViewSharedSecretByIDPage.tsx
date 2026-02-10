@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { Helmet } from "react-helmet";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { AxiosError } from "axios";
 import { addSeconds, formatISO } from "date-fns";
 import { twMerge } from "tailwind-merge";
@@ -56,32 +56,11 @@ export type BrandingTheme = {
   buttonBg: string;
 };
 
-const extractDetailsFromUrl = (urlEncodedKey: string) => {
-  if (urlEncodedKey) {
-    const [hashedHex, key] = urlEncodedKey ? urlEncodedKey.toString().split("-") : ["", ""];
-
-    return {
-      hashedHex,
-      key
-    };
-  }
-
-  return {
-    hashedHex: null,
-    key: null
-  };
-};
-
 export const ViewSharedSecretByIDPage = () => {
   const id = useParams({
     from: ROUTE_PATHS.Public.ViewSharedSecretByIDPage.id,
     select: (el) => el.secretId
   });
-  const urlEncodedKey = useSearch({
-    from: ROUTE_PATHS.Public.ViewSharedSecretByIDPage.id,
-    select: (el) => el.key
-  });
-  const { hashedHex, key } = extractDetailsFromUrl(urlEncodedKey);
 
   const navigate = useNavigate();
   const hasTriggeredAccess = useRef(false);
@@ -105,7 +84,7 @@ export const ViewSharedSecretByIDPage = () => {
   useEffect(() => {
     if (secretDetails && !secretDetails.isPasswordProtected && !hasTriggeredAccess.current) {
       hasTriggeredAccess.current = true;
-      accessMutation.mutate({ sharedSecretId: id, hashedHex });
+      accessMutation.mutate({ sharedSecretId: id });
     }
   }, [secretDetails]);
 
@@ -145,7 +124,7 @@ export const ViewSharedSecretByIDPage = () => {
   }, [activeError]);
 
   // UI state
-  const secret = accessMutation.data?.secret;
+  const secret = accessMutation.data;
   const isPasswordProtected = secretDetails?.isPasswordProtected ?? false;
   const showPasswordPrompt = isPasswordProtected && !secret;
   const isLoading = isLoadingDetails || (!isPasswordProtected && accessMutation.isPending);
@@ -293,15 +272,13 @@ export const ViewSharedSecretByIDPage = () => {
             <PasswordContainer
               isSubmitting={accessMutation.isPending}
               onPasswordSubmit={(pwd) => {
-                accessMutation.mutate({ sharedSecretId: id, password: pwd, hashedHex });
+                accessMutation.mutate({ sharedSecretId: id, password: pwd });
               }}
               isInvalidCredential={!accessMutation.isPending && isInvalidCredential}
               brandingTheme={brandingTheme}
             />
           )}
-          {secret && (
-            <SecretContainer secret={secret} secretKey={key} brandingTheme={brandingTheme} />
-          )}
+          {secret && <SecretContainer secret={secret} brandingTheme={brandingTheme} />}
           {!showPasswordPrompt && !isInvalidCredential && activeError && !isUnauthorized && (
             <SecretErrorContainer brandingTheme={brandingTheme} error={errorMessage} />
           )}

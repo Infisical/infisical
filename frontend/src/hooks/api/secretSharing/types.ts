@@ -29,8 +29,8 @@ export type TCreateSharedSecretRequest = {
   name?: string;
   password?: string;
   secretValue: string;
-  expiresAt: Date;
-  expiresAfterViews?: number;
+  expiresIn: string;
+  maxViews?: number;
   accessType?: SecretSharingAccessType;
   emails?: string[];
 };
@@ -38,7 +38,7 @@ export type TCreateSharedSecretRequest = {
 export type TCreateSecretRequestRequestDTO = {
   name?: string;
   accessType?: SecretSharingAccessType;
-  expiresAt: Date;
+  expiresIn: string;
 };
 
 export type TSetSecretRequestValueRequest = {
@@ -48,17 +48,6 @@ export type TSetSecretRequestValueRequest = {
 
 export type TRevealSecretRequestValueRequest = {
   id: string;
-};
-
-export type TSharedSecretResponse = {
-  secretValue?: string;
-  encryptedValue: string;
-  iv: string;
-  tag: string;
-  accessType: SecretSharingAccessType;
-  orgName?: string;
-  expiresAt?: Date | string;
-  expiresAfterViews?: number | null;
 };
 
 export type TBrandingConfig = {
@@ -87,15 +76,17 @@ export type TSharedSecretPublicDetails = TSanitizedSharedSecret & {
   isPasswordProtected: boolean;
 };
 
-export type TViewSharedSecretResponse = {
-  isPasswordProtected: boolean;
-  secret?: TSharedSecretResponse;
+export type TAccessSharedSecretResponse = {
+  secretValue: string;
+  accessType: SecretSharingAccessType;
+  orgName?: string;
+  expiresAt?: Date | string;
+  expiresAfterViews?: number | null;
 };
 
 export type TAccessSharedSecretRequest = {
   sharedSecretId: string;
   password?: string;
-  hashedHex?: string | null;
 };
 
 export type TGetSecretRequestByIdResponse = {
