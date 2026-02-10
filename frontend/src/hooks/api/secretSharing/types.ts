@@ -68,11 +68,34 @@ export type TBrandingConfig = {
   secondaryColor?: string;
 };
 
+// Sanitized shared secret - omits sensitive fields like password, encryptedSecret, etc.
+export type TSanitizedSharedSecret = {
+  id: string;
+  userId: string | null;
+  orgId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  name: string | null;
+  lastViewedAt: string | null;
+  accessType: SecretSharingAccessType;
+  expiresAt: string;
+  expiresAfterViews: number | null;
+  authorizedEmails: string[] | null;
+};
+
+export type TSharedSecretPublicDetails = TSanitizedSharedSecret & {
+  isPasswordProtected: boolean;
+};
+
 export type TViewSharedSecretResponse = {
   isPasswordProtected: boolean;
-  brandingConfig?: TBrandingConfig;
   secret?: TSharedSecretResponse;
-  error?: string;
+};
+
+export type TAccessSharedSecretRequest = {
+  sharedSecretId: string;
+  password?: string;
+  hashedHex?: string | null;
 };
 
 export type TGetSecretRequestByIdResponse = {

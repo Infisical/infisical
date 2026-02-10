@@ -2949,6 +2949,21 @@
             ]
           },
           {
+            "group": "Secret Sharing",
+            "pages": [
+              {
+                "group": "Shared Secrets",
+                "pages": [
+                  "api-reference/endpoints/secret-sharing/shared-secrets/list",
+                  "api-reference/endpoints/secret-sharing/shared-secrets/get-by-id",
+                  "api-reference/endpoints/secret-sharing/shared-secrets/create",
+                  "api-reference/endpoints/secret-sharing/shared-secrets/delete",
+                  "api-reference/endpoints/secret-sharing/shared-secrets/access"
+                ]
+              }
+            ]
+          },
+          {
             "group": "Infisical KMS",
             "pages": [
               {
@@ -3032,7 +3047,7 @@
     "href": "https://infisical.com"
   },
   "api": {
-    "openapi": "https://app.infisical.com/api/docs/json",
+    "openapi": "https://abbigail-rotund-harmonically.ngrok-free.dev/api/docs/json",
     "mdx": {
       "server": ["https://app.infisical.com"]
     }

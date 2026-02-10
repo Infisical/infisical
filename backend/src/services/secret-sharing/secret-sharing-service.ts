@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { OrganizationActionScope, TSecretSharing } from "@app/db/schemas";
+import { OrganizationActionScope, TOrganizations, TSecretSharing } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionSecretShareAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -510,6 +510,62 @@ export const secretSharingServiceFactory = ({
     };
   };
 
+  const getSharedSecretById = async (sharedSecretId: string, orgId?: string, actorId?: string) => {
+    const sharedSecret = await secretSharingDAL.findOne({
+      type: SecretSharingType.Share,
+      identifier: Buffer.from(sharedSecretId, "base64url").toString("hex")
+    });
+
+    if (!sharedSecret) {
+      throw new NotFoundError({ message: `Shared secret with ID '${sharedSecretId}' not found` });
+    }
+
+    const { expiresAt, expiresAfterViews, accessType } = sharedSecret;
+
+    // Auth check for org-restricted secrets
+    if (accessType === SecretSharingAccessType.Organization) {
+      if (!orgId) {
+        throw new UnauthorizedError({ message: "Authentication required to view this secret" });
+      }
+      if (sharedSecret.orgId && sharedSecret.orgId !== orgId) {
+        throw new ForbiddenRequestError({ message: "You do not have access to this secret" });
+      }
+    }
+
+    // Check if secret is expired
+    if (expiresAt !== null && expiresAt < new Date()) {
+      await secretSharingDAL.softDeleteById(sharedSecret.id);
+      throw new NotFoundError({ message: "The shared secret has expired" });
+    }
+
+    // Check if view limit reached
+    if (expiresAfterViews !== null && expiresAfterViews === 0) {
+      await secretSharingDAL.softDeleteById(sharedSecret.id);
+      throw new NotFoundError({ message: "The shared secret has reached its view limit" });
+    }
+
+    // Check authorized emails if set
+    if (sharedSecret.authorizedEmails && (sharedSecret.authorizedEmails as string[]).length > 0) {
+      if (!actorId) {
+        throw new UnauthorizedError({ message: "Authentication required to view this secret" });
+      }
+
+      const user = await userDAL.findById(actorId);
+      if (!user || !user.email) {
+        throw new UnauthorizedError({ message: "Authentication required to view this secret" });
+      }
+
+      if (!(sharedSecret.authorizedEmails as string[]).includes(user.email)) {
+        throw new ForbiddenRequestError({ message: "You are not authorized to view this secret" });
+      }
+    }
+
+    return {
+      ...mapIdentifierToId(sharedSecret),
+      isPasswordProtected: Boolean(sharedSecret.password)
+    };
+  };
+
   const $decrementSecretViewCount = async (sharedSecret: TSecretSharing) => {
     const { expiresAfterViews } = sharedSecret;
 
@@ -524,7 +580,7 @@ export const secretSharingServiceFactory = ({
   };
 
   /** Gets password-less secret. validates all secret's requested (must be fresh). */
-  const getSharedSecretById = async ({ sharedSecretId, orgId, actorId, password }: TGetActiveSharedSecretByIdDTO) => {
+  const accessSharedSecret = async ({ sharedSecretId, orgId, actorId, password }: TGetActiveSharedSecretByIdDTO) => {
     const sharedSecret = await secretSharingDAL.findOne({
       type: SecretSharingType.Share,
       identifier: Buffer.from(sharedSecretId, "base64url").toString("hex")
@@ -537,8 +593,6 @@ export const secretSharingServiceFactory = ({
     }
 
     const { accessType, expiresAt, expiresAfterViews } = sharedSecret;
-
-    const orgName = sharedSecret.orgId ? (await orgDAL.findOrgById(sharedSecret.orgId))?.name : "";
 
     if (accessType === SecretSharingAccessType.Organization && orgId === undefined) {
       throw new UnauthorizedError();
@@ -556,11 +610,7 @@ export const secretSharingServiceFactory = ({
       if (!user || !user.email) throw new UnauthorizedError();
 
       if (!(sharedSecret.authorizedEmails as string[]).includes(user.email))
-        return {
-          isPasswordProtected: false,
-          error: "You are not authorized to view this secret",
-          orgId: sharedSecret.orgId
-        };
+        throw new ForbiddenRequestError({ message: "You are not authorized to view this secret" });
     }
 
     // all secrets pass through here, meaning we check if its expired first and then check if it needs verification
@@ -568,21 +618,13 @@ export const secretSharingServiceFactory = ({
     if (expiresAt !== null && expiresAt < new Date()) {
       // check lifetime expiry
       await secretSharingDAL.softDeleteById(sharedSecret.id);
-      return {
-        isPasswordProtected: false,
-        orgId: sharedSecret.orgId,
-        error: "Unable to view secret: secret has expired"
-      };
+      throw new NotFoundError({ message: "The shared secret has expired" });
     }
 
     if (expiresAfterViews !== null && expiresAfterViews === 0) {
       // check view count expiry
       await secretSharingDAL.softDeleteById(sharedSecret.id);
-      return {
-        isPasswordProtected: false,
-        orgId: sharedSecret.orgId,
-        error: "Unable to view secret: view limit reached"
-      };
+      throw new NotFoundError({ message: "The shared secret has reached its view limit" });
     }
 
     // Password checks
@@ -591,36 +633,38 @@ export const secretSharingServiceFactory = ({
     if (isPasswordProtected) {
       if (hasProvidedPassword) {
         const isMatch = await crypto.hashing().compareHash(password as string, sharedSecret.password as string);
-        if (!isMatch) throw new UnauthorizedError({ message: "Invalid credentials" });
+        if (!isMatch) {
+          throw new UnauthorizedError({ message: "Invalid credentials" });
+        }
       } else {
-        return { isPasswordProtected, orgId: sharedSecret.orgId };
+        throw new UnauthorizedError({ message: "Password is required to access this secret" });
       }
     }
 
     const decryptWithRoot = kmsService.decryptWithRootKey();
 
-    // If encryptedSecret is set, we know that this secret has been encrypted using KMS, and we can therefore do server-side decryption.
-    let decryptedSecretValue: Buffer | undefined;
-    if (sharedSecret.encryptedSecret) {
-      decryptedSecretValue = decryptWithRoot(sharedSecret.encryptedSecret);
+    if (!sharedSecret.encryptedSecret) {
+      throw new BadRequestError({ message: "Secret has no value specified" });
+    }
+    const decryptedSecretValue = decryptWithRoot(sharedSecret.encryptedSecret);
+
+    let organization: TOrganizations | undefined;
+
+    if (
+      sharedSecret.orgId &&
+      sharedSecret.orgId === orgId &&
+      sharedSecret.accessType === SecretSharingAccessType.Organization
+    ) {
+      organization = await orgDAL.findOrgById(sharedSecret.orgId);
     }
 
     // decrement when we are sure the user will view secret.
     await $decrementSecretViewCount(sharedSecret);
 
     return {
-      isPasswordProtected,
-      orgId: sharedSecret.orgId,
-      secret: {
-        ...mapIdentifierToId(sharedSecret),
-        ...(decryptedSecretValue && {
-          secretValue: decryptedSecretValue.toString()
-        }),
-        orgName:
-          sharedSecret.accessType === SecretSharingAccessType.Organization && orgId === sharedSecret.orgId
-            ? orgName
-            : undefined
-      }
+      ...mapIdentifierToId(sharedSecret),
+      secretValue: decryptedSecretValue.toString(),
+      orgName: organization?.name
     };
   };
 
@@ -785,12 +829,12 @@ export const secretSharingServiceFactory = ({
     getSharedSecrets,
     deleteSharedSecretById,
     getSharedSecretById,
+    accessSharedSecret,
     getSharedSecretOrgId,
     getOrgBrandConfig,
     getBrandingAsset,
     uploadBrandingAsset,
     deleteBrandingAsset,
-
     createSecretRequest,
     getSecretRequestById,
     getSecretRequestOrgId,

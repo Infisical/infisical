@@ -4,6 +4,7 @@ import { apiRequest } from "@app/config/request";
 
 import { secretSharingKeys } from "./queries";
 import {
+  TAccessSharedSecretRequest,
   TCreatedSharedSecret,
   TCreateSecretRequestRequestDTO,
   TCreateSharedSecretRequest,
@@ -12,7 +13,8 @@ import {
   TRevealedSecretRequest,
   TRevealSecretRequestValueRequest,
   TSetSecretRequestValueRequest,
-  TSharedSecret
+  TSharedSecret,
+  TViewSharedSecretResponse
 } from "./types";
 
 export const useCreateSharedSecret = () => {
@@ -20,7 +22,7 @@ export const useCreateSharedSecret = () => {
   return useMutation({
     mutationFn: async (inputData: TCreateSharedSecretRequest) => {
       const { data } = await apiRequest.post<TCreatedSharedSecret>(
-        "/api/v1/secret-sharing/shared",
+        "/api/v1/secret-sharing",
         inputData
       );
       return data;
@@ -30,12 +32,27 @@ export const useCreateSharedSecret = () => {
   });
 };
 
+export const useAccessSharedSecret = () => {
+  return useMutation({
+    mutationFn: async ({ sharedSecretId, password, hashedHex }: TAccessSharedSecretRequest) => {
+      const { data } = await apiRequest.post<TViewSharedSecretResponse>(
+        `/api/v1/secret-sharing/${sharedSecretId}/access`,
+        {
+          ...(hashedHex && { hashedHex }),
+          ...(password && { password })
+        }
+      );
+      return data;
+    }
+  });
+};
+
 export const useCreatePublicSharedSecret = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (inputData: TCreateSharedSecretRequest) => {
       const { data } = await apiRequest.post<TCreatedSharedSecret>(
-        "/api/v1/secret-sharing/shared/public",
+        "/api/v1/secret-sharing/public",
         inputData
       );
       return data;
@@ -88,7 +105,7 @@ export const useDeleteSharedSecret = () => {
   return useMutation<TSharedSecret, { message: string }, { sharedSecretId: string }>({
     mutationFn: async ({ sharedSecretId }: TDeleteSharedSecretRequestDTO) => {
       const { data } = await apiRequest.delete<TSharedSecret>(
-        `/api/v1/secret-sharing/shared/${sharedSecretId}`
+        `/api/v1/secret-sharing/${sharedSecretId}`
       );
       return data;
     },
@@ -124,7 +141,7 @@ export const useUploadBrandingAsset = () => {
       const formData = new FormData();
       formData.append("file", file);
       const { data } = await apiRequest.post<{ message: string }>(
-        `/api/v1/secret-sharing/shared/branding/${assetType}`,
+        `/api/v1/secret-sharing/branding/${assetType}`,
         formData,
         {
           headers: {
@@ -149,7 +166,7 @@ export const useDeleteBrandingAsset = () => {
   >({
     mutationFn: async ({ assetType }) => {
       const { data } = await apiRequest.delete<{ message: string }>(
-        `/api/v1/secret-sharing/shared/branding/${assetType}`
+        `/api/v1/secret-sharing/branding/${assetType}`
       );
       return data;
     },

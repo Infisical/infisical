@@ -1,7 +1,6 @@
 import fastifyMultipart from "@fastify/multipart";
 import { z } from "zod";
 
-import { SecretSharingSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { SecretSharingAccessType } from "@app/lib/types";
@@ -43,8 +42,9 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       rateLimit: readLimit
     },
     schema: {
-      operationId: "listSharedSecrets",
       hide: false,
+      description: "List all shared secrets created by the authenticated user in their current organization.",
+      operationId: "listSharedSecrets",
       querystring: z.object({
         offset: z.coerce.number().min(0).max(100).default(0),
         limit: z.coerce.number().min(1).max(100).default(25)
@@ -56,7 +56,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { secrets, totalCount } = await req.server.services.secretSharing.getSharedSecrets({
         actor: req.permission.type,
@@ -75,86 +75,88 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
   });
 
   server.route({
-    method: "POST",
-    url: "/public/:sharedSecretId",
+    method: "GET",
+    url: "/:id",
     config: {
       rateLimit: publicEndpointLimit
     },
     schema: {
+      hide: false,
       description:
-        "Retrieve the secret value of a shared secret by it's ID. If the secret is password protected, you must provide the password in the request body.",
-      operationId: "getPublicSharedSecret",
+        "Get a shared secret by its ID. Returns the full secret metadata without revealing the secret value. For organization-restricted secrets, authentication is required.",
+      operationId: "getSharedSecretById",
       params: z.object({
-        sharedSecretId: z.string()
-      }),
-      body: z.object({
-        password: z.string().optional()
+        id: z.string().describe("The ID of the shared secret")
       }),
       response: {
-        200: z.object({
-          isPasswordProtected: z.boolean(),
-          brandingConfig: z
-            .object({
-              hasLogo: z.boolean(),
-              hasFavicon: z.boolean(),
-              primaryColor: z.string().optional(),
-              secondaryColor: z.string().optional()
-            })
-            .optional(),
-          secret: SecretSharingSchema.pick({
-            expiresAt: true,
-            expiresAfterViews: true,
-            accessType: true
-          })
-            .extend({
-              orgName: z.string().optional(),
-              secretValue: z.string().optional()
-            })
-            .optional(),
-          error: z.string().optional()
+        200: SanitizedSecretSharingSchema.extend({
+          isPasswordProtected: z.boolean()
         })
       }
     },
     handler: async (req) => {
-      const sharedSecret = await req.server.services.secretSharing.getSharedSecretById({
-        sharedSecretId: req.params.sharedSecretId,
+      return req.server.services.secretSharing.getSharedSecretById(
+        req.params.id,
+        req.permission?.orgId,
+        req.permission?.id
+      );
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:id/access",
+    config: {
+      rateLimit: publicEndpointLimit
+    },
+
+    schema: {
+      hide: false,
+      description:
+        "Access a shared secret by its ID. If the secret is password protected, you must provide the password in the request body. Returns the secret value if access is granted, or indicates that a password is required.",
+      operationId: "accessSharedSecret",
+      params: z.object({
+        id: z.string().describe("The ID of the shared secret to access")
+      }),
+      body: z.object({
+        password: z
+          .string()
+          .optional()
+          .describe(
+            "The password for accessing a password-protected shared secret. This field is only required if the secret is password protected."
+          )
+      }),
+      response: {
+        200: SanitizedSecretSharingSchema.extend({
+          orgName: z.string().optional(),
+          secretValue: z.string().optional()
+        })
+      }
+    },
+    handler: async (req) => {
+      const sharedSecret = await req.server.services.secretSharing.accessSharedSecret({
+        sharedSecretId: req.params.id,
         password: req.body.password,
         orgId: req.permission?.orgId,
         actorId: req.permission?.id
       });
 
-      let brandingConfig;
-
       if (sharedSecret.orgId) {
-        const orgBrandConfig = await req.server.services.secretSharing.getOrgBrandConfig(sharedSecret.orgId);
-
-        if (orgBrandConfig) {
-          brandingConfig = {
-            hasLogo: orgBrandConfig.hasLogo,
-            hasFavicon: orgBrandConfig.hasFavicon,
-            primaryColor: orgBrandConfig.primaryColor,
-            secondaryColor: orgBrandConfig.secondaryColor
-          };
-        }
-
-        // Verify that secret was actually returned
-        if (sharedSecret.secret) {
-          await server.services.auditLog.createAuditLog({
-            orgId: sharedSecret.orgId,
-            ...req.auditLogInfo,
-            event: {
-              type: EventType.READ_SHARED_SECRET,
-              metadata: {
-                id: req.params.sharedSecretId,
-                name: sharedSecret.secret.name || undefined,
-                accessType: sharedSecret.secret.accessType
-              }
+        await server.services.auditLog.createAuditLog({
+          orgId: sharedSecret.orgId,
+          ...req.auditLogInfo,
+          event: {
+            type: EventType.READ_SHARED_SECRET,
+            metadata: {
+              id: req.params.id,
+              name: sharedSecret.name || undefined,
+              accessType: sharedSecret.accessType
             }
-          });
-        }
+          }
+        });
       }
 
-      return { ...sharedSecret, brandingConfig };
+      return sharedSecret;
     }
   });
 
@@ -165,6 +167,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       rateLimit: writeLimit
     },
     schema: {
+      hide: true,
       operationId: "createPublicSharedSecret",
       body: z.object({
         secretValue: z.string().max(10_000),
@@ -194,6 +197,8 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       rateLimit: publicSecretShareCreationLimit
     },
     schema: {
+      hide: false,
+      description: "Create a new shared secret that can be accessed by a link.",
       operationId: "createSharedSecret",
       body: z.object({
         name: z.string().max(50).optional(),
@@ -249,14 +254,16 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
 
   server.route({
     method: "DELETE",
-    url: "/:sharedSecretId",
+    url: "/:id",
     config: {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      description: "Delete a shared secret by its ID.",
       operationId: "deleteSharedSecret",
       params: z.object({
-        sharedSecretId: z.string()
+        id: z.string().describe("The ID of the shared secret to delete")
       }),
       response: {
         200: SanitizedSecretSharingSchema
@@ -264,14 +271,14 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { sharedSecretId } = req.params;
+      const { id } = req.params;
       const deletedSharedSecret = await req.server.services.secretSharing.deleteSharedSecretById({
         actor: req.permission.type,
         actorId: req.permission.id,
         orgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        sharedSecretId,
+        sharedSecretId: id,
         type: SecretSharingType.Share
       });
 
@@ -281,7 +288,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         event: {
           type: EventType.DELETE_SHARED_SECRET,
           metadata: {
-            id: sharedSecretId,
+            id,
             name: deletedSharedSecret.name || undefined
           }
         }
@@ -406,14 +413,19 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     }
   });
 
-  // Get branding config for current org
+  // Get branding config.
+  // When authenticated (no query param): returns branding config for the user's current org.
+  // When public (with sharedSecretId query param): resolves the org from the shared secret.
   server.route({
     method: "GET",
     url: "/branding",
     config: {
-      rateLimit: readLimit
+      rateLimit: publicEndpointLimit
     },
     schema: {
+      querystring: z.object({
+        sharedSecretId: z.string().optional()
+      }),
       response: {
         200: z.object({
           hasLogo: z.boolean(),
@@ -423,9 +435,25 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const config = await req.server.services.secretSharing.getOrgBrandConfig(req.permission.orgId, req.permission);
+      let orgId: string | null = null;
+
+      if (req.query.sharedSecretId) {
+        orgId = await req.server.services.secretSharing.getSharedSecretOrgId(req.query.sharedSecretId);
+
+        if (!orgId) {
+          throw new NotFoundError({ message: "Shared secret not found or has no organization" });
+        }
+      } else if (req.permission?.orgId) {
+        orgId = req.permission.orgId;
+      } else {
+        throw new BadRequestError({ message: "Either authentication or a sharedSecretId query parameter is required" });
+      }
+
+      const config = await req.server.services.secretSharing.getOrgBrandConfig(
+        orgId,
+        req.query.sharedSecretId ? undefined : req.permission
+      );
 
       return {
         hasLogo: config?.hasLogo ?? false,
