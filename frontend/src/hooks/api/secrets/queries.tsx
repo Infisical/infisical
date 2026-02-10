@@ -24,7 +24,7 @@ import {
   TGetSecretReferencesDTO,
   TGetSecretReferenceTreeDTO,
   TGetSecretVersionValue,
-  TSecretReference,
+  TSecretDependencyTreeNode,
   TSecretReferenceTraceNode,
   TSecretVersionValue
 } from "./types";
@@ -346,16 +346,15 @@ export const useGetSecretReferenceTree = (dto: TGetSecretReferenceTreeDTO) =>
   });
 
 export const fetchSecretReferences = async (dto: TGetSecretReferencesDTO) => {
-  const { data } = await apiRequest.get<{ references: TSecretReference[]; totalCount: number }>(
-    `/api/v4/secrets/${encodeURIComponent(dto.secretKey)}/secret-references`,
-    {
-      params: {
-        projectId: dto.projectId,
-        secretPath: dto.secretPath,
-        environment: dto.environment
-      }
+  const { data } = await apiRequest.get<{
+    tree: TSecretDependencyTreeNode;
+  }>(`/api/v4/secrets/${encodeURIComponent(dto.secretKey)}/reference-dependency-tree`, {
+    params: {
+      projectId: dto.projectId,
+      secretPath: dto.secretPath,
+      environment: dto.environment
     }
-  );
+  });
   return data;
 };
 

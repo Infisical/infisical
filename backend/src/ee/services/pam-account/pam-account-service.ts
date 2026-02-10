@@ -1,8 +1,6 @@
-import path from "node:path";
-
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType, OrganizationActionScope, TPamAccounts, TPamFolders, TPamResources } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope, TPamAccounts, TPamResources } from "@app/db/schemas";
 import {
   extractAwsAccountIdFromArn,
   generateConsoleFederationUrl,
@@ -17,7 +15,6 @@ import {
 import { SSHAuthMethod } from "@app/ee/services/pam-resource/ssh/ssh-resource-enums";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
-  ProjectPermissionActions,
   ProjectPermissionPamAccountActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -52,8 +49,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
-import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
-import { getFullPamFolderPath } from "../pam-folder/pam-folder-fns";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { PamResource } from "../pam-resource/pam-resource-enums";
 import { TPamAccountCredentials } from "../pam-resource/pam-resource-types";
@@ -64,7 +59,6 @@ import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPamAccountDALFactory } from "./pam-account-dal";
-import { PamAccountView } from "./pam-account-enums";
 import { decryptAccount, decryptAccountCredentials, encryptAccountCredentials } from "./pam-account-fns";
 import {
   TAccessAccountDTO,
@@ -78,7 +72,6 @@ type TPamAccountServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;
   pamSessionDAL: TPamSessionDALFactory;
   pamAccountDAL: TPamAccountDALFactory;
-  pamFolderDAL: TPamFolderDALFactory;
   mfaSessionService: TMfaSessionServiceFactory;
   projectDAL: TProjectDALFactory;
   orgDAL: TOrgDALFactory;
@@ -106,7 +99,6 @@ export const pamAccountServiceFactory = ({
   pamSessionDAL,
   pamAccountDAL,
   mfaSessionService,
-  pamFolderDAL,
   projectDAL,
   orgDAL,
   userDAL,
@@ -154,18 +146,11 @@ export const pamAccountServiceFactory = ({
       throw new NotFoundError({ message: "Rotation credentials are not configured for this account's resource" });
     }
 
-    const accountPath = await getFullPamFolderPath({
-      pamFolderDAL,
-      folderId,
-      projectId: resource.projectId
-    });
-
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPamAccountActions.Create,
       subject(ProjectPermissionSub.PamAccounts, {
         resourceName: resource.name,
-        accountName: name,
-        accountPath
+        accountName: name
       })
     );
 
@@ -216,6 +201,7 @@ export const pamAccountServiceFactory = ({
 
       return {
         ...(await decryptAccount(account, resource.projectId, kmsService)),
+        resourceType: resource.resourceType,
         resource: {
           id: resource.id,
           name: resource.name,
@@ -226,7 +212,7 @@ export const pamAccountServiceFactory = ({
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({
-          message: `Account with name '${name}' already exists for this path`
+          message: `Account with name '${name}' already exists for this resource`
         });
       }
 
@@ -262,18 +248,11 @@ export const pamAccountServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    const accountPath = await getFullPamFolderPath({
-      pamFolderDAL,
-      folderId: account.folderId,
-      projectId: account.projectId
-    });
-
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPamAccountActions.Edit,
       subject(ProjectPermissionSub.PamAccounts, {
         resourceName: resource.name,
-        accountName: account.name,
-        accountPath
+        accountName: account.name
       })
     );
 
@@ -372,7 +351,7 @@ export const pamAccountServiceFactory = ({
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({
-          message: `Account with name '${name}' already exists for this path`
+          message: `Account with name '${name}' already exists for this resource`
         });
       }
 
@@ -396,18 +375,11 @@ export const pamAccountServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    const accountPath = await getFullPamFolderPath({
-      pamFolderDAL,
-      folderId: account.folderId,
-      projectId: account.projectId
-    });
-
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPamAccountActions.Delete,
       subject(ProjectPermissionSub.PamAccounts, {
         resourceName: resource.name,
-        accountName: account.name,
-        accountPath
+        accountName: account.name
       })
     );
 
@@ -426,7 +398,6 @@ export const pamAccountServiceFactory = ({
 
   const list = async ({
     projectId,
-    accountPath,
     accountView,
     actor,
     actorId,
@@ -446,80 +417,24 @@ export const pamAccountServiceFactory = ({
     const limit = params.limit || 20;
     const offset = params.offset || 0;
 
-    const canReadFolders = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.PamFolders);
-
-    const folder = accountPath === "/" ? null : await pamFolderDAL.findByPath(projectId, accountPath);
-    if (accountPath !== "/" && !folder) {
-      return { accounts: [], folders: [], totalCount: 0, folderPaths: {} };
-    }
-    const folderId = folder?.id;
-
-    let totalFolderCount = 0;
-    if (canReadFolders && accountView === PamAccountView.Nested) {
-      const { totalCount } = await pamFolderDAL.findByProjectId({
+    const { accounts: accountsWithResourceDetails, totalCount } =
+      await pamAccountDAL.findByProjectIdWithResourceDetails({
         projectId,
-        parentId: folderId,
-        search: params.search
-      });
-      totalFolderCount = totalCount;
-    }
-
-    let folders: TPamFolders[] = [];
-    if (canReadFolders && accountView === PamAccountView.Nested && offset < totalFolderCount) {
-      const folderLimit = Math.min(limit, totalFolderCount - offset);
-      const { folders: foldersResp } = await pamFolderDAL.findByProjectId({
-        projectId,
-        parentId: folderId,
-        limit: folderLimit,
-        offset,
-        search: params.search,
-        orderBy: params.orderBy,
-        orderDirection: params.orderDirection
-      });
-
-      folders = foldersResp;
-    }
-
-    let accountsWithResourceDetails: Awaited<
-      ReturnType<typeof pamAccountDAL.findByProjectIdWithResourceDetails>
-    >["accounts"] = [];
-    let totalAccountCount = 0;
-
-    const accountsToFetch = limit - folders.length;
-    if (accountsToFetch > 0) {
-      const accountOffset = Math.max(0, offset - totalFolderCount);
-      const { accounts, totalCount } = await pamAccountDAL.findByProjectIdWithResourceDetails({
-        projectId,
-        folderId,
         accountView,
-        offset: accountOffset,
-        limit: accountsToFetch,
+        offset,
+        limit,
         search: params.search,
         orderBy: params.orderBy,
         orderDirection: params.orderDirection,
         filterResourceIds: params.filterResourceIds
       });
-      accountsWithResourceDetails = accounts;
-      totalAccountCount = totalCount;
-    } else {
-      // if no accounts are to be fetched for the current page, we still need the total count for pagination
-      const { totalCount } = await pamAccountDAL.findByProjectIdWithResourceDetails({
-        projectId,
-        folderId,
-        accountView,
-        search: params.search,
-        filterResourceIds: params.filterResourceIds
-      });
-      totalAccountCount = totalCount;
-    }
-
-    const totalCount = totalFolderCount + totalAccountCount;
 
     const decryptedAndPermittedAccounts: Array<
       Omit<TPamAccounts, "encryptedCredentials" | "encryptedLastRotationMessage"> & {
         resource: Pick<TPamResources, "id" | "name" | "resourceType"> & { rotationCredentialsConfigured: boolean };
         credentials: TPamAccountCredentials;
         lastRotationMessage: string | null;
+        resourceType: string;
       }
     > = [];
 
@@ -530,8 +445,7 @@ export const pamAccountServiceFactory = ({
           ProjectPermissionPamAccountActions.Read,
           subject(ProjectPermissionSub.PamAccounts, {
             resourceName: account.resource.name,
-            accountName: account.name,
-            accountPath
+            accountName: account.name
           })
         )
       ) {
@@ -540,6 +454,7 @@ export const pamAccountServiceFactory = ({
 
         decryptedAndPermittedAccounts.push({
           ...decryptedAccount,
+          resourceType: account.resource.resourceType,
           resource: {
             id: account.resource.id,
             name: account.resource.name,
@@ -550,27 +465,9 @@ export const pamAccountServiceFactory = ({
       }
     }
 
-    const folderPaths: Record<string, string> = {};
-    const accountFolderIds = [
-      ...new Set(decryptedAndPermittedAccounts.flatMap((a) => (a.folderId ? [a.folderId] : [])))
-    ];
-
-    await Promise.all(
-      accountFolderIds.map(async (fId) => {
-        folderPaths[fId] = await getFullPamFolderPath({
-          pamFolderDAL,
-          folderId: fId,
-          projectId
-        });
-      })
-    );
-
     return {
       accounts: decryptedAndPermittedAccounts,
-      folders,
-      totalCount,
-      folderId,
-      folderPaths
+      totalCount
     };
   };
 
@@ -587,18 +484,11 @@ export const pamAccountServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    const accountPath = await getFullPamFolderPath({
-      pamFolderDAL,
-      folderId: accountWithResource.folderId,
-      projectId: accountWithResource.projectId
-    });
-
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPamAccountActions.Read,
       subject(ProjectPermissionSub.PamAccounts, {
         resourceName: accountWithResource.resource.name,
-        accountName: accountWithResource.name,
-        accountPath
+        accountName: accountWithResource.name
       })
     );
 
@@ -606,6 +496,7 @@ export const pamAccountServiceFactory = ({
 
     return {
       ...decryptedAccount,
+      resourceType: accountWithResource.resource.resourceType,
       resource: {
         id: accountWithResource.resource.id,
         name: accountWithResource.resource.name,
@@ -617,7 +508,8 @@ export const pamAccountServiceFactory = ({
 
   const access = async (
     {
-      accountPath,
+      resourceName: inputResourceName,
+      accountName: inputAccountName,
       projectId,
       actorEmail,
       actorIp,
@@ -628,45 +520,31 @@ export const pamAccountServiceFactory = ({
     }: TAccessAccountDTO,
     actor: OrgServiceActor
   ) => {
-    const pathSegments: string[] = accountPath.split("/").filter(Boolean);
-    if (pathSegments.length === 0) {
-      throw new BadRequestError({ message: "Invalid accountPath. Path must contain at least the account name." });
+    // Find resource by name
+    const resource = await pamResourceDAL.findOne({ projectId, name: inputResourceName });
+    if (!resource) {
+      throw new NotFoundError({ message: `Resource with name '${inputResourceName}' not found` });
     }
 
-    const accountName: string = pathSegments[pathSegments.length - 1] ?? "";
-    const folderPathSegments: string[] = pathSegments.slice(0, -1);
-
-    const folderPath: string = folderPathSegments.length > 0 ? `/${folderPathSegments.join("/")}` : "/";
-
-    let folderId: string | null = null;
-    if (folderPath !== "/") {
-      const folder = await pamFolderDAL.findByPath(projectId, folderPath);
-      if (!folder) {
-        throw new NotFoundError({ message: `Folder at path '${folderPath}' not found` });
-      }
-      folderId = folder.id;
-    }
-
+    // Find account by name within the resource
     const account = await pamAccountDAL.findOne({
       projectId,
-      folderId,
-      name: accountName
+      resourceId: resource.id,
+      name: inputAccountName
     });
 
     if (!account) {
       throw new NotFoundError({
-        message: `Account with name '${accountName}' not found at path '${accountPath}'`
+        message: `Account with name '${inputAccountName}' not found for resource '${inputResourceName}'`
       });
     }
-
-    const resource = await pamResourceDAL.findById(account.resourceId);
-    if (!resource) throw new NotFoundError({ message: `Resource with ID '${account.resourceId}' not found` });
 
     const fac = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.PamAccess](ApprovalPolicyType.PamAccess);
 
     const inputs = {
       resourceId: resource.id,
-      accountPath: path.join(folderPath, account.name)
+      resourceName: resource.name,
+      accountName: account.name
     };
 
     const canAccess = await fac.canAccess(approvalRequestGrantsDAL, resource.projectId, actor.id, inputs);
@@ -700,8 +578,7 @@ export const pamAccountServiceFactory = ({
         ProjectPermissionPamAccountActions.Access,
         subject(ProjectPermissionSub.PamAccounts, {
           resourceName: resource.name,
-          accountName: account.name,
-          accountPath: folderPath
+          accountName: account.name
         })
       );
     }
@@ -914,7 +791,7 @@ export const pamAccountServiceFactory = ({
             username: credentials.username,
             database: connectionCredentials.database,
             accountName: account.name,
-            accountPath: folderPath
+            resourceName: resource.name
           };
         }
         break;
@@ -929,7 +806,7 @@ export const pamAccountServiceFactory = ({
           metadata = {
             username: credentials.username,
             accountName: account.name,
-            accountPath: folderPath
+            resourceName: resource.name
           };
         }
         break;
@@ -949,8 +826,7 @@ export const pamAccountServiceFactory = ({
       case PamResource.Kubernetes:
         metadata = {
           resourceName: resource.name,
-          accountName: account.name,
-          accountPath
+          accountName: account.name
         };
         break;
       default:

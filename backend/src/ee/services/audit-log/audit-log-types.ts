@@ -4238,7 +4238,6 @@ interface PamAccountListEvent {
   type: EventType.PAM_ACCOUNT_LIST;
   metadata: {
     accountCount: number;
-    folderCount: number;
   };
 }
 
@@ -4254,7 +4253,7 @@ interface PamAccountAccessEvent {
   type: EventType.PAM_ACCOUNT_ACCESS;
   metadata: {
     accountId: string;
-    accountPath: string;
+    resourceName: string;
     accountName: string;
     duration?: string;
   };

@@ -42,6 +42,7 @@ const schema = z.object({
       environment: z.string().max(50),
       secretPath: z
         .string()
+        .min(1, "Secret path cannot be empty")
         .default("/")
         .transform((val) =>
           typeof val === "string" && val.at(-1) === "/" && val.length > 1 ? val.slice(0, -1) : val
@@ -151,7 +152,7 @@ const ServiceTokenForm = () => {
         )}
       />
       {tokenScopes.map(({ id }, index) => (
-        <div className="mb-3 flex items-end space-x-2" key={id}>
+        <div className="mb-3 flex items-start space-x-2" key={id}>
           <Controller
             control={control}
             name={`scopes.${index}.environment`}
@@ -194,7 +195,7 @@ const ServiceTokenForm = () => {
             )}
           />
           <IconButton
-            className="p-3"
+            className={`p-3 ${index === 0 ? "mt-7" : ""}`}
             ariaLabel="remove"
             colorSchema="danger"
             onClick={() => remove(index)}
@@ -209,7 +210,7 @@ const ServiceTokenForm = () => {
           onClick={() =>
             append({
               environment: currentProject?.environments?.[0]?.slug || "",
-              secretPath: ""
+              secretPath: "/"
             })
           }
           leftIcon={<FontAwesomeIcon icon={faPlus} />}

@@ -1259,7 +1259,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:secretName/secret-references",
+    url: "/:secretName/reference-dependency-tree",
     config: {
       rateLimit: secretsLimit
     },
@@ -1267,7 +1267,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       hide: false,
       operationId: "getSecretReferencesV4",
       tags: [ApiDocsTags.Secrets],
-      description: "Get secret references",
+      description: "Get secret reference dependency tree",
       security: [
         {
           bearerAuth: []
@@ -1288,16 +1288,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          references: z.array(
-            z.object({
-              secretKey: z.string(),
-              secretId: z.string(),
-              environment: z.string(),
-              secretPath: z.string(),
-              referenceType: z.string()
-            })
-          ),
-          totalCount: z.number()
+          tree: SecretReferenceNodeTree
         })
       }
     },
@@ -1305,7 +1296,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { secretName } = req.params;
       const { secretPath, environment, projectId } = req.query;
-      const { references, totalCount } = await server.services.secret.getSecretReferences({
+
+      const { tree } = await server.services.secret.getSecretReferenceDependencyTree({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
@@ -1315,7 +1307,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretPath,
         environment
       });
-      return { references, totalCount };
+
+      return { tree };
     }
   });
 

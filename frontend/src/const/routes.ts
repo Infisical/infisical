@@ -354,10 +354,6 @@ export const ROUTE_PATHS = Object.freeze({
     )
   },
   Pam: {
-    AccountsPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/accounts",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/accounts"
-    ),
     ResourcesPage: setRoute(
       "/organizations/$orgId/projects/pam/$projectId/resources/",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/"
