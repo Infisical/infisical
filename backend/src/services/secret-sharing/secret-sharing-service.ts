@@ -44,6 +44,21 @@ type TSecretSharingServiceFactoryDep = {
 
 export type TSecretSharingServiceFactory = ReturnType<typeof secretSharingServiceFactory>;
 
+const mapIdentifierToId = (sharedSecret: TSecretSharing): Omit<TSecretSharing, "identifier"> => {
+  const { identifier, ...rest } = sharedSecret;
+
+  if (!identifier) {
+    throw new BadRequestError({
+      message: `Shared secret created at ${sharedSecret.createdAt.toISOString()} has no identifier`
+    });
+  }
+
+  return {
+    ...rest,
+    id: Buffer.from(identifier, "hex").toString("base64url")
+  };
+};
+
 export const secretSharingServiceFactory = ({
   permissionService,
   secretSharingDAL,
@@ -177,7 +192,7 @@ export const secretSharingServiceFactory = ({
       authorizedEmails: emails && emails.length > 0 ? JSON.stringify(emails) : undefined
     });
 
-    const idToReturn = `${Buffer.from(newSharedSecret.identifier!, "hex").toString("base64url")}`;
+    const mappedSharedSecret = mapIdentifierToId(newSharedSecret);
 
     // Loop through recipients and send out emails with unique access links
     if (emails) {
@@ -198,7 +213,7 @@ export const secretSharingServiceFactory = ({
             substitutions: {
               name,
               respondentUsername,
-              secretRequestUrl: `${appCfg.SITE_URL}/shared/secret/${idToReturn}`
+              secretRequestUrl: `${appCfg.SITE_URL}/shared/secret/${mappedSharedSecret.id}`
             },
             template: SmtpTemplates.SecretRequestCompleted
           });
@@ -208,7 +223,7 @@ export const secretSharingServiceFactory = ({
       }
     }
 
-    return { id: idToReturn };
+    return mappedSharedSecret;
   };
 
   const createSecretRequest = async ({
@@ -450,7 +465,7 @@ export const secretSharingServiceFactory = ({
       accessType
     });
 
-    return { id: `${Buffer.from(newSharedSecret.identifier!, "hex").toString("base64url")}` };
+    return mapIdentifierToId(newSharedSecret);
   };
 
   const getSharedSecrets = async ({
@@ -490,7 +505,7 @@ export const secretSharingServiceFactory = ({
     });
 
     return {
-      secrets,
+      secrets: secrets.map(mapIdentifierToId),
       totalCount: count
     };
   };
@@ -509,28 +524,17 @@ export const secretSharingServiceFactory = ({
   };
 
   /** Gets password-less secret. validates all secret's requested (must be fresh). */
-  const getSharedSecretById = async ({
-    sharedSecretId,
-    hashedHex,
-    orgId,
-    actorId,
-    password
-  }: TGetActiveSharedSecretByIdDTO) => {
-    const sharedSecret = isUuidV4(sharedSecretId)
-      ? await secretSharingDAL.findOne({
-          id: sharedSecretId,
-          type: SecretSharingType.Share,
-          hashedHex
-        })
-      : await secretSharingDAL.findOne({
-          type: SecretSharingType.Share,
-          identifier: Buffer.from(sharedSecretId, "base64url").toString("hex")
-        });
+  const getSharedSecretById = async ({ sharedSecretId, orgId, actorId, password }: TGetActiveSharedSecretByIdDTO) => {
+    const sharedSecret = await secretSharingDAL.findOne({
+      type: SecretSharingType.Share,
+      identifier: Buffer.from(sharedSecretId, "base64url").toString("hex")
+    });
 
-    if (!sharedSecret)
+    if (!sharedSecret) {
       throw new NotFoundError({
         message: `Shared secret with ID '${sharedSecretId}' not found`
       });
+    }
 
     const { accessType, expiresAt, expiresAfterViews } = sharedSecret;
 
@@ -554,8 +558,8 @@ export const secretSharingServiceFactory = ({
       if (!(sharedSecret.authorizedEmails as string[]).includes(user.email))
         return {
           isPasswordProtected: false,
-          secretOrgId: sharedSecret.orgId,
-          error: "You are not authorized to view this secret"
+          error: "You are not authorized to view this secret",
+          orgId: sharedSecret.orgId
         };
     }
 
@@ -566,7 +570,7 @@ export const secretSharingServiceFactory = ({
       await secretSharingDAL.softDeleteById(sharedSecret.id);
       return {
         isPasswordProtected: false,
-        secretOrgId: sharedSecret.orgId,
+        orgId: sharedSecret.orgId,
         error: "Unable to view secret: secret has expired"
       };
     }
@@ -576,7 +580,7 @@ export const secretSharingServiceFactory = ({
       await secretSharingDAL.softDeleteById(sharedSecret.id);
       return {
         isPasswordProtected: false,
-        secretOrgId: sharedSecret.orgId,
+        orgId: sharedSecret.orgId,
         error: "Unable to view secret: view limit reached"
       };
     }
@@ -589,7 +593,7 @@ export const secretSharingServiceFactory = ({
         const isMatch = await crypto.hashing().compareHash(password as string, sharedSecret.password as string);
         if (!isMatch) throw new UnauthorizedError({ message: "Invalid credentials" });
       } else {
-        return { isPasswordProtected, secretOrgId: sharedSecret.orgId };
+        return { isPasswordProtected, orgId: sharedSecret.orgId };
       }
     }
 
@@ -606,9 +610,9 @@ export const secretSharingServiceFactory = ({
 
     return {
       isPasswordProtected,
-      secretOrgId: sharedSecret.orgId,
+      orgId: sharedSecret.orgId,
       secret: {
-        ...sharedSecret,
+        ...mapIdentifierToId(sharedSecret),
         ...(decryptedSecretValue && {
           secretValue: decryptedSecretValue.toString()
         }),
@@ -650,19 +654,14 @@ export const secretSharingServiceFactory = ({
 
     const deletedSharedSecret = await secretSharingDAL.deleteById(sharedSecret.id);
 
-    return deletedSharedSecret;
+    return mapIdentifierToId(deletedSharedSecret);
   };
 
   const getSharedSecretOrgId = async (sharedSecretId: string) => {
-    const sharedSecret = isUuidV4(sharedSecretId)
-      ? await secretSharingDAL.findOne({
-          id: sharedSecretId,
-          type: SecretSharingType.Share
-        })
-      : await secretSharingDAL.findOne({
-          identifier: Buffer.from(sharedSecretId, "base64url").toString("hex"),
-          type: SecretSharingType.Share
-        });
+    const sharedSecret = await secretSharingDAL.findOne({
+      identifier: Buffer.from(sharedSecretId, "base64url").toString("hex"),
+      type: SecretSharingType.Share
+    });
 
     return sharedSecret?.orgId ?? null;
   };

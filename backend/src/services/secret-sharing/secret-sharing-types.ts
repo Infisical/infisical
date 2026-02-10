@@ -35,7 +35,6 @@ export type TCreatePublicSharedSecretDTO = {
 
 export type TGetActiveSharedSecretByIdDTO = {
   sharedSecretId: string;
-  hashedHex?: string;
   orgId?: string;
   actorId?: string;
   password?: string;

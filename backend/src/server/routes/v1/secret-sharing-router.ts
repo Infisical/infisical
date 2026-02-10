@@ -15,6 +15,8 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { SecretSharingType } from "@app/services/secret-sharing/secret-sharing-types";
 
+import { SanitizedSecretSharingSchema } from "../sanitizedSchemas";
+
 const ALLOWED_IMAGE_CONTENT_TYPES = [
   "image/png",
   "image/jpeg",
@@ -42,13 +44,14 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       operationId: "listSharedSecrets",
+      hide: false,
       querystring: z.object({
         offset: z.coerce.number().min(0).max(100).default(0),
         limit: z.coerce.number().min(1).max(100).default(25)
       }),
       response: {
         200: z.object({
-          secrets: z.array(SecretSharingSchema),
+          secrets: z.array(SanitizedSecretSharingSchema),
           totalCount: z.number()
         })
       }
@@ -73,17 +76,18 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
 
   server.route({
     method: "POST",
-    url: "/public/:id",
+    url: "/public/:sharedSecretId",
     config: {
       rateLimit: publicEndpointLimit
     },
     schema: {
+      description:
+        "Retrieve the secret value of a shared secret by it's ID. If the secret is password protected, you must provide the password in the request body.",
       operationId: "getPublicSharedSecret",
       params: z.object({
-        id: z.string()
+        sharedSecretId: z.string()
       }),
       body: z.object({
-        hashedHex: z.string().min(1).optional(),
         password: z.string().optional()
       }),
       response: {
@@ -98,9 +102,6 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
             })
             .optional(),
           secret: SecretSharingSchema.pick({
-            encryptedValue: true,
-            iv: true,
-            tag: true,
             expiresAt: true,
             expiresAfterViews: true,
             accessType: true
@@ -116,8 +117,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     },
     handler: async (req) => {
       const sharedSecret = await req.server.services.secretSharing.getSharedSecretById({
-        sharedSecretId: req.params.id,
-        hashedHex: req.body.hashedHex,
+        sharedSecretId: req.params.sharedSecretId,
         password: req.body.password,
         orgId: req.permission?.orgId,
         actorId: req.permission?.id
@@ -125,8 +125,8 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
 
       let brandingConfig;
 
-      if (sharedSecret.secretOrgId) {
-        const orgBrandConfig = await req.server.services.secretSharing.getOrgBrandConfig(sharedSecret.secretOrgId);
+      if (sharedSecret.orgId) {
+        const orgBrandConfig = await req.server.services.secretSharing.getOrgBrandConfig(sharedSecret.orgId);
 
         if (orgBrandConfig) {
           brandingConfig = {
@@ -140,12 +140,12 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         // Verify that secret was actually returned
         if (sharedSecret.secret) {
           await server.services.auditLog.createAuditLog({
-            orgId: sharedSecret.secretOrgId,
+            orgId: sharedSecret.orgId,
             ...req.auditLogInfo,
             event: {
               type: EventType.READ_SHARED_SECRET,
               metadata: {
-                id: req.params.id,
+                id: req.params.sharedSecretId,
                 name: sharedSecret.secret.name || undefined,
                 accessType: sharedSecret.secret.accessType
               }
@@ -259,7 +259,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         sharedSecretId: z.string()
       }),
       response: {
-        200: SecretSharingSchema
+        200: SanitizedSecretSharingSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
