@@ -135,7 +135,6 @@ export type TDeletePamResourceDTO = {
 // Account DTOs
 export type TListPamAccountsDTO = {
   projectId: string;
-  accountPath?: string | null;
   accountView?: PamAccountView;
   offset?: number;
   limit?: number;

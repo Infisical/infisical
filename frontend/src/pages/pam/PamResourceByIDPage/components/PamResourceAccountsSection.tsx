@@ -75,7 +75,6 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
   });
 
   const accounts = accountsData?.accounts || [];
-  const folderPaths = accountsData?.folderPaths || {};
 
   const [copiedAccountId, setCopiedAccountId] = useToggle(false);
 
@@ -108,29 +107,28 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
   };
 
   const accessAccount = async (account: TPamAccount) => {
-    let fullAccountPath = `/${account.name}`;
-    const folderPath = account.folderId ? folderPaths[account.folderId] : undefined;
-    if (folderPath) {
-      fullAccountPath = `${folderPath}/${account.name}`;
-    }
-
     const { requiresApproval } = await checkPolicyMatch({
       policyType: ApprovalPolicyType.PamAccess,
       projectId: projectId!,
       inputs: {
-        accountPath: fullAccountPath
+        resourceName: resource.name,
+        accountName: account.name
       }
     });
 
     if (requiresApproval) {
-      handlePopUpOpen("requestAccount", { accountPath: fullAccountPath, accountAccessed: true });
+      handlePopUpOpen("requestAccount", {
+        resourceName: resource.name,
+        accountName: account.name,
+        accountAccessed: true
+      });
       return;
     }
 
     if (account.resource.resourceType === PamResourceType.AwsIam) {
-      accessAwsIam(account, fullAccountPath);
+      accessAwsIam(account);
     } else {
-      handlePopUpOpen("accessAccount", { account, accountPath: folderPath });
+      handlePopUpOpen("accessAccount", { account });
     }
   };
 
@@ -359,14 +357,14 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
         isOpen={popUp.accessAccount.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("accessAccount", isOpen)}
         account={popUp.accessAccount.data?.account}
-        accountPath={popUp.accessAccount.data?.accountPath}
         projectId={projectId!}
       />
 
       <PamRequestAccountAccessModal
         isOpen={popUp.requestAccount.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("requestAccount", isOpen)}
-        accountPath={popUp.requestAccount.data?.accountPath}
+        resourceName={popUp.requestAccount.data?.resourceName}
+        accountName={popUp.requestAccount.data?.accountName}
         accountAccessed={popUp.requestAccount.data?.accountAccessed}
       />
 

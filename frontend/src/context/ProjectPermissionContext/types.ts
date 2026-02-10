@@ -463,7 +463,6 @@ export type CertificatePolicySubjectFields = {
 export type PamAccountSubjectFields = {
   resourceName: string;
   accountName: string;
-  accountPath: string;
 };
 
 export type McpEndpointSubjectFields = {
