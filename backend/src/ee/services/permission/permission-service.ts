@@ -210,7 +210,7 @@ export const permissionServiceFactory = ({
     });
     if (!permissionData?.length)
       throw new ForbiddenRequestError({
-        message: `You are not a member of this project. Please make sure this ${actor} is assigned to the project with the required role.`
+        message: `You are not a member of this organization. Please make sure this ${actor} is assigned to the organization with the required role.`
       });
 
     const rootOrgId = permissionData?.[0]?.rootOrgId;
