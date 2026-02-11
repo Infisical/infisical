@@ -561,10 +561,27 @@ export const resolveTargets = async (
   if (targetConfig.domains) {
     for (const domain of targetConfig.domains) {
       // eslint-disable-next-line no-await-in-loop
-      let resolvedIps = await resolveDomain(domain);
+      const resolvedIps = await resolveDomain(domain);
 
       if (blockPrivate) {
-        resolvedIps = resolvedIps.filter((ip) => !isPrivateIp(ip));
+        // When blocking private IPs, only use public IPs and never pass raw domains
+        // to scanEndpoint — it would re-resolve via system DNS, bypassing the check.
+        const publicIps = resolvedIps.filter((ip) => !isPrivateIp(ip));
+
+        for (const ip of publicIps) {
+          for (const port of ports) {
+            targets.push({
+              host: ip,
+              port,
+              isResolved: true,
+              originalTarget: domain,
+              sniHostname: domain
+            });
+          }
+        }
+
+        // eslint-disable-next-line no-continue
+        continue;
       }
 
       if (resolvedIps.length === 0) {

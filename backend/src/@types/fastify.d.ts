@@ -36,6 +36,8 @@ import { TPamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TPitServiceFactory } from "@app/ee/services/pit/pit-service";
 import { TPkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-types";
+import { TPkiDiscoveryServiceFactory } from "@app/ee/services/pki-discovery/pki-discovery-service";
+import { TPkiInstallationServiceFactory } from "@app/ee/services/pki-discovery/pki-installation-service";
 import { TProjectEventsService } from "@app/ee/services/project-events/project-events-service";
 import { TProjectEventsSSEService } from "@app/ee/services/project-events/project-events-sse-service";
 import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-types";
@@ -114,8 +116,6 @@ import { TOrgAdminServiceFactory } from "@app/services/org-admin/org-admin-servi
 import { TPkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
 import { TPkiAlertV2ServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-service";
 import { TPkiCollectionServiceFactory } from "@app/services/pki-collection/pki-collection-service";
-import { TPkiDiscoveryServiceFactory } from "@app/ee/services/pki-discovery/pki-discovery-service";
-import { TPkiInstallationServiceFactory } from "@app/ee/services/pki-discovery/pki-installation-service";
 import { TPkiSubscriberServiceFactory } from "@app/services/pki-subscriber/pki-subscriber-service";
 import { TPkiSyncServiceFactory } from "@app/services/pki-sync/pki-sync-service";
 import { TPkiTemplatesServiceFactory } from "@app/services/pki-templates/pki-templates-service";

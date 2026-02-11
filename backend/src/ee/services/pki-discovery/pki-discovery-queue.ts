@@ -104,7 +104,8 @@ export const pkiDiscoveryQueueFactory = ({
       .queue(QueueName.PkiDiscoveryScan, QueueJobs.PkiDiscoveryScheduledScan, undefined, {
         repeat: {
           pattern: "0 2 * * *",
-          utc: true
+          utc: true,
+          key: "pki-discovery-scheduled-scan"
         },
         jobId: "pki-discovery-scheduled-scan-cron"
       })

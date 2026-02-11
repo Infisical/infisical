@@ -3,11 +3,6 @@ import { z } from "zod";
 
 import { PkiDiscoveryConfigsSchema, PkiDiscoveryScanHistorySchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { ApiDocsTags } from "@app/lib/api-docs";
-import { BadRequestError } from "@app/lib/errors";
-import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import {
   DEFAULT_TLS_PORTS,
   MAX_DOMAINS,
@@ -17,6 +12,11 @@ import {
   validateTargetConfig
 } from "@app/ee/services/pki-discovery/pki-discovery-fns";
 import { PkiDiscoveryType, TPkiDiscoveryTargetConfig } from "@app/ee/services/pki-discovery/pki-discovery-types";
+import { ApiDocsTags } from "@app/lib/api-docs";
+import { BadRequestError } from "@app/lib/errors";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { AuthMode } from "@app/services/auth/auth-type";
 
 const NetworkTargetConfigSchema = z
   .object({
