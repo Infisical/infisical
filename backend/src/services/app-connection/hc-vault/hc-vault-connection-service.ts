@@ -2,6 +2,7 @@ import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
+import { KvVersion } from "@app/services/external-migration/external-migration-types";
 
 import { AppConnection } from "../app-connection-enums";
 import { listHCVaultMounts } from "./hc-vault-connection-fns";
@@ -25,7 +26,7 @@ export const hcVaultConnectionService = (
       const mounts = await listHCVaultMounts(appConnection, gatewayService, gatewayV2Service);
       // Filter for KV version 2 mounts only and extract just the paths
       return mounts
-        .filter((mount) => mount.type === "kv" && (mount.version === "2" || mount.version === "1"))
+        .filter((mount) => mount.type === "kv" && (mount.version === KvVersion.V2 || mount.version === KvVersion.V1))
         .map((mount) => mount.path);
     } catch (error) {
       logger.error(error, "Failed to establish connection with Hashicorp Vault");
