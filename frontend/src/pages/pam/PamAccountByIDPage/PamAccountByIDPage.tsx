@@ -232,7 +232,6 @@ const PageContent = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("accessAccount", isOpen)}
         account={popUp.accessAccount.data?.account}
         projectId={projectId!}
-        orgId={currentOrg.id}
       />
 
       <PamRequestAccountAccessModal

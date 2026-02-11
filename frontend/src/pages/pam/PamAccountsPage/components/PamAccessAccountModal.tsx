@@ -2,30 +2,24 @@ import { useMemo, useState } from "react";
 import { faCopy } from "@fortawesome/free-regular-svg-icons";
 import { faTerminal, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Link } from "@tanstack/react-router";
 import ms from "ms";
 
 import { createNotification } from "@app/components/notifications";
 import { FormLabel, IconButton, Input, Modal, ModalContent } from "@app/components/v2";
+import { ROUTE_PATHS } from "@app/const/routes";
+import { useOrganization } from "@app/context";
 import { PamResourceType, TPamAccount } from "@app/hooks/api/pam";
-
-// Feature flag — set to false to hide the browser web access option while it's in development
-const ENABLE_WEB_ACCESS = false;
 
 type Props = {
   account?: TPamAccount;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  orgId: string;
   projectId: string;
 };
 
-export const PamAccessAccountModal = ({
-  isOpen,
-  onOpenChange,
-  account,
-  orgId,
-  projectId
-}: Props) => {
+export const PamAccessAccountModal = ({ isOpen, onOpenChange, account, projectId }: Props) => {
+  const { currentOrg } = useOrganization();
   const [duration, setDuration] = useState("4h");
 
   const { protocol, hostname, port } = window.location;
@@ -93,12 +87,7 @@ export const PamAccessAccountModal = ({
 
   if (!account) return null;
 
-  const showWebAccess =
-    ENABLE_WEB_ACCESS && account.resource.resourceType === PamResourceType.Postgres;
-
-  const webAccessUrl = showWebAccess
-    ? `/organizations/${orgId}/projects/pam/${projectId}/resources/${account.resource.resourceType}/${account.resource.id}/accounts/${account.id}/access`
-    : undefined;
+  const showWebAccess = account.resource.resourceType === PamResourceType.Postgres;
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -152,7 +141,7 @@ export const PamAccessAccountModal = ({
             <FontAwesomeIcon icon={faUpRightFromSquare} className="size-3" />
           </a>
         </div>
-        {showWebAccess && webAccessUrl && (
+        {showWebAccess && (
           <>
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
@@ -165,15 +154,21 @@ export const PamAccessAccountModal = ({
             <div className="py-1">
               <p className="text-sm font-medium text-mineshaft-400">Browser</p>
               <p className="mb-2 text-xs text-mineshaft-400">Connect directly from your browser</p>
-              <a
-                href={webAccessUrl}
+              <Link
+                to={ROUTE_PATHS.Pam.PamAccountAccessPage.path}
+                params={{
+                  orgId: currentOrg.id,
+                  projectId,
+                  resourceType: account.resource.resourceType,
+                  resourceId: account.resource.id,
+                  accountId: account.id
+                }}
                 target="_blank"
-                rel="noreferrer"
                 className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-primary/80"
               >
                 <FontAwesomeIcon icon={faTerminal} />
                 Connect in Browser
-              </a>
+              </Link>
             </div>
           </>
         )}

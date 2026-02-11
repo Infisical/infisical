@@ -26,6 +26,10 @@ import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { decryptAccountCredentials } from "../pam-account/pam-account-fns";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { decryptResourceConnectionDetails } from "../pam-resource/pam-resource-fns";
+import {
+  TPostgresAccountCredentials,
+  TPostgresResourceConnectionDetails
+} from "../pam-resource/postgres/postgres-resource-types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { createPamSqlRepl } from "./pam-web-access-repl";
@@ -294,17 +298,17 @@ export const pamWebAccessServiceFactory = ({
       }
 
       // 2. DECRYPT
-      const connectionDetails = await decryptResourceConnectionDetails({
+      const resourceConnectionDetails = (await decryptResourceConnectionDetails({
         projectId,
         encryptedConnectionDetails: resource.encryptedConnectionDetails,
         kmsService
-      });
+      })) as TPostgresResourceConnectionDetails;
 
-      const credentials = await decryptAccountCredentials({
+      const accountCredentials = (await decryptAccountCredentials({
         projectId,
         encryptedCredentials: account.encryptedCredentials,
         kmsService
-      });
+      })) as TPostgresAccountCredentials;
 
       // 3. CREATE SESSION
       const user = await userDAL.findById(userId);
@@ -333,8 +337,8 @@ export const pamWebAccessServiceFactory = ({
         gatewayId: resource.gatewayId,
         sessionId: session.id,
         resourceType: PamResource.Postgres,
-        host: (connectionDetails as { host: string }).host,
-        port: (connectionDetails as { port: number }).port,
+        host: resourceConnectionDetails.host,
+        port: resourceConnectionDetails.port,
         duration: DEFAULT_WEB_SESSION_DURATION_MS,
         actorMetadata: {
           id: userId,
@@ -366,8 +370,8 @@ export const pamWebAccessServiceFactory = ({
       pgClient = new pg.Client({
         host: "localhost",
         port: relayServer.port,
-        user: (credentials as { username: string }).username,
-        database: (connectionDetails as { database: string }).database,
+        user: accountCredentials.username,
+        database: resourceConnectionDetails.database,
         password: "",
         ssl: false,
         // Max time to wait for TCP connection
@@ -392,12 +396,10 @@ export const pamWebAccessServiceFactory = ({
 
       // 8. INIT REPL + SEND READY
       const repl = createPamSqlRepl(pgClient);
-      const { username } = credentials as { username: string };
-      const { database } = connectionDetails as { database: string };
 
       sendMessage(socket, {
         type: WsMessageType.Ready,
-        data: `Connected to ${resource.name} (${database}) as ${username}\n\n`,
+        data: `Connected to ${resource.name} (${resourceConnectionDetails.database}) as ${accountCredentials.username}\n\n`,
         prompt: "=> "
       });
 
