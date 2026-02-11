@@ -38,7 +38,7 @@ export const useGetSharedSecrets = ({
       });
 
       const { data } = await apiRequest.get<{ secrets: TSharedSecret[]; totalCount: number }>(
-        "/api/v1/secret-sharing",
+        "/api/v1/shared-secrets",
         {
           params
         }
@@ -59,7 +59,7 @@ export const useGetSecretRequests = ({
     queryKey: secretSharingKeys.specificSecretRequests({ offset, limit }),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ secrets: TSharedSecret[]; totalCount: number }>(
-        "/api/v1/secret-sharing/requests",
+        "/api/v1/shared-secrets/requests",
         {
           params: {
             offset: String(offset),
@@ -76,7 +76,7 @@ export const useGetSharedSecretById = ({ sharedSecretId }: { sharedSecretId: str
     queryKey: secretSharingKeys.getSharedSecretDetails(sharedSecretId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TSharedSecretPublicDetails>(
-        `/api/v1/secret-sharing/${sharedSecretId}`
+        `/api/v1/shared-secrets/${sharedSecretId}`
       );
       return data;
     },
@@ -89,7 +89,7 @@ export const useGetSecretRequestById = ({ secretRequestId }: { secretRequestId: 
     queryKey: secretSharingKeys.getSecretRequestById({ id: secretRequestId }),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGetSecretRequestByIdResponse>(
-        `/api/v1/secret-sharing/requests/${secretRequestId}`
+        `/api/v1/shared-secrets/requests/${secretRequestId}`
       );
 
       return data;
@@ -101,7 +101,7 @@ export const useGetBrandingConfig = () => {
   return useQuery({
     queryKey: secretSharingKeys.brandingAssets(),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TBrandingConfig>("/api/v1/secret-sharing/branding");
+      const { data } = await apiRequest.get<TBrandingConfig>("/api/v1/shared-secrets/branding");
       return data;
     }
   });
@@ -111,7 +111,7 @@ export const useGetSharedSecretBranding = ({ sharedSecretId }: { sharedSecretId:
   return useQuery({
     queryKey: secretSharingKeys.sharedSecretBranding(sharedSecretId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TBrandingConfig>("/api/v1/secret-sharing/branding", {
+      const { data } = await apiRequest.get<TBrandingConfig>("/api/v1/shared-secrets/branding", {
         params: { sharedSecretId }
       });
       return data;

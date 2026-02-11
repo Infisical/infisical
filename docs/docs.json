@@ -2956,11 +2956,11 @@
               {
                 "group": "Shared Secrets",
                 "pages": [
-                  "api-reference/endpoints/secret-sharing/shared-secrets/list",
-                  "api-reference/endpoints/secret-sharing/shared-secrets/get-by-id",
-                  "api-reference/endpoints/secret-sharing/shared-secrets/create",
-                  "api-reference/endpoints/secret-sharing/shared-secrets/delete",
-                  "api-reference/endpoints/secret-sharing/shared-secrets/access"
+                  "api-reference/endpoints/shared-secrets/list",
+                  "api-reference/endpoints/shared-secrets/get-by-id",
+                  "api-reference/endpoints/shared-secrets/create",
+                  "api-reference/endpoints/shared-secrets/delete",
+                  "api-reference/endpoints/shared-secrets/access"
                 ]
               }
             ]

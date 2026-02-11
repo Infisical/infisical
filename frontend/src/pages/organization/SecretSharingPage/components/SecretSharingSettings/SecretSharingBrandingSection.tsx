@@ -64,7 +64,7 @@ const fetchAssetAsDataUrl = async (
   assetType: "brand-logo" | "brand-favicon"
 ): Promise<string | null> => {
   try {
-    const response = await apiRequest.get(`/api/v1/secret-sharing/branding/${assetType}`, {
+    const response = await apiRequest.get(`/api/v1/shared-secrets/branding/${assetType}`, {
       responseType: "blob"
     });
     const blob = response.data as Blob;
