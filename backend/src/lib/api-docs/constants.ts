@@ -2723,6 +2723,9 @@ export const SecretSyncs = {
     RENDER: {
       autoRedeployServices:
         "Whether Infisical should automatically redeploy the configured Render service upon secret changes."
+    },
+    FLYIO: {
+      autoRedeploy: "Whether Infisical should automatically redeploy the configured Fly.io app upon secret changes."
     }
   },
   DESTINATION_CONFIG: {
