@@ -877,7 +877,7 @@ export const fnUpdateMovedSecretReferences = async ({
   const updatedSecretsMap: Map<string, { secret: TSecretsV2; newEncryptedValue: Buffer; newVersion: number }> =
     new Map();
 
-  const destPathPart = destinationSecretPath === "/" ? "" : `.${destinationSecretPath.slice(1).replace(/\//g, ".")}`;
+  const destPathPart = destinationSecretPath === "/" ? "" : `.${destinationSecretPath.slice(1).replaceAll("/", ".")}`;
   const newNestedRef = `\${${destinationEnvironment}${destPathPart}.${secretKey}}`;
 
   // case: local references, not stored in the db, we need to scan the folder to find secrets that reference the old secret ky
