@@ -74,6 +74,7 @@ export const UpdateAwsIamAccountSchema = BaseUpdatePamAccountSchema.extend({
 });
 
 export const SanitizedAwsIamAccountWithResourceSchema = BasePamAccountSchemaWithResource.extend({
+  resourceType: z.literal(PamResource.AwsIam),
   credentials: AwsIamAccountCredentialsSchema.pick({
     targetRoleArn: true,
     defaultSessionDuration: true

@@ -382,11 +382,11 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
               name="allowedEmailDomains"
               render={({ field, fieldState: { error } }) => (
                 <FormControl
-                  label="Allowed Email Domains (defaults to any)"
+                  label="Allowed Email Domains (defaults to any, supports wildcards e.g. *.example.com)"
                   errorText={error?.message}
                   isError={Boolean(error)}
                 >
-                  <Input {...field} placeholder="infisical.com, google.com" autoComplete="off" />
+                  <Input {...field} placeholder="infisical.com, *.google.com" autoComplete="off" />
                 </FormControl>
               )}
             />

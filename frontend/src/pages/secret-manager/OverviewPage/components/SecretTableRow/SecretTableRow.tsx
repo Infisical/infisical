@@ -348,6 +348,7 @@ export const SecretTableRow = ({
                             tags={secret?.tags}
                             secretMetadata={secret?.secretMetadata}
                             skipMultilineEncoding={secret?.skipMultilineEncoding}
+                            reminder={secret?.reminder}
                           />
                         </UnstableTableCell>
                       </UnstableTableRow>

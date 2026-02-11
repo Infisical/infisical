@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import {
+  BellIcon,
   CodeXmlIcon,
   CopyIcon,
   EditIcon,
@@ -57,6 +58,7 @@ import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionCo
 import { usePopUp, useToggle } from "@app/hooks";
 import { useUpdateSecretV3 } from "@app/hooks/api";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
+import { Reminder } from "@app/hooks/api/reminders/types";
 import { ProjectEnv, SecretType, SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
@@ -65,6 +67,7 @@ import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPa
 import { SecretAccessInsights } from "./SecretAccessInsights";
 import { SecretCommentForm } from "./SecretCommentForm";
 import { SecretMetadataForm } from "./SecretMetadataForm";
+import { SecretReminderForm } from "./SecretReminderForm";
 import { SecretTagForm } from "./SecretTagForm";
 import { SecretVersionHistory } from "./SecretVersionHistory";
 
@@ -80,6 +83,7 @@ type Props = {
   tags?: WsTag[];
   secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
   skipMultilineEncoding?: boolean | null;
+  reminder?: Reminder;
   environment: string;
   environmentName: string;
   secretValueHidden: boolean;
@@ -138,7 +142,8 @@ export const SecretEditTableRow = ({
   tags,
   secretMetadata,
   environmentName,
-  skipMultilineEncoding
+  skipMultilineEncoding,
+  reminder
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
@@ -207,6 +212,7 @@ export const SecretEditTableRow = ({
   const [isCommentOpen, setIsCommentOpen] = useState(false);
   const [isTagOpen, setIsTagOpen] = useState(false);
   const [isMetadataOpen, setIsMetadataOpen] = useState(false);
+  const [isReminderOpen, setIsReminderOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
   const [isAccessInsightsOpen, setIsAccessInsightsOpen] = useState(false);
@@ -361,7 +367,8 @@ export const SecretEditTableRow = ({
     isErrorFetchingSecretValue ||
     (isCreatable ? !canCreate : !canEditSecretValue);
 
-  const shouldStayExpanded = isCommentOpen || isTagOpen || isMetadataOpen || isDropdownOpen;
+  const shouldStayExpanded =
+    isCommentOpen || isTagOpen || isMetadataOpen || isReminderOpen || isDropdownOpen;
 
   return (
     <div className="flex w-full cursor-text items-center space-x-2 py-1.5">
@@ -658,6 +665,53 @@ export const SecretEditTableRow = ({
                   isOverride={isOverride}
                   onClose={() => setIsMetadataOpen(false)}
                 />
+              </PopoverContent>
+            </Popover>
+            <Popover open={isReminderOpen} onOpenChange={setIsReminderOpen}>
+              <Tooltip delayDuration={300} disableHoverableContent>
+                <TooltipTrigger>
+                  <PopoverTrigger asChild>
+                    <UnstableIconButton
+                      variant="ghost"
+                      size="xs"
+                      isDisabled={isCreatable || isImportedSecret || isOverride || !secretId}
+                      className={twMerge(
+                        reminder && !isOverride && !isImportedSecret
+                          ? "w-7 text-project opacity-100"
+                          : "w-0 opacity-0",
+                        "overflow-hidden border-0 group-hover:w-7 group-hover:opacity-100",
+                        shouldStayExpanded && "w-7 opacity-100"
+                      )}
+                    >
+                      <BellIcon />
+                    </UnstableIconButton>
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isOverride
+                    ? "Cannot Set Reminder on Personal Overrides"
+                    : isImportedSecret
+                      ? "Cannot Set Reminder on Imported Secret"
+                      : isCreatable
+                        ? "Create Secret to Add Reminder"
+                        : `${reminder ? "View" : "Add"} Reminder`}
+                </TooltipContent>
+              </Tooltip>
+              <PopoverContent
+                onCloseAutoFocus={(e) => e.preventDefault()}
+                className="w-[420px]"
+                side="left"
+              >
+                {secretId && (
+                  <SecretReminderForm
+                    secretId={secretId}
+                    secretKey={secretName}
+                    secretPath={secretPath}
+                    environment={environment}
+                    reminder={reminder}
+                    onClose={() => setIsReminderOpen(false)}
+                  />
+                )}
               </PopoverContent>
             </Popover>
             <Tooltip delayDuration={300} disableHoverableContent>

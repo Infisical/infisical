@@ -6,6 +6,7 @@ import {
   TAuditLogServiceFactory
 } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -65,6 +66,7 @@ type TExternalMigrationServiceFactoryDep = {
   >;
   userDAL: Pick<TUserDALFactory, "findById">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
@@ -75,6 +77,7 @@ export const externalMigrationServiceFactory = ({
   externalMigrationQueue,
   userDAL,
   gatewayService,
+  gatewayV2Service,
   secretService,
   auditLogService,
   appConnectionService,
@@ -279,13 +282,13 @@ export const externalMigrationServiceFactory = ({
     }
 
     try {
-      await listHCVaultPolicies(namespace, connection, gatewayService);
-      await getHCVaultAuthMounts(namespace, HCVaultAuthType.Kubernetes, connection, gatewayService);
+      await listHCVaultPolicies(namespace, connection, gatewayService, gatewayV2Service);
+      await getHCVaultAuthMounts(namespace, HCVaultAuthType.Kubernetes, connection, gatewayService, gatewayV2Service);
 
-      const mounts = await listHCVaultMounts(connection, gatewayService);
+      const mounts = await listHCVaultMounts(connection, gatewayService, gatewayV2Service);
       const sampleKvMount = mounts.find((mount) => mount.type === "kv");
       if (sampleKvMount) {
-        await listHCVaultSecretPaths(namespace, connection, gatewayService, sampleKvMount.path);
+        await listHCVaultSecretPaths(namespace, connection, gatewayService, gatewayV2Service, sampleKvMount.path);
       }
     } catch (error) {
       throw new BadRequestError({
@@ -433,12 +436,12 @@ export const externalMigrationServiceFactory = ({
 
   const getVaultPolicies = async ({ actor, namespace }: { actor: OrgServiceActor; namespace: string }) => {
     const connection = await getVaultConnectionForNamespace(actor, namespace, "view vault policies");
-    return listHCVaultPolicies(namespace, connection, gatewayService);
+    return listHCVaultPolicies(namespace, connection, gatewayService, gatewayV2Service);
   };
 
   const getVaultMounts = async ({ actor, namespace }: { actor: OrgServiceActor; namespace: string }) => {
     const connection = await getVaultConnectionForNamespace(actor, namespace, "view vault mounts");
-    return listHCVaultMounts(connection, gatewayService, namespace);
+    return listHCVaultMounts(connection, gatewayService, gatewayV2Service, namespace);
   };
 
   const getVaultSecretPaths = async ({
@@ -451,7 +454,7 @@ export const externalMigrationServiceFactory = ({
     mountPath: string;
   }) => {
     const connection = await getVaultConnectionForNamespace(actor, namespace, "view vault secret paths");
-    return listHCVaultSecretPaths(namespace, connection, gatewayService, mountPath);
+    return listHCVaultSecretPaths(namespace, connection, gatewayService, gatewayV2Service, mountPath);
   };
 
   const importVaultSecrets = async ({
@@ -472,7 +475,13 @@ export const externalMigrationServiceFactory = ({
     auditLogInfo: AuditLogInfo;
   }) => {
     const connection = await getVaultConnectionForNamespace(actor, vaultNamespace, "import vault secrets");
-    const vaultSecrets = await getHCVaultSecretsForPath(vaultNamespace, vaultSecretPath, connection, gatewayService);
+    const vaultSecrets = await getHCVaultSecretsForPath(
+      vaultNamespace,
+      vaultSecretPath,
+      connection,
+      gatewayService,
+      gatewayV2Service
+    );
 
     try {
       const secretOperation = await secretService.createManySecretsRaw({
@@ -559,7 +568,7 @@ export const externalMigrationServiceFactory = ({
     authType?: string;
   }) => {
     const connection = await getVaultConnectionForNamespace(actor, namespace, "view vault auth mounts");
-    return getHCVaultAuthMounts(namespace, authType as HCVaultAuthType, connection, gatewayService);
+    return getHCVaultAuthMounts(namespace, authType as HCVaultAuthType, connection, gatewayService, gatewayV2Service);
   };
 
   const getVaultKubernetesAuthRoles = async ({
@@ -572,7 +581,7 @@ export const externalMigrationServiceFactory = ({
     mountPath: string;
   }) => {
     const connection = await getVaultConnectionForNamespace(actor, namespace, "view vault Kubernetes auth roles");
-    return getHCVaultKubernetesAuthRoles(namespace, mountPath, connection, gatewayService);
+    return getHCVaultKubernetesAuthRoles(namespace, mountPath, connection, gatewayService, gatewayV2Service);
   };
 
   const getVaultKubernetesRoles = async ({
@@ -585,7 +594,7 @@ export const externalMigrationServiceFactory = ({
     mountPath: string;
   }) => {
     const connection = await getVaultConnectionForNamespace(actor, namespace, "get Kubernetes roles");
-    return getHCVaultKubernetesRoles(namespace, mountPath, connection, gatewayService);
+    return getHCVaultKubernetesRoles(namespace, mountPath, connection, gatewayService, gatewayV2Service);
   };
 
   const getVaultDatabaseRoles = async ({
@@ -598,7 +607,7 @@ export const externalMigrationServiceFactory = ({
     mountPath: string;
   }) => {
     const connection = await getVaultConnectionForNamespace(actor, namespace, "get database roles");
-    return getHCVaultDatabaseRoles(namespace, mountPath, connection, gatewayService);
+    return getHCVaultDatabaseRoles(namespace, mountPath, connection, gatewayService, gatewayV2Service);
   };
 
   const getVaultLdapRoles = async ({
@@ -611,7 +620,7 @@ export const externalMigrationServiceFactory = ({
     mountPath: string;
   }) => {
     const connection = await getVaultConnectionForNamespace(actor, namespace, "get LDAP roles");
-    return getHCVaultLdapRoles(namespace, mountPath, connection, gatewayService);
+    return getHCVaultLdapRoles(namespace, mountPath, connection, gatewayService, gatewayV2Service);
   };
 
   return {

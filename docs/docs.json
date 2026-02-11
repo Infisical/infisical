@@ -804,7 +804,8 @@
                           "documentation/platform/pam/getting-started/resources/aws-iam",
                           "documentation/platform/pam/getting-started/resources/kubernetes",
                           "documentation/platform/pam/getting-started/resources/redis",
-                          "documentation/platform/pam/getting-started/resources/ssh"
+                          "documentation/platform/pam/getting-started/resources/ssh",
+                          "documentation/platform/pam/getting-started/resources/windows-server"
                         ]
                       },
                       "documentation/platform/pam/getting-started/accounts"
@@ -816,6 +817,7 @@
               {
                 "group": "Product Reference",
                 "pages": [
+                  "documentation/platform/pam/product-reference/access-policies",
                   "documentation/platform/pam/product-reference/auditing",
                   "documentation/platform/pam/product-reference/session-recording",
                   "documentation/platform/pam/product-reference/credential-rotation"

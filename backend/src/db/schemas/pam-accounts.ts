@@ -24,7 +24,8 @@ export const PamAccountsSchema = z.object({
   lastRotatedAt: z.date().nullable().optional(),
   rotationStatus: z.string().nullable().optional(),
   encryptedLastRotationMessage: zodBuffer.nullable().optional(),
-  requireMfa: z.boolean().default(false).nullable().optional()
+  requireMfa: z.boolean().default(false).nullable().optional(),
+  metadata: z.unknown().nullable().optional()
 });
 
 export type TPamAccounts = z.infer<typeof PamAccountsSchema>;

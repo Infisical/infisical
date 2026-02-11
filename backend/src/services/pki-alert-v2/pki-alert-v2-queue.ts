@@ -192,26 +192,24 @@ export const pkiAlertV2QueueServiceFactory = ({
       return;
     }
 
-    await queueService.startPg<QueueName.DailyPkiAlertV2Processing>(
-      QueueJobs.DailyPkiAlertV2Processing,
-      async () => {
-        try {
-          logger.info(`${QueueJobs.DailyPkiAlertV2Processing}: queue task started`);
-          await processDailyAlerts();
-          logger.info(`${QueueJobs.DailyPkiAlertV2Processing}: queue task completed successfully`);
-        } catch (error) {
-          logger.error(error, `${QueueJobs.DailyPkiAlertV2Processing}: queue task failed`);
-          throw error;
-        }
-      },
-      {
-        batchSize: 1,
-        workerCount: 1,
-        pollingIntervalSeconds: 60
+    queueService.start(QueueName.DailyPkiAlertV2Processing, async () => {
+      try {
+        logger.info(`${QueueJobs.DailyPkiAlertV2Processing}: queue task started`);
+        await processDailyAlerts();
+        logger.info(`${QueueJobs.DailyPkiAlertV2Processing}: queue task completed successfully`);
+      } catch (error) {
+        logger.error(error, `${QueueJobs.DailyPkiAlertV2Processing}: queue task failed`);
+        throw error;
       }
-    );
+    });
 
-    await queueService.schedulePg(QueueJobs.DailyPkiAlertV2Processing, "0 0 * * *", undefined, { tz: "UTC" });
+    await queueService.queue(QueueName.DailyPkiAlertV2Processing, QueueJobs.DailyPkiAlertV2Processing, undefined, {
+      jobId: QueueJobs.DailyPkiAlertV2Processing,
+      repeat: {
+        pattern: "0 0 * * *",
+        key: QueueJobs.DailyPkiAlertV2Processing
+      }
+    });
   };
 
   return {
