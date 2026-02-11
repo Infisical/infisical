@@ -16,6 +16,8 @@ export type TQueryExecutor = {
 
 export type TPamSqlRepl = ReturnType<typeof createPamSqlRepl>;
 
+const MAX_BUFFER_SIZE = 1024 * 1024; // 1 MB
+
 export const createPamSqlRepl = (queryExecutor: TQueryExecutor) => {
   let buffer = "";
 
@@ -52,6 +54,15 @@ export const createPamSqlRepl = (queryExecutor: TQueryExecutor) => {
       buffer += `\n${rawInput}`;
     } else {
       buffer = rawInput;
+    }
+
+    if (buffer.length > MAX_BUFFER_SIZE) {
+      buffer = "";
+      return {
+        output: "ERROR: buffer size exceeded (1 MB limit). Buffer cleared.\n",
+        prompt: "=> ",
+        shouldClose: false
+      };
     }
 
     // Split into complete and incomplete statements

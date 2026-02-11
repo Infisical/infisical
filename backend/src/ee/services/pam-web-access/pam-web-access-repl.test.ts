@@ -187,6 +187,26 @@ describe("createPamSqlRepl", () => {
     expect(result.output).toBe("INSERT 0 1\n");
   });
 
+  it("returns error and clears buffer when input exceeds 1 MB limit", async () => {
+    const oversized = "A".repeat(1024 * 1024 + 1);
+    const result = await repl.processInput(oversized);
+    expect(result.output).toContain("buffer size exceeded");
+    expect(result.prompt).toBe("=> ");
+    expect(result.shouldClose).toBe(false);
+    expect(queryFn).not.toHaveBeenCalled();
+
+    // REPL should still work after buffer was cleared
+    queryFn.mockResolvedValueOnce({
+      command: "SELECT",
+      rowCount: 1,
+      fields: [{ name: "?column?", dataTypeID: 23 }],
+      rows: [{ "?column?": 1 }]
+    });
+    const next = await repl.processInput("SELECT 1;");
+    expect(next.output).toContain("1");
+    expect(next.prompt).toBe("=> ");
+  });
+
   it("multi-statement paste", async () => {
     queryFn
       .mockResolvedValueOnce({
