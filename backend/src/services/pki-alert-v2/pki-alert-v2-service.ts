@@ -17,6 +17,7 @@ import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TPkiAlertChannelDALFactory } from "./pki-alert-channel-dal";
 import { TPkiAlertHistoryDALFactory } from "./pki-alert-history-dal";
 import { sendEmailNotificationWithRetry } from "./pki-alert-v2-channel-email-fns";
+import { maskPagerDutyIntegrationKey, sendPagerDutyNotificationWithRetry } from "./pki-alert-v2-channel-pagerduty-fns";
 import {
   maskSlackWebhookUrl,
   sendSlackNotificationWithRetry,
@@ -44,6 +45,7 @@ import {
   TListCurrentMatchingCertificatesDTO,
   TListMatchingCertificatesDTO,
   TListMatchingCertificatesResponse,
+  TPagerDutyChannelConfig,
   TPkiFilterRule,
   TSlackChannelConfig,
   TTestWebhookConfigDTO,
@@ -134,7 +136,7 @@ export const pkiAlertV2ServiceFactory = ({
             hasSigningSecret: Boolean(webhookConfig.signingSecret)
           };
         } else {
-          // For email and slack channels, the config is the same in request and response
+          // For email, slack, and pagerduty channels, the config is the same in request and response
           responseConfig = config as TEmailChannelConfig;
         }
 
@@ -388,7 +390,7 @@ export const pkiAlertV2ServiceFactory = ({
       alert = await pkiAlertV2DAL.updateById(alertId, updateData, tx);
 
       if (channels) {
-        // Get existing channels to preserve signing secrets if needed
+        // Get existing channels to preserve signing secrets / integration keys if needed
         const existingChannels = await pkiAlertChannelDAL.findByAlertId(alertId, tx);
         const existingWebhookConfigs = new Map<string, TWebhookChannelConfig>();
 
@@ -653,6 +655,15 @@ export const pkiAlertV2ServiceFactory = ({
               webhookUrl: maskSlackWebhookUrl(config.webhookUrl)
             };
           }
+          case PkiAlertChannelType.PAGERDUTY: {
+            const config = decryptChannelConfig<TPagerDutyChannelConfig>(channel, decryptor);
+            const result = await sendPagerDutyNotificationWithRetry(config, alertData, matchingCertificates);
+            return {
+              ...result,
+              channelType: channel.channelType,
+              integrationKey: maskPagerDutyIntegrationKey(config.integrationKey || "")
+            };
+          }
           default:
             return { success: false, channelType: channel.channelType, error: "Unknown channel type" };
         }
@@ -673,6 +684,15 @@ export const pkiAlertV2ServiceFactory = ({
         if (channel.channelType === PkiAlertChannelType.WEBHOOK) {
           const config = decryptChannelConfig<TWebhookChannelConfig>(channel, decryptor);
           return { success: false, channelType: channel.channelType, error: errorMessage, url: config.url };
+        }
+        if (channel.channelType === PkiAlertChannelType.PAGERDUTY) {
+          const config = decryptChannelConfig<TPagerDutyChannelConfig>(channel, decryptor);
+          return {
+            success: false,
+            channelType: channel.channelType,
+            error: errorMessage,
+            integrationKey: maskPagerDutyIntegrationKey(config.integrationKey || "")
+          };
         }
 
         return { success: false, channelType: channel.channelType, error: errorMessage };
@@ -695,6 +715,8 @@ export const pkiAlertV2ServiceFactory = ({
           errors.push(`WEBHOOK (url: ${r.url}): ${r.error}`);
         } else if (r.channelType === PkiAlertChannelType.SLACK && "webhookUrl" in r && r.webhookUrl) {
           errors.push(`SLACK (url: ${r.webhookUrl}): ${r.error}`);
+        } else if (r.channelType === PkiAlertChannelType.PAGERDUTY && "integrationKey" in r && r.integrationKey) {
+          errors.push(`PAGERDUTY (key: ${r.integrationKey}): ${r.error}`);
         } else {
           errors.push(`${r.channelType}: ${r.error}`);
         }

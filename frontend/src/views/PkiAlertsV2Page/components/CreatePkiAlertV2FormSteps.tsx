@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { faSlack } from "@fortawesome/free-brands-svg-icons";
 import {
+  faBell,
   faCheck,
   faChevronDown,
   faEnvelope,
@@ -58,6 +59,7 @@ import {
   PkiFilterOperatorV2,
   TCreatePkiAlertV2,
   TPkiAlertChannelConfigEmail,
+  TPkiAlertChannelConfigPagerDuty,
   TPkiAlertChannelConfigSlack,
   TPkiAlertChannelConfigWebhook,
   TPkiFilterRuleV2,
@@ -68,6 +70,7 @@ import {
 import {
   formatAlertBefore,
   formatEventType,
+  getChannelDisplayName,
   getChannelIcon,
   getChannelSummary
 } from "../utils/pki-alert-formatters";
@@ -97,6 +100,7 @@ export const CreatePkiAlertV2FormSteps = ({
     watch,
     setValue,
     trigger,
+    clearErrors,
     formState: { errors }
   } = useFormContext<TCreatePkiAlertV2>();
   const { currentProject } = useProject();
@@ -175,7 +179,8 @@ export const CreatePkiAlertV2FormSteps = ({
     let config:
       | TPkiAlertChannelConfigEmail
       | TPkiAlertChannelConfigWebhook
-      | TPkiAlertChannelConfigSlack;
+      | TPkiAlertChannelConfigSlack
+      | TPkiAlertChannelConfigPagerDuty;
     switch (type) {
       case PkiAlertChannelTypeV2.EMAIL:
         config = { recipients: [] };
@@ -186,6 +191,9 @@ export const CreatePkiAlertV2FormSteps = ({
       case PkiAlertChannelTypeV2.SLACK:
         config = { webhookUrl: "" };
         break;
+      case PkiAlertChannelTypeV2.PAGERDUTY:
+        config = { integrationKey: "" };
+        break;
       default:
         config = { recipients: [] };
     }
@@ -195,7 +203,7 @@ export const CreatePkiAlertV2FormSteps = ({
       config,
       enabled: true
     });
-    trigger("channels");
+    clearErrors("channels");
   };
 
   // Auto-expand newly added channel (prepended at index 0)
@@ -673,6 +681,10 @@ export const CreatePkiAlertV2FormSteps = ({
                   <FontAwesomeIcon icon={faSlack} className="mr-2" />
                   Slack
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => addChannel(PkiAlertChannelTypeV2.PAGERDUTY)}>
+                  <FontAwesomeIcon icon={faBell} className="mr-2" />
+                  PagerDuty
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -872,6 +884,29 @@ export const CreatePkiAlertV2FormSteps = ({
                           )}
                         />
                       )}
+
+                      {channel?.channelType === PkiAlertChannelTypeV2.PAGERDUTY && (
+                        <Controller
+                          control={control}
+                          name={`channels.${index}.config.integrationKey`}
+                          render={({ field: keyField, fieldState: { error } }) => (
+                            <FormControl
+                              label="Integration Key"
+                              isRequired
+                              isError={Boolean(error)}
+                              errorText={error?.message}
+                              helperText="Find this in PagerDuty under Services → Integrations → Events API v2"
+                            >
+                              <Input
+                                value={keyField.value || ""}
+                                onChange={keyField.onChange}
+                                onBlur={keyField.onBlur}
+                                placeholder="32-character hex integration key"
+                              />
+                            </FormControl>
+                          )}
+                        />
+                      )}
                     </AccordionContent>
                   </AccordionItem>
                 );
@@ -976,8 +1011,8 @@ export const CreatePkiAlertV2FormSteps = ({
                     />
                     <div className="flex min-w-0 flex-1 flex-col">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-mineshaft-100 capitalize">
-                          {channel.channelType}
+                        <span className="text-sm font-medium text-mineshaft-100">
+                          {getChannelDisplayName(channel.channelType)}
                         </span>
                         {channel.channelType === PkiAlertChannelTypeV2.WEBHOOK &&
                           ((channel.config as TPkiAlertChannelConfigWebhook).signingSecret ? (
@@ -1034,6 +1069,9 @@ export const CreatePkiAlertV2FormSteps = ({
                             return config.webhookUrl
                               ? "Slack webhook configured"
                               : "Not configured";
+                          }
+                          if (channel.channelType === PkiAlertChannelTypeV2.PAGERDUTY) {
+                            return "PagerDuty integration configured";
                           }
                           return "";
                         })()}
