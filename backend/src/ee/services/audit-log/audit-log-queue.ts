@@ -80,8 +80,9 @@ export const auditLogQueueServiceFactory = async ({
       const auditLogId = randomUUID();
 
       const results = await Promise.allSettled([
-        async () => {
+        (async () => {
           const auditLog = await auditLogDAL.create({
+            id: auditLogId,
             actor: actor.type,
             actorMetadata: actor.metadata,
             userAgent,
@@ -94,8 +95,8 @@ export const auditLogQueueServiceFactory = async ({
             eventMetadata: event.metadata,
             userAgentType
           });
-          await auditLogStreamService.streamLog(orgId!, auditLog);
-        },
+          await auditLogStreamService.streamLog(orgId, auditLog);
+        })(),
         ...(clickhouseClient && CLICKHOUSE_AUDIT_LOG_ENABLED
           ? [
               clickhouseClient.insert({
