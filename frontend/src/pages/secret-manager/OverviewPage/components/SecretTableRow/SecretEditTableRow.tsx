@@ -223,7 +223,7 @@ export const SecretEditTableRow = ({
   }, []);
 
   const handleFormReset = () => {
-    reset();
+    reset({ value: sharedValueData?.value ?? (defaultValue || null) });
   };
 
   const handleCopySharedToClipboard = async () => {
