@@ -122,7 +122,8 @@ export const useDeletePamAccount = () => {
 
 export type TAccessPamAccountDTO = {
   accountId: string;
-  accountPath: string;
+  resourceName: string;
+  accountName: string;
   projectId: string;
   duration: string;
 };
@@ -143,18 +144,38 @@ export type TAccessPamAccountResponse = {
 
 export const useAccessPamAccount = () => {
   return useMutation({
-    mutationFn: async ({ accountId, accountPath, projectId, duration }: TAccessPamAccountDTO) => {
+    mutationFn: async ({
+      accountId,
+      resourceName,
+      accountName,
+      projectId,
+      duration
+    }: TAccessPamAccountDTO) => {
       const { data } = await apiRequest.post<TAccessPamAccountResponse>(
         "/api/v1/pam/accounts/access",
         {
           accountId,
-          accountPath,
+          resourceName,
+          accountName,
           projectId,
           duration
         }
       );
 
       return data;
+    }
+  });
+};
+
+// Web Access
+export const useCreatePamWebAccessTicket = () => {
+  return useMutation({
+    mutationFn: async ({ accountId, projectId }: { accountId: string; projectId: string }) => {
+      const { data } = await apiRequest.post<{ ticket: string }>(
+        `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
+        { projectId }
+      );
+      return data.ticket;
     }
   });
 };

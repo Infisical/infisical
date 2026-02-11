@@ -197,7 +197,9 @@ export const permissionServiceFactory = ({
     }
 
     if (orgId !== actorOrgId) {
-      throw new ForbiddenRequestError({ name: "You are not allowed to access organization resource" });
+      throw new ForbiddenRequestError({
+        message: `Your token is scoped to organization with ID ${actorOrgId}, but this resource belongs to a different organization.`
+      });
     }
 
     const permissionData = await permissionDAL.getPermission({
@@ -208,7 +210,10 @@ export const permissionServiceFactory = ({
       actorId,
       actorType: actor
     });
-    if (!permissionData?.length) throw new ForbiddenRequestError({ name: "You are not member of this organization" });
+    if (!permissionData?.length)
+      throw new ForbiddenRequestError({
+        message: `You are not a member of this organization with ID ${actorOrgId}. Please assign this ${actor} to the organization with the appropriate permissions, then try again.`
+      });
 
     const rootOrgId = permissionData?.[0]?.rootOrgId;
     const isChild = Boolean(rootOrgId);
@@ -280,7 +285,7 @@ export const permissionServiceFactory = ({
 
     if (serviceToken.projectId !== projectId) {
       throw new ForbiddenRequestError({
-        name: `Service token not a part of the specified project with ID ${projectId}`
+        message: `Service token not a part of the specified project with ID ${projectId}`
       });
     }
 
@@ -373,7 +378,10 @@ export const permissionServiceFactory = ({
       actorId,
       actorType: actor
     });
-    if (!permissionData?.length) throw new ForbiddenRequestError({ name: "You are not member of this project" });
+    if (!permissionData?.length)
+      throw new ForbiddenRequestError({
+        message: `You are not a member of this project with ID ${projectId}. Please assign this ${actor} to the project with the appropriate permissions, then try again.`
+      });
 
     const permissionFromRoles = permissionData.flatMap((membership) => {
       const activeRoles = membership?.roles

@@ -34,7 +34,7 @@ export const dailyExpiringPkiItemAlertQueueServiceFactory = ({
     await queueService.queue(QueueName.DailyExpiringPkiItemAlert, QueueJobs.DailyExpiringPkiItemAlert, undefined, {
       delay: 5000,
       jobId: QueueName.DailyExpiringPkiItemAlert,
-      repeat: { pattern: "0 0 * * *", utc: true }
+      repeat: { pattern: "0 0 * * *", utc: true, key: QueueName.DailyExpiringPkiItemAlert }
     });
   };
 

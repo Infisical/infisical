@@ -86,7 +86,9 @@ const redactedKeys = [
   "password",
   "config",
   "bindPass",
-  "bindDN"
+  "bindDN",
+  "x-vault-token",
+  "X-VAULT-TOKEN"
 ];
 
 const UNKNOWN_REQUEST_ID = "UNKNOWN_REQUEST_ID";
@@ -179,7 +181,14 @@ export const initLogger = () => {
         })
       },
       // redact until depth of three
-      redact: [...redactedKeys, ...redactedKeys.map((key) => `*.${key}`), ...redactedKeys.map((key) => `*.*.${key}`)]
+      // Keys with special characters (hyphens) need bracket notation for fast-redact
+      redact: redactedKeys.flatMap((key) => {
+        if (key.includes("-")) {
+          const k = `["${key}"]`;
+          return [k, `*${k}`, `*.*${k}`];
+        }
+        return [key, `*.${key}`, `*.*.${key}`];
+      })
     },
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     transport

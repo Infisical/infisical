@@ -24,10 +24,9 @@ type Props = {
   onAccess: (resource: TPamAccount) => void;
   onUpdate: (resource: TPamAccount) => void;
   onDelete: (resource: TPamAccount) => void;
-  accountPath?: string;
 };
 
-export const PamAccountCard = ({ account, onAccess, accountPath, onUpdate, onDelete }: Props) => {
+export const PamAccountCard = ({ account, onAccess, onUpdate, onDelete }: Props) => {
   const { id, name, description, resource } = account;
 
   const { image, name: resourceTypeName } = PAM_RESOURCE_TYPE_MAP[account.resource.resourceType];
@@ -117,11 +116,7 @@ export const PamAccountCard = ({ account, onAccess, accountPath, onUpdate, onDel
             </div>
           </div>
 
-          <p
-            className={`${accountPath ? "text-mineshaft-300" : "text-mineshaft-400"} truncate text-xs leading-4`}
-          >
-            {resourceTypeName} - {accountPath || "root"}
-          </p>
+          <p className="truncate text-xs leading-4 text-mineshaft-300">{resourceTypeName}</p>
         </div>
       </div>
       <Badge variant="neutral" className="mt-3.5">

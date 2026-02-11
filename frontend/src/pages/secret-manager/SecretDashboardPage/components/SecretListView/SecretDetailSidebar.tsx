@@ -181,13 +181,39 @@ export const SecretDetailSidebar = ({
     formState: { isDirty }
   } = useForm<TFormSchema>({
     resolver: zodResolver(formSchema),
-    values: {
+    defaultValues: {
       ...secret,
+      tags: secret?.tags?.map((tag) => ({ id: tag.id, slug: tag.slug, tagColor: tag.color })),
       valueOverride: getOverrideDefaultValue(),
       value: getDefaultValue()
     },
     disabled: !secret
   });
+
+  // Update value fields when secret value is fetched, but only if user hasn't modified them
+  useEffect(() => {
+    if (secretValueData) {
+      // Only update if the field hasn't been touched/modified by the user
+      if (!getFieldState("value").isDirty && secretValueData.value !== undefined) {
+        setValue("value", secretValueData.value, { shouldDirty: false });
+      }
+      if (!getFieldState("valueOverride").isDirty && secretValueData.valueOverride !== undefined) {
+        setValue("valueOverride", secretValueData.valueOverride, { shouldDirty: false });
+      }
+    }
+  }, [secretValueData, setValue, getFieldState]);
+
+  // Reset form when a different secret is opened
+  useEffect(() => {
+    if (originalSecret?.id) {
+      reset({
+        ...secret,
+        tags: secret?.tags?.map((tag) => ({ id: tag.id, slug: tag.slug, tagColor: tag.color })),
+        valueOverride: getOverrideDefaultValue(),
+        value: getDefaultValue()
+      });
+    }
+  }, [originalSecret?.id]);
 
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp([
     "secretAccessUpgradePlan",
@@ -275,7 +301,7 @@ export const SecretDetailSidebar = ({
         tagFields.remove(tagPos);
       }
     } else {
-      tagFields.append(tag);
+      tagFields.append({ id: tag.id, slug: tag.slug, tagColor: tag.color });
     }
   };
 
@@ -892,7 +918,7 @@ export const SecretDetailSidebar = ({
                 leftIcon={<FontAwesomeIcon icon={faProjectDiagram} />}
                 onClick={() => handlePopUpOpen("secretReferenceTree", secretKey)}
               >
-                Secret Reference Tree
+                Secret References
               </Button>
               <Tooltip content="Copy Secret ID" className="z-100">
                 <IconButton

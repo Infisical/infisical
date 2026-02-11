@@ -29,7 +29,7 @@ import { crypto } from "@app/lib/crypto";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { AwsSecretsManagerSyncMappingBehavior } from "@app/services/secret-sync/aws-secrets-manager/aws-secrets-manager-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
-import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { getKeyWithSchema, matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TAwsSecretsManagerSyncWithCredentials } from "./aws-secrets-manager-sync-types";
@@ -314,7 +314,11 @@ const processTags = ({
 };
 
 export const AwsSecretsManagerSyncFns = {
-  syncSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (
+    secretSync: TAwsSecretsManagerSyncWithCredentials,
+    secretMap: TSecretMap,
+    unmodifiedSecretMap: TSecretMap // ie not schematized
+  ) => {
     const { destinationConfig, syncOptions, environment } = secretSync;
 
     const client = await getSecretsManagerClient(secretSync);
@@ -428,18 +432,24 @@ export const AwsSecretsManagerSyncFns = {
       // Many-To-One Mapping
 
       const secretValue = JSON.stringify(
-        Object.fromEntries(Object.entries(secretMap).map(([key, secretData]) => [key, secretData.value]))
+        Object.fromEntries(Object.entries(unmodifiedSecretMap).map(([key, secretData]) => [key, secretData.value]))
       );
 
-      if (awsSecretsRecord[destinationConfig.secretName]) {
+      const secretName = getKeyWithSchema({
+        key: destinationConfig.secretName,
+        environment: environment!.slug, // wouldn't be sync if undefined
+        schema: syncOptions.keySchema
+      });
+
+      if (awsSecretsRecord[secretName]) {
         await updateSecret(client, {
-          SecretId: destinationConfig.secretName,
+          SecretId: secretName,
           SecretString: secretValue,
           KmsKeyId: keyId
         });
       } else {
         await createSecret(client, {
-          Name: destinationConfig.secretName,
+          Name: secretName,
           SecretString: secretValue,
           KmsKeyId: keyId
         });
@@ -449,28 +459,28 @@ export const AwsSecretsManagerSyncFns = {
         const { tagsToAdd, tagKeysToRemove } = processTags({
           syncTagsRecord,
           awsTagsRecord: Object.fromEntries(
-            awsDescriptionsRecord[destinationConfig.secretName]?.Tags?.map((tag) => [tag.Key!, tag.Value!]) ?? []
+            awsDescriptionsRecord[secretName]?.Tags?.map((tag) => [tag.Key!, tag.Value!]) ?? []
           )
         });
 
         if (tagsToAdd.length) {
           try {
-            await addTags(client, destinationConfig.secretName, tagsToAdd);
+            await addTags(client, secretName, tagsToAdd);
           } catch (error) {
             throw new SecretSyncError({
               error,
-              secretKey: destinationConfig.secretName
+              secretKey: secretName
             });
           }
         }
 
         if (tagKeysToRemove.length) {
           try {
-            await removeTags(client, destinationConfig.secretName, tagKeysToRemove);
+            await removeTags(client, secretName, tagKeysToRemove);
           } catch (error) {
             throw new SecretSyncError({
               error,
-              secretKey: destinationConfig.secretName
+              secretKey: secretName
             });
           }
         }
@@ -487,7 +497,7 @@ export const AwsSecretsManagerSyncFns = {
     );
     const awsValuesRecord = await getSecretValuesRecord(client, awsSecretsRecord);
 
-    const { destinationConfig } = secretSync;
+    const { destinationConfig, environment, syncOptions } = secretSync;
 
     if (destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne) {
       return Object.fromEntries(
@@ -499,7 +509,13 @@ export const AwsSecretsManagerSyncFns = {
 
     // Many-To-One Mapping
 
-    const secretValueEntry = awsValuesRecord[destinationConfig.secretName];
+    const secretName = getKeyWithSchema({
+      key: destinationConfig.secretName,
+      environment: environment!.slug, // wouldn't be sync if undefined
+      schema: syncOptions.keySchema
+    });
+
+    const secretValueEntry = awsValuesRecord[secretName];
 
     if (!secretValueEntry) return {};
 
@@ -539,7 +555,13 @@ export const AwsSecretsManagerSyncFns = {
         }
       }
     } else {
-      await deleteSecret(client, destinationConfig.secretName);
+      const secretName = getKeyWithSchema({
+        key: destinationConfig.secretName,
+        environment: environment!.slug, // wouldn't be sync if undefined
+        schema: syncOptions.keySchema
+      });
+
+      await deleteSecret(client, secretName);
     }
   }
 };

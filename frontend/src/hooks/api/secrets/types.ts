@@ -274,12 +274,11 @@ export type TGetSecretReferencesDTO = {
   projectId: string;
 };
 
-export type TSecretReference = {
-  secretKey: string;
-  secretId: string;
+export type TSecretDependencyTreeNode = {
+  key: string;
   environment: string;
   secretPath: string;
-  referenceType: "nested" | "local";
+  children: TSecretDependencyTreeNode[];
 };
 
 export type SecretAccessListEntry = {

@@ -28,6 +28,7 @@ import { PamAccessAccountModal } from "../PamAccountsPage/components/PamAccessAc
 import { PamDeleteAccountModal } from "../PamAccountsPage/components/PamDeleteAccountModal";
 import { PamRequestAccountAccessModal } from "../PamAccountsPage/components/PamRequestAccountAccessModal";
 import { PamUpdateAccountModal } from "../PamAccountsPage/components/PamUpdateAccountModal";
+import { PamWebAccessModal } from "../PamAccountsPage/components/PamWebAccess";
 import { useAccessAwsIamAccount } from "../PamAccountsPage/components/useAccessAwsIamAccount";
 import {
   PamAccountCredentialsSection,
@@ -54,6 +55,7 @@ const PageContent = () => {
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "accessAccount",
+    "webAccess",
     "requestAccount",
     "deleteAccount"
   ] as const);
@@ -97,25 +99,28 @@ const PageContent = () => {
   };
 
   const handleAccess = async () => {
-    const fullAccountPath = `/${account.name}`;
-
     const { requiresApproval } = await checkPolicyMatch({
       policyType: ApprovalPolicyType.PamAccess,
       projectId: projectId!,
       inputs: {
-        accountPath: fullAccountPath
+        resourceName: account.resource.name,
+        accountName: account.name
       }
     });
 
     if (requiresApproval) {
-      handlePopUpOpen("requestAccount", { accountPath: fullAccountPath, accountAccessed: true });
+      handlePopUpOpen("requestAccount", {
+        resourceName: account.resource.name,
+        accountName: account.name,
+        accountAccessed: true
+      });
       return;
     }
 
     if (account.resource.resourceType === PamResourceType.AwsIam) {
-      accessAwsIam(account, fullAccountPath);
+      accessAwsIam(account);
     } else {
-      handlePopUpOpen("accessAccount", { account, accountPath: undefined });
+      handlePopUpOpen("accessAccount", { account });
     }
   };
 
@@ -147,15 +152,18 @@ const PageContent = () => {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <ProjectPermissionCan
-            I={ProjectPermissionPamAccountActions.Access}
-            a={ProjectPermissionSub.PamAccounts}
-          >
-            <Button variant="neutral" onClick={handleAccess} isPending={isAwsAccessPending}>
-              <LogInIcon />
-              Access
-            </Button>
-          </ProjectPermissionCan>
+          {/* Windows Server accounts cannot be accessed temporarily */}
+          {account.resource.resourceType !== PamResourceType.Windows && (
+            <ProjectPermissionCan
+              I={ProjectPermissionPamAccountActions.Access}
+              a={ProjectPermissionSub.PamAccounts}
+            >
+              <Button variant="neutral" onClick={handleAccess} isPending={isAwsAccessPending}>
+                <LogInIcon />
+                Access
+              </Button>
+            </ProjectPermissionCan>
+          )}
           <UnstableDropdownMenu>
             <UnstableDropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
@@ -225,14 +233,24 @@ const PageContent = () => {
         isOpen={popUp.accessAccount.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("accessAccount", isOpen)}
         account={popUp.accessAccount.data?.account}
-        accountPath={popUp.accessAccount.data?.accountPath}
+        projectId={projectId!}
+        onOpenWebAccess={() => {
+          handlePopUpOpen("webAccess", { account: popUp.accessAccount.data?.account });
+        }}
+      />
+
+      <PamWebAccessModal
+        isOpen={popUp.webAccess.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("webAccess", isOpen)}
+        account={popUp.webAccess.data?.account}
         projectId={projectId!}
       />
 
       <PamRequestAccountAccessModal
         isOpen={popUp.requestAccount.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("requestAccount", isOpen)}
-        accountPath={popUp.requestAccount.data?.accountPath}
+        resourceName={popUp.requestAccount.data?.resourceName}
+        accountName={popUp.requestAccount.data?.accountName}
         accountAccessed={popUp.requestAccount.data?.accountAccessed}
       />
 

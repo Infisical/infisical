@@ -126,6 +126,27 @@ const AwsIamConnectionDetails = ({
   </Detail>
 );
 
+const WindowsConnectionDetails = ({
+  connectionDetails
+}: {
+  connectionDetails: { protocol: string; hostname: string; port: number };
+}) => (
+  <>
+    <Detail>
+      <DetailLabel>Protocol</DetailLabel>
+      <DetailValue>{connectionDetails.protocol.toUpperCase()}</DetailValue>
+    </Detail>
+    <Detail>
+      <DetailLabel>Hostname</DetailLabel>
+      <DetailValue>{connectionDetails.hostname}</DetailValue>
+    </Detail>
+    <Detail>
+      <DetailLabel>Port</DetailLabel>
+      <DetailValue>{connectionDetails.port}</DetailValue>
+    </Detail>
+  </>
+);
+
 const ConnectionDetailsContent = ({ resource }: Props) => {
   switch (resource.resourceType) {
     case PamResourceType.Postgres:
@@ -139,6 +160,8 @@ const ConnectionDetailsContent = ({ resource }: Props) => {
       return <KubernetesConnectionDetails connectionDetails={resource.connectionDetails} />;
     case PamResourceType.AwsIam:
       return <AwsIamConnectionDetails connectionDetails={resource.connectionDetails} />;
+    case PamResourceType.Windows:
+      return <WindowsConnectionDetails connectionDetails={resource.connectionDetails} />;
     default:
       return null;
   }

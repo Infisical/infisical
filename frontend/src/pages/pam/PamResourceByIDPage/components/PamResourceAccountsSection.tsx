@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { format, formatDistance } from "date-fns";
+import { formatDistance } from "date-fns";
 import {
   CheckIcon,
   CopyIcon,
@@ -46,6 +46,7 @@ import { PamAddAccountModal } from "../../PamAccountsPage/components/PamAddAccou
 import { PamDeleteAccountModal } from "../../PamAccountsPage/components/PamDeleteAccountModal";
 import { PamRequestAccountAccessModal } from "../../PamAccountsPage/components/PamRequestAccountAccessModal";
 import { PamUpdateAccountModal } from "../../PamAccountsPage/components/PamUpdateAccountModal";
+import { PamWebAccessModal } from "../../PamAccountsPage/components/PamWebAccess";
 import { useAccessAwsIamAccount } from "../../PamAccountsPage/components/useAccessAwsIamAccount";
 
 type Props = {
@@ -64,6 +65,7 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "addAccount",
     "accessAccount",
+    "webAccess",
     "requestAccount",
     "updateAccount",
     "deleteAccount"
@@ -75,7 +77,6 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
   });
 
   const accounts = accountsData?.accounts || [];
-  const folderPaths = accountsData?.folderPaths || {};
 
   const [copiedAccountId, setCopiedAccountId] = useToggle(false);
 
@@ -108,29 +109,28 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
   };
 
   const accessAccount = async (account: TPamAccount) => {
-    let fullAccountPath = `/${account.name}`;
-    const folderPath = account.folderId ? folderPaths[account.folderId] : undefined;
-    if (folderPath) {
-      fullAccountPath = `${folderPath}/${account.name}`;
-    }
-
     const { requiresApproval } = await checkPolicyMatch({
       policyType: ApprovalPolicyType.PamAccess,
       projectId: projectId!,
       inputs: {
-        accountPath: fullAccountPath
+        resourceName: resource.name,
+        accountName: account.name
       }
     });
 
     if (requiresApproval) {
-      handlePopUpOpen("requestAccount", { accountPath: fullAccountPath, accountAccessed: true });
+      handlePopUpOpen("requestAccount", {
+        resourceName: resource.name,
+        accountName: account.name,
+        accountAccessed: true
+      });
       return;
     }
 
     if (account.resource.resourceType === PamResourceType.AwsIam) {
-      accessAwsIam(account, fullAccountPath);
+      accessAwsIam(account);
     } else {
-      handlePopUpOpen("accessAccount", { account, accountPath: folderPath });
+      handlePopUpOpen("accessAccount", { account });
     }
   };
 
@@ -165,22 +165,20 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
           <UnstableTableHeader>
             <UnstableTableRow>
               <UnstableTableHead>Account Name</UnstableTableHead>
-              <UnstableTableHead>Rotation</UnstableTableHead>
-              <UnstableTableHead>Created</UnstableTableHead>
               <UnstableTableHead className="w-5" />
             </UnstableTableRow>
           </UnstableTableHeader>
           <UnstableTableBody>
             {isPending && (
               <UnstableTableRow>
-                <UnstableTableCell colSpan={4} className="text-center text-muted">
+                <UnstableTableCell colSpan={2} className="text-center text-muted">
                   Loading accounts...
                 </UnstableTableCell>
               </UnstableTableRow>
             )}
             {!isPending && accounts.length === 0 && (
               <UnstableTableRow>
-                <UnstableTableCell colSpan={4}>
+                <UnstableTableCell colSpan={2}>
                   <UnstableEmpty className="border-0 bg-transparent py-8 shadow-none">
                     <UnstableEmptyHeader>
                       <UnstableEmptyTitle>No accounts found</UnstableEmptyTitle>
@@ -191,9 +189,6 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
             )}
             {accounts.map((account) => {
               const isAwsIamAccount = resource.resourceType === PamResourceType.AwsIam;
-              const rotationEnabled = !isAwsIamAccount
-                ? (account as { rotationEnabled?: boolean }).rotationEnabled
-                : undefined;
               const rotationStatus = !isAwsIamAccount
                 ? (account as { rotationStatus?: string | null }).rotationStatus
                 : undefined;
@@ -236,51 +231,35 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                         )}
                       </div>
                       {account.description && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="line-clamp-1 text-xs text-muted">
-                              {account.description}
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent>{account.description}</TooltipContent>
-                        </Tooltip>
+                        <span className="line-clamp-1 text-xs text-muted">
+                          {account.description}
+                        </span>
                       )}
                     </div>
                   </UnstableTableCell>
                   <UnstableTableCell>
-                    {isAwsIamAccount ? (
-                      <Badge variant="neutral" className="text-xs">
-                        N/A
-                      </Badge>
-                    ) : (
-                      <Badge variant={rotationEnabled ? "success" : "neutral"} className="text-xs">
-                        {rotationEnabled ? "Enabled" : "Disabled"}
-                      </Badge>
-                    )}
-                  </UnstableTableCell>
-                  <UnstableTableCell className="text-muted">
-                    {format(new Date(account.createdAt), "MM/dd/yyyy")}
-                  </UnstableTableCell>
-                  <UnstableTableCell>
                     <div className="flex items-center gap-2">
-                      <ProjectPermissionCan
-                        I={ProjectPermissionPamAccountActions.Access}
-                        a={ProjectPermissionSub.PamAccounts}
-                      >
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            accessAccount(account);
-                          }}
-                          isPending={loadingAccountId === account.id}
-                          isDisabled={loadingAccountId === account.id}
+                      {/* Temporarily disable accessing Windows Server accounts */}
+                      {resource.resourceType !== PamResourceType.Windows && (
+                        <ProjectPermissionCan
+                          I={ProjectPermissionPamAccountActions.Access}
+                          a={ProjectPermissionSub.PamAccounts}
                         >
-                          <LogInIcon />
-                          Connect
-                        </Button>
-                      </ProjectPermissionCan>
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              accessAccount(account);
+                            }}
+                            isPending={loadingAccountId === account.id}
+                            isDisabled={loadingAccountId === account.id}
+                          >
+                            <LogInIcon />
+                            Connect
+                          </Button>
+                        </ProjectPermissionCan>
+                      )}
                       <UnstableDropdownMenu>
                         <UnstableDropdownMenuTrigger asChild>
                           <UnstableIconButton variant="ghost" size="xs">
@@ -359,14 +338,24 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
         isOpen={popUp.accessAccount.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("accessAccount", isOpen)}
         account={popUp.accessAccount.data?.account}
-        accountPath={popUp.accessAccount.data?.accountPath}
+        projectId={projectId!}
+        onOpenWebAccess={() => {
+          handlePopUpOpen("webAccess", { account: popUp.accessAccount.data?.account });
+        }}
+      />
+
+      <PamWebAccessModal
+        isOpen={popUp.webAccess.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("webAccess", isOpen)}
+        account={popUp.webAccess.data?.account}
         projectId={projectId!}
       />
 
       <PamRequestAccountAccessModal
         isOpen={popUp.requestAccount.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("requestAccount", isOpen)}
-        accountPath={popUp.requestAccount.data?.accountPath}
+        resourceName={popUp.requestAccount.data?.resourceName}
+        accountName={popUp.requestAccount.data?.accountName}
         accountAccessed={popUp.requestAccount.data?.accountAccessed}
       />
 

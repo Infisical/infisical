@@ -65,26 +65,24 @@ export const pkiSyncCleanupQueueServiceFactory = ({
       QueueName.PkiSyncCleanup // just a job id
     );
 
-    await queueService.startPg<QueueName.PkiSyncCleanup>(
-      QueueJobs.PkiSyncCleanup,
-      async () => {
-        try {
-          logger.info(`${QueueName.PkiSyncCleanup}: queue task started`);
-          await syncExpiredCertificatesForPkiSyncs();
-          logger.info(`${QueueName.PkiSyncCleanup}: queue task completed`);
-        } catch (error) {
-          logger.error(error, `${QueueName.PkiSyncCleanup}: PKI sync cleanup failed`);
-          throw error;
-        }
-      },
-      {
-        batchSize: 1,
-        workerCount: 1,
-        pollingIntervalSeconds: 120
+    queueService.start(QueueName.PkiSyncCleanup, async () => {
+      try {
+        logger.info(`${QueueName.PkiSyncCleanup}: queue task started`);
+        await syncExpiredCertificatesForPkiSyncs();
+        logger.info(`${QueueName.PkiSyncCleanup}: queue task completed`);
+      } catch (error) {
+        logger.error(error, `${QueueName.PkiSyncCleanup}: PKI sync cleanup failed`);
+        throw error;
       }
-    );
+    });
 
-    await queueService.schedulePg(QueueJobs.PkiSyncCleanup, "0 0 * * *", undefined, { tz: "UTC" });
+    await queueService.queue(QueueName.PkiSyncCleanup, QueueJobs.PkiSyncCleanup, undefined, {
+      jobId: QueueJobs.PkiSyncCleanup,
+      repeat: {
+        pattern: "0 0 * * *",
+        key: QueueJobs.PkiSyncCleanup
+      }
+    });
   };
 
   return {
