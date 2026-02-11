@@ -12,6 +12,7 @@ import { runMigrations } from "./auto-start-migrations";
 import { initAuditLogDbConnection, initDbConnection } from "./db";
 import { hsmServiceFactory } from "./ee/services/hsm/hsm-service";
 import { keyStoreFactory } from "./keystore/keystore";
+import { buildClickHouseFromConfig } from "./lib/config/clickhouse";
 import { formatSmtpConfig, getDatabaseCredentials, getHsmConfig, initEnvConfig } from "./lib/config/env";
 import { buildRedisFromConfig } from "./lib/config/redis";
 import { axiosResponseInterceptor } from "./lib/config/request";
@@ -68,7 +69,13 @@ const run = async () => {
       })
     : undefined;
 
-  await runMigrations({ applicationDb: db, auditLogDb, logger });
+  const clickhouse = buildClickHouseFromConfig(envConfig);
+  await runMigrations({
+    applicationDb: db,
+    auditLogDb,
+    clickhouseClient: clickhouse,
+    logger
+  });
 
   const smtp = smtpServiceFactory(formatSmtpConfig());
 
@@ -90,6 +97,7 @@ const run = async () => {
     queue,
     keyStore,
     redis,
+    clickhouse,
     envConfig
   });
 

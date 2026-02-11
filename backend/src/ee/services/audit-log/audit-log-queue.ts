@@ -1,6 +1,10 @@
+import type { ClickHouseClient } from "@clickhouse/client";
 import { randomUUID } from "crypto";
 
+import type { TProjects } from "@app/db/schemas";
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
+import { getConfig } from "@app/lib/config/env";
+import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -14,6 +18,7 @@ type TAuditLogQueueServiceFactoryDep = {
   queueService: TQueueServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  clickhouseClient: ClickHouseClient | null;
 };
 
 export type TAuditLogQueueServiceFactory = {
@@ -29,8 +34,12 @@ export const auditLogQueueServiceFactory = async ({
   queueService,
   projectDAL,
   licenseService,
-  auditLogStreamService
+  auditLogStreamService,
+  clickhouseClient
 }: TAuditLogQueueServiceFactoryDep): Promise<TAuditLogQueueServiceFactory> => {
+  const { CLICKHOUSE_AUDIT_LOG_ENABLED, CLICKHOUSE_AUDIT_LOG_TABLE_NAME, CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS } =
+    getConfig();
+
   const pushToLog = async (data: TCreateAuditLogDTO) => {
     await queueService.queue<QueueName.AuditLog>(QueueName.AuditLog, QueueJobs.AuditLog, data, {
       removeOnFail: {
@@ -45,7 +54,7 @@ export const auditLogQueueServiceFactory = async ({
     const { actor, event, ipAddress, projectId, userAgent, userAgentType } = job.data;
     let { orgId } = job.data;
     const MS_IN_DAY = 24 * 60 * 60 * 1000;
-    let project;
+    let project: TProjects | undefined;
 
     if (!orgId) {
       // it will never be undefined for both org and project id
@@ -67,21 +76,59 @@ export const auditLogQueueServiceFactory = async ({
 
       const ttl = ttlInDays * MS_IN_DAY;
 
-      const auditLog = await auditLogDAL.create({
-        actor: actor.type,
-        actorMetadata: actor.metadata,
-        userAgent,
-        projectId,
-        projectName: project?.name,
-        ipAddress,
-        orgId,
-        eventType: event.type,
-        expiresAt: new Date(Date.now() + ttl),
-        eventMetadata: event.metadata,
-        userAgentType
-      });
+      const now = new Date();
+      const auditLogId = randomUUID();
 
-      await auditLogStreamService.streamLog(orgId, auditLog);
+      const results = await Promise.allSettled([
+        async () => {
+          const auditLog = await auditLogDAL.create({
+            actor: actor.type,
+            actorMetadata: actor.metadata,
+            userAgent,
+            projectId,
+            projectName: project?.name,
+            ipAddress,
+            orgId,
+            eventType: event.type,
+            expiresAt: new Date(Date.now() + ttl),
+            eventMetadata: event.metadata,
+            userAgentType
+          });
+          await auditLogStreamService.streamLog(orgId!, auditLog);
+        },
+        ...(clickhouseClient && CLICKHOUSE_AUDIT_LOG_ENABLED
+          ? [
+              clickhouseClient.insert({
+                table: CLICKHOUSE_AUDIT_LOG_TABLE_NAME,
+                clickhouse_settings: CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS,
+                values: [
+                  {
+                    id: auditLogId,
+                    actor: actor.type,
+                    actorMetadata: actor.metadata ?? {},
+                    ipAddress: ipAddress ?? "",
+                    eventType: event.type,
+                    eventMetadata: event.metadata ?? {},
+                    userAgent: userAgent ?? "",
+                    userAgentType: userAgentType ?? "",
+                    createdAt: now,
+                    projectId: projectId ?? "",
+                    orgId
+                  }
+                ],
+                format: "JSONEachRow"
+              })
+            ]
+          : [])
+      ]);
+
+      const opNames = ["auditLogDAL", "clickhouseClient"];
+      for (let i = 0; i < results.length; i += 1) {
+        const result = results[i];
+        if (result.status === "rejected") {
+          logger.error(result.reason, `Failed to insert audit log [op=${opNames[i]}] [auditLogId=${auditLogId}]`);
+        }
+      }
     }
   });
 
