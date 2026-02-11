@@ -3736,15 +3736,31 @@ export const secretV2BridgeServiceFactory = ({
     });
 
     // Cascade redaction to child versions (replicated secret versions)
-    // This handles the case where secrets are replicated and the parent version is redacted
-    const redactChildVersions = async (parentVersionIds: string[]): Promise<void> => {
+    const MAX_REDACTION_DEPTH = 100;
+    const visitedVersionIds = new Set<string>();
+
+    const redactChildVersions = async (parentVersionIds: string[], depth = 0): Promise<void> => {
       if (!parentVersionIds.length) return;
+      if (depth >= MAX_REDACTION_DEPTH) {
+        logger.warn(
+          { versionId, depth, maxDepth: MAX_REDACTION_DEPTH },
+          "Max redaction depth reached, stopping cascade"
+        );
+        return;
+      }
 
       const childVersions = await secretVersionDAL.findByParentVersionIds(parentVersionIds);
       if (!childVersions.length) return;
 
-      // Redact all child versions that aren't already redacted
-      const childVersionIdsToRedact = childVersions.filter((cv) => !cv.isRedacted).map((cv) => cv.id);
+      // filter out already visited versions to prevent infinite loops
+      const unvisitedChildren = childVersions.filter((cv) => !visitedVersionIds.has(cv.id));
+      if (!unvisitedChildren.length) return;
+
+      // mark versions as visited
+      unvisitedChildren.forEach((cv) => visitedVersionIds.add(cv.id));
+
+      // redact all child versions that aren't already redacted
+      const childVersionIdsToRedact = unvisitedChildren.filter((cv) => !cv.isRedacted).map((cv) => cv.id);
 
       if (childVersionIdsToRedact.length) {
         await secretVersionDAL.update(
@@ -3758,8 +3774,11 @@ export const secretV2BridgeServiceFactory = ({
         );
       }
 
-      // Recursively redact grandchildren
-      await redactChildVersions(childVersions.map((cv) => cv.id));
+      // recursively redact grandchildren
+      await redactChildVersions(
+        unvisitedChildren.map((cv) => cv.id),
+        depth + 1
+      );
     };
 
     await redactChildVersions([versionId]);
