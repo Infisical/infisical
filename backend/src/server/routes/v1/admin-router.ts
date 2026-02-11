@@ -16,7 +16,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { invalidateCacheLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
-import { GenericResourceNameSchema } from "@app/server/lib/schemas";
+import { OrgNameSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -873,7 +873,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        name: GenericResourceNameSchema,
+        name: OrgNameSchema,
         inviteAdminEmails: z.string().email().array().min(1)
       }),
       response: {
