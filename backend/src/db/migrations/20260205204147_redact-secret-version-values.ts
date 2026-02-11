@@ -13,8 +13,10 @@ export async function up(knex: Knex): Promise<void> {
 
   if (missingColumns) {
     await knex.schema.alterTable(TableName.SecretVersionV2, (table) => {
-      if (!hasParentVersionIdColumn)
+      if (!hasParentVersionIdColumn) {
         table.uuid("parentVersionId").references("id").inTable(TableName.SecretVersionV2).onDelete("SET NULL");
+        table.index("parentVersionId");
+      }
 
       if (!hasIsRedactedColumn) table.boolean("isRedacted").defaultTo(false).notNullable();
       if (!hasRedactedAtColumn) table.timestamp("redactedAt").nullable();
@@ -33,10 +35,13 @@ export async function down(knex: Knex): Promise<void> {
 
   if (hasColumns) {
     await knex.schema.alterTable(TableName.SecretVersionV2, (table) => {
+      if (hasParentVersionIdColumn) {
+        table.dropIndex("parentVersionId");
+        table.dropColumn("parentVersionId");
+      }
       if (hasIsRedactedColumn) table.dropColumn("isRedacted");
       if (hasRedactedAtColumn) table.dropColumn("redactedAt");
       if (hasRedactedByUserColumn) table.dropColumn("redactedByUserId");
-      if (hasParentVersionIdColumn) table.dropColumn("parentVersionId");
     });
   }
 }
