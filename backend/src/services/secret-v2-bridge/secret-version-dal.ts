@@ -478,6 +478,16 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByParentVersionIds = async (parentVersionIds: string[], tx?: Knex): Promise<TSecretVersionsV2[]> => {
+    if (!parentVersionIds.length) return [];
+    try {
+      const docs = await (tx || db)(TableName.SecretVersionV2).whereIn("parentVersionId", parentVersionIds).select("*");
+      return docs.map((doc) => SecretVersionsV2Schema.parse(doc));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindByParentVersionIds" });
+    }
+  };
+
   return {
     ...secretVersionV2Orm,
     pruneExcessVersions,
@@ -488,6 +498,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
     findBySecretId,
     findByIdsWithLatestVersion,
     findByIdAndPreviousVersion,
-    findOne
+    findOne,
+    findByParentVersionIds
   };
 };

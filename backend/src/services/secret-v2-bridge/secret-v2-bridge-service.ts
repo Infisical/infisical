@@ -3689,6 +3689,35 @@ export const secretV2BridgeServiceFactory = ({
       redactedByUserId: actorId
     });
 
+    // Cascade redaction to child versions (replicated secret versions)
+    // This handles the case where secrets are replicated and the parent version is redacted
+    const redactChildVersions = async (parentVersionIds: string[]): Promise<void> => {
+      if (!parentVersionIds.length) return;
+
+      const childVersions = await secretVersionDAL.findByParentVersionIds(parentVersionIds);
+      if (!childVersions.length) return;
+
+      // Redact all child versions that aren't already redacted
+      const childVersionIdsToRedact = childVersions.filter((cv) => !cv.isRedacted).map((cv) => cv.id);
+
+      if (childVersionIdsToRedact.length) {
+        await secretVersionDAL.update(
+          { $in: { id: childVersionIdsToRedact } },
+          {
+            encryptedValue,
+            isRedacted: true,
+            redactedAt: new Date(),
+            redactedByUserId: actorId
+          }
+        );
+      }
+
+      // Recursively redact grandchildren
+      await redactChildVersions(childVersions.map((cv) => cv.id));
+    };
+
+    await redactChildVersions([versionId]);
+
     return {
       secretVersion: updatedSecretVersion,
       projectId: secretVersion.projectId,

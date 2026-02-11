@@ -97,7 +97,8 @@ export const fnSecretBulkInsert = async ({
             }))
           )
         : null,
-      secretId: newSecretGroupedByKeyName[el.key][0].id
+      secretId: newSecretGroupedByKeyName[el.key][0].id,
+      parentVersionId: inputSecrets?.[index]?.parentSecretVersionId
     })),
     tx
   );
@@ -236,7 +237,8 @@ export const fnSecretBulkUpdate = async ({
         secretId,
         userActorId,
         identityActorId,
-        actorType
+        actorType,
+        parentVersionId: inputSecrets?.[index]?.data?.parentSecretVersionId
       })
     ),
     tx

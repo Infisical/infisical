@@ -31,7 +31,8 @@ export const SecretVersionsV2Schema = z.object({
   actorType: z.string().nullable().optional(),
   isRedacted: z.boolean().default(false),
   redactedAt: z.date().nullable().optional(),
-  redactedByUserId: z.string().uuid().nullable().optional()
+  redactedByUserId: z.string().uuid().nullable().optional(),
+  parentVersionId: z.string().uuid().nullable().optional()
 });
 
 export type TSecretVersionsV2 = z.infer<typeof SecretVersionsV2Schema>;
