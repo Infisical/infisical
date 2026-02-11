@@ -770,7 +770,7 @@ export const orgServiceFactory = ({
   };
   /*
    * Org membership management
-   * Not another service because it has close ties with how an org works doesn't make sense to seperate them
+   * Not another service because it has close ties with how an org works doesn't make sense to separate them
    * */
   const updateOrgMembership = async ({
     role,

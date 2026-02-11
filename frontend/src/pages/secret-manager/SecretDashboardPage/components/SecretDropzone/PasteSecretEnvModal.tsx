@@ -150,7 +150,7 @@ export const PasteSecretEnvModal = ({
       </ModalTrigger>
       <ModalContent
         className="max-w-2xl"
-        title="Past Secret Values"
+        title="Paste Secret Values"
         subTitle="Paste values in .env, .json or .yml format"
       >
         <PasteEnvForm

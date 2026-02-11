@@ -557,7 +557,7 @@ export const secretQueueFactory = ({
   };
 
   const syncSecrets = async <T extends boolean = false>({
-    // seperate de-dupe queue for integration sync and replication sync
+    // separate de-dupe queue for integration sync and replication sync
     _deDupeQueue: deDupeQueue = {},
     _depth: depth = 0,
     _deDupeReplicationQueue: deDupeReplicationQueue = {},
