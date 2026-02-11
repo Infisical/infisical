@@ -560,12 +560,14 @@ export enum EventType {
   PAM_FOLDER_UPDATE = "pam-folder-update",
   PAM_FOLDER_DELETE = "pam-folder-delete",
   PAM_ACCOUNT_LIST = "pam-account-list",
+  PAM_ACCOUNT_GET = "pam-account-get",
   PAM_ACCOUNT_ACCESS = "pam-account-access",
   PAM_ACCOUNT_CREATE = "pam-account-create",
   PAM_ACCOUNT_UPDATE = "pam-account-update",
   PAM_ACCOUNT_DELETE = "pam-account-delete",
   PAM_ACCOUNT_CREDENTIAL_ROTATION = "pam-account-credential-rotation",
   PAM_ACCOUNT_CREDENTIAL_ROTATION_FAILED = "pam-account-credential-rotation-failed",
+  PAM_WEB_ACCESS_SESSION_TICKET_CREATED = "pam-web-access-session-ticket-created",
   PAM_RESOURCE_LIST = "pam-resource-list",
   PAM_RESOURCE_GET = "pam-resource-get",
   PAM_RESOURCE_CREATE = "pam-resource-create",
@@ -777,6 +779,7 @@ interface CreateSubOrganizationEvent {
   type: EventType.CREATE_SUB_ORGANIZATION;
   metadata: {
     name: string;
+    slug: string;
     organizationId: string;
   };
 }
@@ -785,6 +788,7 @@ interface UpdateSubOrganizationEvent {
   type: EventType.UPDATE_SUB_ORGANIZATION;
   metadata: {
     name: string;
+    slug: string;
     organizationId: string;
   };
 }
@@ -4329,7 +4333,14 @@ interface PamAccountListEvent {
   type: EventType.PAM_ACCOUNT_LIST;
   metadata: {
     accountCount: number;
-    folderCount: number;
+  };
+}
+
+interface PamAccountGetEvent {
+  type: EventType.PAM_ACCOUNT_GET;
+  metadata: {
+    accountId: string;
+    accountName: string;
   };
 }
 
@@ -4337,9 +4348,18 @@ interface PamAccountAccessEvent {
   type: EventType.PAM_ACCOUNT_ACCESS;
   metadata: {
     accountId: string;
-    accountPath: string;
+    resourceName: string;
     accountName: string;
     duration?: string;
+  };
+}
+
+interface PamWebAccessSessionTicketCreatedEvent {
+  type: EventType.PAM_WEB_ACCESS_SESSION_TICKET_CREATED;
+  metadata: {
+    accountId: string;
+    resourceName: string;
+    accountName: string;
   };
 }
 
@@ -5418,7 +5438,9 @@ export type Event =
   | PamFolderUpdateEvent
   | PamFolderDeleteEvent
   | PamAccountListEvent
+  | PamAccountGetEvent
   | PamAccountAccessEvent
+  | PamWebAccessSessionTicketCreatedEvent
   | PamAccountCreateEvent
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent

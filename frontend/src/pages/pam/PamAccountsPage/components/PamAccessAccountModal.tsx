@@ -1,39 +1,36 @@
 import { useMemo, useState } from "react";
 import { faCopy } from "@fortawesome/free-regular-svg-icons";
-import { faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { faTerminal, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import ms from "ms";
 
 import { createNotification } from "@app/components/notifications";
-import { FormLabel, IconButton, Input, Modal, ModalContent } from "@app/components/v2";
+import { Button, FormLabel, IconButton, Input, Modal, ModalContent } from "@app/components/v2";
 import { PamResourceType, TPamAccount } from "@app/hooks/api/pam";
+
+// Feature flag — set to false to hide the browser web access option while it's in development
+const ENABLE_WEB_ACCESS = false;
 
 type Props = {
   account?: TPamAccount;
-  accountPath?: string;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  onOpenWebAccess?: () => void;
   projectId: string;
 };
 
 export const PamAccessAccountModal = ({
   isOpen,
   onOpenChange,
+  onOpenWebAccess,
   account,
-  projectId,
-  accountPath
+  projectId
 }: Props) => {
   const [duration, setDuration] = useState("4h");
 
   const { protocol, hostname, port } = window.location;
   const portSuffix = port && port !== "80" && port !== "443" ? `:${port}` : "";
   const siteURL = `${protocol}//${hostname}${portSuffix}`;
-
-  let fullAccountPath = `/${account?.name ?? ""}`;
-  if (accountPath) {
-    const path = accountPath.replace(/^\/+|\/+$/g, "");
-    fullAccountPath = `/${path}/${account?.name ?? ""}`;
-  }
 
   const isDurationValid = useMemo(() => duration && ms(duration || "1s") > 0, [duration]);
 
@@ -82,27 +79,33 @@ export const PamAccessAccountModal = ({
     switch (account.resource.resourceType) {
       case PamResourceType.Postgres:
       case PamResourceType.MySQL:
-        return `infisical pam db access-account ${fullAccountPath} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
+        return `infisical pam db access --resource ${account.resource.name} --account ${account.name} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
       case PamResourceType.Redis:
-        return `infisical pam redis access-account ${fullAccountPath} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
+        return `infisical pam redis access --resource ${account.resource.name} --account ${account.name} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
       case PamResourceType.SSH:
-        return `infisical pam ssh access-account ${fullAccountPath} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
+        return `infisical pam ssh access --resource ${account.resource.name} --account ${account.name} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
       case PamResourceType.Kubernetes:
-        return `infisical pam kubernetes access-account ${fullAccountPath} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
+        return `infisical pam kubernetes access --resource ${account.resource.name} --account ${account.name} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
       default:
         return "";
     }
-  }, [account, fullAccountPath, projectId, cliDuration, siteURL]);
+  }, [account, projectId, cliDuration, siteURL]);
 
   if (!account) return null;
+
+  const showWebAccess =
+    ENABLE_WEB_ACCESS &&
+    account.resource.resourceType === PamResourceType.Postgres &&
+    onOpenWebAccess;
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
         className="max-w-2xl pb-2"
         title="Access Account"
-        subTitle={`Access ${account.name} using a CLI command.`}
+        subTitle={`Connect to ${account.name}`}
       >
+        <p className="mb-2 text-sm text-mineshaft-300">Connect using the Infisical CLI</p>
         <FormLabel
           label="Duration"
           tooltipText="The maximum duration of your session. Ex: 1h, 3w, 30d"
@@ -144,6 +147,23 @@ export const PamAccessAccountModal = ({
           <span>Install the Infisical CLI</span>
           <FontAwesomeIcon icon={faUpRightFromSquare} className="size-3" />
         </a>
+        {showWebAccess && (
+          <>
+            <div className="my-4 border-t border-mineshaft-600" />
+            <p className="mb-2 text-sm text-mineshaft-300">Connect directly from your browser</p>
+            <Button
+              onClick={() => {
+                onOpenChange(false);
+                onOpenWebAccess();
+              }}
+              leftIcon={<FontAwesomeIcon icon={faTerminal} />}
+              className="w-full"
+              colorSchema="primary"
+            >
+              Connect in Browser
+            </Button>
+          </>
+        )}
       </ModalContent>
     </Modal>
   );

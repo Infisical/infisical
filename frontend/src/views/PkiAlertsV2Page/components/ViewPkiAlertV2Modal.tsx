@@ -252,6 +252,11 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
                                 )}
                               </div>
                             )}
+                            {channel.channelType === PkiAlertChannelTypeV2.SLACK && (
+                              <div className="mt-1 truncate text-sm text-mineshaft-400">
+                                Slack webhook configured
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))}

@@ -87,6 +87,7 @@ import { pamResourceDALFactory } from "@app/ee/services/pam-resource/pam-resourc
 import { pamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
 import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { pamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
+import { pamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam-web-access-service";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { pitServiceFactory } from "@app/ee/services/pit/pit-service";
@@ -171,6 +172,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TQueueServiceFactory } from "@app/queue";
+import { queueJobsDALFactory } from "@app/queue/queue-jobs-dal";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { registerSecretScanningV2Webhooks } from "@app/server/plugins/secret-scanner-v2";
 import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue/access-token-queue";
@@ -493,6 +495,7 @@ export const registerRoutes = async (
 
   const reminderDAL = reminderDALFactory(db);
   const reminderRecipientDAL = reminderRecipientDALFactory(db);
+  const queueJobsDAL = queueJobsDALFactory(db);
 
   const integrationDAL = integrationDALFactory(db);
   const offlineUsageReportDAL = offlineUsageReportDALFactory(db);
@@ -766,7 +769,7 @@ export const registerRoutes = async (
     auditLogStreamService
   });
 
-  const notificationQueue = await notificationQueueServiceFactory({
+  const notificationQueue = notificationQueueServiceFactory({
     userNotificationDAL,
     queueService
   });
@@ -2039,7 +2042,8 @@ export const registerRoutes = async (
     keyValueStoreDAL,
     approvalRequestDAL,
     approvalRequestGrantsDAL,
-    certificateRequestDAL
+    certificateRequestDAL,
+    queueJobsDAL
   });
 
   const healthAlert = healthAlertServiceFactory({
@@ -2551,7 +2555,7 @@ export const registerRoutes = async (
     notificationService
   });
 
-  const secretScanningV2Queue = await secretScanningV2QueueServiceFactory({
+  const secretScanningV2Queue = secretScanningV2QueueServiceFactory({
     auditLogService,
     secretScanningV2DAL,
     queueService,
@@ -2593,6 +2597,7 @@ export const registerRoutes = async (
 
   const pamResourceService = pamResourceServiceFactory({
     pamResourceDAL,
+    pamAccountDAL,
     permissionService,
     kmsService,
     gatewayV2Service
@@ -2614,7 +2619,6 @@ export const registerRoutes = async (
     pamAccountDAL,
     gatewayV2Service,
     kmsService,
-    pamFolderDAL,
     pamResourceDAL,
     pamSessionDAL,
     permissionService,
@@ -2640,6 +2644,14 @@ export const registerRoutes = async (
     projectDAL,
     permissionService,
     kmsService
+  });
+
+  const pamWebAccessService = pamWebAccessServiceFactory({
+    pamAccountDAL,
+    pamResourceDAL,
+    permissionService,
+    auditLogService,
+    tokenService
   });
 
   const aiMcpServerService = aiMcpServerServiceFactory({
@@ -2684,7 +2696,8 @@ export const registerRoutes = async (
     appConnectionService,
     vaultExternalMigrationConfigDAL,
     secretService,
-    auditLogService
+    auditLogService,
+    gatewayV2Service
   });
 
   // setup the communication with license key server
@@ -2727,16 +2740,14 @@ export const registerRoutes = async (
   await pkiSyncCleanup.init();
   pkiDiscoveryQueue.startPkiDiscoveryScanQueue();
   await pamAccountRotation.init();
-  await pamSessionExpirationService.init();
+  pamSessionExpirationService.init();
   await dailyReminderQueueService.startDailyRemindersJob();
   await dailyReminderQueueService.startSecretReminderMigrationJob();
   await dailyExpiringPkiItemAlert.startSendingAlerts();
   await pkiSubscriberQueue.startDailyAutoRenewalJob();
   await pkiAlertV2Queue.init();
   await certificateV3Queue.init();
-  await certificateIssuanceQueue.initializeCertificateIssuanceQueue();
   await microsoftTeamsService.start();
-  await dynamicSecretQueueService.init();
   await eventBusService.init();
 
   // inject all services
@@ -2864,6 +2875,7 @@ export const registerRoutes = async (
     pamResource: pamResourceService,
     pamAccount: pamAccountService,
     pamSession: pamSessionService,
+    pamWebAccess: pamWebAccessService,
     mfaSession: mfaSessionService,
     upgradePath: upgradePathService,
 

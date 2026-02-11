@@ -680,6 +680,27 @@ export const pitServiceFactory = ({
       }
 
       if (policy) {
+        // When a policy exists, secret changes go through approval workflow
+        // but folder changes should still be committed immediately since they're not affected by approval policies
+        let commitId: string | undefined;
+        if (commitChanges.length > 0) {
+          const commit = await folderCommitService.createCommit(
+            {
+              actor: {
+                type: actor || ActorType.PLATFORM,
+                metadata: {
+                  id: actorId
+                }
+              },
+              message,
+              folderId: targetFolder.id,
+              changes: commitChanges
+            },
+            trx
+          );
+          commitId = commit?.id;
+        }
+
         if (
           (changes.secrets?.create?.length ?? 0) > 0 ||
           (changes.secrets?.update?.length ?? 0) > 0 ||
@@ -724,11 +745,13 @@ export const pitServiceFactory = ({
           });
           return {
             approvalId: approval.id,
+            commitId,
             folderChanges,
             secretMutationEvents
           };
         }
         return {
+          commitId,
           folderChanges,
           secretMutationEvents
         };

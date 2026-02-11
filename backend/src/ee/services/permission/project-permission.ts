@@ -264,6 +264,10 @@ export enum ProjectPermissionApprovalRequestGrantActions {
   Revoke = "revoke"
 }
 
+export enum ProjectPermissionSecretApprovalRequestActions {
+  Read = "read"
+}
+
 export const isCustomProjectRole = (slug: string) =>
   !Object.values(ProjectMembershipRole).includes(slug as ProjectMembershipRole);
 
@@ -286,6 +290,7 @@ export enum ProjectPermissionSub {
   DynamicSecrets = "dynamic-secrets",
   SecretRollback = "secret-rollback",
   SecretApproval = "secret-approval",
+  SecretApprovalRequest = "secret-approval-request",
   SecretRotation = "secret-rotation",
   Commits = "commits",
   Identity = "identity",
@@ -424,7 +429,6 @@ export type McpEndpointSubjectFields = {
 export type PamAccountSubjectFields = {
   resourceName: string;
   accountName: string;
-  accountPath: string;
 };
 
 export type ProjectPermissionSet =
@@ -574,7 +578,8 @@ export type ProjectPermissionSet =
       )
     ]
   | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
-  | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants];
+  | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
+  | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest];
 
 const SECRET_PATH_MISSING_SLASH_ERR_MSG = "Invalid Secret Path; it must start with a '/'";
 const SECRET_PATH_PERMISSION_OPERATOR_SCHEMA = z.union([
@@ -597,27 +602,7 @@ const SECRET_PATH_PERMISSION_OPERATOR_SCHEMA = z.union([
     })
     .partial()
 ]);
-const PAM_ACCOUNT_PATH_MISSING_SLASH_ERR_MSG = "Invalid Secret Path; it must start with a '/'";
-const PAM_ACCOUNT_PATH_PERMISSION_OPERATOR_SCHEMA = z.union([
-  z.string().refine((val) => val.startsWith("/"), SECRET_PATH_MISSING_SLASH_ERR_MSG),
-  z
-    .object({
-      [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ].refine(
-        (val) => val.startsWith("/"),
-        PAM_ACCOUNT_PATH_MISSING_SLASH_ERR_MSG
-      ),
-      [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ].refine(
-        (val) => val.startsWith("/"),
-        PAM_ACCOUNT_PATH_MISSING_SLASH_ERR_MSG
-      ),
-      [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN].refine(
-        (val) => val.every((el) => el.startsWith("/")),
-        PAM_ACCOUNT_PATH_MISSING_SLASH_ERR_MSG
-      ),
-      [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
-    })
-    .partial()
-]);
+
 // akhilmhdh: don't modify this for v2
 // if you want to update create a new schema
 const SecretConditionV1Schema = z
@@ -945,8 +930,7 @@ const PamAccountConditionSchema = z
           [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
         })
         .partial()
-    ]),
-    accountPath: PAM_ACCOUNT_PATH_PERMISSION_OPERATOR_SCHEMA
+    ])
   })
   .partial();
 
@@ -1294,6 +1278,12 @@ const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.ApprovalRequestGrants).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionApprovalRequestGrantActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.SecretApprovalRequest).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretApprovalRequestActions).describe(
       "Describe what action an entity can take."
     )
   })

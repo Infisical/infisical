@@ -138,7 +138,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
-  const find = async (filter: TFindFilter<TSecretsV2>, opts: TFindOpt<TSecretsV2> = {}) => {
+  const find = async (filter: TFindFilter<TSecretsV2 & { projectId?: string }>, opts: TFindOpt<TSecretsV2> = {}) => {
     const { offset, limit, sort, tx } = opts;
     try {
       const query = (tx || db.replicaNode())(TableName.SecretV2)
@@ -160,6 +160,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           `${TableName.SecretV2}.id`,
           `${TableName.SecretRotationV2SecretMapping}.secretId`
         )
+        .leftJoin(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .leftJoin(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .select(
           db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
           db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
@@ -167,10 +169,16 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
         )
         .select(selectAllTableCols(TableName.SecretV2))
+        .select(db.ref("projectId").withSchema(TableName.Environment).as("environmentProjectId"))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
         .select(db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping));
+
+      if (filter?.projectId) {
+        void query.where(`${TableName.Environment}.projectId`, filter.projectId);
+      }
+
       if (limit) void query.limit(limit);
       if (offset) void query.offset(offset);
       if (sort) {
@@ -185,7 +193,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           _id: el.id,
           ...SecretsV2Schema.parse(el),
           rotationId: el.rotationId,
-          isRotatedSecret: Boolean(el.rotationId)
+          isRotatedSecret: Boolean(el.rotationId),
+          projectId: el.environmentProjectId
         }),
         childrenMapper: [
           {
@@ -771,6 +780,37 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  const updateSecretReferenceSecretKey = async (
+    projectId: string,
+    envSlug: string,
+    secretPath: string,
+    oldSecretKey: string,
+    newSecretKey: string,
+    tx?: Knex
+  ) => {
+    try {
+      const updatedCount = await (tx || db)(TableName.SecretReferenceV2)
+        .whereIn("secretId", (qb) => {
+          void qb
+            .select(`${TableName.SecretV2}.id`)
+            .from(TableName.SecretV2)
+            .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+            .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+            .where(`${TableName.Environment}.projectId`, projectId);
+        })
+        .where({
+          environment: envSlug,
+          secretPath,
+          secretKey: oldSecretKey
+        })
+        .update({ secretKey: newSecretKey });
+
+      return updatedCount;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "UpdateSecretReferenceSecretKey" });
+    }
+  };
+
   const upsertSecretReferences = async (
     data: {
       secretId: string;
@@ -822,6 +862,68 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
       return docs;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindReferencedSecretReferences" });
+    }
+  };
+
+  const findReferencedSecretReferencesBySecretKey = async (
+    projectId: string,
+    envSlug: string,
+    secretPath: string,
+    secretKey: string,
+    tx?: Knex
+  ) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.SecretReferenceV2)
+        .where({
+          secretPath,
+          environment: envSlug,
+          secretKey
+        })
+        .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.SecretReferenceV2}.secretId`)
+        .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where({
+          [`${TableName.SecretFolder}.isReserved` as "isReserved"]: false
+        })
+        .where("projectId", projectId)
+        .select(selectAllTableCols(TableName.SecretReferenceV2))
+        .select("folderId");
+
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindReferencedSecretReferencesBySecretKey" });
+    }
+  };
+
+  const updateSecretReferenceEnvAndPath = async (
+    projectId: string,
+    oldEnvSlug: string,
+    oldSecretPath: string,
+    secretKey: string,
+    newEnvSlug: string,
+    newSecretPath: string,
+    tx?: Knex
+  ) => {
+    try {
+      const updatedCount = await (tx || db)(TableName.SecretReferenceV2)
+        .whereIn("secretId", (qb) => {
+          void qb
+            .select(`${TableName.SecretV2}.id`)
+            .from(TableName.SecretV2)
+            .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+            .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+            .where(`${TableName.Environment}.projectId`, projectId);
+        })
+        .where({
+          environment: oldEnvSlug,
+          secretPath: oldSecretPath,
+          secretKey
+        })
+        .update({ environment: newEnvSlug, secretPath: newSecretPath });
+
+      return updatedCount;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "UpdateSecretReferenceEnvAndPath" });
     }
   };
 
@@ -1003,6 +1105,9 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     find,
     invalidateSecretCacheByProjectId,
     findSecretsWithReminderRecipients,
-    findSecretsWithReminderRecipientsOld
+    findSecretsWithReminderRecipientsOld,
+    findReferencedSecretReferencesBySecretKey,
+    updateSecretReferenceSecretKey,
+    updateSecretReferenceEnvAndPath
   };
 };

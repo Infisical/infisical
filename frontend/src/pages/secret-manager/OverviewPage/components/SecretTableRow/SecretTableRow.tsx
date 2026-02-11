@@ -340,6 +340,7 @@ export const SecretTableRow = ({
                             onSecretCreate={onSecretCreate}
                             onSecretUpdate={onSecretUpdate}
                             environment={slug}
+                            environmentName={name}
                             isRotatedSecret={secret?.isRotatedSecret}
                             importedBy={importedBy}
                             isSecretPresent={Boolean(secret)}
@@ -347,6 +348,7 @@ export const SecretTableRow = ({
                             tags={secret?.tags}
                             secretMetadata={secret?.secretMetadata}
                             skipMultilineEncoding={secret?.skipMultilineEncoding}
+                            reminder={secret?.reminder}
                           />
                         </UnstableTableCell>
                       </UnstableTableRow>

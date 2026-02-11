@@ -410,7 +410,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
         secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
         tagIds: z.string().array().optional().describe(RAW_SECRETS.CREATE.tagIds),
-        skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
+        skipMultilineEncoding: z.boolean().nullish().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
         type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.CREATE.type),
         secretReminderRepeatDays: z
           .number()
@@ -863,7 +863,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
               .describe(RAW_SECRETS.CREATE.secretValue),
             secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
-            skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
+            skipMultilineEncoding: z.boolean().nullish().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
             metadata: z.record(z.string()).optional(),
             secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
             tagIds: z.string().array().optional().describe(RAW_SECRETS.CREATE.tagIds)
@@ -1254,6 +1254,61 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
       return { secrets };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:secretName/reference-dependency-tree",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "getSecretReferencesV4",
+      tags: [ApiDocsTags.Secrets],
+      description: "Get secret reference dependency tree",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        secretName: z.string().trim().describe(RAW_SECRETS.GET_REFERENCE_TREE.secretName)
+      }),
+      querystring: z.object({
+        projectId: z.string().trim().describe(RAW_SECRETS.GET_REFERENCE_TREE.projectId),
+        environment: z.string().trim().describe(RAW_SECRETS.GET_REFERENCE_TREE.environment),
+        secretPath: z
+          .string()
+          .trim()
+          .default("/")
+          .transform(removeTrailingSlash)
+          .describe(RAW_SECRETS.GET_REFERENCE_TREE.secretPath)
+      }),
+      response: {
+        200: z.object({
+          tree: SecretReferenceNodeTree
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { secretName } = req.params;
+      const { secretPath, environment, projectId } = req.query;
+
+      const { tree } = await server.services.secret.getSecretReferenceDependencyTree({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId,
+        secretName,
+        secretPath,
+        environment
+      });
+
+      return { tree };
     }
   });
 

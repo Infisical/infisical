@@ -11,6 +11,7 @@ import helmet from "@fastify/helmet";
 import type { FastifyRateLimitOptions } from "@fastify/rate-limit";
 import ratelimiter from "@fastify/rate-limit";
 import { fastifyRequestContext } from "@fastify/request-context";
+import websocket from "@fastify/websocket";
 import fastify, { FastifyInstance, FastifyRequest } from "fastify";
 import { Cluster, Redis } from "ioredis";
 import { Knex } from "knex";
@@ -145,6 +146,9 @@ export const main = async ({
 
     await server.register(fastifySwagger);
     await server.register(fastifyFormBody);
+    await server.register(websocket, {
+      options: { maxPayload: 64 * 1024 } // 64 KB
+    });
     await server.register(fastifyErrHandler);
 
     // Rate limiters and security headers

@@ -215,6 +215,16 @@ Supports conditions and permission inversion
 | `allow-change-bypass` | Allow request creators to merge changes without approval in break-glass situations  |
 | `allow-access-bypass` | Allow request creators to access secrets without approval in break-glass situations |
 
+#### Subject: `secret-approval-request`
+
+| Action | Description                                                                 |
+| ------ | --------------------------------------------------------------------------- |
+| `read` | List and view all secret approval requests in the project                   |
+
+<Note>
+  Project admins and users with **Secret Approval Requests** (`secret-approval-request`) **Read** can view all approval requests; others only see requests where they are committer or approver. Secret values in requests follow `secrets.readValue` for the secret's environment/path, or reviewer access.
+</Note>
+
 #### Subject: `secret-rotation`
 
 Supports conditions and permission inversion
@@ -404,3 +414,18 @@ Supports conditions and permission inversion.
 
 **Condition Properties:**
 - `name`: Control access based on endpoint name
+
+### Privileged Access Management (PAM)
+
+#### Subject: `pam-accounts`
+
+Supports conditions and permission inversion.
+
+| Action   | Description                                      |
+| -------- | ------------------------------------------------ |
+| `read`   | View PAM accounts the identity is allowed to use |
+| `access` | Request or use access to PAM accounts            |
+
+**Condition Properties (PAM accounts only support these two):**
+- `resourceName` – Restrict by resource name (glob patterns supported where applicable).
+- `accountName` – Restrict by account name (glob patterns supported where applicable).

@@ -141,9 +141,18 @@ export type TWebhookChannelConfigResponse = {
 };
 
 export const SlackChannelConfigSchema = z.object({
-  webhookUrl: z.string().url(),
-  channel: z.string().optional(),
-  mentionUsers: z.array(z.string()).optional()
+  webhookUrl: z
+    .string()
+    .url()
+    .refine((url) => url.startsWith("https://"), "Slack webhook URL must use HTTPS")
+    .refine((url) => {
+      try {
+        const parsed = new URL(url);
+        return parsed.hostname === "hooks.slack.com";
+      } catch {
+        return false;
+      }
+    }, "Slack webhook URL must be from hooks.slack.com")
 });
 
 export const ChannelConfigSchema = z.union([
@@ -288,3 +297,35 @@ export type TTestWebhookConfigDTO = TGenericPermission & {
 };
 
 export type TChannelResult = { success: boolean; error?: string };
+
+// Slack Block Kit types
+export type TSlackBlock =
+  | { type: "header"; text: { type: "plain_text"; text: string; emoji?: boolean } }
+  | { type: "section"; text: { type: "mrkdwn"; text: string } }
+  | { type: "section"; fields: Array<{ type: "mrkdwn"; text: string }> }
+  | { type: "context"; elements: Array<{ type: "mrkdwn"; text: string }> }
+  | { type: "divider" }
+  | {
+      type: "actions";
+      elements: Array<{
+        type: "button";
+        text: { type: "plain_text"; text: string; emoji?: boolean };
+        url: string;
+        style?: "primary" | "danger";
+      }>;
+    };
+
+export type TSlackPayload = {
+  text: string;
+  blocks: TSlackBlock[];
+  attachments?: Array<{
+    color: string;
+    blocks: TSlackBlock[];
+  }>;
+};
+
+export type TBuildSlackPayloadParams = {
+  alert: TAlertInfo;
+  certificates: TCertificatePreview[];
+  appUrl?: string;
+};

@@ -1,3 +1,5 @@
+import { randomUUID } from "crypto";
+
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
@@ -87,7 +89,8 @@ export const externalMigrationQueueFactory = ({
       dto,
       {
         removeOnComplete: true,
-        removeOnFail: true
+        removeOnFail: true,
+        jobId: randomUUID()
       }
     );
   };

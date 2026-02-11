@@ -39,7 +39,6 @@ export type TDynamicSecretLeaseQueueServiceFactory = {
   setLeaseRevocation: (leaseId: string, dynamicSecretId: string, expiryAt: Date) => Promise<void>;
   unsetLeaseRevocation: (leaseId: string) => Promise<void>;
   queueFailedRevocation: (leaseId: string, dynamicSecretId: string) => Promise<void>;
-  init: () => Promise<void>;
 };
 
 const MAX_REVOCATION_RETRY_COUNT = 10;
@@ -56,35 +55,40 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
   smtpService
 }: TDynamicSecretLeaseQueueServiceFactoryDep): TDynamicSecretLeaseQueueServiceFactory => {
   const pruneDynamicSecret = async (dynamicSecretCfgId: string) => {
-    await queueService.queuePg<QueueName.DynamicSecretRevocation>(
+    await queueService.queue(
+      QueueName.DynamicSecretRevocation,
       QueueJobs.DynamicSecretPruning,
       { dynamicSecretCfgId },
       {
-        singletonKey: dynamicSecretCfgId,
-        retryLimit: 3,
-        retryBackoff: true
+        jobId: `dynamic-secret-lease-pruning-${dynamicSecretCfgId}`,
+        attempts: 3,
+        backoff: {
+          type: "exponential",
+          delay: 1000 * 60 // 1 minute
+        }
       }
     );
   };
 
   const setLeaseRevocation = async (leaseId: string, dynamicSecretId: string, expiryAt: Date) => {
-    await queueService.queuePg<QueueName.DynamicSecretRevocation>(
+    await queueService.queue(
+      QueueName.DynamicSecretRevocation,
       QueueJobs.DynamicSecretRevocation,
       { leaseId, dynamicSecretId },
       {
-        id: leaseId,
-        singletonKey: leaseId,
-        startAfter: expiryAt,
-        retryLimit: 3,
-        retryBackoff: true,
-        retentionDays: 2
+        jobId: leaseId,
+        delay: Number(expiryAt) - Date.now(),
+        attempts: 3,
+        backoff: {
+          type: "exponential",
+          delay: 1000 * 60 // 1 minute
+        }
       }
     );
   };
 
   const unsetLeaseRevocation = async (leaseId: string) => {
     await queueService.stopJobById(QueueName.DynamicSecretRevocation, leaseId);
-    await queueService.stopJobByIdPg(QueueName.DynamicSecretRevocation, leaseId);
   };
 
   const queueFailedRevocation = async (leaseId: string, dynamicSecretId: string) => {
@@ -92,14 +96,17 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
 
     const retryDelaySeconds = appConfig.isDevelopmentMode ? 1 : Math.floor(applyJitter(3_600_000 * 4) / 1000); // retry every 4 hours with 20% +- jitter (convert ms to seconds for pgboss)
 
-    await queueService.queuePg<QueueName.DynamicSecretRevocation>(
+    await queueService.queue(
+      QueueName.DynamicSecretRevocation,
       QueueJobs.DynamicSecretRevocation,
       { leaseId, isRetry: true, dynamicSecretId },
       {
-        singletonKey: `${leaseId}-retry`, // avoid conflicts with scheduled revocation
-        retryDelay: retryDelaySeconds,
-        retryLimit: MAX_REVOCATION_RETRY_COUNT, // we dont want it to ever hit the limit, we want the expireInHours to take effect.
-        expireInHours: 23 // if we set it to 24 hours, pgboss will complain that the expireIn is too high
+        jobId: `${leaseId}-retry`, // avoid conflicts with scheduled revocation
+        attempts: MAX_REVOCATION_RETRY_COUNT,
+        backoff: {
+          type: "exponential",
+          delay: 1000 * retryDelaySeconds
+        }
       }
     );
   };
@@ -142,14 +149,14 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
 
         const dynamicSecretLease = await dynamicSecretLeaseDAL.findById(leaseId);
         if (!dynamicSecretLease) {
-          throw new DisableRotationErrors({ message: "Dynamic secret lease not found" });
+          return;
         }
 
         const folder = await folderDAL.findById(dynamicSecretLease.dynamicSecret.folderId);
-        if (!folder)
-          throw new NotFoundError({
-            message: `Failed to find folder with ${dynamicSecretLease.dynamicSecret.folderId}`
-          });
+        if (!folder) {
+          logger.info(`Failed to find folder with ${dynamicSecretLease.dynamicSecret.folderId}`);
+          return;
+        }
 
         const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
@@ -173,15 +180,20 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
         const { dynamicSecretCfgId } = data as { dynamicSecretCfgId: string };
         logger.info("Dynamic secret pruning started: ", dynamicSecretCfgId, jobId);
         const dynamicSecretCfg = await dynamicSecretDAL.findById(dynamicSecretCfgId);
-        if (!dynamicSecretCfg) throw new DisableRotationErrors({ message: "Dynamic secret not found" });
-        if ((dynamicSecretCfg.status as DynamicSecretStatus) !== DynamicSecretStatus.Deleting)
-          throw new DisableRotationErrors({ message: "Document not deleted" });
+        if (!dynamicSecretCfg) {
+          logger.info(`Failed to find dynamic secret with ${dynamicSecretCfgId}`);
+          return;
+        }
+        if ((dynamicSecretCfg.status as DynamicSecretStatus) !== DynamicSecretStatus.Deleting) {
+          logger.info(`Dynamic secret ${dynamicSecretCfgId} is not in deleting status`);
+          return;
+        }
 
         const folder = await folderDAL.findById(dynamicSecretCfg.folderId);
-        if (!folder)
-          throw new NotFoundError({
-            message: `Failed to find folder with ${dynamicSecretCfg.folderId}`
-          });
+        if (!folder) {
+          logger.info(`Failed to find folder with ${dynamicSecretCfg.folderId}`);
+          return;
+        }
 
         const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
@@ -238,7 +250,6 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
         // only add to retry queue if this is not a retry, and if the error is not a DisableRotationErrors error
         if (!isRetry && !(error instanceof DisableRotationErrors)) {
           // if revocation fails, we should stop the job and queue a new job to retry the revocation at a later time.
-          await queueService.stopJobByIdPg(QueueName.DynamicSecretRevocation, jobId);
           await queueService.stopRepeatableJobByJobId(QueueName.DynamicSecretRevocation, jobId);
           await queueFailedRevocation(leaseId, dynamicSecretId);
 
@@ -249,7 +260,6 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
             // the ID of the revocation job is set to the leaseId, so we can use that to stop the job
 
             // we dont have to stop the retry job, because if we hit this point, its the last attempt and the retry job will be stopped by pgboss itself after this point,
-            await queueService.stopJobByIdPg(QueueName.DynamicSecretRevocation, leaseId);
             await queueService.stopRepeatableJobByJobId(QueueName.DynamicSecretRevocation, leaseId);
 
             await $queueDynamicSecretLeaseRevocationFailedEmail(leaseId, dynamicSecretId);
@@ -259,7 +269,6 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
       if (error instanceof DisableRotationErrors) {
         if (jobId) {
           await queueService.stopRepeatableJobByJobId(QueueName.DynamicSecretRevocation, jobId);
-          await queueService.stopJobByIdPg(QueueName.DynamicSecretRevocation, jobId);
         }
       } else {
         // propagate to next part
@@ -319,9 +328,15 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
     }
   };
 
-  queueService.start(QueueName.DynamicSecretRevocation, async (job) => {
-    await $dynamicSecretQueueJob(job.name, job.id as string, job.data);
-  });
+  queueService.start(
+    QueueName.DynamicSecretRevocation,
+    async (job) => {
+      await $dynamicSecretQueueJob(job.name, job.id as string, job.data);
+    },
+    {
+      persistence: true
+    }
+  );
 
   // we use redis for sending the email because:
   // 1. we are insensitive to losing the jobs in queue in case of a disaster event
@@ -330,35 +345,10 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
     await $dynamicSecretLeaseRevocationFailedEmailJob(job.id as string, job.data);
   });
 
-  const init = async () => {
-    await queueService.startPg<QueueName.DynamicSecretRevocation>(
-      QueueJobs.DynamicSecretRevocation,
-      async ([job]) => {
-        await $dynamicSecretQueueJob(job.name, job.id, job.data, job.retryCount);
-      },
-      {
-        workerCount: 10,
-        pollingIntervalSeconds: 1
-      }
-    );
-
-    await queueService.startPg<QueueName.DynamicSecretRevocation>(
-      QueueJobs.DynamicSecretPruning,
-      async ([job]) => {
-        await $dynamicSecretQueueJob(job.name, job.id, job.data);
-      },
-      {
-        workerCount: 1,
-        pollingIntervalSeconds: 1
-      }
-    );
-  };
-
   return {
     pruneDynamicSecret,
     setLeaseRevocation,
     unsetLeaseRevocation,
-    queueFailedRevocation,
-    init
+    queueFailedRevocation
   };
 };

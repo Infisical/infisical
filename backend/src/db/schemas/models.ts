@@ -257,7 +257,9 @@ export enum TableName {
   ApprovalRequestSteps = "approval_request_steps",
   ApprovalRequestStepEligibleApprovers = "approval_request_step_eligible_approvers",
   ApprovalRequestApprovals = "approval_request_approvals",
-  ApprovalRequestGrants = "approval_request_grants"
+  ApprovalRequestGrants = "approval_request_grants",
+
+  QueueJobs = "queue_jobs"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

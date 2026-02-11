@@ -26,6 +26,10 @@ import {
   SanitizedSSHResourceSchema,
   SSHResourceListItemSchema
 } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
+import {
+  SanitizedWindowsResourceSchema,
+  WindowsResourceListItemSchema
+} from "@app/ee/services/pam-resource/windows-server/windows-server-resource-schemas";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -37,7 +41,8 @@ const SanitizedResourceSchema = z.union([
   SanitizedSSHResourceSchema,
   SanitizedKubernetesResourceSchema,
   SanitizedAwsIamResourceSchema,
-  SanitizedRedisResourceSchema
+  SanitizedRedisResourceSchema,
+  SanitizedWindowsResourceSchema
 ]);
 
 const ResourceOptionsSchema = z.discriminatedUnion("resource", [
@@ -46,7 +51,8 @@ const ResourceOptionsSchema = z.discriminatedUnion("resource", [
   SSHResourceListItemSchema,
   KubernetesResourceListItemSchema,
   AwsIamResourceListItemSchema,
-  RedisResourceListItemSchema
+  RedisResourceListItemSchema,
+  WindowsResourceListItemSchema
 ]);
 
 export const registerPamResourceRouter = async (server: FastifyZodProvider) => {

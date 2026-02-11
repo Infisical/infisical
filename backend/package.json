@@ -145,6 +145,7 @@
     "@fastify/static": "^7.0.4",
     "@fastify/swagger": "^8.14.0",
     "@fastify/swagger-ui": "^3.1.0",
+    "@fastify/websocket": "^10.0.1",
     "@gitbeaker/rest": "^42.5.0",
     "@google-cloud/kms": "^4.5.0",
     "@infisical/pg-view-generator": "^1.1.0",

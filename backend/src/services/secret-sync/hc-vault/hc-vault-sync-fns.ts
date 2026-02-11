@@ -1,6 +1,7 @@
 import { isAxiosError } from "axios";
 
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { removeTrailingSlash } from "@app/lib/fn";
 import {
   getHCVaultAccessToken,
@@ -21,17 +22,23 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 const listHCVaultVariables = async (
   { instanceUrl, namespace, mount, accessToken, path }: THCVaultListVariables,
   connection: THCVaultConnection,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   try {
-    const { data } = await requestWithHCVaultGateway<THCVaultListVariablesResponse>(connection, gatewayService, {
-      url: `${instanceUrl}/v1/${removeTrailingSlash(mount)}/data/${path}`,
-      method: "GET",
-      headers: {
-        "X-Vault-Token": accessToken,
-        ...(namespace ? { "X-Vault-Namespace": namespace } : {})
+    const { data } = await requestWithHCVaultGateway<THCVaultListVariablesResponse>(
+      connection,
+      gatewayService,
+      gatewayV2Service,
+      {
+        url: `${instanceUrl}/v1/${removeTrailingSlash(mount)}/data/${path}`,
+        method: "GET",
+        headers: {
+          "X-Vault-Token": accessToken,
+          ...(namespace ? { "X-Vault-Namespace": namespace } : {})
+        }
       }
-    });
+    );
 
     return data.data.data;
   } catch (error: unknown) {
@@ -47,9 +54,10 @@ const listHCVaultVariables = async (
 const updateHCVaultVariables = async (
   { path, instanceUrl, namespace, accessToken, mount, data }: TPostHCVaultVariable,
   connection: THCVaultConnection,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
-  return requestWithHCVaultGateway(connection, gatewayService, {
+  return requestWithHCVaultGateway(connection, gatewayService, gatewayV2Service, {
     url: `${instanceUrl}/v1/${removeTrailingSlash(mount)}/data/${path}`,
     method: "POST",
     headers: {
@@ -65,7 +73,8 @@ export const HCVaultSyncFns = {
   syncSecrets: async (
     secretSync: THCVaultSyncWithCredentials,
     secretMap: TSecretMap,
-    gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+    gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+    gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
   ) => {
     const {
       connection,
@@ -75,7 +84,7 @@ export const HCVaultSyncFns = {
     } = secretSync;
 
     const { namespace } = connection.credentials;
-    const accessToken = await getHCVaultAccessToken(connection, gatewayService);
+    const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
     const instanceUrl = await getHCVaultInstanceUrl(connection);
 
     const variables = await listHCVaultVariables(
@@ -87,7 +96,8 @@ export const HCVaultSyncFns = {
         path
       },
       connection,
-      gatewayService
+      gatewayService,
+      gatewayV2Service
     );
     let tainted = false;
 
@@ -118,7 +128,8 @@ export const HCVaultSyncFns = {
       await updateHCVaultVariables(
         { accessToken, instanceUrl, namespace, mount, path, data: variables },
         connection,
-        gatewayService
+        gatewayService,
+        gatewayV2Service
       );
     } catch (error) {
       throw new SecretSyncError({
@@ -129,7 +140,8 @@ export const HCVaultSyncFns = {
   removeSecrets: async (
     secretSync: THCVaultSyncWithCredentials,
     secretMap: TSecretMap,
-    gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+    gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+    gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
   ) => {
     const {
       connection,
@@ -137,13 +149,14 @@ export const HCVaultSyncFns = {
     } = secretSync;
 
     const { namespace } = connection.credentials;
-    const accessToken = await getHCVaultAccessToken(connection, gatewayService);
+    const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
     const instanceUrl = await getHCVaultInstanceUrl(connection);
 
     const variables = await listHCVaultVariables(
       { instanceUrl, namespace, accessToken, mount, path },
       connection,
-      gatewayService
+      gatewayService,
+      gatewayV2Service
     );
 
     for await (const [key] of Object.entries(variables)) {
@@ -156,7 +169,8 @@ export const HCVaultSyncFns = {
       await updateHCVaultVariables(
         { accessToken, instanceUrl, namespace, mount, path, data: variables },
         connection,
-        gatewayService
+        gatewayService,
+        gatewayV2Service
       );
     } catch (error) {
       throw new SecretSyncError({
@@ -166,7 +180,8 @@ export const HCVaultSyncFns = {
   },
   getSecrets: async (
     secretSync: THCVaultSyncWithCredentials,
-    gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+    gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+    gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
   ) => {
     const {
       connection,
@@ -174,7 +189,7 @@ export const HCVaultSyncFns = {
     } = secretSync;
 
     const { namespace } = connection.credentials;
-    const accessToken = await getHCVaultAccessToken(connection, gatewayService);
+    const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
     const instanceUrl = await getHCVaultInstanceUrl(connection);
 
     const variables = await listHCVaultVariables(
@@ -186,7 +201,8 @@ export const HCVaultSyncFns = {
         path
       },
       connection,
-      gatewayService
+      gatewayService,
+      gatewayV2Service
     );
 
     return Object.fromEntries(Object.entries(variables).map(([key, value]) => [key, { value }]));
