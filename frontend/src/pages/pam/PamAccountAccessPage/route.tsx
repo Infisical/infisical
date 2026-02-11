@@ -1,11 +1,11 @@
 import { createFileRoute, linkOptions } from "@tanstack/react-router";
 
-import { PamAccountByIDPage } from "./PamAccountByIDPage";
+import { PamAccountAccessPage } from "./PamAccountAccessPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/accounts/$accountId/"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/resources/$resourceType/$resourceId/accounts/$accountId/access"
 )({
-  component: PamAccountByIDPage,
+  component: PamAccountAccessPage,
   beforeLoad: ({ context, params }) => {
     return {
       breadcrumbs: [
@@ -30,7 +30,20 @@ export const Route = createFileRoute(
           })
         },
         {
-          label: "Account Details"
+          label: "Account",
+          link: linkOptions({
+            to: "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId",
+            params: {
+              orgId: params.orgId,
+              projectId: params.projectId,
+              resourceType: params.resourceType,
+              resourceId: params.resourceId,
+              accountId: params.accountId
+            }
+          })
+        },
+        {
+          label: "Web Access"
         }
       ]
     };

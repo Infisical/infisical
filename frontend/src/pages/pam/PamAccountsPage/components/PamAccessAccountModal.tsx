@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import ms from "ms";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormLabel, IconButton, Input, Modal, ModalContent } from "@app/components/v2";
+import { FormLabel, IconButton, Input, Modal, ModalContent } from "@app/components/v2";
 import { PamResourceType, TPamAccount } from "@app/hooks/api/pam";
 
 // Feature flag — set to false to hide the browser web access option while it's in development
@@ -15,15 +15,15 @@ type Props = {
   account?: TPamAccount;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onOpenWebAccess?: () => void;
+  orgId: string;
   projectId: string;
 };
 
 export const PamAccessAccountModal = ({
   isOpen,
   onOpenChange,
-  onOpenWebAccess,
   account,
+  orgId,
   projectId
 }: Props) => {
   const [duration, setDuration] = useState("4h");
@@ -94,9 +94,11 @@ export const PamAccessAccountModal = ({
   if (!account) return null;
 
   const showWebAccess =
-    ENABLE_WEB_ACCESS &&
-    account.resource.resourceType === PamResourceType.Postgres &&
-    onOpenWebAccess;
+    ENABLE_WEB_ACCESS && account.resource.resourceType === PamResourceType.Postgres;
+
+  const webAccessUrl = showWebAccess
+    ? `/organizations/${orgId}/projects/pam/${projectId}/resources/${account.resource.resourceType}/${account.resource.id}/accounts/${account.id}/access`
+    : undefined;
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -105,63 +107,74 @@ export const PamAccessAccountModal = ({
         title="Access Account"
         subTitle={`Connect to ${account.name}`}
       >
-        <p className="mb-2 text-sm text-mineshaft-300">Connect using the Infisical CLI</p>
-        <FormLabel
-          label="Duration"
-          tooltipText="The maximum duration of your session. Ex: 1h, 3w, 30d"
-        />
-        <Input
-          value={duration}
-          onChange={(e) => setDuration(e.target.value)}
-          placeholder="permanent"
-          isError={!isDurationValid}
-        />
-        <FormLabel label="CLI Command" className="mt-4" />
-        <div className="flex gap-2">
-          <Input value={command} isDisabled />
-          <IconButton
-            ariaLabel="copy"
-            variant="outline_bg"
-            colorSchema="secondary"
-            onClick={() => {
-              navigator.clipboard.writeText(command);
-
-              createNotification({
-                text: "Command copied to clipboard",
-                type: "info"
-              });
-
-              onOpenChange(false);
-            }}
-            className="w-10"
-          >
-            <FontAwesomeIcon icon={faCopy} />
-          </IconButton>
-        </div>
-        <a
-          href="https://infisical.com/docs/cli/overview"
-          target="_blank"
-          className="mt-2 flex h-4 w-fit items-center gap-2 border-b border-mineshaft-400 text-sm text-mineshaft-400 transition-colors duration-100 hover:border-yellow-400 hover:text-yellow-400"
-          rel="noreferrer"
-        >
-          <span>Install the Infisical CLI</span>
-          <FontAwesomeIcon icon={faUpRightFromSquare} className="size-3" />
-        </a>
-        {showWebAccess && (
-          <>
-            <div className="my-4 border-t border-mineshaft-600" />
-            <p className="mb-2 text-sm text-mineshaft-300">Connect directly from your browser</p>
-            <Button
+        <div className="py-1">
+          <p className="text-sm font-medium text-mineshaft-400">Terminal</p>
+          <p className="mb-2 text-xs text-mineshaft-400">Connect using the Infisical CLI</p>
+          <FormLabel
+            label="Duration"
+            tooltipText="The maximum duration of your session. Ex: 1h, 3w, 30d"
+          />
+          <Input
+            value={duration}
+            onChange={(e) => setDuration(e.target.value)}
+            placeholder="permanent"
+            isError={!isDurationValid}
+          />
+          <FormLabel label="CLI Command" className="mt-4" />
+          <div className="flex gap-2">
+            <Input value={command} isDisabled />
+            <IconButton
+              ariaLabel="copy"
+              variant="outline_bg"
+              colorSchema="secondary"
               onClick={() => {
+                navigator.clipboard.writeText(command);
+
+                createNotification({
+                  text: "Command copied to clipboard",
+                  type: "info"
+                });
+
                 onOpenChange(false);
-                onOpenWebAccess();
               }}
-              leftIcon={<FontAwesomeIcon icon={faTerminal} />}
-              className="w-full"
-              colorSchema="primary"
+              className="w-10"
             >
-              Connect in Browser
-            </Button>
+              <FontAwesomeIcon icon={faCopy} />
+            </IconButton>
+          </div>
+          <a
+            href="https://infisical.com/docs/cli/overview"
+            target="_blank"
+            className="mt-2 flex h-4 w-fit items-center gap-2 border-b border-mineshaft-400 text-sm text-mineshaft-400 transition-colors duration-100 hover:border-yellow-400 hover:text-yellow-400"
+            rel="noreferrer"
+          >
+            <span>Install the Infisical CLI</span>
+            <FontAwesomeIcon icon={faUpRightFromSquare} className="size-3" />
+          </a>
+        </div>
+        {showWebAccess && webAccessUrl && (
+          <>
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-mineshaft-600" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-mineshaft-900 px-2 text-mineshaft-400">OR</span>
+              </div>
+            </div>
+            <div className="py-1">
+              <p className="text-sm font-medium text-mineshaft-400">Browser</p>
+              <p className="mb-2 text-xs text-mineshaft-400">Connect directly from your browser</p>
+              <a
+                href={webAccessUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-primary/80"
+              >
+                <FontAwesomeIcon icon={faTerminal} />
+                Connect in Browser
+              </a>
+            </div>
           </>
         )}
       </ModalContent>

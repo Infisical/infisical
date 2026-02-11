@@ -1,1 +1,0 @@
-export { PamWebAccessModal } from "./PamWebAccessModal";
