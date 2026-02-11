@@ -281,6 +281,16 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
           "Invalid JSON in request body. If you are sending a Certificate Signing Request (CSR), ensure newlines are escaped as \\n characters, not literal line breaks.",
         error: "BadRequestError"
       });
+    } else if ("statusCode" in error && "code" in error && typeof (error as { code: string }).code === "string" && (error as { code: string }).code.startsWith("FST_ERR_")) {
+      // Fastify built-in errors (e.g. FST_ERR_CTP_EMPTY_JSON_BODY, FST_ERR_CTP_INVALID_MEDIA_TYPE)
+      // should be forwarded with their proper status code instead of being masked as 500.
+      const statusCode = (error as { statusCode: number }).statusCode || HttpStatusCodes.BadRequest;
+      void res.status(statusCode).send({
+        reqId: req.id,
+        statusCode,
+        message: error.message,
+        error: (error as { code: string }).code
+      });
     } else {
       void res.status(HttpStatusCodes.InternalServerError).send({
         reqId: req.id,
