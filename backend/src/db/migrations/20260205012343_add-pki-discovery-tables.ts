@@ -113,20 +113,20 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTableIfExists(TableName.PkiDiscoveryScanHistory);
   await dropOnUpdateTrigger(knex, TableName.PkiDiscoveryScanHistory);
+  await knex.schema.dropTableIfExists(TableName.PkiDiscoveryScanHistory);
 
-  await knex.schema.dropTableIfExists(TableName.PkiCertificateInstallationCert);
   await dropOnUpdateTrigger(knex, TableName.PkiCertificateInstallationCert);
+  await knex.schema.dropTableIfExists(TableName.PkiCertificateInstallationCert);
 
-  await knex.schema.dropTableIfExists(TableName.PkiDiscoveryInstallation);
   await dropOnUpdateTrigger(knex, TableName.PkiDiscoveryInstallation);
+  await knex.schema.dropTableIfExists(TableName.PkiDiscoveryInstallation);
 
-  await knex.schema.dropTableIfExists(TableName.PkiCertificateInstallation);
   await dropOnUpdateTrigger(knex, TableName.PkiCertificateInstallation);
+  await knex.schema.dropTableIfExists(TableName.PkiCertificateInstallation);
 
-  await knex.schema.dropTableIfExists(TableName.PkiDiscoveryConfig);
   await dropOnUpdateTrigger(knex, TableName.PkiDiscoveryConfig);
+  await knex.schema.dropTableIfExists(TableName.PkiDiscoveryConfig);
 
   if (await knex.schema.hasTable(TableName.Certificate)) {
     const hasSourceColumn = await knex.schema.hasColumn(TableName.Certificate, "source");
