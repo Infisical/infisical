@@ -147,12 +147,12 @@ The [Docker stack file](https://github.com/Infisical/infisical/tree/main/docker-
     t8vbkrasy8fz   infisical_etcd3             replicated   1/1        ghcr.io/zalando/spilo-16:3.2-p2        
     77iei42fcf6q   infisical_haproxy           global       4/4        haproxy:latest                         *:5002-5003->5433-5434/tcp, *:6379->6379/tcp, *:7001->7000/tcp, *:8080->8080/tcp
     jaewzqy8md56   infisical_infisical         replicated   5/5        infisical/infisical:v0.60.1-postgres   
-    58w4zablfbtb   infisical_redis_replica0    replicated   1/1        bitnami/redis:6.2.10                   
-    w4yag2whq0un   infisical_redis_replica1    replicated   1/1        bitnami/redis:6.2.10                   
-    w03mriy0jave   infisical_redis_replica2    replicated   1/1        bitnami/redis:6.2.10                   
-    ppo6rk47hc9t   infisical_redis_sentinel1   replicated   1/1        bitnami/redis-sentinel:6.2.10          
-    ub29vd0lnq7f   infisical_redis_sentinel2   replicated   1/1        bitnami/redis-sentinel:6.2.10          
-    szg3yky7yji2   infisical_redis_sentinel3   replicated   1/1        bitnami/redis-sentinel:6.2.10          
+    58w4zablfbtb   infisical_redis_replica0    replicated   1/1        bitnami/redis:7.2                   
+    w4yag2whq0un   infisical_redis_replica1    replicated   1/1        bitnami/redis:7.2                   
+    w03mriy0jave   infisical_redis_replica2    replicated   1/1        bitnami/redis:7.2                   
+    ppo6rk47hc9t   infisical_redis_sentinel1   replicated   1/1        bitnami/redis-sentinel:7.2          
+    ub29vd0lnq7f   infisical_redis_sentinel2   replicated   1/1        bitnami/redis-sentinel:7.2          
+    szg3yky7yji2   infisical_redis_sentinel3   replicated   1/1        bitnami/redis-sentinel:7.2          
     eqtocpf5tiy0   infisical_spolo1            replicated   1/1        ghcr.io/zalando/spilo-16:3.2-p2        
     3lznscvk7k5t   infisical_spolo2            replicated   1/1        ghcr.io/zalando/spilo-16:3.2-p2        
     v04ml7rz2j5q   infisical_spolo3            replicated   1/1        ghcr.io/zalando/spilo-16:3.2-p2
