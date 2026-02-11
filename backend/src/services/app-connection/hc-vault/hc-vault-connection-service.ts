@@ -24,7 +24,7 @@ export const hcVaultConnectionService = (
 
     try {
       const mounts = await listHCVaultMounts(appConnection, gatewayService, gatewayV2Service);
-      // Filter for KV version 2 mounts only and extract just the paths
+      // Filter for KV mounts (v1 and v2) and extract just the paths
       return mounts
         .filter((mount) => mount.type === "kv" && (mount.version === KvVersion.V2 || mount.version === KvVersion.V1))
         .map((mount) => mount.path);
