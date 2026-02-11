@@ -18,13 +18,15 @@ const initTelemetryInstrumentation = ({
   otlpURL,
   otlpUser,
   otlpPassword,
-  otlpPushInterval
+  otlpPushInterval,
+  aggregationTemporality
 }: {
   exportType?: string;
   otlpURL?: string;
   otlpUser?: string;
   otlpPassword?: string;
   otlpPushInterval?: number;
+  aggregationTemporality?: string;
 }) => {
   diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
 
@@ -48,7 +50,10 @@ const initTelemetryInstrumentation = ({
         headers: {
           Authorization: `Basic ${btoa(`${otlpUser}:${otlpPassword}`)}`
         },
-        temporalityPreference: AggregationTemporality.DELTA
+        temporalityPreference:
+          aggregationTemporality === "cumulative"
+            ? AggregationTemporality.CUMULATIVE
+            : AggregationTemporality.DELTA
       });
       metricReaders.push(
         new PeriodicExportingMetricReader({
