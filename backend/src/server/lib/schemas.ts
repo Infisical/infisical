@@ -40,6 +40,31 @@ export const GenericResourceNameSchema = z
     "Name can only contain alphanumeric characters, dashes, underscores, and spaces"
   );
 
+// More permissive schema for organization names, which commonly contain
+// special characters like & (e.g. "Johnson & Johnson"), periods, commas,
+// apostrophes, and parentheses.
+export const OrgNameSchema = z
+  .string()
+  .trim()
+  .min(1, { message: "Organization name must be at least 1 character" })
+  .max(64, { message: "Organization name must be 64 or fewer characters" })
+  .refine(
+    (val) =>
+      characterValidator([
+        CharacterType.AlphaNumeric,
+        CharacterType.Hyphen,
+        CharacterType.Underscore,
+        CharacterType.Spaces,
+        CharacterType.Ampersand,
+        CharacterType.Period,
+        CharacterType.Comma,
+        CharacterType.SingleQuote,
+        CharacterType.OpenParen,
+        CharacterType.CloseParen
+      ])(val),
+    "Organization name can only contain alphanumeric characters, spaces, and common punctuation (& . , ' - _ ( ))"
+  );
+
 export const BaseSecretNameSchema = z.string().trim().min(1);
 
 export const SecretNameSchema = BaseSecretNameSchema.refine(

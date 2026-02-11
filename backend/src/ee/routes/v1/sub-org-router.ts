@@ -5,7 +5,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SUB_ORGANIZATIONS } from "@app/lib/api-docs";
 import { pick } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { GenericResourceNameSchema, slugSchema } from "@app/server/lib/schemas";
+import { OrgNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -35,7 +35,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
         }
       ],
       body: z.object({
-        name: GenericResourceNameSchema.describe(SUB_ORGANIZATIONS.CREATE.name),
+        name: OrgNameSchema.describe(SUB_ORGANIZATIONS.CREATE.name),
         slug: slugSchema().optional().describe(SUB_ORGANIZATIONS.CREATE.slug)
       }),
       response: {
@@ -133,7 +133,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
       }),
       body: z
         .object({
-          name: GenericResourceNameSchema.optional().describe(SUB_ORGANIZATIONS.UPDATE.name),
+          name: OrgNameSchema.optional().describe(SUB_ORGANIZATIONS.UPDATE.name),
           slug: slugSchema().optional().describe(SUB_ORGANIZATIONS.UPDATE.slug)
         })
         .refine((data) => data.name !== undefined || data.slug !== undefined, {

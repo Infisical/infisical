@@ -15,7 +15,7 @@ import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-t
 import { ApiDocsTags, AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
 import { getLastMidnightDateISO, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { GenericResourceNameSchema, slugSchema } from "@app/server/lib/schemas";
+import { OrgNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 import { sanitizedOrganizationSchema } from "@app/services/org/org-schema";
@@ -287,7 +287,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       operationId: "updateOrganization",
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({
-        name: GenericResourceNameSchema.optional(),
+        name: OrgNameSchema.optional(),
         slug: slugSchema({ max: 64 }).optional(),
         authEnforced: z.boolean().optional(),
         googleSsoAuthEnforced: z.boolean().optional(),
