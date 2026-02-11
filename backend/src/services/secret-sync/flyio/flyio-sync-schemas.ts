@@ -13,8 +13,7 @@ import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types"
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 
 const FlyioSyncDestinationConfigSchema = z.object({
-  appId: z.string().trim().min(1, "App required").max(255).describe(SecretSyncs.DESTINATION_CONFIG.FLYIO.appId),
-  appName: z.string().trim().optional().describe(SecretSyncs.DESTINATION_CONFIG.FLYIO.appName)
+  appId: z.string().trim().min(1, "App required").max(255).describe(SecretSyncs.DESTINATION_CONFIG.FLYIO.appId)
 });
 
 const FlyioSyncOptionsSchema = z.object({

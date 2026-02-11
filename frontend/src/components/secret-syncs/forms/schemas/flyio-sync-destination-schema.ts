@@ -11,8 +11,7 @@ export const FlyioSyncDestinationSchema = BaseSecretSyncSchema(
   z.object({
     destination: z.literal(SecretSync.Flyio),
     destinationConfig: z.object({
-      appId: z.string().trim().min(1, "App ID required"),
-      appName: z.string().trim().optional()
+      appId: z.string().trim().min(1, "App ID required")
     })
   })
 );

@@ -23,10 +23,6 @@ export type TFlyioListVariables = {
   appId: string;
 };
 
-export type TGetAppNameVariables = TFlyioListVariables & {
-  appName?: string;
-};
-
 export type TPutFlyioVariable = TFlyioListVariables & {
   secretMap: { [key: string]: { value: string } };
 };

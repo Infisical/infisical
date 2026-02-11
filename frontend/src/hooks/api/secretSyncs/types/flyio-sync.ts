@@ -6,7 +6,6 @@ export type TFlyioSync = TRootSecretSync & {
   destination: SecretSync.Flyio;
   destinationConfig: {
     appId: string;
-    appName?: string;
   };
   connection: {
     app: AppConnection.Flyio;

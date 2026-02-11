@@ -7,7 +7,6 @@ import {
   TFlyioListVariables,
   TFlyioSecret,
   TFlyioSyncWithCredentials,
-  TGetAppNameVariables,
   TPutFlyioVariable
 } from "@app/services/secret-sync/flyio/flyio-sync-types";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
@@ -16,9 +15,7 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 
-const getAppName = async ({ accessToken, appId, appName }: TGetAppNameVariables) => {
-  if (appName) return appName;
-
+const getAppNameByAppId = async ({ accessToken, appId }: TFlyioListVariables) => {
   const { data } = await request.post<{ data: { app: { name: string } } }>(
     IntegrationUrls.FLYIO_API_URL,
     {
@@ -46,10 +43,6 @@ type TFlyioMachineListItem = {
   config?: Record<string, unknown>;
 };
 
-/**
- * Parse list machines response. Per Fly.io docs, GET /v1/apps/{app_name}/machines returns
- * "A JSON array of machine objects" (see https://fly.io/docs/machines/api/machines-resource/).
- */
 function parseMachinesListResponse(data: unknown): TFlyioMachineListItem[] {
   if (!Array.isArray(data)) return [];
   return data as TFlyioMachineListItem[];
@@ -66,19 +59,16 @@ async function listAllMachines(
 
 /**
  * Deploy secrets to machines: update each machine with the new secrets version so they
- * reboot and pick up secrets, and Fly marks the release as "deployed". Uses GET per
- * machine then POST update with full config + min_secrets_version so we never send
- * partial config (which can leave a machine stopped or broken).
  */
 const deployAppMachines = async (secretSync: TFlyioSyncWithCredentials, releaseVersion: number | undefined) => {
   const {
     connection: {
       credentials: { accessToken }
     },
-    destinationConfig: { appId, appName }
+    destinationConfig: { appId }
   } = secretSync;
 
-  const appNameResolved = await getAppName({ accessToken, appId, appName });
+  const appNameResolved = await getAppNameByAppId({ accessToken, appId });
 
   const headers = {
     Authorization: `Bearer ${accessToken}`,
@@ -92,34 +82,39 @@ const deployAppMachines = async (secretSync: TFlyioSyncWithCredentials, releaseV
   const toUpdate = machineList.filter((m) => m.state !== "destroyed" && m.state !== "destroying");
   if (toUpdate.length === 0) return;
 
-  for (const item of toUpdate) {
-    const { data: machine } = await request.get<{
-      id: string;
-      state: string;
-      region: string;
-      config: Record<string, unknown>;
-    }>(`${machinesApiBase}/${item.id}`, { headers });
-
-    const body: {
-      config: Record<string, unknown>;
-      region: string;
-      skip_launch?: boolean;
-      min_secrets_version?: number;
-    } = {
-      config: machine.config ?? {},
-      region: machine.region
-    };
-    if (releaseVersion != null) {
-      body.min_secrets_version = releaseVersion;
+  for (const machine of toUpdate) {
+    let { region, config } = machine;
+    if (!region || config == null) {
+      const { data: fullMachine } = await request.get<{
+        id: string;
+        state: string;
+        region: string;
+        config: Record<string, unknown>;
+      }>(`${machinesApiBase}/${machine.id}`, { headers });
+      ({ region, config } = fullMachine);
     }
-    body.skip_launch = false;
+    if (region && config != null) {
+      const body: {
+        config: Record<string, unknown>;
+        region: string;
+        skip_launch?: boolean;
+        min_secrets_version?: number;
+      } = {
+        config,
+        region
+      };
+      if (releaseVersion != null) {
+        body.min_secrets_version = releaseVersion;
+      }
+      body.skip_launch = false;
 
-    await request.post(`${machinesApiBase}/${machine.id}`, body, { headers });
+      await request.post(`${machinesApiBase}/${machine.id}`, body, { headers });
 
-    await request.get(
-      `${machinesApiBase}/${machine.id}/wait?state=started&timeout=${FLYIO_MACHINE_WAIT_TIMEOUT_SECONDS}`,
-      { headers }
-    );
+      await request.get(
+        `${machinesApiBase}/${machine.id}/wait?state=started&timeout=${FLYIO_MACHINE_WAIT_TIMEOUT_SECONDS}`,
+        { headers }
+      );
+    }
   }
 };
 

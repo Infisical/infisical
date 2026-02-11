@@ -27,7 +27,7 @@ export const FlyioSyncOptionsReviewFields = () => {
 
 export const FlyioSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.Flyio }>();
-  const config = watch("destinationConfig");
+  const appId = watch("destinationConfig.appId");
 
-  return <GenericFieldLabel label="App">{config.appName ?? config.appId}</GenericFieldLabel>;
+  return <GenericFieldLabel label="App">{appId}</GenericFieldLabel>;
 };

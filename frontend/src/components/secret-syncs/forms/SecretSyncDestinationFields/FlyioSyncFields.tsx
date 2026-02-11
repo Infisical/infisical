@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { SingleValue } from "react-select";
 
@@ -10,7 +9,7 @@ import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { TSecretSyncForm } from "../schemas";
 
 export const FlyioSyncFields = () => {
-  const { control, setValue, watch } = useFormContext<
+  const { control, setValue } = useFormContext<
     TSecretSyncForm & { destination: SecretSync.Flyio }
   >();
 
@@ -20,24 +19,11 @@ export const FlyioSyncFields = () => {
     enabled: Boolean(connectionId)
   });
 
-  const appId = watch("destinationConfig.appId");
-  const appName = watch("destinationConfig.appName");
-
-  useEffect(() => {
-    if (apps && appId && !appName) {
-      const selectedApp = apps.find((v) => v.id === appId);
-      if (selectedApp) {
-        setValue("destinationConfig.appName", selectedApp.name);
-      }
-    }
-  }, [apps, appId, appName, setValue]);
-
   return (
     <>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.appId", "");
-          setValue("destinationConfig.appName", "");
         }}
       />
 
@@ -54,7 +40,6 @@ export const FlyioSyncFields = () => {
               onChange={(option) => {
                 const selected = option as SingleValue<TFlyioApp>;
                 onChange(selected?.id ?? null);
-                setValue("destinationConfig.appName", selected?.name ?? "");
               }}
               options={apps}
               placeholder="Select an app..."
