@@ -1,3 +1,5 @@
+import net from "node:net";
+
 import { ForbiddenError, subject } from "@casl/ability";
 import pg from "pg";
 import type WebSocket from "ws";
@@ -58,7 +60,7 @@ type TPamWebAccessServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
-  pamSessionDAL: Pick<TPamSessionDALFactory, "create" | "updateById" | "expireSessionById" | "countActiveWebSessions">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "create" | "updateById" | "countActiveWebSessions">;
   pamSessionExpirationService: Pick<TPamSessionExpirationServiceFactory, "scheduleSessionExpiration">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -335,34 +337,32 @@ export const pamWebAccessServiceFactory = ({
         }
       }
 
-      // Best-effort ALPN session cancellation
+      // Best-effort ALPN session cancellation (fire-and-forget).
+      // Triggers gateway-side cleanup: log upload, and session end via API.
+      // If this fails, the scheduled queue job will expire the session at expiresAt time.
       if (relayCerts) {
-        try {
-          const relayConn = await createRelayConnection({
-            relayHost: relayCerts.relayHost,
-            clientCertificate: relayCerts.relay.clientCertificate,
-            clientPrivateKey: relayCerts.relay.clientPrivateKey,
-            serverCertificateChain: relayCerts.relay.serverCertificateChain
-          });
-          const cancelConn = await createGatewayConnection(
-            relayConn,
-            relayCerts.gateway,
-            GatewayProxyProtocol.PamSessionCancellation
-          );
-          cancelConn.end();
-          relayConn.destroy();
-        } catch (err) {
-          logger.debug(err, "Session cancellation signal failed (best-effort)");
-        }
-      }
-
-      // Always expire session in DB
-      if (session) {
-        try {
-          await pamSessionDAL.expireSessionById(session.id);
-        } catch (err) {
-          logger.debug(err, "Error expiring session");
-        }
+        const certs = relayCerts;
+        void (async () => {
+          let relayConn: net.Socket | null = null;
+          try {
+            relayConn = await createRelayConnection({
+              relayHost: certs.relayHost,
+              clientCertificate: certs.relay.clientCertificate,
+              clientPrivateKey: certs.relay.clientPrivateKey,
+              serverCertificateChain: certs.relay.serverCertificateChain
+            });
+            const cancelConn = await createGatewayConnection(
+              relayConn,
+              certs.gateway,
+              GatewayProxyProtocol.PamSessionCancellation
+            );
+            cancelConn.end();
+          } catch (err) {
+            logger.debug(err, "Session cancellation signal failed (best-effort)");
+          } finally {
+            relayConn?.destroy();
+          }
+        })();
       }
     };
 
