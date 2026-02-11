@@ -221,6 +221,24 @@ export const HCVaultSyncFns = {
       }
     }
 
+    // if no secrets remain after removal
+    if (Object.keys(variables).length === 0) {
+      // for kv v1: must DELETE the path entirely (empty secrets not allowed)
+      // for kv v2: can write empty data to keep the path with metadata
+      if (mountVersion === KvVersion.V1) {
+        const urlPath = `${removeTrailingSlash(mount)}/${path}`;
+        await requestWithHCVaultGateway(connection, gatewayService, gatewayV2Service, {
+          url: `${instanceUrl}/v1/${urlPath}`,
+          method: "DELETE",
+          headers: {
+            "X-Vault-Token": accessToken,
+            ...(namespace ? { "X-Vault-Namespace": namespace } : {})
+          }
+        });
+        return;
+      }
+    }
+
     // Only update variables if there was a change detected
     if (!tainted) return;
 
