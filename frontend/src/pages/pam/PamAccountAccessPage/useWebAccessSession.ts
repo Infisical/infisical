@@ -80,6 +80,9 @@ export const useWebAccessSession = ({
 
       ws.onclose = () => {
         wsRef.current = null;
+        if (terminalRef.current) {
+          terminalRef.current.options.disableStdin = true;
+        }
         setIsConnected(false);
         onSessionEndRef.current?.();
       };
@@ -206,7 +209,10 @@ export const useWebAccessSession = ({
 
   const reconnect = useCallback(() => {
     disconnect();
-    terminalRef.current?.clear();
+    if (terminalRef.current) {
+      terminalRef.current.reset();
+      terminalRef.current.options.disableStdin = false;
+    }
     connect();
   }, [disconnect, connect]);
 
