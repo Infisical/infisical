@@ -11,15 +11,23 @@ import {
   ProjectPermissionPamAccountActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, PolicyViolationError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { createGatewayConnection, createRelayConnection, setupRelayServer } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
-import { ActorType } from "@app/services/auth/auth-type";
+import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
+import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import { APPROVAL_POLICY_FACTORY_MAP } from "@app/services/approval-policy/approval-policy-factory";
+import { TApprovalRequestGrantsDALFactory } from "@app/services/approval-policy/approval-request-dal";
+import { ActorType, MfaMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
+import { MfaSessionStatus } from "@app/services/mfa-session/mfa-session-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TPamSessionExpirationServiceFactory } from "@app/services/pam-session-expiration/pam-session-expiration-queue";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
@@ -55,6 +63,14 @@ type TPamWebAccessServiceFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   userDAL: Pick<TUserDALFactory, "findById">;
+  mfaSessionService: Pick<
+    TMfaSessionServiceFactory,
+    "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
+  >;
+  approvalPolicyDAL: TApprovalPolicyDALFactory;
+  approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export type TPamWebAccessServiceFactory = ReturnType<typeof pamWebAccessServiceFactory>;
@@ -83,7 +99,12 @@ export const pamWebAccessServiceFactory = ({
   pamSessionExpirationService,
   gatewayV2Service,
   kmsService,
-  userDAL
+  userDAL,
+  mfaSessionService,
+  approvalPolicyDAL,
+  approvalRequestGrantsDAL,
+  orgDAL,
+  projectDAL
 }: TPamWebAccessServiceFactoryDep) => {
   const sendMessage = (socket: WebSocket, message: TWebSocketServerMessage): void => {
     try {
@@ -106,7 +127,8 @@ export const pamWebAccessServiceFactory = ({
     actor,
     actorEmail,
     actorName,
-    auditLogInfo
+    auditLogInfo,
+    mfaSessionId
   }: TIssueWebSocketTicketDTO) => {
     const account = await pamAccountDAL.findById(accountId);
 
@@ -130,22 +152,101 @@ export const pamWebAccessServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      projectId: account.projectId,
-      actionProjectType: ActionProjectType.PAM
-    });
+    // Approval policy check
+    const approvalPolicy = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.PamAccess](ApprovalPolicyType.PamAccess);
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPamAccountActions.Access,
-      subject(ProjectPermissionSub.PamAccounts, {
-        resourceName: resource.name,
-        accountName: account.name
-      })
+    const policyInputs = {
+      resourceId: resource.id,
+      resourceName: resource.name,
+      accountName: account.name
+    };
+
+    const hasApprovalGrant = await approvalPolicy.canAccess(
+      approvalRequestGrantsDAL,
+      resource.projectId,
+      actor.id,
+      policyInputs
     );
+
+    if (!hasApprovalGrant) {
+      const matchedPolicy = await approvalPolicy.matchPolicy(approvalPolicyDAL, resource.projectId, policyInputs);
+
+      if (matchedPolicy) {
+        throw new PolicyViolationError({
+          message: "A policy is in place for this resource",
+          details: {
+            policyId: matchedPolicy.id,
+            policyName: matchedPolicy.name,
+            policyType: matchedPolicy.type
+          }
+        });
+      }
+
+      // If there isn't a policy in place, continue with checking permission
+      const { permission } = await permissionService.getProjectPermission({
+        actor: actor.type,
+        actorId: actor.id,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        projectId: account.projectId,
+        actionProjectType: ActionProjectType.PAM
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionPamAccountActions.Access,
+        subject(ProjectPermissionSub.PamAccounts, {
+          resourceName: resource.name,
+          accountName: account.name
+        })
+      );
+    }
+
+    // MFA check
+    if (account.requireMfa && !mfaSessionId) {
+      const project = await projectDAL.findById(account.projectId);
+      if (!project) throw new NotFoundError({ message: `Project with ID '${account.projectId}' not found` });
+
+      const actorUser = await userDAL.findById(actor.id);
+      if (!actorUser) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
+
+      const org = await orgDAL.findOrgById(project.orgId);
+      if (!org) throw new NotFoundError({ message: `Organization with ID '${project.orgId}' not found` });
+
+      // Determine which MFA method to use
+      // Priority: org-enforced > user-selected > email as fallback
+      const orgMfaMethod = org.enforceMfa ? (org.selectedMfaMethod as MfaMethod | null) : undefined;
+      const userMfaMethod = actorUser.isMfaEnabled ? (actorUser.selectedMfaMethod as MfaMethod | null) : undefined;
+      const mfaMethod = (orgMfaMethod ?? userMfaMethod ?? MfaMethod.EMAIL) as MfaMethod;
+
+      const newMfaSessionId = await mfaSessionService.createMfaSession(actorUser.id, account.id, mfaMethod);
+
+      if (mfaMethod === MfaMethod.EMAIL && actorUser.email) {
+        await mfaSessionService.sendMfaCode(actorUser.id, actorUser.email);
+      }
+
+      throw new BadRequestError({
+        message: "MFA verification required to access PAM account",
+        name: "SESSION_MFA_REQUIRED",
+        details: {
+          mfaSessionId: newMfaSessionId,
+          mfaMethod
+        }
+      });
+    }
+
+    if (account.requireMfa && mfaSessionId) {
+      const mfaSession = await mfaSessionService.getMfaSession(mfaSessionId);
+      if (
+        !mfaSession ||
+        mfaSession.userId !== actor.id ||
+        mfaSession.resourceId !== account.id ||
+        mfaSession.status !== MfaSessionStatus.ACTIVE
+      ) {
+        throw new BadRequestError({ message: "Invalid or expired MFA session" });
+      }
+
+      await mfaSessionService.deleteMfaSession(mfaSessionId);
+    }
 
     const token = await tokenService.createTokenForUser({
       type: TokenType.TOKEN_PAM_WS_TICKET,

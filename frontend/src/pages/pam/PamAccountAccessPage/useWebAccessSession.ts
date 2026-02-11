@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FitAddon } from "@xterm/addon-fit";
+import { WebLinksAddon } from "@xterm/addon-web-links";
 import { Terminal } from "@xterm/xterm";
 
+import { apiRequest } from "@app/config/request";
+import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaSession/types";
 import { useCreatePamWebAccessTicket } from "@app/hooks/api/pam";
 
 import { WebSocketServerMessageSchema, WsMessageType } from "./web-access-types";
@@ -37,16 +40,8 @@ export const useWebAccessSession = ({
 
   // --- WebSocket lifecycle (imperative) ---
 
-  const connect = useCallback(async () => {
-    const terminal = terminalRef.current;
-    if (!terminal) return;
-
-    inputBufferRef.current = "";
-    currentPromptRef.current = "";
-
-    try {
-      const ticket = await createTicketRef.current.mutateAsync({ accountId, projectId });
-
+  const openWebSocket = useCallback(
+    (terminal: Terminal, ticket: string) => {
       const { protocol, host } = window.location;
       const wsProtocol = protocol === "https:" ? "wss:" : "ws:";
       const wsUrl = `${wsProtocol}//${host}/api/v1/pam/accounts/${accountId}/web-access?ticket=${encodeURIComponent(ticket)}`;
@@ -92,10 +87,110 @@ export const useWebAccessSession = ({
       ws.onerror = () => {
         // no-op: onclose always fires after onerror
       };
-    } catch {
+    },
+    [accountId]
+  );
+
+  const connect = useCallback(async () => {
+    const terminal = terminalRef.current;
+    if (!terminal) return;
+
+    inputBufferRef.current = "";
+    currentPromptRef.current = "";
+
+    try {
+      const ticket = await createTicketRef.current.mutateAsync({ accountId, projectId });
+      openWebSocket(terminal, ticket);
+    } catch (err: unknown) {
+      const axiosErr = err as {
+        response?: {
+          data?: { error?: string; details?: { mfaSessionId?: string; mfaMethod?: string } };
+        };
+      };
+
+      if (axiosErr?.response?.data?.error === "SESSION_MFA_REQUIRED") {
+        const mfaSessionId = axiosErr.response!.data!.details?.mfaSessionId;
+
+        if (!mfaSessionId) {
+          terminal.write("\r\nMFA session could not be created. Please try again.\r\n");
+          return;
+        }
+
+        const mfaUrl = `${window.location.origin}/mfa-session/${mfaSessionId}`;
+
+        // Try to open MFA verification in a new window.
+        const popup = window.open(mfaUrl, "_blank");
+
+        terminal.write(
+          "\r\nMFA verification required. Complete verification in the opened window or via this link:\r\n"
+        );
+        terminal.write(`\r\n  ${mfaUrl}\r\n\r\n`);
+        terminal.write("Waiting for verification...\r\n");
+
+        // Poll for MFA session to become ACTIVE
+        const MFA_POLL_INTERVAL = 2000;
+        const MFA_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+        const startTime = Date.now();
+
+        const mfaVerified = await new Promise<boolean>((resolve) => {
+          const interval = setInterval(async () => {
+            if (Date.now() - startTime > MFA_TIMEOUT) {
+              clearInterval(interval);
+              resolve(false);
+              return;
+            }
+
+            try {
+              const { data } = await apiRequest.get<TMfaSessionStatusResponse>(
+                `/api/v2/mfa-sessions/${mfaSessionId}/status`
+              );
+              if (data.status === MfaSessionStatus.ACTIVE) {
+                clearInterval(interval);
+                resolve(true);
+              }
+            } catch {
+              clearInterval(interval);
+              resolve(false);
+            }
+          }, MFA_POLL_INTERVAL);
+        });
+
+        // Close popup if still open
+        if (popup && !popup.closed) {
+          popup.close();
+        }
+
+        if (!mfaVerified) {
+          terminal.write("\r\nMFA verification timed out or failed. Please try again.\r\n");
+          return;
+        }
+
+        // Retry ticket request with verified MFA session
+        try {
+          const ticket = await createTicketRef.current.mutateAsync({
+            accountId,
+            projectId,
+            mfaSessionId
+          });
+          openWebSocket(terminal, ticket);
+        } catch {
+          terminal.write("\r\nFailed to connect after MFA verification. Please try again.\r\n");
+        }
+        return;
+      }
+
+      // Check for PolicyViolationError
+      if (axiosErr?.response?.data?.error === "PolicyViolationError") {
+        const accountUrl = window.location.href.replace(/\/access$/, "");
+        terminal.write("\r\nAccess denied: You must request access for this account.\r\n");
+        terminal.write(`\r\nRequest access at: ${accountUrl}\r\n`);
+        terminal.write("\r\nOnce approved, refresh this page to connect.\r\n");
+        return;
+      }
+
       terminal.write("\r\nFailed to connect. Please close and try again.\r\n");
     }
-  }, [accountId, projectId]);
+  }, [accountId, projectId, openWebSocket]);
 
   const disconnect = useCallback(() => {
     const ws = wsRef.current;
@@ -152,7 +247,9 @@ export const useWebAccessSession = ({
     });
 
     const fitAddon = new FitAddon();
+    const webLinksAddon = new WebLinksAddon();
     terminal.loadAddon(fitAddon);
+    terminal.loadAddon(webLinksAddon);
     terminal.open(containerEl);
     fitAddon.fit();
     terminalRef.current = terminal;

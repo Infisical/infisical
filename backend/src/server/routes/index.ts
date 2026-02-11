@@ -2614,7 +2614,12 @@ export const registerRoutes = async (
     pamSessionExpirationService,
     gatewayV2Service,
     kmsService,
-    userDAL
+    userDAL,
+    mfaSessionService,
+    approvalPolicyDAL,
+    approvalRequestGrantsDAL,
+    orgDAL,
+    projectDAL
   });
 
   const aiMcpServerService = aiMcpServerServiceFactory({

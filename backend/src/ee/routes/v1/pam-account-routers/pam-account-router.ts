@@ -247,7 +247,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         accountId: z.string().uuid()
       }),
       body: z.object({
-        projectId: z.string().uuid()
+        projectId: z.string().uuid(),
+        mfaSessionId: z.string().optional()
       }),
       response: {
         200: z.object({ ticket: z.string() })
@@ -267,7 +268,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         actor: req.permission,
         actorEmail: req.auth.user.email ?? "",
         actorName: `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim(),
-        auditLogInfo: req.auditLogInfo
+        auditLogInfo: req.auditLogInfo,
+        mfaSessionId: req.body.mfaSessionId
       });
 
       return { ticket };
