@@ -286,7 +286,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     for (const eventType of POSTHOG_AGGREGATED_EVENTS) {
       let totalProcessed = 0;
 
-      logger.info(`Starting bucket processing for ${eventType}`);
+      logger.debug(`Starting bucket processing for ${eventType}`);
 
       // Process each bucket sequentially to control memory usage
       for (const bucketId of TELEMETRY_BUCKET_NAMES) {
@@ -299,7 +299,11 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         }
       }
 
-      logger.info(`Completed processing ${totalProcessed} total events for ${eventType}`);
+      if (totalProcessed > 0) {
+        logger.info(`Completed processing ${totalProcessed} total events for ${eventType}`);
+      } else {
+        logger.debug(`Completed processing 0 events for ${eventType}`);
+      }
     }
   };
 

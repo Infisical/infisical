@@ -133,7 +133,7 @@ export const microsoftTeamsServiceFactory = ({
       }
 
       if (lastKnownUpdatedAt.getTime() === serverCfg.updatedAt.getTime()) {
-        logger.info("No changes to Microsoft Teams integration configuration, skipping sync");
+        logger.debug("No changes to Microsoft Teams integration configuration, skipping sync");
         return;
       }
 
