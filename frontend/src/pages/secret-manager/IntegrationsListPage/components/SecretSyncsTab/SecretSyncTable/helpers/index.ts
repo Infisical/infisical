@@ -139,7 +139,7 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       break;
     case SecretSync.Flyio:
       primaryText = destinationConfig.appId;
-      secondaryText = "App ID";
+      secondaryText = "App";
       break;
     case SecretSync.GitLab:
       if (destinationConfig.scope === GitLabSyncScope.Project) {
