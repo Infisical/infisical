@@ -94,8 +94,8 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "updateUserName",
       body: z.object({
-        firstName: z.string().trim(),
-        lastName: z.string().trim()
+        firstName: z.string().trim().min(1, { message: "First name is required" }),
+        lastName: z.string().trim().min(1, { message: "Last name is required" })
       }),
       response: {
         200: z.object({
