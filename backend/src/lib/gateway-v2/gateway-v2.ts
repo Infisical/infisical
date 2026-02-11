@@ -1,7 +1,7 @@
 import net from "node:net";
 import tls from "node:tls";
 
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import https from "https";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
@@ -275,6 +275,10 @@ export const withGatewayV2Proxy = async <T>(
     let errorMessage = relayErrorMessage || (err instanceof Error ? err.message : String(err));
     if (axios.isAxiosError(err) && (err.response?.data as { message?: string })?.message) {
       errorMessage = (err.response?.data as { message: string }).message;
+    }
+
+    if (err instanceof AxiosError) {
+      throw err;
     }
 
     throw new BadRequestError({ message: errorMessage });

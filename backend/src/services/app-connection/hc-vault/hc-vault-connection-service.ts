@@ -24,7 +24,9 @@ export const hcVaultConnectionService = (
     try {
       const mounts = await listHCVaultMounts(appConnection, gatewayService, gatewayV2Service);
       // Filter for KV version 2 mounts only and extract just the paths
-      return mounts.filter((mount) => mount.type === "kv" && mount.version === "2").map((mount) => mount.path);
+      return mounts
+        .filter((mount) => mount.type === "kv" && (mount.version === "2" || mount.version === "1"))
+        .map((mount) => mount.path);
     } catch (error) {
       logger.error(error, "Failed to establish connection with Hashicorp Vault");
       return [];
