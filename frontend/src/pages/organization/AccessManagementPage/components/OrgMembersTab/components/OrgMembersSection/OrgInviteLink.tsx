@@ -13,10 +13,27 @@ type Props = {
 export const OrgInviteLink = ({ invite }: Props) => {
   const [isInviteLinkCopied, setInviteLinkCopied] = useToggle(false);
 
-  const copyTokenToClipboard = () => {
+  const copyTokenToClipboard = async () => {
     if (isInviteLinkCopied) return;
 
-    navigator.clipboard.writeText(invite.link);
+    try {
+      // navigator.clipboard requires a secure context (HTTPS or localhost).
+      // Self-hosted deployments served over plain HTTP will throw here.
+      await navigator.clipboard.writeText(invite.link);
+    } catch {
+      // Fallback for non-secure contexts: create a temporary textarea,
+      // select its contents and use the legacy execCommand API.
+      const textarea = document.createElement("textarea");
+      textarea.value = invite.link;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+
     setInviteLinkCopied.timedToggle();
 
     createNotification({
