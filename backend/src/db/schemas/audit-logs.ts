@@ -25,5 +25,5 @@ export const AuditLogsSchema = z.object({
 });
 
 export type TAuditLogs = z.infer<typeof AuditLogsSchema>;
-export type TAuditLogsInsert = Omit<z.input<typeof AuditLogsSchema>, TImmutableDBKeys> & { id: string };
+export type TAuditLogsInsert = Omit<z.input<typeof AuditLogsSchema>, TImmutableDBKeys>;
 export type TAuditLogsUpdate = Partial<Omit<z.input<typeof AuditLogsSchema>, TImmutableDBKeys>>;

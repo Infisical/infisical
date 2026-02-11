@@ -76,58 +76,45 @@ export const auditLogQueueServiceFactory = async ({
 
       const ttl = ttlInDays * MS_IN_DAY;
 
-      const now = new Date();
-      const auditLogId = randomUUID();
+      const auditLog = await auditLogDAL.create({
+        actor: actor.type,
+        actorMetadata: actor.metadata,
+        userAgent,
+        projectId,
+        projectName: project?.name,
+        ipAddress,
+        orgId,
+        eventType: event.type,
+        expiresAt: new Date(Date.now() + ttl),
+        eventMetadata: event.metadata,
+        userAgentType
+      });
+      await auditLogStreamService.streamLog(orgId, auditLog);
 
-      const results = await Promise.allSettled([
-        (async () => {
-          const auditLog = await auditLogDAL.create({
-            id: auditLogId,
-            actor: actor.type,
-            actorMetadata: actor.metadata,
-            userAgent,
-            projectId,
-            projectName: project?.name,
-            ipAddress,
-            orgId,
-            eventType: event.type,
-            expiresAt: new Date(Date.now() + ttl),
-            eventMetadata: event.metadata,
-            userAgentType
+      if (clickhouseClient && CLICKHOUSE_AUDIT_LOG_ENABLED) {
+        try {
+          await clickhouseClient.insert({
+            table: CLICKHOUSE_AUDIT_LOG_TABLE_NAME,
+            clickhouse_settings: CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS,
+            values: [
+              {
+                id: auditLog.id,
+                actor: actor.type,
+                actorMetadata: actor.metadata ?? {},
+                ipAddress: ipAddress ?? "",
+                eventType: event.type,
+                eventMetadata: event.metadata ?? {},
+                userAgent: userAgent ?? "",
+                userAgentType: userAgentType ?? "",
+                createdAt: new Date(),
+                projectId: projectId ?? "",
+                orgId
+              }
+            ],
+            format: "JSONEachRow"
           });
-          await auditLogStreamService.streamLog(orgId, auditLog);
-        })(),
-        ...(clickhouseClient && CLICKHOUSE_AUDIT_LOG_ENABLED
-          ? [
-              clickhouseClient.insert({
-                table: CLICKHOUSE_AUDIT_LOG_TABLE_NAME,
-                clickhouse_settings: CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS,
-                values: [
-                  {
-                    id: auditLogId,
-                    actor: actor.type,
-                    actorMetadata: actor.metadata ?? {},
-                    ipAddress: ipAddress ?? "",
-                    eventType: event.type,
-                    eventMetadata: event.metadata ?? {},
-                    userAgent: userAgent ?? "",
-                    userAgentType: userAgentType ?? "",
-                    createdAt: now,
-                    projectId: projectId ?? "",
-                    orgId
-                  }
-                ],
-                format: "JSONEachRow"
-              })
-            ]
-          : [])
-      ]);
-
-      const opNames = ["auditLogDAL", "clickhouseClient"];
-      for (let i = 0; i < results.length; i += 1) {
-        const result = results[i];
-        if (result.status === "rejected") {
-          logger.error(result.reason, `Failed to insert audit log [op=${opNames[i]}] [auditLogId=${auditLogId}]`);
+        } catch (error) {
+          logger.error(error, `Failed to insert audit log to ClickHouse [auditLogId=${auditLog.id}]`);
         }
       }
     }
