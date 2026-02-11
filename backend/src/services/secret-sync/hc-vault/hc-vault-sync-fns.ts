@@ -2,6 +2,7 @@ import { isAxiosError } from "axios";
 
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import {
   getHCVaultAccessToken,
@@ -117,9 +118,13 @@ const listHCVaultVariables = async (
     return data.data;
   } catch (error: unknown) {
     // Returning an empty set when a path isn't found allows that path to be created by a later POST request
-    if (isAxiosError(error) && error.response?.status === 404) {
+    if (
+      (isAxiosError(error) && error.response?.status === 404) ||
+      (error instanceof BadRequestError && error.message === "Request failed with status code 404")
+    ) {
       return {};
     }
+
     throw error;
   }
 };
@@ -272,6 +277,24 @@ export const HCVaultSyncFns = {
     }
 
     try {
+      // if no secrets remain after removal
+      if (Object.keys(variables).length === 0) {
+        // for kv v1: must DELETE the path entirely (empty secrets not allowed)
+        // for kv v2: can write empty data to keep the path with metadata
+        if (mountVersion === KvVersion.V1) {
+          const urlPath = `${removeTrailingSlash(mount)}/${path}`;
+          await requestWithHCVaultGateway(connection, gatewayService, gatewayV2Service, {
+            url: `${instanceUrl}/v1/${urlPath}`,
+            method: "DELETE",
+            headers: {
+              "X-Vault-Token": accessToken,
+              ...(namespace ? { "X-Vault-Namespace": namespace } : {})
+            }
+          });
+          return;
+        }
+      }
+
       await updateHCVaultVariables(
         { accessToken, instanceUrl, namespace, mount, mountVersion, path, data: variables },
         connection,
