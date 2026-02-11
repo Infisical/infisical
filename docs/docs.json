@@ -737,7 +737,8 @@
                     "pages": [
                       "documentation/platform/pki/alerting/overview",
                       "documentation/platform/pki/alerting/webhook-alerts",
-                      "documentation/platform/pki/alerting/slack-alerts"
+                      "documentation/platform/pki/alerting/slack-alerts",
+                      "documentation/platform/pki/alerting/pagerduty-alerts"
                     ]
                   },
                   "documentation/platform/pki/approvals"
