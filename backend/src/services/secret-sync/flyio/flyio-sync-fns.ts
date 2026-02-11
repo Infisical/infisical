@@ -83,16 +83,7 @@ const deployAppMachines = async (secretSync: TFlyioSyncWithCredentials, releaseV
   if (toUpdate.length === 0) return;
 
   for (const machine of toUpdate) {
-    let { region, config } = machine;
-    if (!region || config == null) {
-      const { data: fullMachine } = await request.get<{
-        id: string;
-        state: string;
-        region: string;
-        config: Record<string, unknown>;
-      }>(`${machinesApiBase}/${machine.id}`, { headers });
-      ({ region, config } = fullMachine);
-    }
+    const { region, config } = machine;
     if (region && config != null) {
       const body: {
         config: Record<string, unknown>;
@@ -109,7 +100,6 @@ const deployAppMachines = async (secretSync: TFlyioSyncWithCredentials, releaseV
       body.skip_launch = false;
 
       await request.post(`${machinesApiBase}/${machine.id}`, body, { headers });
-
       await request.get(
         `${machinesApiBase}/${machine.id}/wait?state=started&timeout=${FLYIO_MACHINE_WAIT_TIMEOUT_SECONDS}`,
         { headers }
