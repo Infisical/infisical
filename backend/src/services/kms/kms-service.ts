@@ -677,14 +677,39 @@ export const kmsServiceFactory = ({
 
       try {
         if (!lock) {
-          await keyStore.waitTillReady({
-            key: `${KeyStorePrefixes.WaitUntilReadyKmsProjectKeyCreation}${projectId}`,
-            keyCheckCb: (val) => val === "true",
-            waitingCb: () => logger.debug("KMS. Waiting for project key to be created"),
-            delay: 500
-          });
+          await keyStore
+            .waitTillReady({
+              key: `${KeyStorePrefixes.WaitUntilReadyKmsProjectKeyCreation}${projectId}`,
+              keyCheckCb: (val) => val === "true",
+              waitingCb: () => logger.debug("KMS. Waiting for project key to be created"),
+              delay: 500
+            })
+            .catch(() => {
+              logger.warn("KMS. Timed out waiting for project key creation signal");
+            });
 
           project = await projectDAL.findById(projectId);
+
+          // If the key still doesn't exist after waiting (e.g. the lock holder
+          // crashed, Redis is degraded, or this is a single-node fresh install),
+          // create it ourselves using a DB-level transaction for safety.
+          if (!project.kmsSecretManagerKeyId) {
+            logger.info({ projectId }, "KMS. Creating project key via fallback path");
+            const key = await (trx || projectDAL).transaction(async (tx) => {
+              const freshProject = await projectDAL.findById(projectId, tx);
+              if (freshProject.kmsSecretManagerKeyId) {
+                return { id: freshProject.kmsSecretManagerKeyId };
+              }
+              return generateKmsKey({
+                isReserved: true,
+                orgId: freshProject.orgId,
+                tx
+              });
+            });
+
+            await projectDAL.updateById(projectId, { kmsSecretManagerKeyId: key.id });
+            project = await projectDAL.findById(projectId);
+          }
         } else {
           const kmsKeyId = await (trx || projectDAL).transaction(async (tx) => {
             project = await projectDAL.findById(projectId, tx);
