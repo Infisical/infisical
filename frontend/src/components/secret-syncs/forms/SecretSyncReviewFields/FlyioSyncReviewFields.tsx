@@ -1,8 +1,9 @@
-import { useFormContext } from "react-hook-form";
+import { useFormContext, useWatch } from "react-hook-form";
 
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
 import { GenericFieldLabel } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
+import { useFlyioConnectionListApps } from "@app/hooks/api/appConnections/flyio";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const FlyioSyncOptionsReviewFields = () => {
@@ -26,8 +27,13 @@ export const FlyioSyncOptionsReviewFields = () => {
 };
 
 export const FlyioSyncReviewFields = () => {
-  const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.Flyio }>();
+  const { control, watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.Flyio }>();
   const appId = watch("destinationConfig.appId");
+  const connectionId = useWatch({ name: "connection.id", control });
+  const { data: apps } = useFlyioConnectionListApps(connectionId, {
+    enabled: Boolean(connectionId)
+  });
+  const displayName = apps?.find((a) => a.id === appId)?.name ?? appId;
 
-  return <GenericFieldLabel label="App">{appId}</GenericFieldLabel>;
+  return <GenericFieldLabel label="App">{displayName}</GenericFieldLabel>;
 };
