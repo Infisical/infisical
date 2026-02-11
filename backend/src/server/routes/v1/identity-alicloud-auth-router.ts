@@ -36,8 +36,8 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
           .describe(ALICLOUD_AUTH.LOGIN.Version),
         AccessKeyId: z
           .string()
-          .refine((val) => new RE2("^[A-Za-z0-9]+$").test(val), {
-            message: "AccessKeyId must be alphanumeric"
+          .refine((val) => new RE2("^[A-Za-z0-9.]+$").test(val), {
+            message: "AccessKeyId must contain only alphanumeric characters and dots"
           })
           .describe(ALICLOUD_AUTH.LOGIN.AccessKeyId),
         organizationSlug: slugSchema().optional().describe(ALICLOUD_AUTH.LOGIN.organizationSlug),
