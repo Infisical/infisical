@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 import { Link, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { ExternalLinkIcon } from "lucide-react";
@@ -16,9 +17,12 @@ import {
   UnstableCardHeader,
   UnstableCardTitle
 } from "@app/components/v3";
-import { CertStatus, useGetCertificateById } from "@app/hooks/api";
+import { CertSource, CertStatus, useGetCertificateById } from "@app/hooks/api";
 
-import { getCertValidUntilBadgeDetails } from "../../CertificatesPage/components/CertificatesTable.utils";
+import {
+  getCertSourceLabel,
+  getCertValidUntilBadgeDetails
+} from "../../CertificatesPage/components/CertificatesTable.utils";
 
 type Props = {
   certificateId: string;
@@ -161,6 +165,22 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
               <DetailLabel>Profile</DetailLabel>
               <DetailValue>
                 {certificate.profileName || <span className="text-muted">—</span>}
+              </DetailValue>
+            </Detail>
+            <Detail>
+              <DetailLabel>Source</DetailLabel>
+              <DetailValue>
+                <Badge
+                  variant={
+                    certificate.source === CertSource.Discovered
+                      ? "info"
+                      : certificate.source === CertSource.Imported
+                        ? "neutral"
+                        : "project"
+                  }
+                >
+                  {getCertSourceLabel(certificate.source ?? null)}
+                </Badge>
               </DetailValue>
             </Detail>
             {certificate.renewedFromCertificateId && (

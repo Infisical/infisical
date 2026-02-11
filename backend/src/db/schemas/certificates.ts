@@ -42,7 +42,8 @@ export const CertificatesSchema = z.object({
   fingerprintSha256: z.string().nullable().optional(),
   fingerprintSha1: z.string().nullable().optional(),
   isCA: z.boolean().nullable().optional(),
-  pathLength: z.number().nullable().optional()
+  pathLength: z.number().nullable().optional(),
+  source: z.string().default("issued")
 });
 
 export type TCertificates = z.infer<typeof CertificatesSchema>;

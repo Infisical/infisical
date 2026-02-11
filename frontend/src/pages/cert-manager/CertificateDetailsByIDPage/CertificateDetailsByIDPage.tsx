@@ -46,7 +46,11 @@ import { CertificateManageRenewalModal } from "../CertificatesPage/components/Ce
 import { CertificateRenewalModal } from "../CertificatesPage/components/CertificateRenewalModal";
 import { CertificateRevocationModal } from "../CertificatesPage/components/CertificateRevocationModal";
 import { isExpiringWithinOneDay } from "../CertificatesPage/components/CertificatesTable.utils";
-import { CertificateDetailsSection, CertificateOverviewSection } from "./components";
+import {
+  CertificateDetailsSection,
+  CertificateInstallationsSection,
+  CertificateOverviewSection
+} from "./components";
 
 const Page = () => {
   const { currentProject } = useProject();
@@ -426,6 +430,7 @@ const Page = () => {
                   <CertificateOverviewSection certificateId={certificate.id} />
                   <div className="flex flex-1 flex-col gap-y-5">
                     <CertificateDetailsSection certificateId={certificate.id} />
+                    <CertificateInstallationsSection certificateId={certificate.id} />
                   </div>
                 </div>
               </div>

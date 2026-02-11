@@ -28,6 +28,8 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionPamAccountActions,
   ProjectPermissionPamSessionActions,
+  ProjectPermissionPkiCertificateInstallationActions,
+  ProjectPermissionPkiDiscoveryActions,
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
@@ -453,6 +455,24 @@ export const projectRoleFormSchema = z.object({
         .default([]),
       [ProjectPermissionSub.PkiAlerts]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.PkiCollections]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.PkiDiscovery]: z
+        .object({
+          read: z.boolean().optional(),
+          create: z.boolean().optional(),
+          edit: z.boolean().optional(),
+          delete: z.boolean().optional(),
+          "run-scan": z.boolean().optional()
+        })
+        .array()
+        .default([]),
+      [ProjectPermissionSub.PkiCertificateInstallations]: z
+        .object({
+          read: z.boolean().optional(),
+          edit: z.boolean().optional(),
+          delete: z.boolean().optional()
+        })
+        .array()
+        .default([]),
       [ProjectPermissionSub.CertificateTemplates]: PkiTemplatePolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
@@ -1014,6 +1034,39 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
         inverted
       });
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.PkiDiscovery) {
+      const canRead = action.includes(ProjectPermissionPkiDiscoveryActions.Read);
+      const canCreate = action.includes(ProjectPermissionPkiDiscoveryActions.Create);
+      const canEdit = action.includes(ProjectPermissionPkiDiscoveryActions.Edit);
+      const canDelete = action.includes(ProjectPermissionPkiDiscoveryActions.Delete);
+      const canRunScan = action.includes(ProjectPermissionPkiDiscoveryActions.RunScan);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      if (canRead) formVal[subject]![0][ProjectPermissionPkiDiscoveryActions.Read] = true;
+      if (canCreate) formVal[subject]![0][ProjectPermissionPkiDiscoveryActions.Create] = true;
+      if (canEdit) formVal[subject]![0][ProjectPermissionPkiDiscoveryActions.Edit] = true;
+      if (canDelete) formVal[subject]![0][ProjectPermissionPkiDiscoveryActions.Delete] = true;
+      if (canRunScan) formVal[subject]![0][ProjectPermissionPkiDiscoveryActions.RunScan] = true;
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.PkiCertificateInstallations) {
+      const canRead = action.includes(ProjectPermissionPkiCertificateInstallationActions.Read);
+      const canEdit = action.includes(ProjectPermissionPkiCertificateInstallationActions.Edit);
+      const canDelete = action.includes(ProjectPermissionPkiCertificateInstallationActions.Delete);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      if (canRead)
+        formVal[subject]![0][ProjectPermissionPkiCertificateInstallationActions.Read] = true;
+      if (canEdit)
+        formVal[subject]![0][ProjectPermissionPkiCertificateInstallationActions.Edit] = true;
+      if (canDelete)
+        formVal[subject]![0][ProjectPermissionPkiCertificateInstallationActions.Delete] = true;
       return;
     }
 
@@ -1968,6 +2021,24 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
+  [ProjectPermissionSub.PkiDiscovery]: {
+    title: "PKI Discovery",
+    actions: [
+      { label: "Read", value: "read" },
+      { label: "Create", value: "create" },
+      { label: "Modify", value: "edit" },
+      { label: "Remove", value: "delete" },
+      { label: "Run Scan", value: "run-scan" }
+    ]
+  },
+  [ProjectPermissionSub.PkiCertificateInstallations]: {
+    title: "Certificate Installations",
+    actions: [
+      { label: "Read", value: "read" },
+      { label: "Modify", value: "edit" },
+      { label: "Remove", value: "delete" }
+    ]
+  },
   [ProjectPermissionSub.Kmip]: {
     title: "KMIP",
     actions: [
@@ -2215,7 +2286,9 @@ const CertificateManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.CertificateTemplates]: false, // Hidden from UI, accessible via API only
   [ProjectPermissionSub.CertificateProfiles]: enabled,
   [ProjectPermissionSub.CertificatePolicies]: enabled,
-  [ProjectPermissionSub.Certificates]: enabled
+  [ProjectPermissionSub.Certificates]: enabled,
+  [ProjectPermissionSub.PkiDiscovery]: enabled,
+  [ProjectPermissionSub.PkiCertificateInstallations]: enabled
 });
 
 const SshPermissionSubjects = (enabled = false) => ({

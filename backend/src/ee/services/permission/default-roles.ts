@@ -20,6 +20,8 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionPamAccountActions,
   ProjectPermissionPamSessionActions,
+  ProjectPermissionPkiCertificateInstallationActions,
+  ProjectPermissionPkiDiscoveryActions,
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
@@ -274,6 +276,26 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionPkiSyncActions.RemoveCertificates
     ],
     ProjectPermissionSub.PkiSyncs
+  );
+
+  can(
+    [
+      ProjectPermissionPkiDiscoveryActions.Read,
+      ProjectPermissionPkiDiscoveryActions.Create,
+      ProjectPermissionPkiDiscoveryActions.Edit,
+      ProjectPermissionPkiDiscoveryActions.Delete,
+      ProjectPermissionPkiDiscoveryActions.RunScan
+    ],
+    ProjectPermissionSub.PkiDiscovery
+  );
+
+  can(
+    [
+      ProjectPermissionPkiCertificateInstallationActions.Read,
+      ProjectPermissionPkiCertificateInstallationActions.Edit,
+      ProjectPermissionPkiCertificateInstallationActions.Delete
+    ],
+    ProjectPermissionSub.PkiCertificateInstallations
   );
 
   can(
@@ -587,6 +609,9 @@ const buildMemberPermissionRules = () => {
     ProjectPermissionSub.PkiSyncs
   );
 
+  can([ProjectPermissionPkiDiscoveryActions.Read], ProjectPermissionSub.PkiDiscovery);
+  can([ProjectPermissionPkiCertificateInstallationActions.Read], ProjectPermissionSub.PkiCertificateInstallations);
+
   can(
     [
       ProjectPermissionSecretScanningDataSourceActions.Read,
@@ -668,6 +693,8 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateTemplates);
   can(ProjectPermissionSecretSyncActions.Read, ProjectPermissionSub.SecretSyncs);
   can(ProjectPermissionPkiSyncActions.Read, ProjectPermissionSub.PkiSyncs);
+  can(ProjectPermissionPkiDiscoveryActions.Read, ProjectPermissionSub.PkiDiscovery);
+  can(ProjectPermissionPkiCertificateInstallationActions.Read, ProjectPermissionSub.PkiCertificateInstallations);
   can(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits);
 
   can(

@@ -733,7 +733,14 @@
                     ]
                   },
                   "documentation/platform/pki/alerting",
-                  "documentation/platform/pki/approvals"
+                  "documentation/platform/pki/approvals",
+                  {
+                    "group": "Discovery",
+                    "pages": [
+                      "documentation/platform/pki/discovery/overview",
+                      "documentation/platform/pki/discovery/network"
+                    ]
+                  }
                 ]
               },
               {
@@ -2790,6 +2797,29 @@
                   "api-reference/endpoints/pki-alerts/read",
                   "api-reference/endpoints/pki-alerts/update",
                   "api-reference/endpoints/pki-alerts/delete"
+                ]
+              },
+              {
+                "group": "Certificate Discovery",
+                "pages": [
+                  "api-reference/endpoints/pki-discovery/create",
+                  "api-reference/endpoints/pki-discovery/list",
+                  "api-reference/endpoints/pki-discovery/read",
+                  "api-reference/endpoints/pki-discovery/update",
+                  "api-reference/endpoints/pki-discovery/delete",
+                  "api-reference/endpoints/pki-discovery/trigger-scan",
+                  "api-reference/endpoints/pki-discovery/latest-scan",
+                  "api-reference/endpoints/pki-discovery/scan-history"
+                ]
+              },
+              {
+                "group": "Certificate Installations",
+                "pages": [
+                  "api-reference/endpoints/pki-installations/list",
+                  "api-reference/endpoints/pki-installations/read",
+                  "api-reference/endpoints/pki-installations/list-by-certificate",
+                  "api-reference/endpoints/pki-installations/update",
+                  "api-reference/endpoints/pki-installations/delete"
                 ]
               },
               {

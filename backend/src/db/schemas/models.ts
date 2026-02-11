@@ -233,6 +233,13 @@ export enum TableName {
   PkiAcmeAuth = "pki_acme_auths",
   PkiAcmeChallenge = "pki_acme_challenges",
 
+  // PKI Discovery
+  PkiDiscoveryConfig = "pki_discovery_configs",
+  PkiCertificateInstallation = "pki_certificate_installations",
+  PkiDiscoveryInstallation = "pki_discovery_installations",
+  PkiCertificateInstallationCert = "pki_certificate_installation_certs",
+  PkiDiscoveryScanHistory = "pki_discovery_scan_history",
+
   // AI
   AiMcpServer = "ai_mcp_servers",
   AiMcpServerTool = "ai_mcp_server_tools",

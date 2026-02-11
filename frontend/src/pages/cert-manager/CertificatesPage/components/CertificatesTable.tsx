@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 import { useEffect, useMemo, useState } from "react";
 import { subject } from "@casl/ability";
 import {
@@ -10,6 +11,7 @@ import {
   faFilter,
   faLink,
   faMagnifyingGlass,
+  faQuestionCircle,
   faRedo,
   faSearch,
   faTrash
@@ -67,7 +69,11 @@ import { CertStatus } from "@app/hooks/api/certificates/enums";
 import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import { getCertValidUntilBadgeDetails, isExpiringWithinOneDay } from "./CertificatesTable.utils";
+import {
+  getCertSourceLabel,
+  getCertValidUntilBadgeDetails,
+  isExpiringWithinOneDay
+} from "./CertificatesTable.utils";
 
 enum CertificateStatus {
   Active = "active",
@@ -369,16 +375,22 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
         <Table>
           <THead>
             <Tr>
-              <Th className="w-1/3">SAN / CN</Th>
-              <Th className="w-1/6">Serial Number</Th>
-              <Th className="w-1/6">Status</Th>
-              <Th className="w-1/6">Issued At</Th>
-              <Th className="w-1/4">Expiring At</Th>
+              <Th className="w-1/4">SAN / CN</Th>
+              <Th>Serial Number</Th>
+              <Th className="w-24">
+                Source
+                <Tooltip content="How this certificate was added. Managed: issued and lifecycle-managed by Infisical. Discovered: found via network scan (discovery jobs). Imported: manually uploaded by a user.">
+                  <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                </Tooltip>
+              </Th>
+              <Th className="w-24">Status</Th>
+              <Th>Issued At</Th>
+              <Th>Expiring At</Th>
               <Th className="w-12" />
             </Tr>
           </THead>
           <TBody>
-            {isPending && <TableSkeleton columns={5} innerKey="project-cas" />}
+            {isPending && <TableSkeleton columns={6} innerKey="project-cas" />}
             {!isPending &&
               certificates.map((certificate) => {
                 const { variant, label } = getCertValidUntilBadgeDetails(certificate.notAfter);
@@ -424,6 +436,11 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                       <div className="max-w-xs truncate" title={certificate.serialNumber || "N/A"}>
                         {truncateSerialNumber(certificate.serialNumber)}
                       </div>
+                    </Td>
+                    <Td>
+                      <Badge variant="ghost">
+                        {getCertSourceLabel(certificate.source ?? null)}
+                      </Badge>
                     </Td>
                     <Td>
                       {certificate.status === CertStatus.REVOKED ? (
