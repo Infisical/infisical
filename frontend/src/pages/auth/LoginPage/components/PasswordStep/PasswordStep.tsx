@@ -301,7 +301,7 @@ export const PasswordStep = ({
 
   if (shouldShowMfa) {
     return (
-      <div className="flex max-h-screen min-h-screen flex-col items-center justify-center gap-2 overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-2 overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
         <Mfa
           email={email}
           successCallback={mfaSuccessCallback}
