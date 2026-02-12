@@ -1,4 +1,5 @@
 import { type ClickHouseClient } from "@clickhouse/client";
+import RE2 from "re2";
 
 import { TDbClient } from "@app/db";
 import { TableName, TAuditLogs } from "@app/db/schemas";
@@ -43,7 +44,8 @@ type TClickHouseAuditLogRow = {
 };
 
 // Validate JSON path keys to prevent injection
-const isSafeKey = (key: string): boolean => /^[a-zA-Z0-9_]+$/.test(key);
+const SAFE_KEY_RE = new RE2(/^[a-zA-Z0-9_]+$/);
+const isSafeKey = (key: string): boolean => SAFE_KEY_RE.test(key);
 
 export type TClickHouseAuditLogDALFactory = ReturnType<typeof clickhouseAuditLogDALFactory>;
 
