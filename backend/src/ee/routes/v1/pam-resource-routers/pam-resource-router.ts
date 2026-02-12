@@ -39,7 +39,7 @@ import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-const SanitizedResourceSchema = z.union([
+const SanitizedResourceSchema = z.discriminatedUnion("resourceType", [
   SanitizedPostgresResourceSchema,
   SanitizedMySQLResourceSchema,
   SanitizedSSHResourceSchema,
