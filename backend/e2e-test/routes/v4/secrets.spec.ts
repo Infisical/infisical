@@ -231,7 +231,7 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
       expect(createdSecret.secretComment || "").toEqual(secret.comment);
       expect(createdSecret.version).toEqual(1);
 
-      const secrets = await getSecrets(seedData1.environment.slug, path);
+      const secrets = await getSecrets(seedData1.environment.slug, path, false);
       expect(secrets).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -345,7 +345,7 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
           await createSecret({ path, ...secret, type: SecretType.Personal });
 
           // shared secret deletion should delete personal ones also
-          const secrets = await getSecrets(seedData1.environment.slug, path);
+          const secrets = await getSecrets(seedData1.environment.slug, path, false);
           expect(secrets).toEqual(
             expect.arrayContaining([
               expect.objectContaining({
@@ -391,7 +391,7 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
       expect(decryptedSecret.secretComment || "").toEqual(secret.comment);
 
       // list secret should have updated value
-      const secrets = await getSecrets(seedData1.environment.slug, path);
+      const secrets = await getSecrets(seedData1.environment.slug, path, false);
       expect(secrets).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -411,7 +411,7 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
       expect(deletedSecret.secretKey).toEqual(secret.key);
 
       // shared secret deletion should delete personal ones also
-      const secrets = await getSecrets(seedData1.environment.slug, path);
+      const secrets = await getSecrets(seedData1.environment.slug, path, false);
       expect(secrets).toEqual(
         expect.not.arrayContaining([
           expect.objectContaining({
@@ -449,7 +449,7 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
       expect(createSharedSecPayload).toHaveProperty("secrets");
 
       // bulk ones should exist
-      const secrets = await getSecrets(seedData1.environment.slug, path);
+      const secrets = await getSecrets(seedData1.environment.slug, path, false);
       expect(secrets).toEqual(
         expect.arrayContaining(
           Array.from(Array(5)).map((_e, i) =>
@@ -519,7 +519,7 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
       expect(updateSharedSecPayload).toHaveProperty("secrets");
 
       // bulk ones should exist
-      const secrets = await getSecrets(seedData1.environment.slug, path);
+      const secrets = await getSecrets(seedData1.environment.slug, path, false);
       expect(secrets).toEqual(
         expect.arrayContaining(
           Array.from(Array(5)).map((_e, i) =>
@@ -560,7 +560,7 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
       expect(updateSharedSecPayload).toHaveProperty("secrets");
 
       // bulk ones should exist
-      const secrets = await getSecrets(seedData1.environment.slug, path);
+      const secrets = await getSecrets(seedData1.environment.slug, path, false);
       expect(secrets).toEqual(
         expect.arrayContaining(
           Array.from(Array(5)).map((_e, i) =>
@@ -610,7 +610,7 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
       expect(updateSharedSecPayload).toHaveProperty("secrets");
 
       // bulk ones should exist
-      const firstBatchSecretsOnInfisical = await getSecrets(seedData1.environment.slug, secretTestCases[0].path);
+      const firstBatchSecretsOnInfisical = await getSecrets(seedData1.environment.slug, secretTestCases[0].path, false);
       expect(firstBatchSecretsOnInfisical).toEqual(
         expect.arrayContaining(
           firstBatchSecrets.map((el) =>
@@ -622,7 +622,11 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
           )
         )
       );
-      const secondBatchSecretsOnInfisical = await getSecrets(seedData1.environment.slug, secretTestCases[1].path);
+      const secondBatchSecretsOnInfisical = await getSecrets(
+        seedData1.environment.slug,
+        secretTestCases[1].path,
+        false
+      );
       expect(secondBatchSecretsOnInfisical).toEqual(
         expect.arrayContaining(
           secondBatchSecrets.map((el) =>
@@ -663,7 +667,7 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
       expect(deletedSecretPayload).toHaveProperty("secrets");
 
       // bulk ones should exist
-      const secrets = await getSecrets(seedData1.environment.slug, path);
+      const secrets = await getSecrets(seedData1.environment.slug, path, false);
       expect(secrets).toEqual(
         expect.not.arrayContaining(
           Array.from(Array(5)).map((_e, i) =>
