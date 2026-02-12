@@ -62,6 +62,14 @@ export const buildRedisFromConfig = (cfg: TRedisConfigKeys) => {
     sentinelPassword: cfg.REDIS_SENTINEL_PASSWORD,
     enableTLSForSentinelMode: cfg.REDIS_SENTINEL_ENABLE_TLS,
     username: cfg.REDIS_USERNAME,
-    password: cfg.REDIS_PASSWORD
+    password: cfg.REDIS_PASSWORD,
+    reconnectOnError(err) {
+      // Reconnect when hitting a read-only replica during failover
+      const targetError = "READONLY";
+      if (err.message.includes(targetError)) {
+        return true; // Reconnect
+      }
+      return false;
+    }
   });
 };
