@@ -54,7 +54,7 @@ export const useWebAccessSession = ({
       const cellWidth = (terminal as any)._core._renderService.dimensions.css.cell.width as number;
       if (!cellWidth) return;
 
-      const MAX_COLS = 1000;
+      const MAX_COLS = 10000;
       const neededCols = Math.min(longestLine + 2, MAX_COLS);
       const neededWidth = neededCols * cellWidth;
 
