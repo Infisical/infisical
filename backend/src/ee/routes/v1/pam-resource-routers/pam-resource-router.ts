@@ -2,6 +2,10 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
+  ActiveDirectoryResourceListItemSchema,
+  SanitizedActiveDirectoryResourceSchema
+} from "@app/ee/services/pam-resource/active-directory/active-directory-resource-schemas";
+import {
   AwsIamResourceListItemSchema,
   SanitizedAwsIamResourceSchema
 } from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
@@ -42,7 +46,8 @@ const SanitizedResourceSchema = z.union([
   SanitizedKubernetesResourceSchema,
   SanitizedAwsIamResourceSchema,
   SanitizedRedisResourceSchema,
-  SanitizedWindowsResourceSchema
+  SanitizedWindowsResourceSchema,
+  SanitizedActiveDirectoryResourceSchema
 ]);
 
 const ResourceOptionsSchema = z.discriminatedUnion("resource", [
@@ -52,7 +57,8 @@ const ResourceOptionsSchema = z.discriminatedUnion("resource", [
   KubernetesResourceListItemSchema,
   AwsIamResourceListItemSchema,
   RedisResourceListItemSchema,
-  WindowsResourceListItemSchema
+  WindowsResourceListItemSchema,
+  ActiveDirectoryResourceListItemSchema
 ]);
 
 export const registerPamResourceRouter = async (server: FastifyZodProvider) => {

@@ -8,6 +8,7 @@ import {
 import { DiscriminativePick } from "@app/types";
 
 import { PamAccountHeader } from "../PamAccountHeader";
+import { ActiveDirectoryAccountForm } from "./ActiveDirectoryAccountForm";
 import { AwsIamAccountForm } from "./AwsIamAccountForm";
 import { KubernetesAccountForm } from "./KubernetesAccountForm";
 import { MySQLAccountForm } from "./MySQLAccountForm";
@@ -113,6 +114,14 @@ const CreateForm = ({
           resourceType={resourceType}
         />
       );
+    case PamResourceType.ActiveDirectory:
+      return (
+        <ActiveDirectoryAccountForm
+          onSubmit={onSubmit}
+          resourceId={resourceId}
+          resourceType={resourceType}
+        />
+      );
     default:
       throw new Error(`Unhandled resource: ${resourceType}`);
   }
@@ -163,6 +172,8 @@ const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
       return <AwsIamAccountForm account={account as any} onSubmit={onSubmit} />;
     case PamResourceType.Windows:
       return <WindowsAccountForm account={account as any} onSubmit={onSubmit} />;
+    case PamResourceType.ActiveDirectory:
+      return <ActiveDirectoryAccountForm account={account as any} onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled resource: ${account.resource.resourceType}`);
   }

@@ -240,26 +240,28 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                   <UnstableTableCell>
                     <div className="flex items-center gap-2">
                       {/* Temporarily disable accessing Windows Server accounts */}
-                      {resource.resourceType !== PamResourceType.Windows && (
-                        <ProjectPermissionCan
-                          I={ProjectPermissionPamAccountActions.Access}
-                          a={ProjectPermissionSub.PamAccounts}
-                        >
-                          <Button
-                            variant="ghost"
-                            size="xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              accessAccount(account);
-                            }}
-                            isPending={loadingAccountId === account.id}
-                            isDisabled={loadingAccountId === account.id}
+                      {/* Disable accessing Active Directory accounts */}
+                      {resource.resourceType !== PamResourceType.Windows &&
+                        resource.resourceType !== PamResourceType.ActiveDirectory && (
+                          <ProjectPermissionCan
+                            I={ProjectPermissionPamAccountActions.Access}
+                            a={ProjectPermissionSub.PamAccounts}
                           >
-                            <LogInIcon />
-                            Connect
-                          </Button>
-                        </ProjectPermissionCan>
-                      )}
+                            <Button
+                              variant="ghost"
+                              size="xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                accessAccount(account);
+                              }}
+                              isPending={loadingAccountId === account.id}
+                              isDisabled={loadingAccountId === account.id}
+                            >
+                              <LogInIcon />
+                              Connect
+                            </Button>
+                          </ProjectPermissionCan>
+                        )}
                       <UnstableDropdownMenu>
                         <UnstableDropdownMenuTrigger asChild>
                           <UnstableIconButton variant="ghost" size="xs">

@@ -31,7 +31,8 @@ import { PamUpdateResourceModal } from "../PamResourcesPage/components/PamUpdate
 import {
   PamResourceAccountsSection,
   PamResourceConnectionSection,
-  PamResourceDetailsSection
+  PamResourceDetailsSection,
+  PamResourceRelatedResourcesSection
 } from "./components";
 
 const PageContent = () => {
@@ -186,10 +187,18 @@ const PageContent = () => {
           <Tabs defaultValue="accounts">
             <TabList>
               <Tab value="accounts">Accounts</Tab>
+              {resource.resourceType === PamResourceType.ActiveDirectory && (
+                <Tab value="related-resources">Related Resources</Tab>
+              )}
             </TabList>
             <TabPanel value="accounts">
               <PamResourceAccountsSection resource={resource} />
             </TabPanel>
+            {resource.resourceType === PamResourceType.ActiveDirectory && (
+              <TabPanel value="related-resources">
+                <PamResourceRelatedResourcesSection resource={resource} />
+              </TabPanel>
+            )}
           </Tabs>
         </div>
       </div>

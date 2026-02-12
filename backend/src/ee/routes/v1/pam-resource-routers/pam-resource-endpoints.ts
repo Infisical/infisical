@@ -1,8 +1,16 @@
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { SanitizedActiveDirectoryResourceSchema } from "@app/ee/services/pam-resource/active-directory/active-directory-resource-schemas";
+import { SanitizedAwsIamResourceSchema } from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
+import { SanitizedKubernetesResourceSchema } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
+import { SanitizedMySQLResourceSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { TPamResource } from "@app/ee/services/pam-resource/pam-resource-types";
+import { SanitizedPostgresResourceSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
+import { SanitizedRedisResourceSchema } from "@app/ee/services/pam-resource/redis/redis-resource-schemas";
+import { SanitizedSSHResourceSchema } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
+import { SanitizedWindowsResourceSchema } from "@app/ee/services/pam-resource/windows-server/windows-server-resource-schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -327,6 +335,45 @@ echo ""
 
       void reply.header("Content-Type", "text/plain; charset=utf-8");
       return setupScript;
+    }
+  });
+};
+
+const RelatedResourceResponseSchema = z.union([
+  SanitizedPostgresResourceSchema,
+  SanitizedMySQLResourceSchema,
+  SanitizedSSHResourceSchema,
+  SanitizedKubernetesResourceSchema,
+  SanitizedAwsIamResourceSchema,
+  SanitizedRedisResourceSchema,
+  SanitizedWindowsResourceSchema,
+  SanitizedActiveDirectoryResourceSchema
+]);
+
+export const registerActiveDirectoryRelatedResourcesEndpoint = (server: FastifyZodProvider) => {
+  server.route({
+    method: "GET",
+    url: "/:resourceId/related-resources",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getActiveDirectoryRelatedResources",
+      description: "List resources that belong to this Active Directory domain",
+      params: z.object({
+        resourceId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          resources: RelatedResourceResponseSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const resources = await server.services.pamResource.listRelatedResources(req.params.resourceId, req.permission);
+
+      return { resources };
     }
   });
 };

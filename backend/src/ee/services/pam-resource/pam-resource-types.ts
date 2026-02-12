@@ -2,6 +2,12 @@ import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import {
+  TActiveDirectoryAccount,
+  TActiveDirectoryAccountCredentials,
+  TActiveDirectoryResource,
+  TActiveDirectoryResourceConnectionDetails
+} from "./active-directory/active-directory-resource-types";
+import {
   TAwsIamAccount,
   TAwsIamAccountCredentials,
   TAwsIamResource,
@@ -54,7 +60,8 @@ export type TPamResource =
   | TAwsIamResource
   | TKubernetesResource
   | TRedisResource
-  | TWindowsResource;
+  | TWindowsResource
+  | TActiveDirectoryResource;
 export type TPamResourceConnectionDetails =
   | TPostgresResourceConnectionDetails
   | TMySQLResourceConnectionDetails
@@ -62,7 +69,8 @@ export type TPamResourceConnectionDetails =
   | TKubernetesResourceConnectionDetails
   | TAwsIamResourceConnectionDetails
   | TRedisResourceConnectionDetails
-  | TWindowsResourceConnectionDetails;
+  | TWindowsResourceConnectionDetails
+  | TActiveDirectoryResourceConnectionDetails;
 export type TPamResourceMetadata = TSSHResourceMetadata;
 
 // Account types
@@ -73,7 +81,8 @@ export type TPamAccount =
   | TAwsIamAccount
   | TKubernetesAccount
   | TRedisAccount
-  | TWindowsAccount;
+  | TWindowsAccount
+  | TActiveDirectoryAccount;
 
 export type TPamAccountCredentials =
   | TPostgresAccountCredentials
@@ -83,12 +92,14 @@ export type TPamAccountCredentials =
   | TKubernetesAccountCredentials
   | TAwsIamAccountCredentials
   | TRedisAccountCredentials
-  | TWindowsAccountCredentials;
+  | TWindowsAccountCredentials
+  | TActiveDirectoryAccountCredentials;
 
 // Resource DTOs
 export type TCreateResourceDTO = Pick<TPamResource, "name" | "connectionDetails" | "resourceType" | "projectId"> & {
   gatewayId?: string | null;
   rotationAccountCredentials?: TPamAccountCredentials | null;
+  adServerResourceId?: string | null;
 };
 
 export type TUpdateResourceDTO = Partial<Omit<TCreateResourceDTO, "resourceType" | "projectId">> & {

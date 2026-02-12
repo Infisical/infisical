@@ -11,7 +11,12 @@ import {
 } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPamAccountActions } from "@app/context/ProjectPermissionContext/types";
-import { PamResourceType, TPamAccount, TWindowsCredentials } from "@app/hooks/api/pam";
+import {
+  PamResourceType,
+  TActiveDirectoryCredentials,
+  TPamAccount,
+  TWindowsCredentials
+} from "@app/hooks/api/pam";
 import { TAwsIamCredentials } from "@app/hooks/api/pam/types/aws-iam-resource";
 import { TBaseSqlCredentials } from "@app/hooks/api/pam/types/shared/sql-resource";
 import { SSHAuthMethod, TSSHCredentials } from "@app/hooks/api/pam/types/ssh-resource";
@@ -76,6 +81,14 @@ const WindowsCredentialsContent = ({ credentials }: { credentials: TWindowsCrede
   return <CopyableField label="Username" value={credentials.username} />;
 };
 
+const ActiveDirectoryCredentialsContent = ({
+  credentials
+}: {
+  credentials: TActiveDirectoryCredentials;
+}) => {
+  return <CopyableField label="Username" value={credentials.username} />;
+};
+
 const CredentialsContent = ({ account }: { account: TPamAccount }) => {
   const { resourceType } = account.resource;
 
@@ -90,6 +103,12 @@ const CredentialsContent = ({ account }: { account: TPamAccount }) => {
       return <AwsIamCredentialsContent credentials={account.credentials as TAwsIamCredentials} />;
     case PamResourceType.Windows:
       return <WindowsCredentialsContent credentials={account.credentials as TWindowsCredentials} />;
+    case PamResourceType.ActiveDirectory:
+      return (
+        <ActiveDirectoryCredentialsContent
+          credentials={account.credentials as TActiveDirectoryCredentials}
+        />
+      );
     default:
       return null;
   }
