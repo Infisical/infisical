@@ -17,7 +17,7 @@ const PageContent = () => {
     resourceId?: string;
   };
 
-  const { accountId, projectId } = params;
+  const { accountId, projectId, orgId } = params;
 
   const { data: account, isPending } = useGetPamAccountById(accountId);
 
@@ -26,6 +26,9 @@ const PageContent = () => {
   const { containerRef, isConnected, disconnect, reconnect } = useWebAccessSession({
     accountId: accountId!,
     projectId: projectId!,
+    orgId: orgId!,
+    resourceName: account?.resource.name ?? "",
+    accountName: account?.name ?? "",
     onSessionEnd: () => setSessionEnded(true)
   });
 

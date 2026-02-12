@@ -5,7 +5,6 @@ import { Terminal } from "@xterm/xterm";
 
 import { apiRequest } from "@app/config/request";
 import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaSession/types";
-import { useCreatePamWebAccessTicket } from "@app/hooks/api/pam";
 
 import { WebSocketServerMessageSchema, WsMessageType } from "./web-access-types";
 
@@ -14,12 +13,18 @@ import "@xterm/xterm/css/xterm.css";
 type UseWebAccessSessionOptions = {
   accountId: string;
   projectId: string;
+  orgId: string;
+  resourceName: string;
+  accountName: string;
   onSessionEnd?: () => void;
 };
 
 export const useWebAccessSession = ({
   accountId,
   projectId,
+  orgId,
+  resourceName,
+  accountName,
   onSessionEnd
 }: UseWebAccessSessionOptions) => {
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
@@ -28,15 +33,13 @@ export const useWebAccessSession = ({
   const terminalRef = useRef<Terminal | null>(null);
   const inputBufferRef = useRef("");
   const currentPromptRef = useRef("");
-  const createTicket = useCreatePamWebAccessTicket();
+  const promptCallbackRef = useRef<((input: string) => void) | null>(null);
 
   const onSessionEndRef = useRef(onSessionEnd);
-  const createTicketRef = useRef(createTicket);
 
   useEffect(() => {
     onSessionEndRef.current = onSessionEnd;
-    createTicketRef.current = createTicket;
-  }, [onSessionEnd, createTicket]);
+  }, [onSessionEnd]);
 
   // --- WebSocket lifecycle (imperative) ---
 
@@ -101,13 +104,33 @@ export const useWebAccessSession = ({
     inputBufferRef.current = "";
     currentPromptRef.current = "";
 
+    const prompt = (message: string): Promise<string> => {
+      return new Promise((resolve) => {
+        terminal.write(message);
+        promptCallbackRef.current = resolve;
+      });
+    };
+
     try {
-      const ticket = await createTicketRef.current.mutateAsync({ accountId, projectId });
-      openWebSocket(terminal, ticket);
+      const { data } = await apiRequest.post<{ ticket: string }>(
+        `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
+        { projectId }
+      );
+      terminal.reset();
+      openWebSocket(terminal, data.ticket);
     } catch (err: unknown) {
       const axiosErr = err as {
         response?: {
-          data?: { error?: string; details?: { mfaSessionId?: string; mfaMethod?: string } };
+          data?: {
+            error?: string;
+            details?: {
+              mfaSessionId?: string;
+              mfaMethod?: string;
+              policyId?: string;
+              policyName?: string;
+              policyType?: string;
+            };
+          };
         };
       };
 
@@ -144,10 +167,10 @@ export const useWebAccessSession = ({
             }
 
             try {
-              const { data } = await apiRequest.get<TMfaSessionStatusResponse>(
+              const resp = await apiRequest.get<TMfaSessionStatusResponse>(
                 `/api/v2/mfa-sessions/${mfaSessionId}/status`
               );
-              if (data.status === MfaSessionStatus.ACTIVE) {
+              if (resp.data.status === MfaSessionStatus.ACTIVE) {
                 clearInterval(interval);
                 resolve(true);
               }
@@ -170,12 +193,12 @@ export const useWebAccessSession = ({
 
         // Retry ticket request with verified MFA session
         try {
-          const ticket = await createTicketRef.current.mutateAsync({
-            accountId,
-            projectId,
-            mfaSessionId
-          });
-          openWebSocket(terminal, ticket);
+          terminal.reset();
+          const { data: retryData } = await apiRequest.post<{ ticket: string }>(
+            `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
+            { projectId, mfaSessionId }
+          );
+          openWebSocket(terminal, retryData.ticket);
         } catch {
           terminal.write("\r\nFailed to connect after MFA verification. Please try again.\r\n");
         }
@@ -184,16 +207,67 @@ export const useWebAccessSession = ({
 
       // Check for PolicyViolationError
       if (axiosErr?.response?.data?.error === "PolicyViolationError") {
-        const accountUrl = window.location.href.replace(/\/access$/, "");
-        terminal.write("\r\nAccess denied: You must request access for this account.\r\n");
-        terminal.write(`\r\nRequest access at: ${accountUrl}\r\n`);
-        terminal.write("\r\nOnce approved, refresh this page to connect.\r\n");
+        const policyName = axiosErr.response!.data!.details?.policyName ?? "Unknown Policy";
+
+        terminal.write(`\r\nThis account is protected by approval policy: "${policyName}"\r\n`);
+
+        const answer = await prompt(
+          "\r\nThis action requires approval. Would you like to create an approval request? [Y/n]: "
+        );
+
+        if (answer.trim().toLowerCase() === "n") {
+          terminal.write("\r\nApproval request was not created.\r\n");
+          await prompt("\r\nPress Enter to try again.");
+          terminal.reset();
+          connect();
+          return;
+        }
+
+        const justification = await prompt(
+          "\r\nEnter justification (optional, press Enter to skip): "
+        );
+
+        terminal.write("\r\nCreating approval request...\r\n");
+
+        try {
+          const { data: approvalData } = await apiRequest.post<{ request: { id: string } }>(
+            "/api/v1/approval-policies/pam-access/requests",
+            {
+              projectId,
+              requestData: {
+                accessDuration: "1h",
+                resourceName,
+                accountName
+              },
+              justification: justification.trim() || undefined
+            }
+          );
+
+          terminal.write("\r\nApproval request created successfully!\r\n");
+
+          const approvalUrl = `${window.location.origin}/organizations/${orgId}/projects/pam/${projectId}/approval-requests/${approvalData.request.id}`;
+          terminal.write(`View details at: ${approvalUrl}\r\n`);
+
+          await prompt("\r\nOnce approved, press Enter to reconnect.");
+          terminal.reset();
+          connect();
+        } catch (approvalErr: unknown) {
+          const approvalAxiosErr = approvalErr as {
+            response?: { data?: { message?: string } };
+          };
+          const errorMsg =
+            approvalAxiosErr?.response?.data?.message ?? "Failed to create approval request.";
+          terminal.write(`\r\n${errorMsg}\r\n`);
+          await prompt("\r\nPress Enter to try again.");
+          terminal.reset();
+          connect();
+        }
         return;
       }
 
       terminal.write("\r\nFailed to connect. Please close and try again.\r\n");
     }
-  }, [accountId, projectId, openWebSocket]);
+  }, [accountId, projectId, orgId, resourceName, accountName, openWebSocket]);
 
   const disconnect = useCallback(() => {
     const ws = wsRef.current;
@@ -264,12 +338,17 @@ export const useWebAccessSession = ({
     terminal.onData((data) => {
       if (data === "\r") {
         terminal.write("\r\n");
-        if (wsRef.current?.readyState === WebSocket.OPEN) {
+        if (promptCallbackRef.current) {
+          const cb = promptCallbackRef.current;
+          promptCallbackRef.current = null;
+          cb(inputBufferRef.current);
+          inputBufferRef.current = "";
+        } else if (wsRef.current?.readyState === WebSocket.OPEN) {
           wsRef.current.send(
             JSON.stringify({ type: WsMessageType.Input, data: inputBufferRef.current })
           );
+          inputBufferRef.current = "";
         }
-        inputBufferRef.current = "";
       } else if (data === "\x7f") {
         if (inputBufferRef.current.length > 0) {
           inputBufferRef.current = inputBufferRef.current.slice(0, -1);
