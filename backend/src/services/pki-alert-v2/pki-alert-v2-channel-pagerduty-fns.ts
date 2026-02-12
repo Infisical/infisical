@@ -28,16 +28,6 @@ export const validatePagerDutyIntegrationKey = (integrationKey: string): boolean
 };
 
 /**
- * Masks the PagerDuty integration key for display, showing only the last 4 characters.
- *
- * Example: "abcdef1234567890abcdef1234567890" -> "****7890"
- */
-export const maskPagerDutyIntegrationKey = (integrationKey: string): string => {
-  if (!integrationKey || integrationKey.length < 4) return "****";
-  return `****${integrationKey.slice(-4)}`;
-};
-
-/**
  * Determines PagerDuty severity based on the most urgent certificate's days until expiry.
  *
  * <=7 days  -> critical
@@ -136,13 +126,14 @@ const isPagerDutyErrorRetryable = (err: AxiosError): boolean => {
 };
 
 const triggerPagerDutyEvent = async (payload: TPagerDutyPayload): Promise<void> => {
-  await request.post(PAGERDUTY_EVENTS_URL, payload, {
+  const response = await request.post(PAGERDUTY_EVENTS_URL, payload, {
     headers: {
       "Content-Type": "application/json"
     },
     timeout: PAGERDUTY_TIMEOUT,
     signal: AbortSignal.timeout(PAGERDUTY_TIMEOUT)
   });
+  logger.debug(response.data, "PagerDuty event response");
 };
 
 const triggerPagerDutyEventWithRetry = async (payload: TPagerDutyPayload): Promise<TChannelResult> => {

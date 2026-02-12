@@ -709,8 +709,8 @@ export const CreatePkiAlertV2FormSteps = ({
                             icon={getChannelIcon(channel?.channelType)}
                             className="shrink-0 text-mineshaft-300"
                           />
-                          <span className="shrink-0 text-sm font-medium capitalize">
-                            {channel?.channelType}
+                          <span className="shrink-0 text-sm font-medium">
+                            {channel?.channelType && getChannelDisplayName(channel.channelType)}
                           </span>
                           <span className="truncate text-xs text-mineshaft-400 group-data-[state=open]:hidden">
                             {channel && getChannelSummary(channel)}

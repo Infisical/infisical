@@ -17,12 +17,8 @@ import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TPkiAlertChannelDALFactory } from "./pki-alert-channel-dal";
 import { TPkiAlertHistoryDALFactory } from "./pki-alert-history-dal";
 import { sendEmailNotificationWithRetry } from "./pki-alert-v2-channel-email-fns";
-import { maskPagerDutyIntegrationKey, sendPagerDutyNotificationWithRetry } from "./pki-alert-v2-channel-pagerduty-fns";
-import {
-  maskSlackWebhookUrl,
-  sendSlackNotificationWithRetry,
-  validateSlackWebhookUrl
-} from "./pki-alert-v2-channel-slack-fns";
+import { sendPagerDutyNotificationWithRetry } from "./pki-alert-v2-channel-pagerduty-fns";
+import { sendSlackNotificationWithRetry, validateSlackWebhookUrl } from "./pki-alert-v2-channel-slack-fns";
 import { sendWebhookNotification } from "./pki-alert-v2-channel-webhook-fns";
 import { TAlertWithChannels, TPkiAlertV2DALFactory } from "./pki-alert-v2-dal";
 import { parseTimeToDays, parseTimeToPostgresInterval } from "./pki-alert-v2-filter-utils";
@@ -632,9 +628,10 @@ export const pkiAlertV2ServiceFactory = ({
               alertBeforeDays,
               projectId,
               matchingCertificates,
-              alertId
+              alertId,
+              channel.id
             );
-            return { ...result, channelType: channel.channelType, recipients: config.recipients };
+            return { ...result, channelType: channel.channelType };
           }
           case PkiAlertChannelType.WEBHOOK: {
             const config = decryptChannelConfig<TWebhookChannelConfig>(channel, decryptor);
@@ -642,27 +639,20 @@ export const pkiAlertV2ServiceFactory = ({
               config,
               alertData,
               matchingCertificates,
-              PkiWebhookEventType.CERTIFICATE_EXPIRATION
+              PkiWebhookEventType.CERTIFICATE_EXPIRATION,
+              channel.id
             );
-            return { ...result, channelType: channel.channelType, url: config.url };
+            return { ...result, channelType: channel.channelType };
           }
           case PkiAlertChannelType.SLACK: {
             const config = decryptChannelConfig<TSlackChannelConfig>(channel, decryptor);
-            const result = await sendSlackNotificationWithRetry(config, alertData, matchingCertificates);
-            return {
-              ...result,
-              channelType: channel.channelType,
-              webhookUrl: maskSlackWebhookUrl(config.webhookUrl)
-            };
+            const result = await sendSlackNotificationWithRetry(config, alertData, matchingCertificates, channel.id);
+            return { ...result, channelType: channel.channelType };
           }
           case PkiAlertChannelType.PAGERDUTY: {
             const config = decryptChannelConfig<TPagerDutyChannelConfig>(channel, decryptor);
             const result = await sendPagerDutyNotificationWithRetry(config, alertData, matchingCertificates);
-            return {
-              ...result,
-              channelType: channel.channelType,
-              integrationKey: maskPagerDutyIntegrationKey(config.integrationKey || "")
-            };
+            return { ...result, channelType: channel.channelType };
           }
           default:
             return { success: false, channelType: channel.channelType, error: "Unknown channel type" };
@@ -670,30 +660,6 @@ export const pkiAlertV2ServiceFactory = ({
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Unknown error";
         logger.error(err, `Failed to send ${channel.channelType} notification for alert ${alertId}`);
-
-        // Include context info in error result based on channel type
-        if (channel.channelType === PkiAlertChannelType.EMAIL) {
-          const config = decryptChannelConfig<TEmailChannelConfig>(channel, decryptor);
-          return {
-            success: false,
-            channelType: channel.channelType,
-            error: errorMessage,
-            recipients: config.recipients
-          };
-        }
-        if (channel.channelType === PkiAlertChannelType.WEBHOOK) {
-          const config = decryptChannelConfig<TWebhookChannelConfig>(channel, decryptor);
-          return { success: false, channelType: channel.channelType, error: errorMessage, url: config.url };
-        }
-        if (channel.channelType === PkiAlertChannelType.PAGERDUTY) {
-          const config = decryptChannelConfig<TPagerDutyChannelConfig>(channel, decryptor);
-          return {
-            success: false,
-            channelType: channel.channelType,
-            error: errorMessage,
-            integrationKey: maskPagerDutyIntegrationKey(config.integrationKey || "")
-          };
-        }
 
         return { success: false, channelType: channel.channelType, error: errorMessage };
       }
@@ -706,20 +672,10 @@ export const pkiAlertV2ServiceFactory = ({
     // Error details are still captured and shown to admins via in-app notifications
     hasNotificationSent = true;
 
-    // Collect errors from failed channels with context info
+    // Collect errors from failed channels
     results.forEach((r) => {
       if (!r.success && r.error) {
-        if (r.channelType === PkiAlertChannelType.EMAIL && "recipients" in r && r.recipients) {
-          errors.push(`EMAIL (recipients: ${r.recipients.join(", ")}): ${r.error}`);
-        } else if (r.channelType === PkiAlertChannelType.WEBHOOK && "url" in r && r.url) {
-          errors.push(`WEBHOOK (url: ${r.url}): ${r.error}`);
-        } else if (r.channelType === PkiAlertChannelType.SLACK && "webhookUrl" in r && r.webhookUrl) {
-          errors.push(`SLACK (url: ${r.webhookUrl}): ${r.error}`);
-        } else if (r.channelType === PkiAlertChannelType.PAGERDUTY && "integrationKey" in r && r.integrationKey) {
-          errors.push(`PAGERDUTY (key: ${r.integrationKey}): ${r.error}`);
-        } else {
-          errors.push(`${r.channelType}: ${r.error}`);
-        }
+        errors.push(`${r.channelType}: ${r.error}`);
       }
     });
 
@@ -813,7 +769,8 @@ export const pkiAlertV2ServiceFactory = ({
         config,
         alertData,
         testCertificates,
-        PkiWebhookEventType.CERTIFICATE_TEST
+        PkiWebhookEventType.CERTIFICATE_TEST,
+        "test"
       );
 
       if (!result.success) {

@@ -183,6 +183,7 @@ const triggerPkiWebhookWithRetry = async (params: {
   url: string;
   payload: TPkiWebhookPayload;
   signingSecret?: string;
+  channelId: string;
 }): Promise<TChannelResult> => {
   const { maxRetries, delayMs } = PKI_ALERT_RETRY_CONFIG;
   let lastError: AxiosError | undefined;
@@ -197,14 +198,20 @@ const triggerPkiWebhookWithRetry = async (params: {
 
       if (!isWebhookErrorRetryable(lastError)) {
         logger.info(
-          { url: params.url, statusCode: lastError.response?.status, error: lastError.message },
+          { channelId: params.channelId, statusCode: lastError.response?.status, error: lastError.message },
           "PKI webhook error is not retryable (4xx or non-transient error)"
         );
         return { success: false, error: lastError.message };
       }
 
       logger.info(
-        { url: params.url, attempt, maxRetries, statusCode: lastError.response?.status, error: lastError.message },
+        {
+          channelId: params.channelId,
+          attempt,
+          maxRetries,
+          statusCode: lastError.response?.status,
+          error: lastError.message
+        },
         `PKI webhook failed, ${attempt < maxRetries ? `retrying in ${delayMs}ms` : "no more retries"}`
       );
 
@@ -222,7 +229,8 @@ export const sendWebhookNotification = async (
   config: TWebhookChannelConfig,
   alertData: TAlertInfo,
   matchingCertificates: TCertificatePreview[],
-  eventType: PkiWebhookEventType
+  eventType: PkiWebhookEventType,
+  channelId: string
 ): Promise<TChannelResult> => {
   await blockLocalAndPrivateIpAddresses(config.url);
 
@@ -237,6 +245,7 @@ export const sendWebhookNotification = async (
   return triggerPkiWebhookWithRetry({
     url: config.url,
     payload,
-    signingSecret: config.signingSecret ?? undefined
+    signingSecret: config.signingSecret ?? undefined,
+    channelId
   });
 };

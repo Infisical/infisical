@@ -49,21 +49,6 @@ export const validateSlackWebhookUrl = async (url: string): Promise<void> => {
 };
 
 /**
- * Masks the Slack webhook URL path to hide the token in logs.
- * The path contains the webhook token which should not be exposed.
- *
- * Example: https://hooks.slack.com/services/T00/B00/XXX -> https://hooks.slack.com/services/***
- */
-export const maskSlackWebhookUrl = (url: string): string => {
-  try {
-    const parsed = new URL(url);
-    return `${parsed.protocol}//${parsed.hostname}/services/***`;
-  } catch {
-    return "***";
-  }
-};
-
-/**
  * Builds a Slack Block Kit payload for certificate expiration alerts.
  *
  * Structure:
@@ -205,7 +190,11 @@ const triggerSlackWebhook = async (url: string, payload: TSlackPayload): Promise
   });
 };
 
-const triggerSlackWebhookWithRetry = async (url: string, payload: TSlackPayload): Promise<TChannelResult> => {
+const triggerSlackWebhookWithRetry = async (
+  url: string,
+  payload: TSlackPayload,
+  channelId: string
+): Promise<TChannelResult> => {
   const { maxRetries, delayMs } = PKI_ALERT_RETRY_CONFIG;
   let lastError: AxiosError | undefined;
 
@@ -219,7 +208,7 @@ const triggerSlackWebhookWithRetry = async (url: string, payload: TSlackPayload)
 
       if (!isSlackErrorRetryable(lastError)) {
         logger.info(
-          { url: maskSlackWebhookUrl(url), statusCode: lastError.response?.status, error: lastError.message },
+          { channelId, statusCode: lastError.response?.status, error: lastError.message },
           "Slack webhook error is not retryable (4xx or non-transient error)"
         );
         return { success: false, error: lastError.message };
@@ -227,7 +216,7 @@ const triggerSlackWebhookWithRetry = async (url: string, payload: TSlackPayload)
 
       logger.info(
         {
-          url: maskSlackWebhookUrl(url),
+          channelId,
           attempt,
           maxRetries,
           statusCode: lastError.response?.status,
@@ -257,7 +246,8 @@ const triggerSlackWebhookWithRetry = async (url: string, payload: TSlackPayload)
 export const sendSlackNotificationWithRetry = async (
   config: TSlackChannelConfig,
   alertData: TAlertInfo,
-  matchingCertificates: TCertificatePreview[]
+  matchingCertificates: TCertificatePreview[],
+  channelId: string
 ): Promise<TChannelResult> => {
   await validateSlackWebhookUrl(config.webhookUrl);
 
@@ -268,5 +258,5 @@ export const sendSlackNotificationWithRetry = async (
     appUrl: appCfg.SITE_URL
   });
 
-  return triggerSlackWebhookWithRetry(config.webhookUrl, payload);
+  return triggerSlackWebhookWithRetry(config.webhookUrl, payload, channelId);
 };
