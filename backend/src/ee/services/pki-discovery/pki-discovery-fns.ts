@@ -41,7 +41,7 @@ export const MAX_IPS = 256;
 export const MAX_DOMAINS = 5;
 export const MIN_CIDR_PREFIX = 24;
 
-const TLS_SCAN_TIMEOUT = 10000;
+const TLS_SCAN_TIMEOUT = 3000;
 
 const shouldBlockPrivateIps = (hasGateway: boolean): boolean => {
   if (hasGateway) return false;
@@ -102,14 +102,6 @@ export const validateTargetConfig = (
     const cidrRanges = ipRanges.filter((r) => r.includes("/"));
     const singleIps = ipRanges.filter((r) => !r.includes("/"));
 
-    if (cidrRanges.length > 0 && singleIps.length > 0) {
-      return { valid: false, error: "Cannot mix CIDR ranges with individual IPs. Use one or the other." };
-    }
-
-    if (cidrRanges.length > 1) {
-      return { valid: false, error: "Only one CIDR range allowed per discovery job" };
-    }
-
     if (shouldBlockPrivateIps(!!hasGateway)) {
       const privateIp = singleIps.find((ip) => isPrivateIp(ip));
       if (privateIp) {
@@ -127,8 +119,9 @@ export const validateTargetConfig = (
       }
     }
 
-    if (cidrRanges.length === 1) {
-      const cidr = cidrRanges[0];
+    let totalIpCount = singleIps.length;
+
+    for (const cidr of cidrRanges) {
       const prefixMatch = cidr.match(new RE2("\\/([0-9]+)$"));
       if (!prefixMatch) {
         return { valid: false, error: `Invalid CIDR notation: ${cidr}` };
@@ -140,16 +133,14 @@ export const validateTargetConfig = (
           error: `CIDR range too large. Maximum is /${MIN_CIDR_PREFIX} (256 IPs). Got /${prefix}`
         };
       }
-
-      const ipCount = 2 ** (32 - prefix);
-      return { valid: true, ipCount, portCount: parsedPorts.length };
+      totalIpCount += 2 ** (32 - prefix);
     }
 
-    if (singleIps.length > MAX_IPS) {
-      return { valid: false, error: `Maximum ${MAX_IPS} individual IPs allowed` };
+    if (totalIpCount > MAX_IPS) {
+      return { valid: false, error: `Maximum ${MAX_IPS} total IPs allowed (including expanded CIDR ranges)` };
     }
 
-    return { valid: true, ipCount: singleIps.length, portCount: parsedPorts.length };
+    return { valid: true, ipCount: totalIpCount, portCount: parsedPorts.length };
   }
 
   return { valid: true, ipCount: 0, portCount: parsedPorts.length };
@@ -297,12 +288,9 @@ export const scanEndpoint = async (
 const parsePeerCertificate = (cert: tls.DetailedPeerCertificate): TScanCertificateResult | null => {
   try {
     const derBuffer = cert.raw;
-    const b64 = derBuffer.toString("base64");
-    const lines: string[] = [];
-    for (let i = 0; i < b64.length; i += 64) {
-      lines.push(b64.substring(i, i + 64));
-    }
-    const pem = `-----BEGIN CERTIFICATE-----\n${lines.join("\n")}\n-----END CERTIFICATE-----`;
+
+    const x509Cert = new x509.X509Certificate(derBuffer);
+    const pem = x509Cert.toString("pem");
 
     let altNames: string | undefined;
     if (cert.subjectaltname) {
@@ -321,8 +309,6 @@ const parsePeerCertificate = (cert: tls.DetailedPeerCertificate): TScanCertifica
 
     const subject = cert.subject || {};
 
-    const x509Cert = new x509.X509Certificate(derBuffer);
-
     let keyUsages: CertKeyUsage[] = [];
     const keyUsagesExt = x509Cert.getExtension("2.5.29.15") as x509.KeyUsagesExtension;
     if (keyUsagesExt) {
@@ -340,9 +326,9 @@ const parsePeerCertificate = (cert: tls.DetailedPeerCertificate): TScanCertifica
         .filter(Boolean);
     }
 
-    const certAny = cert as { ca?: boolean; pathlen?: number };
-    const isCA = certAny.ca;
-    const pathLength = certAny.pathlen;
+    const certBasicConstraints = cert as { ca?: boolean; pathlen?: number };
+    const isCA = certBasicConstraints.ca;
+    const pathLength = certBasicConstraints.pathlen;
 
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     const signatureAlgorithm = extractSignatureAlgorithm(x509Cert);
@@ -361,7 +347,7 @@ const parsePeerCertificate = (cert: tls.DetailedPeerCertificate): TScanCertifica
       subjectState: subject.ST,
       subjectLocality: subject.L,
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
-      keyAlgorithm: extractKeyAlgorithm(cert),
+      keyAlgorithm: extractKeyAlgorithm(x509Cert),
       signatureAlgorithm,
       keyUsages,
       extendedKeyUsages,
@@ -374,15 +360,30 @@ const parsePeerCertificate = (cert: tls.DetailedPeerCertificate): TScanCertifica
   }
 };
 
-const extractKeyAlgorithm = (cert: tls.DetailedPeerCertificate): string | undefined => {
-  const certAny = cert as { asn1Curve?: string };
-  if (cert.bits && !certAny.asn1Curve) {
-    return `RSA-${cert.bits}`;
+const extractKeyAlgorithm = (x509Cert: x509.X509Certificate): string | undefined => {
+  try {
+    const { algorithm } = x509Cert.publicKey;
+    const algoName = (algorithm as { name?: string }).name;
+    if (!algoName) return undefined;
+
+    if (algoName === "RSASSA-PKCS1-v1_5" || algoName === "RSA-PSS" || algoName === "RSA-OAEP") {
+      const { modulusLength } = algorithm as { modulusLength?: number };
+      return modulusLength ? `RSA-${modulusLength}` : "RSA";
+    }
+
+    if (algoName === "ECDSA" || algoName === "ECDH") {
+      const { namedCurve } = algorithm as { namedCurve?: string };
+      return namedCurve ? `EC-${namedCurve}` : "EC";
+    }
+
+    if (algoName === "Ed25519" || algoName === "Ed448") {
+      return algoName;
+    }
+
+    return algoName;
+  } catch {
+    return undefined;
   }
-  if (certAny.asn1Curve) {
-    return `EC-${certAny.asn1Curve}`;
-  }
-  return undefined;
 };
 
 const SIG_ALG_MAP: Record<string, Record<string, CertSignatureAlgorithm>> = {
@@ -414,15 +415,13 @@ export const computeCertFingerprint = (derBuffer: Buffer): string => {
   return crypto.createHash("sha256").update(derBuffer).digest("hex").toUpperCase();
 };
 
-export const expandCIDR = (cidr: string, maxHosts = 256): string[] => {
+export const expandCIDR = (cidr: string): string[] => {
   try {
     const block = new Netmask(cidr);
     const ips: string[] = [];
 
     block.forEach((ip) => {
-      if (ips.length < maxHosts) {
-        ips.push(ip);
-      }
+      ips.push(ip);
     });
 
     return ips;
@@ -611,7 +610,7 @@ export const resolveTargets = async (
 
   if (targetConfig.ipRanges) {
     for (const range of targetConfig.ipRanges) {
-      const ips = expandCIDR(range, MAX_IPS);
+      const ips = expandCIDR(range);
 
       for (const ip of ips) {
         for (const port of ports) {

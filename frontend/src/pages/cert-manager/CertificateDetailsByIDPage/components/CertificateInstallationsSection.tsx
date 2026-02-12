@@ -34,7 +34,10 @@ export const CertificateInstallationsSection = ({ certificateId }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
 
-  const { data: installations, isPending } = useGetPkiInstallationsByCertificateId(certificateId);
+  const { data: installations, isPending } = useGetPkiInstallationsByCertificateId(
+    projectId,
+    certificateId
+  );
 
   if (isPending) {
     return (

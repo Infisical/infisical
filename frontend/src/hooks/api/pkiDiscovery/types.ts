@@ -82,13 +82,13 @@ export type TPkiInstallation = {
   updatedAt: string;
   certificates?: TPkiInstallationCert[];
   certificatesCount?: number;
+  primaryCertName?: string | null;
 };
 
 export type TPkiInstallationCert = {
   id: string;
   installationId: string;
   certificateId: string;
-  isCurrentlyPresent: boolean;
   firstSeenAt: string;
   lastSeenAt: string;
   createdAt: string;

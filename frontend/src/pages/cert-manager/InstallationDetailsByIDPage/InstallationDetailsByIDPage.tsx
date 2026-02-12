@@ -71,7 +71,7 @@ const Page = () => {
       ? `${installation.locationDetails.ipAddress}:${installation.locationDetails.port || 443}`
       : "Installation");
 
-  const hasActiveCerts = (installation.certificates || []).some((c) => c.isCurrentlyPresent);
+  const hasActiveCerts = (installation.certificates || []).length > 0;
 
   return (
     <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">

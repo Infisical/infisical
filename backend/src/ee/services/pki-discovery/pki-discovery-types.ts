@@ -107,6 +107,7 @@ export type TGetScanHistoryDTO = {
 export type TListPkiInstallationsDTO = {
   projectId: string;
   discoveryId?: string;
+  certificateId?: string;
   offset?: number;
   limit?: number;
   search?: string;

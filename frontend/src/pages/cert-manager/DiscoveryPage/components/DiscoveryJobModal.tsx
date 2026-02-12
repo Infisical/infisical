@@ -112,29 +112,30 @@ const validateTargets = (targetsStr: string): { valid: boolean; error?: string }
     };
   }
 
-  if (cidrRanges.length > 0 && singleIps.length > 0) {
-    return { valid: false, error: "Cannot mix CIDR ranges with individual IPs" };
-  }
+  let totalIpCount = singleIps.length;
 
-  if (cidrRanges.length > 1) {
-    return { valid: false, error: "Only one CIDR range allowed per discovery job" };
-  }
-
-  if (cidrRanges.length === 1) {
-    const prefixMatch = cidrRanges[0].match(/\/(\d+)$/);
+  const invalidCidr = cidrRanges.find((cidr) => {
+    const prefixMatch = cidr.match(/\/(\d+)$/);
     if (prefixMatch) {
       const prefix = parseInt(prefixMatch[1], 10);
-      if (prefix < MIN_CIDR_PREFIX) {
-        return {
-          valid: false,
-          error: `CIDR range too large. Maximum is /${MIN_CIDR_PREFIX} (256 IPs)`
-        };
-      }
+      if (prefix < MIN_CIDR_PREFIX) return true;
+      totalIpCount += 2 ** (32 - prefix);
     }
+    return false;
+  });
+
+  if (invalidCidr) {
+    return {
+      valid: false,
+      error: `CIDR range too large. Maximum is /${MIN_CIDR_PREFIX} (256 IPs)`
+    };
   }
 
-  if (singleIps.length > MAX_IPS) {
-    return { valid: false, error: `Maximum ${MAX_IPS} individual IPs allowed` };
+  if (totalIpCount > MAX_IPS) {
+    return {
+      valid: false,
+      error: `Maximum ${MAX_IPS} total IPs allowed (including expanded CIDR ranges)`
+    };
   }
 
   if (domains.length > MAX_DOMAINS) {
@@ -390,34 +391,38 @@ export const DiscoveryJobModal = ({ isOpen, onClose, projectId, discovery }: Pro
             )}
           />
 
-          {gateways.length > 0 && (
-            <Controller
-              name="gatewayId"
-              control={control}
-              render={({ field }) => (
-                <FormControl
-                  label="Gateway"
-                  tooltipText="Use a gateway to discover certificates on private networks that are not directly accessible from the internet. The gateway acts as a proxy, routing scan traffic through your infrastructure."
+          <Controller
+            name="gatewayId"
+            control={control}
+            render={({ field }) => (
+              <FormControl
+                label="Gateway"
+                tooltipText="Use a gateway to discover certificates on private networks that are not directly accessible from the internet. The gateway acts as a proxy, routing scan traffic through your infrastructure."
+              >
+                <Select
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  placeholder="Select a gateway (optional)"
+                  className="w-full"
                 >
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    placeholder="Select a gateway (optional)"
-                    className="w-full"
-                  >
-                    <SelectItem value="none" key="none">
-                      None (Direct scan)
+                  <SelectItem value="none" key="none">
+                    None (Direct scan)
+                  </SelectItem>
+                  {gateways.length === 0 ? (
+                    <SelectItem value="no-gateways" isDisabled>
+                      No gateways available
                     </SelectItem>
-                    {gateways.map((gateway) => (
+                  ) : (
+                    gateways.map((gateway) => (
                       <SelectItem value={gateway.id} key={gateway.id}>
                         {gateway.name}
                       </SelectItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              )}
-            />
-          )}
+                    ))
+                  )}
+                </Select>
+              </FormControl>
+            )}
+          />
 
           <Controller
             name="isAutoScanEnabled"

@@ -16,9 +16,17 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
       offset = 0,
       limit = 25,
       discoveryId,
+      certificateId,
       search,
       tx
-    }: { offset?: number; limit?: number; discoveryId?: string; search?: string; tx?: Knex } = {}
+    }: {
+      offset?: number;
+      limit?: number;
+      discoveryId?: string;
+      certificateId?: string;
+      search?: string;
+      tx?: Knex;
+    } = {}
   ) => {
     try {
       const knex = tx || db.replicaNode();
@@ -33,7 +41,23 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
                 `${TableName.PkiCertificateInstallationCert}.installationId`,
                 knex.ref(`${TableName.PkiCertificateInstallation}.id`)
               )
-              .where(`${TableName.PkiCertificateInstallationCert}.isCurrentlyPresent`, true)
+          ])
+        )
+        .select(
+          knex.raw(`(?) as "primaryCertName"`, [
+            knex(TableName.PkiCertificateInstallationCert)
+              .select(`${TableName.Certificate}.commonName`)
+              .join(
+                TableName.Certificate,
+                `${TableName.PkiCertificateInstallationCert}.certificateId`,
+                `${TableName.Certificate}.id`
+              )
+              .where(
+                `${TableName.PkiCertificateInstallationCert}.installationId`,
+                knex.ref(`${TableName.PkiCertificateInstallation}.id`)
+              )
+              .orderBy(`${TableName.PkiCertificateInstallationCert}.lastSeenAt`, "desc")
+              .limit(1)
           ])
         )
         .where(`${TableName.PkiCertificateInstallation}.projectId`, projectId);
@@ -46,6 +70,16 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
             `${TableName.PkiDiscoveryInstallation}.installationId`
           )
           .where(`${TableName.PkiDiscoveryInstallation}.discoveryId`, discoveryId);
+      }
+
+      if (certificateId) {
+        void query
+          .join(
+            `${TableName.PkiCertificateInstallationCert} as cert_filter`,
+            `${TableName.PkiCertificateInstallation}.id`,
+            "cert_filter.installationId"
+          )
+          .where("cert_filter.certificateId", certificateId);
       }
 
       if (search) {
@@ -67,7 +101,7 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
         .offset(offset)
         .limit(limit);
 
-      return docs as (TPkiCertificateInstallations & { certificatesCount: number })[];
+      return docs as (TPkiCertificateInstallations & { certificatesCount: number; primaryCertName: string | null })[];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find PKI certificate installations by project ID" });
     }
@@ -75,13 +109,14 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
 
   const countByProjectId = async (
     projectId: string,
-    { discoveryId, search, tx }: { discoveryId?: string; search?: string; tx?: Knex } = {}
+    {
+      discoveryId,
+      certificateId,
+      search,
+      tx
+    }: { discoveryId?: string; certificateId?: string; search?: string; tx?: Knex } = {}
   ): Promise<number> => {
     try {
-      interface CountResult {
-        count: string;
-      }
-
       const knex = tx || db.replicaNode();
 
       const query: Knex.QueryBuilder = knex(TableName.PkiCertificateInstallation).where(
@@ -99,6 +134,16 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
           .where(`${TableName.PkiDiscoveryInstallation}.discoveryId`, discoveryId);
       }
 
+      if (certificateId) {
+        void query
+          .join(
+            `${TableName.PkiCertificateInstallationCert} as cert_filter`,
+            `${TableName.PkiCertificateInstallation}.id`,
+            "cert_filter.installationId"
+          )
+          .where("cert_filter.certificateId", certificateId);
+      }
+
       if (search) {
         void query.andWhere((qb: Knex.QueryBuilder) => {
           void qb
@@ -114,16 +159,13 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
 
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const result = await query.count("*").first();
-      return parseInt((result as unknown as CountResult).count || "0", 10);
+      return parseInt(String((result as { count?: string | number })?.count || "0"), 10);
     } catch (error) {
       throw new DatabaseError({ error, name: "Count PKI certificate installations by project ID" });
     }
   };
 
-  const findByIdWithCertificates = async (
-    id: string,
-    { includeAllCerts = false, tx }: { includeAllCerts?: boolean; tx?: Knex } = {}
-  ) => {
+  const findByIdWithCertificates = async (id: string, { tx }: { tx?: Knex } = {}) => {
     try {
       const installation = await (tx || db.replicaNode())<TPkiCertificateInstallations>(
         TableName.PkiCertificateInstallation
@@ -133,7 +175,7 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
 
       if (!installation) return null;
 
-      let query = (tx || db.replicaNode())(TableName.PkiCertificateInstallationCert)
+      const certLinks = await (tx || db.replicaNode())(TableName.PkiCertificateInstallationCert)
         .select(
           selectAllTableCols(TableName.PkiCertificateInstallationCert),
           `${TableName.Certificate}.commonName`,
@@ -149,13 +191,8 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
           `${TableName.PkiCertificateInstallationCert}.certificateId`,
           `${TableName.Certificate}.id`
         )
-        .where(`${TableName.PkiCertificateInstallationCert}.installationId`, id);
-
-      if (!includeAllCerts) {
-        query = query.where(`${TableName.PkiCertificateInstallationCert}.isCurrentlyPresent`, true);
-      }
-
-      const certLinks = await query.orderBy(`${TableName.PkiCertificateInstallationCert}.lastSeenAt`, "desc");
+        .where(`${TableName.PkiCertificateInstallationCert}.installationId`, id)
+        .orderBy(`${TableName.PkiCertificateInstallationCert}.lastSeenAt`, "desc");
 
       return {
         ...installation,
@@ -178,7 +215,6 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
           `${TableName.PkiCertificateInstallationCert}.installationId`
         )
         .where(`${TableName.PkiCertificateInstallationCert}.certificateId`, certificateId)
-        .where(`${TableName.PkiCertificateInstallationCert}.isCurrentlyPresent`, true)
         .orderBy(`${TableName.PkiCertificateInstallation}.lastSeenAt`, "desc");
 
       return docs as TPkiCertificateInstallations[];

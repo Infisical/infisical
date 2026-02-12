@@ -78,7 +78,8 @@ export const DiscoveryInstallationsSection = ({ discoveryId, projectId }: Props)
             <UnstableTable>
               <UnstableTableHeader>
                 <UnstableTableRow>
-                  <UnstableTableHead>Endpoint</UnstableTableHead>
+                  <UnstableTableHead>Name</UnstableTableHead>
+                  <UnstableTableHead>Certificate</UnstableTableHead>
                   <UnstableTableHead>Gateway</UnstableTableHead>
                   <UnstableTableHead>Last Seen</UnstableTableHead>
                 </UnstableTableRow>
@@ -99,6 +100,7 @@ export const DiscoveryInstallationsSection = ({ discoveryId, projectId }: Props)
                     }
                   >
                     <UnstableTableCell>{getEndpoint(installation)}</UnstableTableCell>
+                    <UnstableTableCell>{installation.primaryCertName || "N/A"}</UnstableTableCell>
                     <UnstableTableCell>{getGatewayLabel(installation) || "N/A"}</UnstableTableCell>
                     <UnstableTableCell>
                       {format(new Date(installation.lastSeenAt), "MMM dd, yyyy HH:mm")}

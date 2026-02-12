@@ -22,8 +22,6 @@ export const PkiDiscoveryConfigsSchema = z.object({
   lastScanJobId: z.string().nullable().optional(),
   lastScanMessage: z.string().nullable().optional(),
   lastScannedAt: z.date().nullable().optional(),
-  certificatesFound: z.number().default(0),
-  installationsFound: z.number().default(0),
   createdAt: z.date(),
   updatedAt: z.date()
 });

@@ -2526,7 +2526,6 @@ export const registerRoutes = async (
 
   const pkiInstallationService = pkiInstallationServiceFactory({
     pkiCertificateInstallationDAL,
-    certificateDAL,
     permissionService
   });
 

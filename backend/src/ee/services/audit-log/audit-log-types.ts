@@ -3522,7 +3522,6 @@ interface CreatePkiDiscoveryEvent {
   metadata: {
     discoveryId: string;
     name: string;
-    projectId: string;
   };
 }
 
@@ -3553,7 +3552,6 @@ interface GetPkiDiscoveryEvent {
 interface GetPkiDiscoveriesEvent {
   type: EventType.GET_PKI_DISCOVERIES;
   metadata: {
-    projectId: string;
     count: number;
   };
 }
@@ -3577,7 +3575,6 @@ interface GetPkiInstallationEvent {
 interface GetPkiInstallationsEvent {
   type: EventType.GET_PKI_INSTALLATIONS;
   metadata: {
-    projectId: string;
     count: number;
   };
 }

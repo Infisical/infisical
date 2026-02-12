@@ -7,13 +7,11 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { NotFoundError } from "@app/lib/errors";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 
 import { TPkiCertificateInstallationDALFactory } from "./pki-certificate-installation-dal";
 import {
   TDeletePkiInstallationDTO,
   TGetPkiInstallationDTO,
-  TGetPkiInstallationsByCertificateIdDTO,
   TListPkiInstallationsDTO,
   TUpdatePkiInstallationDTO
 } from "./pki-discovery-types";
@@ -21,15 +19,8 @@ import {
 type TPkiInstallationServiceFactoryDep = {
   pkiCertificateInstallationDAL: Pick<
     TPkiCertificateInstallationDALFactory,
-    | "findById"
-    | "findByProjectId"
-    | "countByProjectId"
-    | "findByIdWithCertificates"
-    | "findByCertificateId"
-    | "updateById"
-    | "deleteById"
+    "findById" | "findByProjectId" | "countByProjectId" | "findByIdWithCertificates" | "updateById" | "deleteById"
   >;
-  certificateDAL: Pick<TCertificateDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
@@ -37,12 +28,12 @@ export type TPkiInstallationServiceFactory = ReturnType<typeof pkiInstallationSe
 
 export const pkiInstallationServiceFactory = ({
   pkiCertificateInstallationDAL,
-  certificateDAL,
   permissionService
 }: TPkiInstallationServiceFactoryDep) => {
   const listInstallations = async ({
     projectId,
     discoveryId,
+    certificateId,
     offset,
     limit,
     search,
@@ -69,9 +60,14 @@ export const pkiInstallationServiceFactory = ({
       offset,
       limit,
       discoveryId,
+      certificateId,
       search
     });
-    const totalCount = await pkiCertificateInstallationDAL.countByProjectId(projectId, { discoveryId, search });
+    const totalCount = await pkiCertificateInstallationDAL.countByProjectId(projectId, {
+      discoveryId,
+      certificateId,
+      search
+    });
 
     return { installations, totalCount };
   };
@@ -83,9 +79,7 @@ export const pkiInstallationServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TGetPkiInstallationDTO) => {
-    const installation = await pkiCertificateInstallationDAL.findByIdWithCertificates(installationId, {
-      includeAllCerts: true
-    });
+    const installation = await pkiCertificateInstallationDAL.findByIdWithCertificates(installationId);
     if (!installation) {
       throw new NotFoundError({ message: `Installation with ID '${installationId}' not found` });
     }
@@ -173,42 +167,10 @@ export const pkiInstallationServiceFactory = ({
     return installation;
   };
 
-  const getInstallationsByCertificateId = async ({
-    certificateId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TGetPkiInstallationsByCertificateIdDTO) => {
-    const certificate = await certificateDAL.findById(certificateId);
-    if (!certificate) {
-      throw new NotFoundError({ message: `Certificate with ID '${certificateId}' not found` });
-    }
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: certificate.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiCertificateInstallationActions.Read,
-      ProjectPermissionSub.PkiCertificateInstallations
-    );
-
-    const installations = await pkiCertificateInstallationDAL.findByCertificateId(certificateId);
-
-    return { installations, projectId: certificate.projectId };
-  };
-
   return {
     listInstallations,
     getInstallation,
     updateInstallation,
-    deleteInstallation,
-    getInstallationsByCertificateId
+    deleteInstallation
   };
 };

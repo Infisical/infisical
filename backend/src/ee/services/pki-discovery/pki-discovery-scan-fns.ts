@@ -375,27 +375,12 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
 
         for (const certId of certIds) {
           await deps.pkiCertificateInstallationCertDAL.upsertCertLink(domainInstallation.id, certId, {
-            lastSeenAt: now,
-            isCurrentlyPresent: true
+            lastSeenAt: now
           });
         }
 
-        await deps.pkiCertificateInstallationCertDAL.markOldCertsAsNotPresent(
-          domainInstallation.id,
-          Array.from(certIds)
-        );
-
         uniqueInstallationIds.add(domainInstallation.id);
       }
-    }
-
-    const previousLinks = await deps.pkiDiscoveryInstallationDAL.findByDiscoveryId(discoveryId);
-    const staleInstallationIds = previousLinks
-      .map((link) => link.installationId)
-      .filter((id) => !uniqueInstallationIds.has(id));
-
-    for (const staleInstallationId of staleInstallationIds) {
-      await deps.pkiCertificateInstallationCertDAL.markOldCertsAsNotPresent(staleInstallationId, []);
     }
 
     logger.info(
@@ -439,8 +424,6 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
         {
           lastScanStatus: finalStatus,
           lastScannedAt: completedAt,
-          certificatesFound: uniqueCertificateIds.size,
-          installationsFound: uniqueInstallationIds.size,
           lastScanMessage: truncateString(errorMessage, DB_SHORT_VARCHAR_LIMIT)
         },
         tx
@@ -586,22 +569,26 @@ const processEndpointResult = async (
   if (result.certificates) {
     for (const certResult of result.certificates) {
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
-      const certId = await processDiscoveredCertificate(certResult, projectId, {
-        certificateDAL,
-        certificateBodyDAL,
-        kmsEncryptor
-      });
+      const certId = await processDiscoveredCertificate(
+        certResult,
+        projectId,
+        { certificateDAL, certificateBodyDAL, kmsEncryptor },
+        {
+          discoveredBy: discoveryId,
+          host: result.host,
+          port: result.port,
+          sniHostname: result.sniHostname,
+          discoveredAt: scanTime.toISOString()
+        }
+      );
       if (certId) {
         certificateIds.push(certId);
 
         await pkiCertificateInstallationCertDAL.upsertCertLink(installation.id, certId, {
-          lastSeenAt: scanTime,
-          isCurrentlyPresent: true
+          lastSeenAt: scanTime
         });
       }
     }
-
-    await pkiCertificateInstallationCertDAL.markOldCertsAsNotPresent(installation.id, certificateIds);
   }
 
   return { installationId: installation.id, certificateIds, sniHostname: result.sniHostname };
@@ -616,7 +603,8 @@ type TProcessDiscoveredCertDeps = {
 const processDiscoveredCertificate = async (
   certResult: TScanCertificateResult,
   projectId: string,
-  deps: TProcessDiscoveredCertDeps
+  deps: TProcessDiscoveredCertDeps,
+  discoveryMetadata?: Record<string, unknown>
 ): Promise<string | null> => {
   const { certificateDAL, certificateBodyDAL, kmsEncryptor } = deps;
 
@@ -657,7 +645,8 @@ const processDiscoveredCertificate = async (
       extendedKeyUsages: certResult.extendedKeyUsages,
       isCA: certResult.isCA,
       pathLength: certResult.pathLength,
-      source: CertificateSource.Discovered
+      source: CertificateSource.Discovered,
+      discoveryMetadata: discoveryMetadata || null
     };
 
     const newCert = await certificateDAL.create(certData);

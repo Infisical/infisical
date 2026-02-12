@@ -23,6 +23,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
       querystring: z.object({
         projectId: z.string().describe("The ID of the project"),
         discoveryId: z.string().uuid().optional().describe("Filter by discovery configuration ID"),
+        certificateId: z.string().uuid().optional().describe("Filter by certificate ID"),
         offset: z.coerce.number().min(0).optional().default(0).describe("Pagination offset"),
         limit: z.coerce.number().min(1).max(100).optional().default(25).describe("Pagination limit"),
         search: z.string().optional().describe("Search filter for name, hostname, or IP address")
@@ -31,7 +32,8 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
         200: z.object({
           installations: z.array(
             PkiCertificateInstallationsSchema.extend({
-              certificatesCount: z.number().optional()
+              certificatesCount: z.number().optional(),
+              primaryCertName: z.string().nullable().optional()
             })
           ),
           totalCount: z.number()
@@ -42,6 +44,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
       const { installations, totalCount } = await server.services.pkiInstallation.listInstallations({
         projectId: req.query.projectId,
         discoveryId: req.query.discoveryId,
+        certificateId: req.query.certificateId,
         offset: req.query.offset,
         limit: req.query.limit,
         search: req.query.search,
@@ -57,59 +60,12 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
         event: {
           type: EventType.GET_PKI_INSTALLATIONS,
           metadata: {
-            projectId: req.query.projectId,
             count: totalCount
           }
         }
       });
 
       return { installations, totalCount };
-    }
-  });
-
-  server.route({
-    method: "GET",
-    url: "/by-certificate/:certificateId",
-    config: {
-      rateLimit: readLimit
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    schema: {
-      hide: false,
-      tags: [ApiDocsTags.PkiInstallations],
-      operationId: "listPkiInstallationsByCertificate",
-      description: "List PKI certificate installations that have a specific certificate",
-      params: z.object({
-        certificateId: z.string().uuid().describe("The ID of the certificate")
-      }),
-      response: {
-        200: z.object({
-          installations: z.array(PkiCertificateInstallationsSchema)
-        })
-      }
-    },
-    handler: async (req) => {
-      const { installations, projectId } = await server.services.pkiInstallation.getInstallationsByCertificateId({
-        certificateId: req.params.certificateId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId,
-        event: {
-          type: EventType.GET_PKI_INSTALLATIONS,
-          metadata: {
-            projectId,
-            count: installations.length
-          }
-        }
-      });
-
-      return { installations };
     }
   });
 
@@ -133,14 +89,9 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
           certificates: z
             .array(
               z.object({
-                id: z.string().uuid(),
-                installationId: z.string().uuid(),
                 certificateId: z.string().uuid(),
-                isCurrentlyPresent: z.boolean(),
                 firstSeenAt: z.date(),
                 lastSeenAt: z.date(),
-                createdAt: z.date(),
-                updatedAt: z.date(),
                 commonName: z.string().nullable().optional(),
                 serialNumber: z.string().nullable().optional(),
                 notBefore: z.date().nullable().optional(),

@@ -20,7 +20,7 @@ type Props = {
 
 export const InstallationDetailsSection = ({ installation }: Props) => {
   const { locationDetails } = installation;
-  const hasActiveCerts = (installation.certificates || []).some((c) => c.isCurrentlyPresent);
+  const hasActiveCerts = (installation.certificates || []).length > 0;
 
   const endpoint = locationDetails.fqdn || locationDetails.ipAddress;
 

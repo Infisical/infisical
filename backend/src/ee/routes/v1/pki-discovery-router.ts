@@ -1,4 +1,3 @@
-import RE2 from "re2";
 import { z } from "zod";
 
 import { PkiDiscoveryConfigsSchema, PkiDiscoveryScanHistorySchema } from "@app/db/schemas";
@@ -15,6 +14,7 @@ import { PkiDiscoveryType, TPkiDiscoveryTargetConfig } from "@app/ee/services/pk
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -76,12 +76,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       description: "Create a new PKI discovery configuration",
       body: z.object({
         projectId: z.string().describe("The ID of the project"),
-        name: z
-          .string()
-          .min(1)
-          .max(100)
-          .regex(new RE2("^[a-z0-9-]+$"), "Name must contain only lowercase letters, numbers, and hyphens")
-          .describe("Name of the discovery configuration"),
+        name: slugSchema({ field: "Name", max: 100 }).describe("Name of the discovery configuration"),
         description: z.string().max(500).optional().describe("Description of the discovery configuration"),
         discoveryType: z
           .nativeEnum(PkiDiscoveryType)
@@ -130,8 +125,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
           type: EventType.CREATE_PKI_DISCOVERY,
           metadata: {
             discoveryId: discovery.id,
-            name: discovery.name,
-            projectId: req.body.projectId
+            name: discovery.name
           }
         }
       });
@@ -160,7 +154,12 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       }),
       response: {
         200: z.object({
-          discoveries: z.array(PkiDiscoveryConfigsSchema),
+          discoveries: z.array(
+            PkiDiscoveryConfigsSchema.extend({
+              certificatesFound: z.number(),
+              installationsFound: z.number()
+            })
+          ),
           totalCount: z.number()
         })
       }
@@ -183,7 +182,6 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
         event: {
           type: EventType.GET_PKI_DISCOVERIES,
           metadata: {
-            projectId: req.query.projectId,
             count: totalCount
           }
         }
@@ -255,13 +253,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
         discoveryId: z.string().uuid().describe("The ID of the discovery configuration")
       }),
       body: z.object({
-        name: z
-          .string()
-          .min(1)
-          .max(100)
-          .regex(new RE2("^[a-z0-9-]+$"), "Name must contain only lowercase letters, numbers, and hyphens")
-          .optional()
-          .describe("Name of the discovery configuration"),
+        name: slugSchema({ field: "Name", max: 100 }).optional().describe("Name of the discovery configuration"),
         description: z.string().max(500).optional().nullable().describe("Description of the discovery configuration"),
         targetConfig: NetworkTargetConfigSchema.optional().describe("Target configuration for discovery scans"),
         isAutoScanEnabled: z.boolean().optional().describe("Enable automatic scheduled scans"),
@@ -281,7 +273,17 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
     },
     handler: async (req) => {
       if (req.body.targetConfig) {
-        const hasGateway = req.body.gatewayId !== null && req.body.gatewayId !== undefined;
+        let hasGateway = req.body.gatewayId !== null && req.body.gatewayId !== undefined;
+        if (!hasGateway && req.body.gatewayId === undefined) {
+          const existing = await server.services.pkiDiscovery.getDiscovery({
+            discoveryId: req.params.discoveryId,
+            actor: req.permission.type,
+            actorId: req.permission.id,
+            actorAuthMethod: req.permission.authMethod,
+            actorOrgId: req.permission.orgId
+          });
+          hasGateway = !!existing.gatewayId;
+        }
         const validation = validateTargetConfig(
           req.body.targetConfig.ipRanges,
           req.body.targetConfig.ports,

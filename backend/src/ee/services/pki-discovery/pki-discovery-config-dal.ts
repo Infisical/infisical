@@ -17,9 +17,36 @@ export const pkiDiscoveryConfigDALFactory = (db: TDbClient) => {
     { offset = 0, limit = 25, search, tx }: { offset?: number; limit?: number; search?: string; tx?: Knex } = {}
   ) => {
     try {
-      let query = (tx || db.replicaNode())(TableName.PkiDiscoveryConfig)
-        .where({ projectId })
-        .orderBy("createdAt", "desc")
+      const knex = tx || db.replicaNode();
+
+      let query = knex(TableName.PkiDiscoveryConfig)
+        .select(`${TableName.PkiDiscoveryConfig}.*`)
+        .select(
+          knex.raw(`COALESCE((?), 0)::int as "certificatesFound"`, [
+            knex(TableName.PkiDiscoveryScanHistory)
+              .select("certificatesFoundCount")
+              .where(
+                `${TableName.PkiDiscoveryScanHistory}.discoveryConfigId`,
+                knex.ref(`${TableName.PkiDiscoveryConfig}.id`)
+              )
+              .orderBy("createdAt", "desc")
+              .limit(1)
+          ])
+        )
+        .select(
+          knex.raw(`COALESCE((?), 0)::int as "installationsFound"`, [
+            knex(TableName.PkiDiscoveryScanHistory)
+              .select("installationsFoundCount")
+              .where(
+                `${TableName.PkiDiscoveryScanHistory}.discoveryConfigId`,
+                knex.ref(`${TableName.PkiDiscoveryConfig}.id`)
+              )
+              .orderBy("createdAt", "desc")
+              .limit(1)
+          ])
+        )
+        .where(`${TableName.PkiDiscoveryConfig}.projectId`, projectId)
+        .orderBy(`${TableName.PkiDiscoveryConfig}.createdAt`, "desc")
         .offset(offset)
         .limit(limit);
 
@@ -30,7 +57,7 @@ export const pkiDiscoveryConfigDALFactory = (db: TDbClient) => {
       }
 
       const docs = await query;
-      return docs as TPkiDiscoveryConfigs[];
+      return docs as (TPkiDiscoveryConfigs & { certificatesFound: number; installationsFound: number })[];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find PKI discovery configs by project ID" });
     }
@@ -70,7 +97,7 @@ export const pkiDiscoveryConfigDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByIdWithCounts = async (id: string, tx?: Knex) => {
+  const findByIdWithInstallationCounts = async (id: string, tx?: Knex) => {
     try {
       const doc = await (tx || db.replicaNode())<TPkiDiscoveryConfigs>(TableName.PkiDiscoveryConfig)
         .where({ id })
@@ -127,7 +154,7 @@ export const pkiDiscoveryConfigDALFactory = (db: TDbClient) => {
     findByProjectId,
     countByProjectId,
     findDueForScan,
-    findByIdWithCounts,
+    findByIdWithInstallationCounts,
     findByName,
     claimScanSlot
   };

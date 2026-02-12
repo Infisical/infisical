@@ -153,15 +153,16 @@ export const useGetPkiInstallation = ({ installationId }: TGetPkiInstallationDTO
   });
 };
 
-export const useGetPkiInstallationsByCertificateId = (certificateId: string) => {
+export const useGetPkiInstallationsByCertificateId = (projectId: string, certificateId: string) => {
   return useQuery({
     queryKey: [...pkiInstallationKeys.all, "byCertificate", certificateId] as const,
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ installations: TPkiInstallation[] }>(
-        `/api/v1/cert-manager/installations/by-certificate/${certificateId}`
+      const params = new URLSearchParams({ projectId, certificateId });
+      const { data } = await apiRequest.get<TListPkiInstallationsResponse>(
+        `/api/v1/cert-manager/installations?${params.toString()}`
       );
       return data.installations;
     },
-    enabled: Boolean(certificateId)
+    enabled: Boolean(projectId) && Boolean(certificateId)
   });
 };

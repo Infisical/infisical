@@ -83,9 +83,7 @@ export const InstallationCertificatesSection = ({ certificates }: Props) => {
                   >
                     <UnstableTableCell>{cert.commonName || "N/A"}</UnstableTableCell>
                     <UnstableTableCell>
-                      {!cert.isCurrentlyPresent ? (
-                        <Badge variant="neutral">Not Present</Badge>
-                      ) : expiryDetails ? (
+                      {expiryDetails ? (
                         <Badge variant={expiryDetails.variant}>{expiryDetails.label}</Badge>
                       ) : (
                         <Badge variant="neutral">Unknown</Badge>

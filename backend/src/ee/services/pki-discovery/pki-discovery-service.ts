@@ -37,7 +37,7 @@ type TPkiDiscoveryServiceFactoryDep = {
     | "deleteById"
     | "findByProjectId"
     | "countByProjectId"
-    | "findByIdWithCounts"
+    | "findByIdWithInstallationCounts"
     | "findByName"
     | "claimScanSlot"
   >;
@@ -231,7 +231,7 @@ export const pkiDiscoveryServiceFactory = ({
   };
 
   const getDiscovery = async ({ discoveryId, actor, actorId, actorAuthMethod, actorOrgId }: TGetPkiDiscoveryDTO) => {
-    const discovery = await pkiDiscoveryConfigDAL.findByIdWithCounts(discoveryId);
+    const discovery = await pkiDiscoveryConfigDAL.findByIdWithInstallationCounts(discoveryId);
     if (!discovery) {
       throw new NotFoundError({ message: `Discovery configuration with ID '${discoveryId}' not found` });
     }

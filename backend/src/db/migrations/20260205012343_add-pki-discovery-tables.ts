@@ -1,5 +1,7 @@
 import { Knex } from "knex";
 
+import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
+
 import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
@@ -8,7 +10,31 @@ export async function up(knex: Knex): Promise<void> {
     const hasSourceColumn = await knex.schema.hasColumn(TableName.Certificate, "source");
     if (!hasSourceColumn) {
       await knex.schema.alterTable(TableName.Certificate, (t) => {
-        t.string("source").defaultTo("issued").notNullable();
+        t.string("source").nullable();
+      });
+
+      // Backfill: certs with a profileId were issued, others were imported
+      await knex(TableName.Certificate).whereNotNull("profileId").update({ source: CertificateSource.Issued });
+      await knex(TableName.Certificate).whereNull("profileId").update({ source: CertificateSource.Imported });
+    }
+
+    const hasFingerprintIndex = await knex.schema.hasColumn(TableName.Certificate, "fingerprintSha256");
+    if (hasFingerprintIndex) {
+      const indexExists = await knex.raw(`SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ?`, [
+        TableName.Certificate,
+        `${TableName.Certificate}_fingerprintsha256_index`
+      ]);
+      if (indexExists.rows.length === 0) {
+        await knex.schema.alterTable(TableName.Certificate, (t) => {
+          t.index("fingerprintSha256");
+        });
+      }
+    }
+
+    const hasDiscoveryMetadataColumn = await knex.schema.hasColumn(TableName.Certificate, "discoveryMetadata");
+    if (!hasDiscoveryMetadataColumn) {
+      await knex.schema.alterTable(TableName.Certificate, (t) => {
+        t.jsonb("discoveryMetadata").nullable();
       });
     }
   }
@@ -31,8 +57,6 @@ export async function up(knex: Knex): Promise<void> {
       t.string("lastScanJobId").nullable();
       t.string("lastScanMessage").nullable();
       t.datetime("lastScannedAt").nullable();
-      t.integer("certificatesFound").defaultTo(0).notNullable();
-      t.integer("installationsFound").defaultTo(0).notNullable();
       t.timestamps(true, true, true);
       t.unique(["projectId", "name"]);
     });
@@ -82,7 +106,6 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("installationId").references("id").inTable(TableName.PkiCertificateInstallation).onDelete("CASCADE");
       t.uuid("certificateId").notNullable();
       t.foreign("certificateId").references("id").inTable(TableName.Certificate).onDelete("CASCADE");
-      t.boolean("isCurrentlyPresent").defaultTo(true).notNullable();
       t.datetime("firstSeenAt").notNullable();
       t.datetime("lastSeenAt").notNullable();
       t.timestamps(true, true, true);
@@ -129,6 +152,24 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.PkiDiscoveryConfig);
 
   if (await knex.schema.hasTable(TableName.Certificate)) {
+    const indexExists = await knex.raw(`SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ?`, [
+      TableName.Certificate,
+      `${TableName.Certificate}_fingerprintsha256_index`
+    ]);
+
+    if (indexExists.rows.length > 0) {
+      await knex.schema.alterTable(TableName.Certificate, (t) => {
+        t.dropIndex("fingerprintSha256");
+      });
+    }
+
+    const hasDiscoveryMetadataColumn = await knex.schema.hasColumn(TableName.Certificate, "discoveryMetadata");
+    if (hasDiscoveryMetadataColumn) {
+      await knex.schema.alterTable(TableName.Certificate, (t) => {
+        t.dropColumn("discoveryMetadata");
+      });
+    }
+
     const hasSourceColumn = await knex.schema.hasColumn(TableName.Certificate, "source");
     if (hasSourceColumn) {
       await knex.schema.alterTable(TableName.Certificate, (t) => {

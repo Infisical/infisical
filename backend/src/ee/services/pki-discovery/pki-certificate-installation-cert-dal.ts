@@ -25,64 +25,30 @@ export const pkiCertificateInstallationCertDALFactory = (db: TDbClient) => {
   const upsertCertLink = async (
     installationId: string,
     certificateId: string,
-    data: { firstSeenAt?: Date; lastSeenAt: Date; isCurrentlyPresent?: boolean },
+    data: { firstSeenAt?: Date; lastSeenAt: Date },
     tx?: Knex
   ) => {
     try {
-      const existing = await (tx || db)(TableName.PkiCertificateInstallationCert)
-        .where({ installationId, certificateId })
-        .first();
-
-      if (existing) {
-        const updateData: Partial<TPkiCertificateInstallationCerts> = {
-          lastSeenAt: data.lastSeenAt
-        };
-        if (data.isCurrentlyPresent !== undefined) {
-          updateData.isCurrentlyPresent = data.isCurrentlyPresent;
-        }
-
-        await (tx || db)(TableName.PkiCertificateInstallationCert).where({ id: existing.id }).update(updateData);
-
-        return { ...existing, ...updateData };
-      }
-
-      const [created] = await (tx || db)(TableName.PkiCertificateInstallationCert)
+      const [result] = await (tx || db)(TableName.PkiCertificateInstallationCert)
         .insert({
           installationId,
           certificateId,
           firstSeenAt: data.firstSeenAt || data.lastSeenAt,
-          lastSeenAt: data.lastSeenAt,
-          isCurrentlyPresent: data.isCurrentlyPresent ?? true
+          lastSeenAt: data.lastSeenAt
         })
+        .onConflict(["installationId", "certificateId"])
+        .merge({ lastSeenAt: data.lastSeenAt })
         .returning("*");
 
-      return created;
+      return result;
     } catch (error) {
       throw new DatabaseError({ error, name: "Upsert PKI certificate installation cert link" });
-    }
-  };
-
-  const markOldCertsAsNotPresent = async (installationId: string, currentCertIds: string[], tx?: Knex) => {
-    try {
-      if (currentCertIds.length === 0) {
-        await (tx || db)(TableName.PkiCertificateInstallationCert)
-          .where({ installationId, isCurrentlyPresent: true })
-          .update({ isCurrentlyPresent: false });
-      } else {
-        await (tx || db)(TableName.PkiCertificateInstallationCert)
-          .where({ installationId, isCurrentlyPresent: true })
-          .whereNotIn("certificateId", currentCertIds)
-          .update({ isCurrentlyPresent: false });
-      }
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Mark old PKI certificate installation certs as not present" });
     }
   };
 
   return {
     ...pkiCertificateInstallationCertOrm,
     findByInstallationId,
-    upsertCertLink,
-    markOldCertsAsNotPresent
+    upsertCertLink
   };
 };
