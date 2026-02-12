@@ -142,6 +142,15 @@ export const pamResourceServiceFactory = ({
       kmsService
     });
 
+    if (adServerResourceId) {
+      const adResource = await pamResourceDAL.findById(adServerResourceId);
+      if (!adResource)
+        throw new NotFoundError({ message: `AD Server resource with ID '${adServerResourceId}' not found` });
+      if (adResource.projectId !== projectId) {
+        throw new BadRequestError({ message: "AD Server resource must belong to the same project" });
+      }
+    }
+
     let encryptedRotationAccountCredentials: Buffer | null = null;
 
     if (rotationAccountCredentials) {
@@ -214,6 +223,14 @@ export const pamResourceServiceFactory = ({
     }
 
     if (adServerResourceId !== undefined) {
+      if (adServerResourceId) {
+        const adResource = await pamResourceDAL.findById(adServerResourceId);
+        if (!adResource)
+          throw new NotFoundError({ message: `AD Server resource with ID '${adServerResourceId}' not found` });
+        if (adResource.projectId !== resource.projectId) {
+          throw new BadRequestError({ message: "AD Server resource must belong to the same project" });
+        }
+      }
       updateDoc.adServerResourceId = adServerResourceId;
     }
 
