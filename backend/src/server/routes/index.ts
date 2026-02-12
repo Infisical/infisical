@@ -2042,7 +2042,6 @@ export const registerRoutes = async (
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
     scimService,
     auditLogDAL,
-    licenseService,
     queueService,
     secretVersionDAL,
     secretFolderVersionDAL: folderVersionDAL,
