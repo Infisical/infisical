@@ -9,6 +9,7 @@ import {
   EditIcon,
   EllipsisIcon,
   EyeOffIcon,
+  ForwardIcon,
   GitBranchIcon,
   HistoryIcon,
   MessageSquareIcon,
@@ -26,7 +27,7 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { SecretReferenceTree } from "@app/components/secrets/SecretReferenceDetails";
-import { DeleteActionModal, Modal, ModalContent, ModalTrigger } from "@app/components/v2";
+import { DeleteActionModal, Modal, ModalContent } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   Badge,
@@ -62,6 +63,7 @@ import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
 import { Reminder } from "@app/hooks/api/reminders/types";
 import { ProjectEnv, SecretType, SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
+import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
@@ -150,7 +152,8 @@ export const SecretEditTableRow = ({
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
-    "accessInsightsUpgrade"
+    "accessInsightsUpgrade",
+    "createSharedSecret"
   ] as const);
 
   const { currentProject } = useProject();
@@ -217,6 +220,7 @@ export const SecretEditTableRow = ({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
   const [isAccessInsightsOpen, setIsAccessInsightsOpen] = useState(false);
+  const [isSecretReferenceOpen, setIsSecretReferenceOpen] = useState(false);
 
   const toggleModal = useCallback(() => {
     setIsModalOpen((prev) => !prev);
@@ -369,6 +373,22 @@ export const SecretEditTableRow = ({
 
   const shouldStayExpanded =
     isCommentOpen || isTagOpen || isMetadataOpen || isReminderOpen || isDropdownOpen;
+
+  const getTooltipContentForSecretSharing = () => {
+    if (!currentProject.secretSharing) {
+      return "Secret Sharing Disabled";
+    }
+
+    if (secretValueHidden) {
+      return "Access Denied";
+    }
+
+    if (isCreatable && !importedSecret) {
+      return "Create Secret to Share";
+    }
+
+    return "Share Secret";
+  };
 
   return (
     <div className="flex w-full flex-col gap-y-2 py-1.5">
@@ -735,38 +755,45 @@ export const SecretEditTableRow = ({
                           : "Enable Multi-line Encoding"}
                 </TooltipContent>
               </Tooltip>
-              <Modal>
-                <Tooltip delayDuration={300} disableHoverableContent>
-                  <TooltipTrigger>
-                    <ModalTrigger asChild>
-                      <UnstableIconButton
-                        variant="ghost"
-                        size="xs"
-                        className={twMerge(
-                          "w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100",
-                          shouldStayExpanded && "w-7 opacity-100"
-                        )}
-                        isDisabled={!canReadSecretValue || !secretId || isEmpty}
-                      >
-                        <WorkflowIcon />
-                      </UnstableIconButton>
-                    </ModalTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>Secret Reference Tree</TooltipContent>
-                </Tooltip>
-                <ModalContent
-                  title="Secret Reference Details"
-                  subTitle="Visual breakdown of secrets referenced by this secret."
-                  onOpenAutoFocus={(e) => e.preventDefault()}
-                >
-                  <SecretReferenceTree
-                    secretPath={secretPath}
-                    environment={environment}
-                    secretKey={secretName}
-                  />
-                </ModalContent>
-              </Modal>
+              <Tooltip delayDuration={300} disableHoverableContent>
+                <TooltipTrigger>
+                  <UnstableIconButton
+                    isDisabled={
+                      secretValueHidden ||
+                      !currentProject.secretSharing ||
+                      (isCreatable && !isImportedSecret)
+                    }
+                    onClick={async () => {
+                      if (sharedValueData) {
+                        handlePopUpOpen("createSharedSecret", {
+                          value: sharedValueData.value
+                        });
+                        return;
+                      }
 
+                      const { data, error } = await refetchSharedValue();
+                      if (data) {
+                        handlePopUpOpen("createSharedSecret", { value: data.value });
+                      } else {
+                        createNotification({
+                          type: "error",
+                          title: "Failed to fetch secret value",
+                          text: (error as Error)?.message ?? "Please try again later"
+                        });
+                      }
+                    }}
+                    variant="ghost"
+                    size="xs"
+                    className={twMerge(
+                      "w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100",
+                      shouldStayExpanded && "w-7 opacity-100"
+                    )}
+                  >
+                    <ForwardIcon />
+                  </UnstableIconButton>
+                </TooltipTrigger>
+                <TooltipContent>{getTooltipContentForSecretSharing()}</TooltipContent>
+              </Tooltip>
               <UnstableDropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
                 <UnstableDropdownMenuTrigger asChild>
                   <UnstableIconButton
@@ -823,6 +850,28 @@ export const SecretEditTableRow = ({
                       </Tooltip>
                     )}
                   </ProjectPermissionCan>
+                  <Tooltip
+                    open={!canReadSecretValue || !secretId || isEmpty ? undefined : false}
+                    delayDuration={300}
+                    disableHoverableContent
+                  >
+                    <TooltipTrigger className="block w-full">
+                      <UnstableDropdownMenuItem
+                        onClick={() => setIsSecretReferenceOpen(true)}
+                        isDisabled={!canReadSecretValue || !secretId || isEmpty}
+                      >
+                        <WorkflowIcon />
+                        Secret References
+                      </UnstableDropdownMenuItem>
+                    </TooltipTrigger>
+                    <TooltipContent side="left">
+                      {!canReadSecretValue
+                        ? "Access Denied"
+                        : !secretId || isEmpty
+                          ? "Create Secret to View References"
+                          : "View Secret References"}
+                    </TooltipContent>
+                  </Tooltip>
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Read}
                     a={ProjectPermissionSub.Commits}
@@ -925,6 +974,19 @@ export const SecretEditTableRow = ({
                   </ProjectPermissionCan>
                 </UnstableDropdownMenuContent>
               </UnstableDropdownMenu>
+              <Modal isOpen={isSecretReferenceOpen} onOpenChange={setIsSecretReferenceOpen}>
+                <ModalContent
+                  title="Secret Reference Details"
+                  subTitle="Visual breakdown of secrets referenced by this secret."
+                  onOpenAutoFocus={(e) => e.preventDefault()}
+                >
+                  <SecretReferenceTree
+                    secretPath={secretPath}
+                    environment={environment}
+                    secretKey={secretName}
+                  />
+                </ModalContent>
+              </Modal>
               <Sheet open={isVersionHistoryOpen} onOpenChange={setIsVersionHistoryOpen}>
                 <SheetContent
                   onOpenAutoFocus={(e) => e.preventDefault()}
@@ -1014,6 +1076,7 @@ export const SecretEditTableRow = ({
           )
         }
       />
+      <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
     </div>
   );
 };
