@@ -311,17 +311,19 @@ export const pamWebAccessServiceFactory = ({
     let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
     const cleanup = async () => {
-      if (cleanedUp) return;
-      cleanedUp = true;
-
+      // Each operation is individually idempotent — null checks skip already-cleaned resources,
+      // and finally blocks ensure references are cleared even if an operation throws.
       if (expiryTimer) {
         clearTimeout(expiryTimer);
+        expiryTimer = null;
       }
       if (pingInterval) {
         clearInterval(pingInterval);
+        pingInterval = null;
       }
       if (idleTimer) {
         clearTimeout(idleTimer);
+        idleTimer = null;
       }
 
       // End pg client (needs tunnel to send Terminate message)
@@ -330,6 +332,8 @@ export const pamWebAccessServiceFactory = ({
           await pgClient.end();
         } catch (err) {
           logger.debug(err, "Error closing pg client");
+        } finally {
+          pgClient = null;
         }
       }
 
@@ -339,6 +343,8 @@ export const pamWebAccessServiceFactory = ({
           await relayServer.cleanup();
         } catch (err) {
           logger.debug(err, "Error closing relay server");
+        } finally {
+          relayServer = null;
         }
       }
 
@@ -347,6 +353,7 @@ export const pamWebAccessServiceFactory = ({
       // If this fails, the scheduled queue job will expire the session at expiresAt time.
       if (relayCerts) {
         const certs = relayCerts;
+        relayCerts = null;
         void (async () => {
           let relayConn: net.Socket | null = null;
           try {
@@ -369,6 +376,8 @@ export const pamWebAccessServiceFactory = ({
           }
         })();
       }
+
+      cleanedUp = true;
     };
 
     try {
