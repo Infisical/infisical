@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS ${tableName}
     userAgentType LowCardinality(String),
     createdAt DateTime64(6) CODEC(DoubleDelta, ZSTD(3)),
     orgId UUID,
-    projectId String,
+    projectId String
 )
 ENGINE = ${engine}
 PARTITION BY toYYYYMM(createdAt)
