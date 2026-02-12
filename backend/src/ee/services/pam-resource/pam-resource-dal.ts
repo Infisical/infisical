@@ -89,7 +89,7 @@ export const pamResourceDALFactory = (db: TDbClient) => {
       const resources = await (tx || db.replicaNode())(TableName.PamResource)
         .select(selectAllTableCols(TableName.PamResource))
         .where(`${TableName.PamResource}.adServerResourceId`, adServerResourceId)
-        .orderByRaw(`${TableName.PamResource}."name" COLLATE "en-x-icu" ASC`);
+        .orderBy(`${TableName.PamResource}.name`, "asc");
 
       return resources;
     } catch (error) {
