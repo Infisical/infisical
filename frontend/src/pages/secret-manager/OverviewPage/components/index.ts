@@ -7,5 +7,6 @@ export * from "./FolderTableRow";
 export * from "./ResourceCount";
 export * from "./ResourceFilter";
 export * from "./ResourceSearchInput";
+export * from "./SecretDropzone";
 export * from "./SecretRotationTableRow";
 export * from "./SecretTableRow";

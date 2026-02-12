@@ -1,4 +1,11 @@
-import { ChevronDown, FingerprintIcon, FolderIcon, PlusIcon, RefreshCwIcon } from "lucide-react";
+import {
+  ChevronDown,
+  FingerprintIcon,
+  FolderIcon,
+  PlusIcon,
+  RefreshCwIcon,
+  UploadIcon
+} from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -20,6 +27,7 @@ type Props = {
   onAddFolder: () => void;
   onAddDyanamicSecret: () => void;
   onAddSecretRotation: () => void;
+  onImportSecrets: () => void;
   isDyanmicSecretAvailable: boolean;
   isSecretRotationAvailable: boolean;
 };
@@ -29,15 +37,30 @@ export function AddResourceButtons({
   onAddFolder,
   onAddDyanamicSecret,
   onAddSecretRotation,
+  onImportSecrets,
   isDyanmicSecretAvailable,
   isSecretRotationAvailable
 }: Props) {
   return (
     <UnstableButtonGroup>
-      <Button variant="project" onClick={onAddSecret}>
-        <PlusIcon />
-        Add Secret
-      </Button>
+      <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Secrets}>
+        {(isAllowed) => (
+          <Tooltip open={!isAllowed ? undefined : false}>
+            <TooltipTrigger>
+              <Button
+                className="rounded-r-none"
+                isDisabled={!isAllowed}
+                variant="project"
+                onClick={onAddSecret}
+              >
+                <PlusIcon />
+                Add Secret
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Access Denied</TooltipContent>
+          </Tooltip>
+        )}
+      </ProjectPermissionCan>
       <UnstableDropdownMenu>
         <UnstableDropdownMenuTrigger asChild>
           <UnstableIconButton variant="project">
@@ -85,6 +108,22 @@ export function AddResourceButtons({
             </TooltipTrigger>
             <TooltipContent side="left">Access restricted</TooltipContent>
           </Tooltip>
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Create}
+            a={ProjectPermissionSub.Secrets}
+          >
+            {(isAllowed) => (
+              <Tooltip open={!isAllowed ? undefined : false}>
+                <TooltipTrigger className="block w-full">
+                  <UnstableDropdownMenuItem onClick={onImportSecrets} isDisabled={!isAllowed}>
+                    <UploadIcon className="text-accent" />
+                    Upload Secrets
+                  </UnstableDropdownMenuItem>
+                </TooltipTrigger>
+                <TooltipContent side="left">Access Restricted</TooltipContent>
+              </Tooltip>
+            )}
+          </ProjectPermissionCan>
         </UnstableDropdownMenuContent>
       </UnstableDropdownMenu>
     </UnstableButtonGroup>
