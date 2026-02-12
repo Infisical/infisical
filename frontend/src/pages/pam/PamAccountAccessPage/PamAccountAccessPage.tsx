@@ -66,10 +66,10 @@ const PageContent = () => {
   return (
     <div className="flex h-screen w-screen flex-col bg-[#0d1117]">
       <div
-        className="flex-1 overflow-hidden p-2 [&_.xterm-viewport]:thin-scrollbar"
+        className="thin-scrollbar flex-1 overflow-x-auto overflow-y-hidden p-2 [&_.xterm-viewport]:thin-scrollbar"
         style={{ minHeight: 0 }}
       >
-        <div ref={containerRef} className="h-full w-full" />
+        <div ref={containerRef} className="h-full" style={{ minWidth: "100%" }} />
       </div>
       <div className="flex items-center justify-between border-t border-mineshaft-600 bg-mineshaft-800 px-3 py-1.5 text-xs">
         <span className="flex items-center gap-1.5">

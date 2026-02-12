@@ -31,6 +31,8 @@ export const useWebAccessSession = ({
   const [isConnected, setIsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
+  const fitAddonRef = useRef<FitAddon | null>(null);
+  const isWidenedRef = useRef(false);
   const inputBufferRef = useRef("");
   const currentPromptRef = useRef("");
   const promptCallbackRef = useRef<((input: string) => void) | null>(null);
@@ -40,6 +42,32 @@ export const useWebAccessSession = ({
   useEffect(() => {
     onSessionEndRef.current = onSessionEnd;
   }, [onSessionEnd]);
+
+  const adjustWidthForOutput = useCallback(
+    (output: string, terminal: Terminal, fitAddon: FitAddon, container: HTMLDivElement) => {
+      const lines = output.split("\n");
+      const longestLine = Math.max(...lines.map((l) => l.length));
+
+      if (longestLine <= terminal.cols) return;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, no-underscore-dangle
+      const cellWidth = (terminal as any)._core._renderService.dimensions.css.cell.width as number;
+      if (!cellWidth) return;
+
+      const MAX_COLS = 1000;
+      const neededCols = Math.min(longestLine + 2, MAX_COLS);
+      const neededWidth = neededCols * cellWidth;
+
+      const currentWidth = container.getBoundingClientRect().width;
+      if (neededWidth <= currentWidth) return;
+
+      // eslint-disable-next-line no-param-reassign
+      container.style.width = `${neededWidth}px`;
+      fitAddon.fit();
+      isWidenedRef.current = true;
+    },
+    []
+  );
 
   // --- WebSocket lifecycle (imperative) ---
 
@@ -73,6 +101,9 @@ export const useWebAccessSession = ({
         }
 
         if (msg.data) {
+          if (containerEl && fitAddonRef.current) {
+            adjustWidthForOutput(msg.data, terminal, fitAddonRef.current, containerEl);
+          }
           terminal.write(msg.data.replace(/\r?\n/g, "\r\n"));
         }
         if (msg.prompt) {
@@ -94,7 +125,7 @@ export const useWebAccessSession = ({
         // no-op: onclose always fires after onerror
       };
     },
-    [accountId]
+    [accountId, containerEl, adjustWidthForOutput]
   );
 
   const connect = useCallback(async () => {
@@ -116,6 +147,11 @@ export const useWebAccessSession = ({
         `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
         { projectId }
       );
+      if (containerEl) {
+        containerEl.style.width = "";
+        isWidenedRef.current = false;
+      }
+      if (fitAddonRef.current) fitAddonRef.current.fit();
       terminal.reset();
       openWebSocket(terminal, data.ticket);
     } catch (err: unknown) {
@@ -193,6 +229,11 @@ export const useWebAccessSession = ({
 
         // Retry ticket request with verified MFA session
         try {
+          if (containerEl) {
+            containerEl.style.width = "";
+            isWidenedRef.current = false;
+          }
+          if (fitAddonRef.current) fitAddonRef.current.fit();
           terminal.reset();
           const { data: retryData } = await apiRequest.post<{ ticket: string }>(
             `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
@@ -267,7 +308,7 @@ export const useWebAccessSession = ({
 
       terminal.write("\r\nFailed to connect. Please close and try again.\r\n");
     }
-  }, [accountId, projectId, orgId, resourceName, accountName, openWebSocket]);
+  }, [accountId, projectId, orgId, resourceName, accountName, containerEl, openWebSocket]);
 
   const disconnect = useCallback(() => {
     const ws = wsRef.current;
@@ -283,12 +324,17 @@ export const useWebAccessSession = ({
 
   const reconnect = useCallback(() => {
     disconnect();
+    if (containerEl) {
+      containerEl.style.width = "";
+      isWidenedRef.current = false;
+    }
+    if (fitAddonRef.current) fitAddonRef.current.fit();
     if (terminalRef.current) {
       terminalRef.current.reset();
       terminalRef.current.options.disableStdin = false;
     }
     connect();
-  }, [disconnect, connect]);
+  }, [disconnect, connect, containerEl]);
 
   // --- Terminal lifecycle (effect, tied to containerEl) ---
 
@@ -333,6 +379,7 @@ export const useWebAccessSession = ({
     terminal.open(containerEl);
     fitAddon.fit();
     terminalRef.current = terminal;
+    fitAddonRef.current = fitAddon;
 
     // Wire terminal keyboard input — reads wsRef/inputBufferRef/currentPromptRef dynamically
     terminal.onData((data) => {
@@ -379,6 +426,7 @@ export const useWebAccessSession = ({
 
     return () => {
       terminalRef.current = null;
+      fitAddonRef.current = null;
       window.removeEventListener("resize", handleResize);
       resizeObserver.disconnect();
       disconnect();
