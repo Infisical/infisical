@@ -384,7 +384,7 @@ const pamRoutes = route("/organizations/$orgId/projects/pam/$projectId", [
       index("pam/PamResourcesPage/route.tsx"),
       route("/$resourceType/$resourceId", [
         index("pam/PamResourceByIDPage/route.tsx"),
-        route("/accounts/$accountId", "pam/PamAccountByIDPage/route.tsx")
+        route("/accounts/$accountId", [index("pam/PamAccountByIDPage/route.tsx")])
       ])
     ]),
     route("/audit-logs", "project/AuditLogsPage/route-pam.tsx"),
@@ -400,6 +400,11 @@ const pamRoutes = route("/organizations/$orgId/projects/pam/$projectId", [
     route("/groups/$groupId", "project/GroupDetailsByIDPage/route-pam.tsx")
   ])
 ]);
+
+const pamAccessRoute = route(
+  "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId/access",
+  "pam/PamAccountAccessPage/route.tsx"
+);
 
 const organizationRoutes = route("/organizations/$orgId", [
   route("/projects", "organization/ProjectsPage/route.tsx"),
@@ -469,6 +474,7 @@ export const routes = rootRoute("root.tsx", [
       route("/organization/$", "redirects/organization-redirect.tsx"),
       route("/projects/$", "redirects/project-redirect.tsx"),
       adminRoute,
+      pamAccessRoute,
       layout("org-layout", "organization/layout.tsx", [
         organizationRoutes,
         route("/organizations/$orgId/secret-manager/$projectId", [
