@@ -32,6 +32,7 @@ import {
 } from "./pam-resource-fns";
 import { TCreateResourceDTO, TListResourcesDTO, TUpdateResourceDTO } from "./pam-resource-types";
 import { TSSHResourceMetadata } from "./ssh/ssh-resource-types";
+import { TWindowsResource } from "./windows-server/windows-server-resource-types";
 
 type TPamResourceServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;
@@ -506,7 +507,9 @@ export const pamResourceServiceFactory = ({
 
     const relatedResources = await pamResourceDAL.findByAdServerResourceId(adServerResourceId);
 
-    return Promise.all(relatedResources.map((r) => decryptResource(r, resource.projectId, kmsService)));
+    return Promise.all(
+      relatedResources.map((r) => decryptResource(r, resource.projectId, kmsService) as Promise<TWindowsResource>)
+    );
   };
 
   return {
