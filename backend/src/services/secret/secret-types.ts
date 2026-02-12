@@ -186,6 +186,12 @@ export enum SecretsOrderBy {
   Name = "name" // "key" for secrets but using name for use across resources
 }
 
+export enum PersonalOverridesBehavior {
+  Priority = "priority", // used in v4 router when includePersonalOverrides is true
+  IncludeAll = "include-all", // used in deprecated v3 secret router to keep existing behavior
+  NeverInclude = "never-include" // used in v4 router when includePersonalOverrides is false
+}
+
 export type TGetAccessibleSecretsDTO = {
   secretPath: string;
   environment: string;
@@ -195,7 +201,8 @@ export type TGetAccessibleSecretsDTO = {
 
 export type TGetSecretsRawDTO = {
   expandSecretReferences?: boolean;
-  includePersonalOverrides?: boolean;
+  personalOverridesBehavior: PersonalOverridesBehavior;
+  expandPersonalOverrides?: boolean;
   path: string;
   environment: string;
   viewSecretValue: boolean;
@@ -231,6 +238,7 @@ export type TGetASecretRawDTO = {
   viewSecretValue: boolean;
   expandSecretReferences?: boolean;
   includePersonalOverrides?: boolean;
+  expandPersonalOverrides?: boolean;
   type: "shared" | "personal";
   includeImports?: boolean;
   version?: number;

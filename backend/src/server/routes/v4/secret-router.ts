@@ -14,7 +14,7 @@ import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
-import { SecretProtectionType } from "@app/services/secret/secret-types";
+import { PersonalOverridesBehavior, SecretProtectionType } from "@app/services/secret/secret-types";
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -122,10 +122,10 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         environment: z.string().trim().optional().describe(RAW_SECRETS.LIST.environment),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash).describe(RAW_SECRETS.LIST.secretPath),
         viewSecretValue: convertStringBoolean(true).describe(RAW_SECRETS.LIST.viewSecretValue),
-        expandSecretReferences: convertStringBoolean().describe(RAW_SECRETS.LIST.expand),
+        expandSecretReferences: convertStringBoolean(true).describe(RAW_SECRETS.LIST.expand),
         recursive: convertStringBoolean().describe(RAW_SECRETS.LIST.recursive),
         includePersonalOverrides: convertStringBoolean().describe(RAW_SECRETS.LIST.includePersonalOverrides),
-        include_imports: convertStringBoolean().describe(RAW_SECRETS.LIST.includeImports),
+        includeImports: convertStringBoolean(true).describe(RAW_SECRETS.LIST.includeImports),
         tagSlugs: z
           .string()
           .describe(RAW_SECRETS.LIST.tagSlugs)
@@ -183,13 +183,16 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         environment,
         expandSecretReferences: req.query.expandSecretReferences,
-        includePersonalOverrides: req.query.includePersonalOverrides,
+        personalOverridesBehavior: req.query.includePersonalOverrides
+          ? PersonalOverridesBehavior.Priority
+          : PersonalOverridesBehavior.NeverInclude,
+        expandPersonalOverrides: req.query.includePersonalOverrides,
         actorAuthMethod: req.permission.authMethod,
         projectId,
         viewSecretValue: req.query.viewSecretValue,
         path: secretPath,
         metadataFilter: req.query.metadataFilter,
-        includeImports: req.query.include_imports,
+        includeImports: req.query.includeImports,
         recursive: req.query.recursive,
         tagSlugs: req.query.tagSlugs
       });
@@ -290,9 +293,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         version: z.coerce.number().optional().describe(RAW_SECRETS.GET.version),
         type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.GET.type),
         viewSecretValue: convertStringBoolean(true).describe(RAW_SECRETS.GET.viewSecretValue),
-        expandSecretReferences: convertStringBoolean().describe(RAW_SECRETS.GET.expand),
+        expandSecretReferences: convertStringBoolean(true).describe(RAW_SECRETS.GET.expand),
         includePersonalOverrides: convertStringBoolean().describe(RAW_SECRETS.GET.includePersonalOverrides),
-        include_imports: convertStringBoolean().describe(RAW_SECRETS.GET.includeImports)
+        includeImports: convertStringBoolean(true).describe(RAW_SECRETS.GET.includeImports)
       }),
       response: {
         200: z.object({
@@ -329,6 +332,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         expandSecretReferences: req.query.expandSecretReferences,
+        expandPersonalOverrides: req.query.includePersonalOverrides,
         includePersonalOverrides: req.query.includePersonalOverrides,
         environment,
         projectId,
@@ -336,7 +340,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         path: secretPath,
         secretName: req.params.secretName,
         type: req.query.type,
-        includeImports: req.query.include_imports,
+        includeImports: req.query.includeImports,
         version: req.query.version
       });
 
