@@ -206,7 +206,7 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
       expect(deleteFolder.statusCode).toBe(200);
     });
 
-    const getSecrets = async (environment: string, secretPath = "/") => {
+    const getSecrets = async (environment: string, secretPath = "/", includeImports?: boolean) => {
       const res = await testServer.inject({
         method: "GET",
         url: `/api/v4/secrets`,
@@ -214,6 +214,7 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
           authorization: `Bearer ${authToken}`
         },
         query: {
+          ...(includeImports !== undefined ? { includeImports: String(includeImports) } : {}),
           secretPath,
           environment,
           projectId: seedData1.projectV3.id
@@ -318,7 +319,7 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
         expect(createSecRes.statusCode).toBe(200);
 
         // list secrets should contain personal one and shared one
-        const secrets = await getSecrets(seedData1.environment.slug, path);
+        const secrets = await getSecrets(seedData1.environment.slug, path, false);
         expect(secrets).toEqual(
           expect.arrayContaining([
             expect.objectContaining({
