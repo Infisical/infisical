@@ -374,6 +374,22 @@ export const SecretEditTableRow = ({
   const shouldStayExpanded =
     isCommentOpen || isTagOpen || isMetadataOpen || isReminderOpen || isDropdownOpen;
 
+  const getTooltipContentForSecretSharing = () => {
+    if (!currentProject.secretSharing) {
+      return "Secret Sharing Disabled";
+    }
+
+    if (secretValueHidden) {
+      return "Access Denied";
+    }
+
+    if (isCreatable && !importedSecret) {
+      return "Create Secret to Share";
+    }
+
+    return "Share Secret";
+  };
+
   return (
     <div className="flex w-full flex-col gap-y-2 py-1.5">
       <DeleteActionModal
@@ -754,9 +770,16 @@ export const SecretEditTableRow = ({
                         });
                         return;
                       }
-                      const { data } = await refetchSharedValue();
+
+                      const { data, error } = await refetchSharedValue();
                       if (data) {
                         handlePopUpOpen("createSharedSecret", { value: data.value });
+                      } else {
+                        createNotification({
+                          type: "error",
+                          title: "Failed to fetch secret value",
+                          text: (error as Error)?.message ?? "Please try again later"
+                        });
                       }
                     }}
                     variant="ghost"
@@ -769,15 +792,7 @@ export const SecretEditTableRow = ({
                     <ForwardIcon />
                   </UnstableIconButton>
                 </TooltipTrigger>
-                <TooltipContent>
-                  {!currentProject.secretSharing
-                    ? "Secret Sharing Disabled"
-                    : secretValueHidden
-                      ? "Access Denied"
-                      : isCreatable && !importedSecret
-                        ? "Create Secret to Share"
-                        : "Share Secret"}
-                </TooltipContent>
+                <TooltipContent>{getTooltipContentForSecretSharing()}</TooltipContent>
               </Tooltip>
               <UnstableDropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
                 <UnstableDropdownMenuTrigger asChild>
