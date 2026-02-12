@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-// Sentinel value for masked signing secret display in edit mode
-export const SIGNING_SECRET_MASK = "*****";
+// Sentinel value for masked secrets in edit mode (signing secret, integration key, etc.)
+export const SECRET_MASK = "*****";
 
 export enum PkiAlertEventTypeV2 {
   EXPIRATION = "expiration",
@@ -13,7 +13,8 @@ export enum PkiAlertEventTypeV2 {
 export enum PkiAlertChannelTypeV2 {
   EMAIL = "email",
   WEBHOOK = "webhook",
-  SLACK = "slack"
+  SLACK = "slack",
+  PAGERDUTY = "pagerduty"
 }
 
 export enum PkiFilterFieldV2 {
@@ -56,10 +57,15 @@ export interface TPkiAlertChannelConfigSlack {
   webhookUrl: string;
 }
 
+export interface TPkiAlertChannelConfigPagerDuty {
+  integrationKey: string;
+}
+
 export type TPkiAlertChannelConfig =
   | TPkiAlertChannelConfigEmail
   | TPkiAlertChannelConfigWebhook
-  | TPkiAlertChannelConfigSlack;
+  | TPkiAlertChannelConfigSlack
+  | TPkiAlertChannelConfigPagerDuty;
 
 export interface TPkiAlertChannelV2 {
   id: string;
@@ -245,10 +251,27 @@ const slackChannelSchema = z.object({
   enabled: z.boolean().default(true)
 });
 
+const pagerdutyChannelConfigSchema = z.object({
+  integrationKey: z
+    .string()
+    .refine(
+      (val) => /^[a-f0-9]{32}$/i.test(val),
+      "Integration key must be a 32-character hex string"
+    )
+});
+
+const pagerdutyChannelSchema = z.object({
+  id: z.string().uuid().optional(),
+  channelType: z.literal(PkiAlertChannelTypeV2.PAGERDUTY),
+  config: pagerdutyChannelConfigSchema,
+  enabled: z.boolean().default(true)
+});
+
 export const pkiAlertChannelV2Schema = z.discriminatedUnion("channelType", [
   emailChannelSchema,
   webhookChannelSchema,
-  slackChannelSchema
+  slackChannelSchema,
+  pagerdutyChannelSchema
 ]);
 
 export const createPkiAlertV2Schema = z.object({

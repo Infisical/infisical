@@ -468,7 +468,12 @@ export const OverviewPage = () => {
     }
   };
 
-  const handleSecretCreate = async (env: string, key: string, value: string) => {
+  const handleSecretCreate = async (
+    env: string,
+    key: string,
+    value: string,
+    type = SecretType.Shared
+  ) => {
     // create folder if not existing
     if (secretPath !== "/") {
       // /hello/world -> [hello","world"]
@@ -498,7 +503,7 @@ export const OverviewPage = () => {
       secretKey: key,
       secretValue: value,
       secretComment: "",
-      type: SecretType.Shared
+      type
     });
 
     if ("approval" in result) {
@@ -552,14 +557,19 @@ export const OverviewPage = () => {
     }
   };
 
-  const handleSecretDelete = async (env: string, key: string, secretId?: string) => {
+  const handleSecretDelete = async (
+    env: string,
+    key: string,
+    secretId?: string,
+    type = SecretType.Shared
+  ) => {
     const result = await deleteSecretV3({
       environment: env,
       projectId,
       secretPath,
       secretKey: key,
       secretId,
-      type: SecretType.Shared
+      type
     });
 
     if ("approval" in result) {

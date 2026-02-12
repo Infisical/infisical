@@ -20,6 +20,7 @@ export type {
   TGetPkiAlertV2CurrentMatchingCertificatesResponse,
   TGetPkiAlertV2MatchingCertificates,
   TPkiAlertChannelConfigEmail,
+  TPkiAlertChannelConfigPagerDuty,
   TPkiAlertChannelConfigSlack,
   TPkiAlertChannelConfigWebhook,
   TPkiAlertChannelConfigWebhookResponse,
@@ -34,6 +35,6 @@ export {
   PkiAlertEventTypeV2,
   PkiFilterFieldV2,
   PkiFilterOperatorV2,
-  SIGNING_SECRET_MASK,
+  SECRET_MASK,
   updatePkiAlertV2Schema
 } from "./types";

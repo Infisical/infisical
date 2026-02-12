@@ -33,6 +33,7 @@ import {
 import {
   formatAlertBefore,
   formatEventType,
+  getChannelDisplayName,
   getChannelIcon,
   getWebhookHostname
 } from "../utils/pki-alert-formatters";
@@ -202,8 +203,8 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
                           />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
-                              <span className="font-medium text-mineshaft-100 capitalize">
-                                {channel.channelType}
+                              <span className="font-medium text-mineshaft-100">
+                                {getChannelDisplayName(channel.channelType)}
                               </span>
                               {channel.channelType === PkiAlertChannelTypeV2.WEBHOOK &&
                                 (channel.config as TPkiAlertChannelConfigWebhookResponse)
@@ -255,6 +256,11 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
                             {channel.channelType === PkiAlertChannelTypeV2.SLACK && (
                               <div className="mt-1 truncate text-sm text-mineshaft-400">
                                 Slack webhook configured
+                              </div>
+                            )}
+                            {channel.channelType === PkiAlertChannelTypeV2.PAGERDUTY && (
+                              <div className="mt-1 truncate text-sm text-mineshaft-400">
+                                PagerDuty integration configured
                               </div>
                             )}
                           </div>

@@ -22,8 +22,6 @@ type Props = {
   secretKey: string;
   environment: string;
   secretPath: string;
-  isOverride?: boolean;
-  type?: SecretType;
   onClose?: () => void;
 };
 
@@ -32,7 +30,6 @@ export const SecretCommentForm = ({
   secretKey,
   environment,
   secretPath,
-  isOverride,
   onClose
 }: Props) => {
   const [isEditing, setIsEditing] = useState(Boolean(!comment));
@@ -55,7 +52,7 @@ export const SecretCommentForm = ({
       projectId,
       secretPath,
       secretKey,
-      type: isOverride ? SecretType.Personal : SecretType.Shared,
+      type: SecretType.Shared,
       secretComment: data.comment
     });
 

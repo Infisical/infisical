@@ -37,7 +37,10 @@ export const FlyioSyncFields = () => {
               isLoading={isAppsLoading && Boolean(connectionId)}
               isDisabled={!connectionId}
               value={apps?.find((v) => v.id === value) ?? null}
-              onChange={(option) => onChange((option as SingleValue<TFlyioApp>)?.id ?? null)}
+              onChange={(option) => {
+                const selected = option as SingleValue<TFlyioApp>;
+                onChange(selected?.id ?? null);
+              }}
               options={apps}
               placeholder="Select an app..."
               getOptionLabel={(option) => option.name}

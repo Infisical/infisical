@@ -142,7 +142,10 @@ export const requestWithHCVaultGateway = async <T>(
   }
 
   const [targetHost] = await verifyHostInputValidity({ host: url.hostname, isGateway: true, isDynamicSecret: false });
-  const targetPort = url.port ? Number(url.port) : 8200; // 8200 is the default port for Vault self-hosted/dedicated
+
+  // port is empty string when using protocol's default port (443 for https, 80 for http)
+  // eslint-disable-next-line no-nested-ternary
+  const targetPort = url.port ? Number(url.port) : url.protocol === "https:" ? 443 : 80;
 
   const gatewayConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
     gatewayId,
