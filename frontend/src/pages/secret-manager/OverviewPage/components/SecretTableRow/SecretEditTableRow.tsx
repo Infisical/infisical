@@ -195,12 +195,12 @@ export const SecretEditTableRow = ({
     formState: { isDirty, isSubmitting }
   } = useForm({
     defaultValues: {
-      value: sharedValueData?.value ?? (defaultValue || null)
+      value: isEmpty ? defaultValue || null : (sharedValueData?.value ?? (defaultValue || null))
     }
   });
 
   useEffect(() => {
-    if (sharedValueData && !isDirty) {
+    if (sharedValueData && !isDirty && !isEmpty) {
       setValue("value", sharedValueData.value ?? null);
     }
   }, [sharedValueData]);

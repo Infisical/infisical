@@ -97,12 +97,14 @@ export const SecretOverrideRow = ({
     formState: { isDirty, isSubmitting }
   } = useForm({
     defaultValues: {
-      value: overrideValueData?.valueOverride ?? (valueOverride || null)
+      value: isOverrideEmpty
+        ? valueOverride || null
+        : (overrideValueData?.valueOverride ?? (valueOverride || null))
     }
   });
 
   useEffect(() => {
-    if (overrideValueData && !isDirty) {
+    if (overrideValueData && !isDirty && !isOverrideEmpty) {
       setValue("value", overrideValueData.valueOverride ?? null);
     }
   }, [overrideValueData]);
