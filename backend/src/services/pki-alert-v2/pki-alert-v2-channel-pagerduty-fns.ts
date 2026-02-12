@@ -7,6 +7,7 @@ import { logger } from "@app/lib/logger";
 
 import { PKI_ALERT_RETRY_CONFIG, RETRYABLE_NETWORK_ERRORS } from "./pki-alert-v2-constants";
 import {
+  pagerDutyIntegrationKeyRegex,
   TAlertInfo,
   TBuildPagerDutyPayloadParams,
   TCertificatePreview,
@@ -23,7 +24,7 @@ const MAX_CERTIFICATES_IN_PAYLOAD = 10;
  * Validates that the integration key is a valid 32-character hex string.
  */
 export const validatePagerDutyIntegrationKey = (integrationKey: string): boolean => {
-  return /^[a-f0-9]{32}$/i.test(integrationKey);
+  return pagerDutyIntegrationKeyRegex.test(integrationKey);
 };
 
 /**
