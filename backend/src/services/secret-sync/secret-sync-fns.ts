@@ -288,7 +288,7 @@ export const SecretSyncFns = {
       case SecretSync.Windmill:
         return WindmillSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.HCVault:
-        return HCVaultSyncFns.syncSecrets(secretSync, schemaSecretMap, gatewayService);
+        return HCVaultSyncFns.syncSecrets(secretSync, schemaSecretMap, gatewayService, gatewayV2Service);
       case SecretSync.TeamCity:
         return TeamCitySyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.OCIVault:
@@ -337,7 +337,7 @@ export const SecretSyncFns = {
   },
   getSecrets: async (
     secretSync: TSecretSyncWithCredentials,
-    { kmsService, appConnectionDAL, gatewayService }: TSyncSecretDeps
+    { kmsService, appConnectionDAL, gatewayService, gatewayV2Service }: TSyncSecretDeps
   ): Promise<TSecretMap> => {
     let secretMap: TSecretMap;
     switch (secretSync.destination) {
@@ -398,7 +398,7 @@ export const SecretSyncFns = {
         secretMap = await WindmillSyncFns.getSecrets(secretSync);
         break;
       case SecretSync.HCVault:
-        secretMap = await HCVaultSyncFns.getSecrets(secretSync, gatewayService);
+        secretMap = await HCVaultSyncFns.getSecrets(secretSync, gatewayService, gatewayV2Service);
         break;
       case SecretSync.TeamCity:
         secretMap = await TeamCitySyncFns.getSecrets(secretSync);
@@ -523,7 +523,7 @@ export const SecretSyncFns = {
       case SecretSync.Windmill:
         return WindmillSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.HCVault:
-        return HCVaultSyncFns.removeSecrets(secretSync, schemaSecretMap, gatewayService);
+        return HCVaultSyncFns.removeSecrets(secretSync, schemaSecretMap, gatewayService, gatewayV2Service);
       case SecretSync.TeamCity:
         return TeamCitySyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.OCIVault:

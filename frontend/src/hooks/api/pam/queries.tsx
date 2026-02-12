@@ -8,7 +8,6 @@ import {
   TListPamAccountsDTO,
   TListPamResourcesDTO,
   TPamAccount,
-  TPamFolder,
   TPamResource,
   TPamSession
 } from "./types";
@@ -123,10 +122,7 @@ export const useGetPamResourceById = (
 // Accounts
 type TListPamAccountsResponse = {
   accounts: TPamAccount[];
-  folders: TPamFolder[];
   totalCount: number;
-  folderId?: string;
-  folderPaths: Record<string, string>;
 };
 
 export const useListPamAccounts = (

@@ -55,6 +55,10 @@ export interface PendingSecretDelete extends BasePendingChange {
   secretKey: string;
   secretValue: string;
   secretValueHidden: boolean;
+  tags: { id: string; slug: string }[];
+  secretMetadata: { key: string; value: string; isEncrypted?: boolean }[];
+  skipMultilineEncoding: boolean | null;
+  comment: string;
 }
 
 // Folder-related change types
@@ -255,6 +259,11 @@ type BatchModeState = {
     setExistingKeys: (secretKeys: string[], folderNames: string[]) => void;
     getTotalPendingChangesCount: () => number;
     removePendingChange: (changeId: string, resourceType: string, context: BatchContext) => void;
+    updatePendingChangeValue: (
+      changeId: string,
+      values: { originalValue?: string; secretValue?: string },
+      context: BatchContext
+    ) => void;
   };
 };
 
@@ -586,6 +595,63 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
         } else if (resourceType === "folder") {
           newChanges.folders = newChanges.folders.filter((c) => c.id !== changeId);
         }
+
+        const updatedContextMap = new Map(state.pendingChangesByContext);
+        updatedContextMap.set(contextKey, newChanges);
+
+        const isCurrentContext =
+          state.currentContext &&
+          contextKey ===
+            generateContextKey(
+              state.currentContext.projectId,
+              state.currentContext.environment,
+              state.currentContext.secretPath
+            );
+
+        return {
+          pendingChangesByContext: updatedContextMap,
+          pendingChanges: isCurrentContext ? newChanges : state.pendingChanges
+        };
+      }),
+
+    updatePendingChangeValue: (
+      changeId: string,
+      values: { originalValue?: string; secretValue?: string },
+      context: BatchContext
+    ) =>
+      set((state) => {
+        const contextKey = generateContextKey(
+          context.projectId,
+          context.environment,
+          context.secretPath
+        );
+
+        const existingChanges = state.pendingChangesByContext.get(contextKey) || {
+          secrets: [],
+          folders: []
+        };
+        const newChanges = { ...existingChanges };
+
+        newChanges.secrets = newChanges.secrets.map((secret) => {
+          if (secret.id !== changeId) return secret;
+
+          if (secret.type === PendingAction.Update) {
+            return {
+              ...secret,
+              originalValue: values.originalValue ?? secret.originalValue,
+              secretValue: values.secretValue ?? secret.secretValue
+            };
+          }
+
+          if (secret.type === PendingAction.Delete && values.secretValue !== undefined) {
+            return {
+              ...secret,
+              secretValue: values.secretValue
+            };
+          }
+
+          return secret;
+        });
 
         const updatedContextMap = new Map(state.pendingChangesByContext);
         updatedContextMap.set(contextKey, newChanges);

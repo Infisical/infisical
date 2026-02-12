@@ -30,3 +30,16 @@ export type TPutFlyioVariable = TFlyioListVariables & {
 export type TDeleteFlyioVariable = TFlyioListVariables & {
   keys: string[];
 };
+
+/** GraphQL error shape returned by Fly.io API */
+export type FlyioGraphQLError = {
+  message: string;
+  path?: string[];
+  extensions?: Record<string, unknown>;
+};
+
+/** GraphQL response shape: data and optional errors array (Fly.io returns 200 even on error) */
+export type FlyioGraphQLResponse<T = unknown> = {
+  data?: T;
+  errors?: FlyioGraphQLError[];
+};

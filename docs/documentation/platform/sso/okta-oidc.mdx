@@ -76,7 +76,7 @@ description: "Learn how to configure Okta OIDC for Infisical SSO."
          Currently, the following JWT signature algorithms are supported: RS256, RS512, HS256, and EdDSA. Okta typically uses RS256.
       </Info>
 
-      Optionally, you can define a whitelist of allowed email domains to restrict which users can authenticate.
+      Optionally, you can define a whitelist of allowed email domains to restrict which users can authenticate. Wildcard patterns such as `*.example.com` are supported to allow entire subdomain trees (e.g. `team.example.com`, `eng.example.com`).
 
       Once you've filled in all the required fields, click **Update** to save the configuration.
 

@@ -60,7 +60,7 @@ import { getConfig } from "@app/lib/config/env";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
-import { QueueJobs, TQueueServiceFactory } from "@app/queue";
+import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -130,7 +130,7 @@ export type TSecretRotationV2ServiceFactoryDep = {
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
-  queueService: Pick<TQueueServiceFactory, "queuePg">;
+  queueService: Pick<TQueueServiceFactory, "queue">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
@@ -193,13 +193,17 @@ export const secretRotationV2ServiceFactory = ({
     const appCfg = getConfig();
     if (!appCfg.isSmtpConfigured) return; // comment out if testing email sending
 
-    await queueService.queuePg(
+    await queueService.queue(
+      QueueName.SecretRotationV2,
       QueueJobs.SecretRotationV2SendNotification,
       { secretRotation },
       {
         jobId: `secret-rotation-v2-notification-${secretRotation.id}`,
-        retryLimit: 5,
-        retryBackoff: true
+        attempts: 5,
+        backoff: {
+          type: "exponential",
+          delay: 1000
+        }
       }
     );
   };
@@ -768,7 +772,8 @@ export const secretRotationV2ServiceFactory = ({
 
       // queue for rotation if adjusted time falls before next cron
       if (nextRotationAt && nextRotationAt.getTime() < getNextUtcRotationInterval().getTime()) {
-        await queueService.queuePg(
+        await queueService.queue(
+          QueueName.SecretRotationV2RotateSecrets,
           QueueJobs.SecretRotationV2RotateSecrets,
           { rotationId, queuedAt: new Date(), isManualRotation: true },
           getSecretRotationRotateSecretJobOptions(updatedSecretRotation)

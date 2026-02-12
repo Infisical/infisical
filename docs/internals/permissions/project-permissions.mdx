@@ -396,3 +396,18 @@ Supports conditions and permission inversion.
 
 **Condition Properties:**
 - `name`: Control access based on endpoint name
+
+### Privileged Access Management (PAM)
+
+#### Subject: `pam-accounts`
+
+Supports conditions and permission inversion.
+
+| Action   | Description                                      |
+| -------- | ------------------------------------------------ |
+| `read`   | View PAM accounts the identity is allowed to use |
+| `access` | Request or use access to PAM accounts            |
+
+**Condition Properties (PAM accounts only support these two):**
+- `resourceName` – Restrict by resource name (glob patterns supported where applicable).
+- `accountName` – Restrict by account name (glob patterns supported where applicable).
