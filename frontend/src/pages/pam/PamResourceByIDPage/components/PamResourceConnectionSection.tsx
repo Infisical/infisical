@@ -153,12 +153,12 @@ const WindowsConnectionDetails = ({
         <DetailLabel>Port</DetailLabel>
         <DetailValue>{connectionDetails.port}</DetailValue>
       </Detail>
-      <Detail>
-        <DetailLabel>AD Resource</DetailLabel>
-        <DetailValue>
-          {adResource ? adResource.name : <span className="text-muted">None</span>}
-        </DetailValue>
-      </Detail>
+      {adResource && (
+        <Detail>
+          <DetailLabel>AD Resource</DetailLabel>
+          <DetailValue>{adResource.name}</DetailValue>
+        </Detail>
+      )}
     </>
   );
 };
