@@ -1,0 +1,67 @@
+---
+title: "PagerDuty Alerts"
+sidebarTitle: "PagerDuty Alerts"
+description: "Learn how to set up PagerDuty notifications for PKI certificate alerts"
+---
+
+Infisical can send PKI certificate alert notifications to PagerDuty using the [Events API v2](https://developer.pagerduty.com/docs/events-api-v2-overview). This guide walks through creating a PagerDuty service and configuring a PagerDuty alert.
+
+## Guide to Creating a PagerDuty Alert
+
+<Steps>
+  <Step title="Create a PagerDuty Service (or use an existing one)">
+    1. Go to **PagerDuty** → **Services** → **Service Directory** → **New Service**
+    2. Give the service a name (e.g., "Infisical PKI Alerts")
+    3. Select **Events API v2** as the integration
+
+    ![pagerduty events api v2](/images/platform/pki/alerting/pagerduty-events-api-v2.png)
+
+    4. Click **Create Service**
+
+    If you want to use an existing service, go to the service's **Integrations** tab → **Add an Integration** → select **Events API v2**.
+  </Step>
+  <Step title="Copy the Integration Key">
+    After creating the service (or adding the integration), copy the 32-character **Integration Key** from the **Integrations** tab. You'll need this key to configure the alert in Infisical.
+
+    ![pagerduty integration key](/images/platform/pki/alerting/pagerduty-integration-key.png)
+  </Step>
+  <Step title="Create the Alert in Infisical">
+    Head to your Certificate Management Project > Alerting and press **Create Certificate Alert**.
+
+    ![pki alerting](/images/platform/pki/alerting/alert-create.png)
+
+    ![pki alerting modal](/images/platform/pki/alerting/alert-create-modal.png)
+
+    Here's some guidance for each field in the alert configuration sequence:
+
+    - **Alert Type**: The type of alert to create such as **Certificate Expiration**.
+    - **Alert Name**: A slug-friendly name for the alert such as `tls-expiry-alert`.
+    - **Description**: An optional description for the alert.
+    - **Alert Before**: The time before certificate expiration to trigger the alert such as 30 days denoted by `30d`.
+    - **Filters**: A list of filters that determine which certificates the alert applies to. Each row includes a **Field**, **Operator**, and **Value** to match against. For example, you can filter for certificates with a common name containing `example.com` by setting the field to **Common Name**, the operator to **Contains**, and the value to `example.com`.
+  </Step>
+  <Step title="Add a PagerDuty Notification Channel">
+    Add a **PagerDuty** notification channel from the "Add Channel" dropdown and paste the integration key you copied from PagerDuty.
+
+    ![pagerduty configure alert](/images/platform/pki/alerting/pagerduty-configure-alert.png)
+  </Step>
+</Steps>
+
+<Note>
+Keep your integration key secure. Anyone with access to it can send events to your PagerDuty service.
+</Note>
+
+## Severity Mapping
+
+Infisical automatically maps the time remaining until certificate expiry to a PagerDuty event severity:
+
+| Time Until Expiry | PagerDuty Severity |
+| --- | --- |
+| ≤ 7 days | `critical` |
+| ≤ 14 days | `error` |
+| ≤ 30 days | `warning` |
+| > 30 days | `info` |
+
+## Incident Grouping
+
+Alerts with the same alert ID are grouped into the same PagerDuty incident via `dedup_key`. This means repeated triggers update the existing incident rather than creating duplicates.

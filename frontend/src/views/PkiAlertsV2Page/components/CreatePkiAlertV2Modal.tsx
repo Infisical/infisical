@@ -11,7 +11,7 @@ import {
   createPkiAlertV2Schema,
   PkiAlertChannelTypeV2,
   PkiAlertEventTypeV2,
-  SIGNING_SECRET_MASK,
+  SECRET_MASK,
   TCreatePkiAlertV2,
   TPkiAlertChannelConfigEmail,
   TPkiAlertChannelConfigWebhook,
@@ -122,7 +122,7 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
                 config: {
                   url: webhookConfig.url,
                   // Show mask if secret exists, otherwise undefined
-                  signingSecret: webhookConfig.hasSigningSecret ? SIGNING_SECRET_MASK : undefined
+                  signingSecret: webhookConfig.hasSigningSecret ? SECRET_MASK : undefined
                 }
               };
             }
@@ -163,7 +163,7 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
 
           // Determine what to send for signingSecret
           let signingSecret: string | null | undefined;
-          if (webhookConfig.signingSecret === SIGNING_SECRET_MASK) {
+          if (webhookConfig.signingSecret === SECRET_MASK) {
             // User didn't change it - send undefined to preserve existing
             signingSecret = undefined;
           } else if (!webhookConfig.signingSecret) {

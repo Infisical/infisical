@@ -1,11 +1,12 @@
 import { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { faSlack } from "@fortawesome/free-brands-svg-icons";
-import { faEnvelope, faLink } from "@fortawesome/free-solid-svg-icons";
+import { faBell, faEnvelope, faLink } from "@fortawesome/free-solid-svg-icons";
 
 import {
   PkiAlertChannelTypeV2,
   PkiAlertEventTypeV2,
   TPkiAlertChannelConfigEmail,
+  TPkiAlertChannelConfigPagerDuty,
   TPkiAlertChannelConfigSlack,
   TPkiAlertChannelConfigWebhook
 } from "@app/hooks/api/pkiAlertsV2";
@@ -60,6 +61,8 @@ export const getChannelIcon = (type: PkiAlertChannelTypeV2): IconDefinition => {
       return faLink;
     case PkiAlertChannelTypeV2.SLACK:
       return faSlack;
+    case PkiAlertChannelTypeV2.PAGERDUTY:
+      return faBell;
     default:
       return faEnvelope;
   }
@@ -89,7 +92,11 @@ export const getWebhookHostname = (url: string): string => {
  */
 export const getChannelSummary = (channel: {
   channelType: PkiAlertChannelTypeV2;
-  config: TPkiAlertChannelConfigEmail | TPkiAlertChannelConfigWebhook | TPkiAlertChannelConfigSlack;
+  config:
+    | TPkiAlertChannelConfigEmail
+    | TPkiAlertChannelConfigWebhook
+    | TPkiAlertChannelConfigSlack
+    | TPkiAlertChannelConfigPagerDuty;
 }): string => {
   if (channel.channelType === PkiAlertChannelTypeV2.EMAIL) {
     const config = channel.config as TPkiAlertChannelConfigEmail;
@@ -106,5 +113,27 @@ export const getChannelSummary = (channel: {
     const config = channel.config as TPkiAlertChannelConfigSlack;
     return config.webhookUrl ? "Slack webhook configured" : "Not configured";
   }
+  if (channel.channelType === PkiAlertChannelTypeV2.PAGERDUTY) {
+    return "PagerDuty integration configured";
+  }
   return "";
+};
+
+/**
+ * Returns the proper display name for a channel type.
+ * Handles special casing like "PagerDuty".
+ */
+export const getChannelDisplayName = (type: PkiAlertChannelTypeV2): string => {
+  switch (type) {
+    case PkiAlertChannelTypeV2.EMAIL:
+      return "Email";
+    case PkiAlertChannelTypeV2.WEBHOOK:
+      return "Webhook";
+    case PkiAlertChannelTypeV2.SLACK:
+      return "Slack";
+    case PkiAlertChannelTypeV2.PAGERDUTY:
+      return "PagerDuty";
+    default:
+      return type;
+  }
 };
