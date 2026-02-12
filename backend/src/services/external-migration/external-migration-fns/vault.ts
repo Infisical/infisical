@@ -9,12 +9,7 @@ import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
-import { InfisicalImportData, VaultMappingType } from "../external-migration-types";
-
-enum KvVersion {
-  V1 = "1",
-  V2 = "2"
-}
+import { InfisicalImportData, KvVersion, VaultMappingType } from "../external-migration-types";
 
 type VaultData = {
   namespace: string;
