@@ -33,10 +33,10 @@ export const healthAlertServiceFactory = ({
 
     queueService.start(QueueName.HealthAlert, async () => {
       try {
-        logger.info(`${QueueName.HealthAlert}: health check alert task started`);
+        logger.debug(`${QueueName.HealthAlert}: health check alert task started`);
         await gatewayV2Service.healthcheckNotify();
         await relayService.healthcheckNotify();
-        logger.info(`${QueueName.HealthAlert}: health check alert task completed`);
+        logger.debug(`${QueueName.HealthAlert}: health check alert task completed`);
       } catch (error) {
         logger.error(error, `${QueueName.HealthAlert}: health check alert failed`);
         throw error;
