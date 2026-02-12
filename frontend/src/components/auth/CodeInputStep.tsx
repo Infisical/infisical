@@ -102,6 +102,7 @@ export default function CodeInputStep({
           onChange={setCode}
           {...props}
           className="mt-6 mb-2"
+          autoComplete="one-time-code"
         />
       </div>
       <div className="mx-auto mt-4 block w-max md:hidden">
@@ -113,6 +114,7 @@ export default function CodeInputStep({
           onChange={setCode}
           {...propsPhone}
           className="mt-2 mb-2"
+          autoComplete="one-time-code"
         />
       </div>
       {codeError && <Error text={t("signup.step2-code-error")} />}
