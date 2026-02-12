@@ -33,7 +33,7 @@ type Props = {
   environment: string;
   secretPath: string;
   isVisible?: boolean;
-  isEmpty?: boolean;
+  isOverrideEmpty?: boolean;
   idOverride?: string;
   valueOverride?: string;
   isCreatingOverride: boolean;
@@ -55,7 +55,7 @@ export const SecretOverrideRow = ({
   environment,
   secretPath,
   isVisible,
-  isEmpty,
+  isOverrideEmpty,
   idOverride,
   valueOverride,
   isCreatingOverride,
@@ -76,7 +76,7 @@ export const SecretOverrideRow = ({
     isOverride: true
   };
 
-  const canFetchOverrideValue = Boolean(idOverride) && !isEmpty;
+  const canFetchOverrideValue = Boolean(idOverride) && !isOverrideEmpty;
 
   const {
     data: overrideValueData,
