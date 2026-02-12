@@ -363,7 +363,7 @@ export const CmekTable = () => {
                                 <FontAwesomeIcon size="lg" icon={faEllipsis} />
                               </IconButton>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent className="min-w-[160px]">
+                            <DropdownMenuContent className="min-w-[160px]" sideOffset={2} align="end">
                               {keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT && (
                                 <>
                                   <Tooltip
