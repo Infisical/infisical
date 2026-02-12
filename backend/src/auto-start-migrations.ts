@@ -2,12 +2,15 @@ import crypto from "node:crypto";
 import os from "node:os";
 import path from "node:path";
 
+import { type ClickHouseClient } from "@clickhouse/client";
 import dotenv from "dotenv";
 import { Knex } from "knex";
 import { Logger } from "pino";
 
+import { getConfig } from "@app/lib/config/env";
 import { applyJitter, delay } from "@app/lib/delay";
 
+import { ensureClickHouseSchema } from "./db/clickhouse-migration-runner";
 import {
   acquireSanitizedSchemaLock,
   createSanitizedSchema,
@@ -23,6 +26,7 @@ dotenv.config();
 type TArgs = {
   auditLogDb?: Knex;
   applicationDb: Knex;
+  clickhouseClient?: ClickHouseClient | null;
   logger: Logger;
 };
 
@@ -291,7 +295,7 @@ const withStartupLock = async (db: Knex, logger: Logger, doMigrations: () => Pro
   }
 };
 
-export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs) => {
+export const runMigrations = async ({ applicationDb, auditLogDb, clickhouseClient, logger }: TArgs) => {
   const generateSanitizedSchema = process.env.GENERATE_SANITIZED_SCHEMA === "true";
 
   try {
@@ -318,6 +322,25 @@ export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs
           }
         }
       }
+    }
+
+    // Ensure ClickHouse audit_logs table exists if configured
+    if (clickhouseClient) {
+      logger.info("Ensuring ClickHouse audit_logs table exists ...");
+      try {
+        const cfg = getConfig();
+        await ensureClickHouseSchema({
+          client: clickhouseClient,
+          tableName: cfg.CLICKHOUSE_AUDIT_LOG_TABLE_NAME,
+          engine: cfg.CLICKHOUSE_AUDIT_LOG_ENGINE
+        });
+      } catch (clickhouseErr) {
+        logger.error(clickhouseErr, "ClickHouse schema setup failed");
+        process.exit(1);
+      }
+      logger.info("Finished ensuring ClickHouse audit_logs table exists.");
+    } else {
+      logger.info("No ClickHouse client configured: Skipping ClickHouse audit_logs table creation.");
     }
 
     const shouldRunMigration = Boolean(
@@ -370,6 +393,7 @@ export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs
 
     await ensureMigrationTables(applicationDb, logger);
     logger.info("Running application migrations.");
+
     const didPreviousInstanceRunMigration = !(await applicationDb.migrate
       .status(migrationConfig)
       .catch(migrationStatusCheckErrorHandler));

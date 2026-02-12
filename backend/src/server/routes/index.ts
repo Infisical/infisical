@@ -1,4 +1,5 @@
 import { registerBddNockRouter } from "@bdd_routes/bdd-nock-router";
+import type { ClickHouseClient } from "@clickhouse/client";
 import { CronJob } from "cron";
 import { Knex } from "knex";
 import { monitorEventLoopDelay } from "perf_hooks";
@@ -434,6 +435,7 @@ export const registerRoutes = async (
     smtp: smtpService,
     queue: queueService,
     keyStore,
+    clickhouse,
     envConfig,
     hsmService,
     kmsRootConfigDAL
@@ -444,6 +446,7 @@ export const registerRoutes = async (
     smtp: TSmtpService;
     queue: TQueueServiceFactory;
     keyStore: TKeyStoreFactory;
+    clickhouse: ClickHouseClient | null;
     envConfig: TEnvConfig;
     hsmService: THsmServiceFactory;
     kmsRootConfigDAL: TKmsRootConfigDALFactory;
@@ -758,7 +761,8 @@ export const registerRoutes = async (
     queueService,
     projectDAL,
     licenseService,
-    auditLogStreamService
+    auditLogStreamService,
+    clickhouseClient: clickhouse
   });
 
   const notificationQueue = notificationQueueServiceFactory({
