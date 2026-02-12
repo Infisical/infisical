@@ -332,7 +332,8 @@ export const runMigrations = async ({ applicationDb, auditLogDb, clickhouseClien
         await ensureClickHouseSchema({
           client: clickhouseClient,
           tableName: cfg.CLICKHOUSE_AUDIT_LOG_TABLE_NAME,
-          engine: cfg.CLICKHOUSE_AUDIT_LOG_ENGINE
+          engine: cfg.CLICKHOUSE_AUDIT_LOG_ENGINE,
+          logger
         });
       } catch (clickhouseErr) {
         logger.error(clickhouseErr, "ClickHouse schema setup failed");

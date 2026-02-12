@@ -45,9 +45,9 @@ services:
       - clickhouse_data:/var/lib/clickhouse
       - clickhouse_logs:/var/log/clickhouse-server
     environment:
-      - CLICKHOUSE_DB=default
-      - CLICKHOUSE_USER=default
-      - CLICKHOUSE_PASSWORD=clickhouse
+      - CLICKHOUSE_DB=infisical
+      - CLICKHOUSE_USER=infisical
+      - CLICKHOUSE_PASSWORD=infisical
       - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
     ulimits:
       nofile:

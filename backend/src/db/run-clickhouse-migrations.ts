@@ -16,6 +16,8 @@ import path from "node:path";
 
 import dotenv from "dotenv";
 
+import { initLogger } from "@app/lib/logger";
+
 import { buildClickHouseFromConfig } from "../lib/config/clickhouse";
 import { ensureClickHouseSchema } from "./clickhouse-migration-runner";
 
@@ -51,11 +53,14 @@ const main = async () => {
   // eslint-disable-next-line no-console
   console.info("Ensuring ClickHouse schema...");
 
+  const logger = initLogger();
+
   try {
     await ensureClickHouseSchema({
       client,
       tableName,
-      engine
+      engine,
+      logger
     });
 
     // eslint-disable-next-line no-console
