@@ -46,6 +46,7 @@ export type TPkiDiscovery = {
   isAutoScanEnabled: boolean;
   scanIntervalDays: number | null;
   gatewayId: string | null;
+  gatewayName: string | null;
   isActive: boolean;
   lastScanStatus: PkiDiscoveryScanStatus | null;
   lastScanJobId: string | null;
