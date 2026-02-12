@@ -1583,7 +1583,6 @@ export const secretServiceFactory = ({
     viewSecretValue,
     projectId,
     expandSecretReferences,
-    includePersonalOverrides,
     expandPersonalOverrides,
     actorId,
     actorOrgId,
@@ -1606,7 +1605,6 @@ export const secretServiceFactory = ({
         actorId,
         version,
         expandSecretReferences,
-        includePersonalOverrides,
         expandPersonalOverrides,
         type,
         secretName

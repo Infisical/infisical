@@ -65,7 +65,6 @@ export type TGetASecretDTO = {
   path: string;
   environment: string;
   expandSecretReferences?: boolean;
-  includePersonalOverrides?: boolean;
   expandPersonalOverrides?: boolean;
   type: "shared" | "personal";
   includeImports?: boolean;

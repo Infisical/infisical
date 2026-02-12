@@ -1540,7 +1540,6 @@ export const secretV2BridgeServiceFactory = ({
     viewSecretValue,
     includeImports,
     expandSecretReferences: shouldExpandSecretReferences,
-    includePersonalOverrides,
     expandPersonalOverrides
   }: TGetASecretDTO) => {
     const { permission } = await permissionService.getProjectPermission({
@@ -1631,7 +1630,7 @@ export const secretV2BridgeServiceFactory = ({
           secretTags: expandSecretTags
         });
       },
-      userId: includePersonalOverrides && expandPersonalOverrides ? actorId : undefined
+      userId: secretType === SecretType.Personal && expandPersonalOverrides ? actorId : undefined
     });
 
     // now if secret is not found

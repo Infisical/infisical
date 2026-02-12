@@ -237,7 +237,6 @@ export type TGetASecretRawDTO = {
   environment: string;
   viewSecretValue: boolean;
   expandSecretReferences?: boolean;
-  includePersonalOverrides?: boolean;
   expandPersonalOverrides?: boolean;
   type: "shared" | "personal";
   includeImports?: boolean;
