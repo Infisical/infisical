@@ -25,7 +25,7 @@ export const buildRedisFromConfig = (cfg: TRedisConfigKeys) => {
         // Reconnect when hitting a read-only replica during failover
         const targetError = "READONLY";
         if (err.message.includes(targetError)) {
-          return true; // Reconnect
+          return 2; // Reconnect and resend command
         }
         return false;
       }
@@ -45,7 +45,7 @@ export const buildRedisFromConfig = (cfg: TRedisConfigKeys) => {
         reconnectOnError(err) {
           const targetError = "READONLY";
           if (err.message.includes(targetError)) {
-            return true;
+            return 2; // Reconnect and resend command
           }
           return false;
         }
@@ -67,7 +67,7 @@ export const buildRedisFromConfig = (cfg: TRedisConfigKeys) => {
       // Reconnect when hitting a read-only replica during failover
       const targetError = "READONLY";
       if (err.message.includes(targetError)) {
-        return true; // Reconnect
+        return 2; // Reconnect and resend command
       }
       return false;
     }
