@@ -50,6 +50,7 @@ import {
   TIssueWebSocketTicketDTO,
   TWebSocketServerMessage,
   WebSocketClientMessageSchema,
+  WS_IDLE_TIMEOUT_MS,
   WS_PING_INTERVAL_MS,
   WsMessageType
 } from "./pam-web-access-types";
@@ -307,6 +308,7 @@ export const pamWebAccessServiceFactory = ({
     } | null = null;
     let expiryTimer: ReturnType<typeof setTimeout> | null = null;
     let pingInterval: ReturnType<typeof setInterval> | null = null;
+    let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
     const cleanup = async () => {
       if (cleanedUp) return;
@@ -317,6 +319,9 @@ export const pamWebAccessServiceFactory = ({
       }
       if (pingInterval) {
         clearInterval(pingInterval);
+      }
+      if (idleTimer) {
+        clearTimeout(idleTimer);
       }
 
       // End pg client (needs tunnel to send Terminate message)
@@ -523,6 +528,19 @@ export const pamWebAccessServiceFactory = ({
 
       // 9. SET UP HANDLERS
 
+      const resetIdleTimer = () => {
+        if (idleTimer) clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => {
+          if (!cleanedUp) {
+            sendSessionEnd(socket, SessionEndReason.IdleTimeout);
+            void cleanup();
+            socket.close();
+          }
+        }, WS_IDLE_TIMEOUT_MS);
+      };
+
+      resetIdleTimer();
+
       // WebSocket keep-alive to survive ALB idle timeout (default 60s)
       let isAlive = true;
 
@@ -546,6 +564,7 @@ export const pamWebAccessServiceFactory = ({
       let processingPromise = Promise.resolve();
 
       socket.on("message", (rawData: Buffer | ArrayBuffer | Buffer[]) => {
+        resetIdleTimer();
         processingPromise = processingPromise
           .then(async () => {
             if (cleanedUp) return;

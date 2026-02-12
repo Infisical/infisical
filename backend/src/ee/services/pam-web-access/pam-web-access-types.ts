@@ -12,6 +12,9 @@ export const MAX_WEB_SESSIONS_PER_USER = 5;
 // WebSocket ping interval (ms) — keeps ALB from killing idle connections (default 60s timeout)
 export const WS_PING_INTERVAL_MS = 30000;
 
+// Idle timeout (ms) — auto-close sessions with no user input/control messages
+export const WS_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+
 export enum WsMessageType {
   Ready = "ready",
   Output = "output",
@@ -24,7 +27,8 @@ export enum SessionEndReason {
   SessionCompleted = "Session duration complete. Connection closed.",
   UserQuit = "Goodbye!",
   ConnectionLost = "Database connection lost. Session ended.",
-  SetupFailed = "Failed to establish database connection."
+  SetupFailed = "Failed to establish database connection.",
+  IdleTimeout = "Session closed due to inactivity."
 }
 
 const WebSocketOutputMessageSchema = z.object({
