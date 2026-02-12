@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 import { Link, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { ExternalLinkIcon } from "lucide-react";
@@ -16,9 +17,12 @@ import {
   UnstableCardHeader,
   UnstableCardTitle
 } from "@app/components/v3";
-import { CertStatus, useGetCertificateById } from "@app/hooks/api";
+import { CertSource, CertStatus, useGetCertificateById } from "@app/hooks/api";
 
-import { getCertValidUntilBadgeDetails } from "../../CertificatesPage/components/CertificatesTable.utils";
+import {
+  getCertSourceLabel,
+  getCertValidUntilBadgeDetails
+} from "../../CertificatesPage/components/CertificatesTable.utils";
 
 type Props = {
   certificateId: string;
@@ -94,8 +98,12 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
             <Detail>
               <DetailLabel>Serial Number</DetailLabel>
               <DetailValue className="flex items-center gap-2 font-mono text-xs">
-                {certificate.serialNumber}
-                <CopyButton value={certificate.serialNumber} size="xs" variant="plain" />
+                {certificate.serialNumber.toUpperCase()}
+                <CopyButton
+                  value={certificate.serialNumber.toUpperCase()}
+                  size="xs"
+                  variant="plain"
+                />
               </DetailValue>
             </Detail>
             <Detail>
@@ -154,13 +162,38 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                     <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
                   </Link>
                 )}
-                {!showCaLink && (certificate.caName || <span className="text-muted">—</span>)}
+                {!showCaLink &&
+                  (certificate.caName || certificate.discoveryMetadata?.issuerCommonName || (
+                    <span className="text-muted">—</span>
+                  ))}
               </DetailValue>
             </Detail>
+            {!certificate.caId && certificate.discoveryMetadata?.issuerOrganization && (
+              <Detail>
+                <DetailLabel>Issuer Organization</DetailLabel>
+                <DetailValue>{certificate.discoveryMetadata.issuerOrganization}</DetailValue>
+              </Detail>
+            )}
             <Detail>
               <DetailLabel>Profile</DetailLabel>
               <DetailValue>
                 {certificate.profileName || <span className="text-muted">—</span>}
+              </DetailValue>
+            </Detail>
+            <Detail>
+              <DetailLabel>Source</DetailLabel>
+              <DetailValue>
+                <Badge
+                  variant={
+                    certificate.source === CertSource.Discovered
+                      ? "info"
+                      : certificate.source === CertSource.Imported
+                        ? "neutral"
+                        : "project"
+                  }
+                >
+                  {getCertSourceLabel(certificate.source ?? null)}
+                </Badge>
               </DetailValue>
             </Detail>
             {certificate.renewedFromCertificateId && (

@@ -100,6 +100,14 @@ import { pkiAcmeOrderAuthDALFactory } from "@app/ee/services/pki-acme/pki-acme-o
 import { pkiAcmeOrderDALFactory } from "@app/ee/services/pki-acme/pki-acme-order-dal";
 import { pkiAcmeQueueServiceFactory } from "@app/ee/services/pki-acme/pki-acme-queue";
 import { pkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-service";
+import { pkiCertificateInstallationCertDALFactory } from "@app/ee/services/pki-discovery/pki-certificate-installation-cert-dal";
+import { pkiCertificateInstallationDALFactory } from "@app/ee/services/pki-discovery/pki-certificate-installation-dal";
+import { pkiDiscoveryConfigDALFactory } from "@app/ee/services/pki-discovery/pki-discovery-config-dal";
+import { pkiDiscoveryInstallationDALFactory } from "@app/ee/services/pki-discovery/pki-discovery-installation-dal";
+import { pkiDiscoveryQueueFactory } from "@app/ee/services/pki-discovery/pki-discovery-queue";
+import { pkiDiscoveryScanHistoryDALFactory } from "@app/ee/services/pki-discovery/pki-discovery-scan-history-dal";
+import { pkiDiscoveryServiceFactory } from "@app/ee/services/pki-discovery/pki-discovery-service";
+import { pkiInstallationServiceFactory } from "@app/ee/services/pki-discovery/pki-installation-service";
 import { projectEventsServiceFactory } from "@app/ee/services/project-events/project-events-service";
 import { projectEventsSSEServiceFactory } from "@app/ee/services/project-events/project-events-sse-service";
 import { projectTemplateDALFactory } from "@app/ee/services/project-template/project-template-dal";
@@ -1189,6 +1197,11 @@ export const registerRoutes = async (
   const pkiSubscriberDAL = pkiSubscriberDALFactory(db);
   const pkiSyncDAL = pkiSyncDALFactory(db);
   const pkiTemplatesDAL = pkiTemplatesDALFactory(db);
+  const pkiDiscoveryConfigDAL = pkiDiscoveryConfigDALFactory(db);
+  const pkiCertificateInstallationDAL = pkiCertificateInstallationDALFactory(db);
+  const pkiDiscoveryInstallationDAL = pkiDiscoveryInstallationDALFactory(db);
+  const pkiCertificateInstallationCertDAL = pkiCertificateInstallationCertDALFactory(db);
+  const pkiDiscoveryScanHistoryDAL = pkiDiscoveryScanHistoryDALFactory(db);
 
   const instanceRelayConfigDAL = instanceRelayConfigDalFactory(db);
   const orgRelayConfigDAL = orgRelayConfigDalFactory(db);
@@ -2492,6 +2505,35 @@ export const registerRoutes = async (
     pkiSyncQueue
   });
 
+  const pkiDiscoveryQueue = pkiDiscoveryQueueFactory({
+    pkiDiscoveryConfigDAL,
+    pkiDiscoveryScanHistoryDAL,
+    pkiCertificateInstallationDAL,
+    pkiDiscoveryInstallationDAL,
+    pkiCertificateInstallationCertDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    projectDAL,
+    kmsService,
+    queueService,
+    gatewayV2Service,
+    gatewayV2DAL
+  });
+
+  const pkiDiscoveryService = pkiDiscoveryServiceFactory({
+    pkiDiscoveryConfigDAL,
+    pkiDiscoveryScanHistoryDAL,
+    projectDAL,
+    permissionService,
+    gatewayV2DAL,
+    queuePkiDiscoveryScan: pkiDiscoveryQueue.queuePkiDiscoveryScan
+  });
+
+  const pkiInstallationService = pkiInstallationServiceFactory({
+    pkiCertificateInstallationDAL,
+    permissionService
+  });
+
   const pkiTemplateService = pkiTemplatesServiceFactory({
     pkiTemplatesDAL,
     certificateAuthorityDAL,
@@ -2710,6 +2752,7 @@ export const registerRoutes = async (
   await dailyResourceCleanUp.init();
   await healthAlert.init();
   await pkiSyncCleanup.init();
+  pkiDiscoveryQueue.startPkiDiscoveryScanQueue();
   await pamAccountRotation.init();
   pamSessionExpirationService.init();
   await dailyReminderQueueService.startDailyRemindersJob();
@@ -2802,6 +2845,8 @@ export const registerRoutes = async (
     pkiCollection: pkiCollectionService,
     pkiSubscriber: pkiSubscriberService,
     pkiSync: pkiSyncService,
+    pkiDiscovery: pkiDiscoveryService,
+    pkiInstallation: pkiInstallationService,
     pkiTemplate: pkiTemplateService,
     secretScanning: secretScanningService,
     license: licenseService,

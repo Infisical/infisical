@@ -154,10 +154,10 @@ export const certificateServiceFactory = ({
       };
 
       // Build fingerprints from columns
-      if (cert.fingerprintSha256 && cert.fingerprintSha1) {
+      if (cert.fingerprintSha256) {
         fingerprints = {
           sha256: cert.fingerprintSha256,
-          sha1: cert.fingerprintSha1
+          sha1: cert.fingerprintSha1 || undefined
         };
       }
 
