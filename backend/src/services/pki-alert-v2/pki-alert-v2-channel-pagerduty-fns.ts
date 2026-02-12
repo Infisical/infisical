@@ -126,14 +126,13 @@ const isPagerDutyErrorRetryable = (err: AxiosError): boolean => {
 };
 
 const triggerPagerDutyEvent = async (payload: TPagerDutyPayload): Promise<void> => {
-  const response = await request.post(PAGERDUTY_EVENTS_URL, payload, {
+  await request.post(PAGERDUTY_EVENTS_URL, payload, {
     headers: {
       "Content-Type": "application/json"
     },
     timeout: PAGERDUTY_TIMEOUT,
     signal: AbortSignal.timeout(PAGERDUTY_TIMEOUT)
   });
-  logger.debug(response.data, "PagerDuty event response");
 };
 
 const triggerPagerDutyEventWithRetry = async (payload: TPagerDutyPayload): Promise<TChannelResult> => {
