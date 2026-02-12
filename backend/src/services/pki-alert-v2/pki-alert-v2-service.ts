@@ -628,7 +628,6 @@ export const pkiAlertV2ServiceFactory = ({
               alertBeforeDays,
               projectId,
               matchingCertificates,
-              alertId,
               channel.id
             );
             return { ...result, channelType: channel.channelType };
@@ -651,7 +650,12 @@ export const pkiAlertV2ServiceFactory = ({
           }
           case PkiAlertChannelType.PAGERDUTY: {
             const config = decryptChannelConfig<TPagerDutyChannelConfig>(channel, decryptor);
-            const result = await sendPagerDutyNotificationWithRetry(config, alertData, matchingCertificates);
+            const result = await sendPagerDutyNotificationWithRetry(
+              config,
+              alertData,
+              matchingCertificates,
+              channel.id
+            );
             return { ...result, channelType: channel.channelType };
           }
           default:

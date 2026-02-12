@@ -135,7 +135,10 @@ const triggerPagerDutyEvent = async (payload: TPagerDutyPayload): Promise<void> 
   });
 };
 
-const triggerPagerDutyEventWithRetry = async (payload: TPagerDutyPayload): Promise<TChannelResult> => {
+const triggerPagerDutyEventWithRetry = async (
+  payload: TPagerDutyPayload,
+  channelId: string
+): Promise<TChannelResult> => {
   const { maxRetries, delayMs } = PKI_ALERT_RETRY_CONFIG;
   let lastError: AxiosError | undefined;
 
@@ -150,6 +153,7 @@ const triggerPagerDutyEventWithRetry = async (payload: TPagerDutyPayload): Promi
       if (!isPagerDutyErrorRetryable(lastError)) {
         logger.info(
           {
+            channelId,
             statusCode: lastError.response?.status,
             error: lastError.message
           },
@@ -160,6 +164,7 @@ const triggerPagerDutyEventWithRetry = async (payload: TPagerDutyPayload): Promi
 
       logger.info(
         {
+          channelId,
           attempt,
           maxRetries,
           statusCode: lastError.response?.status,
@@ -187,7 +192,8 @@ const triggerPagerDutyEventWithRetry = async (payload: TPagerDutyPayload): Promi
 export const sendPagerDutyNotificationWithRetry = async (
   config: TPagerDutyChannelConfig,
   alertData: TAlertInfo,
-  matchingCertificates: TCertificatePreview[]
+  matchingCertificates: TCertificatePreview[],
+  channelId: string
 ): Promise<TChannelResult> => {
   if (!config.integrationKey || !validatePagerDutyIntegrationKey(config.integrationKey)) {
     return { success: false, error: "Invalid PagerDuty integration key" };
@@ -201,5 +207,5 @@ export const sendPagerDutyNotificationWithRetry = async (
     appUrl: appCfg.SITE_URL
   });
 
-  return triggerPagerDutyEventWithRetry(payload);
+  return triggerPagerDutyEventWithRetry(payload, channelId);
 };

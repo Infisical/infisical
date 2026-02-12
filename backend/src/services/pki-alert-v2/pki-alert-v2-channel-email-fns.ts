@@ -46,7 +46,6 @@ export const sendEmailNotificationWithRetry = async (
   alertBeforeDays: number,
   projectId: string,
   matchingCertificates: TCertificatePreview[],
-  alertId: string,
   channelId: string
 ): Promise<TChannelResult> => {
   const { maxRetries, delayMs } = PKI_ALERT_RETRY_CONFIG;
@@ -61,15 +60,12 @@ export const sendEmailNotificationWithRetry = async (
       lastError = err instanceof Error ? err : new Error(String(err));
 
       if (!isEmailErrorRetryable(lastError)) {
-        logger.info(
-          { alertId, channelId, error: lastError.message },
-          "PKI email error is not retryable (permanent SMTP error)"
-        );
+        logger.info({ channelId, error: lastError.message }, "PKI email error is not retryable (permanent SMTP error)");
         return { success: false, error: lastError.message };
       }
 
       logger.info(
-        { alertId, channelId, attempt, maxRetries, error: lastError.message },
+        { channelId, attempt, maxRetries, error: lastError.message },
         `PKI email failed, ${attempt < maxRetries ? `retrying in ${delayMs}ms` : "no more retries"}`
       );
 
