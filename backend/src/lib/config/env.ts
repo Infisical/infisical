@@ -122,6 +122,9 @@ const envSchema = z
       z.string().optional().default("audit_logs").describe("ClickHouse table name for audit logs")
     ),
     CLICKHOUSE_AUDIT_LOG_ENABLED: zodStrBool.default("true").describe("Enable inserting audit logs into ClickHouse"),
+    CLICKHOUSE_AUDIT_LOG_QUERY_ENABLED: zodStrBool
+      .default("false")
+      .describe("Enable querying audit logs from ClickHouse instead of Postgres"),
     DISABLE_AUDIT_LOG_STORAGE: zodStrBool.default("false").optional().describe("Disable audit log storage"),
     GENERATE_SANITIZED_SCHEMA: zodStrBool
       .default("false")

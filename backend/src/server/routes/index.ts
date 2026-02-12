@@ -34,6 +34,7 @@ import { aiMcpServerServiceFactory } from "@app/ee/services/ai-mcp-server/ai-mcp
 import { aiMcpServerToolDALFactory } from "@app/ee/services/ai-mcp-server/ai-mcp-server-tool-dal";
 import { aiMcpServerUserCredentialDALFactory } from "@app/ee/services/ai-mcp-server/ai-mcp-server-user-credential-dal";
 import { assumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-service";
+import { clickhouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { auditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { auditLogQueueServiceFactory } from "@app/ee/services/audit-log/audit-log-queue";
 import { auditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
@@ -780,7 +781,16 @@ export const registerRoutes = async (
 
   const notificationService = notificationServiceFactory({ notificationQueue, userNotificationDAL });
 
-  const auditLogService = auditLogServiceFactory({ auditLogDAL, permissionService, auditLogQueue });
+  const clickhouseAuditLogDAL = clickhouse
+    ? clickhouseAuditLogDALFactory(clickhouse, db, envConfig.CLICKHOUSE_AUDIT_LOG_TABLE_NAME)
+    : undefined;
+
+  const auditLogService = auditLogServiceFactory({
+    auditLogDAL,
+    clickhouseAuditLogDAL,
+    permissionService,
+    auditLogQueue
+  });
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
     projectEnvDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
@@ -2032,6 +2042,7 @@ export const registerRoutes = async (
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
     scimService,
     auditLogDAL,
+    licenseService,
     queueService,
     secretVersionDAL,
     secretFolderVersionDAL: folderVersionDAL,
