@@ -4,23 +4,27 @@ import { requestContext } from "@fastify/request-context";
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionAuditLogsActions, ProjectPermissionSub } from "../permission/project-permission";
+import { TClickHouseAuditLogDALFactory } from "./audit-log-clickhouse-dal";
 import { TAuditLogDALFactory } from "./audit-log-dal";
 import { TAuditLogQueueServiceFactory } from "./audit-log-queue";
 import { EventType, TAuditLogServiceFactory } from "./audit-log-types";
 
 type TAuditLogServiceFactoryDep = {
   auditLogDAL: TAuditLogDALFactory;
+  clickhouseAuditLogDAL?: TClickHouseAuditLogDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   auditLogQueue: TAuditLogQueueServiceFactory;
 };
 
 export const auditLogServiceFactory = ({
   auditLogDAL,
+  clickhouseAuditLogDAL,
   auditLogQueue,
   permissionService
 }: TAuditLogServiceFactoryDep): TAuditLogServiceFactory => {
@@ -62,8 +66,10 @@ export const auditLogServiceFactory = ({
       );
     }
 
-    // If project ID is not provided, then we need to return all the audit logs for the organization itself.
-    const auditLogs = await auditLogDAL.find({
+    const appCfg = getConfig();
+    const useClickHouse = appCfg.CLICKHOUSE_AUDIT_LOG_QUERY_ENABLED && clickhouseAuditLogDAL;
+
+    const findArgs = {
       startDate: filter.startDate,
       endDate: filter.endDate,
       limit: filter.limit,
@@ -78,10 +84,21 @@ export const auditLogServiceFactory = ({
       environment: filter.environment,
       orgId: actorOrgId,
       ...(filter.projectId ? { projectId: filter.projectId } : {})
-    });
+    };
+
+    // If ClickHouse querying is enabled and available, use it instead of Postgres
+    let auditLogs;
+    if (useClickHouse) {
+      logger.debug("Querying audit logs from ClickHouse");
+      auditLogs = await clickhouseAuditLogDAL.find(findArgs);
+    } else {
+      auditLogs = await auditLogDAL.find(findArgs);
+    }
 
     return auditLogs.map(({ eventType: logEventType, actor: eActor, actorMetadata, eventMetadata, ...el }) => ({
       ...el,
+      updatedAt: el.createdAt,
+      expiresAt: null as Date | null,
       event: { type: logEventType, metadata: eventMetadata },
       actor: { type: eActor, metadata: actorMetadata }
     }));
