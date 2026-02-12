@@ -89,7 +89,7 @@ const envSchema = z
       z
         .string()
         .optional()
-        .describe("ClickHouse connection URL. Eg: http://localhost:8123 or https://user:password@host:8443/default")
+        .describe("ClickHouse connection URL. Eg: http://localhost:8123 or https://user:password@host:8443/database")
     ),
     CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS: zpStr(
       z

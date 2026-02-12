@@ -1,6 +1,5 @@
 import { type ClickHouseClient } from "@clickhouse/client";
-
-import { logger } from "@app/lib/logger";
+import { Logger } from "pino";
 
 const buildCreateAuditLogsTableSQL = (tableName: string, engine: string) => `
 CREATE TABLE IF NOT EXISTS ${tableName}
@@ -27,13 +26,14 @@ export type TEnsureClickHouseSchemaOpts = {
   client: ClickHouseClient;
   tableName: string;
   engine: string;
+  logger: Logger;
 };
 
 /**
  * Ensure the ClickHouse audit_logs table exists.
  * If the table already exists, this is a no-op (CREATE TABLE IF NOT EXISTS).
  */
-export const ensureClickHouseSchema = async ({ client, tableName, engine }: TEnsureClickHouseSchemaOpts) => {
+export const ensureClickHouseSchema = async ({ client, tableName, engine, logger }: TEnsureClickHouseSchemaOpts) => {
   logger.info({ tableName }, "Ensuring ClickHouse audit_logs table exists");
 
   await client.exec({
