@@ -65,7 +65,7 @@ import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability, CaType } from "@app/hooks/api/ca/enums";
 import { useListCasByProjectId } from "@app/hooks/api/ca/queries";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
-import { CertStatus } from "@app/hooks/api/certificates/enums";
+import { CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
 import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -760,7 +760,8 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                             );
                           })()}
                           {certificate.status === CertStatus.ACTIVE &&
-                            !certificate.renewedByCertificateId && (
+                            !certificate.renewedByCertificateId &&
+                            certificate.source !== CertSource.Discovered && (
                               <ProjectPermissionCan
                                 I={ProjectPermissionPkiSyncActions.Edit}
                                 a={ProjectPermissionSub.PkiSyncs}
@@ -792,7 +793,11 @@ export const CertificatesTable = ({ handlePopUpOpen, externalFilter }: Props) =>
                               !caType ||
                               caSupportsCapability(caType, CaCapability.REVOKE_CERTIFICATES);
 
-                            if (!supportsRevocation || isRevoked) {
+                            if (
+                              !supportsRevocation ||
+                              isRevoked ||
+                              certificate.source === CertSource.Discovered
+                            ) {
                               return null;
                             }
 

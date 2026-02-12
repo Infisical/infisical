@@ -59,6 +59,7 @@ export const InstallationCertificatesSection = ({ certificates }: Props) => {
                 <UnstableTableHead>Status</UnstableTableHead>
                 <UnstableTableHead>Serial Number</UnstableTableHead>
                 <UnstableTableHead>Expires</UnstableTableHead>
+                <UnstableTableHead>Last Seen</UnstableTableHead>
               </UnstableTableRow>
             </UnstableTableHeader>
             <UnstableTableBody>
@@ -94,6 +95,11 @@ export const InstallationCertificatesSection = ({ certificates }: Props) => {
                     </UnstableTableCell>
                     <UnstableTableCell>
                       {cert.notAfter ? format(new Date(cert.notAfter), "MMM dd, yyyy") : "-"}
+                    </UnstableTableCell>
+                    <UnstableTableCell>
+                      {cert.lastSeenAt
+                        ? format(new Date(cert.lastSeenAt), "MMM dd, yyyy HH:mm")
+                        : "-"}
                     </UnstableTableCell>
                   </UnstableTableRow>
                 );

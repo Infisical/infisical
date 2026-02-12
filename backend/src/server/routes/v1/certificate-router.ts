@@ -1046,7 +1046,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             fingerprints: z
               .object({
                 sha256: z.string(),
-                sha1: z.string()
+                sha1: z.string().optional()
               })
               .optional(),
             basicConstraints: z

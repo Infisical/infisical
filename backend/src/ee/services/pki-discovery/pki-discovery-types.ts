@@ -141,6 +141,7 @@ export type TScanTarget = {
 export type TScanCertificateResult = {
   pemChain: string[];
   fingerprint: string;
+  fingerprintSha1: string;
   commonName: string;
   altNames?: string;
   notBefore: Date;
@@ -157,6 +158,8 @@ export type TScanCertificateResult = {
   extendedKeyUsages?: string[];
   isCA?: boolean;
   pathLength?: number;
+  issuerCommonName?: string;
+  issuerOrganization?: string;
 };
 
 export enum ScanEndpointFailureReason {

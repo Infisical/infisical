@@ -18,8 +18,8 @@ export async function up(knex: Knex): Promise<void> {
       await knex(TableName.Certificate).whereNull("profileId").update({ source: CertificateSource.Imported });
     }
 
-    const hasFingerprintIndex = await knex.schema.hasColumn(TableName.Certificate, "fingerprintSha256");
-    if (hasFingerprintIndex) {
+    const hasFingerprintCol = await knex.schema.hasColumn(TableName.Certificate, "fingerprintSha256");
+    if (hasFingerprintCol) {
       const indexExists = await knex.raw(`SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ?`, [
         TableName.Certificate,
         `${TableName.Certificate}_fingerprintsha256_index`

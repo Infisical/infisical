@@ -87,11 +87,6 @@ const Page = () => {
     discovery.lastScanStatus === PkiDiscoveryScanStatus.Running ||
     discovery.lastScanStatus === PkiDiscoveryScanStatus.Pending;
 
-  // Build a display title from all targets (domains + IP ranges)
-  const { targetConfig } = discovery;
-  const allTargets = [...(targetConfig.domains || []), ...(targetConfig.ipRanges || [])];
-  const displayTitle = allTargets.length > 0 ? allTargets.join(", ") : discovery.name;
-
   return (
     <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       <div className="mx-auto mb-6 w-full max-w-8xl">
@@ -108,8 +103,8 @@ const Page = () => {
           description="Certificate Discovery Job"
           title={
             <span className="inline-flex max-w-full items-center gap-x-3">
-              <span className="truncate" title={displayTitle}>
-                {displayTitle}
+              <span className="truncate" title={discovery.name}>
+                {discovery.name}
               </span>
               {discovery.isAutoScanEnabled && <Badge variant="info">Auto-Scan</Badge>}
             </span>

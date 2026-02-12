@@ -2819,7 +2819,6 @@
                 "pages": [
                   "api-reference/endpoints/pki-installations/list",
                   "api-reference/endpoints/pki-installations/read",
-                  "api-reference/endpoints/pki-installations/list-by-certificate",
                   "api-reference/endpoints/pki-installations/update",
                   "api-reference/endpoints/pki-installations/delete"
                 ]

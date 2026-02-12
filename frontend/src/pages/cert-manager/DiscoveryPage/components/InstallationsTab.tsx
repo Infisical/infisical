@@ -83,6 +83,14 @@ export const InstallationsTab = ({ projectId }: Props) => {
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4">
+        <div>
+          <h2 className="text-lg font-semibold">Installations</h2>
+          <p className="text-sm text-mineshaft-400">
+            View and manage certificate installations identified by discovery scans.
+          </p>
+        </div>
+      </div>
+      <div className="mb-4">
         <Input
           value={searchFilter}
           onChange={(e) => setSearchFilter(e.target.value)}
@@ -96,7 +104,7 @@ export const InstallationsTab = ({ projectId }: Props) => {
         <Table>
           <THead>
             <Tr>
-              <Th>Endpoint</Th>
+              <Th>Name</Th>
               <Th>Gateway</Th>
               <Th>Certs</Th>
               <Th>Last Seen</Th>
@@ -128,7 +136,7 @@ export const InstallationsTab = ({ projectId }: Props) => {
                     })
                   }
                 >
-                  <Td>{getEndpoint(installation)}</Td>
+                  <Td>{installation.name || getEndpoint(installation)}</Td>
                   <Td>{getGatewayLabel(installation) || "N/A"}</Td>
                   <Td>
                     {installation.certificatesCount ?? installation.certificates?.length ?? 0}

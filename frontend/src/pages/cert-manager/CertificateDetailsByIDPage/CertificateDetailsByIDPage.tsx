@@ -32,7 +32,7 @@ import {
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability } from "@app/hooks/api/ca/enums";
 import { useListCasByProjectId } from "@app/hooks/api/ca/queries";
-import { CertStatus } from "@app/hooks/api/certificates/enums";
+import { CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -358,7 +358,8 @@ const Page = () => {
                         )}
                       {/* Manage PKI Syncs - conditional */}
                       {certificate.status === CertStatus.ACTIVE &&
-                        !certificate.renewedByCertificateId && (
+                        !certificate.renewedByCertificateId &&
+                        certificate.source === CertSource.Issued && (
                           <ProjectPermissionCan
                             I={ProjectPermissionPkiSyncActions.Edit}
                             a={ProjectPermissionSub.PkiSyncs}
@@ -379,30 +380,32 @@ const Page = () => {
                           </ProjectPermissionCan>
                         )}
                       {/* Revoke Certificate - conditional */}
-                      {supportsRevocation && !isRevoked && (
-                        <ProjectPermissionCan
-                          I={ProjectPermissionCertificateActions.Delete}
-                          a={subject(ProjectPermissionSub.Certificates, {
-                            commonName: certificate.commonName,
-                            altNames: certificate.altNames,
-                            serialNumber: certificate.serialNumber,
-                            friendlyName: certificate.friendlyName
-                          })}
-                        >
-                          {(canRevoke) => (
-                            <UnstableDropdownMenuItem
-                              isDisabled={!canRevoke}
-                              onClick={() =>
-                                handlePopUpOpen("revokeCertificate", {
-                                  certificateId: certificate.id
-                                })
-                              }
-                            >
-                              Revoke Certificate
-                            </UnstableDropdownMenuItem>
-                          )}
-                        </ProjectPermissionCan>
-                      )}
+                      {supportsRevocation &&
+                        !isRevoked &&
+                        certificate.source === CertSource.Issued && (
+                          <ProjectPermissionCan
+                            I={ProjectPermissionCertificateActions.Delete}
+                            a={subject(ProjectPermissionSub.Certificates, {
+                              commonName: certificate.commonName,
+                              altNames: certificate.altNames,
+                              serialNumber: certificate.serialNumber,
+                              friendlyName: certificate.friendlyName
+                            })}
+                          >
+                            {(canRevoke) => (
+                              <UnstableDropdownMenuItem
+                                isDisabled={!canRevoke}
+                                onClick={() =>
+                                  handlePopUpOpen("revokeCertificate", {
+                                    certificateId: certificate.id
+                                  })
+                                }
+                              >
+                                Revoke Certificate
+                              </UnstableDropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
+                        )}
                       {/* Delete Certificate - always available */}
                       <ProjectPermissionCan
                         I={ProjectPermissionCertificateActions.Delete}

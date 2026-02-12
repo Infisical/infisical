@@ -172,6 +172,7 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
               port: target.port,
               success: false,
               failureReason: ScanEndpointFailureReason.ConnectionFailed,
+              error: "Gateway failed to establish proxy connection to target",
               sniHostname: target.sniHostname
             });
           } else {
@@ -199,13 +200,15 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
               targetSuccess = true;
             }
           }
-        } catch {
+        } catch (error) {
           consecutiveGwFailures += 1;
+          const gatewayError = error instanceof Error ? error.message : "Unknown gateway error";
           results.push({
             host: target.host,
             port: target.port,
             success: false,
             failureReason: ScanEndpointFailureReason.ConnectionFailed,
+            error: `Gateway proxy error: ${gatewayError}`,
             sniHostname: target.sniHostname
           });
         }
@@ -226,7 +229,9 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
 
       if (gatewayCircuitBroken) {
         const completedAt = new Date();
-        const cbErrorMessage = `Gateway connection failed to reach target network. Check that the gateway is online and can reach the target network.`;
+        const lastFailedResult = results[results.length - 1];
+        const lastError = lastFailedResult?.error ? ` Last error: ${lastFailedResult.error}` : "";
+        const cbErrorMessage = `Gateway connection failed to reach target network. Check that the gateway is online and can reach the target network.${lastError}`;
 
         await pkiDiscoveryConfigDAL.transaction(async (tx) => {
           if (scanHistoryId) {
@@ -351,35 +356,53 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
           discoveryConfig.gatewayId ?? undefined
         );
 
-        let domainInstallation = await deps.pkiCertificateInstallationDAL.findByFingerprint(
-          discoveryConfig.projectId,
-          domainFingerprint
-        );
+        const domainInstallationId = await deps.pkiDiscoveryConfigDAL.transaction(async (tx) => {
+          let domainInstallation = await deps.pkiCertificateInstallationDAL.findByFingerprint(
+            discoveryConfig.projectId,
+            domainFingerprint,
+            tx
+          );
 
-        if (!domainInstallation) {
-          domainInstallation = await deps.pkiCertificateInstallationDAL.create({
-            projectId: discoveryConfig.projectId,
-            locationType: PkiInstallationLocationType.Network,
-            locationDetails: domainLocationDetails,
-            locationFingerprint: domainFingerprint,
-            name: domain,
-            type: PkiInstallationType.Unknown,
-            lastSeenAt: now
-          });
-        } else {
-          await deps.pkiCertificateInstallationDAL.updateById(domainInstallation.id, { lastSeenAt: now });
-        }
+          if (!domainInstallation) {
+            domainInstallation = await deps.pkiCertificateInstallationDAL.create(
+              {
+                projectId: discoveryConfig.projectId,
+                locationType: PkiInstallationLocationType.Network,
+                locationDetails: domainLocationDetails,
+                locationFingerprint: domainFingerprint,
+                name: domain,
+                type: PkiInstallationType.Unknown,
+                lastSeenAt: now
+              },
+              tx
+            );
+          } else {
+            await deps.pkiCertificateInstallationDAL.updateById(domainInstallation.id, { lastSeenAt: now }, tx);
+          }
 
-        const domainLink = await deps.pkiDiscoveryInstallationDAL.upsertLink(discoveryId, domainInstallation.id, now);
-        if (!domainLink) continue; // eslint-disable-line no-continue
+          const domainLink = await deps.pkiDiscoveryInstallationDAL.upsertLink(
+            discoveryId,
+            domainInstallation.id,
+            now,
+            tx
+          );
+          if (!domainLink) return null;
 
-        for (const certId of certIds) {
-          await deps.pkiCertificateInstallationCertDAL.upsertCertLink(domainInstallation.id, certId, {
-            lastSeenAt: now
-          });
-        }
+          for (const certId of certIds) {
+            await deps.pkiCertificateInstallationCertDAL.upsertCertLink(
+              domainInstallation.id,
+              certId,
+              { lastSeenAt: now },
+              tx
+            );
+          }
 
-        uniqueInstallationIds.add(domainInstallation.id);
+          return domainInstallation.id;
+        });
+
+        if (!domainInstallationId) continue; // eslint-disable-line no-continue
+
+        uniqueInstallationIds.add(domainInstallationId);
       }
     }
 
@@ -541,30 +564,7 @@ const processEndpointResult = async (
     gatewayId
   );
 
-  let installation = await pkiCertificateInstallationDAL.findByFingerprint(projectId, locationFingerprint);
-
   const displayName = ipAddress || result.host;
-
-  if (!installation) {
-    const installationData: TPkiCertificateInstallationsInsert = {
-      projectId,
-      locationType: PkiInstallationLocationType.Network,
-      locationDetails,
-      locationFingerprint,
-      name: displayName,
-      type: PkiInstallationType.Unknown,
-      lastSeenAt: scanTime
-    };
-
-    installation = await pkiCertificateInstallationDAL.create(installationData);
-  } else {
-    await pkiCertificateInstallationDAL.updateById(installation.id, { lastSeenAt: scanTime });
-  }
-
-  const link = await pkiDiscoveryInstallationDAL.upsertLink(discoveryId, installation.id, scanTime);
-  if (!link) {
-    return { certificateIds: [] };
-  }
 
   if (result.certificates) {
     for (const certResult of result.certificates) {
@@ -578,20 +578,53 @@ const processEndpointResult = async (
           host: result.host,
           port: result.port,
           sniHostname: result.sniHostname,
-          discoveredAt: scanTime.toISOString()
+          discoveredAt: scanTime.toISOString(),
+          issuerCommonName: certResult.issuerCommonName,
+          issuerOrganization: certResult.issuerOrganization
         }
       );
       if (certId) {
         certificateIds.push(certId);
-
-        await pkiCertificateInstallationCertDAL.upsertCertLink(installation.id, certId, {
-          lastSeenAt: scanTime
-        });
       }
     }
   }
 
-  return { installationId: installation.id, certificateIds, sniHostname: result.sniHostname };
+  const installationId = await deps.pkiDiscoveryConfigDAL.transaction(async (tx) => {
+    let installation = await pkiCertificateInstallationDAL.findByFingerprint(projectId, locationFingerprint, tx);
+
+    if (!installation) {
+      const installationData: TPkiCertificateInstallationsInsert = {
+        projectId,
+        locationType: PkiInstallationLocationType.Network,
+        locationDetails,
+        locationFingerprint,
+        name: displayName,
+        type: PkiInstallationType.Unknown,
+        lastSeenAt: scanTime
+      };
+
+      installation = await pkiCertificateInstallationDAL.create(installationData, tx);
+    } else {
+      await pkiCertificateInstallationDAL.updateById(installation.id, { lastSeenAt: scanTime }, tx);
+    }
+
+    const link = await pkiDiscoveryInstallationDAL.upsertLink(discoveryId, installation.id, scanTime, tx);
+    if (!link) {
+      return null;
+    }
+
+    for (const certId of certificateIds) {
+      await pkiCertificateInstallationCertDAL.upsertCertLink(installation.id, certId, { lastSeenAt: scanTime }, tx);
+    }
+
+    return installation.id;
+  });
+
+  if (!installationId) {
+    return { certificateIds: [] };
+  }
+
+  return { installationId, certificateIds, sniHostname: result.sniHostname };
 };
 
 type TProcessDiscoveredCertDeps = {
@@ -634,6 +667,7 @@ const processDiscoveredCertificate = async (
       notBefore: certResult.notBefore,
       notAfter: certResult.notAfter,
       fingerprintSha256: certResult.fingerprint,
+      fingerprintSha1: certResult.fingerprintSha1,
       subjectOrganization: truncateString(certResult.subjectOrganization, DB_SHORT_VARCHAR_LIMIT),
       subjectOrganizationalUnit: truncateString(certResult.subjectOrganizationalUnit, DB_SHORT_VARCHAR_LIMIT),
       subjectCountry: truncateString(certResult.subjectCountry, DB_SHORT_VARCHAR_LIMIT),
@@ -649,26 +683,40 @@ const processDiscoveredCertificate = async (
       discoveryMetadata: discoveryMetadata || null
     };
 
-    const newCert = await certificateDAL.create(certData);
+    let encryptedCertificate: Buffer | undefined;
+    let encryptedCertificateChain: Buffer | undefined;
 
     if (certResult.pemChain && certResult.pemChain.length > 0) {
       const certificatePem = certResult.pemChain[0];
       const chainPem = certResult.pemChain.slice(1).join("\n");
 
-      const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
+      ({ cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
         plainText: Buffer.from(certificatePem)
-      });
+      }));
 
-      const encryptedCertificateChain = chainPem
-        ? (await kmsEncryptor({ plainText: Buffer.from(chainPem) })).cipherTextBlob
-        : undefined;
-
-      await certificateBodyDAL.create({
-        certId: newCert.id,
-        encryptedCertificate,
-        encryptedCertificateChain
-      });
+      if (chainPem) {
+        ({ cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
+          plainText: Buffer.from(chainPem)
+        }));
+      }
     }
+
+    const newCert = await certificateDAL.transaction(async (tx) => {
+      const cert = await certificateDAL.create(certData, tx);
+
+      if (encryptedCertificate) {
+        await certificateBodyDAL.create(
+          {
+            certId: cert.id,
+            encryptedCertificate,
+            encryptedCertificateChain
+          },
+          tx
+        );
+      }
+
+      return cert;
+    });
 
     return newCert.id;
   } catch (error) {

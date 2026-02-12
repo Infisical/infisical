@@ -152,14 +152,14 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
 
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4 flex gap-2">
-        <Input
-          value={searchFilter}
-          onChange={(e) => setSearchFilter(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search by name, domain, or IP..."
-          className="flex-1"
-        />
+      <div className="mb-4 flex items-start justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Discovery Jobs</h2>
+          <p className="text-sm text-mineshaft-400">
+            Configure and manage scheduled scans to discover certificates across your
+            infrastructure.
+          </p>
+        </div>
         <ProjectPermissionCan
           I={ProjectPermissionPkiDiscoveryActions.Create}
           a={ProjectPermissionSub.PkiDiscovery}
@@ -175,6 +175,15 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
             </Button>
           )}
         </ProjectPermissionCan>
+      </div>
+      <div className="mb-4">
+        <Input
+          value={searchFilter}
+          onChange={(e) => setSearchFilter(e.target.value)}
+          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+          placeholder="Search by name, domain, or IP..."
+          className="flex-1"
+        />
       </div>
 
       <TableContainer>

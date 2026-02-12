@@ -29,22 +29,15 @@ export const pkiDiscoveryInstallationDALFactory = (db: TDbClient) => {
     tx?: Knex
   ): Promise<TPkiDiscoveryInstallations | null> => {
     try {
-      const existing = await (tx || db)(TableName.PkiDiscoveryInstallation)
-        .where({ discoveryId, installationId })
-        .first();
-
-      if (existing) {
-        await (tx || db)(TableName.PkiDiscoveryInstallation).where({ id: existing.id }).update({ lastScannedAt });
-        return { ...existing, lastScannedAt };
-      }
-
-      const [created] = await (tx || db)(TableName.PkiDiscoveryInstallation)
+      const [row] = await (tx || db)(TableName.PkiDiscoveryInstallation)
         .insert({ discoveryId, installationId, lastScannedAt })
+        .onConflict(["discoveryId", "installationId"])
+        .merge({ lastScannedAt })
         .returning("*");
 
-      return created;
+      return row;
     } catch (error) {
-      // PG foreign key violation — the installation was deleted between the check and the insert
+      // 23503 = FK violation — the installation was deleted concurrently
       if (error && typeof error === "object" && "code" in error && (error as { code: string }).code === "23503") {
         return null;
       }

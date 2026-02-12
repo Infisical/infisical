@@ -112,12 +112,20 @@ export const useGetScanHistory = ({ discoveryId, offset = 0, limit = 25 }: TGetS
 export const useListPkiInstallations = ({
   projectId,
   discoveryId,
+  certificateId,
   offset = 0,
   limit = 25,
   search
 }: TListPkiInstallationsDTO) => {
   return useQuery({
-    queryKey: pkiInstallationKeys.listWithOpts({ projectId, discoveryId, offset, limit, search }),
+    queryKey: pkiInstallationKeys.listWithOpts({
+      projectId,
+      discoveryId,
+      certificateId,
+      offset,
+      limit,
+      search
+    }),
     queryFn: async () => {
       const params = new URLSearchParams({
         projectId,
@@ -126,6 +134,9 @@ export const useListPkiInstallations = ({
       });
       if (discoveryId) {
         params.append("discoveryId", discoveryId);
+      }
+      if (certificateId) {
+        params.append("certificateId", certificateId);
       }
       if (search) {
         params.append("search", search);
@@ -150,19 +161,5 @@ export const useGetPkiInstallation = ({ installationId }: TGetPkiInstallationDTO
       return data;
     },
     enabled: Boolean(installationId)
-  });
-};
-
-export const useGetPkiInstallationsByCertificateId = (projectId: string, certificateId: string) => {
-  return useQuery({
-    queryKey: [...pkiInstallationKeys.all, "byCertificate", certificateId] as const,
-    queryFn: async () => {
-      const params = new URLSearchParams({ projectId, certificateId });
-      const { data } = await apiRequest.get<TListPkiInstallationsResponse>(
-        `/api/v1/cert-manager/installations?${params.toString()}`
-      );
-      return data.installations;
-    },
-    enabled: Boolean(projectId) && Boolean(certificateId)
   });
 };

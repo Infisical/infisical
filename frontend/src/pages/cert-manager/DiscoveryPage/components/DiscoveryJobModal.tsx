@@ -32,7 +32,7 @@ type Props = {
 
 const MAX_PORTS = 5;
 const MAX_IPS = 256;
-const MAX_DOMAINS = 5;
+const MAX_DOMAINS = 20;
 const MIN_CIDR_PREFIX = 24;
 const DEFAULT_TLS_PORTS = "443,8443,636,993,995";
 

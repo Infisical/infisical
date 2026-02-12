@@ -12,7 +12,6 @@ export {
   useGetLatestScan,
   useGetPkiDiscovery,
   useGetPkiInstallation,
-  useGetPkiInstallationsByCertificateId,
   useGetScanHistory,
   useListPkiDiscoveries,
   useListPkiInstallations

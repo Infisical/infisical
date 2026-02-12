@@ -33,7 +33,8 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
           installations: z.array(
             PkiCertificateInstallationsSchema.extend({
               certificatesCount: z.number().optional(),
-              primaryCertName: z.string().nullable().optional()
+              primaryCertName: z.string().nullable().optional(),
+              discoveryName: z.string().nullable().optional()
             })
           ),
           totalCount: z.number()
@@ -86,6 +87,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
       }),
       response: {
         200: PkiCertificateInstallationsSchema.extend({
+          discoveryName: z.string().nullable().optional(),
           certificates: z
             .array(
               z.object({

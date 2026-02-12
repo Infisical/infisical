@@ -60,6 +60,23 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
               .limit(1)
           ])
         )
+        .select(
+          knex.raw(`(?) as "discoveryName"`, [
+            knex(TableName.PkiDiscoveryInstallation)
+              .select(`${TableName.PkiDiscoveryConfig}.name`)
+              .join(
+                TableName.PkiDiscoveryConfig,
+                `${TableName.PkiDiscoveryInstallation}.discoveryId`,
+                `${TableName.PkiDiscoveryConfig}.id`
+              )
+              .where(
+                `${TableName.PkiDiscoveryInstallation}.installationId`,
+                knex.ref(`${TableName.PkiCertificateInstallation}.id`)
+              )
+              .orderBy(`${TableName.PkiDiscoveryInstallation}.lastScannedAt`, "desc")
+              .limit(1)
+          ])
+        )
         .where(`${TableName.PkiCertificateInstallation}.projectId`, projectId);
 
       if (discoveryId) {
@@ -101,7 +118,11 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
         .offset(offset)
         .limit(limit);
 
-      return docs as (TPkiCertificateInstallations & { certificatesCount: number; primaryCertName: string | null })[];
+      return docs as (TPkiCertificateInstallations & {
+        certificatesCount: number;
+        primaryCertName: string | null;
+        discoveryName: string | null;
+      })[];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find PKI certificate installations by project ID" });
     }
@@ -167,11 +188,29 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
 
   const findByIdWithCertificates = async (id: string, { tx }: { tx?: Knex } = {}) => {
     try {
-      const installation = await (tx || db.replicaNode())<TPkiCertificateInstallations>(
-        TableName.PkiCertificateInstallation
-      )
-        .where({ id })
-        .first();
+      const knex = tx || db.replicaNode();
+
+      const installation = (await knex(TableName.PkiCertificateInstallation)
+        .select(selectAllTableCols(TableName.PkiCertificateInstallation))
+        .select(
+          knex.raw(`(?) as "discoveryName"`, [
+            knex(TableName.PkiDiscoveryInstallation)
+              .select(`${TableName.PkiDiscoveryConfig}.name`)
+              .join(
+                TableName.PkiDiscoveryConfig,
+                `${TableName.PkiDiscoveryInstallation}.discoveryId`,
+                `${TableName.PkiDiscoveryConfig}.id`
+              )
+              .where(
+                `${TableName.PkiDiscoveryInstallation}.installationId`,
+                knex.ref(`${TableName.PkiCertificateInstallation}.id`)
+              )
+              .orderBy(`${TableName.PkiDiscoveryInstallation}.lastScannedAt`, "desc")
+              .limit(1)
+          ])
+        )
+        .where(`${TableName.PkiCertificateInstallation}.id`, id)
+        .first()) as (TPkiCertificateInstallations & { discoveryName: string | null }) | undefined;
 
       if (!installation) return null;
 

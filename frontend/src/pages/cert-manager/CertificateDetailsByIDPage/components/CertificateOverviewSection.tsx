@@ -158,9 +158,18 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                     <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
                   </Link>
                 )}
-                {!showCaLink && (certificate.caName || <span className="text-muted">—</span>)}
+                {!showCaLink &&
+                  (certificate.caName || certificate.discoveryMetadata?.issuerCommonName || (
+                    <span className="text-muted">—</span>
+                  ))}
               </DetailValue>
             </Detail>
+            {!certificate.caId && certificate.discoveryMetadata?.issuerOrganization && (
+              <Detail>
+                <DetailLabel>Issuer Organization</DetailLabel>
+                <DetailValue>{certificate.discoveryMetadata.issuerOrganization}</DetailValue>
+              </Detail>
+            )}
             <Detail>
               <DetailLabel>Profile</DetailLabel>
               <DetailValue>

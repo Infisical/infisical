@@ -83,6 +83,7 @@ export type TPkiInstallation = {
   certificates?: TPkiInstallationCert[];
   certificatesCount?: number;
   primaryCertName?: string | null;
+  discoveryName?: string | null;
 };
 
 export type TPkiInstallationCert = {
@@ -186,6 +187,7 @@ export type TGetScanHistoryResponse = {
 export type TListPkiInstallationsDTO = {
   projectId: string;
   discoveryId?: string;
+  certificateId?: string;
   offset?: number;
   limit?: number;
   search?: string;

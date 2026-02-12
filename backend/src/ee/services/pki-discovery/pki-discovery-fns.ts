@@ -38,7 +38,7 @@ const DNS_RESOLUTION_TIMEOUT = 5000;
 export const DEFAULT_TLS_PORTS = "443, 8443, 636, 993, 995";
 export const MAX_PORTS = 5;
 export const MAX_IPS = 256;
-export const MAX_DOMAINS = 5;
+export const MAX_DOMAINS = 20;
 export const MIN_CIDR_PREFIX = 24;
 
 const TLS_SCAN_TIMEOUT = 3000;
@@ -306,6 +306,8 @@ const parsePeerCertificate = (cert: tls.DetailedPeerCertificate): TScanCertifica
 
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     const fingerprint = computeCertFingerprint(derBuffer);
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    const fingerprintSha1 = computeCertFingerprintSha1(derBuffer);
 
     const subject = cert.subject || {};
 
@@ -330,12 +332,15 @@ const parsePeerCertificate = (cert: tls.DetailedPeerCertificate): TScanCertifica
     const isCA = certBasicConstraints.ca;
     const pathLength = certBasicConstraints.pathlen;
 
+    const issuer = cert.issuer || {};
+
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     const signatureAlgorithm = extractSignatureAlgorithm(x509Cert);
 
     return {
       pemChain: [pem],
       fingerprint,
+      fingerprintSha1,
       commonName: subject.CN || "",
       altNames,
       notBefore: new Date(cert.valid_from),
@@ -352,7 +357,9 @@ const parsePeerCertificate = (cert: tls.DetailedPeerCertificate): TScanCertifica
       keyUsages,
       extendedKeyUsages,
       isCA,
-      pathLength
+      pathLength,
+      issuerCommonName: issuer.CN,
+      issuerOrganization: issuer.O
     };
   } catch (error) {
     logger.error(error, "Failed to parse peer certificate");
@@ -411,8 +418,15 @@ const extractSignatureAlgorithm = (x509Cert: x509.X509Certificate): CertSignatur
   }
 };
 
+const formatFingerprint = (hash: string) =>
+  new RE2(".{2}", "g").match(hash.toUpperCase())?.join(":") ?? hash.toUpperCase();
+
 export const computeCertFingerprint = (derBuffer: Buffer): string => {
-  return crypto.createHash("sha256").update(derBuffer).digest("hex").toUpperCase();
+  return formatFingerprint(crypto.createHash("sha256").update(derBuffer).digest("hex"));
+};
+
+export const computeCertFingerprintSha1 = (derBuffer: Buffer): string => {
+  return formatFingerprint(crypto.createHash("sha1").update(derBuffer).digest("hex"));
 };
 
 export const expandCIDR = (cidr: string): string[] => {

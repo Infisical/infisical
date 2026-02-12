@@ -5,7 +5,6 @@ import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, PageHeader } from "@app/components/v2";
 import {
-  Badge,
   Button,
   UnstableDropdownMenu,
   UnstableDropdownMenuContent,
@@ -71,8 +70,6 @@ const Page = () => {
       ? `${installation.locationDetails.ipAddress}:${installation.locationDetails.port || 443}`
       : "Installation");
 
-  const hasActiveCerts = (installation.certificates || []).length > 0;
-
   return (
     <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       <div className="mx-auto mb-6 w-full max-w-8xl">
@@ -87,16 +84,7 @@ const Page = () => {
         <PageHeader
           scope={ProjectType.CertificateManager}
           description="Certificate Installation Details"
-          title={
-            <span className="inline-flex items-center gap-x-3">
-              {displayName}
-              {hasActiveCerts ? (
-                <Badge variant="success">In Use</Badge>
-              ) : (
-                <Badge variant="neutral">Not In Use</Badge>
-              )}
-            </span>
-          }
+          title={displayName}
         >
           <UnstableDropdownMenu>
             <UnstableDropdownMenuTrigger asChild>

@@ -11,7 +11,7 @@ export type TCertificateSubject = {
 
 export type TCertificateFingerprints = {
   sha256: string;
-  sha1: string;
+  sha1?: string;
 };
 
 export type TCertificateSource = CertSource | null;
@@ -49,6 +49,11 @@ export type TCertificate = {
   profileName?: string | null;
   caType?: "internal" | "external" | null;
   source?: TCertificateSource;
+  discoveryMetadata?: {
+    issuerCommonName?: string;
+    issuerOrganization?: string;
+    [key: string]: unknown;
+  } | null;
 };
 
 export type TCertificateByIdResponse = {

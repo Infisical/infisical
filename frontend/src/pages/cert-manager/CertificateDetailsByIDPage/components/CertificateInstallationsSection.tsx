@@ -17,7 +17,7 @@ import {
   UnstableTableHeader,
   UnstableTableRow
 } from "@app/components/v3";
-import { useGetPkiInstallationsByCertificateId } from "@app/hooks/api";
+import { useListPkiInstallations } from "@app/hooks/api";
 import { getEndpoint, getGatewayLabel } from "@app/pages/cert-manager/pki-discovery-utils";
 
 type Props = {
@@ -34,10 +34,15 @@ export const CertificateInstallationsSection = ({ certificateId }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
 
-  const { data: installations, isPending } = useGetPkiInstallationsByCertificateId(
+  const { data, isPending } = useListPkiInstallations({
     projectId,
-    certificateId
-  );
+    certificateId,
+    offset: (page - 1) * perPage,
+    limit: perPage
+  });
+
+  const installations = data?.installations;
+  const totalCount = data?.totalCount ?? 0;
 
   if (isPending) {
     return (
@@ -61,8 +66,7 @@ export const CertificateInstallationsSection = ({ certificateId }: Props) => {
     return null;
   }
 
-  const totalCount = installations.length;
-  const paginatedInstallations = installations.slice((page - 1) * perPage, page * perPage);
+  const paginatedInstallations = installations || [];
 
   return (
     <UnstableCard>

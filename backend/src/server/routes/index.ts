@@ -2521,6 +2521,7 @@ export const registerRoutes = async (
     pkiDiscoveryScanHistoryDAL,
     projectDAL,
     permissionService,
+    gatewayV2DAL,
     queuePkiDiscoveryScan: pkiDiscoveryQueue.queuePkiDiscoveryScan
   });
 

@@ -1,7 +1,6 @@
 import { format } from "date-fns";
 
 import {
-  Badge,
   Detail,
   DetailGroup,
   DetailLabel,
@@ -20,8 +19,6 @@ type Props = {
 
 export const InstallationDetailsSection = ({ installation }: Props) => {
   const { locationDetails } = installation;
-  const hasActiveCerts = (installation.certificates || []).length > 0;
-
   const endpoint = locationDetails.fqdn || locationDetails.ipAddress;
 
   return (
@@ -55,13 +52,9 @@ export const InstallationDetailsSection = ({ installation }: Props) => {
               </Detail>
             ) : null}
             <Detail>
-              <DetailLabel>Status</DetailLabel>
+              <DetailLabel>Last Seen By</DetailLabel>
               <DetailValue>
-                {hasActiveCerts ? (
-                  <Badge variant="success">In Use</Badge>
-                ) : (
-                  <Badge variant="neutral">Not In Use</Badge>
-                )}
+                {installation.discoveryName || <span className="text-muted">-</span>}
               </DetailValue>
             </Detail>
             <Detail>

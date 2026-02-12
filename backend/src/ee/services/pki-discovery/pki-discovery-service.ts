@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionPkiDiscoveryActions,
@@ -9,6 +10,7 @@ import {
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
+import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TPkiDiscoveryConfigDALFactory } from "./pki-discovery-config-dal";
 import { TPkiDiscoveryScanHistoryDALFactory } from "./pki-discovery-scan-history-dal";
 import {
@@ -38,7 +40,6 @@ type TPkiDiscoveryServiceFactoryDep = {
     | "findByProjectId"
     | "countByProjectId"
     | "findByIdWithInstallationCounts"
-    | "findByName"
     | "claimScanSlot"
   >;
   pkiDiscoveryScanHistoryDAL: Pick<
@@ -46,7 +47,8 @@ type TPkiDiscoveryServiceFactoryDep = {
     "findLatestByDiscoveryId" | "findByDiscoveryId" | "countByDiscoveryId"
   >;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
+  gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   queuePkiDiscoveryScan: (discoveryId: string) => Promise<void>;
 };
 
@@ -71,6 +73,7 @@ export const pkiDiscoveryServiceFactory = ({
   pkiDiscoveryScanHistoryDAL,
   projectDAL,
   permissionService,
+  gatewayV2DAL,
   queuePkiDiscoveryScan
 }: TPkiDiscoveryServiceFactoryDep) => {
   const createDiscovery = async ({
@@ -113,28 +116,51 @@ export const pkiDiscoveryServiceFactory = ({
       });
     }
 
-    const existingByName = await pkiDiscoveryConfigDAL.findByName(projectId, name);
-    if (existingByName) {
-      throw new BadRequestError({
-        message: `A discovery configuration with name '${name}' already exists in this project`
-      });
-    }
-
     validateTargetConfigForType(discoveryType, targetConfig);
 
-    const discovery = await pkiDiscoveryConfigDAL.create({
-      projectId,
-      name,
-      description,
-      discoveryType,
-      targetConfig,
-      isAutoScanEnabled: isAutoScanEnabled ?? false,
-      scanIntervalDays: isAutoScanEnabled ? scanIntervalDays : null,
-      gatewayId,
-      isActive: true
-    });
+    if (gatewayId) {
+      const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: actorOrgId });
+      if (!gateway) {
+        throw new BadRequestError({ message: "Gateway not found or does not belong to this organization" });
+      }
 
-    return discovery;
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: actorOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayActions.AttachGateways,
+        OrgPermissionSubjects.Gateway
+      );
+    }
+
+    try {
+      const discovery = await pkiDiscoveryConfigDAL.create({
+        projectId,
+        name,
+        description,
+        discoveryType,
+        targetConfig,
+        isAutoScanEnabled: isAutoScanEnabled ?? false,
+        scanIntervalDays: isAutoScanEnabled ? scanIntervalDays : null,
+        gatewayId,
+        isActive: true
+      });
+
+      return discovery;
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && (error as { code: string }).code === "23505") {
+        throw new BadRequestError({
+          message: `A discovery configuration with name '${name}' already exists in this project`
+        });
+      }
+      throw error;
+    }
   };
 
   const updateDiscovery = async ({
@@ -170,15 +196,6 @@ export const pkiDiscoveryServiceFactory = ({
       ProjectPermissionSub.PkiDiscovery
     );
 
-    if (name && name !== discovery.name) {
-      const existingByName = await pkiDiscoveryConfigDAL.findByName(discovery.projectId, name);
-      if (existingByName) {
-        throw new BadRequestError({
-          message: `A discovery configuration with name '${name}' already exists in this project`
-        });
-      }
-    }
-
     if (targetConfig) {
       validateTargetConfigForType(
         (discovery.discoveryType as PkiDiscoveryType) || PkiDiscoveryType.Network,
@@ -186,17 +203,47 @@ export const pkiDiscoveryServiceFactory = ({
       );
     }
 
-    const updatedDiscovery = await pkiDiscoveryConfigDAL.updateById(discoveryId, {
-      name,
-      description,
-      targetConfig,
-      isAutoScanEnabled,
-      scanIntervalDays: isAutoScanEnabled ? scanIntervalDays : null,
-      gatewayId,
-      isActive
-    });
+    if (gatewayId) {
+      const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: actorOrgId });
+      if (!gateway) {
+        throw new BadRequestError({ message: "Gateway not found or does not belong to this organization" });
+      }
 
-    return updatedDiscovery;
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: actorOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionGatewayActions.AttachGateways,
+        OrgPermissionSubjects.Gateway
+      );
+    }
+
+    try {
+      const updatedDiscovery = await pkiDiscoveryConfigDAL.updateById(discoveryId, {
+        name,
+        description,
+        targetConfig,
+        isAutoScanEnabled,
+        scanIntervalDays: isAutoScanEnabled ? scanIntervalDays : null,
+        gatewayId,
+        isActive
+      });
+
+      return updatedDiscovery;
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && (error as { code: string }).code === "23505") {
+        throw new BadRequestError({
+          message: `A discovery configuration with name '${name}' already exists in this project`
+        });
+      }
+      throw error;
+    }
   };
 
   const deleteDiscovery = async ({
