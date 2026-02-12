@@ -98,8 +98,12 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
             <Detail>
               <DetailLabel>Serial Number</DetailLabel>
               <DetailValue className="flex items-center gap-2 font-mono text-xs">
-                {certificate.serialNumber}
-                <CopyButton value={certificate.serialNumber} size="xs" variant="plain" />
+                {certificate.serialNumber.toUpperCase()}
+                <CopyButton
+                  value={certificate.serialNumber.toUpperCase()}
+                  size="xs"
+                  variant="plain"
+                />
               </DetailValue>
             </Detail>
             <Detail>

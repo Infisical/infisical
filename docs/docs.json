@@ -733,6 +733,13 @@
                     ]
                   },
                   {
+                    "group": "Discovery",
+                    "pages": [
+                      "documentation/platform/pki/discovery/overview",
+                      "documentation/platform/pki/discovery/network"
+                    ]
+                  },
+                  {
                     "group": "Alerting",
                     "pages": [
                       "documentation/platform/pki/alerting/overview",
@@ -741,14 +748,7 @@
                       "documentation/platform/pki/alerting/pagerduty-alerts"
                     ]
                   },
-                  "documentation/platform/pki/approvals",
-                  {
-                    "group": "Discovery",
-                    "pages": [
-                      "documentation/platform/pki/discovery/overview",
-                      "documentation/platform/pki/discovery/network"
-                    ]
-                  }
+                  "documentation/platform/pki/approvals"
                 ]
               },
               {

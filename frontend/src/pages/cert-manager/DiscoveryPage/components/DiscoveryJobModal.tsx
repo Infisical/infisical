@@ -112,14 +112,11 @@ const validateTargets = (targetsStr: string): { valid: boolean; error?: string }
     };
   }
 
-  let totalIpCount = singleIps.length;
-
   const invalidCidr = cidrRanges.find((cidr) => {
     const prefixMatch = cidr.match(/\/(\d+)$/);
     if (prefixMatch) {
       const prefix = parseInt(prefixMatch[1], 10);
-      if (prefix < MIN_CIDR_PREFIX) return true;
-      totalIpCount += 2 ** (32 - prefix);
+      return prefix < MIN_CIDR_PREFIX;
     }
     return false;
   });
@@ -127,9 +124,17 @@ const validateTargets = (targetsStr: string): { valid: boolean; error?: string }
   if (invalidCidr) {
     return {
       valid: false,
-      error: `CIDR range too large. Maximum is /${MIN_CIDR_PREFIX} (256 IPs)`
+      error: `CIDR range too large: ${invalidCidr}. Maximum is /${MIN_CIDR_PREFIX} (256 IPs)`
     };
   }
+
+  const totalIpCount = cidrRanges.reduce((count, cidr) => {
+    const prefixMatch = cidr.match(/\/(\d+)$/);
+    if (prefixMatch) {
+      return count + 2 ** (32 - parseInt(prefixMatch[1], 10));
+    }
+    return count;
+  }, singleIps.length);
 
   if (totalIpCount > MAX_IPS) {
     return {
@@ -156,14 +161,20 @@ const formSchema = z.object({
   targets: z
     .string()
     .min(1, "At least one target is required")
-    .refine((val) => validateTargets(val).valid, {
-      message: "Invalid targets"
+    .superRefine((val, ctx) => {
+      const result = validateTargets(val);
+      if (!result.valid) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: result.error });
+      }
     }),
   ports: z
     .string()
     .min(1, "Ports are required")
-    .refine((val) => validatePorts(val).valid, {
-      message: "Invalid ports"
+    .superRefine((val, ctx) => {
+      const result = validatePorts(val);
+      if (!result.valid) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: result.error });
+      }
     }),
   gatewayId: z.string().optional(),
   isAutoScanEnabled: z.boolean(),
@@ -217,7 +228,7 @@ export const DiscoveryJobModal = ({ isOpen, onClose, projectId, discovery }: Pro
     handleSubmit,
     reset,
     watch,
-    formState: { errors, isSubmitting }
+    formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -328,8 +339,13 @@ export const DiscoveryJobModal = ({ isOpen, onClose, projectId, discovery }: Pro
           <Controller
             name="name"
             control={control}
-            render={({ field }) => (
-              <FormControl label="Name" isRequired errorText={errors.name?.message}>
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Name"
+                isRequired
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
                 <Input {...field} placeholder="my-discovery-job" />
               </FormControl>
             )}
@@ -338,8 +354,8 @@ export const DiscoveryJobModal = ({ isOpen, onClose, projectId, discovery }: Pro
           <Controller
             name="description"
             control={control}
-            render={({ field }) => (
-              <FormControl label="Description" errorText={errors.description?.message}>
+            render={({ field, fieldState: { error } }) => (
+              <FormControl label="Description" isError={Boolean(error)} errorText={error?.message}>
                 <TextArea
                   {...field}
                   placeholder="Optional description for this discovery job"
@@ -352,16 +368,13 @@ export const DiscoveryJobModal = ({ isOpen, onClose, projectId, discovery }: Pro
           <Controller
             name="targets"
             control={control}
-            render={({ field }) => (
+            render={({ field, fieldState: { error } }) => (
               <FormControl
                 label="Targets"
                 isRequired
-                tooltipText={`Domains or IP addresses to scan for TLS certificates. Up to ${MAX_DOMAINS} domains or ${MAX_IPS} IPs. Supports one CIDR range (max /${MIN_CIDR_PREFIX}). Cannot mix CIDR ranges with individual IPs.`}
-                errorText={
-                  errors.targets?.message
-                    ? validateTargets(field.value).error || errors.targets.message
-                    : undefined
-                }
+                isError={Boolean(error)}
+                tooltipText={`Domains or IP addresses to scan for TLS certificates. Up to ${MAX_DOMAINS} domains or ${MAX_IPS} IPs. Supports individual IPs, CIDR ranges (max /${MIN_CIDR_PREFIX} each), or a mix of both.`}
+                errorText={error?.message}
               >
                 <TextArea
                   {...field}
@@ -375,16 +388,13 @@ export const DiscoveryJobModal = ({ isOpen, onClose, projectId, discovery }: Pro
           <Controller
             name="ports"
             control={control}
-            render={({ field }) => (
+            render={({ field, fieldState: { error } }) => (
               <FormControl
                 label="Ports"
                 isRequired
+                isError={Boolean(error)}
                 tooltipText={`TCP ports to scan for TLS certificates. Specify up to ${MAX_PORTS} ports as comma-separated values (e.g. 443, 8443) or ranges (e.g. 8000-8010). Common TLS ports: 443 (HTTPS), 8443, 636 (LDAPS), 993 (IMAPS), 995 (POP3S), 465 (SMTPS).`}
-                errorText={
-                  errors.ports?.message
-                    ? validatePorts(field.value).error || errors.ports.message
-                    : undefined
-                }
+                errorText={error?.message}
               >
                 <Input {...field} placeholder={DEFAULT_TLS_PORTS} />
               </FormControl>

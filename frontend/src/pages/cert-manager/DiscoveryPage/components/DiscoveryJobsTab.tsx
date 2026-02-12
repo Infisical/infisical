@@ -156,8 +156,7 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
         <div>
           <h2 className="text-lg font-semibold">Discovery Jobs</h2>
           <p className="text-sm text-mineshaft-400">
-            Configure and manage scheduled scans to discover certificates across your
-            infrastructure.
+            Configure and manage scans to discover certificates across your infrastructure.
           </p>
         </div>
         <ProjectPermissionCan
@@ -194,17 +193,15 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
               <Th>Target</Th>
               <Th>Ports</Th>
               <Th>Status</Th>
-              <Th>Certs Found</Th>
-              <Th>Installations</Th>
               <Th>Last Scan</Th>
               <Th className="w-5" />
             </Tr>
           </THead>
           <TBody>
-            {isPending && <TableSkeleton columns={8} innerKey="discovery-jobs" />}
+            {isPending && <TableSkeleton columns={6} innerKey="discovery-jobs" />}
             {!isPending && discoveries.length === 0 && (
               <Tr>
-                <Td colSpan={8}>
+                <Td colSpan={6}>
                   <EmptyState title="No jobs found" />
                 </Td>
               </Tr>
@@ -235,8 +232,6 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
                       Boolean(discovery.lastScanMessage)
                     )}
                   </Td>
-                  <Td>{discovery.certificatesFound}</Td>
-                  <Td>{discovery.installationsFound}</Td>
                   <Td>
                     {discovery.lastScannedAt
                       ? format(new Date(discovery.lastScannedAt), "MMM dd, yyyy HH:mm")

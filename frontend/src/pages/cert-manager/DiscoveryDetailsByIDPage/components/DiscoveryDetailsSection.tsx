@@ -58,6 +58,12 @@ export const DiscoveryDetailsSection = ({ discovery }: Props) => {
               </DetailValue>
             </Detail>
           )}
+          {discovery.gatewayName && (
+            <Detail>
+              <DetailLabel>Gateway</DetailLabel>
+              <DetailValue>{discovery.gatewayName}</DetailValue>
+            </Detail>
+          )}
           <Detail>
             <DetailLabel>Last Scanned</DetailLabel>
             <DetailValue>

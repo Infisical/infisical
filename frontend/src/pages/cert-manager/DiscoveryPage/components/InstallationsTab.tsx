@@ -105,6 +105,7 @@ export const InstallationsTab = ({ projectId }: Props) => {
           <THead>
             <Tr>
               <Th>Name</Th>
+              <Th>Certificate</Th>
               <Th>Gateway</Th>
               <Th>Certs</Th>
               <Th>Last Seen</Th>
@@ -112,10 +113,10 @@ export const InstallationsTab = ({ projectId }: Props) => {
             </Tr>
           </THead>
           <TBody>
-            {isPending && <TableSkeleton columns={5} innerKey="installations" />}
+            {isPending && <TableSkeleton columns={6} innerKey="installations" />}
             {!isPending && installations.length === 0 && (
               <Tr>
-                <Td colSpan={5}>
+                <Td colSpan={6}>
                   <EmptyState title="No installations found" />
                 </Td>
               </Tr>
@@ -137,6 +138,9 @@ export const InstallationsTab = ({ projectId }: Props) => {
                   }
                 >
                   <Td>{installation.name || getEndpoint(installation)}</Td>
+                  <Td>
+                    {installation.primaryCertName || <span className="text-mineshaft-400">-</span>}
+                  </Td>
                   <Td>{getGatewayLabel(installation) || "N/A"}</Td>
                   <Td>
                     {installation.certificatesCount ?? installation.certificates?.length ?? 0}

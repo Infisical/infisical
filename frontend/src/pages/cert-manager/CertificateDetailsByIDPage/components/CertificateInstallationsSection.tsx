@@ -80,7 +80,7 @@ export const CertificateInstallationsSection = ({ certificateId }: Props) => {
         <UnstableTable>
           <UnstableTableHeader>
             <UnstableTableRow>
-              <UnstableTableHead>Endpoint</UnstableTableHead>
+              <UnstableTableHead>Name</UnstableTableHead>
               <UnstableTableHead>Gateway</UnstableTableHead>
               <UnstableTableHead>Last Seen</UnstableTableHead>
             </UnstableTableRow>
@@ -100,7 +100,9 @@ export const CertificateInstallationsSection = ({ certificateId }: Props) => {
                   })
                 }
               >
-                <UnstableTableCell>{getEndpoint(installation)}</UnstableTableCell>
+                <UnstableTableCell>
+                  {installation.name || getEndpoint(installation)}
+                </UnstableTableCell>
                 <UnstableTableCell>{getGatewayLabel(installation) || "N/A"}</UnstableTableCell>
                 <UnstableTableCell>
                   {format(new Date(installation.lastSeenAt), "MMM dd, yyyy HH:mm")}

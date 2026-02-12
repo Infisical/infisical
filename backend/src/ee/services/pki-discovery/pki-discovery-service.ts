@@ -7,7 +7,7 @@ import {
   ProjectPermissionPkiDiscoveryActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
@@ -154,7 +154,8 @@ export const pkiDiscoveryServiceFactory = ({
 
       return discovery;
     } catch (error) {
-      if (error && typeof error === "object" && "code" in error && (error as { code: string }).code === "23505") {
+      const dbError = error instanceof DatabaseError ? (error.error as { code?: string }) : null;
+      if (dbError?.code === "23505") {
         throw new BadRequestError({
           message: `A discovery configuration with name '${name}' already exists in this project`
         });
@@ -237,7 +238,8 @@ export const pkiDiscoveryServiceFactory = ({
 
       return updatedDiscovery;
     } catch (error) {
-      if (error && typeof error === "object" && "code" in error && (error as { code: string }).code === "23505") {
+      const dbError = error instanceof DatabaseError ? (error.error as { code?: string }) : null;
+      if (dbError?.code === "23505") {
         throw new BadRequestError({
           message: `A discovery configuration with name '${name}' already exists in this project`
         });
@@ -297,7 +299,15 @@ export const pkiDiscoveryServiceFactory = ({
       ProjectPermissionSub.PkiDiscovery
     );
 
-    return discovery;
+    let gatewayName: string | null = null;
+    if (discovery.gatewayId) {
+      const gateway = await gatewayV2DAL.findOne({ id: discovery.gatewayId });
+      if (gateway) {
+        gatewayName = gateway.name;
+      }
+    }
+
+    return { ...discovery, gatewayName };
   };
 
   const listDiscoveries = async ({
