@@ -56,11 +56,13 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
     conditions.push("orgId = {orgId:UUID}");
     params.orgId = arg.orgId;
 
-    // Date range filter
-    conditions.push("createdAt >= {startDate:String}");
-    params.startDate = arg.startDate;
-    conditions.push("createdAt < {endDate:String}");
-    params.endDate = arg.endDate;
+    // Date range filter – pass as DateTime64(6) so ClickHouse can compare
+    // directly against the createdAt column without implicit string conversion.
+    // Strip the trailing 'Z' because ClickHouse's DateTime64 parser doesn't accept it.
+    conditions.push("createdAt >= {startDate:DateTime64(6)}");
+    params.startDate = arg.startDate.replace("Z", "");
+    conditions.push("createdAt < {endDate:DateTime64(6)}");
+    params.endDate = arg.endDate.replace("Z", "");
 
     // Optional: project filter
     if (arg.projectId) {
@@ -124,11 +126,17 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
       }
 
       if (arg.secretKey) {
-        // Match secretKey at top level in eventMetadata.
-        // Note: The Postgres DAL also checks eventMetadata.secrets[] array,
-        // but ClickHouse experimental JSON type has limited array sub-field querying.
-        // We check the top-level secretKey match which covers the primary use case.
-        conditions.push("eventMetadata.secretKey = {secretKeyFilter:String}");
+        // Match secretKey at top level in eventMetadata OR inside the eventMetadata.secrets[] array.
+        // The top-level check covers single-secret events, e.g.:
+        //   { "secretKey": "MY_SECRET", "environment": "prod", ... }
+        // The arrayExists check covers batch/multi-secret events, e.g.:
+        //   { "secrets": [{ "secretKey": "MY_SECRET" }, { "secretKey": "OTHER" }], ... }
+        conditions.push(
+          `(${[
+            "eventMetadata.secretKey = {secretKeyFilter:String}",
+            "arrayExists(x -> x.secretKey = {secretKeyFilter:String}, CAST(eventMetadata.secrets AS Array(JSON)))"
+          ].join(" OR ")})`
+        );
         params.secretKeyFilter = arg.secretKey;
       }
     }
@@ -150,10 +158,7 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
       const result = await clickhouseClient.query({
         query,
         query_params: params,
-        format: "JSONEachRow",
-        clickhouse_settings: {
-          date_time_input_format: "best_effort"
-        }
+        format: "JSONEachRow"
       });
 
       const rows = await result.json<TClickHouseAuditLogRow>();
