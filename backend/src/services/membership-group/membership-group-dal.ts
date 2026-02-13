@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { AccessScope, AccessScopeData, MembershipsSchema, TableName } from "@app/db/schemas";
+import { AccessScope, AccessScopeData, MembershipsSchema, TableName, TGroups } from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { buildKnexFilterForSearchResource } from "@app/lib/search-resource/db";
@@ -56,6 +56,9 @@ export const membershipGroupDALFactory = (db: TDbClient) => {
         .select(
           db.ref("name").withSchema(TableName.Groups).as("groupName"),
           db.ref("slug").withSchema(TableName.Groups).as("groupSlug"),
+          db.ref("orgId").withSchema(TableName.Groups).as("groupOrgId"),
+          db.ref("createdAt").withSchema(TableName.Groups).as("groupCreatedAt"),
+          db.ref("updatedAt").withSchema(TableName.Groups).as("groupUpdatedAt"),
           db.ref("slug").withSchema(TableName.Role).as("roleSlug"),
           db.ref("name").withSchema(TableName.Role).as("roleName"),
           db.ref("id").withSchema(TableName.MembershipRole).as("membershipRoleId"),
@@ -79,15 +82,17 @@ export const membershipGroupDALFactory = (db: TDbClient) => {
         data: docs,
         key: "id",
         parentMapper: (el) => {
-          const { groupName, groupSlug } = el;
+          const { groupName, groupSlug, groupOrgId, groupCreatedAt, groupUpdatedAt } = el;
           return {
             ...MembershipsSchema.parse(el),
             group: {
               id: groupId,
               name: groupName,
               slug: groupSlug,
-              orgId: scopeData.orgId
-            }
+              orgId: groupOrgId,
+              createdAt: groupCreatedAt,
+              updatedAt: groupUpdatedAt
+            } as TGroups
           };
         },
         childrenMapper: [
