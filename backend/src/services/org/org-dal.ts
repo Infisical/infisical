@@ -165,23 +165,54 @@ export const orgDALFactory = (db: TDbClient) => {
     offset?: number;
   }) => {
     try {
-      // TODO(sub-org:group): check this when implement group support
       const query = db
         .replicaNode()(TableName.Organization)
         .where(`${TableName.Organization}.rootOrgId`, dto.orgId)
         .select(selectAllTableCols(TableName.Organization));
 
       if (dto.isAccessible) {
-        void query
-          .leftJoin(`${TableName.Membership}`, `${TableName.Membership}.scopeOrgId`, `${TableName.Organization}.id`)
-          .where((qb) => {
-            void qb.where(`${TableName.Membership}.scope`, AccessScope.Organization);
-            if (dto.actorType === ActorType.IDENTITY) {
-              void qb.andWhere(`${TableName.Membership}.actorIdentityId`, dto.actorId);
-            } else {
-              void qb.andWhere(`${TableName.Membership}.actorUserId`, dto.actorId);
-            }
-          });
+        // Correlate subquery: membership.scopeOrgId = outer organizations.id (quoted for PostgreSQL camelCase)
+        const scopeOrgIdEqOrgId = `"${TableName.Membership}"."scopeOrgId" = "${TableName.Organization}"."id"`;
+        void query.where((qb) => {
+          // Direct: actor has membership in the sub-org (user or identity)
+          void qb.whereExists(
+            db
+              .replicaNode()(TableName.Membership)
+              .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+              .whereRaw(scopeOrgIdEqOrgId)
+              .andWhere((subQb) => {
+                if (dto.actorType === ActorType.IDENTITY) {
+                  void subQb.where(`${TableName.Membership}.actorIdentityId`, dto.actorId);
+                } else {
+                  void subQb.where(`${TableName.Membership}.actorUserId`, dto.actorId);
+                }
+              })
+          );
+          // Via inherited group: actor is in a group that is linked to the sub-org (root org group membership in sub-org)
+          const groupLinkedSubquery = db
+            .replicaNode()(TableName.Membership)
+            .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+            .whereRaw(scopeOrgIdEqOrgId)
+            .whereNotNull(`${TableName.Membership}.actorGroupId`);
+          if (dto.actorType === ActorType.IDENTITY) {
+            void groupLinkedSubquery
+              .join(
+                TableName.IdentityGroupMembership,
+                `${TableName.IdentityGroupMembership}.groupId`,
+                `${TableName.Membership}.actorGroupId`
+              )
+              .where(`${TableName.IdentityGroupMembership}.identityId`, dto.actorId);
+          } else {
+            void groupLinkedSubquery
+              .join(
+                TableName.UserGroupMembership,
+                `${TableName.UserGroupMembership}.groupId`,
+                `${TableName.Membership}.actorGroupId`
+              )
+              .where(`${TableName.UserGroupMembership}.userId`, dto.actorId);
+          }
+          void qb.orWhereExists(groupLinkedSubquery);
+        });
       }
       if (dto.limit) void query.limit(dto.limit);
       if (dto.offset) void query.offset(dto.offset);
