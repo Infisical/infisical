@@ -274,7 +274,8 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
       hide: false,
       operationId: "deleteOrganizationGroupMembership",
       tags: [ApiDocsTags.Groups],
-      description: "Delete organization group membership (unlink group from current org).",
+      description:
+        "Unlink a group from the current organization. Only applicable in sub-organizations where the group is linked; cannot be used in the organization that owns the group.",
       security: [{ bearerAuth: [] }],
       params: z.object({
         groupId: z.string().uuid()
