@@ -4,7 +4,7 @@ description: "Configure and manage server related features"
 ---
 
 The Server Admin Console provides **server administrators** with the ability to
-customize settings and manage users for their entire Infisical instance.
+customize settings and manage configurations for their entire Infisical instance.
 
 <Note>
   The first user to setup an account on your Infisical instance is designated as
@@ -13,9 +13,9 @@ customize settings and manage users for their entire Infisical instance.
 
 ## Accessing the Server Admin Console
 
-On the sidebar, hover over **Admin** to access the settings dropdown and press the **Server Admin Console** option.
+Navigate to the Server Admin Console by clicking on the **Server Console** button in the navigation bar.
 
-![Access Server Admin Console](/images/platform/admin-panels/access-server-admin-panel.png)
+![Access Server Admin Console](/images/platform/admin-panels/server-console.png)
 
 ## General Tab
 
@@ -28,7 +28,7 @@ Configure general settings for your instance.
 
 User signups are enabled by default, allowing **Anyone** with access to your instance to sign up. This can alternatively be **Disabled** to prevent any users from signing up.
 
-### Restrict Signup Domain
+### Restrict Signup by Email Domain(s)
 
 Signup can be restricted to users matching one or more email domains, such as your organization's domain, to control who has access to your instance.
 
@@ -40,7 +40,9 @@ If you're using SAML/LDAP/OIDC for only one organization on your instance, you c
 
 By default, users signing up through SAML/LDAP/OIDC will still need to verify their email address to prevent email spoofing. This requirement can be skipped by enabling the switch to trust logins through the respective method.
 
-### Broadcast Messages
+### Notices
+
+#### Auth Consent Content
 
 Auth consent content is displayed to users on the login page. They can be used to display important information to users, such as a maintenance message or a new feature announcement. Both HTML and Markdown formatting are supported, allowing for customized styling like below:
 
@@ -54,32 +56,69 @@ Auth consent content is displayed to users on the login page. They can be used t
 
 ![Auth Consent Usage](/images/platform/admin-panels/auth-consent-usage.png)
 
+#### Page Frame Content
+
 Page frame content is displayed as a header and footer in ALL protected pages. Like the auth consent content, both HTML and Markdown formatting are supported here as well.
+
 ![Page Frame Usage](/images/platform/admin-panels/page-frame-usage.png)
+
+## Resource Overview Tab
+
+View and manage resources across your Infisical instance.
+
+![Resource Overview](/images/platform/admin-panels/admin-panel-resource-overview.png)
+
+## Access Control Tab
+
+Manage server admins across your Infisical instance.
+
+![Access Control](/images/platform/admin-panels/admin-panel-access-control.png)
+
+## Encryption Tab
+
+Manage encryption settings for your instance.
+
+![Encryption](/images/platform/admin-panels/admin-panel-encryption.png)
 
 ## Authentication Tab
 
-From this tab, you can configure which login methods are enabled for your instance.
+This tab allows you to configure which login methods are available to users.
 
 ![Authentication Settings](/images/platform/admin-panels/admin-panel-auths.png)
 
-## Rate Limit Tab
+## Integrations Tab
 
-This tab allows you to set various rate limits for your Infisical instance. You do not need to redeploy when making changes to rate limits as these will be propagated automatically.
+Manage integrations for your Infisical instance.
 
-![Rate Limit Settings](/images/platform/admin-panels/admin-panel-rate-limits.png)
+![Integrations](/images/platform/admin-panels/admin-panel-integrations.png)
 
-<Note>
-  Note that rate limit configuration is a paid feature. Please contact
-  sales@infisical.com to purchase a license for its use.
-</Note>
+## Caching Tab
 
-## User Management Tab
+Manage caching settings for your Infisical instance.
 
-From this tab, you can view all the users who have signed up for your instance. You can search for users using the search bar and remove them from your instance by clicking on the three dots icon on the right. Additionally, the Server Admin can grant server administrator access to other users through this menu.
-![User Management](/images/platform/admin-panels/admin-panel-users.png)
+![Caching](/images/platform/admin-panels/admin-panel-caching.png)
 
-<Note>
-  Note that rate limit configuration is a paid feature. Please contact
-  sales@infisical.com to purchase a license for its use.
-</Note>
+## Environment Variables Tab
+
+The Environment Variables tab allows server admins to override environment variables without direct access to the server's environment configuration. This is particularly useful for managed deployments or when you cannot directly modify environment files.
+
+![Environment Variables Overrides Page](/images/platform/admin-panels/admin-panel-environment-variables.png)
+
+### When to Use Environment Overrides
+
+Use this feature when:
+
+- You don't have direct access to modify environment variables on your server
+- You want to update configuration without redeploying your instance
+
+### How It Works
+
+1. Navigate to the Environment Variables tab in the Server Admin Console
+2. Search for specific variables using the search bar
+3. Modify the values as needed
+4. Click Save to apply the changes
+
+<Warning>
+  Changes to environment variables can take up to 5 minutes to propagate across
+  all containers in your deployment.
+</Warning>
