@@ -27,7 +27,7 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { SecretReferenceTree } from "@app/components/secrets/SecretReferenceDetails";
-import { DeleteActionModal, Modal, ModalContent } from "@app/components/v2";
+import { DeleteActionModal, Input, Modal, ModalContent } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   Badge,
@@ -47,7 +47,8 @@ import {
   UnstableDropdownMenuItem,
   UnstableDropdownMenuTrigger,
   UnstableIconButton,
-  UnstableSeparator
+  UnstableSeparator,
+  UnstableTableCell
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -95,10 +96,11 @@ type Props = {
   onSecretUpdate: (
     env: string,
     key: string,
-    value: string,
+    value: string | undefined,
     secretValueHidden: boolean,
     type?: SecretType,
-    secretId?: string
+    secretId?: string,
+    newSecretName?: string
   ) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string, type?: SecretType) => Promise<void>;
   onAddOverride?: () => void;
@@ -121,6 +123,8 @@ type Props = {
     }[];
   }[];
   isSecretPresent?: boolean;
+  isSingleEnvView?: boolean;
+  onSecretRename?: (newName: string) => Promise<void>;
 };
 
 export const SecretEditTableRow = ({
@@ -148,7 +152,8 @@ export const SecretEditTableRow = ({
   secretMetadata,
   environmentName,
   skipMultilineEncoding,
-  reminder
+  reminder,
+  isSingleEnvView
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
@@ -195,15 +200,17 @@ export const SecretEditTableRow = ({
     reset,
     setValue,
     setFocus,
+    getFieldState,
     formState: { isDirty, isSubmitting }
   } = useForm({
     defaultValues: {
-      value: isEmpty ? defaultValue || null : (sharedValueData?.value ?? (defaultValue || null))
+      value: isEmpty ? defaultValue || null : (sharedValueData?.value ?? (defaultValue || null)),
+      ...(isSingleEnvView ? { key: secretName } : {})
     }
   });
 
   useEffect(() => {
-    if (sharedValueData && !isDirty && !isEmpty) {
+    if (sharedValueData && !getFieldState("value").isDirty && !isEmpty) {
       setValue("value", sharedValueData.value ?? null);
     }
   }, [sharedValueData]);
@@ -227,7 +234,10 @@ export const SecretEditTableRow = ({
   }, []);
 
   const handleFormReset = () => {
-    reset({ value: sharedValueData?.value ?? (defaultValue || null) });
+    reset({
+      value: sharedValueData?.value ?? (defaultValue || null),
+      ...(isSingleEnvView ? { key: secretName } : {})
+    });
   };
 
   const handleCopySharedToClipboard = async () => {
@@ -275,54 +285,83 @@ export const SecretEditTableRow = ({
     }
   };
 
-  const handleFormSubmit = async ({ value }: { value?: string | null }) => {
-    if ((value || value === "") && secretName) {
-      if (isCreatable) {
-        await onSecretCreate(environment, secretName, value);
-      } else {
-        if (
-          importedBy &&
-          importedBy.some(({ folders }) =>
-            folders?.some(({ secrets }) =>
-              secrets?.some(
-                ({ referencedSecretKey, referencedSecretEnv }) =>
-                  referencedSecretKey === secretName && referencedSecretEnv === environment
-              )
-            )
+  const handleFormSubmit = async ({ value, key }: { value?: string | null; key?: string }) => {
+    const isValueDirty = getFieldState("value").isDirty;
+    const isKeyDirty = isSingleEnvView && key && key !== secretName;
+
+    // If the value edit requires confirmation (importedBy references), defer everything
+    // (including rename) to handleEditSecret so the rename isn't lost on re-render.
+    if (
+      isValueDirty &&
+      (value || value === "") &&
+      !isCreatable &&
+      importedBy &&
+      importedBy.some(({ folders }) =>
+        folders?.some(({ secrets }) =>
+          secrets?.some(
+            ({ referencedSecretKey, referencedSecretEnv }) =>
+              referencedSecretKey === secretName && referencedSecretEnv === environment
           )
-        ) {
-          handlePopUpOpen("editSecret", { secretValue: value });
-          return;
+        )
+      )
+    ) {
+      handlePopUpOpen("editSecret", { secretValue: value, newKey: isKeyDirty ? key : undefined });
+      return;
+    }
+
+    // Handle rename and/or value changes in a single mutation
+    if ((isKeyDirty || isValueDirty) && secretName) {
+      if (isCreatable) {
+        if (isValueDirty && (value || value === "")) {
+          await onSecretCreate(environment, secretName, value);
         }
+      } else {
         await onSecretUpdate(
           environment,
           secretName,
-          value,
+          value ?? undefined, // ignore if not fetched
           secretValueHidden,
           SecretType.Shared,
-          secretId
+          secretId,
+          isKeyDirty ? key : undefined
         );
       }
     }
     if (secretValueHidden) {
       setTimeout(() => {
-        reset({ value: defaultValue || null });
+        reset({
+          value: defaultValue || null,
+          ...(isSingleEnvView ? { key: key || secretName } : {})
+        });
       }, 50);
     } else {
-      reset({ value });
+      reset({
+        value,
+        ...(isSingleEnvView ? { key: key || secretName } : {})
+      });
     }
   };
 
-  const handleEditSecret = async ({ secretValue }: { secretValue: string }) => {
+  const handleEditSecret = async ({
+    secretValue,
+    newKey
+  }: {
+    secretValue: string;
+    newKey?: string;
+  }) => {
     await onSecretUpdate(
       environment,
       secretName,
       secretValue,
       secretValueHidden,
       SecretType.Shared,
-      secretId
+      secretId,
+      newKey
     );
-    reset({ value: secretValue });
+    reset({
+      value: secretValue,
+      ...(isSingleEnvView ? { key: newKey || secretName } : {})
+    });
     handlePopUpClose("editSecret");
   };
 
@@ -390,8 +429,28 @@ export const SecretEditTableRow = ({
     return "Share Secret";
   };
 
-  return (
-    <div className="flex w-full flex-col gap-y-2 py-1.5">
+  const nameInput = isSingleEnvView ? (
+    <Controller
+      control={control}
+      name="key"
+      render={({ field, fieldState: { error } }) => (
+        <Input
+          autoComplete="off"
+          isReadOnly={isImportedSecret || isRotatedSecret || !canEditSecretValue}
+          autoCapitalization={currentProject?.autoCapitalization}
+          variant="plain"
+          placeholder={error?.message || "Secret name"}
+          isError={Boolean(error)}
+          {...field}
+          value={field.value ?? ""}
+          className="w-full px-0 text-foreground placeholder:text-red-500 focus:ring-transparent"
+        />
+      )}
+    />
+  ) : null;
+
+  const valueContent = (
+    <>
       <DeleteActionModal
         isOpen={isModalOpen}
         onClose={toggleModal}
@@ -1077,6 +1136,26 @@ export const SecretEditTableRow = ({
         }
       />
       <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-    </div>
+    </>
   );
+
+  if (isSingleEnvView) {
+    return (
+      <>
+        <UnstableTableCell
+          className={twMerge("border-r pt-1 align-top", isOverride && "border-b-border/50")}
+        >
+          {nameInput}
+        </UnstableTableCell>
+        <UnstableTableCell
+          className={twMerge("w-full p-0 px-2", isOverride && "border-b-border/50")}
+        >
+          <div className="flex w-full flex-col gap-y-2 py-1.5">{valueContent}</div>
+        </UnstableTableCell>
+        <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      </>
+    );
+  }
+
+  return <div className="flex w-full flex-col gap-y-2 py-1.5">{valueContent}</div>;
 };

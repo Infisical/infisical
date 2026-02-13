@@ -1,14 +1,16 @@
 import { useState } from "react";
-import { SearchIcon, XIcon } from "lucide-react";
+import { ChevronDown, FolderIcon, GlobeIcon, SearchIcon, XIcon } from "lucide-react";
 
 import {
+  Button,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
   UnstableButtonGroup,
+  UnstableDropdownMenu,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuTrigger,
   UnstableIconButton
 } from "@app/components/v3";
 
@@ -33,15 +35,29 @@ export const ResourceSearchInput = ({
   return (
     <>
       <UnstableButtonGroup>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <UnstableIconButton variant="outline" onClick={() => setIsOpen(true)}>
-              <SearchIcon />
-            </UnstableIconButton>
-          </TooltipTrigger>
-          <TooltipContent>Deep search</TooltipContent>
-        </Tooltip>
+        <UnstableDropdownMenu>
+          <UnstableDropdownMenuTrigger asChild>
+            <Button variant="outline">
+              <FolderIcon className="text-folder" />
+              Current
+              <ChevronDown className="text-accent" />
+            </Button>
+          </UnstableDropdownMenuTrigger>
+          <UnstableDropdownMenuContent align="start">
+            <UnstableDropdownMenuItem>
+              <FolderIcon className="text-folder" />
+              Current Folder
+            </UnstableDropdownMenuItem>
+            <UnstableDropdownMenuItem onClick={() => setIsOpen(true)}>
+              <GlobeIcon className="text-folder" />
+              All Folders
+            </UnstableDropdownMenuItem>
+          </UnstableDropdownMenuContent>
+        </UnstableDropdownMenu>
         <InputGroup className="w-[270px]">
+          <InputGroupAddon align="inline-start">
+            <SearchIcon />
+          </InputGroupAddon>
           <InputGroupInput
             autoComplete="off"
             placeholder={
