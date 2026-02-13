@@ -1,14 +1,6 @@
 import { z } from "zod";
 
-import {
-  AccessScope,
-  GroupsSchema,
-  IdentitiesSchema,
-  OrgMembershipRole,
-  ProjectsSchema,
-  TemporaryPermissionMode,
-  UsersSchema
-} from "@app/db/schemas";
+import { GroupsSchema, IdentitiesSchema, OrgMembershipRole, ProjectsSchema, UsersSchema } from "@app/db/schemas";
 import {
   FilterMemberType,
   FilterReturnedMachineIdentities,
@@ -18,7 +10,6 @@ import {
   GroupProjectsOrderBy
 } from "@app/ee/services/group/group-types";
 import { ApiDocsTags, GROUPS } from "@app/lib/api-docs";
-import { ms } from "@app/lib/ms";
 import { OrderByDirection } from "@app/lib/types";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -198,124 +189,6 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       });
 
       return group;
-    }
-  });
-
-  const sanitizedOrgGroupMembershipSchema = z.object({
-    id: z.string().uuid(),
-    orgId: z.string(),
-    groupId: z.string().uuid(),
-    createdAt: z.date(),
-    updatedAt: z.date()
-  });
-
-  server.route({
-    method: "POST",
-    url: "/:id/link",
-    config: {
-      rateLimit: writeLimit
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    schema: {
-      hide: false,
-      deprecated: true,
-      operationId: "addGroupToOrganization",
-      tags: [ApiDocsTags.Groups],
-      description:
-        "Deprecated: Use POST /api/v1/organizations/memberships/groups/:groupId instead (pattern: {scope}/memberships/{actor-type}/{actor-id}). Link this group to the current (sub-)organization with the given role.",
-      params: z.object({
-        id: z.string().trim().describe("The ID of the group to link to the current organization")
-      }),
-      body: z.object({
-        roles: z
-          .array(
-            z.union([
-              z.object({
-                role: z.string(),
-                isTemporary: z.literal(false).default(false)
-              }),
-              z.object({
-                role: z.string(),
-                isTemporary: z.literal(true),
-                temporaryMode: z.nativeEnum(TemporaryPermissionMode),
-                temporaryRange: z.string().refine((val) => ms(val) > 0, "Temporary range must be a positive number"),
-                temporaryAccessStartTime: z.string().datetime()
-              })
-            ])
-          )
-          .min(1)
-      }),
-      response: {
-        200: z.object({
-          groupMembership: sanitizedOrgGroupMembershipSchema
-        })
-      }
-    },
-    handler: async (req) => {
-      const { membership } = await server.services.membershipGroup.createMembership({
-        scopeData: {
-          scope: AccessScope.Organization,
-          orgId: req.permission.orgId
-        },
-        permission: req.permission,
-        data: {
-          groupId: req.params.id,
-          roles: req.body.roles
-        }
-      });
-
-      return {
-        groupMembership: {
-          ...membership,
-          groupId: req.params.id,
-          orgId: req.permission.orgId
-        }
-      };
-    }
-  });
-
-  server.route({
-    method: "DELETE",
-    url: "/:id/link",
-    config: {
-      rateLimit: writeLimit
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    schema: {
-      hide: false,
-      deprecated: true,
-      operationId: "removeGroupFromOrganization",
-      tags: [ApiDocsTags.Groups],
-      description:
-        "Deprecated: Use DELETE /api/v1/organizations/memberships/groups/:groupId instead (pattern: {scope}/memberships/{actor-type}/{actor-id}). Unlink this group from the current (sub-)organization.",
-      params: z.object({
-        id: z.string().trim().describe("The ID of the group to unlink from the current organization")
-      }),
-      response: {
-        200: z.object({
-          groupMembership: sanitizedOrgGroupMembershipSchema
-        })
-      }
-    },
-    handler: async (req) => {
-      const { membership } = await server.services.membershipGroup.deleteMembership({
-        scopeData: {
-          scope: AccessScope.Organization,
-          orgId: req.permission.orgId
-        },
-        permission: req.permission,
-        selector: {
-          groupId: req.params.id
-        }
-      });
-
-      return {
-        groupMembership: {
-          ...membership,
-          groupId: req.params.id,
-          orgId: req.permission.orgId
-        }
-      };
     }
   });
 
