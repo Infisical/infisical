@@ -1784,7 +1784,6 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     accessTokenQueue,
     identityDAL,
-    membershipIdentityDAL,
     orgDAL
   });
 

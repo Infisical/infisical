@@ -659,6 +659,73 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  /**
+   * Returns the effective org membership for an actor (user or identity): direct membership
+   * or membership via a group linked to the org. Use for access checks and to get membership id/role.
+   */
+  const findEffectiveOrgMembership = async (dto: {
+    actorType: ActorType;
+    actorId: string;
+    orgId: string;
+    status?: OrgMembershipStatus;
+    tx?: Knex;
+  }): Promise<TMemberships | null> => {
+    try {
+      const conn = dto.tx ?? db.replicaNode();
+      const status = dto.status ?? OrgMembershipStatus.Accepted;
+
+      // 1. Direct membership (user or identity)
+      const direct = await conn(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.scopeOrgId`, dto.orgId)
+        .where(`${TableName.Membership}.status`, status)
+        .andWhere((qb) => {
+          if (dto.actorType === ActorType.IDENTITY) {
+            void qb.where(`${TableName.Membership}.actorIdentityId`, dto.actorId);
+          } else {
+            void qb.where(`${TableName.Membership}.actorUserId`, dto.actorId);
+          }
+        })
+        .select(selectAllTableCols(TableName.Membership))
+        .first();
+
+      if (direct) return direct as TMemberships;
+
+      // 2. Via group: membership in org where actor is in that group (group memberships often have status = null)
+      const viaGroup = conn(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.scopeOrgId`, dto.orgId)
+        .where((qb) => {
+          void qb.where(`${TableName.Membership}.status`, status).orWhereNull(`${TableName.Membership}.status`);
+        })
+        .whereNotNull(`${TableName.Membership}.actorGroupId`)
+        .select(selectAllTableCols(TableName.Membership));
+
+      if (dto.actorType === ActorType.IDENTITY) {
+        void viaGroup
+          .join(
+            TableName.IdentityGroupMembership,
+            `${TableName.IdentityGroupMembership}.groupId`,
+            `${TableName.Membership}.actorGroupId`
+          )
+          .where(`${TableName.IdentityGroupMembership}.identityId`, dto.actorId);
+      } else {
+        void viaGroup
+          .join(
+            TableName.UserGroupMembership,
+            `${TableName.UserGroupMembership}.groupId`,
+            `${TableName.Membership}.actorGroupId`
+          )
+          .where(`${TableName.UserGroupMembership}.userId`, dto.actorId);
+      }
+
+      const first = await viaGroup.first();
+      return (first as TMemberships) ?? null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find effective org membership" });
+    }
+  };
+
   const findMembershipWithScimFilter = async (
     orgId: string,
     scimFilter: string | undefined,
@@ -780,6 +847,7 @@ export const orgDALFactory = (db: TDbClient) => {
     updateById,
     deleteById,
     findMembership,
+    findEffectiveOrgMembership,
     findMembershipWithScimFilter,
     createMembership,
     bulkCreateMemberships,
