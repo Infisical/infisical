@@ -26,6 +26,7 @@ A typical workflow for setting up a Private CA hierarchy consists of the followi
 1. Configuring an Infisical root CA with details like name, validity period, and path length — This step is optional if you wish to use an external root CA with Infisical only serving the intermediate CAs.
 2. Configuring and chaining intermediate CA(s) with details like name, validity period, path length, and imported certificate to your Root CA.
 3. Managing the CA lifecycle events such as CA succession.
+4. Optionally, using an Infisical CA to sign certificate signing requests (CSRs) from external intermediate CAs whose private keys are managed outside of Infisical.
 
 <Note>
   Note that this workflow can be executed via the Infisical UI or manually such
@@ -259,6 +260,95 @@ consisting of an (optional) root CA and an intermediate CA.
   </Tab>
 </Tabs>
 
+## Guide to Signing an External Intermediate CA's CSR
+
+If you have an intermediate CA running outside of Infisical (e.g., on-prem) and want to sign its certificate using an Infisical CA, you can use the **Sign Intermediate** action. This is useful for multi-instance CA setups where the intermediate CA's private key must remain on-prem — you generate a CSR from your external intermediate CA, provide it to Infisical, and receive a signed certificate to import back into your on-prem CA.
+
+<Note>
+  This is different from the **Install Certificate** flow used when creating a CA hierarchy above.
+  **Install Certificate** is used to chain an Infisical-managed intermediate CA to a parent CA.
+  **Sign Intermediate** is used to sign a CSR from an external intermediate CA whose private key
+  is not managed by Infisical.
+</Note>
+
+<Tabs>
+  <Tab title="Infisical UI">
+<Steps>
+    <Step title="Signing an external intermediate CA's CSR">
+        To sign an external intermediate CA's CSR, head to your Certificate Management Project > Certificate Authorities > Internal Certificate Authorities.
+
+        Locate the CA you want to use as the signing (parent) CA, click the **...** (actions) menu on the CA row and select **Sign Intermediate**.
+
+        ![pki sign intermediate table option](/images/platform/pki/ca/ca-sign-intermediate-table-opt.png)
+
+        You can also access this option from the CA's detail page by selecting **Sign Intermediate** from the options dropdown.
+
+        ![pki sign intermediate detail option](/images/platform/pki/ca/ca-sign-intermediate-opt.png)
+
+        <Note>
+          The **Sign Intermediate** option is only available for CAs that are **Active** and have a
+          **Max Path Length** that is not `0` (i.e., the CA is permitted to sign subordinate CA certificates).
+        </Note>
+
+        In the **Sign Intermediate CA Certificate** modal, fill out the details for the intermediate certificate.
+
+        ![pki sign intermediate form](/images/platform/pki/ca/ca-sign-intermediate-form.png)
+
+        Here's some guidance on each field:
+
+        - Certificate Signing Request (CSR): The PEM-encoded CSR from your external intermediate CA. This typically starts with `-----BEGIN CERTIFICATE REQUEST-----`.
+        - Valid From: The start date for the certificate validity period (e.g., `2025-01-01`). Leave empty to default to the current date and time.
+        - Valid Until: The end date for the certificate validity period (e.g., `2029-06-12`). This must be in the future and within the validity period of the signing CA.
+        - Max Path Length: The maximum number of intermediate CAs that can be chained below this certificate. For example, a value of `0` means the signed intermediate CA can only issue end-entity certificates and cannot sign further subordinate CAs. A value of `1` allows one additional level of intermediate CAs below it. Leave empty to omit the constraint entirely. Note that this value must be less than the signing CA's own max path length.
+
+        Press **Sign** to sign the CSR.
+
+        ![pki sign intermediate result](/images/platform/pki/ca/ca-sign-intermediate-result.png)
+
+        Once signed, the modal displays the signed certificate, certificate chain, and issuing CA certificate. You can use the **Copy** and **Download** buttons to retrieve each certificate.
+
+        Take the signed certificate and certificate chain and import them into your external intermediate CA.
+
+        Great! You've successfully signed an external intermediate CA's CSR using your Infisical CA. The external intermediate CA is now chained to your Infisical root of trust and can issue end-entity certificates accordingly.
+    </Step>
+</Steps>
+  </Tab>
+  <Tab title="API">
+    To sign an external intermediate CA's CSR via API, make an API request to the [Sign Intermediate](/api-reference/endpoints/certificate-authorities/internal/sign-intermediate) API endpoint, providing the CSR and validity parameters.
+
+    ### Sample request
+
+    ```bash Request
+    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<signing-ca-id>/sign-intermediate' \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data-raw '{
+          "csr": "-----BEGIN CERTIFICATE REQUEST-----\n...\n-----END CERTIFICATE REQUEST-----",
+          "notAfter": "2029-06-12"
+      }'
+    ```
+
+    ### Sample response
+
+    ```bash Response
+    {
+      certificate: "...",
+      certificateChain: "...",
+      issuingCaCertificate: "...",
+      serialNumber: "...",
+    }
+    ```
+
+    <Note>
+      The `notAfter` value must be within the validity period of the signing CA.
+      The optional `notBefore` field defaults to the current time if omitted.
+      The optional `maxPathLength` field controls the path length constraint on the signed certificate.
+    </Note>
+
+    Import the returned `certificate` and `certificateChain` into your external intermediate CA to complete the chain of trust.
+  </Tab>
+</Tabs>
+
 ## Guide to CA Renewal
 
 In the following steps, we explore how to renew a CA certificate.
@@ -330,5 +420,16 @@ the certificate back to the intermediate CA.
     certificate from your external CA. The certificate, along with the external
     CA certificate chain, can be imported back to the Intermediate CA as part of
     the CA installation step.
+  </Accordion>
+  <Accordion title="What is the difference between 'Install Certificate' and 'Sign Intermediate'?">
+    **Install Certificate** is used when creating a CA hierarchy within Infisical. It chains an
+    Infisical-managed intermediate CA to a parent CA by generating a CSR internally, signing it,
+    and importing the certificate — all within Infisical.
+
+    **Sign Intermediate** is used when you have an external (e.g., on-prem) intermediate CA whose
+    private key is not managed by Infisical. You provide the CSR from that external CA, and Infisical
+    signs it using one of your Infisical CAs. You then take the signed certificate back to your
+    external CA. This is useful for multi-instance setups where the intermediate CA's private key
+    must remain outside of Infisical.
   </Accordion>
 </AccordionGroup>
