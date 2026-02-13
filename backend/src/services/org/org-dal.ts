@@ -668,26 +668,28 @@ export const orgDALFactory = (db: TDbClient) => {
     actorId: string;
     orgId: string;
     status?: OrgMembershipStatus;
+    /** When true, do not filter by status (e.g. to find Invited and update to Accepted) */
+    acceptAnyStatus?: boolean;
     tx?: Knex;
   }): Promise<TMemberships | null> => {
     try {
       const conn = dto.tx ?? db.replicaNode();
       const status = dto.status ?? OrgMembershipStatus.Accepted;
+      const anyStatus = dto.acceptAnyStatus === true;
 
       // 1. Direct membership (user or identity)
-      const direct = await conn(TableName.Membership)
+      const directQb = conn(TableName.Membership)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .where(`${TableName.Membership}.scopeOrgId`, dto.orgId)
-        .where(`${TableName.Membership}.status`, status)
         .andWhere((qb) => {
           if (dto.actorType === ActorType.IDENTITY) {
             void qb.where(`${TableName.Membership}.actorIdentityId`, dto.actorId);
           } else {
             void qb.where(`${TableName.Membership}.actorUserId`, dto.actorId);
           }
-        })
-        .select(selectAllTableCols(TableName.Membership))
-        .first();
+        });
+      if (!anyStatus) void directQb.where(`${TableName.Membership}.status`, status);
+      const direct = await directQb.select(selectAllTableCols(TableName.Membership)).first();
 
       if (direct) return direct as TMemberships;
 
@@ -695,11 +697,13 @@ export const orgDALFactory = (db: TDbClient) => {
       const viaGroup = conn(TableName.Membership)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .where(`${TableName.Membership}.scopeOrgId`, dto.orgId)
-        .where((qb) => {
-          void qb.where(`${TableName.Membership}.status`, status).orWhereNull(`${TableName.Membership}.status`);
-        })
         .whereNotNull(`${TableName.Membership}.actorGroupId`)
         .select(selectAllTableCols(TableName.Membership));
+      if (!anyStatus) {
+        void viaGroup.where((qb) => {
+          void qb.where(`${TableName.Membership}.status`, status).orWhereNull(`${TableName.Membership}.status`);
+        });
+      }
 
       if (dto.actorType === ActorType.IDENTITY) {
         void viaGroup
