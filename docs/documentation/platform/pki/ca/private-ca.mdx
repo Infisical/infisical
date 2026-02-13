@@ -423,8 +423,7 @@ the certificate back to the intermediate CA.
   </Accordion>
   <Accordion title="What is the difference between 'Install Certificate' and 'Sign Intermediate'?">
     **Install Certificate** is used when creating a CA hierarchy within Infisical. It chains an
-    Infisical-managed intermediate CA to a parent CA by generating a CSR internally, signing it,
-    and importing the certificate — all within Infisical.
+    Infisical-managed intermediate CA to a parent CA.
 
     **Sign Intermediate** is used when you have an external (e.g., on-prem) intermediate CA whose
     private key is not managed by Infisical. You provide the CSR from that external CA, and Infisical
