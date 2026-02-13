@@ -24,8 +24,7 @@ export const CriblProviderFactory = () => {
     await request
       .post(url, JSON.stringify({ ping: "ok" }), {
         headers: streamHeaders,
-        timeout: AUDIT_LOG_STREAM_TIMEOUT,
-        signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
+        timeout: AUDIT_LOG_STREAM_TIMEOUT
       })
       .catch((err) => {
         throw new BadRequestError({ message: `Failed to connect with Cribl: ${(err as Error)?.message}` });
@@ -46,8 +45,7 @@ export const CriblProviderFactory = () => {
 
     await request.post(url, JSON.stringify(auditLog), {
       headers: streamHeaders,
-      timeout: AUDIT_LOG_STREAM_TIMEOUT,
-      signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
+      timeout: AUDIT_LOG_STREAM_TIMEOUT
     });
   };
 
