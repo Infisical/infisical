@@ -73,7 +73,7 @@ export const downloadSecretEnvFile = (
   const file = secretsToDownload
     .sort((a, b) => a.key.toLowerCase().localeCompare(b.key.toLowerCase()))
     .reduce((prev, { key, comment, value }) => {
-      const escapedValue = value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
+      const escapedValue = value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
       const formattedValue = `"${escapedValue}"`;
 
       if (!comment) return `${prev}${key}=${formattedValue}\n`;
