@@ -539,11 +539,11 @@ export const authLoginServiceFactory = ({
     const user = await userDAL.findUserEncKeyByUserId(decodedToken.userId);
     if (!user) throw new BadRequestError({ message: "User not found", name: "Find user from token" });
 
-    // Check user membership in the sub-organization
-    const orgMembership = await membershipUserDAL.findOne({
-      actorUserId: user.id,
-      scopeOrgId: organizationId,
-      scope: AccessScope.Organization,
+    // Check user membership in the sub-organization (direct or via group)
+    const orgMembership = await orgDAL.findEffectiveOrgMembership({
+      actorType: ActorType.USER,
+      actorId: user.id,
+      orgId: organizationId,
       status: OrgMembershipStatus.Accepted
     });
 
@@ -578,11 +578,11 @@ export const authLoginServiceFactory = ({
         });
       }
 
-      // Check user membership in the root organization
-      const rootOrgMembership = await membershipUserDAL.findOne({
-        actorUserId: user.id,
-        scopeOrgId: selectedOrg.rootOrgId,
-        scope: AccessScope.Organization,
+      // Check user membership in the root organization (direct or via group)
+      const rootOrgMembership = await orgDAL.findEffectiveOrgMembership({
+        actorType: ActorType.USER,
+        actorId: user.id,
+        orgId: selectedOrg.rootOrgId,
         status: OrgMembershipStatus.Accepted
       });
 
