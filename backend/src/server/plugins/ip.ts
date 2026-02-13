@@ -11,7 +11,7 @@ const headersOrder = [
   "fastly-client-ip",
   "true-client-ip", // Akamai and Cloudflare
   "x-real-ip", // Nginx
-  "x-cluser-client-ip", // Rackspace LB
+  "x-cluster-client-ip", // Rackspace LB
   "forwarded-for",
   "x-forwarded",
   "forwarded",
