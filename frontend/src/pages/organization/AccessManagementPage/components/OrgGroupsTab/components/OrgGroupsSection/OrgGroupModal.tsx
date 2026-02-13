@@ -125,11 +125,9 @@ export const OrgGroupModal = ({
   const isCreateMode = !popUp?.group?.data;
   const showToggle = isSubOrganization && isCreateMode;
 
-  const modalTitle = (() => {
-    if (!isCreateMode) return "Update Group";
-    if (isSubOrganization) return "Add Group to Sub-Organization";
-    return "Create Group";
-  })();
+  let modalTitle = "Create Group";
+  if (!isCreateMode) modalTitle = "Update Group";
+  else if (isSubOrganization) modalTitle = "Add Group to Sub-Organization";
 
   return (
     <Modal

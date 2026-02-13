@@ -8,7 +8,7 @@ import {
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { BadRequestError, InternalServerError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 
@@ -60,10 +60,7 @@ export const newOrgMembershipGroupFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Create, OrgPermissionSubjects.Groups);
 
     const group = await groupDAL.findById(dto.data.groupId);
-    if (!group) {
-      throw new NotFoundError({ message: "Group not found" });
-    }
-    if (group.orgId !== dto.permission.rootOrgId) {
+    if (!group || group.orgId !== dto.permission.rootOrgId) {
       throw new BadRequestError({
         message: "Only groups from parent organization can be linked to this sub-organization"
       });
@@ -138,14 +135,9 @@ export const newOrgMembershipGroupFactory = ({
 
   const onDeleteMembershipGroupGuard: TMembershipGroupScopeFactory["onDeleteMembershipGroupGuard"] = async (dto) => {
     const group = await groupDAL.findById(dto.selector.groupId);
-    if (!group) {
-      throw new NotFoundError({ message: "Group not found" });
-    }
-    const isLinkDelete = group.orgId !== dto.permission.orgId;
-    if (!isLinkDelete) {
+    if (!group || group.orgId === dto.permission.orgId) {
       throw new BadRequestError({
-        message:
-          "Organization membership cannot be deleted for organization scoped group. Only linked groups can be unlinked."
+        message: "Unlink is only allowed for linked groups. This group was created in this organization."
       });
     }
 
