@@ -55,7 +55,7 @@ type Props = {
       name?: string;
       slug?: string;
       role?: string;
-      isInherited?: boolean;
+      isLinkedGroup?: boolean;
       customRole?: {
         name: string;
         slug: string;
@@ -233,7 +233,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
               filteredGroups
                 .slice(offset, perPage * page)
                 .map(({ id, name, slug, role, customRole, orgId: groupOrgId }) => {
-                  const isInherited = currentOrg ? groupOrgId !== currentOrg.id : false;
+                  const isLinkedGroup = currentOrg ? groupOrgId !== currentOrg.id : false;
                   return (
                     <Tr
                       onClick={() =>
@@ -306,7 +306,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                             >
                               Copy Group ID
                             </DropdownMenuItem>
-                            {!isInherited && (
+                            {!isLinkedGroup && (
                               <OrgPermissionCan
                                 I={OrgPermissionGroupActions.Edit}
                                 a={OrgPermissionSubjects.Groups}
@@ -331,7 +331,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                                 )}
                               </OrgPermissionCan>
                             )}
-                            {!isInherited && (
+                            {!isLinkedGroup && (
                               <OrgPermissionCan
                                 I={OrgPermissionGroupActions.Edit}
                                 a={OrgPermissionSubjects.Groups}
@@ -367,12 +367,12 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                                     handlePopUpOpen("deleteGroup", {
                                       groupId: id,
                                       name,
-                                      isInherited
+                                      isLinkedGroup
                                     });
                                   }}
                                   isDisabled={!isAllowed}
                                 >
-                                  {isInherited ? "Unlink Group" : "Delete Group"}
+                                  {isLinkedGroup ? "Unlink Group" : "Delete Group"}
                                 </DropdownMenuItem>
                               )}
                             </OrgPermissionCan>

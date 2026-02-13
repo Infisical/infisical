@@ -156,7 +156,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
               filteredGroupMemberships
                 .slice(offset, perPage * page)
                 .map(({ group: { id, name, orgId: groupOrgId }, roles, createdAt }) => {
-                  const isInherited =
+                  const isLinkedGroup =
                     groupOrgId != null && currentOrg != null && groupOrgId !== currentOrg.id;
                   return (
                     <Tr
@@ -196,7 +196,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                           {(isAllowed) => (
                             <GroupRoles
                               roles={roles}
-                              disableEdit={!isAllowed || isInherited}
+                              disableEdit={!isAllowed || isLinkedGroup}
                               groupId={id}
                             />
                           )}
@@ -217,7 +217,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                               </IconButton>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent sideOffset={2} align="end">
-                              {!isInherited && (
+                              {!isLinkedGroup && (
                                 <ProjectPermissionCan
                                   I={ProjectPermissionActions.Delete}
                                   a={ProjectPermissionSub.Groups}

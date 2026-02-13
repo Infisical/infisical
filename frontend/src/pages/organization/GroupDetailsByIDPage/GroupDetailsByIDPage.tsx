@@ -78,7 +78,7 @@ const Page = () => {
       </div>
     );
 
-  const isInherited = data && currentOrg ? data.group.orgId !== currentOrg.id : false;
+  const isLinkedGroup = data && currentOrg ? data.group.orgId !== currentOrg.id : false;
 
   return (
     <div className="mx-auto flex max-w-8xl flex-col">
@@ -153,11 +153,11 @@ const Page = () => {
                         handlePopUpOpen("deleteGroup", {
                           id: groupId,
                           name: data.group.name,
-                          isInherited
+                          isLinkedGroup
                         });
                       }}
                     >
-                      {isInherited ? "Unlink Group" : "Delete Group"}
+                      {isLinkedGroup ? "Unlink Group" : "Delete Group"}
                     </UnstableDropdownMenuItem>
                   )}
                 </OrgPermissionCan>
@@ -174,12 +174,12 @@ const Page = () => {
               <GroupMembersSection
                 groupId={groupId}
                 groupSlug={data.group.slug}
-                isInherited={isInherited}
+                isLinkedGroup={isLinkedGroup}
               />
               <GroupProjectsSection
                 groupId={groupId}
                 groupSlug={data.group.slug}
-                hideAddToProject={isInherited}
+                hideAddToProject={isLinkedGroup}
               />
             </div>
           </div>
@@ -193,7 +193,7 @@ const Page = () => {
       <DeleteActionModal
         isOpen={popUp.deleteGroup.isOpen}
         title={
-          (popUp?.deleteGroup?.data as { isInherited?: boolean })?.isInherited
+          (popUp?.deleteGroup?.data as { isLinkedGroup?: boolean })?.isLinkedGroup
             ? `Are you sure you want to unlink the group "${
                 (popUp?.deleteGroup?.data as { name: string })?.name || ""
               }" from this sub-organization?`

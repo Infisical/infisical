@@ -52,18 +52,18 @@ export const OrgGroupsSection = () => {
   const onDeleteGroupSubmit = async ({
     name,
     groupId,
-    isInherited
+    isLinkedGroup
   }: {
     name: string;
     groupId: string;
-    isInherited?: boolean;
+    isLinkedGroup?: boolean;
   }) => {
     await deleteMutateAsync({
       id: groupId,
       organizationId: currentOrg?.id
     });
     createNotification({
-      text: isInherited
+      text: isLinkedGroup
         ? "Successfully unlinked group from sub-organization"
         : `Successfully deleted the group named ${name}`,
       type: "success"
@@ -109,7 +109,7 @@ export const OrgGroupsSection = () => {
       <DeleteActionModal
         isOpen={popUp.deleteGroup.isOpen}
         title={
-          (popUp?.deleteGroup?.data as { name: string; isInherited?: boolean })?.isInherited
+          (popUp?.deleteGroup?.data as { name: string; isLinkedGroup?: boolean })?.isLinkedGroup
             ? `Are you sure you want to unlink the group "${
                 (popUp?.deleteGroup?.data as { name: string })?.name || ""
               }" from this sub-organization?`
@@ -121,7 +121,7 @@ export const OrgGroupsSection = () => {
         deleteKey="confirm"
         onDeleteApproved={() =>
           onDeleteGroupSubmit(
-            popUp?.deleteGroup?.data as { name: string; groupId: string; isInherited?: boolean }
+            popUp?.deleteGroup?.data as { name: string; groupId: string; isLinkedGroup?: boolean }
           )
         }
       />
