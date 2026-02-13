@@ -69,7 +69,6 @@ export type TSanitizedSharedSecret = {
   accessType: SecretSharingAccessType;
   expiresAt: string;
   expiresAfterViews: number | null;
-  authorizedEmails: string[] | null;
 };
 
 export type TSharedSecretPublicDetails = TSanitizedSharedSecret & {

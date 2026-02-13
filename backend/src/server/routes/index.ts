@@ -1621,6 +1621,7 @@ export const registerRoutes = async (
     kmsService,
     smtpService,
     userDAL,
+    identityDAL,
     licenseService
   });
 

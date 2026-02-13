@@ -4,6 +4,7 @@ import { OrganizationActionScope, TOrganizations, TSecretSharing } from "@app/db
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionSecretShareAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
@@ -12,6 +13,7 @@ import { ms } from "@app/lib/ms";
 import { OrgServiceActor, SecretSharingAccessType } from "@app/lib/types";
 
 import { ActorType } from "../auth/auth-type";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TSecretShareBrandConfig } from "../org/org-types";
@@ -41,6 +43,7 @@ type TSecretSharingServiceFactoryDep = {
   kmsService: TKmsServiceFactory;
   smtpService: TSmtpService;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
 };
 
 export type TSecretSharingServiceFactory = ReturnType<typeof secretSharingServiceFactory>;
@@ -55,7 +58,7 @@ const mapIdentifierToId = (sharedSecret: TSecretSharing): Omit<TSecretSharing, "
 
   if (!identifier) {
     throw new BadRequestError({
-      message: `Shared secret created at ${sharedSecret.createdAt.toISOString()} has no identifier`
+      message: `Shared secret with ID ${sharedSecret.id} has no identifier`
     });
   }
 
@@ -70,6 +73,7 @@ export const secretSharingServiceFactory = ({
   secretSharingDAL,
   orgAssetDAL,
   orgDAL,
+  identityDAL,
   kmsService,
   smtpService,
   userDAL,
@@ -202,23 +206,37 @@ export const secretSharingServiceFactory = ({
 
     // Loop through recipients and send out emails with unique access links
     if (authorizedEmails) {
-      const user = await userDAL.findById(actorId);
+      let displayUsername: string | undefined;
 
-      if (!user) {
-        throw new NotFoundError({ message: `User with ID '${actorId}' not found` });
+      if (actor === ActorType.USER) {
+        const user = await userDAL.findById(actorId);
+
+        if (!user) {
+          throw new NotFoundError({ message: `User with ID '${actorId}' not found` });
+        }
+
+        displayUsername = user.username;
+      } else if (actor === ActorType.IDENTITY) {
+        const identity = await identityDAL.findById(actorId);
+
+        if (!identity) {
+          throw new NotFoundError({ message: `Identity with ID '${actorId}' not found` });
+        }
+
+        displayUsername = `${identity.name} (Machine Identity)`;
       }
 
       for await (const email of authorizedEmails) {
         try {
           // Only show the username to emails which are part of the organization
-          const respondentUsername = orgEmails.includes(email) ? user.username : undefined;
+          const senderUsername = orgEmails.includes(email) ? displayUsername : undefined;
 
           await smtpService.sendMail({
             recipients: [email],
             subjectLine: "A secret has been shared with you",
             substitutions: {
               name,
-              respondentUsername,
+              senderUsername,
               secretRequestUrl: `${appCfg.SITE_URL}/shared/secret/${mappedSharedSecret.id}`
             },
             template: SmtpTemplates.SecretRequestCompleted
@@ -596,91 +614,97 @@ export const secretSharingServiceFactory = ({
 
   /** Gets password-less secret. validates all secret's requested (must be fresh). */
   const accessSharedSecret = async ({ sharedSecretId, orgId, actorId, password }: TGetActiveSharedSecretByIdDTO) => {
-    const sharedSecret = await secretSharingDAL.findOne({
-      type: SecretSharingType.Share,
-      identifier: Buffer.from(sharedSecretId, "base64url").toString("hex")
+    const result = await secretSharingDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.AccessSharedSecret(sharedSecretId)]);
+
+      const sharedSecret = await secretSharingDAL.findOne({
+        type: SecretSharingType.Share,
+        identifier: Buffer.from(sharedSecretId, "base64url").toString("hex")
+      });
+
+      if (!sharedSecret) {
+        throw new NotFoundError({
+          message: `Shared secret with ID '${sharedSecretId}' not found`
+        });
+      }
+
+      const { accessType, expiresAt, expiresAfterViews } = sharedSecret;
+
+      if (accessType === SecretSharingAccessType.Organization && orgId === undefined) {
+        throw new UnauthorizedError();
+      }
+
+      if (accessType === SecretSharingAccessType.Organization && orgId !== sharedSecret.orgId) {
+        throw new ForbiddenRequestError();
+      }
+
+      // If the secret was shared with specific emails, verify that the current user's session email is authorized
+      if (sharedSecret.authorizedEmails && (sharedSecret.authorizedEmails as string[]).length > 0) {
+        if (!actorId) throw new UnauthorizedError();
+
+        const user = await userDAL.findById(actorId);
+        if (!user || !user.email) throw new UnauthorizedError();
+
+        if (!(sharedSecret.authorizedEmails as string[]).includes(user.email))
+          throw new ForbiddenRequestError({ message: "You are not authorized to view this secret" });
+      }
+
+      // all secrets pass through here, meaning we check if its expired first and then check if it needs verification
+      // or can be safely sent to the client.
+      if (expiresAt !== null && expiresAt < new Date()) {
+        // check lifetime expiry
+        await secretSharingDAL.softDeleteById(sharedSecret.id);
+        throw new NotFoundError({ message: "The shared secret has expired" });
+      }
+
+      if (expiresAfterViews !== null && expiresAfterViews === 0) {
+        // check view count expiry
+        await secretSharingDAL.softDeleteById(sharedSecret.id);
+        throw new NotFoundError({ message: "The shared secret has reached its view limit" });
+      }
+
+      // Password checks
+      const isPasswordProtected = Boolean(sharedSecret.password);
+      const hasProvidedPassword = Boolean(password);
+      if (isPasswordProtected) {
+        if (hasProvidedPassword) {
+          const isMatch = await crypto.hashing().compareHash(password as string, sharedSecret.password as string);
+          if (!isMatch) {
+            throw new UnauthorizedError({ message: "Invalid credentials" });
+          }
+        } else {
+          throw new UnauthorizedError({ message: "Password is required to access this secret" });
+        }
+      }
+
+      const decryptWithRoot = kmsService.decryptWithRootKey();
+
+      if (!sharedSecret.encryptedSecret) {
+        throw new BadRequestError({ message: "Secret has no value specified" });
+      }
+      const decryptedSecretValue = decryptWithRoot(sharedSecret.encryptedSecret);
+
+      let organization: TOrganizations | undefined;
+
+      if (
+        sharedSecret.orgId &&
+        sharedSecret.orgId === orgId &&
+        sharedSecret.accessType === SecretSharingAccessType.Organization
+      ) {
+        organization = await orgDAL.findOrgById(sharedSecret.orgId);
+      }
+
+      // decrement when we are sure the user will view secret.
+      await $decrementSecretViewCount(sharedSecret);
+
+      return {
+        ...mapIdentifierToId(sharedSecret),
+        secretValue: decryptedSecretValue.toString(),
+        orgName: organization?.name
+      };
     });
 
-    if (!sharedSecret) {
-      throw new NotFoundError({
-        message: `Shared secret with ID '${sharedSecretId}' not found`
-      });
-    }
-
-    const { accessType, expiresAt, expiresAfterViews } = sharedSecret;
-
-    if (accessType === SecretSharingAccessType.Organization && orgId === undefined) {
-      throw new UnauthorizedError();
-    }
-
-    if (accessType === SecretSharingAccessType.Organization && orgId !== sharedSecret.orgId) {
-      throw new ForbiddenRequestError();
-    }
-
-    // If the secret was shared with specific emails, verify that the current user's session email is authorized
-    if (sharedSecret.authorizedEmails && (sharedSecret.authorizedEmails as string[]).length > 0) {
-      if (!actorId) throw new UnauthorizedError();
-
-      const user = await userDAL.findById(actorId);
-      if (!user || !user.email) throw new UnauthorizedError();
-
-      if (!(sharedSecret.authorizedEmails as string[]).includes(user.email))
-        throw new ForbiddenRequestError({ message: "You are not authorized to view this secret" });
-    }
-
-    // all secrets pass through here, meaning we check if its expired first and then check if it needs verification
-    // or can be safely sent to the client.
-    if (expiresAt !== null && expiresAt < new Date()) {
-      // check lifetime expiry
-      await secretSharingDAL.softDeleteById(sharedSecret.id);
-      throw new NotFoundError({ message: "The shared secret has expired" });
-    }
-
-    if (expiresAfterViews !== null && expiresAfterViews === 0) {
-      // check view count expiry
-      await secretSharingDAL.softDeleteById(sharedSecret.id);
-      throw new NotFoundError({ message: "The shared secret has reached its view limit" });
-    }
-
-    // Password checks
-    const isPasswordProtected = Boolean(sharedSecret.password);
-    const hasProvidedPassword = Boolean(password);
-    if (isPasswordProtected) {
-      if (hasProvidedPassword) {
-        const isMatch = await crypto.hashing().compareHash(password as string, sharedSecret.password as string);
-        if (!isMatch) {
-          throw new UnauthorizedError({ message: "Invalid credentials" });
-        }
-      } else {
-        throw new UnauthorizedError({ message: "Password is required to access this secret" });
-      }
-    }
-
-    const decryptWithRoot = kmsService.decryptWithRootKey();
-
-    if (!sharedSecret.encryptedSecret) {
-      throw new BadRequestError({ message: "Secret has no value specified" });
-    }
-    const decryptedSecretValue = decryptWithRoot(sharedSecret.encryptedSecret);
-
-    let organization: TOrganizations | undefined;
-
-    if (
-      sharedSecret.orgId &&
-      sharedSecret.orgId === orgId &&
-      sharedSecret.accessType === SecretSharingAccessType.Organization
-    ) {
-      organization = await orgDAL.findOrgById(sharedSecret.orgId);
-    }
-
-    // decrement when we are sure the user will view secret.
-    await $decrementSecretViewCount(sharedSecret);
-
-    return {
-      ...mapIdentifierToId(sharedSecret),
-      secretValue: decryptedSecretValue.toString(),
-      orgName: organization?.name
-    };
+    return result;
   };
 
   const deleteSharedSecretById = async (deleteSharedSecretInput: TDeleteSharedSecretDTO) => {

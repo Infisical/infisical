@@ -96,6 +96,8 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       response: {
         200: SanitizedSecretSharingSchema.extend({
           isPasswordProtected: z.boolean().describe("Whether the shared secret is protected by a password.")
+        }).omit({
+          authorizedEmails: true
         })
       }
     },
@@ -234,7 +236,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         .object({
           name: z.string().max(50).optional().describe(SECRET_SHARING.CREATE.name),
           password: z.string().optional().describe(SECRET_SHARING.CREATE.password),
-          secretValue: z.string().describe(SECRET_SHARING.CREATE.secretValue),
+          secretValue: z.string().max(10_000).describe(SECRET_SHARING.CREATE.secretValue),
           expiresIn: z.string().default("30d").describe(SECRET_SHARING.CREATE.expiresIn),
           maxViews: z.number().min(1).optional().describe(SECRET_SHARING.CREATE.maxViews),
           accessType: z
