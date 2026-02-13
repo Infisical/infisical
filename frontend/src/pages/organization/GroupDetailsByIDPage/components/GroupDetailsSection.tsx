@@ -27,11 +27,7 @@ type Props = {
   canEditGroup?: boolean;
 };
 
-export const GroupDetailsSection = ({
-  groupId,
-  handlePopUpOpen,
-  canEditGroup = true
-}: Props) => {
+export const GroupDetailsSection = ({ groupId, handlePopUpOpen, canEditGroup = true }: Props) => {
   const { data } = useGetGroupById(groupId);
 
   const [, isCopyingId, setCopyTextId] = useTimedReset<string>({
