@@ -360,20 +360,20 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                               a={OrgPermissionSubjects.Groups}
                             >
                               {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    icon={<FontAwesomeIcon icon={faTrash} />}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handlePopUpOpen("deleteGroup", {
-                                        groupId: id,
-                                        name,
-                                        isInherited
-                                      });
-                                    }}
-                                    isDisabled={!isAllowed}
-                                  >
-                                    {isInherited ? "Unlink Group" : "Delete Group"}
-                                  </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  icon={<FontAwesomeIcon icon={faTrash} />}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePopUpOpen("deleteGroup", {
+                                      groupId: id,
+                                      name,
+                                      isInherited
+                                    });
+                                  }}
+                                  isDisabled={!isAllowed}
+                                >
+                                  {isInherited ? "Unlink Group" : "Delete Group"}
+                                </DropdownMenuItem>
                               )}
                             </OrgPermissionCan>
                           </DropdownMenuContent>

@@ -54,7 +54,12 @@ type Props = {
   isInherited?: boolean;
 };
 
-export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen, isInherited = false }: Props) => {
+export const GroupMembersTable = ({
+  groupId,
+  groupSlug,
+  handlePopUpOpen,
+  isInherited = false
+}: Props) => {
   const {
     search,
     setSearch,

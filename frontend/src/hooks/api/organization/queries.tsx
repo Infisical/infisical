@@ -568,7 +568,9 @@ type OrgGroupMembershipResponse = {
   totalCount: number;
 };
 
-function mapOrgMembershipToGroup(m: OrgGroupMembershipResponse["groupMemberships"][0]): TGroupOrgMembership {
+function mapOrgMembershipToGroup(
+  m: OrgGroupMembershipResponse["groupMemberships"][0]
+): TGroupOrgMembership {
   const firstRole = m.roles[0];
   return {
     id: m.group.id,
