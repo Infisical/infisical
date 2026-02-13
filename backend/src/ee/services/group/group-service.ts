@@ -259,36 +259,25 @@ export const groupServiceFactory = ({
     }
 
     const updatedGroup = await groupDAL.transaction(async (tx): Promise<TGroups> => {
-      let updated: TGroups = group;
-
-      if (!isInherited && (name || slug)) {
-        if (name) {
-          const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name }, tx);
-
-          if (existingGroup && existingGroup.id !== id) {
-            throw new BadRequestError({
-              message: `Failed to update group with name '${name}'. Group with the same name already exists`
-            });
-          }
+      if (!isInherited && (name || slug) && name) {
+        const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name }, tx);
+        if (existingGroup && existingGroup.id !== id) {
+          throw new BadRequestError({
+            message: `Failed to update group with name '${name}'. Group with the same name already exists`
+          });
         }
-
-        const updateResult = await groupDAL.update(
-          { id: group.id },
-          {
-            name,
-            slug: slug ? slugify(slug) : undefined
-          },
-          tx
-        );
-        const updatedRow = updateResult[0];
-        if (updatedRow) updated = updatedRow;
       }
+
+      const [nameSlugRow] =
+        !isInherited && (name || slug)
+          ? await groupDAL.update({ id: group.id }, { name, slug: slug ? slugify(slug) : undefined }, tx)
+          : [];
 
       if (role) {
         const membership = await membershipGroupDAL.findOne(
           {
             scope: AccessScope.Organization,
-            actorGroupId: updated.id,
+            actorGroupId: group.id,
             scopeOrgId: actorOrgId
           },
           tx
@@ -307,7 +296,7 @@ export const groupServiceFactory = ({
         );
       }
 
-      return updated;
+      return nameSlugRow ?? group;
     });
 
     return updatedGroup;
