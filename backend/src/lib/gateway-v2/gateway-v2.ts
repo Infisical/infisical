@@ -5,6 +5,7 @@ import axios from "axios";
 import https from "https";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
+import { TGatewayV2ConnectionDetails } from "@app/ee/services/gateway-v2/gateway-v2-types";
 import { splitPemChain } from "@app/services/certificate/certificate-fns";
 
 import { getConfig } from "../config/env";
@@ -263,11 +264,8 @@ export const withGatewayV2Proxy = async <T>(
   callback: (port: number) => Promise<T>,
   options: {
     protocol: GatewayProxyProtocol;
-    relayHost: string;
-    gateway: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
-    relay: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
     httpsAgent?: https.Agent;
-  }
+  } & TGatewayV2ConnectionDetails
 ): Promise<T> => {
   const { protocol, relayHost, gateway, relay, httpsAgent } = options;
 

@@ -36,3 +36,19 @@ export type TGetProjectGatewayByIdDTO = {
 export type THeartBeatDTO = {
   orgPermission: OrgServiceActor;
 };
+
+export type TGatewayV1ConnectionDetails = {
+  targetHost?: string;
+  targetPort?: number;
+  relayHost: string;
+  relayPort: string | number;
+  identityId: string;
+  orgId: string;
+      identityId: relayDetails.identityId,
+      orgId: relayDetails.orgId,
+      tlsOptions: {
+        ca: relayDetails.certChain,
+        cert: relayDetails.certificate,
+        key: relayDetails.privateKey.toString()
+      }
+}
