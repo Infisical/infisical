@@ -432,7 +432,7 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
       );
 
       expect(personalSecrets).toEqual(
-        expect.arrayContaining([
+        expect.not.arrayContaining([
           expect.objectContaining({
             secretKey: secret.key,
             type: SecretType.Personal
