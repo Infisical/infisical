@@ -224,8 +224,8 @@ export const groupServiceFactory = ({
       throw new NotFoundError({ message: `Failed to find group with ID ${id}` });
     }
 
-    const isInherited = group.orgId !== actorOrgId;
-    if (isInherited && (name || slug)) {
+    const isLinkedGroup = group.orgId !== actorOrgId;
+    if (isLinkedGroup && (name || slug)) {
       throw new BadRequestError({
         message: "Cannot update name or slug of a linked group. Only the role in this sub-organization can be updated."
       });
@@ -259,7 +259,7 @@ export const groupServiceFactory = ({
     }
 
     const updatedGroup = await groupDAL.transaction(async (tx): Promise<TGroups> => {
-      if (!isInherited && (name || slug) && name) {
+      if (!isLinkedGroup && (name || slug) && name) {
         const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name }, tx);
         if (existingGroup && existingGroup.id !== id) {
           throw new BadRequestError({
@@ -269,7 +269,7 @@ export const groupServiceFactory = ({
       }
 
       const [nameSlugRow] =
-        !isInherited && (name || slug)
+        !isLinkedGroup && (name || slug)
           ? await groupDAL.update({ id: group.id }, { name, slug: slug ? slugify(slug) : undefined }, tx)
           : [];
 
@@ -334,7 +334,7 @@ export const groupServiceFactory = ({
     }
 
     if (group.orgId !== actorOrgId) {
-      // Inherited group: unlink by deleting the membership in this org only
+      // Linked group: unlink by deleting the membership in this org only
       await membershipRoleDAL.delete({ membershipId: groupMembership.id });
       await membershipGroupDAL.deleteById(groupMembership.id);
       return group;

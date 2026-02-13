@@ -23,7 +23,7 @@ type Props = {
     popUpName: keyof UsePopUpState<["removeMemberFromGroup"]>,
     data?: object
   ) => void;
-  isInherited?: boolean;
+  isLinkedGroup?: boolean;
 };
 
 export const GroupMembershipUserRow = ({
@@ -33,7 +33,7 @@ export const GroupMembershipUserRow = ({
     id
   },
   handlePopUpOpen,
-  isInherited = false
+  isLinkedGroup = false
 }: Props) => {
   const { currentOrg } = useOrganization();
 
@@ -50,7 +50,7 @@ export const GroupMembershipUserRow = ({
       </UnstableTableCell>
       <UnstableTableCell>{format(new Date(joinedGroupAt), "yyyy-MM-dd")}</UnstableTableCell>
       <UnstableTableCell>
-        {!isInherited && (
+        {!isLinkedGroup && (
           <UnstableDropdownMenu>
             <UnstableDropdownMenuTrigger>
               <UnstableIconButton variant="ghost" size="xs">

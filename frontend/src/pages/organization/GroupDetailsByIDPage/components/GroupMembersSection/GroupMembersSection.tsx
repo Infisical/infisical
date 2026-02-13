@@ -27,14 +27,14 @@ import { GroupMembersTable } from "./GroupMembersTable";
 type Props = {
   groupId: string;
   groupSlug: string;
-  isInherited?: boolean;
+  isLinkedGroup?: boolean;
 };
 
 type RemoveMemberData =
   | { memberType: GroupMemberType.USER; username: string }
   | { memberType: GroupMemberType.MACHINE_IDENTITY; identityId: string; name: string };
 
-export const GroupMembersSection = ({ groupId, groupSlug, isInherited = false }: Props) => {
+export const GroupMembersSection = ({ groupId, groupSlug, isLinkedGroup = false }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "addGroupMembers",
     "removeMemberFromGroup"
@@ -91,7 +91,7 @@ export const GroupMembersSection = ({ groupId, groupSlug, isInherited = false }:
           <UnstableCardTitle>Group Members</UnstableCardTitle>
           <UnstableCardDescription>Manage members of this group</UnstableCardDescription>
           <UnstableCardAction>
-            {!isInherited && (
+            {!isLinkedGroup && (
               <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
                 {(isAllowed) => (
                   <Button
@@ -118,7 +118,7 @@ export const GroupMembersSection = ({ groupId, groupSlug, isInherited = false }:
             groupId={groupId}
             groupSlug={groupSlug}
             handlePopUpOpen={handlePopUpOpen}
-            isInherited={isInherited}
+            isLinkedGroup={isLinkedGroup}
           />
         </UnstableCardContent>
       </UnstableCard>

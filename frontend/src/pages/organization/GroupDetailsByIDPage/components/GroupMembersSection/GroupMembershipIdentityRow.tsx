@@ -21,7 +21,7 @@ type Props = {
     popUpName: keyof UsePopUpState<["removeMemberFromGroup"]>,
     data?: object
   ) => void;
-  isInherited?: boolean;
+  isLinkedGroup?: boolean;
 };
 
 export const GroupMembershipIdentityRow = ({
@@ -31,7 +31,7 @@ export const GroupMembershipIdentityRow = ({
     id
   },
   handlePopUpOpen,
-  isInherited = false
+  isLinkedGroup = false
 }: Props) => {
   return (
     <UnstableTableRow key={`group-identity-${id}`}>
@@ -41,7 +41,7 @@ export const GroupMembershipIdentityRow = ({
       <UnstableTableCell isTruncatable>{name}</UnstableTableCell>
       <UnstableTableCell>{format(new Date(joinedGroupAt), "yyyy-MM-dd")}</UnstableTableCell>
       <UnstableTableCell>
-        {!isInherited && (
+        {!isLinkedGroup && (
           <UnstableDropdownMenu>
             <UnstableDropdownMenuTrigger>
               <UnstableIconButton variant="ghost" size="xs">
