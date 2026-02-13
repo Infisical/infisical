@@ -24,7 +24,7 @@ export { GroupWizardSteps };
 
 export const OrgGroupsSection = () => {
   const { subscription } = useSubscription();
-  const { isSubOrganization } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const { mutateAsync: deleteMutateAsync } = useDeleteGroup();
   const [wizardStep, setWizardStep] = useState<GroupWizardSteps>(GroupWizardSteps.CreateGroup);
 
@@ -59,7 +59,8 @@ export const OrgGroupsSection = () => {
     isInherited?: boolean;
   }) => {
     await deleteMutateAsync({
-      id: groupId
+      id: groupId,
+      organizationId: currentOrg?.id
     });
     createNotification({
       text: isInherited

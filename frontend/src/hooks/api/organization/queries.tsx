@@ -4,6 +4,7 @@ import { apiRequest } from "@app/config/request";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 
 import { TGroupOrgMembership } from "../groups/types";
+import { TOrgRole } from "../roles/types";
 import { IntegrationAuth } from "../types";
 import {
   BillingDetails,
@@ -547,18 +548,66 @@ export const useDeleteOrgById = () => {
   });
 };
 
+type OrgGroupMembershipResponse = {
+  groupMemberships: Array<{
+    id: string;
+    groupId: string;
+    group: { id: string; name: string; slug: string; orgId?: string };
+    roles: Array<{
+      id: string;
+      role: string;
+      customRoleId?: string | null;
+      customRoleName?: string | null;
+      customRoleSlug?: string | null;
+      permissions?: unknown;
+      description?: string | null;
+    }>;
+    createdAt: string;
+    updatedAt: string;
+  }>;
+  totalCount: number;
+};
+
+function mapOrgMembershipToGroup(m: OrgGroupMembershipResponse["groupMemberships"][0]): TGroupOrgMembership {
+  const firstRole = m.roles[0];
+  return {
+    id: m.group.id,
+    name: m.group.name,
+    slug: m.group.slug,
+    orgId: m.group.orgId ?? "",
+    createdAt: m.createdAt,
+    updatedAt: m.updatedAt,
+    role: firstRole?.role ?? "member",
+    roleId: firstRole?.id ?? "",
+    ...(firstRole?.role === "custom" &&
+      firstRole.customRoleSlug && {
+        customRole: {
+          id: firstRole.customRoleId ?? "",
+          name: firstRole.customRoleName ?? "",
+          slug: firstRole.customRoleSlug,
+          orgId: "",
+          createdAt: m.createdAt,
+          updatedAt: m.updatedAt,
+          permissions: (firstRole.permissions as TOrgRole["permissions"]) ?? [],
+          description: firstRole.description ?? undefined
+        } as TOrgRole
+      })
+  };
+}
+
 export const useGetOrganizationGroups = (organizationId: string) => {
   return useQuery({
     queryKey: organizationKeys.getOrgGroups(organizationId),
     enabled: Boolean(organizationId),
     queryFn: async () => {
       const {
-        data: { groups }
-      } = await apiRequest.get<{ groups: TGroupOrgMembership[] }>(
-        `/api/v1/organization/${organizationId}/groups`
+        data: { groupMemberships }
+      } = await apiRequest.get<OrgGroupMembershipResponse>(
+        "/api/v1/organizations/memberships/groups",
+        { params: { limit: 100 } }
       );
 
-      return groups;
+      return groupMemberships.map(mapOrgMembershipToGroup);
     }
   });
 };

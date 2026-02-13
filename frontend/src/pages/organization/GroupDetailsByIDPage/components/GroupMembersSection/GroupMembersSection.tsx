@@ -27,13 +27,14 @@ import { GroupMembersTable } from "./GroupMembersTable";
 type Props = {
   groupId: string;
   groupSlug: string;
+  isInherited?: boolean;
 };
 
 type RemoveMemberData =
   | { memberType: GroupMemberType.USER; username: string }
   | { memberType: GroupMemberType.MACHINE_IDENTITY; identityId: string; name: string };
 
-export const GroupMembersSection = ({ groupId, groupSlug }: Props) => {
+export const GroupMembersSection = ({ groupId, groupSlug, isInherited = false }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "addGroupMembers",
     "removeMemberFromGroup"
@@ -90,24 +91,26 @@ export const GroupMembersSection = ({ groupId, groupSlug }: Props) => {
           <UnstableCardTitle>Group Members</UnstableCardTitle>
           <UnstableCardDescription>Manage members of this group</UnstableCardDescription>
           <UnstableCardAction>
-            <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
-              {(isAllowed) => (
-                <Button
-                  isDisabled={!isAllowed}
-                  onClick={() => {
-                    handlePopUpOpen("addGroupMembers", {
-                      groupId,
-                      slug: groupSlug
-                    });
-                  }}
-                  size="xs"
-                  variant="outline"
-                >
-                  <PlusIcon />
-                  Add Member
-                </Button>
-              )}
-            </OrgPermissionCan>
+            {!isInherited && (
+              <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
+                {(isAllowed) => (
+                  <Button
+                    isDisabled={!isAllowed}
+                    onClick={() => {
+                      handlePopUpOpen("addGroupMembers", {
+                        groupId,
+                        slug: groupSlug
+                      });
+                    }}
+                    size="xs"
+                    variant="outline"
+                  >
+                    <PlusIcon />
+                    Add Member
+                  </Button>
+                )}
+              </OrgPermissionCan>
+            )}
           </UnstableCardAction>
         </UnstableCardHeader>
         <UnstableCardContent>
@@ -115,6 +118,7 @@ export const GroupMembersSection = ({ groupId, groupSlug }: Props) => {
             groupId={groupId}
             groupSlug={groupSlug}
             handlePopUpOpen={handlePopUpOpen}
+            isInherited={isInherited}
           />
         </UnstableCardContent>
       </UnstableCard>

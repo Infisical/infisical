@@ -32,6 +32,8 @@ import { registerEventRouter } from "./event-router";
 import { registerExternalGroupOrgRoleMappingRouter } from "./external-group-org-role-mapping-router";
 import { registerGroupOrgMembershipRouter } from "./group-org-membership-router";
 import { registerGroupProjectRouter } from "./group-project-router";
+import { registerOrganizationMembershipsRouter } from "./organization-memberships-router";
+import { registerProjectGroupMembershipsRouter } from "./project-group-memberships-router";
 import { registerIdentityAccessTokenRouter } from "./identity-access-token-router";
 import { registerIdentityAliCloudAuthRouter } from "./identity-alicloud-auth-router";
 import { registerIdentityAwsAuthRouter } from "./identity-aws-iam-auth-router";
@@ -111,6 +113,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     },
     { prefix: "/organization" }
   );
+  await server.register(registerOrganizationMembershipsRouter, { prefix: "/organizations" });
   await server.register(registerAdminRouter, { prefix: "/admin" });
   await server.register(registerOrgAdminRouter, { prefix: "/organization-admin" });
   await server.register(registerUserRouter, { prefix: "/user" });
@@ -154,9 +157,13 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     { prefix: "/projects" }
   );
 
-  await server.register(registerIdentityProjectMembershipRouter, {
-    prefix: "/projects/:projectId/memberships"
-  });
+  await server.register(
+    async (membershipsRouter) => {
+      await membershipsRouter.register(registerIdentityProjectMembershipRouter);
+      await membershipsRouter.register(registerProjectGroupMembershipsRouter);
+    },
+    { prefix: "/projects/:projectId/memberships" }
+  );
 
   await server.register(
     async (pkiRouter) => {
