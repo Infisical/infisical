@@ -206,7 +206,12 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
       expect(deleteFolder.statusCode).toBe(200);
     });
 
-    const getSecrets = async (environment: string, secretPath = "/", includeImports?: boolean) => {
+    const getSecrets = async (
+      environment: string,
+      secretPath = "/",
+      includeImports?: boolean,
+      includePersonalOverrides?: boolean
+    ) => {
       const res = await testServer.inject({
         method: "GET",
         url: `/api/v4/secrets`,
@@ -215,6 +220,9 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
         },
         query: {
           ...(includeImports !== undefined ? { includeImports: String(includeImports) } : {}),
+          ...(includePersonalOverrides !== undefined
+            ? { includePersonalOverrides: String(includePersonalOverrides) }
+            : {}),
           secretPath,
           environment,
           projectId: seedData1.projectV3.id
@@ -318,15 +326,10 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
         });
         expect(createSecRes.statusCode).toBe(200);
 
-        // list secrets should contain personal one and shared one
-        const secrets = await getSecrets(seedData1.environment.slug, path, false);
+        // list secrets should contain only the personal secret (v4)
+        const secrets = await getSecrets(seedData1.environment.slug, path, false, true);
         expect(secrets).toEqual(
           expect.arrayContaining([
-            expect.objectContaining({
-              secretKey: secret.key,
-              secretValue: secret.value,
-              type: SecretType.Shared
-            }),
             expect.objectContaining({
               secretKey: secret.key,
               secretValue: "personal-value",
@@ -344,15 +347,20 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
           await createSecret({ path, ...secret }); // shared one
           await createSecret({ path, ...secret, type: SecretType.Personal });
 
-          // shared secret deletion should delete personal ones also
-          const secrets = await getSecrets(seedData1.environment.slug, path, false);
-          expect(secrets).toEqual(
+          const sharedSecrets = await getSecrets(seedData1.environment.slug, path, false, false);
+          const personalSecrets = await getSecrets(seedData1.environment.slug, path, false, true);
+          expect(sharedSecrets).toEqual(
             expect.arrayContaining([
               expect.objectContaining({
                 secretKey: secret.key,
                 type: SecretType.Shared
-              }),
-              expect.not.objectContaining({
+              })
+            ])
+          );
+
+          expect(personalSecrets).toEqual(
+            expect.arrayContaining([
+              expect.objectContaining({
                 secretKey: secret.key,
                 type: SecretType.Personal
               })
@@ -391,7 +399,7 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
       expect(decryptedSecret.secretComment || "").toEqual(secret.comment);
 
       // list secret should have updated value
-      const secrets = await getSecrets(seedData1.environment.slug, path, false);
+      const secrets = await getSecrets(seedData1.environment.slug, path, false, false);
       expect(secrets).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -411,13 +419,20 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
       expect(deletedSecret.secretKey).toEqual(secret.key);
 
       // shared secret deletion should delete personal ones also
-      const secrets = await getSecrets(seedData1.environment.slug, path, false);
-      expect(secrets).toEqual(
+      const sharedSecrets = await getSecrets(seedData1.environment.slug, path, false);
+      const personalSecrets = await getSecrets(seedData1.environment.slug, path, false, true);
+
+      expect(sharedSecrets).toEqual(
         expect.not.arrayContaining([
           expect.objectContaining({
             secretKey: secret.key,
             type: SecretType.Shared
-          }),
+          })
+        ])
+      );
+
+      expect(personalSecrets).toEqual(
+        expect.arrayContaining([
           expect.objectContaining({
             secretKey: secret.key,
             type: SecretType.Personal
