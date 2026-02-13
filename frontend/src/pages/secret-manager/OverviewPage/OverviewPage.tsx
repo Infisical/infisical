@@ -1109,12 +1109,12 @@ export const OverviewPage = () => {
         />
         <UnstableCard>
           <UnstableCardHeader>
-            <div className="flex flex-col gap-3 overflow-hidden lg:flex-row lg:items-center">
-              <div className="flex flex-1 items-center gap-x-3 overflow-hidden whitespace-nowrap lg:mr-auto">
+            <div className="flex flex-col gap-3 overflow-hidden dashboard:flex-row dashboard:items-center">
+              <div className="flex flex-1 items-center gap-x-3 overflow-hidden whitespace-nowrap dashboard:mr-auto">
                 <EnvironmentSelect selectedEnvs={filteredEnvs} setSelectedEnvs={setFilteredEnvs} />
                 <FolderBreadcrumb secretPath={secretPath} onResetSearch={handleResetSearch} />
               </div>
-              <div className="flex shrink-0 items-center gap-x-3">
+              <div className="flex flex-wrap items-center gap-3">
                 {userAvailableEnvs.length > 0 && (
                   <DownloadEnvButton
                     secretPath={secretPath}
