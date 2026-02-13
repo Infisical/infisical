@@ -8,22 +8,46 @@ export const downloadTxtFile = (filename: string, content: string) => {
 /**
  * Merges local secrets with imported secrets (local > later imports > earlier imports),
  * formats them as a .env file string, and triggers a download.
+ * Personal overrides take precedence over shared secret values.
  */
 export const downloadSecretEnvFile = (
   environment: string,
-  localSecrets: { secretKey: string; secretValue?: string; secretComment?: string }[],
+  localSecrets: {
+    secretKey: string;
+    secretValue?: string;
+    secretComment?: string;
+    type?: string;
+  }[],
   importedSecrets: {
-    secrets: { secretKey: string; secretValue?: string; secretComment?: string }[];
+    secrets: { secretKey: string; secretValue?: string; secretComment?: string; type?: string }[];
   }[]
 ) => {
   const secretsPicked = new Set<string>();
   const secretsToDownload: { key: string; value: string; comment?: string }[] = [];
 
+  // Build a map of personal override values (personal overrides take precedence)
+  const personalOverrides = new Map<string, { value?: string }>();
   localSecrets.forEach((el) => {
+    if (el.type === "personal") {
+      personalOverrides.set(el.secretKey, { value: el.secretValue });
+    }
+  });
+  importedSecrets.forEach((imp) => {
+    imp.secrets.forEach((el) => {
+      if (el.type === "personal") {
+        personalOverrides.set(el.secretKey, { value: el.secretValue });
+      }
+    });
+  });
+
+  localSecrets.forEach((el) => {
+    if (el.type === "personal") return;
+
     secretsPicked.add(el.secretKey);
+    const override = personalOverrides.get(el.secretKey);
     secretsToDownload.push({
       key: el.secretKey,
-      value: el.secretValue ?? "",
+      value: (override ? override.value : el.secretValue) ?? "",
       comment: el.secretComment
     });
   });
@@ -31,10 +55,13 @@ export const downloadSecretEnvFile = (
   for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
     for (let j = importedSecrets[i].secrets.length - 1; j >= 0; j -= 1) {
       const secret = importedSecrets[i].secrets[j];
+      if (secret.type === "personal") continue;
+
       if (!secretsPicked.has(secret.secretKey)) {
+        const override = personalOverrides.get(secret.secretKey);
         secretsToDownload.push({
           key: secret.secretKey,
-          value: secret.secretValue ?? "",
+          value: (override ? override.value : secret.secretValue) ?? "",
           comment: secret.secretComment
         });
       }
@@ -44,7 +71,7 @@ export const downloadSecretEnvFile = (
 
   const file = secretsToDownload
     .sort((a, b) => a.key.toLowerCase().localeCompare(b.key.toLowerCase()))
-    .reduce((prev, { key, comment, value }, index) => {
+    .reduce((prev, { key, comment, value }) => {
       const escapedValue = value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
       const formattedValue = `"${escapedValue}"`;
 
