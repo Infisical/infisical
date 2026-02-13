@@ -132,7 +132,6 @@ export const requestWithGitHubGateway = async <T>(
   }
 
   const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(gatewayId);
-  const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
 
   return withGatewayProxy(
     async (proxyPort) => {
@@ -165,18 +164,10 @@ export const requestWithGitHubGateway = async <T>(
       }
     },
     {
+      relayDetails,
       protocol: GatewayProxyProtocol.Tcp,
       targetHost,
-      targetPort: 443,
-      relayHost,
-      relayPort: Number(relayPort),
-      identityId: relayDetails.identityId,
-      orgId: relayDetails.orgId,
-      tlsOptions: {
-        ca: relayDetails.certChain,
-        cert: relayDetails.certificate,
-        key: relayDetails.privateKey.toString()
-      }
+      targetPort: 443
     }
   );
 };
