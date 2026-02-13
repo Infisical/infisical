@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheck, faCopy, faDownload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -29,34 +29,73 @@ const isValidDate = (dateString: string) => {
   return !Number.isNaN(date.getTime());
 };
 
-const schema = z
-  .object({
-    csr: z.string().min(1, "CSR is required"),
-    notBefore: z.string().trim().optional().default(""),
-    notAfter: z
-      .string()
-      .trim()
-      .min(1, "Valid Until is required")
-      .refine(isValidDate, { message: "Invalid date format" })
-      .refine((val) => new Date(val) > new Date(), {
-        message: "Date must be in the future"
-      }),
-    maxPathLength: z.number().min(0).nullable().optional()
-  })
-  .refine(
-    (data) => {
-      if (data.notBefore && data.notAfter) {
-        return new Date(data.notAfter) > new Date(data.notBefore);
-      }
-      return true;
-    },
-    {
-      message: "Valid Until must be after Valid From",
-      path: ["notAfter"]
-    }
-  );
+const formatDateToYYYYMMDD = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toISOString().split("T")[0];
+};
 
-type FormData = z.infer<typeof schema>;
+const createSchema = (signingCaNotAfter?: string, signingCaMaxPathLength?: number) => {
+  const hasPathLengthLimit = signingCaMaxPathLength != null && signingCaMaxPathLength !== -1;
+
+  return z
+    .object({
+      csr: z.string().min(1, "CSR is required"),
+      notBefore: z.string().trim().optional().default(""),
+      notAfter: z
+        .string()
+        .trim()
+        .min(1, "Valid Until is required")
+        .refine(isValidDate, { message: "Invalid date format" })
+        .refine((val) => new Date(val) > new Date(), {
+          message: "Date must be in the future"
+        })
+        .refine(
+          (val) => {
+            if (signingCaNotAfter) {
+              return new Date(val) <= new Date(signingCaNotAfter);
+            }
+            return true;
+          },
+          {
+            message: signingCaNotAfter
+              ? `Must not exceed signing CA's expiry (${formatDateToYYYYMMDD(signingCaNotAfter)})`
+              : "Must not exceed signing CA's validity period"
+          }
+        ),
+      maxPathLength: z
+        .number()
+        .min(0)
+        .nullable()
+        .optional()
+        .refine(
+          (val) => {
+            if (val != null && hasPathLengthLimit) {
+              return val < signingCaMaxPathLength!;
+            }
+            return true;
+          },
+          {
+            message: hasPathLengthLimit
+              ? `Must be at most ${signingCaMaxPathLength! - 1} (signing CA's max path length is ${signingCaMaxPathLength})`
+              : "Must be less than the signing CA's max path length"
+          }
+        )
+    })
+    .refine(
+      (data) => {
+        if (data.notBefore && data.notAfter) {
+          return new Date(data.notAfter) > new Date(data.notBefore);
+        }
+        return true;
+      },
+      {
+        message: "Valid Until must be after Valid From",
+        path: ["notAfter"]
+      }
+    );
+};
+
+type FormData = z.infer<ReturnType<typeof createSchema>>;
 
 type Props = {
   popUp: UsePopUpState<["signIntermediate"]>;
@@ -72,7 +111,11 @@ export const CaSignIntermediateModal = ({ popUp, handlePopUpToggle }: Props) => 
 
   const popUpData = popUp?.signIntermediate?.data as {
     caId: string;
+    maxPathLength?: number;
+    notAfter?: string;
   };
+
+  const schema = createSchema(popUpData?.notAfter, popUpData?.maxPathLength);
 
   const { mutateAsync: signIntermediate } = useSignIntermediate();
 
@@ -91,6 +134,28 @@ export const CaSignIntermediateModal = ({ popUp, handlePopUpToggle }: Props) => 
     }
   });
 
+  const hasPathLengthLimit = popUpData?.maxPathLength != null && popUpData.maxPathLength !== -1;
+
+  const getMaxPathLengthHelperText = () => {
+    if (!hasPathLengthLimit) return "Leave empty to omit the constraint.";
+    if (popUpData.maxPathLength! === 1)
+      return "Signing CA's max path length is 1. Defaults to 0 if empty.";
+    return `Signing CA's max path length is ${popUpData.maxPathLength!}. Defaults to ${
+      popUpData.maxPathLength! - 1
+    } if empty. Value must be between 0 and ${popUpData.maxPathLength! - 1}.`;
+  };
+
+  useEffect(() => {
+    if (popUp?.signIntermediate?.isOpen) {
+      reset({
+        csr: "",
+        notBefore: "",
+        notAfter: popUpData?.notAfter ? popUpData.notAfter.split("T")[0] : "",
+        maxPathLength: null
+      });
+    }
+  }, [popUp?.signIntermediate?.isOpen]);
+
   const [copyTextIssuingCaCert, isCopyingIssuingCaCert, setCopyTextIssuingCaCert] =
     useTimedReset<string>({
       initialState: "Copy to clipboard"
@@ -104,12 +169,15 @@ export const CaSignIntermediateModal = ({ popUp, handlePopUpToggle }: Props) => 
   const onFormSubmit = async ({ csr, notBefore, notAfter, maxPathLength }: FormData) => {
     if (!popUpData?.caId) return;
 
+    const effectiveMaxPathLength =
+      maxPathLength ?? (hasPathLengthLimit ? popUpData.maxPathLength! - 1 : null);
+
     const result = await signIntermediate({
       caId: popUpData.caId,
       csr,
       notAfter,
       ...(notBefore ? { notBefore } : {}),
-      ...(maxPathLength != null ? { maxPathLength } : {})
+      ...(effectiveMaxPathLength != null ? { maxPathLength: effectiveMaxPathLength } : {})
     });
 
     setSignResult(result);
@@ -201,6 +269,11 @@ export const CaSignIntermediateModal = ({ popUp, handlePopUpToggle }: Props) => 
                   isError={Boolean(error)}
                   errorText={error?.message}
                   isRequired
+                  helperText={
+                    popUpData?.notAfter
+                      ? `Must not exceed signing CA's expiry (${formatDateToYYYYMMDD(popUpData.notAfter)})`
+                      : undefined
+                  }
                 >
                   <Input {...field} placeholder="YYYY-MM-DD" />
                 </FormControl>
@@ -214,14 +287,15 @@ export const CaSignIntermediateModal = ({ popUp, handlePopUpToggle }: Props) => 
                   label="Max Path Length"
                   isError={Boolean(error)}
                   errorText={error?.message}
-                  helperText="Maximum number of intermediate CAs allowed below this certificate. Leave empty to omit the constraint."
+                  tooltipText="The maximum number of intermediate CAs that can be chained below this certificate. A value of 0 means it can only issue end-entity certificates."
+                  helperText={getMaxPathLengthHelperText()}
                 >
                   <Input
                     {...field}
                     type="number"
                     min={0}
                     value={value ?? ""}
-                    placeholder="Leave empty to omit the constraint"
+                    placeholder={hasPathLengthLimit ? "0" : "Leave empty to omit the constraint"}
                     onChange={(e) => {
                       const val = e.target.value;
                       onChange(val === "" ? null : Number(val));

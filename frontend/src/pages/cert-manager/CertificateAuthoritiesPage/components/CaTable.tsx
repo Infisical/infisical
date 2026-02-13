@@ -55,6 +55,8 @@ type Props = {
       caName?: string;
       dn?: string;
       status?: CaStatus;
+      maxPathLength?: number;
+      notAfter?: string;
     }
   ) => void;
 };
@@ -241,7 +243,9 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handlePopUpOpen("signIntermediate", {
-                                        caId: ca.id
+                                        caId: ca.id,
+                                        maxPathLength: ca.configuration.maxPathLength,
+                                        notAfter: ca.configuration.notAfter
                                       });
                                     }}
                                     disabled={!isAllowed}

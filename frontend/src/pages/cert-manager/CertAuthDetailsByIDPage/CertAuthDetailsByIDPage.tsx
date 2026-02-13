@@ -137,7 +137,11 @@ const Page = () => {
                               <UnstableDropdownMenuItem
                                 isDisabled={!canSign}
                                 onClick={() =>
-                                  handlePopUpOpen("signIntermediate", { caId: data.id })
+                                  handlePopUpOpen("signIntermediate", {
+                                    caId: data.id,
+                                    maxPathLength: data.configuration.maxPathLength,
+                                    notAfter: data.configuration.notAfter
+                                  })
                                 }
                               >
                                 Sign Intermediate
