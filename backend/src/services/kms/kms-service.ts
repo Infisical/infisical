@@ -634,6 +634,9 @@ export const kmsServiceFactory = ({
         if (orgDataKey) {
           return orgDataKey;
         }
+
+        // Key was created by another transaction; re-fetch org to get the encrypted data key
+        org = await orgDAL.findById(orgId, trx);
       } else {
         // Standalone Redis mode - use Redis lock
         const lock = await keyStore
@@ -733,7 +736,7 @@ export const kmsServiceFactory = ({
             delay: 500
           });
 
-          project = await projectDAL.findById(projectId);
+          project = await projectDAL.findById(projectId, trx);
         } else {
           const kmsKeyId = await (trx || projectDAL).transaction(async (tx) => {
             const createdKeyId = await $createProjectKmsKey(projectId, tx);
@@ -790,6 +793,9 @@ export const kmsServiceFactory = ({
         if (projectDataKey) {
           return projectDataKey;
         }
+
+        // Key was created by another transaction; re-fetch project to get the encrypted data key
+        project = await projectDAL.findById(projectId, trx);
       } else {
         // Standalone Redis mode - use Redis lock
         const lock = await keyStore
