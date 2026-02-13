@@ -55,7 +55,7 @@ export const downloadSecretEnvFile = (
         .map((line) => (line.trim() ? `# ${line}` : "#"))
         .join("\n");
 
-      return `${prev}${index === 0 ? "" : "\n"}${commentLines}\n${key}=${formattedValue}\n`;
+      return `${prev}${commentLines}\n${key}=${formattedValue}\n`;
     }, "");
 
   downloadTxtFile(`${environment}.env`, file);
