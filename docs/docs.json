@@ -2774,7 +2774,8 @@
                   "api-reference/endpoints/certificates/delete",
                   "api-reference/endpoints/certificates/cert-body",
                   "api-reference/endpoints/certificates/bundle",
-                  "api-reference/endpoints/certificates/private-key"
+                  "api-reference/endpoints/certificates/private-key",
+                  "api-reference/endpoints/certificates/import-certificate"
                 ]
               },
               {
