@@ -335,8 +335,10 @@ export const groupServiceFactory = ({
 
     if (group.orgId !== actorOrgId) {
       // Linked group: unlink by deleting the membership in this org only
-      await membershipRoleDAL.delete({ membershipId: groupMembership.id });
-      await membershipGroupDAL.deleteById(groupMembership.id);
+      await groupDAL.transaction(async (tx) => {
+        await membershipRoleDAL.delete({ membershipId: groupMembership.id }, tx);
+        await membershipGroupDAL.deleteById(groupMembership.id, tx);
+      });
       return group;
     }
 
