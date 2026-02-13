@@ -39,7 +39,14 @@ import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionPamAccountActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp, useToggle } from "@app/hooks";
 import { ApprovalPolicyType, useCheckPolicyMatch } from "@app/hooks/api/approvalPolicies";
-import { PamResourceType, TPamAccount, TPamResource, useListPamAccounts } from "@app/hooks/api/pam";
+import {
+  PamResourceType,
+  TActiveDirectoryAccount,
+  TPamAccount,
+  TPamResource,
+  TWindowsAccount,
+  useListPamAccounts
+} from "@app/hooks/api/pam";
 
 import { PamAccessAccountModal } from "../../PamAccountsPage/components/PamAccessAccountModal";
 import { PamAddAccountModal } from "../../PamAccountsPage/components/PamAddAccountModal";
@@ -51,6 +58,19 @@ import { useAccessAwsIamAccount } from "../../PamAccountsPage/components/useAcce
 
 type Props = {
   resource: TPamResource;
+};
+
+const hasAccountType = (resourceType: PamResourceType) =>
+  resourceType === PamResourceType.Windows || resourceType === PamResourceType.ActiveDirectory;
+
+const getAccountType = (account: TPamAccount): string | undefined => {
+  if (account.resource.resourceType === PamResourceType.Windows) {
+    return (account as TWindowsAccount).metadata?.accountType;
+  }
+  if (account.resource.resourceType === PamResourceType.ActiveDirectory) {
+    return (account as TActiveDirectoryAccount).metadata?.accountType;
+  }
+  return undefined;
 };
 
 export const PamResourceAccountsSection = ({ resource }: Props) => {
@@ -165,20 +185,24 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
           <UnstableTableHeader>
             <UnstableTableRow>
               <UnstableTableHead>Account Name</UnstableTableHead>
+              {hasAccountType(resource.resourceType) && <UnstableTableHead>Type</UnstableTableHead>}
               <UnstableTableHead className="w-5" />
             </UnstableTableRow>
           </UnstableTableHeader>
           <UnstableTableBody>
             {isPending && (
               <UnstableTableRow>
-                <UnstableTableCell colSpan={2} className="text-center text-muted">
+                <UnstableTableCell
+                  colSpan={hasAccountType(resource.resourceType) ? 3 : 2}
+                  className="text-center text-muted"
+                >
                   Loading accounts...
                 </UnstableTableCell>
               </UnstableTableRow>
             )}
             {!isPending && accounts.length === 0 && (
               <UnstableTableRow>
-                <UnstableTableCell colSpan={2}>
+                <UnstableTableCell colSpan={hasAccountType(resource.resourceType) ? 3 : 2}>
                   <UnstableEmpty className="border-0 bg-transparent py-8 shadow-none">
                     <UnstableEmptyHeader>
                       <UnstableEmptyTitle>No accounts found</UnstableEmptyTitle>
@@ -237,6 +261,11 @@ export const PamResourceAccountsSection = ({ resource }: Props) => {
                       )}
                     </div>
                   </UnstableTableCell>
+                  {hasAccountType(resource.resourceType) && (
+                    <UnstableTableCell>
+                      <span className="capitalize">{getAccountType(account) ?? "-"}</span>
+                    </UnstableTableCell>
+                  )}
                   <UnstableTableCell>
                     <div className="flex items-center gap-2">
                       {/* Temporarily disable accessing Windows Server accounts */}

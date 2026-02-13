@@ -13,9 +13,9 @@ import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPamAccountActions } from "@app/context/ProjectPermissionContext/types";
 import {
   PamResourceType,
-  TActiveDirectoryCredentials,
+  TActiveDirectoryAccount,
   TPamAccount,
-  TWindowsCredentials
+  TWindowsAccount
 } from "@app/hooks/api/pam";
 import { TAwsIamCredentials } from "@app/hooks/api/pam/types/aws-iam-resource";
 import { TBaseSqlCredentials } from "@app/hooks/api/pam/types/shared/sql-resource";
@@ -77,16 +77,28 @@ const AwsIamCredentialsContent = ({ credentials }: { credentials: TAwsIamCredent
   </>
 );
 
-const WindowsCredentialsContent = ({ credentials }: { credentials: TWindowsCredentials }) => {
-  return <CopyableField label="Username" value={credentials.username} />;
+const WindowsCredentialsContent = ({ account }: { account: TWindowsAccount }) => {
+  return (
+    <>
+      <Detail>
+        <DetailLabel>Account Type</DetailLabel>
+        <DetailValue className="capitalize">{account.metadata.accountType}</DetailValue>
+      </Detail>
+      <CopyableField label="Username" value={account.credentials.username} />
+    </>
+  );
 };
 
-const ActiveDirectoryCredentialsContent = ({
-  credentials
-}: {
-  credentials: TActiveDirectoryCredentials;
-}) => {
-  return <CopyableField label="Username" value={credentials.username} />;
+const ActiveDirectoryCredentialsContent = ({ account }: { account: TActiveDirectoryAccount }) => {
+  return (
+    <>
+      <Detail>
+        <DetailLabel>Account Type</DetailLabel>
+        <DetailValue className="capitalize">{account.metadata.accountType}</DetailValue>
+      </Detail>
+      <CopyableField label="Username" value={account.credentials.username} />
+    </>
+  );
 };
 
 const CredentialsContent = ({ account }: { account: TPamAccount }) => {
@@ -102,13 +114,9 @@ const CredentialsContent = ({ account }: { account: TPamAccount }) => {
     case PamResourceType.AwsIam:
       return <AwsIamCredentialsContent credentials={account.credentials as TAwsIamCredentials} />;
     case PamResourceType.Windows:
-      return <WindowsCredentialsContent credentials={account.credentials as TWindowsCredentials} />;
+      return <WindowsCredentialsContent account={account as TWindowsAccount} />;
     case PamResourceType.ActiveDirectory:
-      return (
-        <ActiveDirectoryCredentialsContent
-          credentials={account.credentials as TActiveDirectoryCredentials}
-        />
-      );
+      return <ActiveDirectoryCredentialsContent account={account as TActiveDirectoryAccount} />;
     default:
       return null;
   }
