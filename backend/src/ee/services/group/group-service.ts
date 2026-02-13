@@ -322,16 +322,14 @@ export const groupServiceFactory = ({
         message: "Failed to delete group due to plan restriction. Upgrade plan to delete group."
       });
 
-    const groupMembership = await membershipGroupDAL.getGroupById({
-      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
-      groupId: id
-    });
-    if (!groupMembership) {
-      throw new NotFoundError({ message: `Cannot find group with ID ${id}` });
-    }
-
-    const group = await groupDAL.findById(id);
-    if (!group) {
+    const [groupMembership, group] = await Promise.all([
+      membershipGroupDAL.getGroupById({
+        scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+        groupId: id
+      }),
+      groupDAL.findById(id)
+    ]);
+    if (!groupMembership || !group) {
       throw new NotFoundError({ message: `Cannot find group with ID ${id}` });
     }
 
@@ -363,30 +361,26 @@ export const groupServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
 
-    const groupMembership = await membershipGroupDAL.getGroupById({
-      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
-      groupId: id
-    });
-    if (!groupMembership) {
-      throw new NotFoundError({
-        message: `Cannot find group with ID ${id}`
-      });
-    }
-
-    const group = await groupDAL.findById(id);
-    if (!group) {
+    const [groupMembership, group] = await Promise.all([
+      membershipGroupDAL.getGroupById({
+        scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+        groupId: id
+      }),
+      groupDAL.findById(id)
+    ]);
+    if (!groupMembership || !group) {
       throw new NotFoundError({ message: `Cannot find group with ID ${id}` });
     }
 
-    const permanentRole = groupMembership.roles?.find((r) => !r.isTemporary);
-    const role = permanentRole?.role ?? groupMembership.roles?.[0]?.role ?? "";
-    const roleId = permanentRole?.id ?? groupMembership.roles?.[0]?.id ?? null;
-    const customRoleSlug = permanentRole?.customRoleSlug ?? groupMembership.roles?.[0]?.customRoleSlug ?? null;
-    const customRole = permanentRole?.customRoleSlug
+    const firstRole = groupMembership.roles?.[0];
+    const role = firstRole?.role ?? "";
+    const roleId = firstRole?.id ?? null;
+    const customRoleSlug = firstRole?.customRoleSlug ?? null;
+    const customRole = firstRole?.customRoleSlug
       ? {
-          id: permanentRole.id,
-          name: permanentRole.customRoleName ?? "",
-          slug: permanentRole.customRoleSlug,
+          id: firstRole.id,
+          name: firstRole.customRoleName ?? "",
+          slug: firstRole.customRoleSlug,
           permissions: null,
           description: null
         }
