@@ -102,7 +102,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
       hide: false,
       operationId: "createProjectGroupMembership",
       tags: [ApiDocsTags.ProjectGroups],
-      description: "Add group to project (create project group membership).",
+      description: "Add a group from the organization to the project by creating a project group membership.",
       security: [{ bearerAuth: [] }],
       params: z.object({
         projectId: z.string().trim(),
