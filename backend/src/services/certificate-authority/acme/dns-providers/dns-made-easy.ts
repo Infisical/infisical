@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop */
 import axios from "axios";
 
 import { request } from "@app/lib/config/request";
@@ -66,41 +67,68 @@ export const dnsMadeEasyDeleteTxtRecord = async (
     credentials: { apiKey, secretKey }
   } = connection;
 
-  logger.info({ hostedZoneId, domain, value }, "Deleting TXT record for DNS Made Easy");
-  try {
-    const dnsRecords = await listDNSMadeEasyRecords(connection, { zoneId: hostedZoneId, type: "TXT", name: domain });
+  // Retry with exponential backoff to handle propagation delay and transient errors
+  const maxRetries = 3;
+  const initialDelay = 3000;
+  let retryCount = 0;
+  let lastError: Error | null = null;
 
-    let foundRecord = false;
-    if (dnsRecords.length > 0) {
-      const recordToDelete = dnsRecords.find(
-        (record) => record.type === "TXT" && record.name === domain && record.value === value
-      );
+  while (retryCount < maxRetries) {
+    try {
+      logger.info({ hostedZoneId, domain, value }, "Deleting TXT record for DNS Made Easy");
+      const dnsRecords = await listDNSMadeEasyRecords(connection, { zoneId: hostedZoneId, type: "TXT", name: domain });
 
-      if (recordToDelete) {
-        await request.delete(
-          getDNSMadeEasyUrl(`/V2.0/dns/managed/${encodeURIComponent(hostedZoneId)}/records/${recordToDelete.id}`),
-          {
-            headers: {
-              ...makeDNSMadeEasyAuthHeaders(apiKey, secretKey),
-              Accept: "application/json"
-            }
-          }
+      if (dnsRecords.length > 0) {
+        const recordToDelete = dnsRecords.find(
+          (record) => record.type === "TXT" && record.name === domain && record.value === value
         );
-        foundRecord = true;
+
+        if (recordToDelete) {
+          await request.delete(
+            getDNSMadeEasyUrl(`/V2.0/dns/managed/${encodeURIComponent(hostedZoneId)}/records/${recordToDelete.id}`),
+            {
+              headers: {
+                ...makeDNSMadeEasyAuthHeaders(apiKey, secretKey),
+                Accept: "application/json"
+              }
+            }
+          );
+          return;
+        }
+      }
+
+      // Record not found - might not have propagated yet, retry with backoff
+      retryCount += 1;
+      if (retryCount < maxRetries) {
+        const delay = initialDelay * 2 ** (retryCount - 1);
+        await new Promise((resolve) => {
+          setTimeout(resolve, delay);
+        });
+      }
+    } catch (error) {
+      lastError = error as Error;
+      retryCount += 1;
+
+      if (retryCount < maxRetries) {
+        const delay = initialDelay * 2 ** (retryCount - 1);
+        await new Promise((resolve) => {
+          setTimeout(resolve, delay);
+        });
       }
     }
-    if (!foundRecord) {
-      logger.warn({ hostedZoneId, domain, value }, "Record to delete not found");
-    }
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
+  }
+
+  if (lastError) {
+    if (axios.isAxiosError(lastError)) {
       const errorMessage =
-        (error.response?.data as { error?: string[] | string })?.error?.[0] ||
-        (error.response?.data as { error?: string[] | string })?.error ||
-        error.message ||
+        (lastError.response?.data as { error?: string[] | string })?.error?.[0] ||
+        (lastError.response?.data as { error?: string[] | string })?.error ||
+        lastError.message ||
         "Unknown error";
       throw new Error(typeof errorMessage === "string" ? errorMessage : String(errorMessage));
     }
-    throw error;
+    throw lastError;
   }
+
+  logger.warn({ hostedZoneId, domain, value }, "Record to delete not found after retries");
 };
