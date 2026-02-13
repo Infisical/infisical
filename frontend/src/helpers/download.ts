@@ -55,6 +55,7 @@ export const downloadSecretEnvFile = (
   for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
     for (let j = importedSecrets[i].secrets.length - 1; j >= 0; j -= 1) {
       const secret = importedSecrets[i].secrets[j];
+      // eslint-disable-next-line no-continue
       if (secret.type === "personal") continue;
 
       if (!secretsPicked.has(secret.secretKey)) {
