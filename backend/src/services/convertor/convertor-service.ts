@@ -72,8 +72,6 @@ export const convertorServiceFactory = ({
     let fieldName = "scopeOrgId";
     if (scope === AccessScope.Project) {
       fieldName = "scopeProjectId";
-    } else if (scope === AccessScope.Namespace) {
-      fieldName = "scopeNamespaceId";
     }
 
     const membership = await membershipDAL.findOne({
