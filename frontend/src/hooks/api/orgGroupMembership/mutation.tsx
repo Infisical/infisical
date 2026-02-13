@@ -40,10 +40,14 @@ export const useDeleteOrgGroupMembership = () => {
       );
       return data.groupMembership;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        predicate: (query) => query.queryKey[1] === "organization-groups"
-      });
+    onSuccess: (_, { organizationId }) => {
+      if (organizationId) {
+        queryClient.invalidateQueries({ queryKey: organizationKeys.getOrgGroups(organizationId) });
+      } else {
+        queryClient.invalidateQueries({
+          predicate: (query) => query.queryKey[1] === "organization-groups"
+        });
+      }
     }
   });
 };

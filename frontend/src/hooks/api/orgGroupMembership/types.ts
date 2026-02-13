@@ -16,6 +16,8 @@ export type TCreateOrgGroupMembershipDTO = {
 
 export type TDeleteOrgGroupMembershipDTO = {
   groupId: string;
+  /** Optional. Not sent to the API (org is from token). Used only for cache invalidation. */
+  organizationId?: string;
 };
 
 export type TListAvailableOrganizationGroupsDTO = {
