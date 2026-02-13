@@ -392,7 +392,6 @@ export const externalMigrationServiceFactory = ({
     });
 
     try {
-      throw new BadRequestError({ message: "It worked" });
       const config = await vaultExternalMigrationConfigDAL.create({
         namespace,
         connectionId,
