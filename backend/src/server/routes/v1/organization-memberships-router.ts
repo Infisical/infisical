@@ -51,8 +51,7 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
       hide: false,
       operationId: "listOrganizationGroupMemberships",
       tags: [ApiDocsTags.Groups],
-      description:
-        "List organization group memberships (org from token). Pattern: {scope}/memberships/{actor-type}. This route was restructured to follow the new membership design. Retrocompatibility is preserved (legacy routes remain available).",
+      description: "List organization group memberships (org from token). Pattern: {scope}/memberships/{actor-type}.",
       security: [{ bearerAuth: [] }],
       querystring: z.object({
         limit: z.coerce.number().min(1).max(100).default(100).optional(),
@@ -101,7 +100,7 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
       operationId: "createOrganizationGroupMembership",
       tags: [ApiDocsTags.Groups],
       description:
-        "Create organization group membership (link group to current org). Sub-org only: links a parent-org group. This route was restructured to follow the new membership design. Retrocompatibility is preserved (legacy routes remain available).",
+        "Create organization group membership (link group to current org). Sub-org only: links a parent-org group.",
       security: [{ bearerAuth: [] }],
       params: z.object({
         groupId: z.string().uuid().describe("The ID of the group to link to the current organization")
@@ -171,8 +170,7 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
       hide: false,
       operationId: "getOrganizationGroupMembership",
       tags: [ApiDocsTags.Groups],
-      description:
-        "Get organization group membership by group ID. This route was restructured to follow the new membership design. Retrocompatibility is preserved (legacy routes remain available).",
+      description: "Get organization group membership by group ID.",
       security: [{ bearerAuth: [] }],
       params: z.object({
         groupId: z.string().uuid()
@@ -211,8 +209,7 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
       hide: false,
       operationId: "updateOrganizationGroupMembership",
       tags: [ApiDocsTags.Groups],
-      description:
-        "Update organization group membership roles. This route was restructured to follow the new membership design. Retrocompatibility is preserved (legacy routes remain available).",
+      description: "Update organization group membership roles.",
       security: [{ bearerAuth: [] }],
       params: z.object({
         groupId: z.string().uuid()
@@ -277,8 +274,7 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
       hide: false,
       operationId: "deleteOrganizationGroupMembership",
       tags: [ApiDocsTags.Groups],
-      description:
-        "Delete organization group membership (unlink group from current org). This route was restructured to follow the new membership design. Retrocompatibility is preserved (legacy routes remain available).",
+      description: "Delete organization group membership (unlink group from current org).",
       security: [{ bearerAuth: [] }],
       params: z.object({
         groupId: z.string().uuid()

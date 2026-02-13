@@ -58,8 +58,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
       hide: false,
       operationId: "listProjectGroupMemberships",
       tags: [ApiDocsTags.ProjectGroups],
-      description:
-        "List project group memberships. Pattern: {scope}/memberships/{actor-type}. This route was restructured to follow the new membership design. Retrocompatibility is preserved (legacy routes remain available).",
+      description: "List project group memberships. Pattern: {scope}/memberships/{actor-type}.",
       security: [{ bearerAuth: [] }],
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.LIST_GROUPS_IN_PROJECT.projectId)
@@ -103,8 +102,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
       hide: false,
       operationId: "createProjectGroupMembership",
       tags: [ApiDocsTags.ProjectGroups],
-      description:
-        "Add group to project (create project group membership). This route was restructured to follow the new membership design. Retrocompatibility is preserved (legacy routes remain available).",
+      description: "Add group to project (create project group membership).",
       security: [{ bearerAuth: [] }],
       params: z.object({
         projectId: z.string().trim(),
@@ -185,8 +183,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
       hide: false,
       operationId: "getProjectGroupMembership",
       tags: [ApiDocsTags.ProjectGroups],
-      description:
-        "Get project group membership by group ID. This route was restructured to follow the new membership design. Retrocompatibility is preserved (legacy routes remain available).",
+      description: "Get project group membership by group ID.",
       security: [{ bearerAuth: [] }],
       params: z.object({
         projectId: z.string().trim(),
@@ -231,8 +228,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
       hide: false,
       operationId: "updateProjectGroupMembership",
       tags: [ApiDocsTags.ProjectGroups],
-      description:
-        "Update project group membership roles. This route was restructured to follow the new membership design. Retrocompatibility is preserved (legacy routes remain available).",
+      description: "Update project group membership roles.",
       security: [{ bearerAuth: [] }],
       params: z.object({
         projectId: z.string().trim(),
@@ -293,8 +289,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
       hide: false,
       operationId: "removeProjectGroupMembership",
       tags: [ApiDocsTags.ProjectGroups],
-      description:
-        "Remove group from project (delete project group membership). This route was restructured to follow the new membership design. Retrocompatibility is preserved (legacy routes remain available).",
+      description: "Remove group from project (delete project group membership).",
       security: [{ bearerAuth: [] }],
       params: z.object({
         projectId: z.string().trim(),
