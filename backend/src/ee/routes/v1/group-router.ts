@@ -222,7 +222,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       operationId: "addGroupToOrganization",
       tags: [ApiDocsTags.Groups],
       description:
-        "Deprecated: Use POST /api/v1/organizations/memberships/groups/:groupId instead. Link this group to the current (sub-)organization with the given role. Only valid when the current org is a sub-org and the group belongs to the parent org.",
+        "Deprecated: Use POST /api/v1/organizations/memberships/groups/:groupId instead (pattern: {scope}/memberships/{actor-type}/{actor-id}). Link this group to the current (sub-)organization with the given role.",
       params: z.object({
         id: z.string().trim().describe("The ID of the group to link to the current organization")
       }),
@@ -287,7 +287,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       operationId: "removeGroupFromOrganization",
       tags: [ApiDocsTags.Groups],
       description:
-        "Deprecated: Use DELETE /api/v1/organizations/memberships/groups/:groupId instead. Unlink this group from the current (sub-)organization. Only valid when the group is linked (inherited) in the current org.",
+        "Deprecated: Use DELETE /api/v1/organizations/memberships/groups/:groupId instead (pattern: {scope}/memberships/{actor-type}/{actor-id}). Unlink this group from the current (sub-)organization.",
       params: z.object({
         id: z.string().trim().describe("The ID of the group to unlink from the current organization")
       }),
