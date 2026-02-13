@@ -30,6 +30,7 @@ export const pamKeys = {
     resourceType,
     resourceId
   ],
+  listRelatedResources: (resourceId: string) => [...pamKeys.resource(), "related", resourceId],
   listAccounts: ({ projectId, ...params }: TListPamAccountsDTO) => [
     ...pamKeys.account(),
     "list",
@@ -115,6 +116,32 @@ export const useGetPamResourceById = (
       return data.resource;
     },
     enabled: !!resourceId && !!resourceType && (options?.enabled ?? true),
+    ...options
+  });
+};
+
+export const useListRelatedResources = (
+  resourceId?: string,
+  options?: Omit<
+    UseQueryOptions<
+      TPamResource[],
+      unknown,
+      TPamResource[],
+      ReturnType<typeof pamKeys.listRelatedResources>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: pamKeys.listRelatedResources(resourceId || ""),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ resources: TPamResource[] }>(
+        `/api/v1/pam/resources/active-directory/${resourceId}/related-resources`
+      );
+
+      return data.resources;
+    },
+    enabled: !!resourceId && (options?.enabled ?? true),
     ...options
   });
 };

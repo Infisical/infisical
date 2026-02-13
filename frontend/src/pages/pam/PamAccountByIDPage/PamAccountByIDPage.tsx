@@ -151,17 +151,19 @@ const PageContent = () => {
         </div>
         <div className="flex items-center gap-3">
           {/* Windows Server accounts cannot be accessed temporarily */}
-          {account.resource.resourceType !== PamResourceType.Windows && (
-            <ProjectPermissionCan
-              I={ProjectPermissionPamAccountActions.Access}
-              a={ProjectPermissionSub.PamAccounts}
-            >
-              <Button variant="neutral" onClick={handleAccess} isPending={isAwsAccessPending}>
-                <LogInIcon />
-                Access
-              </Button>
-            </ProjectPermissionCan>
-          )}
+          {/* Active Directory accounts cannot be accessed */}
+          {account.resource.resourceType !== PamResourceType.Windows &&
+            account.resource.resourceType !== PamResourceType.ActiveDirectory && (
+              <ProjectPermissionCan
+                I={ProjectPermissionPamAccountActions.Access}
+                a={ProjectPermissionSub.PamAccounts}
+              >
+                <Button variant="neutral" onClick={handleAccess} isPending={isAwsAccessPending}>
+                  <LogInIcon />
+                  Access
+                </Button>
+              </ProjectPermissionCan>
+            )}
           <UnstableDropdownMenu>
             <UnstableDropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">

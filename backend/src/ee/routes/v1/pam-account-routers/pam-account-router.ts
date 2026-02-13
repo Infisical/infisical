@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { AuditLogInfo, EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountOrderBy, PamAccountView } from "@app/ee/services/pam-account/pam-account-enums";
+import { SanitizedActiveDirectoryAccountWithResourceSchema } from "@app/ee/services/pam-resource/active-directory/active-directory-resource-schemas";
 import { SanitizedAwsIamAccountWithResourceSchema } from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
 import { SanitizedKubernetesAccountWithResourceSchema } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
 import { SanitizedMySQLAccountWithResourceSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
@@ -28,7 +29,8 @@ const SanitizedAccountSchema = z.discriminatedUnion("resourceType", [
   SanitizedMySQLAccountWithResourceSchema,
   SanitizedRedisAccountWithResourceSchema,
   SanitizedAwsIamAccountWithResourceSchema,
-  SanitizedWindowsAccountWithResourceSchema
+  SanitizedWindowsAccountWithResourceSchema,
+  SanitizedActiveDirectoryAccountWithResourceSchema
 ]);
 
 const ListPamAccountsResponseSchema = z.object({

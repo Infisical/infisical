@@ -9,6 +9,7 @@ import {
 import { DiscriminativePick } from "@app/types";
 
 import { PamResourceHeader } from "../PamResourceHeader";
+import { ActiveDirectoryResourceForm } from "./ActiveDirectoryResourceForm";
 import { AwsIamResourceForm } from "./AwsIamResourceForm";
 import { KubernetesResourceForm } from "./KubernetesResourceForm";
 import { MySQLResourceForm } from "./MySQLResourceForm";
@@ -37,7 +38,7 @@ const CreateForm = ({ resourceType, onComplete, projectId }: CreateFormProps) =>
   const onSubmit = async (
     formData: DiscriminativePick<
       TPamResource,
-      "name" | "resourceType" | "connectionDetails" | "gatewayId"
+      "name" | "resourceType" | "connectionDetails" | "gatewayId" | "adServerResourceId"
     >
   ) => {
     const resource = await createPamResource.mutateAsync({
@@ -66,6 +67,8 @@ const CreateForm = ({ resourceType, onComplete, projectId }: CreateFormProps) =>
       return <AwsIamResourceForm onSubmit={onSubmit} />;
     case PamResourceType.Windows:
       return <WindowsResourceForm onSubmit={onSubmit} />;
+    case PamResourceType.ActiveDirectory:
+      return <ActiveDirectoryResourceForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled resource: ${resourceType}`);
   }
@@ -76,7 +79,10 @@ const UpdateForm = ({ resource, onComplete }: UpdateFormProps) => {
   const { name: resourceName } = PAM_RESOURCE_TYPE_MAP[resource.resourceType];
 
   const onSubmit = async (
-    formData: DiscriminativePick<TPamResource, "name" | "resourceType" | "connectionDetails">
+    formData: DiscriminativePick<
+      TPamResource,
+      "name" | "resourceType" | "connectionDetails" | "adServerResourceId"
+    >
   ) => {
     const updatedResource = await updatePamResource.mutateAsync({
       resourceId: resource.id,
@@ -104,6 +110,8 @@ const UpdateForm = ({ resource, onComplete }: UpdateFormProps) => {
       return <AwsIamResourceForm resource={resource} onSubmit={onSubmit} />;
     case PamResourceType.Windows:
       return <WindowsResourceForm resource={resource} onSubmit={onSubmit} />;
+    case PamResourceType.ActiveDirectory:
+      return <ActiveDirectoryResourceForm resource={resource} onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled resource: ${(resource as any).resourceType}`);
   }
