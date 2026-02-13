@@ -213,16 +213,14 @@ export const groupServiceFactory = ({
         message: "Failed to update group due to plan restriction Upgrade plan to update group."
       });
 
-    const groupMembership = await membershipGroupDAL.getGroupById({
-      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
-      groupId: id
-    });
-    if (!groupMembership) {
-      throw new NotFoundError({ message: `Failed to find group with ID ${id}` });
-    }
-
-    const group = await groupDAL.findById(id);
-    if (!group) {
+    const [groupMembership, group] = await Promise.all([
+      membershipGroupDAL.getGroupById({
+        scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+        groupId: id
+      }),
+      groupDAL.findById(id)
+    ]);
+    if (!groupMembership || !group) {
       throw new NotFoundError({ message: `Failed to find group with ID ${id}` });
     }
 
@@ -442,15 +440,14 @@ export const groupServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
 
-    const groupMembership = await membershipGroupDAL.getGroupById({
-      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
-      groupId: id
-    });
-    if (!groupMembership) {
-      throw new NotFoundError({ message: `Failed to find group with ID ${id}` });
-    }
-    const group = await groupDAL.findById(id);
-    if (!group) {
+    const [groupMembership, group] = await Promise.all([
+      membershipGroupDAL.getGroupById({
+        scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+        groupId: id
+      }),
+      groupDAL.findById(id)
+    ]);
+    if (!groupMembership || !group) {
       throw new NotFoundError({ message: `Failed to find group with ID ${id}` });
     }
 
@@ -490,15 +487,14 @@ export const groupServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
 
-    const groupMembership = await membershipGroupDAL.getGroupById({
-      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
-      groupId: id
-    });
-    if (!groupMembership) {
-      throw new NotFoundError({ message: `Failed to find group with ID ${id}` });
-    }
-    const group = await groupDAL.findById(id);
-    if (!group) {
+    const [groupMembership, group] = await Promise.all([
+      membershipGroupDAL.getGroupById({
+        scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+        groupId: id
+      }),
+      groupDAL.findById(id)
+    ]);
+    if (!groupMembership || !group) {
       throw new NotFoundError({ message: `Failed to find group with ID ${id}` });
     }
 
@@ -539,15 +535,14 @@ export const groupServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
 
-    const groupMembership = await membershipGroupDAL.getGroupById({
-      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
-      groupId: id
-    });
-    if (!groupMembership) {
-      throw new NotFoundError({ message: `Failed to find group with ID ${id}` });
-    }
-    const group = await groupDAL.findById(id);
-    if (!group) {
+    const [groupMembership, group] = await Promise.all([
+      membershipGroupDAL.getGroupById({
+        scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+        groupId: id
+      }),
+      groupDAL.findById(id)
+    ]);
+    if (!groupMembership || !group) {
       throw new NotFoundError({ message: `Failed to find group with ID ${id}` });
     }
 
@@ -590,15 +585,14 @@ export const groupServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
 
-    const groupMembership = await membershipGroupDAL.getGroupById({
-      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
-      groupId: id
-    });
-    if (!groupMembership) {
-      throw new NotFoundError({ message: `Failed to find group with ID ${id}` });
-    }
-    const group = await groupDAL.findById(id);
-    if (!group) {
+    const [groupMembership, group] = await Promise.all([
+      membershipGroupDAL.getGroupById({
+        scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+        groupId: id
+      }),
+      groupDAL.findById(id)
+    ]);
+    if (!groupMembership || !group) {
       throw new NotFoundError({ message: `Failed to find group with ID ${id}` });
     }
 
