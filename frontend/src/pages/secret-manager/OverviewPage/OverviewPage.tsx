@@ -115,6 +115,7 @@ import { ImportSecretsModal, SecretDropzone } from "./components/SecretDropzone"
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
 import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
 import {
+  DownloadEnvButton,
   DynamicSecretTableRow,
   EmptyResourceDisplay,
   EnvironmentSelect,
@@ -1114,6 +1115,13 @@ export const OverviewPage = () => {
                 <FolderBreadcrumb secretPath={secretPath} onResetSearch={handleResetSearch} />
               </div>
               <div className="flex shrink-0 items-center gap-x-3">
+                {userAvailableEnvs.length > 0 && (
+                  <DownloadEnvButton
+                    secretPath={secretPath}
+                    environments={visibleEnvs}
+                    projectId={projectId}
+                  />
+                )}
                 {userAvailableEnvs.length > 0 && (
                   <ResourceFilter rowTypeFilter={filter} onToggleRowType={handleToggleRowType} />
                 )}
