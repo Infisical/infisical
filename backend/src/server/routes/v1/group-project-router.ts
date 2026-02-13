@@ -249,8 +249,8 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
       }),
       response: {
         200: z.object({
-          groupMemberships: z
-            .object({
+          groupMemberships: z.array(
+            z.object({
               id: z.string(),
               groupId: z.string(),
               createdAt: z.date(),
@@ -269,11 +269,14 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
                   temporaryAccessEndTime: z.date().nullable().optional()
                 })
               ),
-              group: GroupsSchema.pick({ name: true, id: true, slug: true }).and(
-                z.object({ orgId: z.string().uuid().optional() })
-              )
+              group: z.object({
+                id: z.string().uuid(),
+                name: z.string(),
+                slug: z.string(),
+                orgId: z.string().uuid().optional()
+              })
             })
-            .array()
+          )
         })
       }
     },
