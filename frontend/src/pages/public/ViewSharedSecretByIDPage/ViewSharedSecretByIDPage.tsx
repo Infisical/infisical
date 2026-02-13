@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Helmet } from "react-helmet";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { AxiosError } from "axios";
 import { addSeconds, formatISO } from "date-fns";
 import { twMerge } from "tailwind-merge";
@@ -11,7 +11,11 @@ import { createNotification } from "@app/components/notifications";
 import { Lottie } from "@app/components/v2";
 import { SessionStorageKeys } from "@app/const";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { TBrandingConfig, useGetActiveSharedSecretById } from "@app/hooks/api/secretSharing";
+import {
+  useAccessSharedSecret,
+  useGetSharedSecretBranding,
+  useGetSharedSecretById
+} from "@app/hooks/api/secretSharing";
 import {
   PasswordContainer,
   SecretContainer,
@@ -52,71 +56,51 @@ export type BrandingTheme = {
   buttonBg: string;
 };
 
-const extractDetailsFromUrl = (urlEncodedKey: string) => {
-  if (urlEncodedKey) {
-    const [hashedHex, key] = urlEncodedKey ? urlEncodedKey.toString().split("-") : ["", ""];
-
-    return {
-      hashedHex,
-      key
-    };
-  }
-
-  return {
-    hashedHex: null,
-    key: null
-  };
-};
-
 export const ViewSharedSecretByIDPage = () => {
   const id = useParams({
     from: ROUTE_PATHS.Public.ViewSharedSecretByIDPage.id,
     select: (el) => el.secretId
   });
-  const urlEncodedKey = useSearch({
-    from: ROUTE_PATHS.Public.ViewSharedSecretByIDPage.id,
-    select: (el) => el.key
-  });
-  const [password, setPassword] = useState<string>();
-  const { hashedHex, key } = extractDetailsFromUrl(urlEncodedKey);
-
-  // Store branding config for persistence across password attempts
-  const [savedBrandingConfig, setSavedBrandingConfig] = useState<TBrandingConfig | undefined>();
-
-  const {
-    data: fetchSecret,
-    error,
-    isPending,
-    isFetching
-  } = useGetActiveSharedSecretById({
-    sharedSecretId: id,
-    hashedHex,
-    password
-  });
 
   const navigate = useNavigate();
+  const hasTriggeredAccess = useRef(false);
 
-  const isUnauthorized =
-    ((error as AxiosError)?.response?.data as { statusCode: number })?.statusCode === 401;
+  // Step 1: Fetch public metadata (is it password protected? what access type?)
+  const {
+    data: secretDetails,
+    isLoading: isLoadingDetails,
+    error: detailsError
+  } = useGetSharedSecretById({ sharedSecretId: id });
 
-  const isInvalidCredential =
-    ((error as AxiosError)?.response?.data as { message: string })?.message ===
-    "Invalid credentials";
+  // Step 2: Access the secret value (mutation — triggered automatically or after password entry)
+  const accessMutation = useAccessSharedSecret();
 
-  const isEmailUnauthorized =
-    ((error as AxiosError)?.response?.data as { message: string })?.message ===
-    "You are not authorized to view this secret";
+  // Fetch branding config
+  const { data: brandingConfig, isLoading: isLoadingBrandingConfig } = useGetSharedSecretBranding({
+    sharedSecretId: id
+  });
 
-  // Save branding config for persistence across password attempts
+  // Auto-access when the secret is not password protected
   useEffect(() => {
-    if (fetchSecret?.brandingConfig) {
-      setSavedBrandingConfig(fetchSecret.brandingConfig);
+    if (secretDetails && !secretDetails.isPasswordProtected && !hasTriggeredAccess.current) {
+      hasTriggeredAccess.current = true;
+      accessMutation.mutate({ sharedSecretId: id });
     }
-  }, [fetchSecret?.brandingConfig]);
+  }, [secretDetails]);
 
+  // Derive error state from whichever step failed
+  const activeError = (detailsError ?? accessMutation.error) as AxiosError | null;
+  const errorStatusCode = (activeError?.response?.data as { statusCode: number })?.statusCode;
+  const errorMessage = (activeError?.response?.data as { message: string })?.message;
+
+  const isUnauthorized = errorStatusCode === 401;
+  const isInvalidCredential = errorMessage === "Invalid credentials";
+  const isForbidden = errorStatusCode === 403;
+  const isNotFound = errorStatusCode === 404;
+
+  // Redirect to login for org-restricted secrets when not authenticated
   useEffect(() => {
-    if (isUnauthorized && !isInvalidCredential && !isEmailUnauthorized) {
-      // persist current URL in session storage so that we can come back to this after successful login
+    if (isUnauthorized && !isInvalidCredential) {
       sessionStorage.setItem(
         SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL,
         JSON.stringify({
@@ -130,34 +114,29 @@ export const ViewSharedSecretByIDPage = () => {
         text: "Login is required in order to access the shared secret."
       });
 
-      navigate({
-        to: "/login"
-      });
-
+      navigate({ to: "/login" });
       return;
     }
 
-    if (error) {
-      createNotification({
-        type: "error",
-        text: ((error as AxiosError)?.response?.data as { message: string })?.message
-      });
+    if (activeError && !isInvalidCredential && !isForbidden && !isNotFound) {
+      createNotification({ type: "error", text: errorMessage });
     }
-  }, [error]);
+  }, [activeError]);
 
-  const shouldShowPasswordPrompt =
-    isInvalidCredential || (fetchSecret?.isPasswordProtected && !fetchSecret.secret);
-  const isValidatingPassword = Boolean(password) && isFetching;
+  const secret = accessMutation.data;
+  const isPasswordProtected = secretDetails?.isPasswordProtected ?? false;
+  // only show password prompt if no critical error (403/404) occurred after submission
+  const hasCriticalError = accessMutation.isError && (isForbidden || isNotFound);
+  const showPasswordPrompt = isPasswordProtected && !secret && !hasCriticalError;
+  const isLoading = isLoadingDetails || (!isPasswordProtected && accessMutation.isPending);
 
-  const brandingConfig = fetchSecret?.brandingConfig || savedBrandingConfig;
   const hasCustomBranding = !!brandingConfig;
 
-  // Use proxy URLs for branding assets to avoid cross origin issues
   const logoUrl = brandingConfig?.hasLogo
-    ? `/api/v1/secret-sharing/shared/public/${id}/branding/brand-logo`
+    ? `/api/v1/shared-secrets/public/${id}/branding/brand-logo`
     : DEFAULT_LOGO_URL;
   const faviconUrl = brandingConfig?.hasFavicon
-    ? `/api/v1/secret-sharing/shared/public/${id}/branding/brand-favicon`
+    ? `/api/v1/shared-secrets/public/${id}/branding/brand-favicon`
     : DEFAULT_FAVICON_URL;
 
   const brandingTheme = useMemo((): BrandingTheme | undefined => {
@@ -219,7 +198,7 @@ export const ViewSharedSecretByIDPage = () => {
     };
   }, [faviconUrl]);
 
-  if (isPending) {
+  if (isLoading || isLoadingBrandingConfig) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-bunker-800">
         <Lottie isAutoPlay icon="infisical_loading" className="h-32 w-32" />
@@ -290,29 +269,19 @@ export const ViewSharedSecretByIDPage = () => {
               </p>
             )}
           </div>
-          {(shouldShowPasswordPrompt || isValidatingPassword) && (
+          {(showPasswordPrompt || isInvalidCredential) && (
             <PasswordContainer
-              isSubmitting={isValidatingPassword}
-              onPasswordSubmit={(el) => {
-                setPassword(el);
+              isSubmitting={accessMutation.isPending}
+              onPasswordSubmit={(pwd) => {
+                accessMutation.mutate({ sharedSecretId: id, password: pwd });
               }}
-              isInvalidCredential={!isFetching && isInvalidCredential}
+              isInvalidCredential={!accessMutation.isPending && isInvalidCredential}
               brandingTheme={brandingTheme}
             />
           )}
-          {!isPending && (
-            <>
-              {!error && !fetchSecret?.error && fetchSecret?.secret && (
-                <SecretContainer
-                  secret={fetchSecret.secret}
-                  secretKey={key}
-                  brandingTheme={brandingTheme}
-                />
-              )}
-              {(fetchSecret?.error || (error && !isInvalidCredential && !isUnauthorized)) && (
-                <SecretErrorContainer brandingTheme={brandingTheme} error={fetchSecret?.error} />
-              )}
-            </>
+          {secret && <SecretContainer secret={secret} brandingTheme={brandingTheme} />}
+          {!showPasswordPrompt && !isInvalidCredential && activeError && !isUnauthorized && (
+            <SecretErrorContainer brandingTheme={brandingTheme} error={errorMessage} />
           )}
           {!hasCustomBranding && (
             <>

@@ -6,7 +6,7 @@ import {
   TBrandingConfig,
   TGetSecretRequestByIdResponse,
   TSharedSecret,
-  TViewSharedSecretResponse
+  TSharedSecretPublicDetails
 } from "./types";
 
 export const secretSharingKeys = {
@@ -16,12 +16,10 @@ export const secretSharingKeys = {
   allSecretRequests: () => ["secretRequests"] as const,
   specificSecretRequests: ({ offset, limit }: { offset: number; limit: number }) =>
     [...secretSharingKeys.allSecretRequests(), { offset, limit }] as const,
-  getSecretById: (arg: { id: string; hashedHex: string | null; password?: string }) => [
-    "shared-secret",
-    arg
-  ],
+  getSharedSecretDetails: (id: string) => ["shared-secret", id] as const,
   getSecretRequestById: (arg: { id: string }) => ["secret-request", arg] as const,
-  brandingAssets: () => ["brandingAssets"] as const
+  brandingAssets: () => ["brandingAssets"] as const,
+  sharedSecretBranding: (id: string) => ["shared-secret-branding", id] as const
 };
 
 export const useGetSharedSecrets = ({
@@ -40,7 +38,7 @@ export const useGetSharedSecrets = ({
       });
 
       const { data } = await apiRequest.get<{ secrets: TSharedSecret[]; totalCount: number }>(
-        "/api/v1/secret-sharing/shared",
+        "/api/v1/shared-secrets",
         {
           params
         }
@@ -61,7 +59,7 @@ export const useGetSecretRequests = ({
     queryKey: secretSharingKeys.specificSecretRequests({ offset, limit }),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ secrets: TSharedSecret[]; totalCount: number }>(
-        "/api/v1/secret-sharing/requests",
+        "/api/v1/shared-secrets/requests",
         {
           params: {
             offset: String(offset),
@@ -73,30 +71,13 @@ export const useGetSecretRequests = ({
     }
   });
 };
-export const useGetActiveSharedSecretById = ({
-  sharedSecretId,
-  hashedHex,
-  password
-}: {
-  sharedSecretId: string;
-  hashedHex: string | null;
-  password?: string;
-}) => {
+export const useGetSharedSecretById = ({ sharedSecretId }: { sharedSecretId: string }) => {
   return useQuery({
-    queryKey: secretSharingKeys.getSecretById({
-      id: sharedSecretId,
-      hashedHex,
-      password
-    }),
+    queryKey: secretSharingKeys.getSharedSecretDetails(sharedSecretId),
     queryFn: async () => {
-      const { data } = await apiRequest.post<TViewSharedSecretResponse>(
-        `/api/v1/secret-sharing/shared/public/${sharedSecretId}`,
-        {
-          ...(hashedHex && { hashedHex }),
-          password
-        }
+      const { data } = await apiRequest.get<TSharedSecretPublicDetails>(
+        `/api/v1/shared-secrets/${sharedSecretId}`
       );
-
       return data;
     },
     enabled: Boolean(sharedSecretId)
@@ -108,7 +89,7 @@ export const useGetSecretRequestById = ({ secretRequestId }: { secretRequestId: 
     queryKey: secretSharingKeys.getSecretRequestById({ id: secretRequestId }),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGetSecretRequestByIdResponse>(
-        `/api/v1/secret-sharing/requests/${secretRequestId}`
+        `/api/v1/shared-secrets/requests/${secretRequestId}`
       );
 
       return data;
@@ -120,10 +101,21 @@ export const useGetBrandingConfig = () => {
   return useQuery({
     queryKey: secretSharingKeys.brandingAssets(),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TBrandingConfig>(
-        "/api/v1/secret-sharing/shared/branding"
-      );
+      const { data } = await apiRequest.get<TBrandingConfig>("/api/v1/shared-secrets/branding");
       return data;
     }
+  });
+};
+
+export const useGetSharedSecretBranding = ({ sharedSecretId }: { sharedSecretId: string }) => {
+  return useQuery({
+    queryKey: secretSharingKeys.sharedSecretBranding(sharedSecretId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TBrandingConfig>("/api/v1/shared-secrets/branding", {
+        params: { sharedSecretId }
+      });
+      return data;
+    },
+    enabled: Boolean(sharedSecretId)
   });
 };

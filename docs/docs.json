@@ -2988,6 +2988,21 @@
             ]
           },
           {
+            "group": "Secret Sharing",
+            "pages": [
+              {
+                "group": "Shared Secrets",
+                "pages": [
+                  "api-reference/endpoints/shared-secrets/list",
+                  "api-reference/endpoints/shared-secrets/get-by-id",
+                  "api-reference/endpoints/shared-secrets/create",
+                  "api-reference/endpoints/shared-secrets/delete",
+                  "api-reference/endpoints/shared-secrets/access"
+                ]
+              }
+            ]
+          },
+          {
             "group": "Infisical KMS",
             "pages": [
               {
