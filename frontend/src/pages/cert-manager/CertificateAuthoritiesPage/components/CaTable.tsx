@@ -1,5 +1,11 @@
 import { subject } from "@casl/ability";
-import { faBan, faCertificate, faEllipsis, faTrash } from "@fortawesome/free-solid-svg-icons";
+import {
+  faBan,
+  faCertificate,
+  faEllipsis,
+  faFileSignature,
+  faTrash
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
@@ -41,7 +47,9 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["installCaCert", "caCert", "ca", "deleteCa", "caStatus"]>,
+    popUpName: keyof UsePopUpState<
+      ["installCaCert", "caCert", "ca", "deleteCa", "caStatus", "signIntermediate"]
+    >,
     data?: {
       caId?: string;
       caName?: string;
@@ -216,6 +224,34 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                               )}
                             </ProjectPermissionCan>
                           )}
+                          {ca.status === CaStatus.ACTIVE &&
+                            ca.configuration.maxPathLength !== 0 && (
+                              <ProjectPermissionCan
+                                I={ProjectPermissionCertificateAuthorityActions.SignIntermediate}
+                                a={subject(ProjectPermissionSub.CertificateAuthorities, {
+                                  name: ca.name
+                                })}
+                              >
+                                {(isAllowed) => (
+                                  <DropdownMenuItem
+                                    className={twMerge(
+                                      !isAllowed &&
+                                        "pointer-events-none cursor-not-allowed opacity-50"
+                                    )}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePopUpOpen("signIntermediate", {
+                                        caId: ca.id
+                                      });
+                                    }}
+                                    disabled={!isAllowed}
+                                    icon={<FontAwesomeIcon icon={faFileSignature} />}
+                                  >
+                                    Sign Intermediate
+                                  </DropdownMenuItem>
+                                )}
+                              </ProjectPermissionCan>
+                            )}
                           <ProjectPermissionCan
                             I={ProjectPermissionCertificateAuthorityActions.Delete}
                             a={subject(ProjectPermissionSub.CertificateAuthorities, {

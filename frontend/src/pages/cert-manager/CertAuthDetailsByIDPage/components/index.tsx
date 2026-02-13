@@ -4,3 +4,4 @@ export { CaCrlsSection } from "./CaCrlsSection";
 export { CaDetailsSection } from "./CaDetailsSection";
 export { CaGenerateRootCertModal } from "./CaGenerateRootCertModal";
 export { CaRenewalModal } from "./CaRenewalModal";
+export { CaSignIntermediateModal } from "./CaSignIntermediateModal";

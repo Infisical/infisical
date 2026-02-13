@@ -120,7 +120,7 @@ export type TDeleteCaDTO = {
 export type TSignIntermediateDTO = {
   caId: string;
   csr: string;
-  maxPathLength: number;
+  maxPathLength?: number;
   notBefore?: string;
   notAfter?: string;
 };

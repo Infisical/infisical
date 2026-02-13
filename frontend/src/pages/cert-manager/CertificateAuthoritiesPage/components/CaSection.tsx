@@ -13,6 +13,7 @@ import {
 import { CaStatus, CaType, useDeleteCa, useUpdateCa } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { CaSignIntermediateModal } from "../../CertAuthDetailsByIDPage/components/CaSignIntermediateModal";
 import { CaCertModal } from "./CaCertModal";
 import { CaInstallCertModal } from "./CaInstallCertModal";
 import { CaModal } from "./CaModal";
@@ -28,7 +29,8 @@ export const CaSection = () => {
     "caCert",
     "installCaCert",
     "deleteCa",
-    "caStatus" // enable / disable
+    "caStatus", // enable / disable
+    "signIntermediate"
   ] as const);
 
   const onRemoveCaSubmit = async (id: string) => {
@@ -84,6 +86,7 @@ export const CaSection = () => {
       <CaModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaInstallCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <CaSignIntermediateModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaTable handlePopUpOpen={handlePopUpOpen} />
       <DeleteActionModal
         isOpen={popUp.deleteCa.isOpen}

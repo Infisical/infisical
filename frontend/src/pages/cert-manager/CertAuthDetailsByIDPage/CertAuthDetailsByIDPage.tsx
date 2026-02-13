@@ -22,7 +22,7 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
-import { CaType, useDeleteCa, useGetCa } from "@app/hooks/api";
+import { CaStatus, CaType, useDeleteCa, useGetCa } from "@app/hooks/api";
 import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -35,7 +35,8 @@ import {
   CaCrlsSection,
   CaDetailsSection,
   CaGenerateRootCertModal,
-  CaRenewalModal
+  CaRenewalModal,
+  CaSignIntermediateModal
 } from "./components";
 
 const Page = () => {
@@ -60,7 +61,8 @@ const Page = () => {
     "deleteCa",
     "installCaCert",
     "renewCa",
-    "generateRootCaCert"
+    "generateRootCaCert",
+    "signIntermediate"
   ] as const);
 
   const onRemoveCaSubmit = async () => {
@@ -123,6 +125,26 @@ const Page = () => {
                       </Button>
                     </UnstableDropdownMenuTrigger>
                     <UnstableDropdownMenuContent align="end">
+                      {data.status === CaStatus.ACTIVE &&
+                        data.configuration.maxPathLength !== 0 && (
+                          <ProjectPermissionCan
+                            I={ProjectPermissionCertificateAuthorityActions.SignIntermediate}
+                            a={subject(ProjectPermissionSub.CertificateAuthorities, {
+                              name: data.name
+                            })}
+                          >
+                            {(canSign) => (
+                              <UnstableDropdownMenuItem
+                                isDisabled={!canSign}
+                                onClick={() =>
+                                  handlePopUpOpen("signIntermediate", { caId: data.id })
+                                }
+                              >
+                                Sign Intermediate
+                              </UnstableDropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
+                        )}
                       <ProjectPermissionCan
                         I={ProjectPermissionCertificateAuthorityActions.Delete}
                         a={subject(ProjectPermissionSub.CertificateAuthorities, {
@@ -169,6 +191,7 @@ const Page = () => {
       <CaRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaInstallCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaGenerateRootCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <CaSignIntermediateModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteCa.isOpen}
         title={`Are you sure you want to remove the CA ${
