@@ -13,6 +13,12 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
+/**
+ * Project group memberships. Follows the membership pattern:
+ * - Pattern: {scope}/memberships/{actor-type} (list) and {scope}/memberships/{actor-type}/{actor-id} (by id).
+ * - Scope: projects/:projectId (explicit in path).
+ * - Actor type: groups. Resource: the membership (id, roles), not the group in isolation.
+ */
 const projectGroupMembershipRoleSchema = z.object({
   id: z.string(),
   role: z.string(),
@@ -80,7 +86,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
           ...el,
           groupId: el.actorGroupId as string,
           projectId: req.params.projectId,
-          group: el.group!
+          group: el.group
         }))
       };
     }
@@ -137,7 +143,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
     },
     handler: async (req) => {
       const roles = req.body.roles || [{ role: req.body.role!, isTemporary: false }];
-      const { membership } = await server.services.membershipGroup.createMembership({
+      await server.services.membershipGroup.createMembership({
         permission: req.permission,
         data: { groupId: req.params.groupId, roles },
         scopeData: {
@@ -162,7 +168,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
           ...full,
           groupId: full.actorGroupId as string,
           projectId: req.params.projectId,
-          group: full.group!
+          group: full.group
         }
       };
     }
@@ -208,7 +214,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
           ...membership,
           groupId: membership.actorGroupId as string,
           projectId: req.params.projectId,
-          group: membership.group!
+          group: membership.group
         }
       };
     }
@@ -296,7 +302,8 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
       }),
       response: {
         200: z.object({
-          groupMembership: projectGroupMembershipSchema.pick({ id: true, groupId: true, projectId: true })
+          groupMembership: projectGroupMembershipSchema
+            .pick({ id: true, groupId: true, projectId: true })
             .extend({ createdAt: z.date(), updatedAt: z.date() })
         })
       }

@@ -7,6 +7,12 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
+/**
+ * Organization group memberships. Follows the membership pattern:
+ * - Pattern: {scope}/memberships/{actor-type} (list) and {scope}/memberships/{actor-type}/{actor-id} (by id).
+ * - Scope: organizations (org from token, no org id in path).
+ * - Actor type: groups. Resource: the membership (id, roles), not the group in isolation.
+ */
 const orgGroupMembershipRoleSchema = z.object({
   id: z.string(),
   role: z.string(),
@@ -76,7 +82,7 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
         groupMemberships: memberships.map((m) => ({
           ...m,
           groupId: m.actorGroupId as string,
-          group: m.group!
+          group: m.group
         })),
         totalCount
       };
@@ -126,7 +132,7 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
       }
     },
     handler: async (req) => {
-      const { membership } = await server.services.membershipGroup.createMembership({
+      await server.services.membershipGroup.createMembership({
         scopeData: {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId
@@ -148,7 +154,7 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
         groupMembership: {
           ...full,
           groupId: full.actorGroupId as string,
-          group: full.group!
+          group: full.group
         }
       };
     }
@@ -188,7 +194,7 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
         groupMembership: {
           ...membership,
           groupId: membership.actorGroupId as string,
-          group: membership.group!
+          group: membership.group
         }
       };
     }
@@ -237,7 +243,7 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
       }
     },
     handler: async (req) => {
-      const { membership } = await server.services.membershipGroup.updateMembership({
+      await server.services.membershipGroup.updateMembership({
         permission: req.permission,
         scopeData: { scope: AccessScope.Organization, orgId: req.permission.orgId },
         selector: { groupId: req.params.groupId },
@@ -254,7 +260,7 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
         groupMembership: {
           ...full,
           groupId: full.actorGroupId as string,
-          group: full.group!
+          group: full.group
         }
       };
     }
