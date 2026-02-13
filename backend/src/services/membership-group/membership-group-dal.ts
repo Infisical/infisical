@@ -192,6 +192,7 @@ export const membershipGroupDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.Groups).as("groupName"),
           db.ref("slug").withSchema(TableName.Groups).as("groupSlug"),
           db.ref("id").withSchema(TableName.Groups).as("groupId"),
+          db.ref("orgId").withSchema(TableName.Groups).as("groupOrgId"),
 
           db.ref("slug").withSchema(TableName.Role).as("roleSlug"),
           db.ref("name").withSchema(TableName.Role).as("roleName"),
@@ -221,13 +222,14 @@ export const membershipGroupDALFactory = (db: TDbClient) => {
         data: docs,
         key: "id",
         parentMapper: (el) => {
-          const { groupId, groupName, groupSlug } = el;
+          const { groupId, groupName, groupSlug, groupOrgId } = el;
           return {
             ...MembershipsSchema.parse(el),
             group: {
               id: groupId,
               name: groupName,
-              slug: groupSlug
+              slug: groupSlug,
+              ...(groupOrgId != null && { orgId: groupOrgId })
             }
           };
         },

@@ -23,6 +23,7 @@ type Props = {
     popUpName: keyof UsePopUpState<["removeMemberFromGroup"]>,
     data?: object
   ) => void;
+  isInherited?: boolean;
 };
 
 export const GroupMembershipUserRow = ({
@@ -31,7 +32,8 @@ export const GroupMembershipUserRow = ({
     joinedGroupAt,
     id
   },
-  handlePopUpOpen
+  handlePopUpOpen,
+  isInherited = false
 }: Props) => {
   const { currentOrg } = useOrganization();
 
@@ -48,40 +50,42 @@ export const GroupMembershipUserRow = ({
       </UnstableTableCell>
       <UnstableTableCell>{format(new Date(joinedGroupAt), "yyyy-MM-dd")}</UnstableTableCell>
       <UnstableTableCell>
-        <UnstableDropdownMenu>
-          <UnstableDropdownMenuTrigger>
-            <UnstableIconButton variant="ghost" size="xs">
-              <MoreHorizontalIcon />
-            </UnstableIconButton>
-          </UnstableDropdownMenuTrigger>
-          <UnstableDropdownMenuContent align="end">
-            <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
-              {(isAllowed) => (
-                <Tooltip
-                  content={
-                    isOidcManageGroupMembershipsEnabled
-                      ? "OIDC Group Membership Mapping Enabled. Remove user from this group in your OIDC provider."
-                      : undefined
-                  }
-                  position="left"
-                >
-                  <UnstableDropdownMenuItem
-                    variant="danger"
-                    onClick={() =>
-                      handlePopUpOpen("removeMemberFromGroup", {
-                        memberType: GroupMemberType.USER,
-                        username
-                      })
+        {!isInherited && (
+          <UnstableDropdownMenu>
+            <UnstableDropdownMenuTrigger>
+              <UnstableIconButton variant="ghost" size="xs">
+                <MoreHorizontalIcon />
+              </UnstableIconButton>
+            </UnstableDropdownMenuTrigger>
+            <UnstableDropdownMenuContent align="end">
+              <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
+                {(isAllowed) => (
+                  <Tooltip
+                    content={
+                      isOidcManageGroupMembershipsEnabled
+                        ? "OIDC Group Membership Mapping Enabled. Remove user from this group in your OIDC provider."
+                        : undefined
                     }
-                    isDisabled={!isAllowed || isOidcManageGroupMembershipsEnabled}
+                    position="left"
                   >
-                    Remove User From Group
-                  </UnstableDropdownMenuItem>
-                </Tooltip>
-              )}
-            </OrgPermissionCan>
-          </UnstableDropdownMenuContent>
-        </UnstableDropdownMenu>
+                    <UnstableDropdownMenuItem
+                      variant="danger"
+                      onClick={() =>
+                        handlePopUpOpen("removeMemberFromGroup", {
+                          memberType: GroupMemberType.USER,
+                          username
+                        })
+                      }
+                      isDisabled={!isAllowed || isOidcManageGroupMembershipsEnabled}
+                    >
+                      Remove User From Group
+                    </UnstableDropdownMenuItem>
+                  </Tooltip>
+                )}
+              </OrgPermissionCan>
+            </UnstableDropdownMenuContent>
+          </UnstableDropdownMenu>
+        )}
       </UnstableTableCell>
     </UnstableTableRow>
   );

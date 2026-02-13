@@ -24,9 +24,14 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 type Props = {
   groupId: string;
   handlePopUpOpen: (popUpName: keyof UsePopUpState<["groupCreateUpdate"]>, data?: object) => void;
+  canEditGroup?: boolean;
 };
 
-export const GroupDetailsSection = ({ groupId, handlePopUpOpen }: Props) => {
+export const GroupDetailsSection = ({
+  groupId,
+  handlePopUpOpen,
+  canEditGroup = true
+}: Props) => {
   const { data } = useGetGroupById(groupId);
 
   const [, isCopyingId, setCopyTextId] = useTimedReset<string>({
@@ -42,27 +47,29 @@ export const GroupDetailsSection = ({ groupId, handlePopUpOpen }: Props) => {
       <UnstableCardHeader className="border-b">
         <UnstableCardTitle>Details</UnstableCardTitle>
         <UnstableCardDescription>Group details</UnstableCardDescription>
-        <UnstableCardAction>
-          <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
-            {(isAllowed) => (
-              <UnstableIconButton
-                isDisabled={!isAllowed}
-                onClick={() => {
-                  handlePopUpOpen("groupCreateUpdate", {
-                    groupId,
-                    name: data.group.name,
-                    slug: data.group.slug,
-                    role: data.group.roleId || data.group.role
-                  });
-                }}
-                size="xs"
-                variant="outline"
-              >
-                <PencilIcon />
-              </UnstableIconButton>
-            )}
-          </OrgPermissionCan>
-        </UnstableCardAction>
+        {canEditGroup && (
+          <UnstableCardAction>
+            <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
+              {(isAllowed) => (
+                <UnstableIconButton
+                  isDisabled={!isAllowed}
+                  onClick={() => {
+                    handlePopUpOpen("groupCreateUpdate", {
+                      groupId,
+                      name: data.group.name,
+                      slug: data.group.slug,
+                      role: data.group.roleId || data.group.role
+                    });
+                  }}
+                  size="xs"
+                  variant="outline"
+                >
+                  <PencilIcon />
+                </UnstableIconButton>
+              )}
+            </OrgPermissionCan>
+          </UnstableCardAction>
+        )}
       </UnstableCardHeader>
       <UnstableCardContent>
         <DetailGroup>

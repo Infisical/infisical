@@ -82,7 +82,8 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
   const handleChangeRole = async ({ id, role }: { id: string; role: string }) => {
     await updateMutateAsync({
       id,
-      role
+      role,
+      organizationId: orgId
     });
 
     createNotification({
@@ -232,6 +233,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
               filteredGroups
                 .slice(offset, perPage * page)
                 .map(({ id, name, slug, role, customRole, orgId: groupOrgId }) => {
+                  const isInherited = currentOrg ? groupOrgId !== currentOrg.id : false;
                   return (
                     <Tr
                       onClick={() =>
@@ -304,60 +306,60 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                             >
                               Copy Group ID
                             </DropdownMenuItem>
-                            <OrgPermissionCan
-                              I={OrgPermissionGroupActions.Edit}
-                              a={OrgPermissionSubjects.Groups}
-                            >
-                              {(isAllowed) => (
-                                <DropdownMenuItem
-                                  icon={<FontAwesomeIcon icon={faEdit} />}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePopUpOpen("group", {
-                                      groupId: id,
-                                      name,
-                                      slug,
-                                      role,
-                                      customRole
-                                    });
-                                  }}
-                                  isDisabled={!isAllowed}
-                                >
-                                  Edit Group
-                                </DropdownMenuItem>
-                              )}
-                            </OrgPermissionCan>
-                            <OrgPermissionCan
-                              I={OrgPermissionGroupActions.Edit}
-                              a={OrgPermissionSubjects.Groups}
-                            >
-                              {(isAllowed) => (
-                                <DropdownMenuItem
-                                  icon={<FontAwesomeIcon icon={faUserGroup} />}
-                                  onClick={() =>
-                                    navigate({
-                                      to: "/organizations/$orgId/groups/$groupId",
-                                      params: {
-                                        orgId,
-                                        groupId: id
-                                      }
-                                    })
-                                  }
-                                  isDisabled={!isAllowed}
-                                >
-                                  Manage Members
-                                </DropdownMenuItem>
-                              )}
-                            </OrgPermissionCan>
+                            {!isInherited && (
+                              <OrgPermissionCan
+                                I={OrgPermissionGroupActions.Edit}
+                                a={OrgPermissionSubjects.Groups}
+                              >
+                                {(isAllowed) => (
+                                  <DropdownMenuItem
+                                    icon={<FontAwesomeIcon icon={faEdit} />}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePopUpOpen("group", {
+                                        groupId: id,
+                                        name,
+                                        slug,
+                                        role,
+                                        customRole
+                                      });
+                                    }}
+                                    isDisabled={!isAllowed}
+                                  >
+                                    Edit Group
+                                  </DropdownMenuItem>
+                                )}
+                              </OrgPermissionCan>
+                            )}
+                            {!isInherited && (
+                              <OrgPermissionCan
+                                I={OrgPermissionGroupActions.Edit}
+                                a={OrgPermissionSubjects.Groups}
+                              >
+                                {(isAllowed) => (
+                                  <DropdownMenuItem
+                                    icon={<FontAwesomeIcon icon={faUserGroup} />}
+                                    onClick={() =>
+                                      navigate({
+                                        to: "/organizations/$orgId/groups/$groupId",
+                                        params: {
+                                          orgId,
+                                          groupId: id
+                                        }
+                                      })
+                                    }
+                                    isDisabled={!isAllowed}
+                                  >
+                                    Manage Members
+                                  </DropdownMenuItem>
+                                )}
+                              </OrgPermissionCan>
+                            )}
                             <OrgPermissionCan
                               I={OrgPermissionGroupActions.Delete}
                               a={OrgPermissionSubjects.Groups}
                             >
-                              {(isAllowed) => {
-                                const isInherited = currentOrg
-                                  ? groupOrgId !== currentOrg.id
-                                  : false;
-                                return (
+                              {(isAllowed) => (
                                   <DropdownMenuItem
                                     icon={<FontAwesomeIcon icon={faTrash} />}
                                     onClick={(e) => {
@@ -372,8 +374,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                                   >
                                     {isInherited ? "Unlink Group" : "Delete Group"}
                                   </DropdownMenuItem>
-                                );
-                              }}
+                              )}
                             </OrgPermissionCan>
                           </DropdownMenuContent>
                         </DropdownMenu>
