@@ -1,13 +1,13 @@
-import { AccessScope, IdentityAuthMethod, TableName, TIdentityAccessTokens } from "@app/db/schemas";
+import { IdentityAuthMethod, TableName, TIdentityAccessTokens } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
+import { ActorType } from "@app/services/auth/auth-type";
 
 import { TAccessTokenQueueServiceFactory } from "../access-token-queue/access-token-queue";
 import { AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
-import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TIdentityAccessTokenDALFactory } from "./identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload, TRenewAccessTokenDTO } from "./identity-access-token-types";
@@ -19,8 +19,7 @@ type TIdentityAccessTokenServiceFactoryDep = {
     TAccessTokenQueueServiceFactory,
     "updateIdentityAccessTokenStatus" | "getIdentityTokenDetailsInCache"
   >;
-  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne">;
-  orgDAL: Pick<TOrgDALFactory, "findOne">;
+  orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership">;
 };
 
 export type TIdentityAccessTokenServiceFactory = ReturnType<typeof identityAccessTokenServiceFactory>;
@@ -29,7 +28,6 @@ export const identityAccessTokenServiceFactory = ({
   identityAccessTokenDAL,
   accessTokenQueue,
   identityDAL,
-  membershipIdentityDAL,
   orgDAL
 }: TIdentityAccessTokenServiceFactoryDep) => {
   const validateAccessTokenExp = async (identityAccessToken: TIdentityAccessTokens) => {
@@ -214,11 +212,11 @@ export const identityAccessTokenServiceFactory = ({
 
     const rootOrgId = isSubOrg ? identityOrgDetails.rootOrgId || identityOrgDetails.id : identityOrgDetails.id;
 
-    // Verify identity membership in the organization
-    const identityOrgMembership = await membershipIdentityDAL.findOne({
-      scope: AccessScope.Organization,
-      actorIdentityId: identityAccessToken.identityId,
-      scopeOrgId: identityOrgDetails.id
+    // Verify identity membership in the organization (direct or via group)
+    const identityOrgMembership = await orgDAL.findEffectiveOrgMembership({
+      actorType: ActorType.IDENTITY,
+      actorId: identityAccessToken.identityId,
+      orgId: identityOrgDetails.id
     });
 
     if (!identityOrgMembership) {

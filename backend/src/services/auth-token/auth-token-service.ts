@@ -1,11 +1,11 @@
 import { Knex } from "knex";
 
-import { AccessScope, TAuthTokens, TAuthTokenSessions } from "@app/db/schemas";
+import { OrgMembershipStatus, TAuthTokens, TAuthTokenSessions } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 
-import { AuthModeJwtTokenPayload, AuthModeRefreshJwtTokenPayload, AuthTokenType } from "../auth/auth-type";
+import { ActorType, AuthModeJwtTokenPayload, AuthModeRefreshJwtTokenPayload, AuthTokenType } from "../auth/auth-type";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TUserDALFactory } from "../user/user-dal";
@@ -15,7 +15,7 @@ import { TCreateTokenForUserDTO, TIssueAuthTokenDTO, TokenType, TValidateTokenFo
 type TAuthTokenServiceFactoryDep = {
   tokenDAL: TTokenDALFactory;
   userDAL: Pick<TUserDALFactory, "findById" | "transaction">;
-  orgDAL: Pick<TOrgDALFactory, "findOne">;
+  orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "findOne">;
 };
 
@@ -95,7 +95,7 @@ export const getTokenConfig = (tokenType: TokenType) => {
   }
 };
 
-export const tokenServiceFactory = ({ tokenDAL, userDAL, membershipUserDAL, orgDAL }: TAuthTokenServiceFactoryDep) => {
+export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL }: TAuthTokenServiceFactoryDep) => {
   const createTokenForUser = async ({ type, userId, orgId, aliasId, payload }: TCreateTokenForUserDTO) => {
     const { token, ...tkCfg } = getTokenConfig(type);
     const appCfg = getConfig();
@@ -239,10 +239,11 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, membershipUserDAL, orgD
           throw new ForbiddenRequestError({ message: "Sub-organization does not belong to the token's organization" });
         }
 
-        const orgMembership = await membershipUserDAL.findOne({
-          actorUserId: user.id,
-          scopeOrgId: subOrganization.id,
-          scope: AccessScope.Organization
+        const orgMembership = await orgDAL.findEffectiveOrgMembership({
+          actorType: ActorType.USER,
+          actorId: user.id,
+          orgId: subOrganization.id,
+          status: OrgMembershipStatus.Accepted
         });
 
         if (!orgMembership) {
@@ -258,10 +259,11 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, membershipUserDAL, orgD
         parentOrgId = subOrganization.parentOrgId as string;
       } else {
         const organization = await orgDAL.findOne({ id: token.organizationId });
-        const orgMembership = await membershipUserDAL.findOne({
-          actorUserId: user.id,
-          scopeOrgId: token.organizationId,
-          scope: AccessScope.Organization
+        const orgMembership = await orgDAL.findEffectiveOrgMembership({
+          actorType: ActorType.USER,
+          actorId: user.id,
+          orgId: token.organizationId,
+          status: OrgMembershipStatus.Accepted
         });
 
         if (!orgMembership) {

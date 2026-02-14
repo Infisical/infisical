@@ -47,6 +47,8 @@ export const useUpdateGroup = () => {
       name?: string;
       slug?: string;
       role?: string;
+      /** Pass to invalidate this org's group list (e.g. current org when editing role in sub-org) */
+      organizationId?: string;
     }) => {
       const { data: group } = await apiRequest.patch<TGroup>(`/api/v1/groups/${id}`, {
         name,
@@ -56,9 +58,14 @@ export const useUpdateGroup = () => {
 
       return group;
     },
-    onSuccess: ({ orgId, id: groupId }) => {
-      queryClient.invalidateQueries({ queryKey: organizationKeys.getOrgGroups(orgId) });
-      queryClient.invalidateQueries({ queryKey: groupKeys.getGroupById(groupId) });
+    onSuccess: (group, variables) => {
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getOrgGroups(group.orgId) });
+      if (variables.organizationId && variables.organizationId !== group.orgId) {
+        queryClient.invalidateQueries({
+          queryKey: organizationKeys.getOrgGroups(variables.organizationId)
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: groupKeys.getGroupById(group.id) });
     }
   });
 };
@@ -66,14 +73,25 @@ export const useUpdateGroup = () => {
 export const useDeleteGroup = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id }: { id: string }) => {
+    mutationFn: async ({
+      id
+    }: {
+      id: string;
+      /** Pass to invalidate this org's group list (e.g. current org when unlinking in sub-org) */
+      organizationId?: string;
+    }) => {
       const { data: group } = await apiRequest.delete<TGroup>(`/api/v1/groups/${id}`);
 
       return group;
     },
-    onSuccess: ({ orgId, id: groupId }) => {
-      queryClient.invalidateQueries({ queryKey: organizationKeys.getOrgGroups(orgId) });
-      queryClient.invalidateQueries({ queryKey: groupKeys.getGroupById(groupId) });
+    onSuccess: (group, variables) => {
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getOrgGroups(group.orgId) });
+      if (variables.organizationId && variables.organizationId !== group.orgId) {
+        queryClient.invalidateQueries({
+          queryKey: organizationKeys.getOrgGroups(variables.organizationId)
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: groupKeys.getGroupById(group.id) });
     }
   });
 };

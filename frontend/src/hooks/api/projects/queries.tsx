@@ -459,7 +459,7 @@ export const useGetWorkspaceGroupMembershipDetails = (projectId: string, groupId
       const {
         data: { groupMembership }
       } = await apiRequest.get<{ groupMembership: TGroupMembership }>(
-        `/api/v1/projects/${projectId}/groups/${groupId}`
+        `/api/v1/projects/${projectId}/memberships/groups/${groupId}`
       );
       return groupMembership;
     }
@@ -473,7 +473,7 @@ export const useListWorkspaceGroups = (projectId: string) => {
       const {
         data: { groupMemberships }
       } = await apiRequest.get<{ groupMemberships: TGroupMembership[] }>(
-        `/api/v1/projects/${projectId}/groups`
+        `/api/v1/projects/${projectId}/memberships/groups`
       );
       return groupMemberships;
     },

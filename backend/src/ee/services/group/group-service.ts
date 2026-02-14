@@ -1,10 +1,11 @@
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
-import { AccessScope, OrganizationActionScope, OrgMembershipRole, TRoles } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, OrgMembershipRole, TGroups, TRoles } from "@app/db/schemas";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { TGenericPermission } from "@app/lib/types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -59,8 +60,10 @@ type TGroupServiceFactoryDep = {
     | "findById"
     | "transaction"
     | "findAllGroupProjects"
+    | "listAvailableGroups"
+    | "hasGroupsReferencingGroup"
   >;
-  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "findOne" | "create" | "getGroupById">;
+  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "findOne" | "create" | "getGroupById" | "deleteById">;
   membershipDAL: Pick<TMembershipDALFactory, "find" | "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "countAllOrgMembers" | "findById">;
@@ -211,14 +214,25 @@ export const groupServiceFactory = ({
         message: "Failed to update group due to plan restriction Upgrade plan to update group."
       });
 
-    const group = await groupDAL.findOne({ orgId: actorOrgId, id });
-    if (!group) {
+    const groupMembership = await membershipGroupDAL.getGroupById({
+      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+      groupId: id
+    });
+    if (!groupMembership?.group) {
       throw new NotFoundError({ message: `Failed to find group with ID ${id}` });
+    }
+    const { group } = groupMembership;
+
+    const isLinkedGroup = group.orgId !== actorOrgId;
+    if (isLinkedGroup && (name || slug)) {
+      throw new BadRequestError({
+        message: "Cannot update name or slug of a linked group. Only the role in this sub-organization can be updated."
+      });
     }
 
     let customRole: TRoles | undefined;
     if (role) {
-      const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([role], group.orgId);
+      const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([role], actorOrgId);
 
       const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
       const isCustomRole = Boolean(rolePermissionDetails?.role);
@@ -243,41 +257,33 @@ export const groupServiceFactory = ({
       if (isCustomRole) customRole = rolePermissionDetails?.role;
     }
 
-    const updatedGroup = await groupDAL.transaction(async (tx) => {
-      if (name) {
-        const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name }, tx);
-
-        if (existingGroup && existingGroup.id !== id) {
-          throw new BadRequestError({
-            message: `Failed to update group with name '${name}'. Group with the same name already exists`
-          });
-        }
+    if (!isLinkedGroup && name) {
+      const existingGroup = await groupDAL.findOne({ orgId: actorOrgId, name });
+      if (existingGroup && existingGroup.id !== id) {
+        throw new BadRequestError({
+          message: `Failed to update group with name '${name}'. Group with the same name already exists`
+        });
       }
+    }
 
-      let updated = group;
-
-      if (name || slug) {
-        [updated] = await groupDAL.update(
-          {
-            id: group.id
-          },
-          {
-            name,
-            slug: slug ? slugify(slug) : undefined
-          },
-          tx
-        );
-      }
+    const updatedGroup = await groupDAL.transaction(async (tx): Promise<TGroups> => {
+      const [nameSlugRow] =
+        !isLinkedGroup && (name || slug)
+          ? await groupDAL.update({ id: group.id }, { name, slug: slug ? slugify(slug) : undefined }, tx)
+          : [];
 
       if (role) {
         const membership = await membershipGroupDAL.findOne(
           {
             scope: AccessScope.Organization,
-            actorGroupId: updated.id,
-            scopeOrgId: updated.orgId
+            actorGroupId: group.id,
+            scopeOrgId: actorOrgId
           },
           tx
         );
+        if (!membership) {
+          throw new NotFoundError({ message: "Group membership not found" });
+        }
         await membershipRoleDAL.delete({ membershipId: membership.id }, tx);
         await membershipRoleDAL.create(
           {
@@ -289,7 +295,7 @@ export const groupServiceFactory = ({
         );
       }
 
-      return updated;
+      return nameSlugRow ?? group;
     });
 
     return updatedGroup;
@@ -315,12 +321,38 @@ export const groupServiceFactory = ({
         message: "Failed to delete group due to plan restriction. Upgrade plan to delete group."
       });
 
-    const [group] = await groupDAL.delete({
+    const groupMembership = await membershipGroupDAL.getGroupById({
+      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+      groupId: id
+    });
+    if (!groupMembership?.group) {
+      throw new NotFoundError({ message: `Cannot find group with ID ${id}` });
+    }
+    const { group } = groupMembership;
+
+    if (group.orgId !== actorOrgId) {
+      // Linked group: unlink by deleting the membership in this org only
+      await groupDAL.transaction(async (tx) => {
+        await membershipRoleDAL.delete({ membershipId: groupMembership.id }, tx);
+        await membershipGroupDAL.deleteById(groupMembership.id, tx);
+      });
+      return group;
+    }
+
+    const isReferencedAsSource = await groupDAL.hasGroupsReferencingGroup(id);
+    if (isReferencedAsSource) {
+      throw new BadRequestError({
+        message:
+          "Cannot delete this group because it is used as a source group by other groups. Unlink or delete those groups first."
+      });
+    }
+
+    const [deletedGroup] = await groupDAL.delete({
       id,
       orgId: actorOrgId
     });
 
-    return group;
+    return deletedGroup;
   };
 
   const getGroupById = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TGetGroupByIdDTO) => {
@@ -336,14 +368,40 @@ export const groupServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
 
-    const group = await groupDAL.findById(id);
-    if (!group || group.orgId !== actorOrgId) {
-      throw new NotFoundError({
-        message: `Cannot find group with ID ${id}`
-      });
+    const groupMembership = await membershipGroupDAL.getGroupById({
+      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+      groupId: id
+    });
+    if (!groupMembership?.group) {
+      throw new NotFoundError({ message: `Cannot find group with ID ${id}` });
     }
+    const { group } = groupMembership as { group: TGroups };
 
-    return group;
+    const firstRole = groupMembership.roles?.[0];
+    const role = firstRole?.role ?? "";
+    const roleId = firstRole?.id ?? null;
+    const customRoleSlug = firstRole?.customRoleSlug ?? null;
+    const customRole = firstRole?.customRoleSlug
+      ? {
+          id: firstRole.id,
+          name: firstRole.customRoleName ?? "",
+          slug: firstRole.customRoleSlug,
+          permissions: null,
+          description: null
+        }
+      : undefined;
+    return {
+      id: group.id,
+      orgId: group.orgId,
+      name: group.name,
+      slug: group.slug,
+      createdAt: group.createdAt,
+      updatedAt: group.updatedAt,
+      role,
+      roleId,
+      customRoleSlug,
+      customRole
+    };
   };
 
   const listGroupUsers = async ({
@@ -370,15 +428,14 @@ export const groupServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
 
-    const group = await groupDAL.findOne({
-      orgId: actorOrgId,
-      id
+    const groupMembership = await membershipGroupDAL.getGroupById({
+      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+      groupId: id
     });
-
-    if (!group)
-      throw new NotFoundError({
-        message: `Failed to find group with ID ${id}`
-      });
+    if (!groupMembership?.group) {
+      throw new NotFoundError({ message: `Failed to find group with ID ${id}` });
+    }
+    const { group } = groupMembership;
 
     const { members, totalCount } = await groupDAL.findAllGroupPossibleUsers({
       orgId: group.orgId,
@@ -416,15 +473,14 @@ export const groupServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
 
-    const group = await groupDAL.findOne({
-      orgId: actorOrgId,
-      id
+    const groupMembership = await membershipGroupDAL.getGroupById({
+      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+      groupId: id
     });
-
-    if (!group)
-      throw new NotFoundError({
-        message: `Failed to find group with ID ${id}`
-      });
+    if (!groupMembership?.group) {
+      throw new NotFoundError({ message: `Failed to find group with ID ${id}` });
+    }
+    const { group } = groupMembership;
 
     const { machineIdentities, totalCount } = await groupDAL.findAllGroupPossibleMachineIdentities({
       orgId: group.orgId,
@@ -463,15 +519,14 @@ export const groupServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
 
-    const group = await groupDAL.findOne({
-      orgId: actorOrgId,
-      id
+    const groupMembership = await membershipGroupDAL.getGroupById({
+      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+      groupId: id
     });
-
-    if (!group)
-      throw new NotFoundError({
-        message: `Failed to find group with ID ${id}`
-      });
+    if (!groupMembership?.group) {
+      throw new NotFoundError({ message: `Failed to find group with ID ${id}` });
+    }
+    const { group } = groupMembership;
 
     const { members, totalCount } = await groupDAL.findAllGroupPossibleMembers({
       orgId: group.orgId,
@@ -512,15 +567,14 @@ export const groupServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
 
-    const group = await groupDAL.findOne({
-      orgId: actorOrgId,
-      id
+    const groupMembership = await membershipGroupDAL.getGroupById({
+      scopeData: { scope: AccessScope.Organization, orgId: actorOrgId },
+      groupId: id
     });
-
-    if (!group)
-      throw new NotFoundError({
-        message: `Failed to find group with ID ${id}`
-      });
+    if (!groupMembership?.group) {
+      throw new NotFoundError({ message: `Failed to find group with ID ${id}` });
+    }
+    const { group } = groupMembership;
 
     const { projects, totalCount } = await groupDAL.findAllGroupProjects({
       orgId: group.orgId,
@@ -534,6 +588,28 @@ export const groupServiceFactory = ({
     });
 
     return { projects, totalCount };
+  };
+
+  const listAvailableGroups = async ({
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    rootOrgId
+  }: TGenericPermission & { rootOrgId: string }) => {
+    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+
+    return groupDAL.listAvailableGroups(actorOrgId, rootOrgId);
   };
 
   const addUserToGroup = async ({ id, username, actor, actorId, actorAuthMethod, actorOrgId }: TAddUserToGroupDTO) => {
@@ -867,14 +943,15 @@ export const groupServiceFactory = ({
     createGroup,
     updateGroup,
     deleteGroup,
+    getGroupById,
     listGroupUsers,
     listGroupMachineIdentities,
     listGroupMembers,
     listGroupProjects,
+    listAvailableGroups,
     addUserToGroup,
     addMachineIdentityToGroup,
     removeUserFromGroup,
-    removeMachineIdentityFromGroup,
-    getGroupById
+    removeMachineIdentityFromGroup
   };
 };
