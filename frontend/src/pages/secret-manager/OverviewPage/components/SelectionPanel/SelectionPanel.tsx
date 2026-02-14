@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 import { subject } from "@casl/ability";
-import { faAnglesRight, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { FolderInputIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, DeleteActionModal, Tooltip } from "@app/components/v2";
+import { DeleteActionModal } from "@app/components/v2";
+import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -231,45 +231,44 @@ export const SelectionPanel = ({
           isMultiSelectActive && "h-16"
         )}
       >
-        <div className="mt-3.5 flex items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 py-2 text-bunker-300">
+        <div className="mt-3.5 flex items-center rounded-md border border-border bg-card p-2 pl-4 text-foreground">
           <div className="mr-2 text-sm">{selectedCount} Selected</div>
           <button
             type="button"
-            className="mr-auto text-xs text-mineshaft-400 underline-offset-2 hover:text-mineshaft-200 hover:underline"
+            className="mt-0.5 mr-auto text-xs text-accent underline-offset-2 hover:underline"
             onClick={resetSelectedEntries}
           >
             Unselect All
           </button>
           {isRotatedSecretSelected && (
-            <span className="text-sm text-mineshaft-400">
+            <span className="text-xs text-accent">
               Rotated Secrets will not be affected by action.
             </span>
           )}
           {shouldShowDelete && (
             <>
-              <Tooltip content={areFoldersSelected ? "Moving folders is not supported" : undefined}>
-                <div>
+              <Tooltip open={areFoldersSelected ? undefined : false}>
+                <TooltipTrigger>
                   <Button
                     isDisabled={areFoldersSelected}
-                    variant="outline_bg"
-                    colorSchema="primary"
-                    leftIcon={<FontAwesomeIcon icon={faAnglesRight} />}
-                    className="ml-4"
+                    variant="project"
+                    className="ml-2"
                     onClick={() => handlePopUpOpen("bulkMoveSecrets")}
                     size="xs"
                   >
+                    <FolderInputIcon />
                     Move
                   </Button>
-                </div>
+                </TooltipTrigger>
+                <TooltipContent>Moving folders is not supported</TooltipContent>
               </Tooltip>
               <Button
-                variant="outline_bg"
-                colorSchema="danger"
-                leftIcon={<FontAwesomeIcon icon={faTrash} />}
-                className="ml-4"
+                variant="danger"
+                className="ml-2"
                 onClick={() => handlePopUpOpen("bulkDeleteEntries")}
                 size="xs"
               >
+                <TrashIcon />
                 Delete
               </Button>
             </>
