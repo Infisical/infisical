@@ -13,6 +13,20 @@ import { zpStr } from "../zod";
 
 export const GITLAB_URL = "https://gitlab.com";
 
+const DEFAULT_CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS: Record<string, string | number | boolean> = {
+  async_insert: 1,
+  // !!!NOTICE!!! by disabling wait_for_async_insert, we shouldn't suffer from the audit log queue piles up jobs
+  //              issues anymore as now insert won't be blocked until the data is written to disk.
+  //              However, this works at the cost of DATA LOSS if the ClickHouse server crashes
+  //              before the data is written to disk.
+  //              Because our Redis queue if without AOF + Fsync, may already suffer data loss issues,
+  //              so it's not worsening the issue at least for now.
+  //              Let's have this rolled out in production and see how things go for now,
+  //              in the meantime, we should think about a better solution to handle this.
+  wait_for_async_insert: 0,
+  date_time_input_format: "best_effort"
+};
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any -- If `process.pkg` is set, and it's true, then it means that the app is currently running in a packaged environment (a binary)
 export const IS_PACKAGED = (process as any)?.pkg !== undefined;
 
@@ -96,23 +110,10 @@ const envSchema = z
         .string()
         .optional()
         .transform((val) => {
-          if (!val || val.trim() === "")
-            return {
-              async_insert: 1,
-              // !!!NOTICE!!! by disabling wait_for_async_insert, we shouldn't suffer from the audit log queue piles up jobs
-              //              issues anymore as now insert won't be blocked until the data is written to disk.
-              //              However, this works at the cost of DATA LOSS if the ClickHouse server crashes
-              //              before the data is written to disk.
-              //              Because our Redis queue if without AOF + Fsync, may already suffer data loss issues,
-              //              so it's not worsening the issue at least for now.
-              //              Let's have this rolled out in production and see how things go for now,
-              //              in the meantime, we should think about a better solution to handle this.
-              wait_for_async_insert: 0,
-              date_time_input_format: "best_effort"
-            } as Record<string, string | number | boolean>;
+          if (!val || val.trim() === "") return DEFAULT_CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS;
           return JSON.parse(val) as Record<string, string | number | boolean>;
         })
-        .default('{"async_insert":1,"wait_for_async_insert":1,"date_time_input_format":"best_effort"}')
+        .default(JSON.stringify(DEFAULT_CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS))
         .describe(
           'ClickHouse insert settings as JSON. Eg: {"async_insert":1,"wait_for_async_insert":1}. Applied when inserting audit logs.'
         )
