@@ -285,7 +285,7 @@ export const useResetUserPasswordV2 = () => {
 // Refresh token is set as cookie when logged in
 // Using that we fetch the auth bearer token needed for auth calls
 export const fetchAuthToken = async () => {
-  const { data } = await apiRequest.post<GetAuthTokenAPI>("/api/v1/auth/token", undefined, {
+  const { data } = await apiRequest.post<GetAuthTokenAPI>("/api/v1/auth/token", {}, {
     withCredentials: true
   });
   setAuthToken(data.token);
