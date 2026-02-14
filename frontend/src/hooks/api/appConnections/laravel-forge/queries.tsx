@@ -31,7 +31,8 @@ export const useLaravelForgeConnectionListOrganizations = (
     queryKey: laravelForgeConnectionKeys.listOrganizations(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TLaravelForgeOrganization[]>(
-        `/api/v1/app-connections/laravel-forge/${connectionId}/organizations`
+        `/api/v1/app-connections/laravel-forge/${connectionId}/organizations`,
+        {}
       );
 
       return data;

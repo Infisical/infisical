@@ -27,7 +27,8 @@ export const useDbtConnectionListProjects = (
     queryKey: dbtConnectionKeys.listProjects(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ projects: TDbtProject[] }>(
-        `/api/v1/app-connections/dbt/${connectionId}/projects`
+        `/api/v1/app-connections/dbt/${connectionId}/projects`,
+        {}
       );
 
       return data.projects;

@@ -29,7 +29,8 @@ export const useChecklyConnectionListAccounts = (
     queryKey: checklyConnectionKeys.listAccounts(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ accounts: TChecklyAccount[] }>(
-        `/api/v1/app-connections/checkly/${connectionId}/accounts`
+        `/api/v1/app-connections/checkly/${connectionId}/accounts`,
+        {}
       );
 
       return data.accounts;
@@ -55,7 +56,8 @@ export const useChecklyConnectionListGroups = (
     queryKey: checklyConnectionKeys.listGroups(connectionId, accountId),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ groups: TChecklyAccount[] }>(
-        `/api/v1/app-connections/checkly/${connectionId}/accounts/${accountId}/groups`
+        `/api/v1/app-connections/checkly/${connectionId}/accounts/${accountId}/groups`,
+        {}
       );
 
       return data.groups;

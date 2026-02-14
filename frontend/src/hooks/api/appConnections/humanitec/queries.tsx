@@ -27,7 +27,8 @@ export const useHumanitecConnectionListOrganizations = (
     queryKey: humanitecConnectionKeys.listOrganizations(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<THumanitecOrganization[]>(
-        `/api/v1/app-connections/humanitec/${connectionId}/organizations`
+        `/api/v1/app-connections/humanitec/${connectionId}/organizations`,
+        {}
       );
 
       return data;

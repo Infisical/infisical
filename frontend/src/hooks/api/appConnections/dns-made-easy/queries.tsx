@@ -27,7 +27,8 @@ export const useDNSMadeEasyConnectionListZones = (
     queryKey: dnsMadeEasyConnectionKeys.listZones(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TDNSMadeEasyZone[]>(
-        `/api/v1/app-connections/dns-made-easy/${connectionId}/dns-made-easy-zones`
+        `/api/v1/app-connections/dns-made-easy/${connectionId}/dns-made-easy-zones`,
+        {}
       );
 
       return data;

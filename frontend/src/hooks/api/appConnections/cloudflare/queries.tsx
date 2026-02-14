@@ -31,7 +31,8 @@ export const useCloudflareConnectionListPagesProjects = (
     queryKey: cloudflareConnectionKeys.listPagesProjects(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TCloudflarePagesProject[]>(
-        `/api/v1/app-connections/cloudflare/${connectionId}/cloudflare-pages-projects`
+        `/api/v1/app-connections/cloudflare/${connectionId}/cloudflare-pages-projects`,
+        {}
       );
 
       return data;
@@ -56,7 +57,8 @@ export const useCloudflareConnectionListWorkersScripts = (
     queryKey: cloudflareConnectionKeys.listWorkersScripts(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TCloudflareWorkersScript[]>(
-        `/api/v1/app-connections/cloudflare/${connectionId}/cloudflare-workers-scripts`
+        `/api/v1/app-connections/cloudflare/${connectionId}/cloudflare-workers-scripts`,
+        {}
       );
 
       return data;
@@ -81,7 +83,8 @@ export const useCloudflareConnectionListZones = (
     queryKey: cloudflareConnectionKeys.listZones(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TCloudflareZone[]>(
-        `/api/v1/app-connections/cloudflare/${connectionId}/cloudflare-zones`
+        `/api/v1/app-connections/cloudflare/${connectionId}/cloudflare-zones`,
+        {}
       );
 
       return data;

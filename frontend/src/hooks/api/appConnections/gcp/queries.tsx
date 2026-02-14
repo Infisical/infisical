@@ -29,7 +29,8 @@ export const useGcpConnectionListProjects = (
     queryKey: gcpConnectionKeys.listProjects(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGcpProject[]>(
-        `/api/v1/app-connections/gcp/${connectionId}/secret-manager-projects`
+        `/api/v1/app-connections/gcp/${connectionId}/secret-manager-projects`,
+        {}
       );
 
       return data;

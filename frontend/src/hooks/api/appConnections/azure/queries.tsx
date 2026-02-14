@@ -29,7 +29,8 @@ export const useAzureConnectionListClients = (
     queryKey: azureConnectionKeys.listClients(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ clients: TAzureClient[] }>(
-        `/api/v1/app-connections/azure-client-secrets/${connectionId}/clients`
+        `/api/v1/app-connections/azure-client-secrets/${connectionId}/clients`,
+        {}
       );
 
       return data.clients;
@@ -46,7 +47,8 @@ export const fetchAzureDevOpsProjects = async (
   }
 
   const { data } = await apiRequest.get<AzureDevOpsProjectsResponse>(
-    `/api/v1/app-connections/azure-devops/${connectionId}/projects`
+    `/api/v1/app-connections/azure-devops/${connectionId}/projects`,
+    {}
   );
 
   return data;

@@ -27,7 +27,8 @@ export const useWindmillConnectionListWorkspaces = (
     queryKey: windmillConnectionKeys.listWorkspaces(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TWindmillWorkspace[]>(
-        `/api/v1/app-connections/windmill/${connectionId}/workspaces`
+        `/api/v1/app-connections/windmill/${connectionId}/workspaces`,
+        {}
       );
 
       return data;

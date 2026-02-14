@@ -27,7 +27,8 @@ export const useTeamCityConnectionListProjects = (
     queryKey: teamcityConnectionKeys.listProjects(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TTeamCityProjectWithBuildTypes[]>(
-        `/api/v1/app-connections/teamcity/${connectionId}/projects`
+        `/api/v1/app-connections/teamcity/${connectionId}/projects`,
+        {}
       );
 
       return data;

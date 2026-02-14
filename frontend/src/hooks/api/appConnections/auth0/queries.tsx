@@ -27,7 +27,8 @@ export const useAuth0ConnectionListClients = (
     queryKey: auth0ConnectionKeys.listClients(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ clients: TAuth0Client[] }>(
-        `/api/v1/app-connections/auth0/${connectionId}/clients`
+        `/api/v1/app-connections/auth0/${connectionId}/clients`,
+        {}
       );
 
       return data.clients;

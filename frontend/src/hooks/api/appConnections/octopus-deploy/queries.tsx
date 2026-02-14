@@ -31,7 +31,8 @@ export const useOctopusDeployConnectionListSpaces = (
     queryKey: octopusDeployConnectionKeys.listSpaces(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TOctopusDeploySpace[]>(
-        `/api/v1/app-connections/octopus-deploy/${connectionId}/spaces`
+        `/api/v1/app-connections/octopus-deploy/${connectionId}/spaces`,
+        {}
       );
 
       return data;

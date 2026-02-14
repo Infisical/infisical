@@ -27,7 +27,8 @@ export const useTerraformCloudConnectionListOrganizations = (
     queryKey: terraformCloudConnectionKeys.listOrganizations(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TTerraformCloudOrganization[]>(
-        `/api/v1/app-connections/terraform-cloud/${connectionId}/organizations`
+        `/api/v1/app-connections/terraform-cloud/${connectionId}/organizations`,
+        {}
       );
 
       return data;

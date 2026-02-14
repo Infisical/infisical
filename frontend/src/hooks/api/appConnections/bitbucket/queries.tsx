@@ -38,7 +38,8 @@ export const useBitbucketConnectionListWorkspaces = (
     queryKey: bitbucketConnectionKeys.listWorkspaces(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TBitbucketConnectionListWorkspacesResponse>(
-        `/api/v1/app-connections/bitbucket/${connectionId}/workspaces`
+        `/api/v1/app-connections/bitbucket/${connectionId}/workspaces`,
+        {}
       );
 
       return data.workspaces;
@@ -64,7 +65,8 @@ export const useBitbucketConnectionListRepositories = (
     queryKey: bitbucketConnectionKeys.listRepos(connectionId, workspaceSlug),
     queryFn: async () => {
       const { data } = await apiRequest.get<TBitbucketConnectionListRepositoriesResponse>(
-        `/api/v1/app-connections/bitbucket/${connectionId}/repositories?workspaceSlug=${encodeURIComponent(workspaceSlug)}`
+        `/api/v1/app-connections/bitbucket/${connectionId}/repositories?workspaceSlug=${encodeURIComponent(workspaceSlug)}`,
+        {}
       );
 
       return data.repositories;
@@ -91,7 +93,8 @@ export const useBitbucketConnectionListEnvironments = (
     queryKey: bitbucketConnectionKeys.listEnvironments(connectionId, workspaceSlug, repoSlug),
     queryFn: async () => {
       const { data } = await apiRequest.get<TBitbucketConnectionListEnvironmentsResponse>(
-        `/api/v1/app-connections/bitbucket/${connectionId}/environments?workspaceSlug=${encodeURIComponent(workspaceSlug)}&repositorySlug=${encodeURIComponent(repoSlug)}`
+        `/api/v1/app-connections/bitbucket/${connectionId}/environments?workspaceSlug=${encodeURIComponent(workspaceSlug)}&repositorySlug=${encodeURIComponent(repoSlug)}`,
+        {}
       );
 
       return data.environments;
