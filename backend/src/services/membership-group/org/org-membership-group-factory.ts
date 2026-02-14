@@ -2,7 +2,11 @@ import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
-import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  OrgPermissionGroupActions,
+  OrgPermissionSubjects,
+  OrgPermissionSubOrgActions
+} from "@app/ee/services/permission/org-permission";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
@@ -48,6 +52,18 @@ export const newOrgMembershipGroupFactory = ({
         message: "Organization membership cannot be created for groups in root organization"
       });
     }
+    const { permission: rootOrgPermission } = await permissionService.getOrgPermission({
+      actor: dto.permission.type,
+      actorId: dto.permission.id,
+      orgId: dto.permission.rootOrgId,
+      actorAuthMethod: dto.permission.authMethod,
+      actorOrgId: dto.permission.rootOrgId,
+      scope: OrganizationActionScope.Any
+    });
+    ForbiddenError.from(rootOrgPermission).throwUnlessCan(
+      OrgPermissionSubOrgActions.LinkRootGroup,
+      OrgPermissionSubjects.SubOrganization
+    );
 
     const { permission } = await permissionService.getOrgPermission({
       actor: dto.permission.type,
@@ -135,10 +151,25 @@ export const newOrgMembershipGroupFactory = ({
 
   const onDeleteMembershipGroupGuard: TMembershipGroupScopeFactory["onDeleteMembershipGroupGuard"] = async (dto) => {
     const group = await groupDAL.findById(dto.selector.groupId);
-    if (!group || group.orgId === dto.permission.orgId) {
-      throw new BadRequestError({
-        message: "Unlink is only allowed for linked groups. This group was created in this organization."
+    if (!group) {
+      throw new BadRequestError({ message: "Group not found" });
+    }
+
+    const isLinkedGroupInSubOrg =
+      dto.permission.orgId !== dto.permission.rootOrgId && group.orgId !== dto.permission.orgId;
+    if (isLinkedGroupInSubOrg) {
+      const { permission: rootOrgPermission } = await permissionService.getOrgPermission({
+        actor: dto.permission.type,
+        actorId: dto.permission.id,
+        orgId: dto.permission.rootOrgId,
+        actorAuthMethod: dto.permission.authMethod,
+        actorOrgId: dto.permission.rootOrgId,
+        scope: OrganizationActionScope.Any
       });
+      ForbiddenError.from(rootOrgPermission).throwUnlessCan(
+        OrgPermissionSubOrgActions.LinkRootGroup,
+        OrgPermissionSubjects.SubOrganization
+      );
     }
 
     const { permission } = await permissionService.getOrgPermission({

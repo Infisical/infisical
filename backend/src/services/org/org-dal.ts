@@ -677,7 +677,7 @@ export const orgDALFactory = (db: TDbClient) => {
       const status = dto.status ?? OrgMembershipStatus.Accepted;
       const anyStatus = dto.acceptAnyStatus === true;
 
-      // 1. Direct membership (user or identity)
+      // 1. Direct membership (user or identity). Treat null status as accepted (e.g. identity org memberships from seed).
       const directQb = conn(TableName.Membership)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .where(`${TableName.Membership}.scopeOrgId`, dto.orgId)
@@ -688,7 +688,11 @@ export const orgDALFactory = (db: TDbClient) => {
             void qb.where(`${TableName.Membership}.actorUserId`, dto.actorId);
           }
         });
-      if (!anyStatus) void directQb.where(`${TableName.Membership}.status`, status);
+      if (!anyStatus) {
+        void directQb.where((qb) => {
+          void qb.where(`${TableName.Membership}.status`, status).orWhereNull(`${TableName.Membership}.status`);
+        });
+      }
       const direct = await directQb.select(selectAllTableCols(TableName.Membership)).first();
 
       if (direct) return direct as TMemberships;
