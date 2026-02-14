@@ -56,12 +56,14 @@ export const SanitizedWindowsResourceSchema = BaseWindowsResourceSchema.extend({
 
 export const CreateWindowsResourceSchema = BaseCreateGatewayPamResourceSchema.extend({
   connectionDetails: WindowsResourceConnectionDetailsSchema,
-  rotationAccountCredentials: WindowsAccountCredentialsSchema.nullable().optional()
+  rotationAccountCredentials: WindowsAccountCredentialsSchema.nullable().optional(),
+  adServerResourceId: z.string().uuid().nullable().optional()
 });
 
 export const UpdateWindowsResourceSchema = BaseUpdateGatewayPamResourceSchema.extend({
   connectionDetails: WindowsResourceConnectionDetailsSchema.optional(),
-  rotationAccountCredentials: WindowsAccountCredentialsSchema.nullable().optional()
+  rotationAccountCredentials: WindowsAccountCredentialsSchema.nullable().optional(),
+  adServerResourceId: z.string().uuid().nullable().optional()
 });
 
 // Accounts

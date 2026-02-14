@@ -18,17 +18,37 @@ export type TRedisConfigKeys = Partial<{
 }>;
 
 export const buildRedisFromConfig = (cfg: TRedisConfigKeys) => {
-  if (cfg.REDIS_URL) return new Redis(cfg.REDIS_URL, { maxRetriesPerRequest: null });
+  if (cfg.REDIS_URL) {
+    return new Redis(cfg.REDIS_URL, {
+      maxRetriesPerRequest: null,
+      reconnectOnError(err) {
+        // Reconnect when hitting a read-only replica during failover
+        const targetError = "READONLY";
+        if (err.message.includes(targetError)) {
+          return 2; // Reconnect and resend command
+        }
+        return false;
+      }
+    });
+  }
 
   if (cfg.REDIS_CLUSTER_HOSTS) {
     return new Redis.Cluster(cfg.REDIS_CLUSTER_HOSTS, {
       dnsLookup: cfg.REDIS_CLUSTER_AWS_ELASTICACHE_DNS_LOOKUP_MODE
         ? (address, callback) => callback(null, address)
         : undefined,
+      retryDelayOnClusterDown: 300,
       redisOptions: {
         username: cfg.REDIS_USERNAME,
         password: cfg.REDIS_PASSWORD,
-        tls: cfg?.REDIS_CLUSTER_ENABLE_TLS ? {} : undefined
+        tls: cfg?.REDIS_CLUSTER_ENABLE_TLS ? {} : undefined,
+        reconnectOnError(err) {
+          const targetError = "READONLY";
+          if (err.message.includes(targetError)) {
+            return 2; // Reconnect and resend command
+          }
+          return false;
+        }
       }
     });
   }
@@ -42,6 +62,14 @@ export const buildRedisFromConfig = (cfg: TRedisConfigKeys) => {
     sentinelPassword: cfg.REDIS_SENTINEL_PASSWORD,
     enableTLSForSentinelMode: cfg.REDIS_SENTINEL_ENABLE_TLS,
     username: cfg.REDIS_USERNAME,
-    password: cfg.REDIS_PASSWORD
+    password: cfg.REDIS_PASSWORD,
+    reconnectOnError(err) {
+      // Reconnect when hitting a read-only replica during failover
+      const targetError = "READONLY";
+      if (err.message.includes(targetError)) {
+        return 2; // Reconnect and resend command
+      }
+      return false;
+    }
   });
 };

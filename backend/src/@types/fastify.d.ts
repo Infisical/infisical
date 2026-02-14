@@ -36,6 +36,8 @@ import { TPamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TPitServiceFactory } from "@app/ee/services/pit/pit-service";
 import { TPkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-types";
+import { TPkiDiscoveryServiceFactory } from "@app/ee/services/pki-discovery/pki-discovery-service";
+import { TPkiInstallationServiceFactory } from "@app/ee/services/pki-discovery/pki-installation-service";
 import { TProjectEventsService } from "@app/ee/services/project-events/project-events-service";
 import { TProjectEventsSSEService } from "@app/ee/services/project-events/project-events-sse-service";
 import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-types";
@@ -315,6 +317,8 @@ declare module "fastify" {
       pkiCollection: TPkiCollectionServiceFactory;
       pkiSubscriber: TPkiSubscriberServiceFactory;
       pkiSync: TPkiSyncServiceFactory;
+      pkiDiscovery: TPkiDiscoveryServiceFactory;
+      pkiInstallation: TPkiInstallationServiceFactory;
       secretScanning: TSecretScanningServiceFactory;
       license: TLicenseServiceFactory;
       trustedIp: TTrustedIpServiceFactory;

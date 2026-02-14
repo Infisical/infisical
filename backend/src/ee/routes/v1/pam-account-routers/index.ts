@@ -1,4 +1,9 @@
 import {
+  CreateActiveDirectoryAccountSchema,
+  SanitizedActiveDirectoryAccountWithResourceSchema,
+  UpdateActiveDirectoryAccountSchema
+} from "@app/ee/services/pam-resource/active-directory/active-directory-resource-schemas";
+import {
   CreateAwsIamAccountSchema,
   SanitizedAwsIamAccountWithResourceSchema,
   UpdateAwsIamAccountSchema
@@ -99,6 +104,15 @@ export const PAM_ACCOUNT_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fasti
       accountResponseSchema: SanitizedWindowsAccountWithResourceSchema,
       createAccountSchema: CreateWindowsAccountSchema,
       updateAccountSchema: UpdateWindowsAccountSchema
+    });
+  },
+  [PamResource.ActiveDirectory]: async (server: FastifyZodProvider) => {
+    registerPamAccountEndpoints({
+      server,
+      resourceType: PamResource.ActiveDirectory,
+      accountResponseSchema: SanitizedActiveDirectoryAccountWithResourceSchema,
+      createAccountSchema: CreateActiveDirectoryAccountSchema,
+      updateAccountSchema: UpdateActiveDirectoryAccountSchema
     });
   }
 };

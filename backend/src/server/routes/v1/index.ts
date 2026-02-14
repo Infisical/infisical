@@ -249,10 +249,10 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (secretSharingRouter) => {
-      await secretSharingRouter.register(registerSecretSharingRouter, { prefix: "/shared" });
+      await secretSharingRouter.register(registerSecretSharingRouter);
       await secretSharingRouter.register(registerSecretRequestsRouter, { prefix: "/requests" });
     },
-    { prefix: "/secret-sharing" }
+    { prefix: "/shared-secrets" }
   );
 
   await server.register(registerUserEngagementRouter, { prefix: "/user-engagement" });

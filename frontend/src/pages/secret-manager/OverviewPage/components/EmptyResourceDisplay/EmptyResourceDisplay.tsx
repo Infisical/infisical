@@ -1,10 +1,8 @@
-import { FolderPlusIcon, PlusIcon, SearchIcon } from "lucide-react";
+import { FolderPlusIcon, SearchIcon } from "lucide-react";
 
 import {
-  Button,
   EmptyMedia,
   UnstableEmpty,
-  UnstableEmptyContent,
   UnstableEmptyDescription,
   UnstableEmptyHeader,
   UnstableEmptyTitle
@@ -12,14 +10,13 @@ import {
 
 type Props = {
   isFiltered?: boolean;
-  onAddSecret?: () => void;
 };
 
-export function EmptyResourceDisplay({ isFiltered, onAddSecret }: Props) {
+export function EmptyResourceDisplay({ isFiltered }: Props) {
   const { title, description } = isFiltered
     ? {
         title: "No resources match your search",
-        description: "Add a secret now"
+        description: "Adjust your search and try again"
       }
     : {
         title: "This project doesn't have any secrets",
@@ -33,12 +30,6 @@ export function EmptyResourceDisplay({ isFiltered, onAddSecret }: Props) {
         <UnstableEmptyTitle>{title}</UnstableEmptyTitle>
         <UnstableEmptyDescription>{description}</UnstableEmptyDescription>
       </UnstableEmptyHeader>
-      <UnstableEmptyContent className="flex-row justify-center">
-        <Button onClick={onAddSecret} variant="project">
-          <PlusIcon />
-          Add Secret
-        </Button>
-      </UnstableEmptyContent>
     </UnstableEmpty>
   );
 }

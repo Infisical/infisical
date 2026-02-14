@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ms from "ms";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -15,6 +15,12 @@ import { withPermission, withProjectPermission } from "@app/hoc";
 import { Project } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import {
+  AppliedFilter,
+  appliedFiltersToLogFilter,
+  AuditSearchFilter,
+  logFilterToAppliedFilters
+} from "./AuditSearchFilter";
 import { LogsDateFilter } from "./LogsDateFilter";
 import { LogsFilter } from "./LogsFilter";
 import { LogsTable } from "./LogsTable";
@@ -48,6 +54,15 @@ const LogsSectionComponent = ({
     eventMetadata: presets?.eventMetadata
   });
   const [timezone, setTimezone] = useState<Timezone>(Timezone.Local);
+
+  const [searchFilters, setSearchFilters] = useState<AppliedFilter[]>(() =>
+    logFilterToAppliedFilters({
+      eventType: presets?.eventType,
+      actorType: presets?.actorType
+    })
+  );
+
+  const searchDerived = useMemo(() => appliedFiltersToLogFilter(searchFilters), [searchFilters]);
 
   const [dateFilter, setDateFilter] = useState<TAuditLogDateFilterFormData>(
     presets?.endDate || presets?.startDate
@@ -89,32 +104,39 @@ const LogsSectionComponent = ({
                 setTimezone={setTimezone}
               />
             )}
-            {showFilters && (
-              <LogsFilter
-                project={project}
-                presets={presets}
-                setFilter={setLogFilter}
-                filter={logFilter}
-              />
-            )}
           </div>
         </div>
+        {showFilters && (
+          <div className="mb-4">
+            <AuditSearchFilter
+              filters={searchFilters}
+              onFiltersChange={setSearchFilters}
+              hasProjectContext={Boolean(project)}
+            />
+            {searchFilters.length > 0 && (
+              <p className="mt-2 text-xs text-mineshaft-400">
+                {searchFilters.length} active filter{searchFilters.length !== 1 ? "s" : ""}
+              </p>
+            )}
+          </div>
+        )}
         <div className="space-y-2">
           <LogsTable
             refetchInterval={refetchInterval}
             filter={{
-              secretPath: logFilter.secretPath || undefined,
-              secretKey: logFilter.secretKey || undefined,
               eventMetadata: logFilter?.eventMetadata,
-              projectId: project?.id || logFilter?.project?.id,
-              actorType: presets?.actorType,
-              limit: 15,
-              eventType: logFilter?.eventType,
-              userAgentType: logFilter?.userAgentType,
+              actor: logFilter?.actor,
+              projectId: project?.id || searchDerived.projectId || logFilter?.project?.id,
+              actorType: searchDerived.actorType || presets?.actorType,
+              eventType:
+                searchDerived.eventType.length > 0 ? searchDerived.eventType : logFilter?.eventType,
+              userAgentType: searchDerived.userAgentType || logFilter?.userAgentType,
+              environment: searchDerived.environment || logFilter?.environment?.slug,
+              secretPath: searchDerived.secretPath,
+              secretKey: searchDerived.secretKey,
               startDate: dateFilter?.startDate,
               endDate: dateFilter?.endDate,
-              environment: logFilter?.environment?.slug,
-              actor: logFilter?.actor
+              limit: 15
             }}
             timezone={timezone}
           />

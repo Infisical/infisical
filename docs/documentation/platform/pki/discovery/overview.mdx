@@ -1,0 +1,41 @@
+---
+sidebarTitle: "Overview"
+description: "Learn how to discover certificates across your infrastructure with Infisical"
+---
+
+Certificate Discovery enables automated scanning of your infrastructure to find certificates. By configuring discovery jobs, you can continuously monitor for certificates deployed across your environment, giving you full visibility into your organization's certificate landscape.
+
+## Concept
+
+Discovery jobs scan your infrastructure for certificates and organize the results as **installations**, unique locations where certificates were found. Each installation tracks the certificates discovered at that location across multiple scans, allowing you to monitor certificate changes over time.
+
+## Discovery Types
+
+Infisical supports multiple discovery types, each targeting a different source of certificates:
+
+- **[Network](/documentation/platform/pki/discovery/network-tls)**: Scans network endpoints over TLS to discover certificates served by hosts across IP ranges and domains.
+
+<Note>
+  Additional discovery types will be added in future releases.
+</Note>
+
+## Installations
+
+An installation represents a unique location where a certificate was discovered.
+
+<Note>
+  For Network discovery, each installation is identified by its hostname or IP address and port combination.
+</Note>
+
+Installations can be viewed from the **Installations** tab on the Discovery page, or from the detail page of a specific discovery job. You can also view installations associated with a specific certificate from the certificate's detail page.
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="How are discovered certificates matched to existing certificates?">
+    Discovered certificates are matched by their fingerprint. If a discovered certificate matches an existing certificate in your Infisical project, the installation will be linked to that certificate.
+  </Accordion>
+  <Accordion title="What happens when a certificate changes at an endpoint?">
+    When a subsequent scan detects a different certificate at a location, the installation is updated to reflect the new certificate. The previous certificate association is preserved in the scan history.
+  </Accordion>
+</AccordionGroup>

@@ -732,7 +732,22 @@
                       "documentation/platform/pki/enrollment-methods/est"
                     ]
                   },
-                  "documentation/platform/pki/alerting",
+                  {
+                    "group": "Discovery",
+                    "pages": [
+                      "documentation/platform/pki/discovery/overview",
+                      "documentation/platform/pki/discovery/network"
+                    ]
+                  },
+                  {
+                    "group": "Alerting",
+                    "pages": [
+                      "documentation/platform/pki/alerting/overview",
+                      "documentation/platform/pki/alerting/webhook-alerts",
+                      "documentation/platform/pki/alerting/slack-alerts",
+                      "documentation/platform/pki/alerting/pagerduty-alerts"
+                    ]
+                  },
                   "documentation/platform/pki/approvals"
                 ]
               },
@@ -801,6 +816,7 @@
                         "group": "Resources",
                         "pages": [
                           "documentation/platform/pam/getting-started/resources",
+                          "documentation/platform/pam/getting-started/resources/active-directory",
                           "documentation/platform/pam/getting-started/resources/aws-iam",
                           "documentation/platform/pam/getting-started/resources/kubernetes",
                           "documentation/platform/pam/getting-started/resources/redis",
@@ -2759,7 +2775,8 @@
                   "api-reference/endpoints/certificates/delete",
                   "api-reference/endpoints/certificates/cert-body",
                   "api-reference/endpoints/certificates/bundle",
-                  "api-reference/endpoints/certificates/private-key"
+                  "api-reference/endpoints/certificates/private-key",
+                  "api-reference/endpoints/certificates/import-certificate"
                 ]
               },
               {
@@ -2792,6 +2809,28 @@
                   "api-reference/endpoints/pki-alerts/read",
                   "api-reference/endpoints/pki-alerts/update",
                   "api-reference/endpoints/pki-alerts/delete"
+                ]
+              },
+              {
+                "group": "Certificate Discovery",
+                "pages": [
+                  "api-reference/endpoints/pki-discovery/create",
+                  "api-reference/endpoints/pki-discovery/list",
+                  "api-reference/endpoints/pki-discovery/read",
+                  "api-reference/endpoints/pki-discovery/update",
+                  "api-reference/endpoints/pki-discovery/delete",
+                  "api-reference/endpoints/pki-discovery/trigger-scan",
+                  "api-reference/endpoints/pki-discovery/latest-scan",
+                  "api-reference/endpoints/pki-discovery/scan-history"
+                ]
+              },
+              {
+                "group": "Certificate Installations",
+                "pages": [
+                  "api-reference/endpoints/pki-installations/list",
+                  "api-reference/endpoints/pki-installations/read",
+                  "api-reference/endpoints/pki-installations/update",
+                  "api-reference/endpoints/pki-installations/delete"
                 ]
               },
               {
@@ -2946,6 +2985,21 @@
                 "pages": [
                   "api-reference/endpoints/secret-scanning/config/get-by-project-id",
                   "api-reference/endpoints/secret-scanning/config/update"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Secret Sharing",
+            "pages": [
+              {
+                "group": "Shared Secrets",
+                "pages": [
+                  "api-reference/endpoints/shared-secrets/list",
+                  "api-reference/endpoints/shared-secrets/get-by-id",
+                  "api-reference/endpoints/shared-secrets/create",
+                  "api-reference/endpoints/shared-secrets/delete",
+                  "api-reference/endpoints/shared-secrets/access"
                 ]
               }
             ]
@@ -3272,6 +3326,10 @@
     {
       "source": "/documentation/platform/pki/est",
       "destination": "/documentation/platform/pki/enrollment-methods/est"
+    },
+    {
+      "source": "/documentation/platform/pki/alerting",
+      "destination": "/documentation/platform/pki/alerting/overview"
     },
     {
       "source": "/api-reference/endpoints/integrations/create-auth",

@@ -48,6 +48,7 @@ export type SecretV3RawSanitized = {
   pendingAction?: PendingAction;
   reminder?: Reminder;
   isEmpty?: boolean;
+  isOverrideEmpty?: boolean;
 };
 
 export type SecretV3Raw = {

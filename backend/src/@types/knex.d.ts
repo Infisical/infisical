@@ -329,6 +329,12 @@ import {
   TPkiApiEnrollmentConfigs,
   TPkiApiEnrollmentConfigsInsert,
   TPkiApiEnrollmentConfigsUpdate,
+  TPkiCertificateInstallationCerts,
+  TPkiCertificateInstallationCertsInsert,
+  TPkiCertificateInstallationCertsUpdate,
+  TPkiCertificateInstallations,
+  TPkiCertificateInstallationsInsert,
+  TPkiCertificateInstallationsUpdate,
   TPkiCertificatePolicies,
   TPkiCertificatePoliciesInsert,
   TPkiCertificatePoliciesUpdate,
@@ -344,6 +350,15 @@ import {
   TPkiCollections,
   TPkiCollectionsInsert,
   TPkiCollectionsUpdate,
+  TPkiDiscoveryConfigs,
+  TPkiDiscoveryConfigsInsert,
+  TPkiDiscoveryConfigsUpdate,
+  TPkiDiscoveryInstallations,
+  TPkiDiscoveryInstallationsInsert,
+  TPkiDiscoveryInstallationsUpdate,
+  TPkiDiscoveryScanHistory,
+  TPkiDiscoveryScanHistoryInsert,
+  TPkiDiscoveryScanHistoryUpdate,
   TPkiEstEnrollmentConfigs,
   TPkiEstEnrollmentConfigsInsert,
   TPkiEstEnrollmentConfigsUpdate,
@@ -859,6 +874,31 @@ declare module "knex/types/tables" {
       TPkiSubscribersUpdate
     >;
     [TableName.PkiSync]: KnexOriginal.CompositeTableType<TPkiSyncs, TPkiSyncsInsert, TPkiSyncsUpdate>;
+    [TableName.PkiDiscoveryConfig]: KnexOriginal.CompositeTableType<
+      TPkiDiscoveryConfigs,
+      TPkiDiscoveryConfigsInsert,
+      TPkiDiscoveryConfigsUpdate
+    >;
+    [TableName.PkiCertificateInstallation]: KnexOriginal.CompositeTableType<
+      TPkiCertificateInstallations,
+      TPkiCertificateInstallationsInsert,
+      TPkiCertificateInstallationsUpdate
+    >;
+    [TableName.PkiDiscoveryInstallation]: KnexOriginal.CompositeTableType<
+      TPkiDiscoveryInstallations,
+      TPkiDiscoveryInstallationsInsert,
+      TPkiDiscoveryInstallationsUpdate
+    >;
+    [TableName.PkiCertificateInstallationCert]: KnexOriginal.CompositeTableType<
+      TPkiCertificateInstallationCerts,
+      TPkiCertificateInstallationCertsInsert,
+      TPkiCertificateInstallationCertsUpdate
+    >;
+    [TableName.PkiDiscoveryScanHistory]: KnexOriginal.CompositeTableType<
+      TPkiDiscoveryScanHistory,
+      TPkiDiscoveryScanHistoryInsert,
+      TPkiDiscoveryScanHistoryUpdate
+    >;
     [TableName.CertificateSync]: KnexOriginal.CompositeTableType<
       TCertificateSyncs,
       TCertificateSyncsInsert,

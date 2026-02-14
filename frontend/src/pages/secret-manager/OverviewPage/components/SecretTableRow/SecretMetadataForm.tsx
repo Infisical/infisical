@@ -42,7 +42,6 @@ type Props = {
   secretKey: string;
   environment: string;
   secretPath: string;
-  isOverride?: boolean;
   onClose?: () => void;
 };
 
@@ -51,7 +50,6 @@ export const SecretMetadataForm = ({
   secretKey,
   environment,
   secretPath,
-  isOverride,
   onClose
 }: Props) => {
   const { projectId, currentProject } = useProject();
@@ -96,7 +94,7 @@ export const SecretMetadataForm = ({
       projectId,
       secretPath,
       secretKey,
-      type: isOverride ? SecretType.Personal : SecretType.Shared,
+      type: SecretType.Shared,
       secretMetadata: data.metadata.map((m) => ({
         key: m.key,
         value: m.value,

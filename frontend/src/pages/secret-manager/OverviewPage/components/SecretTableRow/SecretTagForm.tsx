@@ -27,18 +27,10 @@ type Props = {
   secretKey: string;
   environment: string;
   secretPath: string;
-  isOverride?: boolean;
   onClose?: () => void;
 };
 
-export const SecretTagForm = ({
-  tags,
-  secretKey,
-  environment,
-  secretPath,
-  isOverride,
-  onClose
-}: Props) => {
+export const SecretTagForm = ({ tags, secretKey, environment, secretPath, onClose }: Props) => {
   const { projectId } = useProject();
   const { mutateAsync: updateSecretV3, isPending } = useUpdateSecretV3();
   const { mutateAsync: createWsTag } = useCreateWsTag();
@@ -90,7 +82,7 @@ export const SecretTagForm = ({
       projectId,
       secretPath,
       secretKey,
-      type: isOverride ? SecretType.Personal : SecretType.Shared,
+      type: SecretType.Shared,
       tagIds: data.tags.map((tag) => tag.value)
     });
 

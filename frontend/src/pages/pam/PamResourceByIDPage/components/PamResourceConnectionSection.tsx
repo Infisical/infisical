@@ -5,7 +5,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { Detail, DetailLabel, DetailValue, UnstableIconButton } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { gatewaysQueryKeys } from "@app/hooks/api";
-import { PamResourceType, TPamResource } from "@app/hooks/api/pam";
+import { PamResourceType, TPamResource, useGetPamResourceById } from "@app/hooks/api/pam";
 
 type Props = {
   resource: TPamResource;
@@ -127,18 +127,55 @@ const AwsIamConnectionDetails = ({
 );
 
 const WindowsConnectionDetails = ({
-  connectionDetails
+  connectionDetails,
+  adServerResourceId
 }: {
   connectionDetails: { protocol: string; hostname: string; port: number };
+  adServerResourceId?: string | null;
+}) => {
+  const { data: adResource } = useGetPamResourceById(
+    PamResourceType.ActiveDirectory,
+    adServerResourceId || undefined,
+    { enabled: !!adServerResourceId }
+  );
+
+  return (
+    <>
+      <Detail>
+        <DetailLabel>Protocol</DetailLabel>
+        <DetailValue>{connectionDetails.protocol.toUpperCase()}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Hostname</DetailLabel>
+        <DetailValue>{connectionDetails.hostname}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Port</DetailLabel>
+        <DetailValue>{connectionDetails.port}</DetailValue>
+      </Detail>
+      {adResource && (
+        <Detail>
+          <DetailLabel>AD Resource</DetailLabel>
+          <DetailValue>{adResource.name}</DetailValue>
+        </Detail>
+      )}
+    </>
+  );
+};
+
+const ActiveDirectoryConnectionDetails = ({
+  connectionDetails
+}: {
+  connectionDetails: { domain: string; dcAddress: string; port: number };
 }) => (
   <>
     <Detail>
-      <DetailLabel>Protocol</DetailLabel>
-      <DetailValue>{connectionDetails.protocol.toUpperCase()}</DetailValue>
+      <DetailLabel>Domain</DetailLabel>
+      <DetailValue>{connectionDetails.domain}</DetailValue>
     </Detail>
     <Detail>
-      <DetailLabel>Hostname</DetailLabel>
-      <DetailValue>{connectionDetails.hostname}</DetailValue>
+      <DetailLabel>DC Address</DetailLabel>
+      <DetailValue>{connectionDetails.dcAddress}</DetailValue>
     </Detail>
     <Detail>
       <DetailLabel>Port</DetailLabel>
@@ -161,7 +198,14 @@ const ConnectionDetailsContent = ({ resource }: Props) => {
     case PamResourceType.AwsIam:
       return <AwsIamConnectionDetails connectionDetails={resource.connectionDetails} />;
     case PamResourceType.Windows:
-      return <WindowsConnectionDetails connectionDetails={resource.connectionDetails} />;
+      return (
+        <WindowsConnectionDetails
+          connectionDetails={resource.connectionDetails}
+          adServerResourceId={resource.adServerResourceId}
+        />
+      );
+    case PamResourceType.ActiveDirectory:
+      return <ActiveDirectoryConnectionDetails connectionDetails={resource.connectionDetails} />;
     default:
       return null;
   }

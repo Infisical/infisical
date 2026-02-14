@@ -79,6 +79,10 @@ The PAM Resource represents the Windows server you want to manage access to.
       The RDP port (default: `3389`)
     </ParamField>
 
+    <ParamField path="Active Directory Domain" type="string">
+      Optionally select an [Active Directory](/documentation/platform/pam/getting-started/resources/active-directory) resource to associate this Windows server with an AD domain. See [Domain Join](#domain-join) below for more details.
+    </ParamField>
+
     Clicking **Create Resource** will trigger a connection test from the selected Gateway to your Windows server. Infisical verifies that the server is reachable and responds to RDP connection requests.
   </Step>
 </Steps>
@@ -118,3 +122,23 @@ A PAM Account represents a specific Windows user account on the server. You can 
     </ParamField>
   </Step>
 </Steps>
+
+## Domain Join
+
+Windows Server resources can be associated with an [Active Directory](/documentation/platform/pam/getting-started/resources/active-directory) resource to represent domain membership. This is useful for organizing your infrastructure and understanding which servers belong to which AD domain.
+
+When creating or editing a Windows Server resource, select an AD domain from the **Active Directory Domain** dropdown. Once associated:
+
+- The Windows server's connection details page will display the linked AD domain.
+- The AD resource's **Related Resources** tab will list this Windows server as a domain member.
+- AD account **Resources** tabs will show all domain-joined Windows servers, providing a centralized view of machines accessible with those domain credentials.
+
+<Note>
+  Depending on your environment, you may need to allow inbound traffic from your internal network on the Windows server's host firewall, in addition to any infrastructure-level firewall rules. For example, in PowerShell on the Windows server:
+
+  ```powershell
+  New-NetFirewallRule -DisplayName "Allow AD Subnet" -Direction Inbound -RemoteAddress 10.0.0.0/24 -Action Allow
+  ```
+
+  Replace `10.0.0.0/24` with your actual internal subnet.
+</Note>

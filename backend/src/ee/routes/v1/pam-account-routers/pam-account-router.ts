@@ -1,8 +1,9 @@
 import type WebSocket from "ws";
 import { z } from "zod";
 
-import { AuditLogInfo, EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AuditLogInfo, EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountOrderBy, PamAccountView } from "@app/ee/services/pam-account/pam-account-enums";
+import { SanitizedActiveDirectoryAccountWithResourceSchema } from "@app/ee/services/pam-resource/active-directory/active-directory-resource-schemas";
 import { SanitizedAwsIamAccountWithResourceSchema } from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
 import { SanitizedKubernetesAccountWithResourceSchema } from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
 import { SanitizedMySQLAccountWithResourceSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
@@ -18,7 +19,7 @@ import { ms } from "@app/lib/ms";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 
 const SanitizedAccountSchema = z.discriminatedUnion("resourceType", [
@@ -28,7 +29,8 @@ const SanitizedAccountSchema = z.discriminatedUnion("resourceType", [
   SanitizedMySQLAccountWithResourceSchema,
   SanitizedRedisAccountWithResourceSchema,
   SanitizedAwsIamAccountWithResourceSchema,
-  SanitizedWindowsAccountWithResourceSchema
+  SanitizedWindowsAccountWithResourceSchema,
+  SanitizedActiveDirectoryAccountWithResourceSchema
 ]);
 
 const ListPamAccountsResponseSchema = z.object({
@@ -247,7 +249,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         accountId: z.string().uuid()
       }),
       body: z.object({
-        projectId: z.string().uuid()
+        projectId: z.string().uuid(),
+        mfaSessionId: z.string().optional()
       }),
       response: {
         200: z.object({ ticket: z.string() })
@@ -255,12 +258,20 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      // Narrows TypeScript type so req.auth.user is available below (verifyAuth hook already enforces JWT)
+      if (req.auth.authMode !== AuthMode.JWT) {
+        throw new BadRequestError({ message: "Web access requires JWT authentication" });
+      }
+
       const { ticket } = await server.services.pamWebAccess.issueWebSocketTicket({
         accountId: req.params.accountId,
         projectId: req.body.projectId,
         orgId: req.permission.orgId,
         actor: req.permission,
-        auditLogInfo: req.auditLogInfo
+        actorEmail: req.auth.user.email ?? "",
+        actorName: `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim(),
+        auditLogInfo: req.auditLogInfo,
+        mfaSessionId: req.body.mfaSessionId
       });
 
       return { ticket };
@@ -316,12 +327,14 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
             orgId: z.string(),
             resourceName: z.string(),
             accountName: z.string(),
+            actorEmail: z.string(),
+            actorName: z.string(),
             auditLogInfo: z.object({
               ipAddress: z.string().optional(),
               userAgent: z.string().optional(),
-              userAgentType: z.string().optional(),
+              userAgentType: z.nativeEnum(UserAgentType).optional(),
               actor: z.object({
-                type: z.string(),
+                type: z.nativeEnum(ActorType),
                 metadata: z.record(z.unknown())
               })
             })
@@ -340,7 +353,12 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           orgId: payload.orgId,
           resourceName: payload.resourceName,
           accountName: payload.accountName,
-          auditLogInfo: payload.auditLogInfo as AuditLogInfo
+          actorEmail: payload.actorEmail,
+          actorName: payload.actorName,
+          auditLogInfo: payload.auditLogInfo as AuditLogInfo,
+          userId,
+          actorIp: req.realIp ?? "",
+          actorUserAgent: req.headers["user-agent"] ?? ""
         });
       } catch (err) {
         logger.error(err, "WebSocket ticket validation failed");
