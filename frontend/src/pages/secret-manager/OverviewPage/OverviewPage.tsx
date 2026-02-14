@@ -3,7 +3,15 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
 import { useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
-import { ChevronDownIcon, CopyIcon, LogInIcon, SettingsIcon, TrashIcon } from "lucide-react";
+import { AxiosError } from "axios";
+import {
+  ChevronDownIcon,
+  CopyIcon,
+  DownloadIcon,
+  LogInIcon,
+  SettingsIcon,
+  TrashIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -59,6 +67,7 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
+import { downloadSecretEnvFile } from "@app/helpers/download";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -93,7 +102,15 @@ import {
   SecretRotation as SecretRotationV2,
   TSecretRotationV2
 } from "@app/hooks/api/secretRotationsV2";
-import { ProjectEnv, SecretType, SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/types";
+import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
+import {
+  ApiErrorTypes,
+  ProjectEnv,
+  SecretType,
+  SecretV3RawSanitized,
+  TApiErrors,
+  TSecretFolder
+} from "@app/hooks/api/types";
 import {
   useDynamicSecretOverview,
   useFolderOverview,
@@ -1258,6 +1275,45 @@ export const OverviewPage = () => {
                                     >
                                       <CopyIcon />
                                       Copy Environment Slug
+                                    </UnstableDropdownMenuItem>
+                                    <UnstableDropdownMenuItem
+                                      onClick={async () => {
+                                        try {
+                                          const { secrets: envSecrets, imports: importedSecrets } =
+                                            await fetchProjectSecrets({
+                                              projectId,
+                                              expandSecretReferences: true,
+                                              includeImports: true,
+                                              environment: slug,
+                                              secretPath
+                                            });
+                                          downloadSecretEnvFile(slug, envSecrets, importedSecrets);
+                                        } catch (err) {
+                                          if (err instanceof AxiosError) {
+                                            const error = err?.response?.data as TApiErrors;
+                                            if (
+                                              error?.error === ApiErrorTypes.ForbiddenError &&
+                                              error.message.includes("readValue")
+                                            ) {
+                                              createNotification({
+                                                title:
+                                                  "You don't have permission to download secrets",
+                                                text: "You don't have permission to view one or more of the secrets in the current folder. Please contact your administrator.",
+                                                type: "error"
+                                              });
+                                              return;
+                                            }
+                                          }
+                                          createNotification({
+                                            title: "Failed to download secrets",
+                                            text: "Please try again later.",
+                                            type: "error"
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      <DownloadIcon />
+                                      Download as .env
                                     </UnstableDropdownMenuItem>
                                   </UnstableDropdownMenuContent>
                                 </UnstableDropdownMenu>
