@@ -80,7 +80,7 @@ export const useAddHostToSshHostGroup = () => {
   const queryClient = useQueryClient();
   return useMutation<void, object, { sshHostGroupId: string; sshHostId: string }>({
     mutationFn: async ({ sshHostGroupId, sshHostId }) => {
-      await apiRequest.post(`/api/v1/ssh/host-groups/${sshHostGroupId}/hosts/${sshHostId}`);
+      await apiRequest.post(`/api/v1/ssh/host-groups/${sshHostGroupId}/hosts/${sshHostId}`, {});
     },
     onSuccess: (_, { sshHostGroupId }) => {
       queryClient.invalidateQueries({

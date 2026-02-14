@@ -163,7 +163,7 @@ export const useUpgradePrivilegeSystem = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => {
-      return apiRequest.post("/api/v2/organizations/privilege-system-upgrade");
+      return apiRequest.post("/api/v2/organizations/privilege-system-upgrade", {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
@@ -431,7 +431,8 @@ export const useCreateCustomerPortalSession = () => {
   return useMutation({
     mutationFn: async (organizationId: string) => {
       const { data } = await apiRequest.post(
-        `/api/v1/organizations/${organizationId}/customer-portal-session`
+        `/api/v1/organizations/${organizationId}/customer-portal-session`,
+        {}
       );
       return data;
     }

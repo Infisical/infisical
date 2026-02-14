@@ -240,7 +240,8 @@ export const useRevokeIdentityUniversalAuthClientSecret = () => {
       const {
         data: { clientSecretData }
       } = await apiRequest.post<{ clientSecretData: ClientSecretData }>(
-        `/api/v1/auth/universal-auth/identities/${identityId}/client-secrets/${clientSecretId}/revoke`
+        `/api/v1/auth/universal-auth/identities/${identityId}/client-secrets/${clientSecretId}/revoke`,
+        {}
       );
       return clientSecretData;
     },
@@ -259,7 +260,8 @@ export const useClearIdentityUniversalAuthLockouts = () => {
       const {
         data: { deleted }
       } = await apiRequest.post<{ deleted: number }>(
-        `/api/v1/auth/universal-auth/identities/${identityId}/clear-lockouts`
+        `/api/v1/auth/universal-auth/identities/${identityId}/clear-lockouts`,
+        {}
       );
       return deleted;
     },
@@ -1663,7 +1665,8 @@ export const useRevokeIdentityTokenAuthToken = () => {
   return useMutation<RevokeTokenRes, object, RevokeTokenDTO>({
     mutationFn: async ({ tokenId }) => {
       const { data } = await apiRequest.post<RevokeTokenRes>(
-        `/api/v1/auth/token-auth/tokens/${tokenId}/revoke`
+        `/api/v1/auth/token-auth/tokens/${tokenId}/revoke`,
+        {}
       );
 
       return data;
@@ -1846,7 +1849,8 @@ export const useClearIdentityLdapAuthLockouts = () => {
       const {
         data: { deleted }
       } = await apiRequest.post<{ deleted: number }>(
-        `/api/v1/auth/ldap-auth/identities/${identityId}/clear-lockouts`
+        `/api/v1/auth/ldap-auth/identities/${identityId}/clear-lockouts`,
+        {}
       );
       return deleted;
     },

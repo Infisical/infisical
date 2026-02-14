@@ -320,7 +320,7 @@ export const useRegisterUserAction = () => {
 };
 
 export const logoutUser = async () => {
-  await apiRequest.post("/api/v1/auth/logout");
+  await apiRequest.post("/api/v1/auth/logout", {});
 };
 
 // Utility function to clear session storage and query cache
@@ -505,7 +505,8 @@ export const useGetUserTotpRegistration = (options?: { enabled?: boolean }) => {
     queryKey: userKeys.totpRegistration,
     queryFn: async () => {
       const { data } = await apiRequest.post<{ otpUrl: string; recoveryCodes: string[] }>(
-        "/api/v1/user/me/totp/register"
+        "/api/v1/user/me/totp/register",
+        {}
       );
 
       return data;

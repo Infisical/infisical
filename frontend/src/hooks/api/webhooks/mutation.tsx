@@ -24,7 +24,7 @@ export const useTestWebhook = () => {
 
   return useMutation<object, object, TTestWebhookDTO>({
     mutationFn: async ({ webhookId }) => {
-      const { data } = await apiRequest.post(`/api/v1/webhooks/${webhookId}/test`);
+      const { data } = await apiRequest.post(`/api/v1/webhooks/${webhookId}/test`, {});
       return data;
     },
     onSuccess: (_, { projectId }) => {

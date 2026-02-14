@@ -93,7 +93,8 @@ export const useTriggerSecretScanningDataSource = () => {
   return useMutation({
     mutationFn: async ({ type, dataSourceId, resourceId }: TTriggerSecretScanningDataSourceDTO) => {
       const { data } = await apiRequest.post<TSecretScanningDataSourceResponse>(
-        `/api/v2/secret-scanning/data-sources/${type}/${dataSourceId}${resourceId ? `/resources/${resourceId}` : ""}/scan`
+        `/api/v2/secret-scanning/data-sources/${type}/${dataSourceId}${resourceId ? `/resources/${resourceId}` : ""}/scan`,
+        {}
       );
 
       return data.dataSource;

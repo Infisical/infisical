@@ -285,7 +285,7 @@ export const useResetUserPasswordV2 = () => {
 // Refresh token is set as cookie when logged in
 // Using that we fetch the auth bearer token needed for auth calls
 export const fetchAuthToken = async () => {
-  const { data } = await apiRequest.post<GetAuthTokenAPI>("/api/v1/auth/token", undefined, {
+  const { data } = await apiRequest.post<GetAuthTokenAPI>("/api/v1/auth/token", {}, {
     withCredentials: true
   });
   setAuthToken(data.token);
@@ -317,7 +317,8 @@ export const useMfaGenerateAuthenticationOptions = () =>
   useMutation({
     mutationFn: async () => {
       const { data } = await apiRequest.post<TGenerateAuthenticationOptionsResponse>(
-        "/api/v2/auth/mfa/webauthn/authenticate"
+        "/api/v2/auth/mfa/webauthn/authenticate",
+        {}
       );
       return data;
     }
@@ -338,8 +339,10 @@ export const useMfaVerifyAuthentication = () =>
 export const useSendPasswordSetupEmail = () => {
   return useMutation({
     mutationFn: async () => {
-      const { data } = await apiRequest.post("/api/v1/password/email/password-setup");
-
+      const { data } = await apiRequest.post(
+        "/api/v1/password/email/password-setup",
+        {}
+      );
       return data;
     }
   });

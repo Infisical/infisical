@@ -13,7 +13,7 @@ export const useMarkAllNotificationsAsRead = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      await apiRequest.post("/api/v1/notifications/user/mark-as-read");
+      await apiRequest.post("/api/v1/notifications/user/mark-as-read", {});
     },
     onSuccess: () => {
       queryClient.setQueryData<TUserNotification[]>(notificationKeys.list(orgId), (oldData) => {

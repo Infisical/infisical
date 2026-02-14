@@ -16,7 +16,8 @@ export const useGenerateRegistrationOptions = () =>
   useMutation({
     mutationFn: async () => {
       const { data } = await apiRequest.post<TGenerateRegistrationOptionsResponse>(
-        "/api/v1/user/me/webauthn/register"
+        "/api/v1/user/me/webauthn/register",
+        {}
       );
       return data;
     }
@@ -43,7 +44,8 @@ export const useGenerateAuthenticationOptions = () =>
   useMutation({
     mutationFn: async () => {
       const { data } = await apiRequest.post<TGenerateAuthenticationOptionsResponse>(
-        "/api/v1/user/me/webauthn/authenticate"
+        "/api/v1/user/me/webauthn/authenticate",
+        {}
       );
       return data;
     }
