@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop */
 import { ChangeResourceRecordSetsCommand, Route53Client } from "@aws-sdk/client-route-53";
 
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
@@ -71,5 +72,28 @@ export const route53DeleteTxtRecord = async (
     }
   });
 
-  await route53Client.send(command);
+  // Retry with exponential backoff to handle propagation delay and transient errors
+  const maxRetries = 3;
+  const initialDelay = 3000;
+  let retryCount = 0;
+  let lastError: Error | null = null;
+
+  while (retryCount < maxRetries) {
+    try {
+      await route53Client.send(command);
+      return;
+    } catch (error) {
+      lastError = error as Error;
+      retryCount += 1;
+
+      if (retryCount < maxRetries) {
+        const delay = initialDelay * 2 ** (retryCount - 1);
+        await new Promise((resolve) => {
+          setTimeout(resolve, delay);
+        });
+      }
+    }
+  }
+
+  throw lastError ?? new Error("Failed to delete Route53 TXT record after retries");
 };
