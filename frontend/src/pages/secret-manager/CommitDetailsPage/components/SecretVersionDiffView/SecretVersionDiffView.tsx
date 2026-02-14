@@ -15,6 +15,9 @@ import { IconButton, Tooltip } from "@app/components/v2";
 export interface Version {
   id?: string;
   version: number;
+  isRedacted?: boolean;
+  redactedAt?: Date | null;
+  redactedByUserId?: string | null;
   [key: string]: any;
 }
 
@@ -115,6 +118,7 @@ export const SecretVersionDiffView = ({
       | undefined;
 
     return {
+      isRedacted: version.isRedacted,
       secretKey: version.secretKey as string | undefined,
       secretValue: version.secretValue as string | undefined,
       secretValueHidden: version.secretValueHidden as boolean | undefined,

@@ -1637,7 +1637,8 @@ export const registerRoutes = async (
     secretV2BridgeService,
     secretApprovalRequestService,
     licenseService,
-    reminderService
+    reminderService,
+    secretVersionV2DAL: secretVersionV2BridgeDAL
   });
 
   const secretSharingService = secretSharingServiceFactory({

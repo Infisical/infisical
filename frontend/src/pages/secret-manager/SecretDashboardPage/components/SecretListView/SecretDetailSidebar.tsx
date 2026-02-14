@@ -54,7 +54,7 @@ import {
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { usePopUp, useToggle } from "@app/hooks";
-import { useGetSecretVersion } from "@app/hooks/api";
+import { useGetSecretVersion, useRedactSecretValue } from "@app/hooks/api";
 import {
   dashboardKeys,
   fetchSecretValue,
@@ -103,6 +103,8 @@ export const SecretDetailSidebar = ({
   const { currentProject } = useProject();
   const [isFieldFocused, setIsFieldFocused] = useToggle();
   const queryClient = useQueryClient();
+
+  const { mutateAsync: redactSecretValue } = useRedactSecretValue();
 
   const canFetchSecretValue =
     Boolean(originalSecret) && !originalSecret.secretValueHidden && !originalSecret.isEmpty;
@@ -215,7 +217,8 @@ export const SecretDetailSidebar = ({
 
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp([
     "secretAccessUpgradePlan",
-    "secretReferenceTree"
+    "secretReferenceTree",
+    "redactSecretValue"
   ] as const);
 
   const tagFields = useFieldArray({
@@ -369,6 +372,7 @@ export const SecretDetailSidebar = ({
           />
         </ModalContent>
       </Modal>
+
       <Drawer
         onOpenChange={async (state) => {
           if (isOpen && isDirty) {
@@ -767,6 +771,16 @@ export const SecretDetailSidebar = ({
                     secretVersion={version}
                     secret={secret}
                     currentVersion={secretVersion.length}
+                    onRedactSecretValue={async (versionId) => {
+                      await redactSecretValue({ versionId, secretId: secret.id });
+
+                      createNotification({
+                        title: "Secret value redacted",
+                        text: "The secret value has been redacted successfully and is no longer persisted or viewable.",
+                        type: "success"
+                      });
+                    }}
+                    canEditSecret={!cannotEditSecret}
                     onRevert={async (versionValue) => {
                       await fetchValue();
 

@@ -1,7 +1,13 @@
 /* eslint-disable jsx-a11y/no-static-element-interactions */
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 import { useRef, useState } from "react";
-import { faCircleCheck, faCircleXmark, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCircleCheck,
+  faCircleXmark,
+  faEye,
+  faEyeSlash,
+  faTriangleExclamation
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { isSingleLine, scrollToFirstChange } from "@app/components/utilities/diff";
@@ -23,6 +29,7 @@ import { MultiLineDiff } from "./MultiLineDiff";
 import { SingleLineDiff } from "./SingleLineDiff";
 
 export interface SecretVersionData {
+  isRedacted?: boolean;
   secretKey?: string;
   secretValue?: string;
   secretValueHidden?: boolean;
@@ -188,6 +195,8 @@ export const SecretDiffView = ({
   const showOldVersion = operationType === "update" || operationType === "delete";
   const showNewVersion = operationType === "update" || operationType === "create";
 
+  const isRollingToRedactedVersion = newVersion?.isRedacted;
+
   return (
     <div className="flex flex-col space-y-4 space-x-0 xl:flex-row xl:space-y-0 xl:space-x-4">
       {showOldVersion ? (
@@ -274,9 +283,26 @@ export const SecretDiffView = ({
         <div className="flex w-full min-w-0 cursor-default flex-col rounded-lg border border-green-600/60 bg-green-600/10 p-4 xl:w-1/2">
           <div className="mb-4 flex flex-row justify-between">
             <span className="text-md font-medium">New Secret</span>
-            <div className="rounded-full bg-green-600 px-2 pt-[0.2rem] pb-[0.14rem] text-xs font-medium">
-              <FontAwesomeIcon icon={faCircleCheck} className="pr-1 text-white" />
-              New
+
+            <div className="flex items-center gap-2">
+              {isRollingToRedactedVersion && (
+                <div className="rounded-full bg-red-600 px-2 pt-[0.2rem] pb-[0.14rem] text-xs font-medium">
+                  <Tooltip
+                    side="top"
+                    content="This secret version has been redacted. Rolling back to this version will result in an empty secret value."
+                  >
+                    <div className="flex items-center gap-2">
+                      <FontAwesomeIcon icon={faTriangleExclamation} className="mb-0.5 text-white" />
+                      <span className="text-white">Redacted Version</span>
+                    </div>
+                  </Tooltip>
+                </div>
+              )}
+
+              <div className="rounded-full bg-green-600 px-2 pt-[0.2rem] pb-[0.14rem] text-xs font-medium">
+                <FontAwesomeIcon icon={faCircleCheck} className="pr-1 text-white" />
+                New
+              </div>
             </div>
           </div>
           <div className="mb-2">

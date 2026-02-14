@@ -175,6 +175,7 @@ export type TFnSecretBulkInsert = {
       tagIds?: string[];
       references: TSecretReference[];
       secretMetadata?: { key: string; value?: string | null; encryptedValue?: Buffer | null }[];
+      parentSecretVersionId?: string;
     }
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
@@ -207,6 +208,7 @@ export type TFnSecretBulkUpdate = {
     data: TRequireReferenceIfValue & {
       tags?: string[];
       secretMetadata?: { key: string; value?: string | null; encryptedValue?: Buffer | null }[];
+      parentSecretVersionId?: string;
     };
   }[];
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
