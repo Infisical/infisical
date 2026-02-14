@@ -98,6 +98,8 @@ export const auditLogQueueServiceFactory = async ({
             clickhouse_settings: CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS,
             values: [
               {
+                // with the same id as the audit log in clickhouse, so that it's much easier to
+                // find the corresponding audit log in postgres
                 id: auditLog.id,
                 actor: actor.type,
                 actorMetadata: actor.metadata ?? {},
@@ -106,7 +108,9 @@ export const auditLogQueueServiceFactory = async ({
                 eventMetadata: event.metadata ?? {},
                 userAgent: userAgent ?? "",
                 userAgentType: userAgentType ?? "",
-                createdAt: new Date(),
+                // with the same createdAt as the audit log from postgres, so that it's much easier to
+                // deduplicate the audit logs
+                createdAt: auditLog.createdAt,
                 projectId: projectId ?? "",
                 orgId
               }
