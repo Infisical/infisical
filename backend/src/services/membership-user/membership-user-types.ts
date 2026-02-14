@@ -16,10 +16,9 @@ export interface TMembershipUserScopeFactory {
 
   onListMembershipUserGuard: (arg: TListMembershipUserDTO) => Promise<void>;
   onGetMembershipUserByUserIdGuard: (arg: TGetMembershipUserByUserIdDTO) => Promise<void>;
-  getScopeField: (scope: AccessScopeData) => { key: "orgId" | "namespaceId" | "projectId"; value: string };
+  getScopeField: (scope: AccessScopeData) => { key: "orgId" | "projectId"; value: string };
   getScopeDatabaseFields: (scope: AccessScopeData) => {
     scopeOrgId: string;
-    scopeNamespaceId?: string | null;
     scopeProjectId?: string | null;
   };
   isCustomRole: (role: string) => boolean;

@@ -18,7 +18,6 @@ import {
   TListMembershipIdentityDTO,
   TUpdateMembershipIdentityDTO
 } from "./membership-identity-types";
-import { newNamespaceMembershipIdentityFactory } from "./namespace/namespace-membership-identity-factory";
 import { newOrgMembershipIdentityFactory } from "./org/org-membership-identity-factory";
 import { newProjectMembershipIdentityFactory } from "./project/project-membership-identity-factory";
 
@@ -57,8 +56,7 @@ export const membershipIdentityServiceFactory = ({
       orgDAL,
       permissionService,
       identityDAL
-    }),
-    [AccessScope.Namespace]: newNamespaceMembershipIdentityFactory({})
+    })
   };
 
   const createMembership = async (dto: TCreateMembershipIdentityDTO) => {
