@@ -43,13 +43,7 @@
           {
             "group": "Platform Reference",
             "pages": [
-              {
-                "group": "Organization",
-                "pages": [
-                  "documentation/platform/organization",
-                  "documentation/platform/sub-organizations"
-                ]
-              },
+              "documentation/platform/organization",
               {
                 "group": "Projects",
                 "pages": [
@@ -127,7 +121,6 @@
                       "integrations/app-connections/chef",
                       "integrations/app-connections/cloudflare",
                       "integrations/app-connections/databricks",
-                      "integrations/app-connections/dbt",
                       "integrations/app-connections/digital-ocean",
                       "integrations/app-connections/dns-made-easy",
                       "integrations/app-connections/flyio",
@@ -149,7 +142,7 @@
                       "integrations/app-connections/oci",
                       "integrations/app-connections/octopus-deploy",
                       "integrations/app-connections/okta",
-                      "integrations/app-connections/openrouter",
+                      "integrations/app-connections/open-router",
                       "integrations/app-connections/oracledb",
                       "integrations/app-connections/postgres",
                       "integrations/app-connections/railway",
@@ -231,7 +224,6 @@
                       {
                         "group": "OIDC",
                         "pages": [
-                          "documentation/platform/sso/okta-oidc",
                           {
                             "group": "Keycloak OIDC",
                             "pages": [
@@ -324,9 +316,7 @@
                   "self-hosting/deployment-options/standalone-infisical",
                   "self-hosting/deployment-options/docker-swarm",
                   "self-hosting/deployment-options/docker-compose",
-                  "self-hosting/deployment-options/kubernetes-helm",
-                  "self-hosting/deployment-options/aws-native",
-                  "self-hosting/deployment-options/gcp-native"
+                  "self-hosting/deployment-options/kubernetes-helm"
                 ]
               },
               {
@@ -340,6 +330,7 @@
               "self-hosting/guides/replication",
               "self-hosting/guides/upgrading-infisical",
               "self-hosting/configuration/envars",
+              "self-hosting/guides/releases",
               "self-hosting/configuration/requirements",
               {
                 "group": "Guides",
@@ -462,13 +453,12 @@
                       "documentation/platform/secret-rotation/aws-iam-user-secret",
                       "documentation/platform/secret-rotation/azure-client-secret",
                       "documentation/platform/secret-rotation/databricks-service-principal-secret",
-                      "documentation/platform/secret-rotation/dbt-service-token",
                       "documentation/platform/secret-rotation/ldap-password",
                       "documentation/platform/secret-rotation/mongodb-credentials",
                       "documentation/platform/secret-rotation/mssql-credentials",
                       "documentation/platform/secret-rotation/mysql-credentials",
                       "documentation/platform/secret-rotation/okta-client-secret",
-                      "documentation/platform/secret-rotation/openrouter-api-key",
+                      "documentation/platform/secret-rotation/open-router-api-key",
                       "documentation/platform/secret-rotation/oracledb-credentials",
                       "documentation/platform/secret-rotation/postgres-credentials",
                       "documentation/platform/secret-rotation/redis-credentials",
@@ -696,7 +686,6 @@
                     "pages": [
                       "documentation/platform/pki/guides/request-cert-agent",
                       "documentation/platform/pki/guides/request-cert-api",
-                      "documentation/platform/pki/guides/request-cert-csr",
                       "documentation/platform/pki/guides/request-cert-acme",
                       "documentation/platform/pki/guides/certificate-approvals"
                     ]
@@ -769,11 +758,9 @@
                 "pages": [
                   "documentation/platform/pki/certificate-syncs/overview",
                   "documentation/platform/pki/certificate-syncs/aws-certificate-manager",
-                  "documentation/platform/pki/certificate-syncs/aws-elastic-load-balancer",
                   "documentation/platform/pki/certificate-syncs/aws-secrets-manager",
                   "documentation/platform/pki/certificate-syncs/azure-key-vault",
-                  "documentation/platform/pki/certificate-syncs/chef",
-                  "documentation/platform/pki/certificate-syncs/cloudflare-custom-certificate"
+                  "documentation/platform/pki/certificate-syncs/chef"
                 ]
               },
               {
@@ -820,8 +807,7 @@
                           "documentation/platform/pam/getting-started/resources/aws-iam",
                           "documentation/platform/pam/getting-started/resources/kubernetes",
                           "documentation/platform/pam/getting-started/resources/redis",
-                          "documentation/platform/pam/getting-started/resources/ssh",
-                          "documentation/platform/pam/getting-started/resources/windows-server"
+                          "documentation/platform/pam/getting-started/resources/ssh"
                         ]
                       },
                       "documentation/platform/pam/getting-started/accounts"
@@ -833,7 +819,6 @@
               {
                 "group": "Product Reference",
                 "pages": [
-                  "documentation/platform/pam/product-reference/access-policies",
                   "documentation/platform/pam/product-reference/auditing",
                   "documentation/platform/pam/product-reference/session-recording",
                   "documentation/platform/pam/product-reference/credential-rotation",
@@ -960,6 +945,23 @@
                 ]
               },
               {
+                "group": "Organization Group Memberships",
+                "pages": [
+                  "api-reference/endpoints/organization-group-memberships/list",
+                  "api-reference/endpoints/organization-group-memberships/get-by-id",
+                  "api-reference/endpoints/organization-group-memberships/create",
+                  "api-reference/endpoints/organization-group-memberships/update",
+                  "api-reference/endpoints/organization-group-memberships/delete",
+                  "api-reference/endpoints/organization-available-groups/list",
+                  {
+                    "group": "Legacy",
+                    "pages": [
+                      "api-reference/endpoints/deprecated/organization-groups/list-by-org-id"
+                    ]
+                  }
+                ]
+              },
+              {
                 "group": "Organization Identities",
                 "pages": [
                   "api-reference/endpoints/identities/create",
@@ -1069,21 +1071,31 @@
               {
                 "group": "Project Groups",
                 "pages": [
-                  "api-reference/endpoints/project-groups/create",
-                  "api-reference/endpoints/project-groups/delete",
-                  "api-reference/endpoints/project-groups/get-by-id",
-                  "api-reference/endpoints/project-groups/list",
-                  "api-reference/endpoints/project-groups/update",
                   {
                     "group": "Legacy",
                     "pages": [
-                      "api-reference/endpoints/deprecated/project-groups/create",
-                      "api-reference/endpoints/deprecated/project-groups/delete",
-                      "api-reference/endpoints/deprecated/project-groups/get-by-id",
+                      "api-reference/endpoints/deprecated/project-groups-v1/list",
+                      "api-reference/endpoints/deprecated/project-groups-v1/get-by-id",
+                      "api-reference/endpoints/deprecated/project-groups-v1/create",
+                      "api-reference/endpoints/deprecated/project-groups-v1/update",
+                      "api-reference/endpoints/deprecated/project-groups-v1/delete",
                       "api-reference/endpoints/deprecated/project-groups/list",
-                      "api-reference/endpoints/deprecated/project-groups/update"
+                      "api-reference/endpoints/deprecated/project-groups/get-by-id",
+                      "api-reference/endpoints/deprecated/project-groups/create",
+                      "api-reference/endpoints/deprecated/project-groups/update",
+                      "api-reference/endpoints/deprecated/project-groups/delete"
                     ]
                   }
+                ]
+              },
+              {
+                "group": "Project Group Memberships",
+                "pages": [
+                  "api-reference/endpoints/project-group-memberships/list",
+                  "api-reference/endpoints/project-group-memberships/get-by-id",
+                  "api-reference/endpoints/project-group-memberships/create",
+                  "api-reference/endpoints/project-group-memberships/update",
+                  "api-reference/endpoints/project-group-memberships/delete"
                 ]
               },
               {
@@ -1366,18 +1378,6 @@
                     ]
                   },
                   {
-                    "group": "DBT",
-                    "pages": [
-                      "api-reference/endpoints/app-connections/dbt/list",
-                      "api-reference/endpoints/app-connections/dbt/available",
-                      "api-reference/endpoints/app-connections/dbt/get-by-id",
-                      "api-reference/endpoints/app-connections/dbt/get-by-name",
-                      "api-reference/endpoints/app-connections/dbt/create",
-                      "api-reference/endpoints/app-connections/dbt/update",
-                      "api-reference/endpoints/app-connections/dbt/delete"
-                    ]
-                  },
-                  {
                     "group": "Digital Ocean",
                     "pages": [
                       "api-reference/endpoints/app-connections/digital-ocean/list",
@@ -1605,18 +1605,7 @@
                       "api-reference/endpoints/app-connections/okta/delete"
                     ]
                   },
-                  {
-                    "group": "OpenRouter",
-                    "pages": [
-                      "api-reference/endpoints/app-connections/openrouter/list",
-                      "api-reference/endpoints/app-connections/openrouter/available",
-                      "api-reference/endpoints/app-connections/openrouter/get-by-id",
-                      "api-reference/endpoints/app-connections/openrouter/get-by-name",
-                      "api-reference/endpoints/app-connections/openrouter/create",
-                      "api-reference/endpoints/app-connections/openrouter/update",
-                      "api-reference/endpoints/app-connections/openrouter/delete"
-                    ]
-                  },
+
                   {
                     "group": "OracleDB",
                     "pages": [
@@ -2102,19 +2091,6 @@
                       "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/list",
                       "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/update"
-                    ]
-                  },
-                  {
-                    "group": "DBT Service Token",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/dbt-service-token/create",
-                      "api-reference/endpoints/secret-rotations/dbt-service-token/delete",
-                      "api-reference/endpoints/secret-rotations/dbt-service-token/get-by-id",
-                      "api-reference/endpoints/secret-rotations/dbt-service-token/get-by-name",
-                      "api-reference/endpoints/secret-rotations/dbt-service-token/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/dbt-service-token/list",
-                      "api-reference/endpoints/secret-rotations/dbt-service-token/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/dbt-service-token/update"
                     ]
                   },
                   {
@@ -2862,18 +2838,6 @@
                     ]
                   },
                   {
-                    "group": "AWS Elastic Load Balancer",
-                    "pages": [
-                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/list",
-                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/get-by-id",
-                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/create",
-                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/update",
-                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/delete",
-                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/sync-certificates",
-                      "api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/remove-certificates"
-                    ]
-                  },
-                  {
                     "group": "AWS Secrets Manager",
                     "pages": [
                       "api-reference/endpoints/pki/syncs/aws-secrets-manager/list",
@@ -2907,18 +2871,6 @@
                       "api-reference/endpoints/pki/syncs/chef/delete",
                       "api-reference/endpoints/pki/syncs/chef/sync-certificates",
                       "api-reference/endpoints/pki/syncs/chef/remove-certificates"
-                    ]
-                  },
-                  {
-                    "group": "Cloudflare Custom SSL",
-                    "pages": [
-                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/list",
-                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/get-by-id",
-                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/create",
-                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/update",
-                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/delete",
-                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/sync-certificates",
-                      "api-reference/endpoints/pki/syncs/cloudflare-custom-certificate/remove-certificates"
                     ]
                   }
                 ]

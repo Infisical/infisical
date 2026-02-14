@@ -14,8 +14,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 /**
- * Project group memberships. Follows the membership pattern:
- * - Pattern: {scope}/memberships/{actor-type} (list) and {scope}/memberships/{actor-type}/{actor-id} (by id).
+ * Project group memberships.
  * - Scope: projects/:projectId (explicit in path).
  * - Actor type: groups. Resource: the membership (id, roles), not the group in isolation.
  */
@@ -58,7 +57,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
       hide: false,
       operationId: "listProjectGroupMemberships",
       tags: [ApiDocsTags.ProjectGroups],
-      description: "List project group memberships. Pattern: {scope}/memberships/{actor-type}.",
+      description: "List project group memberships.",
       security: [{ bearerAuth: [] }],
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.LIST_GROUPS_IN_PROJECT.projectId)

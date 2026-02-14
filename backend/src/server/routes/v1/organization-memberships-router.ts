@@ -8,9 +8,8 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 /**
- * Organization group memberships. Follows the membership pattern:
- * - Pattern: {scope}/memberships/{actor-type} (list) and {scope}/memberships/{actor-type}/{actor-id} (by id).
- * - Scope: organizations (org from token, no org id in path).
+ * Organization group memberships.
+ * - Scope: organizations (no org id in path).
  * - Actor type: groups. Resource: the membership (id, roles), not the group in isolation.
  */
 const orgGroupMembershipRoleSchema = z.object({
@@ -51,7 +50,7 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
       hide: false,
       operationId: "listOrganizationGroupMemberships",
       tags: [ApiDocsTags.Groups],
-      description: "List organization group memberships (org from token). Pattern: {scope}/memberships/{actor-type}.",
+      description: "List organization group memberships",
       security: [{ bearerAuth: [] }],
       querystring: z.object({
         limit: z.coerce.number().min(1).max(100).default(100).optional(),
