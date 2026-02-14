@@ -14,7 +14,7 @@ import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
-import { SecretOperations, SecretProtectionType } from "@app/services/secret/secret-types";
+import { PersonalOverridesBehavior, SecretOperations, SecretProtectionType } from "@app/services/secret/secret-types";
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -302,6 +302,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       if (!workspaceId || !environment) throw new BadRequestError({ message: "Missing project id or environment" });
 
       const { secrets, imports } = await server.services.secret.getSecretsRaw({
+        personalOverridesBehavior: PersonalOverridesBehavior.IncludeAll,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
