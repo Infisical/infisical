@@ -8,7 +8,8 @@ const SecretOverviewPageQuerySchema = z.object({
   search: z.string().catch(""),
   secretPath: z.string().catch("/"),
   connectionId: z.string().optional(),
-  connectionName: z.string().optional()
+  connectionName: z.string().optional(),
+  environments: z.array(z.string()).catch([])
 });
 
 export const Route = createFileRoute(
@@ -17,7 +18,7 @@ export const Route = createFileRoute(
   component: OverviewPage,
   validateSearch: zodValidator(SecretOverviewPageQuerySchema),
   search: {
-    middlewares: [stripSearchParams({ secretPath: "/", search: "" })]
+    middlewares: [stripSearchParams({ secretPath: "/", search: "", environments: [] })]
   },
   beforeLoad: ({ context, params }) => ({
     ...context,

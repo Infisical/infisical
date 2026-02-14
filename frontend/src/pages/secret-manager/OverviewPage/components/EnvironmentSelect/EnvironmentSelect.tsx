@@ -68,18 +68,18 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs }: Props) {
             variant="outline"
             role="combobox"
             aria-expanded={isOpen}
-            className="w-[200px] justify-between"
+            className="w-[180px] justify-between"
           >
             <span className="truncate">{label}</span>
             <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-[200px] p-0">
+        <PopoverContent align="start" className="w-[180px] p-0">
           <Command>
             <CommandInput
               value={inputValue}
               onValueChange={setInputValue}
-              placeholder="Filter environments..."
+              placeholder="Filter environments"
             />
             <CommandList>
               <CommandEmpty>No environment found.</CommandEmpty>
@@ -89,7 +89,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs }: Props) {
                     <CommandItem forceMount keywords={[]} onSelect={handleSelectAll}>
                       <CheckIcon
                         className={cn(
-                          "mr-2 h-4 w-4",
+                          "h-4 w-4",
                           !selectedEnvs.length ? "opacity-100" : "opacity-0"
                         )}
                       />
@@ -110,7 +110,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs }: Props) {
                   >
                     <CheckIcon
                       className={cn(
-                        "mr-2 h-4 w-4 shrink-0",
+                        "h-4 w-4 shrink-0",
                         selectedEnvs.map((e) => e.id).includes(env.id) ? "opacity-100" : "opacity-0"
                       )}
                     />

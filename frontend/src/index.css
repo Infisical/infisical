@@ -34,6 +34,8 @@
 }
 
 @theme {
+  --breakpoint-dashboard: 1100px;
+
   /* Fonts */
   --font-inter: "Inter", sans-serif;
   --max-width-8xl: 88rem; /* 1408px */

@@ -69,7 +69,25 @@ export const useDynamicSecretOverview = (
     [dynamicSecrets]
   );
 
-  return { dynamicSecretNames, isDynamicSecretPresentInEnv };
+  const getDynamicSecretByName = useCallback(
+    (env: string, name: string) => {
+      return dynamicSecrets?.find((ds) => ds.environment === env && ds.name === name);
+    },
+    [dynamicSecrets]
+  );
+
+  const getDynamicSecretStatusesByName = useCallback(
+    (name: string) =>
+      dynamicSecrets?.filter((ds) => ds.name === name).map((ds) => ds.status ?? null),
+    [dynamicSecrets]
+  );
+
+  return {
+    dynamicSecretNames,
+    isDynamicSecretPresentInEnv,
+    getDynamicSecretByName,
+    getDynamicSecretStatusesByName
+  };
 };
 
 export const useSecretRotationOverview = (
