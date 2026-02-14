@@ -80,6 +80,7 @@ export const SecretRotationV2StatusBadge = ({ secretRotation }: Props) => {
           <span className="text-mineshaft-300">(Local Time)</span>
         </>
       }
+      asChild
     >
       <Badge variant={daysToRotation >= 7 ? "info" : "warning"} className="capitalize">
         <RefreshCwIcon />

@@ -48,6 +48,7 @@ type Props = {
     secretId?: string
   ) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string, type?: SecretType) => Promise<void>;
+  isSingleEnvView?: boolean;
 };
 
 export const SecretOverrideRow = ({
@@ -62,7 +63,8 @@ export const SecretOverrideRow = ({
   onCreatingOverrideChange,
   onSecretCreate,
   onSecretUpdate,
-  onSecretDelete
+  onSecretDelete,
+  isSingleEnvView
 }: Props) => {
   const { currentProject } = useProject();
   const [isOverrideFieldFocused, setIsOverrideFieldFocused] = useToggle();
@@ -173,10 +175,12 @@ export const SecretOverrideRow = ({
 
   return (
     <div className="flex w-full cursor-text items-center space-x-1.5 rounded py-1.5">
-      <div className="flex shrink-0 items-center gap-1 text-xs text-override">
-        <GitBranchIcon className="size-3.5" />
-      </div>
-      <div className="grow pr-2 pl-1">
+      {!isSingleEnvView && (
+        <div className="mr-1 flex shrink-0 items-center gap-1 text-xs text-override">
+          <GitBranchIcon className="size-3.5" />
+        </div>
+      )}
+      <div className="grow pr-2">
         <Controller
           control={control}
           name="value"
