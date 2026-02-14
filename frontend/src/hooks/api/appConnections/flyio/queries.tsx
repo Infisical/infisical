@@ -26,8 +26,7 @@ export const useFlyioConnectionListApps = (
     queryKey: flyioConnectionKeys.listApps(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TFlyioApp[]>(
-        `/api/v1/app-connections/flyio/${connectionId}/apps`,
-        {}
+        `/api/v1/app-connections/flyio/${connectionId}/apps`
       );
 
       return data;

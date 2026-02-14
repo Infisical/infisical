@@ -26,8 +26,7 @@ export const useZabbixConnectionListHosts = (
     queryKey: zabbixConnectionKeys.listHosts(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TZabbixHost[]>(
-        `/api/v1/app-connections/zabbix/${connectionId}/hosts`,
-        {}
+        `/api/v1/app-connections/zabbix/${connectionId}/hosts`
       );
 
       return data;

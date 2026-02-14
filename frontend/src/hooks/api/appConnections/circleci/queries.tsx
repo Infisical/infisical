@@ -27,8 +27,7 @@ export const useCircleCIConnectionListOrganizations = (
     queryKey: circleciConnectionKeys.listOrganizations(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TCircleCIOrganizationListResponse>(
-        `/api/v1/app-connections/circleci/${connectionId}/projects`,
-        {}
+        `/api/v1/app-connections/circleci/${connectionId}/projects`
       );
 
       return data.organizations;

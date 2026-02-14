@@ -37,8 +37,7 @@ export const useOCIConnectionListCompartments = (
     queryKey: ociConnectionKeys.listCompartments(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TOCICompartment[]>(
-        `/api/v1/app-connections/oci/${connectionId}/compartments`,
-        {}
+        `/api/v1/app-connections/oci/${connectionId}/compartments`
       );
 
       return data;

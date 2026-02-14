@@ -26,8 +26,7 @@ export const useHerokuConnectionListApps = (
     queryKey: herokuConnectionKeys.listApps(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<THerokuApp[]>(
-        `/api/v1/app-connections/heroku/${connectionId}/apps`,
-        {}
+        `/api/v1/app-connections/heroku/${connectionId}/apps`
       );
 
       return data;

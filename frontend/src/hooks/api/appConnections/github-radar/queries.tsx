@@ -30,8 +30,7 @@ export const useGitHubRadarConnectionListRepositories = (
     queryKey: githubRadarConnectionKeys.listRepositories(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGitHubRadarConnectionListRepositoriesResponse>(
-        `/api/v1/app-connections/github-radar/${connectionId}/repositories`,
-        {}
+        `/api/v1/app-connections/github-radar/${connectionId}/repositories`
       );
 
       return data.repositories;

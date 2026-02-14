@@ -27,8 +27,7 @@ export const useRailwayConnectionListProjects = (
     queryKey: railwayConnectionKeys.listSecretScopes(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ projects: TRailwayProject[] }>(
-        `/api/v1/app-connections/railway/${connectionId}/projects`,
-        {}
+        `/api/v1/app-connections/railway/${connectionId}/projects`
       );
 
       return data.projects;

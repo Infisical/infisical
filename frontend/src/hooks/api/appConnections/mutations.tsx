@@ -50,7 +50,7 @@ export const useDeleteAppConnection = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ connectionId, app }: TDeleteAppConnectionDTO) => {
-      const { data } = await apiRequest.delete(`/api/v1/app-connections/${app}/${connectionId}`, {});
+      const { data } = await apiRequest.delete(`/api/v1/app-connections/${app}/${connectionId}`);
 
       return data;
     },

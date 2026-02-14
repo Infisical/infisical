@@ -26,8 +26,7 @@ export const useHCVaultConnectionListMounts = (
     queryKey: hcVaultConnectionKeys.listMounts(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<string[]>(
-        `/api/v1/app-connections/hashicorp-vault/${connectionId}/mounts`,
-        {}
+        `/api/v1/app-connections/hashicorp-vault/${connectionId}/mounts`
       );
 
       return data;

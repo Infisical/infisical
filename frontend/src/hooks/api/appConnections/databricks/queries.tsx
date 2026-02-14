@@ -60,8 +60,7 @@ export const useDatabricksConnectionListServicePrincipals = (
     queryKey: databricksConnectionKeys.listServicePrincipals(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TDatabricksConnectionListServicePrincipalsResponse>(
-        `/api/v1/app-connections/databricks/${connectionId}/service-principals`,
-        {}
+        `/api/v1/app-connections/databricks/${connectionId}/service-principals`
       );
 
       return data.servicePrincipals;

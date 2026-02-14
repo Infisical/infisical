@@ -39,8 +39,7 @@ export const useGitHubConnectionListRepositories = (
     queryKey: githubConnectionKeys.listRepositories(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGitHubConnectionListRepositoriesResponse>(
-        `/api/v1/app-connections/github/${connectionId}/repositories`,
-        {}
+        `/api/v1/app-connections/github/${connectionId}/repositories`
       );
 
       return data.repositories;
@@ -65,8 +64,7 @@ export const useGitHubConnectionListOrganizations = (
     queryKey: githubConnectionKeys.listOrganizations(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGitHubConnectionListOrganizationsResponse>(
-        `/api/v1/app-connections/github/${connectionId}/organizations`,
-        {}
+        `/api/v1/app-connections/github/${connectionId}/organizations`
       );
 
       return data.organizations;

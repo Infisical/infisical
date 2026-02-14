@@ -83,8 +83,7 @@ export const useCloudflareConnectionListZones = (
     queryKey: cloudflareConnectionKeys.listZones(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TCloudflareZone[]>(
-        `/api/v1/app-connections/cloudflare/${connectionId}/cloudflare-zones`,
-        {}
+        `/api/v1/app-connections/cloudflare/${connectionId}/cloudflare-zones`
       );
 
       return data;

@@ -27,8 +27,7 @@ export const useOnePassConnectionListVaults = (
     queryKey: onePassConnectionKeys.listVaults(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TOnePassVault[]>(
-        `/api/v1/app-connections/1password/${connectionId}/vaults`,
-        {}
+        `/api/v1/app-connections/1password/${connectionId}/vaults`
       );
 
       return data;

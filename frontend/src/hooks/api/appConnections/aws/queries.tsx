@@ -62,8 +62,7 @@ export const useListAwsConnectionIamUsers = (
     queryKey: awsConnectionKeys.listIamUsers({ connectionId }),
     queryFn: async () => {
       const { data } = await apiRequest.get<TAwsConnectionListIamUsersResponse>(
-        `/api/v1/app-connections/aws/${connectionId}/users`,
-        {}
+        `/api/v1/app-connections/aws/${connectionId}/users`
       );
 
       return data.iamUsers;

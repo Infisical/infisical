@@ -27,8 +27,7 @@ export const useCamundaConnectionListClusters = (
     queryKey: camundaConnectionKeys.listClusters(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ clusters: TCamundaCluster[] }>(
-        `/api/v1/app-connections/camunda/${connectionId}/clusters`,
-        {}
+        `/api/v1/app-connections/camunda/${connectionId}/clusters`
       );
 
       return data.clusters;
