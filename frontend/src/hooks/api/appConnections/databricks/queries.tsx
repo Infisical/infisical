@@ -34,8 +34,7 @@ export const useDatabricksConnectionListSecretScopes = (
     queryKey: databricksConnectionKeys.listSecretScopes(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TDatabricksConnectionListSecretScopesResponse>(
-        `/api/v1/app-connections/databricks/${connectionId}/secret-scopes`,
-        {}
+        `/api/v1/app-connections/databricks/${connectionId}/secret-scopes`
       );
 
       return data.secretScopes;

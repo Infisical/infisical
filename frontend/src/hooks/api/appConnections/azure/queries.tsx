@@ -29,8 +29,7 @@ export const useAzureConnectionListClients = (
     queryKey: azureConnectionKeys.listClients(connectionId),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ clients: TAzureClient[] }>(
-        `/api/v1/app-connections/azure-client-secrets/${connectionId}/clients`,
-        {}
+        `/api/v1/app-connections/azure-client-secrets/${connectionId}/clients`
       );
 
       return data.clients;
