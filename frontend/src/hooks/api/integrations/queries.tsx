@@ -172,7 +172,7 @@ export const useGetIntegration = (
 
 export const useSyncIntegration = () => {
   return useMutation<object, object, { id: string; workspaceId: string; lastUsed: string }>({
-    mutationFn: ({ id }) => apiRequest.post(`/api/v1/integration/${id}/sync`),
+    mutationFn: ({ id }) => apiRequest.post(`/api/v1/integration/${id}/sync`, {}),
     onSuccess: () => {
       createNotification({
         text: "Successfully triggered manual sync",

@@ -68,7 +68,8 @@ export const useTriggerSecretSyncSyncSecrets = () => {
   return useMutation({
     mutationFn: async ({ syncId, destination }: TTriggerSecretSyncSyncSecretsDTO) => {
       const { data } = await apiRequest.post(
-        `/api/v1/secret-syncs/${destination}/${syncId}/sync-secrets`
+        `/api/v1/secret-syncs/${destination}/${syncId}/sync-secrets`,
+        {}
       );
 
       return data;
@@ -89,7 +90,8 @@ export const useTriggerSecretSyncImportSecrets = () => {
       importBehavior
     }: TTriggerSecretSyncImportSecretsDTO) => {
       const { data } = await apiRequest.post(
-        `/api/v1/secret-syncs/${destination}/${syncId}/import-secrets?importBehavior=${importBehavior}`
+        `/api/v1/secret-syncs/${destination}/${syncId}/import-secrets?importBehavior=${importBehavior}`,
+        {}
       );
 
       return data;
@@ -106,7 +108,8 @@ export const useTriggerSecretSyncRemoveSecrets = () => {
   return useMutation({
     mutationFn: async ({ syncId, destination }: TTriggerSecretSyncRemoveSecretsDTO) => {
       const { data } = await apiRequest.post(
-        `/api/v1/secret-syncs/${destination}/${syncId}/remove-secrets`
+        `/api/v1/secret-syncs/${destination}/${syncId}/remove-secrets`,
+        {}
       );
 
       return data;

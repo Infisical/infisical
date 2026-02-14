@@ -53,7 +53,8 @@ export const useRotateSecretRotationV2 = () => {
   return useMutation({
     mutationFn: async ({ type, rotationId }: TRotateSecretRotationV2DTO) => {
       const { data } = await apiRequest.post<TSecretRotationV2Response>(
-        `/api/v2/secret-rotations/${type}/${rotationId}/rotate-secrets`
+        `/api/v2/secret-rotations/${type}/${rotationId}/rotate-secrets`,
+        {}
       );
 
       return data.secretRotation;
@@ -97,7 +98,8 @@ export const useReconcileLocalAccountRotation = () => {
   return useMutation({
     mutationFn: async ({ rotationId, type }: TReconcileLocalAccountRotationDTO) => {
       const { data } = await apiRequest.post<TReconcileLocalAccountRotationResponse>(
-        `/api/v2/secret-rotations/${type}/${rotationId}/reconcile`
+        `/api/v2/secret-rotations/${type}/${rotationId}/reconcile`,
+        {}
       );
 
       return data;

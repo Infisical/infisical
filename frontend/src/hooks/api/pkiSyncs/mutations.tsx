@@ -73,7 +73,8 @@ export const useTriggerPkiSyncSyncCertificates = () => {
   return useMutation({
     mutationFn: async ({ syncId, destination }: TTriggerPkiSyncSyncCertificatesDTO) => {
       const { data } = await apiRequest.post(
-        `/api/v1/cert-manager/syncs/${destination}/${syncId}/sync`
+        `/api/v1/cert-manager/syncs/${destination}/${syncId}/sync`,
+        {}
       );
 
       return data;
@@ -120,7 +121,8 @@ export const useTriggerPkiSyncImportCertificates = () => {
   return useMutation({
     mutationFn: async ({ syncId, destination }: TTriggerPkiSyncImportCertificatesDTO) => {
       const { data } = await apiRequest.post(
-        `/api/v1/cert-manager/syncs/${destination}/${syncId}/import`
+        `/api/v1/cert-manager/syncs/${destination}/${syncId}/import`,
+        {}
       );
 
       return data;
@@ -167,7 +169,8 @@ export const useTriggerPkiSyncRemoveCertificates = () => {
   return useMutation({
     mutationFn: async ({ syncId, destination }: TTriggerPkiSyncRemoveCertificatesDTO) => {
       const { data } = await apiRequest.post(
-        `/api/v1/cert-manager/syncs/${destination}/${syncId}/remove-certificates`
+        `/api/v1/cert-manager/syncs/${destination}/${syncId}/remove-certificates`,
+        {}
       );
 
       return data;

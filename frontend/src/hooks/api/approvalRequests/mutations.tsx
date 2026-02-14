@@ -64,7 +64,8 @@ export const useCancelApprovalRequest = () => {
   return useMutation({
     mutationFn: async ({ policyType, requestId }: TCancelApprovalRequestDTO) => {
       const { data } = await apiRequest.post<{ request: TApprovalRequest }>(
-        `/api/v1/approval-policies/${policyType}/requests/${requestId}/cancel`
+        `/api/v1/approval-policies/${policyType}/requests/${requestId}/cancel`,
+        {}
       );
       return data.request;
     },

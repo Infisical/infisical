@@ -109,7 +109,7 @@ export const useMigrateProjectToV3 = () => {
   const queryClient = useQueryClient();
   return useMutation<object, object, { projectId: string }>({
     mutationFn: ({ projectId }) => {
-      return apiRequest.post(`/api/v1/projects/${projectId}/migrate-v3`);
+      return apiRequest.post(`/api/v1/projects/${projectId}/migrate-v3`, {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({

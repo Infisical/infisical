@@ -109,7 +109,7 @@ export const useCreateNewTotpRecoveryCodes = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      await apiRequest.post("/api/v1/user/me/totp/recovery-codes");
+      await apiRequest.post("/api/v1/user/me/totp/recovery-codes", {});
 
       return {};
     },
@@ -150,7 +150,7 @@ export const useRevokeMySessionById = () => {
 export const useRemoveMyDuplicateAccounts = () => {
   return useMutation({
     mutationFn: async () => {
-      const { data } = await apiRequest.post("/api/v1/user/remove-duplicate-accounts");
+      const { data } = await apiRequest.post("/api/v1/user/remove-duplicate-accounts", {});
       return data;
     }
   });

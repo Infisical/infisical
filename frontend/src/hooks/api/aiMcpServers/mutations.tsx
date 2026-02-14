@@ -93,7 +93,7 @@ export const useSyncAiMcpServerTools = () => {
     mutationFn: async ({ serverId }) => {
       const { data: response } = await apiRequest.post<{
         tools: TAiMcpServerTool[];
-      }>(`/api/v1/ai/mcp/servers/${serverId}/tools/sync`);
+      }>(`/api/v1/ai/mcp/servers/${serverId}/tools/sync`, {});
       return response;
     },
     onSuccess: (_, { serverId }) => {

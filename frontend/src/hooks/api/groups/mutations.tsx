@@ -89,7 +89,10 @@ export const useAddUserToGroup = () => {
       username: string;
       slug: string;
     }) => {
-      const { data } = await apiRequest.post<TGroup>(`/api/v1/groups/${groupId}/users/${username}`);
+      const { data } = await apiRequest.post<TGroup>(
+        `/api/v1/groups/${groupId}/users/${username}`,
+        {}
+      );
 
       return data;
     },
@@ -137,7 +140,8 @@ export const useAddIdentityToGroup = () => {
       slug: string;
     }) => {
       const { data } = await apiRequest.post<Pick<TGroupMachineIdentity, "id" | "name">>(
-        `/api/v1/groups/${groupId}/machine-identities/${identityId}`
+        `/api/v1/groups/${groupId}/machine-identities/${identityId}`,
+        {}
       );
 
       return data;

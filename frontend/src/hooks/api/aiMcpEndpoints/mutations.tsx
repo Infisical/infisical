@@ -84,7 +84,8 @@ export const useEnableEndpointTool = () => {
   return useMutation({
     mutationFn: async ({ endpointId, serverToolId }: TEnableEndpointToolDTO) => {
       const { data } = await apiRequest.post<{ tool: TAiMcpEndpointToolConfig }>(
-        `/api/v1/ai/mcp/endpoints/${endpointId}/tools/${serverToolId}`
+        `/api/v1/ai/mcp/endpoints/${endpointId}/tools/${serverToolId}`,
+        {}
       );
       return data.tool;
     },
@@ -146,7 +147,8 @@ export const useInitiateServerOAuth = () => {
   return useMutation({
     mutationFn: async ({ endpointId, serverId }: TInitiateServerOAuthDTO) => {
       const { data } = await apiRequest.post<{ authUrl: string; sessionId: string }>(
-        `/api/v1/ai/mcp/endpoints/${endpointId}/servers/${serverId}/oauth/initiate`
+        `/api/v1/ai/mcp/endpoints/${endpointId}/servers/${serverId}/oauth/initiate`,
+        {}
       );
       return data;
     }

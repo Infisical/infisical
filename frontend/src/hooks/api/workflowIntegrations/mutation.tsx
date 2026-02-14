@@ -157,7 +157,8 @@ export const useCheckMicrosoftTeamsIntegrationInstallationStatus = () => {
   return useMutation({
     mutationFn: async (dto: TCheckMicrosoftTeamsIntegrationInstallationStatusDTO) => {
       const { data } = await apiRequest.post(
-        `/api/v1/workflow-integrations/microsoft-teams/${dto.workflowIntegrationId}/installation-status`
+        `/api/v1/workflow-integrations/microsoft-teams/${dto.workflowIntegrationId}/installation-status`,
+        {}
       );
 
       return data;
