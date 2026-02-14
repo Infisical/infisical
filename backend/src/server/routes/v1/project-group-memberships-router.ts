@@ -108,31 +108,26 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
         projectId: z.string().trim(),
         groupId: z.string().uuid()
       }),
-      body: z
-        .object({
-          role: z.string().trim().min(1).default(ProjectMembershipRole.NoAccess).optional(),
-          roles: z
-            .array(
-              z.union([
-                z.object({
-                  role: z.string(),
-                  isTemporary: z.literal(false).default(false)
-                }),
-                z.object({
-                  role: z.string(),
-                  isTemporary: z.literal(true),
-                  temporaryMode: z.nativeEnum(TemporaryPermissionMode),
-                  temporaryRange: z.string().refine((val) => ms(val) > 0, "Temporary range must be a positive number"),
-                  temporaryAccessStartTime: z.string().datetime()
-                })
-              ])
-            )
-            .optional()
-        })
-        .refine((data) => data.role || data.roles, {
-          message: "Either role or roles must be present",
-          path: ["role", "roles"]
-        }),
+      body: z.object({
+        role: z.string().trim().min(1).default(ProjectMembershipRole.NoAccess).optional(),
+        roles: z
+          .array(
+            z.union([
+              z.object({
+                role: z.string(),
+                isTemporary: z.literal(false).default(false)
+              }),
+              z.object({
+                role: z.string(),
+                isTemporary: z.literal(true),
+                temporaryMode: z.nativeEnum(TemporaryPermissionMode),
+                temporaryRange: z.string().refine((val) => ms(val) > 0, "Temporary range must be a positive number"),
+                temporaryAccessStartTime: z.string().datetime()
+              })
+            ])
+          )
+          .optional()
+      }),
       response: {
         200: z.object({
           groupMembership: projectGroupMembershipSchema
@@ -140,7 +135,11 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
       }
     },
     handler: async (req) => {
-      const roles = req.body.roles || [{ role: req.body.role!, isTemporary: false }];
+      const roles =
+        req.body.roles ??
+        (req.body.role
+          ? [{ role: req.body.role, isTemporary: false }]
+          : [{ role: ProjectMembershipRole.NoAccess, isTemporary: false }]);
       await server.services.membershipGroup.createMembership({
         permission: req.permission,
         data: { groupId: req.params.groupId, roles },

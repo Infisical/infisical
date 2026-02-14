@@ -17,7 +17,8 @@ export enum OrgPermissionActions {
 
 export enum OrgPermissionSubOrgActions {
   Create = "create",
-  DirectAccess = "direct-access"
+  DirectAccess = "direct-access",
+  LinkRootGroup = "link-root-group"
 }
 
 export enum OrgPermissionAppConnectionActions {
@@ -326,6 +327,7 @@ const buildAdminPermission = () => {
 
   can(OrgPermissionSubOrgActions.Create, OrgPermissionSubjects.SubOrganization);
   can(OrgPermissionSubOrgActions.DirectAccess, OrgPermissionSubjects.SubOrganization);
+  can(OrgPermissionSubOrgActions.LinkRootGroup, OrgPermissionSubjects.SubOrganization);
 
   // role permission
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
