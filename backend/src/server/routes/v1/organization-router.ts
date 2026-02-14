@@ -476,8 +476,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     schema: {
       deprecated: true,
       operationId: "listOrganizationGroups",
-      description:
-        "Deprecated: Use GET /api/v1/organizations/memberships/groups instead. This route was migrated to the new membership design.",
+      description: "Deprecated: Use GET /api/v1/organizations/memberships/groups instead.",
       params: z.object({
         organizationId: z.string().trim().describe(ORGANIZATIONS.LIST_GROUPS.organizationId)
       }),
