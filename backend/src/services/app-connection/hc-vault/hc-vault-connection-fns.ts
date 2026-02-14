@@ -4,10 +4,12 @@ import https from "https";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TGatewayV2ConnectionDetails } from "@app/ee/services/gateway-v2/gateway-v2-types";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
+import { GatewayVersion, TGatewayV1RelayDetails } from "@app/lib/gateway/types";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
@@ -15,6 +17,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 
 import { HCVaultAuthType, HCVaultConnectionMethod } from "./hc-vault-connection-enums";
 import {
+  TGatewayDetails,
   THCVaultAuthMount,
   THCVaultAuthMountResponse,
   THCVaultConnection,
@@ -129,7 +132,8 @@ export const requestWithHCVaultGateway = async <T>(
   appConnection: { gatewayId?: string | null },
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  requestConfig: AxiosRequestConfig
+  requestConfig: AxiosRequestConfig,
+  gatewayDetails?: TGatewayDetails
 ): Promise<AxiosResponse<T>> => {
   const { gatewayId } = appConnection;
 
@@ -141,19 +145,35 @@ export const requestWithHCVaultGateway = async <T>(
     return request.request(requestConfig);
   }
 
-  const [targetHost] = await verifyHostInputValidity({ host: url.hostname, isGateway: true, isDynamicSecret: false });
+  let gatewayConnectionDetailsV2: TGatewayV2ConnectionDetails | undefined;
 
-  // port is empty string when using protocol's default port (443 for https, 80 for http)
-  // eslint-disable-next-line no-nested-ternary
-  const targetPort = url.port ? Number(url.port) : url.protocol === "https:" ? 443 : 80;
+  if (gatewayDetails && gatewayDetails.gatewayVersion === GatewayVersion.V2) {
+    gatewayConnectionDetailsV2 = gatewayDetails.details;
+  }
 
-  const gatewayConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
-    gatewayId,
-    targetHost,
-    targetPort
-  });
+  let targetHost: string;
+  let targetPort: number;
 
-  if (gatewayConnectionDetails) {
+  if (gatewayDetails) {
+    targetHost = gatewayDetails.target.host;
+    targetPort = gatewayDetails.target.port;
+  } else {
+    [targetHost] = await verifyHostInputValidity({ host: url.hostname, isGateway: true, isDynamicSecret: false });
+    // port is empty string when using protocol's default port (443 for https, 80 for http)
+    // eslint-disable-next-line no-nested-ternary
+    targetPort = url.port ? Number(url.port) : url.protocol === "https:" ? 443 : 80;
+  }
+
+  // if no gateway details are provided, we first try gateway v2, then gateway v1 as a fallback.
+  if (!gatewayDetails) {
+    gatewayConnectionDetailsV2 = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+      gatewayId,
+      targetHost,
+      targetPort
+    });
+  }
+
+  if (gatewayConnectionDetailsV2) {
     return withGatewayV2Proxy(
       async (proxyPort) => {
         const isHttps = url.protocol === "https:";
@@ -188,15 +208,19 @@ export const requestWithHCVaultGateway = async <T>(
       },
       {
         protocol: GatewayProxyProtocol.Tcp,
-        relayHost: gatewayConnectionDetails.relayHost,
-        gateway: gatewayConnectionDetails.gateway,
-        relay: gatewayConnectionDetails.relay
+        relayHost: gatewayConnectionDetailsV2.relayHost,
+        gateway: gatewayConnectionDetailsV2.gateway,
+        relay: gatewayConnectionDetailsV2.relay
       }
     );
   }
 
-  const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(gatewayId);
-  const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
+  let gatewayConnectionDetailsV1: TGatewayV1RelayDetails | undefined;
+  if (gatewayDetails && gatewayDetails.gatewayVersion === GatewayVersion.V1) {
+    gatewayConnectionDetailsV1 = gatewayDetails.details;
+  } else {
+    gatewayConnectionDetailsV1 = await gatewayService.fnGetGatewayClientTlsByGatewayId(gatewayId);
+  }
 
   return withGatewayProxy(
     async (proxyPort) => {
@@ -230,18 +254,10 @@ export const requestWithHCVaultGateway = async <T>(
       }
     },
     {
+      relayDetails: gatewayConnectionDetailsV1,
       protocol: GatewayProxyProtocol.Tcp,
       targetHost,
-      targetPort,
-      relayHost,
-      relayPort: Number(relayPort),
-      identityId: relayDetails.identityId,
-      orgId: relayDetails.orgId,
-      tlsOptions: {
-        ca: relayDetails.certChain,
-        cert: relayDetails.certificate,
-        key: relayDetails.privateKey.toString()
-      }
+      targetPort
     }
   );
 };
@@ -326,7 +342,8 @@ export const listHCVaultPolicies = async (
   namespace: string,
   connection: THCVaultConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  gatewayDetails?: TGatewayDetails
 ) => {
   const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
@@ -336,14 +353,20 @@ export const listHCVaultPolicies = async (
       data: {
         policies: string[];
       };
-    }>(connection, gatewayService, gatewayV2Service, {
-      url: `${instanceUrl}/v1/sys/policy`,
-      method: "GET",
-      headers: {
-        "X-Vault-Token": accessToken,
-        "X-Vault-Namespace": namespace
-      }
-    });
+    }>(
+      connection,
+      gatewayService,
+      gatewayV2Service,
+      {
+        url: `${instanceUrl}/v1/sys/policy`,
+        method: "GET",
+        headers: {
+          "X-Vault-Token": accessToken,
+          "X-Vault-Namespace": namespace
+        }
+      },
+      gatewayDetails
+    );
 
     const policyNames = listData.data.policies || [];
 
@@ -358,14 +381,20 @@ export const listHCVaultPolicies = async (
                 name: string;
                 rules: string;
               };
-            }>(connection, gatewayService, gatewayV2Service, {
-              url: `${instanceUrl}/v1/sys/policy/${policyName}`,
-              method: "GET",
-              headers: {
-                "X-Vault-Token": accessToken,
-                "X-Vault-Namespace": namespace
-              }
-            });
+            }>(
+              connection,
+              gatewayService,
+              gatewayV2Service,
+              {
+                url: `${instanceUrl}/v1/sys/policy/${policyName}`,
+                method: "GET",
+                headers: {
+                  "X-Vault-Token": accessToken,
+                  "X-Vault-Namespace": namespace
+                }
+              },
+              gatewayDetails
+            );
 
             return {
               name: policyData.data.name,
@@ -519,7 +548,8 @@ export const listHCVaultMounts = async (
   connection: THCVaultConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  namespace?: string
+  namespace?: string,
+  gatewayDetails?: TGatewayDetails
 ) => {
   const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
@@ -537,7 +567,8 @@ export const listHCVaultMounts = async (
         "X-Vault-Token": accessToken,
         ...(targetNamespace ? { "X-Vault-Namespace": targetNamespace } : {})
       }
-    }
+    },
+    gatewayDetails
   );
 
   const mounts: THCVaultMount[] = [];
@@ -558,7 +589,8 @@ export const listHCVaultSecretPaths = async (
   connection: THCVaultConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  filterMountPath?: string
+  filterMountPath?: string,
+  gatewayDetails?: TGatewayDetails
 ) => {
   const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
@@ -578,14 +610,20 @@ export const listHCVaultSecretPaths = async (
         data: {
           keys: string[];
         };
-      }>(connection, gatewayService, gatewayV2Service, {
-        url: `${instanceUrl}/v1/${path}?list=true`,
-        method: "GET",
-        headers: {
-          "X-Vault-Token": accessToken,
-          "X-Vault-Namespace": namespace
-        }
-      });
+      }>(
+        connection,
+        gatewayService,
+        gatewayV2Service,
+        {
+          url: `${instanceUrl}/v1/${path}?list=true`,
+          method: "GET",
+          headers: {
+            "X-Vault-Token": accessToken,
+            "X-Vault-Namespace": namespace
+          }
+        },
+        gatewayDetails
+      );
 
       return data.data.keys;
     } catch (error) {
@@ -761,7 +799,8 @@ export const getHCVaultAuthMounts = async (
   authType: HCVaultAuthType | undefined,
   connection: THCVaultConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  gatewayDetails?: TGatewayDetails
 ): Promise<THCVaultAuthMount[]> => {
   const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
@@ -778,7 +817,8 @@ export const getHCVaultAuthMounts = async (
           "X-Vault-Token": accessToken,
           "X-Vault-Namespace": namespace
         }
-      }
+      },
+      gatewayDetails
     );
 
     const authMounts: THCVaultAuthMount[] = [];
