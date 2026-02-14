@@ -6,8 +6,10 @@ import {
   AccessScope,
   SecretVersionsV2Schema,
   TableName,
+  TMemberships,
   TSecretVersionsV2,
-  TSecretVersionsV2Update
+  TSecretVersionsV2Update,
+  TUsers
 } from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, sqlNestRelationships, TFindOpt } from "@app/lib/knex";
@@ -215,26 +217,47 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
       const query = (tx || db.replicaNode())(TableName.SecretVersionV2)
         .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.SecretVersionV2}.folderId`)
         .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
-        .leftJoin(TableName.Users, `${TableName.Users}.id`, `${TableName.SecretVersionV2}.userActorId`)
+        .leftJoin<TUsers>(
+          `${TableName.Users} as user_actor`,
+          "user_actor.id",
+          `${TableName.SecretVersionV2}.userActorId`
+        )
+        .leftJoin<TUsers>(
+          `${TableName.Users} as redacted_by_user`,
+          "redacted_by_user.id",
+          `${TableName.SecretVersionV2}.redactedByUserId`
+        )
         .leftJoin(TableName.Identity, `${TableName.Identity}.id`, `${TableName.SecretVersionV2}.identityActorId`)
-        .leftJoin(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
+        .leftJoin(
+          TableName.UserGroupMembership,
+          `${TableName.UserGroupMembership}.userId`,
+          `user_actor.id` as `${TableName.Users}.id`
+        )
         .leftJoin(
           TableName.IdentityGroupMembership,
           `${TableName.IdentityGroupMembership}.identityId`,
           `${TableName.Identity}.id`
         )
-        .leftJoin(TableName.Membership, (qb) => {
+        .leftJoin<TMemberships>(`${TableName.Membership} as actorMembership`, (qb) => {
           void qb
-            .on(`${TableName.Membership}.scope`, db.raw("?", [AccessScope.Project]))
-            .andOn(`${TableName.Membership}.scopeProjectId`, `${TableName.Environment}.projectId`)
+            .on(`actorMembership.scope`, db.raw("?", [AccessScope.Project]))
+            .andOn(`actorMembership.scopeProjectId`, `${TableName.Environment}.projectId`)
             .andOn((sqb) => {
               void sqb
-                .on(`${TableName.Membership}.actorUserId`, `${TableName.SecretVersionV2}.userActorId`)
-                .orOn(`${TableName.Membership}.actorIdentityId`, `${TableName.SecretVersionV2}.identityActorId`)
-                .orOn(`${TableName.Membership}.actorGroupId`, `${TableName.UserGroupMembership}.groupId`)
-                .orOn(`${TableName.Membership}.actorGroupId`, `${TableName.IdentityGroupMembership}.groupId`);
+                .on(`actorMembership.actorUserId`, `${TableName.SecretVersionV2}.userActorId`)
+                .orOn(`actorMembership.actorIdentityId`, `${TableName.SecretVersionV2}.identityActorId`)
+                .orOn(`actorMembership.actorGroupId`, `${TableName.UserGroupMembership}.groupId`)
+                .orOn(`actorMembership.actorGroupId`, `${TableName.IdentityGroupMembership}.groupId`);
             });
         })
+
+        .leftJoin<TMemberships>(`${TableName.Membership} as redactedByMembership`, (qb) => {
+          void qb
+            .on(`redactedByMembership.scope`, db.raw("?", [AccessScope.Project]))
+            .andOn(`redactedByMembership.scopeProjectId`, `${TableName.Environment}.projectId`)
+            .andOn(`redactedByMembership.actorUserId`, `${TableName.SecretVersionV2}.redactedByUserId`);
+        })
+
         .leftJoin(TableName.SecretV2, `${TableName.SecretVersionV2}.secretId`, `${TableName.SecretV2}.id`)
         .leftJoin(
           TableName.SecretVersionV2Tag,
@@ -252,10 +275,13 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         })
         .select(
           selectAllTableCols(TableName.SecretVersionV2),
-          db.ref("username").withSchema(TableName.Users).as("userActorName"),
+          db.ref("username").withSchema("user_actor").as("userActorName"),
+          db.ref("username").withSchema("redacted_by_user").as("redactedByUserName"),
+          db.ref("email").withSchema("redacted_by_user").as("redactedByUserEmail"),
           db.ref("name").withSchema(TableName.Identity).as("identityActorName"),
-          db.ref("id").withSchema(TableName.Membership).as("membershipId"),
-          db.ref("actorGroupId").withSchema(TableName.Membership).as("groupId"),
+          db.ref("id").withSchema("actorMembership").as("membershipId"),
+          db.ref("id").withSchema("redactedByMembership").as("redactedByMembershipId"),
+          db.ref("actorGroupId").withSchema("actorMembership").as("groupId"),
           db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
           db.ref("color").withSchema(TableName.SecretTag).as("tagColor"),
           db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug")
@@ -284,7 +310,10 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
           userActorName: el.userActorName,
           identityActorName: el.identityActorName,
           membershipId: el.membershipId,
-          groupId: el.groupId
+          groupId: el.groupId,
+          redactedByUserEmail: el.redactedByUserEmail,
+          redactedByUserName: el.redactedByUserName,
+          redactedByMembershipId: el.redactedByMembershipId
         }),
         childrenMapper: [
           {

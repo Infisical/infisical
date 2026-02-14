@@ -113,6 +113,11 @@ export type SecretVersions = {
     groupId?: string | null;
   } | null;
   isRedacted: boolean;
+  redactedByActor: {
+    username: string | null;
+    email: string | null;
+    projectMembershipId: string | null;
+  } | null;
   redactedAt: string | null;
   redactedByUserId: string | null;
 };

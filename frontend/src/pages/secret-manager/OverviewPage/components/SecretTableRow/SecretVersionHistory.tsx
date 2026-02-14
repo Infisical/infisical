@@ -9,6 +9,7 @@ import {
   EyeIcon,
   EyeOffIcon,
   HardDriveIcon,
+  LockIcon,
   RotateCcwIcon,
   ServerCogIcon,
   UserIcon
@@ -191,7 +192,8 @@ function VersionItem({
 
   const handleRestore = async () => {
     try {
-      const value = await handleFetchSecretValue();
+      // For redacted versions, restore with empty string
+      const value = version.isRedacted ? "" : await handleFetchSecretValue();
 
       const result = await updateSecret({
         projectId: currentProject.id,
@@ -245,12 +247,20 @@ function VersionItem({
             <span
               className={twMerge(
                 "text-sm font-semibold",
-                isCurrentVersion ? "text-info" : "text-foreground"
+                isCurrentVersion && "text-info",
+                version.isRedacted && "text-red-400",
+                !isCurrentVersion && !version.isRedacted && "text-foreground"
               )}
             >
               v{version.version}
             </span>
             {isCurrentVersion && <Badge variant="info">Current</Badge>}
+            {version.isRedacted && (
+              <Badge variant="danger" className="gap-1">
+                <LockIcon className="size-3" />
+                Redacted
+              </Badge>
+            )}
             <div className="flex items-center gap-1 text-xs text-muted">
               <ClockIcon className="size-3" />
               {format(new Date(version.createdAt), "MMM d, yyyy, h:mm a")}
@@ -258,7 +268,7 @@ function VersionItem({
           </div>
 
           {/* Actions */}
-          {canReadValue && !version.secretValueHidden && (
+          {canReadValue && (
             <div className="flex items-center gap-1">
               <AlertDialog open={isRestoreDialogOpen} onOpenChange={setIsRestoreDialogOpen}>
                 <AlertDialogContent>
@@ -270,6 +280,11 @@ function VersionItem({
                     <AlertDialogDescription>
                       Are you sure you want to restore this secret to version {version.version}?
                       This will overwrite the current value.
+                      {version.isRedacted && (
+                        <span className="mt-2 block text-red-400">
+                          Note: This version was redacted, so the value will be set to empty.
+                        </span>
+                      )}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -307,54 +322,92 @@ function VersionItem({
                   )}
                 </ProjectPermissionCan>
               )}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <UnstableIconButton
-                    variant="ghost"
-                    size="xs"
-                    onClick={handleCopyValue}
-                    isDisabled={isFetchingValue}
-                  >
-                    <CopyIcon />
-                  </UnstableIconButton>
-                </TooltipTrigger>
-                <TooltipContent>Copy Value</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <UnstableIconButton
-                    variant="ghost"
-                    size="xs"
-                    onClick={handleToggleVisibility}
-                    isDisabled={isFetchingValue}
-                  >
-                    {isValueVisible ? <EyeOffIcon /> : <EyeIcon />}
-                  </UnstableIconButton>
-                </TooltipTrigger>
-                <TooltipContent>{isValueVisible ? "Hide Value" : "Show Value"}</TooltipContent>
-              </Tooltip>
+              {!version.secretValueHidden && !version.isRedacted && (
+                <>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <UnstableIconButton
+                        variant="ghost"
+                        size="xs"
+                        onClick={handleCopyValue}
+                        isDisabled={isFetchingValue}
+                      >
+                        <CopyIcon />
+                      </UnstableIconButton>
+                    </TooltipTrigger>
+                    <TooltipContent>Copy Value</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <UnstableIconButton
+                        variant="ghost"
+                        size="xs"
+                        onClick={handleToggleVisibility}
+                        isDisabled={isFetchingValue}
+                      >
+                        {isValueVisible ? <EyeOffIcon /> : <EyeIcon />}
+                      </UnstableIconButton>
+                    </TooltipTrigger>
+                    <TooltipContent>{isValueVisible ? "Hide Value" : "Show Value"}</TooltipContent>
+                  </Tooltip>
+                </>
+              )}
             </div>
           )}
         </div>
 
         {/* Value input display */}
-        <Tooltip open={canReadValue && !version.secretValueHidden ? false : undefined}>
-          <TooltipTrigger asChild>
-            <div className="mb-2 min-w-0 rounded-md border border-border bg-container px-3 py-2 font-mono text-sm [overflow-wrap:anywhere] whitespace-pre-wrap text-bunker-200">
-              {/* eslint-disable-next-line no-nested-ternary */}
-              {isValueVisible ? (
-                isFetchingValue ? (
-                  <span className="tracking-widest">••••••••••••••••••••</span>
+        {version.isRedacted ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="mb-2 flex min-w-0 items-center gap-2 rounded-md border border-red-500/30 bg-red-500/5 px-3 py-2 font-mono text-sm">
+                <LockIcon className="size-3.5 text-red-400" />
+                <span className="text-red-400">Redacted</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-1.5 font-medium text-red-400">
+                  <LockIcon className="size-3" />
+                  <span>Value Redacted</span>
+                </div>
+                {version.redactedByActor && (
+                  <span className="text-muted-foreground text-xs">
+                    Redacted by{" "}
+                    <span className="font-medium">
+                      {!version.redactedByActor.projectMembershipId
+                        ? `${version.redactedByActor.username || version.redactedByActor.email} (Removed from project)`
+                        : version.redactedByActor.username ||
+                          version.redactedByActor.email ||
+                          "Unknown User"}
+                    </span>
+                    {version.redactedAt && (
+                      <span> on {format(new Date(version.redactedAt), "MMM d, yyyy, h:mm a")}</span>
+                    )}
+                  </span>
+                )}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          <Tooltip open={canReadValue && !version.secretValueHidden ? false : undefined}>
+            <TooltipTrigger asChild>
+              <div className="mb-2 min-w-0 rounded-md border border-border bg-container px-3 py-2 font-mono text-sm [overflow-wrap:anywhere] whitespace-pre-wrap text-bunker-200">
+                {/* eslint-disable-next-line no-nested-ternary */}
+                {isValueVisible ? (
+                  isFetchingValue ? (
+                    <span className="tracking-widest">••••••••••••••••••••</span>
+                  ) : (
+                    secretValue || <span className="text-muted-foreground">EMPTY</span>
+                  )
                 ) : (
-                  secretValue || <span className="text-muted-foreground">EMPTY</span>
-                )
-              ) : (
-                <span className="tracking-widest">••••••••••••••••••••</span>
-              )}
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>Access Denied</TooltipContent>
-        </Tooltip>
+                  <span className="tracking-widest">••••••••••••••••••••</span>
+                )}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>Access Denied</TooltipContent>
+          </Tooltip>
+        )}
 
         {/* Modified by */}
         {version.actor && (

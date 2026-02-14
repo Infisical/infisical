@@ -1,11 +1,6 @@
 /* eslint-disable no-nested-ternary */
 import { useCallback, useState } from "react";
-import {
-  faChevronDown,
-  faChevronUp,
-  faTrash,
-  faTriangleExclamation
-} from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faChevronUp, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -123,6 +118,7 @@ export const SecretVersionDiffView = ({
       | undefined;
 
     return {
+      isRedacted: version.isRedacted,
       secretKey: version.secretKey as string | undefined,
       secretValue: version.secretValue as string | undefined,
       secretValueHidden: version.secretValueHidden as boolean | undefined,
@@ -180,8 +176,6 @@ export const SecretVersionDiffView = ({
       );
     }
 
-    const isRollingToRedactedVersion = isSecret && newVersion?.isRedacted;
-
     return (
       <div
         className="flex cursor-pointer items-center justify-between p-4 hover:bg-mineshaft-700"
@@ -199,14 +193,6 @@ export const SecretVersionDiffView = ({
         <div className="flex min-w-0 flex-1 items-center">
           <p className={twMerge(textStyle, "truncate")}>{key}</p>
           {changeBadge}
-          {isRollingToRedactedVersion && (
-            <Tooltip
-              side="top"
-              content="This secret version has been redacted. Rolling back to this version will result in an empty secret value."
-            >
-              <FontAwesomeIcon icon={faTriangleExclamation} className="ml-2 text-yellow-500" />
-            </Tooltip>
-          )}
           {headerExtra}
         </div>
         {onDiscard && (

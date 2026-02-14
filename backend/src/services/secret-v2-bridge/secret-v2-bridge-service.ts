@@ -2636,6 +2636,13 @@ export const secretV2BridgeServiceFactory = ({
           },
           secretValueHidden
         ),
+        redactedByActor: el.isRedacted
+          ? {
+              username: el.redactedByUserName,
+              email: el.redactedByUserEmail,
+              projectMembershipId: el.redactedByMembershipId
+            }
+          : null,
         isRedacted: el.isRedacted,
         redactedAt: el.redactedAt || null,
         redactedByUserId: el.redactedByUserId || null

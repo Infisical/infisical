@@ -54,7 +54,7 @@ import {
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { usePopUp, useToggle } from "@app/hooks";
-import { useGetOrgUsers, useGetSecretVersion, useRedactSecretValue } from "@app/hooks/api";
+import { useGetSecretVersion, useRedactSecretValue } from "@app/hooks/api";
 import {
   dashboardKeys,
   fetchSecretValue,
@@ -220,8 +220,6 @@ export const SecretDetailSidebar = ({
     "secretReferenceTree",
     "redactSecretValue"
   ] as const);
-
-  const { data: orgMembers = [] } = useGetOrgUsers(currentOrg?.id || "");
 
   const tagFields = useFieldArray({
     control,
@@ -769,7 +767,6 @@ export const SecretDetailSidebar = ({
               <div className="flex thin-scrollbar flex-1 flex-col space-y-2 overflow-x-hidden overflow-y-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 dark:scheme-dark">
                 {secretVersion?.map((version) => (
                   <SecretVersionItem
-                    orgMembers={orgMembers}
                     canReadValue={!cannotReadSecretValue}
                     secretVersion={version}
                     secret={secret}

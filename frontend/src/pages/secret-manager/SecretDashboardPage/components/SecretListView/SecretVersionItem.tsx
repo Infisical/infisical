@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { faEye } from "@fortawesome/free-regular-svg-icons";
 import {
   faArrowRotateRight,
@@ -22,10 +22,8 @@ import { usePopUp } from "@app/hooks";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { fetchSecretVersionValue } from "@app/hooks/api/secrets/queries";
 import { SecretV3RawSanitized, SecretVersions } from "@app/hooks/api/secrets/types";
-import { OrgUser } from "@app/hooks/api/types";
 
 interface SecretVersionItemProps {
-  orgMembers?: OrgUser[];
   secretVersion: SecretVersions;
   secret: SecretV3RawSanitized;
   currentVersion: number;
@@ -36,7 +34,6 @@ interface SecretVersionItemProps {
 }
 
 export const SecretVersionItem = ({
-  orgMembers,
   secretVersion: {
     createdAt,
     version,
@@ -45,7 +42,7 @@ export const SecretVersionItem = ({
     id: versionId,
     isRedacted,
     redactedAt,
-    redactedByUserId
+    redactedByActor
   },
   secret,
   currentVersion,
@@ -59,18 +56,6 @@ export const SecretVersionItem = ({
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(["redactSecretValue"] as const);
 
   const navigate = useNavigate();
-
-  const members = useMemo(() => {
-    if (!orgMembers) return {};
-
-    return orgMembers?.reduce(
-      (acc, member) => {
-        acc[member.user.id] = member.user;
-        return acc;
-      },
-      {} as Record<string, OrgUser["user"]>
-    );
-  }, [orgMembers]);
 
   const getModifiedByIcon = (userType: string | undefined | null) => {
     switch (userType) {
@@ -356,10 +341,11 @@ export const SecretVersionItem = ({
                             <div className="text-xs text-bunker-300">
                               Redacted by{" "}
                               <b>
-                                {getModifiedByName(
-                                  ActorType.USER,
-                                  members[redactedByUserId || ""]?.username || "Unknown User"
-                                )}
+                                {!redactedByActor?.projectMembershipId
+                                  ? `${redactedByActor?.username} (Removed from project)`
+                                  : redactedByActor.username ||
+                                    redactedByActor.email ||
+                                    "Unknown User"}
                               </b>{" "}
                               {redactedAt && (
                                 <span className="text-xs">

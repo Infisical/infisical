@@ -2675,6 +2675,7 @@ export const secretServiceFactory = ({
           },
           botKey
         ),
+        redactedByActor: null,
         isRedacted: false,
         redactedAt: null,
         redactedByUserId: null
