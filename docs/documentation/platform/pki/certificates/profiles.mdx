@@ -25,6 +25,26 @@ Here's some guidance on each field:
 - Issuing CA: The [issuing CA](/documentation/platform/pki/ca/overview) that should be used to issue certificates for the profile when the **Issuer Type** is set to `Certificate Authority`.
 - Certificate Policy: The [certificate policy](/documentation/platform/pki/certificates/policies) that should be used to validate certificate requests for the profile.
 - Enrollment Method: The enrollment method that should be used to enroll certificates for the profile such as ACME, EST, API, etc.
-- Default Certificate TTL: An optional fallback validity period used when a TTL is not explicitly specified in the certificate request. The default TTL must not exceed the maximum validity defined in the associated [certificate policy](/documentation/platform/pki/certificates/policies).
+- Defaults: An optional set of pre-configured certificate values (TTL, subject attributes, algorithms, key usages, etc.) that are applied when a requester does not specify them. See [Profile Defaults](#profile-defaults) below for more details.
 
 Depending on which enrollment method you choose, you may be presented with additional enrollment-specific configuration fields.
+
+## Profile Defaults
+
+Requesting a certificate involves choosing a key algorithm, signature algorithm, key usages, subject attributes, and more. For users who are not familiar with these options, this can feel overwhelming. Profile defaults let administrators pre-configure sensible values so that requesters can issue certificates without needing to make every decision themselves. If a requester does not know what to pick, they can simply go with whatever the administrator has already set.
+
+When a user requests a certificate from a profile, any field they leave unspecified is automatically filled in with the profile's default value. If they do provide an explicit value, it takes precedence over the default. In the UI, defaults are pre-selected in the certificate request form so the user does not have to fill them in manually.
+
+![pki certificate profile defaults](/images/platform/pki/certificate/cert-profile-modal-defaults.png)
+
+### Combining Defaults with Policies
+
+For the simplest possible requester experience, pair defaults with a tightly scoped [certificate policy](/documentation/platform/pki/certificates/policies). By narrowing the policy down so that only one option is allowed for each field and then setting that option as the default, the requester has nothing left to decide — the profile handles everything automatically.
+
+For example, if your policy only allows `RSA 4096` as the key algorithm and you set `RSA 4096` as the profile default, the requester never needs to think about key algorithms at all.
+
+Defaults can be configured for TTL, subject attributes (Common Name, Organization, OU, Country, State, Locality), key algorithm, signature algorithm, key usages, extended key usages, and basic constraints.
+
+<Warning>
+  If the certificate policy is updated after the profile is saved, the existing defaults may no longer comply with the new policy. When this drift occurs, certificate requests against the profile will fail at validation time. You will need to update the profile defaults to bring them back in line with the updated policy.
+</Warning>
