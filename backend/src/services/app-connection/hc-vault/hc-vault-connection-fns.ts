@@ -338,7 +338,7 @@ export const validateHCVaultConnectionCredentials = async (
   }
 };
 
-export const listHCVaultPolicies = async (
+export const getHCVaultPolicyNames = async (
   namespace: string,
   connection: THCVaultConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
@@ -369,6 +369,41 @@ export const listHCVaultPolicies = async (
     );
 
     const policyNames = listData.data.policies || [];
+
+    return policyNames;
+  } catch (error: unknown) {
+    logger.error(error, "Unable to list HC Vault policies");
+
+    if (error instanceof AxiosError) {
+      throw new BadRequestError({
+        message: `Failed to list policies: ${error.message || "Unknown error"}`
+      });
+    }
+
+    throw new BadRequestError({
+      message: "Unable to list policies from HashiCorp Vault"
+    });
+  }
+};
+
+export const listHCVaultPolicies = async (
+  namespace: string,
+  connection: THCVaultConnection,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  gatewayDetails?: TGatewayDetails
+) => {
+  const instanceUrl = await getHCVaultInstanceUrl(connection);
+  const accessToken = await getHCVaultAccessToken(connection, gatewayService, gatewayV2Service);
+
+  try {
+    const policyNames = await getHCVaultPolicyNames(
+      namespace,
+      connection,
+      gatewayService,
+      gatewayV2Service,
+      gatewayDetails
+    );
 
     const limiter = createConcurrencyLimiter(HC_VAULT_CONCURRENCY_LIMIT);
 

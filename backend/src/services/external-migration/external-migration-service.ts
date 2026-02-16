@@ -26,6 +26,7 @@ import {
   getHCVaultKubernetesAuthRoles,
   getHCVaultKubernetesRoles,
   getHCVaultLdapRoles,
+  getHCVaultPolicyNames,
   getHCVaultSecretsForPath,
   HCVaultAuthType,
   listHCVaultMounts,
@@ -337,7 +338,7 @@ export const externalMigrationServiceFactory = ({
     const gatewayDetails = await getGatewayDetails(connection);
 
     try {
-      await listHCVaultPolicies(namespace, connection, gatewayService, gatewayV2Service, gatewayDetails);
+      await getHCVaultPolicyNames(namespace, connection, gatewayService, gatewayV2Service, gatewayDetails);
       await getHCVaultAuthMounts(
         namespace,
         HCVaultAuthType.Kubernetes,
@@ -347,21 +348,10 @@ export const externalMigrationServiceFactory = ({
         gatewayDetails
       );
 
-      const mounts = await listHCVaultMounts(connection, gatewayService, gatewayV2Service);
-      const sampleKvMount = mounts.find((mount) => mount.type === "kv");
-      if (sampleKvMount) {
-        await listHCVaultSecretPaths(
-          namespace,
-          connection,
-          gatewayService,
-          gatewayV2Service,
-          sampleKvMount.path,
-          gatewayDetails
-        );
-      }
+      await listHCVaultMounts(connection, gatewayService, gatewayV2Service);
     } catch (error) {
       throw new BadRequestError({
-        message: `Failed to establish namespace confiugration. ${error instanceof Error ? error.message : "Unknown error"}`
+        message: `Failed to establish namespace configuration. ${error instanceof Error ? error.message : "Unknown error"}`
       });
     }
   };
