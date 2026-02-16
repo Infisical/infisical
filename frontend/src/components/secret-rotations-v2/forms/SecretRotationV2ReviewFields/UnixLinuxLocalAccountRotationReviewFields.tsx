@@ -21,6 +21,7 @@ export const UnixLinuxLocalAccountRotationReviewFields = () => {
     <>
       <SecretRotationReviewSection label="Parameters">
         <GenericFieldLabel label="Username">{parameters.username}</GenericFieldLabel>
+        <GenericFieldLabel label="Use Sudo">{parameters.useSudo}</GenericFieldLabel>
       </SecretRotationReviewSection>
       {passwordRequirements && (
         <SecretRotationReviewSection label="Password Requirements">
