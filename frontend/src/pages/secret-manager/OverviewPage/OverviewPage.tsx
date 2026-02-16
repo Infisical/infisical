@@ -8,6 +8,7 @@ import {
   ChevronDownIcon,
   CopyIcon,
   DownloadIcon,
+  GitCommitIcon,
   LogInIcon,
   SettingsIcon,
   TrashIcon
@@ -33,6 +34,7 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
+  Badge,
   Button,
   Checkbox,
   Skeleton,
@@ -54,6 +56,7 @@ import {
   UnstableTableHeader,
   UnstableTableRow
 } from "@app/components/v3";
+import { apiRequest } from "@app/config/request";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
@@ -64,6 +67,7 @@ import {
   useSubscription
 } from "@app/context";
 import {
+  ProjectPermissionCommitsActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
@@ -94,6 +98,7 @@ import {
 import { useGetProjectSecretsOverview } from "@app/hooks/api/dashboard/queries";
 import { DashboardSecretsOrderBy, ProjectSecretsImportedBy } from "@app/hooks/api/dashboard/types";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
+import { useGetFolderCommitsCount } from "@app/hooks/api/folderCommits";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
@@ -182,7 +187,8 @@ export const OverviewPage = () => {
     from: ROUTE_PATHS.SecretManager.OverviewPage.id,
     select: (el) => ({
       secretPath: el.secretPath,
-      search: el.search
+      search: el.search,
+      environments: el.environments
     })
   });
 
@@ -200,6 +206,11 @@ export const OverviewPage = () => {
   const secretPath = (routerSearch?.secretPath as string) || "/";
   const { subscription } = useSubscription();
   const prevPageSize = useRef(0);
+
+  const canReadCommits = permission.can(
+    ProjectPermissionCommitsActions.Read,
+    ProjectPermissionSub.Commits
+  );
 
   // scott: keeping incase we bring it back
   // const [collapseEnvironments, setCollapseEnvironments] = useToggle(
@@ -292,6 +303,18 @@ export const OverviewPage = () => {
     []
   );
 
+  useEffect(() => {
+    const envSlugs = routerSearch.environments;
+    if (envSlugs && envSlugs.length > 0) {
+      const envIds = userAvailableEnvs
+        .filter((env) => envSlugs.includes(env.slug))
+        .map((env) => env.id);
+      if (envIds.length > 0) {
+        setStoredEnvIds(envIds);
+      }
+    }
+  }, []);
+
   const filteredEnvs = useMemo(() => {
     if (!storedEnvIds.length) return [];
     return userAvailableEnvs.filter((env) => storedEnvIds.includes(env.id));
@@ -309,6 +332,26 @@ export const OverviewPage = () => {
   );
 
   const visibleEnvs = filteredEnvs.length ? filteredEnvs : userAvailableEnvs;
+  const singleVisibleEnv = visibleEnvs.length === 1 ? visibleEnvs[0] : null;
+
+  const {
+    data: { count: singleEnvCommitCount, folderId: singleEnvFolderId } = {
+      count: 0,
+      folderId: ""
+    },
+    isPending: isSingleEnvCommitCountPending,
+    isFetching: isSingleEnvCommitCountFetching
+  } = useGetFolderCommitsCount({
+    directory: secretPath,
+    projectId,
+    environment: singleVisibleEnv?.slug ?? "",
+    isPaused: !singleVisibleEnv || !canReadCommits
+  });
+
+  const singleEnvChangesCount = subscription.pitRecovery ? singleEnvCommitCount : 0;
+  const isSingleEnvChangesCountLoading = subscription.pitRecovery
+    ? isSingleEnvCommitCountPending && isSingleEnvCommitCountFetching
+    : false;
 
   const { secretImports, isImportedSecretPresentInEnv, getImportedSecretByKey } =
     useGetImportedSecretsAllEnvs({
@@ -445,8 +488,40 @@ export const OverviewPage = () => {
     "importSecrets",
     "editDynamicSecret",
     "createDynamicSecretLease",
-    "deleteDynamicSecret"
+    "deleteDynamicSecret",
+    "snapshots"
   ] as const);
+
+  const handleViewCommitHistory = async (envSlug: string, preloadedFolderId?: string) => {
+    if (!subscription?.pitRecovery) {
+      handlePopUpOpen("upgradePlan", {
+        text: "You can use point-in-time recovery if you upgrade your Infisical plan."
+      });
+      return;
+    }
+
+    if (!canReadCommits) return;
+
+    let targetFolderId = preloadedFolderId;
+    if (!targetFolderId) {
+      try {
+        const res = await apiRequest.get<{ count: number; folderId: string }>(
+          "/api/v1/pit/commits/count",
+          { params: { environment: envSlug, path: secretPath, projectId } }
+        );
+        targetFolderId = res.data.folderId;
+      } catch {
+        createNotification({ type: "error", text: "Failed to load commit history" });
+        return;
+      }
+    }
+
+    navigate({
+      to: "/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId",
+      params: { orgId, projectId, folderId: targetFolderId, environment: envSlug },
+      search: (query: Record<string, string | string[]>) => ({ ...query, secretPath })
+    });
+  };
 
   const handleFolderCreate = async (folderName: string, description: string | null) => {
     const promises = visibleEnvs
@@ -796,7 +871,7 @@ export const OverviewPage = () => {
       }
     }
 
-    const query: Record<string, string> = { ...routerSearch, search: searchFilter };
+    const query: Record<string, string | string[]> = { ...routerSearch, search: searchFilter };
     const envIndex = visibleEnvs.findIndex((el) => slug === el.slug);
     if (envIndex !== -1) {
       navigate({
@@ -1315,13 +1390,48 @@ export const OverviewPage = () => {
                                       <DownloadIcon />
                                       Download as .env
                                     </UnstableDropdownMenuItem>
+                                    <UnstableDropdownMenuItem
+                                      onClick={() => handleViewCommitHistory(slug)}
+                                    >
+                                      <GitCommitIcon />
+                                      View Commit History
+                                    </UnstableDropdownMenuItem>
                                   </UnstableDropdownMenuContent>
                                 </UnstableDropdownMenu>
                               </UnstableTableHead>
                             );
                           })
                         ) : (
-                          <UnstableTableHead className="w-full">Value</UnstableTableHead>
+                          <UnstableTableHead className="w-full">
+                            <div className="flex w-full items-center justify-between">
+                              Value
+                              <Badge
+                                asChild
+                                className="float-right cursor-pointer"
+                                variant="neutral"
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (singleVisibleEnv) {
+                                      handleViewCommitHistory(
+                                        singleVisibleEnv.slug,
+                                        singleEnvFolderId
+                                      );
+                                    }
+                                  }}
+                                >
+                                  <GitCommitIcon />
+                                  {/* eslint-disable-next-line no-nested-ternary */}
+                                  {subscription.pitRecovery
+                                    ? isSingleEnvChangesCountLoading
+                                      ? "Loading..."
+                                      : `${singleEnvChangesCount} Commit${singleEnvChangesCount === 1 ? "" : "s"}`
+                                    : "Commit History"}
+                                </button>
+                              </Badge>
+                            </div>
+                          </UnstableTableHead>
                         )}
                       </UnstableTableRow>
                     </UnstableTableHeader>

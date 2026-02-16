@@ -48,7 +48,7 @@ const buttonVariants = cva(
       }
     },
     defaultVariants: {
-      variant: "neutral",
+      variant: "outline",
       size: "md"
     }
   }
@@ -75,7 +75,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   (
     {
       className,
-      variant = "neutral",
+      variant = "outline",
       size = "md",
       isPending = false,
       isFullWidth = false,
