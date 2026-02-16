@@ -3,7 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } from "openid-client";
 
-import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TUsers } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
 import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
@@ -63,13 +63,7 @@ type TOidcConfigServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
   orgDAL: Pick<
     TOrgDALFactory,
-    | "createMembership"
-    | "updateMembershipById"
-    | "findMembership"
-    | "findEffectiveOrgMembership"
-    | "findOrgById"
-    | "findOne"
-    | "updateById"
+    "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
   >;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
@@ -204,13 +198,14 @@ export const oidcConfigServiceFactory = ({
     if (userAlias) {
       user = await userDAL.transaction(async (tx) => {
         const foundUser = await userDAL.findById(userAlias.userId, tx);
-        const orgMembership = await orgDAL.findEffectiveOrgMembership({
-          actorType: ActorType.USER,
-          actorId: userAlias.userId,
-          orgId,
-          acceptAnyStatus: true,
-          tx
-        });
+        const [orgMembership] = await orgDAL.findMembership(
+          {
+            [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
+            [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
+            [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
+          },
+          { tx }
+        );
         if (!orgMembership) {
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
@@ -233,11 +228,7 @@ export const oidcConfigServiceFactory = ({
             tx
           );
           // Only update the membership to Accepted if the user account is already completed.
-        } else if (
-          orgMembership.actorUserId === userAlias.userId &&
-          orgMembership.status === OrgMembershipStatus.Invited &&
-          foundUser.isAccepted
-        ) {
+        } else if (orgMembership.status === OrgMembershipStatus.Invited && foundUser.isAccepted) {
           await orgDAL.updateMembershipById(
             orgMembership.id,
             {
@@ -315,13 +306,14 @@ export const oidcConfigServiceFactory = ({
           tx
         );
 
-        const orgMembership = await orgDAL.findEffectiveOrgMembership({
-          actorType: ActorType.USER,
-          actorId: userAlias.userId,
-          orgId,
-          acceptAnyStatus: true,
-          tx
-        });
+        const [orgMembership] = await orgDAL.findMembership(
+          {
+            [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
+            [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
+            [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
+          },
+          { tx }
+        );
 
         if (!orgMembership) {
           await throwOnPlanSeatLimitReached(licenseService, orgId, UserAliasType.OIDC);
@@ -348,11 +340,7 @@ export const oidcConfigServiceFactory = ({
             tx
           );
           // Only update the membership to Accepted if the user account is already completed.
-        } else if (
-          orgMembership.actorUserId === newUser.id &&
-          orgMembership.status === OrgMembershipStatus.Invited &&
-          newUser.isAccepted
-        ) {
+        } else if (orgMembership.status === OrgMembershipStatus.Invited && newUser.isAccepted) {
           await orgDAL.updateMembershipById(
             orgMembership.id,
             {
