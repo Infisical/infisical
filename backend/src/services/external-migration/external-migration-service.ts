@@ -26,6 +26,7 @@ import {
   getHCVaultKubernetesAuthRoles,
   getHCVaultKubernetesRoles,
   getHCVaultLdapRoles,
+  getHCVaultPolicyNames,
   getHCVaultSecretsForPath,
   HCVaultAuthType,
   listHCVaultMounts,
@@ -337,7 +338,7 @@ export const externalMigrationServiceFactory = ({
     const gatewayDetails = await getGatewayDetails(connection);
 
     try {
-      await listHCVaultPolicies(namespace, connection, gatewayService, gatewayV2Service, gatewayDetails);
+      await getHCVaultPolicyNames(namespace, connection, gatewayService, gatewayV2Service, gatewayDetails);
       await getHCVaultAuthMounts(
         namespace,
         HCVaultAuthType.Kubernetes,
