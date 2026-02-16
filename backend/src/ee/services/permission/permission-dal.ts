@@ -172,24 +172,10 @@ export interface TPermissionDALFactory {
 export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
   const getPermission: TPermissionDALFactory["getPermission"] = async ({ scopeData, tx, actorId, actorType }) => {
     try {
-      // Groups visible in this org: native (group.orgId = orgId) or linked from root (Membership in this org with actorGroupId)
-      // akhilmhdh: when group has another group like sub group we would need recursively go down
       const conn = tx || db;
-      const groupVisibleInOrg = (groupsQb: Knex.QueryBuilder) => {
-        void groupsQb
-          .where(`${TableName.Groups}.orgId`, scopeData.orgId)
-          .orWhereExists(
-            conn(TableName.Membership)
-              .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-              .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
-              .whereRaw(`"${TableName.Membership}"."actorGroupId" = "${TableName.Groups}"."id"`)
-          );
-      };
-
       const userGroupSubquery = conn(TableName.Groups)
         .join(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
         .where(`${TableName.UserGroupMembership}.userId`, actorId)
-        .andWhere((qb) => groupVisibleInOrg(qb))
         .select(db.ref("id").withSchema(TableName.Groups));
 
       const identityGroupSubquery = conn(TableName.Groups)
@@ -199,7 +185,6 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           `${TableName.Groups}.id`
         )
         .where(`${TableName.IdentityGroupMembership}.identityId`, actorId)
-        .andWhere((qb) => groupVisibleInOrg(qb))
         .select(db.ref("id").withSchema(TableName.Groups));
 
       const docs = await (tx || db)
