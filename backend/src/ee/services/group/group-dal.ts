@@ -472,9 +472,18 @@ export const groupDALFactory = (db: TDbClient) => {
     orderDirection?: OrderByDirection;
   }) => {
     try {
+      // Include projects in the group's org and in any child sub-orgs (so root-org groups show inherited sub-org projects)
+      const projectOrgIdsSubquery = db
+        .replicaNode()(TableName.Organization)
+        .where(`${TableName.Organization}.rootOrgId`, orgId)
+        .select(db.ref("id").withSchema(TableName.Organization));
       const query = db
         .replicaNode()(TableName.Project)
-        .where(`${TableName.Project}.orgId`, orgId)
+        .andWhere((qb) => {
+          void qb
+            .where(`${TableName.Project}.orgId`, orgId)
+            .orWhereIn(`${TableName.Project}.orgId`, projectOrgIdsSubquery);
+        })
         .leftJoin(TableName.Membership, (bd) => {
           bd.on(`${TableName.Project}.id`, "=", `${TableName.Membership}.scopeProjectId`)
             .andOn(`${TableName.Membership}.actorGroupId`, "=", db.raw("?", [groupId]))
