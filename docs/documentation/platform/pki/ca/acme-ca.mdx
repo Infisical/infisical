@@ -214,6 +214,28 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
 
 </Steps>
 
+## DNS CNAME Delegation
+
+CNAME delegation is an industry-standard pattern that lets you redirect ACME DNS-01 challenge records to a separate DNS zone. Instead of granting Infisical write access to your main domain zone, you point `_acme-challenge` via a CNAME to a dedicated zone where Infisical creates the TXT records.
+
+### How It Works
+
+If you have a CNAME record pointing `_acme-challenge.example.com` to another domain (e.g., `_acme-challenge.ssl.example.com`), Infisical will automatically follow the CNAME chain and create the TXT record at the final target. The ACME CA also follows CNAMEs during validation, so it finds the TXT record at the delegated location.
+
+To use CNAME delegation, you need to:
+
+1. **Create a CNAME record** in your domain's DNS that points `_acme-challenge.{your-domain}` to a target in the zone configured with Infisical. For subdomains, create additional CNAMEs as needed (e.g., `_acme-challenge.app.example.com` CNAME to `_acme-challenge.ssl.example.com`).
+
+2. **Register the ACME CA** in Infisical with the **hosted zone ID** of the zone where the CNAME target lives.
+
+Infisical will automatically resolve the CNAME, create the TXT record at the target, wait for DNS propagation, and clean up after validation completes.
+
+### Common Use Cases
+
+- **Least-privilege access**: Grant Infisical write access only to a dedicated subdomain zone instead of your entire domain zone.
+- **Cross-provider setups**: Keep your domain DNS on one provider while using a different, Infisical-supported provider for ACME challenges.
+- **Centralized challenge management**: Point `_acme-challenge` CNAMEs from multiple domains to a single zone for simplified operations.
+
 ## FAQ
 
 <AccordionGroup>
@@ -243,5 +265,9 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
   </Accordion>
   <Accordion title="Can I use multiple ACME providers?">
     Yes. You can register multiple ACME CAs in the same project.
+  </Accordion>
+  <Accordion title="Does Infisical support DNS CNAME delegation for ACME challenges?">
+    Yes. Infisical automatically follows CNAME records when creating DNS-01 challenge TXT records. This allows you to delegate
+    `_acme-challenge` to a different DNS zone or provider. See the [DNS CNAME Delegation](#dns-cname-delegation) section above for setup instructions.
   </Accordion>
 </AccordionGroup>
