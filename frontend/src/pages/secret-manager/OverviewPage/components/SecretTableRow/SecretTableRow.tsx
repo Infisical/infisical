@@ -7,12 +7,14 @@ import {
   EditIcon,
   EyeIcon,
   EyeOffIcon,
+  GitBranchIcon,
   ImportIcon,
   KeyIcon,
   RefreshCcwIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { createNotification } from "@app/components/notifications";
 import { Modal, ModalContent } from "@app/components/v2";
 import {
   Button,
@@ -28,12 +30,13 @@ import {
   UnstableTableHeader,
   UnstableTableRow
 } from "@app/components/v3";
-import { useProjectPermission } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionSecretActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
+import { useUpdateSecretV3 } from "@app/hooks/api";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { ProjectEnv } from "@app/hooks/api/types";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
@@ -54,10 +57,11 @@ type Props = {
   onSecretUpdate: (
     env: string,
     key: string,
-    value: string,
+    value: string | undefined,
     secretValueHidden: boolean,
     type?: SecretType,
-    secretId?: string
+    secretId?: string,
+    newSecretName?: string
   ) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string, type?: SecretType) => Promise<void>;
   isImportedSecretPresentInEnv: (env: string, secretName: string) => boolean;
@@ -104,6 +108,44 @@ export const SecretTableRow = ({
   const [isEditSecretNameOpen, setIsEditSecretNameOpen] = useState(false);
   const [isSecNameCopied, setIsSecNameCopied] = useToggle(false);
   const [creatingOverrideEnvs, setCreatingOverrideEnvs] = useState<Set<string>>(new Set());
+
+  const isSingleEnvView = environments.length === 1;
+  const { projectId } = useProject();
+  const { mutateAsync: updateSecretV3ForRename } = useUpdateSecretV3();
+
+  // Pre-compute single-env data
+  const singleEnvSlug = isSingleEnvView ? environments[0].slug : "";
+  const singleEnvName = isSingleEnvView ? environments[0].name : "";
+  const singleEnvSecret = isSingleEnvView ? getSecretByKey(singleEnvSlug, secretKey) : undefined;
+  const singleEnvIsCreatable = isSingleEnvView ? !singleEnvSecret : false;
+  const singleEnvIsImported = isSingleEnvView
+    ? isImportedSecretPresentInEnv(singleEnvSlug, secretKey)
+    : false;
+  const singleEnvImportedSecret = isSingleEnvView
+    ? getImportedSecretByKey(singleEnvSlug, secretKey)
+    : undefined;
+  const singleEnvHasOverride = isSingleEnvView ? Boolean(singleEnvSecret?.idOverride) : false;
+  const singleEnvIsCreatingOverride = isSingleEnvView
+    ? creatingOverrideEnvs.has(singleEnvSlug)
+    : false;
+  const singleEnvShowOverride = singleEnvHasOverride || singleEnvIsCreatingOverride;
+
+  const handleSecretRename = async (newName: string) => {
+    if (!isSingleEnvView || !singleEnvSecret) return;
+    try {
+      await updateSecretV3ForRename({
+        environment: singleEnvSecret.env,
+        projectId,
+        secretPath,
+        secretKey: singleEnvSecret.key,
+        type: SecretType.Shared,
+        newSecretName: newName
+      });
+      createNotification({ type: "success", text: "Successfully renamed the secret" });
+    } catch {
+      createNotification({ type: "error", text: "Error renaming the secret" });
+    }
+  };
 
   // Clean up creatingOverrideEnvs once the query refetch confirms the override exists.
   // This prevents the override row from flickering between "creating" and "has override" states.
@@ -156,11 +198,17 @@ export const SecretTableRow = ({
 
   return (
     <>
-      <UnstableTableRow onClick={() => setIsFormExpanded.toggle()} className="group">
+      <UnstableTableRow
+        onClick={isSingleEnvView ? undefined : () => setIsFormExpanded.toggle()}
+        className="group"
+      >
         <UnstableTableCell
           className={twMerge(
-            "sticky left-0 z-10 bg-container transition-colors duration-75 group-hover:bg-container-hover",
-            isFormExpanded && "border-b-0 bg-container-hover"
+            !isSingleEnvView && "sticky left-0 z-10",
+            "bg-container transition-colors duration-75 group-hover:bg-container-hover",
+            !isSingleEnvView && isFormExpanded && "border-b-0 bg-container-hover",
+            isSingleEnvView && singleEnvShowOverride && "border-b-border/50",
+            isSingleEnvView && "pt-3 align-top"
           )}
         >
           <Checkbox
@@ -175,7 +223,7 @@ export const SecretTableRow = ({
             }}
             className={twMerge("hidden group-hover:flex", isSelected && "flex")}
           />
-          {isFormExpanded ? (
+          {!isSingleEnvView && isFormExpanded ? (
             <ChevronDownIcon
               className={twMerge("block group-hover:!hidden", isSelected && "!hidden")}
             />
@@ -185,95 +233,168 @@ export const SecretTableRow = ({
             />
           )}
         </UnstableTableCell>
-        <UnstableTableCell
-          isTruncatable
-          className={twMerge(
-            "sticky left-10 z-10 border-r bg-container transition-all duration-75 group-hover:bg-container-hover group-hover:pr-18",
-            isFormExpanded && "border-r-0 border-b-0 bg-container-hover"
-          )}
-        >
-          {secretKey}
-          <div className="absolute top-1/2 right-2 -translate-y-1/2 opacity-0 transition-all duration-75 group-hover:opacity-100">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <UnstableIconButton
-                  variant="ghost"
-                  size="xs"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    copyTokenToClipboard();
-                  }}
-                  className="mr-1"
-                >
-                  {isSecNameCopied ? <ClipboardCheckIcon /> : <CopyIcon />}
-                </UnstableIconButton>
-              </TooltipTrigger>
-              <TooltipContent>Copy Secret Name</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <UnstableIconButton
-                  variant="ghost"
-                  size="xs"
-                  onClick={(e) => {
-                    setIsEditSecretNameOpen(true);
-                    e.stopPropagation();
-                  }}
-                >
-                  <EditIcon />
-                </UnstableIconButton>
-              </TooltipTrigger>
-              <TooltipContent>Edit Secret Name</TooltipContent>
-            </Tooltip>
-          </div>
-        </UnstableTableCell>
-        {environments.map(({ slug }, i) => {
-          if (isFormExpanded)
-            return <UnstableTableCell className="border-b-0 bg-container-hover" />;
-
-          const secret = getSecretByKey(slug, secretKey);
-
-          const isSecretImported = isImportedSecretPresentInEnv(slug, secretKey);
-
-          const isSecretPresent = Boolean(secret);
-          const isSecretEmpty = secret?.isEmpty;
-
-          let status: EnvironmentStatus;
-
-          if (isSecretEmpty) {
-            status = "empty";
-          } else if (isSecretPresent) {
-            status = "present";
-          } else if (isSecretImported) {
-            status = "imported";
-          } else {
-            status = "missing";
-          }
-
-          return (
-            <ResourceEnvironmentStatusCell
-              key={`sec-overview-${slug}-${i + 1}-value`}
-              status={status}
-              hasOverride={Boolean(secret?.idOverride)}
-            />
-          );
-        })}
-      </UnstableTableRow>
-      <Modal
-        isOpen={isEditSecretNameOpen}
-        onOpenChange={(isOpen) => setIsEditSecretNameOpen(isOpen)}
-      >
-        <ModalContent title="Edit Secret Name">
-          <SecretRenameForm
-            secretKey={secretKey}
-            environments={environments}
+        {isSingleEnvView ? (
+          <SecretEditTableRow
+            isSingleEnvView
+            onSecretRename={handleSecretRename}
             secretPath={secretPath}
-            getSecretByKey={getSecretByKey}
+            isVisible={isSecretVisible}
+            secretName={secretKey}
+            isEmpty={singleEnvSecret?.isEmpty || singleEnvImportedSecret?.secret?.isEmpty}
+            secretValueHidden={singleEnvSecret?.secretValueHidden || false}
+            defaultValue={getDefaultValue(singleEnvSecret, singleEnvImportedSecret)}
+            secretId={singleEnvSecret?.id}
+            isOverride={Boolean(singleEnvSecret?.idOverride)}
+            isImportedSecret={singleEnvIsImported}
+            importedSecret={singleEnvImportedSecret}
+            isCreatable={singleEnvIsCreatable}
+            onSecretDelete={onSecretDelete}
+            onSecretCreate={onSecretCreate}
+            onSecretUpdate={onSecretUpdate}
+            onAddOverride={() => {
+              setCreatingOverrideEnvs((prev) => new Set([...prev, singleEnvSlug]));
+            }}
+            environment={singleEnvSlug}
+            environmentName={singleEnvName}
+            isRotatedSecret={singleEnvSecret?.isRotatedSecret}
+            importedBy={importedBy}
+            isSecretPresent={Boolean(singleEnvSecret)}
+            comment={singleEnvSecret?.comment}
+            tags={singleEnvSecret?.tags}
+            secretMetadata={singleEnvSecret?.secretMetadata}
+            skipMultilineEncoding={singleEnvSecret?.skipMultilineEncoding}
+            reminder={singleEnvSecret?.reminder}
           />
-        </ModalContent>
-      </Modal>
-      {isFormExpanded && (
+        ) : (
+          <UnstableTableCell
+            isTruncatable
+            className={twMerge(
+              "sticky left-10 z-10 border-r bg-container transition-all duration-75 group-hover:bg-container-hover group-hover:pr-18",
+              isFormExpanded && "border-r-0 border-b-0 bg-container-hover"
+            )}
+          >
+            {secretKey}
+            <div className="absolute top-1/2 right-2 flex -translate-y-1/2 items-center transition-all duration-500 group-hover:space-x-1.5">
+              <Tooltip delayDuration={300} disableHoverableContent>
+                <TooltipTrigger>
+                  <UnstableIconButton
+                    variant="ghost"
+                    size="xs"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      copyTokenToClipboard();
+                    }}
+                    className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100"
+                  >
+                    {isSecNameCopied ? <ClipboardCheckIcon /> : <CopyIcon />}
+                  </UnstableIconButton>
+                </TooltipTrigger>
+                <TooltipContent>Copy Secret Name</TooltipContent>
+              </Tooltip>
+              <Tooltip delayDuration={300} disableHoverableContent>
+                <TooltipTrigger>
+                  <UnstableIconButton
+                    variant="ghost"
+                    size="xs"
+                    onClick={(e) => {
+                      setIsEditSecretNameOpen(true);
+                      e.stopPropagation();
+                    }}
+                    className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100"
+                  >
+                    <EditIcon />
+                  </UnstableIconButton>
+                </TooltipTrigger>
+                <TooltipContent>Edit Secret Name</TooltipContent>
+              </Tooltip>
+            </div>
+          </UnstableTableCell>
+        )}
+        {environments.length > 1 &&
+          environments.map(({ slug }, i) => {
+            if (isFormExpanded)
+              return <UnstableTableCell className="border-b-0 bg-container-hover" />;
+
+            const secret = getSecretByKey(slug, secretKey);
+
+            const isSecretImported = isImportedSecretPresentInEnv(slug, secretKey);
+
+            const isSecretPresent = Boolean(secret);
+            const isSecretEmpty = secret?.isEmpty;
+
+            let status: EnvironmentStatus;
+
+            if (isSecretEmpty) {
+              status = "empty";
+            } else if (isSecretPresent) {
+              status = "present";
+            } else if (isSecretImported) {
+              status = "imported";
+            } else {
+              status = "missing";
+            }
+
+            return (
+              <ResourceEnvironmentStatusCell
+                key={`sec-overview-${slug}-${i + 1}-value`}
+                status={status}
+                hasOverride={Boolean(secret?.idOverride)}
+              />
+            );
+          })}
+      </UnstableTableRow>
+      {isSingleEnvView && singleEnvShowOverride && (
+        <UnstableTableRow className="group bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03] to-[99%]">
+          <UnstableTableCell>
+            <GitBranchIcon className="text-override" />
+          </UnstableTableCell>
+          <UnstableTableCell className="border-r text-override">{secretKey}</UnstableTableCell>
+          <UnstableTableCell>
+            <SecretOverrideRow
+              isSingleEnvView
+              secretName={secretKey}
+              environment={singleEnvSlug}
+              secretPath={secretPath}
+              isVisible={isSecretVisible}
+              isOverrideEmpty={singleEnvSecret?.isOverrideEmpty}
+              idOverride={singleEnvSecret?.idOverride}
+              valueOverride={singleEnvSecret?.valueOverride}
+              isCreatingOverride={singleEnvIsCreatingOverride}
+              onCreatingOverrideChange={(value) => {
+                setCreatingOverrideEnvs((prev) => {
+                  const next = new Set(prev);
+                  if (value) {
+                    next.add(singleEnvSlug);
+                  } else {
+                    next.delete(singleEnvSlug);
+                  }
+                  return next;
+                });
+              }}
+              onSecretCreate={onSecretCreate}
+              onSecretUpdate={onSecretUpdate}
+              onSecretDelete={onSecretDelete}
+            />
+          </UnstableTableCell>
+        </UnstableTableRow>
+      )}
+      {!isSingleEnvView && (
+        <Modal
+          isOpen={isEditSecretNameOpen}
+          onOpenChange={(isOpen) => setIsEditSecretNameOpen(isOpen)}
+        >
+          <ModalContent title="Edit Secret Name">
+            <SecretRenameForm
+              secretKey={secretKey}
+              environments={environments}
+              secretPath={secretPath}
+              getSecretByKey={getSecretByKey}
+            />
+          </ModalContent>
+        </Modal>
+      )}
+      {!isSingleEnvView && isFormExpanded && (
         <UnstableTableRow>
           <UnstableTableCell colSpan={totalCols} className={`${isFormExpanded && "bg-card p-0"}`}>
             <div
