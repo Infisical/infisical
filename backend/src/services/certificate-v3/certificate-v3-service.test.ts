@@ -161,6 +161,11 @@ describe("CertificateV3Service", () => {
       signatureAlgorithm: "RSA-SHA256" as any
     });
 
+    vi.mocked(parseDistinguishedName).mockReturnValue({
+      commonName: "test.example.com"
+    });
+    vi.mocked(createDistinguishedName).mockReturnValue("CN=test.example.com");
+
     service = certificateV3ServiceFactory({
       certificateDAL: mockCertificateDAL,
       certificateSecretDAL: mockCertificateSecretDAL,

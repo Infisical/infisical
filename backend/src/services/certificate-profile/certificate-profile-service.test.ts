@@ -100,6 +100,7 @@ describe("CertificateProfileService", () => {
     apiConfigId: "api-config-123",
     estConfigId: null,
     externalConfigs: null,
+    defaults: null,
     createdAt: new Date(),
     updatedAt: new Date()
   };
