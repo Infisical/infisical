@@ -347,18 +347,7 @@ export const externalMigrationServiceFactory = ({
         gatewayDetails
       );
 
-      const mounts = await listHCVaultMounts(connection, gatewayService, gatewayV2Service);
-      const sampleKvMount = mounts.find((mount) => mount.type === "kv");
-      if (sampleKvMount) {
-        await listHCVaultSecretPaths(
-          namespace,
-          connection,
-          gatewayService,
-          gatewayV2Service,
-          sampleKvMount.path,
-          gatewayDetails
-        );
-      }
+      await listHCVaultMounts(connection, gatewayService, gatewayV2Service);
     } catch (error) {
       throw new BadRequestError({
         message: `Failed to establish namespace confiugration. ${error instanceof Error ? error.message : "Unknown error"}`
