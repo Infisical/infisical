@@ -836,7 +836,14 @@
                   "documentation/platform/pam/product-reference/access-policies",
                   "documentation/platform/pam/product-reference/auditing",
                   "documentation/platform/pam/product-reference/session-recording",
-                  "documentation/platform/pam/product-reference/credential-rotation"
+                  "documentation/platform/pam/product-reference/credential-rotation",
+                  {
+                    "group": "Web Access",
+                    "pages": [
+                      "documentation/platform/pam/product-reference/web-access/overview",
+                      "documentation/platform/pam/product-reference/web-access/postgresql"
+                    ]
+                  }
                 ]
               }
             ]

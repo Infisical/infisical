@@ -1,0 +1,77 @@
+---
+title: "PostgreSQL Web Access"
+sidebarTitle: "PostgreSQL"
+description: "Run SQL queries against PostgreSQL databases directly from your browser."
+---
+
+The PostgreSQL web access terminal provides a `psql`-like experience in your browser. It is designed for light, ad-hoc usage — quick queries, debugging, and administrative tasks — not as a replacement for a full database client or long-running workloads.
+
+## Connecting
+
+<Steps>
+  <Step title="Navigate to Account">
+    Go to the **Resources** tab in your PAM project, open the PostgreSQL resource, and find the account you want to access. Click the **Connect** button next to the account.
+
+    ![Account Connect Button](/images/pam/product-reference/web-access/pg-account-connect-button.png)
+
+    Alternatively, if you are on the account page, click the **Access** button.
+
+    ![Account Page Access Button](/images/pam/product-reference/web-access/pg-account-page-access-button.png)
+  </Step>
+
+  <Step title="Connect in Browser">
+    In the connect modal, click **Connect in Browser** to open the web access terminal.
+
+    ![Connect in Browser](/images/pam/product-reference/web-access/pg-connect-in-browser.png)
+  </Step>
+
+  <Step title="End Session">
+    Click the **Disconnect** button from the web access terminal status bar or type `\q`, `quit`, or `exit`. You can reconnect from the same page.
+  </Step>
+</Steps>
+
+![Web Access Terminal](/images/pam/product-reference/web-access/pg-web-access-terminal.png)
+
+## Usage
+
+Once connected, you'll see a `=>` prompt. Type SQL queries as you would in `psql`:
+
+```sql
+=> SELECT * FROM users LIMIT 5;
+ id | name       | email
+----+------------+---------------------
+  1 | Alice      | alice@example.com
+  2 | Bob        | bob@example.com
+(2 rows)
+```
+
+### Transactions
+
+Transactions are fully supported. You can use `BEGIN`, `COMMIT`, and `ROLLBACK` as you would in `psql`:
+
+```sql
+=> BEGIN;
+BEGIN
+=> UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+UPDATE 1
+=> UPDATE accounts SET balance = balance + 100 WHERE id = 2;
+UPDATE 1
+=> COMMIT;
+COMMIT
+```
+
+## Limits
+
+In addition to the [common session limits](/documentation/platform/pam/product-reference/web-access/overview#session-limits), the following PostgreSQL-specific limits apply:
+
+| Setting | Value |
+|---------|-------|
+| **Statement timeout** | 30 seconds per query |
+
+## FAQ
+
+<AccordionGroup>
+    <Accordion title="Is this an actual psql session?">
+        No. The web access terminal is not a `psql` client. It is a custom SQL REPL that connects directly to PostgreSQL and provides a `psql`-like experience, including familiar prompts and tabular output formatting. Backslash commands like `\dt` or `\d` are not supported.
+    </Accordion>
+</AccordionGroup>
