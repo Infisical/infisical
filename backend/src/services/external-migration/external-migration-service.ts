@@ -351,7 +351,7 @@ export const externalMigrationServiceFactory = ({
       await listHCVaultMounts(connection, gatewayService, gatewayV2Service);
     } catch (error) {
       throw new BadRequestError({
-        message: `Failed to establish namespace confiugration. ${error instanceof Error ? error.message : "Unknown error"}`
+        message: `Failed to establish namespace configuration. ${error instanceof Error ? error.message : "Unknown error"}`
       });
     }
   };
