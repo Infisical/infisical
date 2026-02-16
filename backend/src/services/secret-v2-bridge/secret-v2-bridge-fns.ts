@@ -97,7 +97,8 @@ export const fnSecretBulkInsert = async ({
             }))
           )
         : null,
-      secretId: newSecretGroupedByKeyName[el.key][0].id
+      secretId: newSecretGroupedByKeyName[el.key][0].id,
+      parentVersionId: inputSecrets?.[index]?.parentSecretVersionId
     })),
     tx
   );
@@ -236,7 +237,8 @@ export const fnSecretBulkUpdate = async ({
         secretId,
         userActorId,
         identityActorId,
-        actorType
+        actorType,
+        parentVersionId: inputSecrets?.[index]?.data?.parentSecretVersionId
       })
     ),
     tx
@@ -683,8 +685,9 @@ export const fnUpdateSecretLinkedReferences = async ({
 
   const allSecretsToUpdate: Array<TSecretsV2> = [...nestedSecretsToUpdate, ...secretsToCheck];
 
-  // we track updated secrets grouped by folder for the commit creation
-  const updatedSecretsByFolder: Map<string, Array<{ secret: TSecretsV2; newEncryptedValue: Buffer }>> = new Map();
+  // Use Map with secretId as key to avoid duplicates when a secret references the renamed secret multiple times
+  const updatedSecretsMap: Map<string, { secret: TSecretsV2; newEncryptedValue: Buffer; newVersion: number }> =
+    new Map();
 
   for await (const secretToUpdate of allSecretsToUpdate) {
     if (!secretToUpdate.encryptedValue) {
@@ -724,20 +727,38 @@ export const fnUpdateSecretLinkedReferences = async ({
     if (newValue !== originalValue) {
       const newEncryptedValue = encryptor({ plainText: Buffer.from(newValue) }).cipherTextBlob;
 
-      await secretDAL.updateById(secretToUpdate.id, { encryptedValue: newEncryptedValue }, tx);
+      // Update secret with version increment
+      const updatedSecret = await secretDAL.updateById(
+        secretToUpdate.id,
+        { encryptedValue: newEncryptedValue, $incr: { version: 1 } },
+        tx
+      );
 
-      // group by folder for commit creation
-      const folderSecrets = updatedSecretsByFolder.get(secretToUpdate.folderId) || [];
-      folderSecrets.push({ secret: secretToUpdate, newEncryptedValue });
-      updatedSecretsByFolder.set(secretToUpdate.folderId, folderSecrets);
+      // Track updated secret by ID to avoid duplicates
+      updatedSecretsMap.set(secretToUpdate.id, {
+        secret: updatedSecret,
+        newEncryptedValue,
+        newVersion: updatedSecret.version
+      });
     }
+  }
+
+  // Group updated secrets by folder for commit creation
+  const updatedSecretsByFolder: Map<
+    string,
+    Array<{ secret: TSecretsV2; newEncryptedValue: Buffer; newVersion: number }>
+  > = new Map();
+  for (const [, data] of updatedSecretsMap) {
+    const folderSecrets = updatedSecretsByFolder.get(data.secret.folderId) || [];
+    folderSecrets.push(data);
+    updatedSecretsByFolder.set(data.secret.folderId, folderSecrets);
   }
 
   for await (const [updateFolderId, folderSecrets] of updatedSecretsByFolder) {
     const secretVersions = await secretVersionDAL.insertMany(
-      folderSecrets.map(({ secret, newEncryptedValue }) => ({
+      folderSecrets.map(({ secret, newEncryptedValue, newVersion }) => ({
         secretId: secret.id,
-        version: secret.version + 1,
+        version: newVersion,
         key: secret.key,
         encryptedValue: newEncryptedValue,
         encryptedComment: secret.encryptedComment,
@@ -852,9 +873,11 @@ export const fnUpdateMovedSecretReferences = async ({
   decryptor,
   tx
 }: TFnUpdateMovedSecretReferences) => {
-  const updatedSecretsByFolder: Map<string, Array<{ secret: TSecretsV2; newEncryptedValue: Buffer }>> = new Map();
+  // Use Map with secretId as key to avoid duplicates when a secret references multiple moved secrets
+  const updatedSecretsMap: Map<string, { secret: TSecretsV2; newEncryptedValue: Buffer; newVersion: number }> =
+    new Map();
 
-  const destPathPart = destinationSecretPath === "/" ? "" : `.${destinationSecretPath.slice(1).replace(/\//g, ".")}`;
+  const destPathPart = destinationSecretPath === "/" ? "" : `.${destinationSecretPath.slice(1).replaceAll("/", ".")}`;
   const newNestedRef = `\${${destinationEnvironment}${destPathPart}.${secretKey}}`;
 
   // case: local references, not stored in the db, we need to scan the folder to find secrets that reference the old secret ky
@@ -889,12 +912,19 @@ export const fnUpdateMovedSecretReferences = async ({
     if (newValue !== originalValue) {
       const newEncryptedValue = encryptor({ plainText: Buffer.from(newValue) }).cipherTextBlob;
 
-      await secretDAL.updateById(secretToUpdate.id, { encryptedValue: newEncryptedValue }, tx);
+      // Update secret with version increment - use $incr to properly increment version
+      const updatedSecret = await secretDAL.updateById(
+        secretToUpdate.id,
+        { encryptedValue: newEncryptedValue, $incr: { version: 1 } },
+        tx
+      );
 
-      // group by folder for commit creation
-      const folderSecrets = updatedSecretsByFolder.get(secretToUpdate.folderId) || [];
-      folderSecrets.push({ secret: secretToUpdate, newEncryptedValue });
-      updatedSecretsByFolder.set(secretToUpdate.folderId, folderSecrets);
+      // Track updated secret by ID to avoid duplicates
+      updatedSecretsMap.set(secretToUpdate.id, {
+        secret: updatedSecret,
+        newEncryptedValue,
+        newVersion: updatedSecret.version
+      });
 
       // update the secret references table (only for nested refs)
       const updatedNestedRefs = [
@@ -947,11 +977,19 @@ export const fnUpdateMovedSecretReferences = async ({
         if (newValue !== originalValue) {
           const newEncryptedValue = encryptor({ plainText: Buffer.from(newValue) }).cipherTextBlob;
 
-          await secretDAL.updateById(secretToUpdate.id, { encryptedValue: newEncryptedValue }, tx);
+          // Update secret with version increment
+          const updatedSecret = await secretDAL.updateById(
+            secretToUpdate.id,
+            { encryptedValue: newEncryptedValue, $incr: { version: 1 } },
+            tx
+          );
 
-          const folderSecrets = updatedSecretsByFolder.get(secretToUpdate.folderId) || [];
-          folderSecrets.push({ secret: secretToUpdate, newEncryptedValue });
-          updatedSecretsByFolder.set(secretToUpdate.folderId, folderSecrets);
+          // Track updated secret by ID to avoid duplicates
+          updatedSecretsMap.set(secretToUpdate.id, {
+            secret: updatedSecret,
+            newEncryptedValue,
+            newVersion: updatedSecret.version
+          });
 
           const updatedNestedRefs = nestedReferences.filter(
             (ref) =>
@@ -990,11 +1028,19 @@ export const fnUpdateMovedSecretReferences = async ({
         if (newValue !== originalValue) {
           const newEncryptedValue = encryptor({ plainText: Buffer.from(newValue) }).cipherTextBlob;
 
-          await secretDAL.updateById(secretToUpdate.id, { encryptedValue: newEncryptedValue }, tx);
+          // Update secret with version increment
+          const updatedSecret = await secretDAL.updateById(
+            secretToUpdate.id,
+            { encryptedValue: newEncryptedValue, $incr: { version: 1 } },
+            tx
+          );
 
-          const folderSecrets = updatedSecretsByFolder.get(secretToUpdate.folderId) || [];
-          folderSecrets.push({ secret: secretToUpdate, newEncryptedValue });
-          updatedSecretsByFolder.set(secretToUpdate.folderId, folderSecrets);
+          // Track updated secret by ID to avoid duplicates
+          updatedSecretsMap.set(secretToUpdate.id, {
+            secret: updatedSecret,
+            newEncryptedValue,
+            newVersion: updatedSecret.version
+          });
 
           const updatedNestedRefs = nestedReferences.map((ref) => {
             if (
@@ -1060,11 +1106,19 @@ export const fnUpdateMovedSecretReferences = async ({
     if (valueChanged) {
       const newEncryptedValue = encryptor({ plainText: Buffer.from(updatedValue) }).cipherTextBlob;
 
-      await secretDAL.updateById(destinationMovedSecret.id, { encryptedValue: newEncryptedValue }, tx);
+      // Update secret with version increment
+      const updatedSecret = await secretDAL.updateById(
+        destinationMovedSecret.id,
+        { encryptedValue: newEncryptedValue, $incr: { version: 1 } },
+        tx
+      );
 
-      const folderSecrets = updatedSecretsByFolder.get(destinationMovedSecret.folderId) || [];
-      folderSecrets.push({ secret: destinationMovedSecret, newEncryptedValue });
-      updatedSecretsByFolder.set(destinationMovedSecret.folderId, folderSecrets);
+      // Track updated secret by ID to avoid duplicates
+      updatedSecretsMap.set(destinationMovedSecret.id, {
+        secret: updatedSecret,
+        newEncryptedValue,
+        newVersion: updatedSecret.version
+      });
 
       const { nestedReferences: finalNestedReferences } = getAllSecretReferences(updatedValue);
       await secretDAL.upsertSecretReferences(
@@ -1074,11 +1128,22 @@ export const fnUpdateMovedSecretReferences = async ({
     }
   }
 
+  // Group updated secrets by folder for commit creation
+  const updatedSecretsByFolder: Map<
+    string,
+    Array<{ secret: TSecretsV2; newEncryptedValue: Buffer; newVersion: number }>
+  > = new Map();
+  for (const [, data] of updatedSecretsMap) {
+    const folderSecrets = updatedSecretsByFolder.get(data.secret.folderId) || [];
+    folderSecrets.push(data);
+    updatedSecretsByFolder.set(data.secret.folderId, folderSecrets);
+  }
+
   for await (const [updateFolderId, folderSecrets] of updatedSecretsByFolder) {
     const secretVersions = await secretVersionDAL.insertMany(
-      folderSecrets.map(({ secret, newEncryptedValue }) => ({
+      folderSecrets.map(({ secret, newEncryptedValue, newVersion }) => ({
         secretId: secret.id,
-        version: secret.version + 1,
+        version: newVersion,
         key: secret.key,
         encryptedValue: newEncryptedValue,
         encryptedComment: secret.encryptedComment,

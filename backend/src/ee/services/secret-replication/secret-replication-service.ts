@@ -309,6 +309,19 @@ export const secretReplicationServiceFactory = ({
       const sourceSecrets = $getReplicatedSecretsV2(sourceDecryptedLocalSecrets, sourceImportedSecrets);
       const sourceSecretsGroupByKey = groupBy(sourceSecrets, (i) => i.key);
 
+      // Fetch latest version IDs for all source secrets to track parent-child relationships
+      const sourceSecretsGroupedByFolderId = groupBy(sourceSecrets, (s) => s.folderId);
+      const sourceSecretLatestVersions: Record<string, string> = {};
+      await Promise.all(
+        Object.entries(sourceSecretsGroupedByFolderId).map(async ([folderId, secrets]) => {
+          const secretIds = secrets.map((s) => s.id);
+          const latestVersions = await secretVersionV2BridgeDAL.findLatestVersionMany(folderId, secretIds);
+          Object.entries(latestVersions).forEach(([secretId, version]) => {
+            sourceSecretLatestVersions[secretId] = version.id;
+          });
+        })
+      );
+
       const lock = await keyStore.acquireLock(
         [getReplicationKeyLockPrefix(projectId, environmentSlug, secretPath)],
         5000
@@ -495,7 +508,8 @@ export const secretReplicationServiceFactory = ({
                         encryptedComment: doc.encryptedComment,
                         skipMultilineEncoding: doc.skipMultilineEncoding,
                         secretMetadata: doc.rawSecretMetadata,
-                        references: doc.secretValue ? getAllSecretReferences(doc.secretValue).nestedReferences : []
+                        references: doc.secretValue ? getAllSecretReferences(doc.secretValue).nestedReferences : [],
+                        parentSecretVersionId: sourceSecretLatestVersions[doc.id]
                       };
                     })
                   });
@@ -525,7 +539,8 @@ export const secretReplicationServiceFactory = ({
                           encryptedComment: doc.encryptedComment,
                           skipMultilineEncoding: doc.skipMultilineEncoding,
                           secretMetadata: doc.rawSecretMetadata,
-                          references: doc.secretValue ? getAllSecretReferences(doc.secretValue).nestedReferences : []
+                          references: doc.secretValue ? getAllSecretReferences(doc.secretValue).nestedReferences : [],
+                          parentSecretVersionId: sourceSecretLatestVersions[doc.id]
                         }
                       };
                     })

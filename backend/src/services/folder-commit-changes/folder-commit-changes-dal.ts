@@ -42,6 +42,9 @@ export type SecretCommitChange = BaseCommitChangeInfo & {
     tags?: string[] | null;
     secretReminderRecipients?: string[] | null;
     secretValue: string;
+    isRedacted: boolean;
+    redactedAt: Date | null;
+    redactedByUserId: string | null;
   }[];
 };
 
