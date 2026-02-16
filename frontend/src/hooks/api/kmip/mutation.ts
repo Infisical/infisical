@@ -8,7 +8,6 @@ import {
   TCreateKmipClient,
   TDeleteKmipClient,
   TGenerateKmipClientCertificate,
-  TSetupOrgKmipDTO,
   TUpdateKmipClient
 } from "./types";
 
@@ -73,18 +72,6 @@ export const useGenerateKmipClientCertificate = () => {
       );
 
       return data;
-    }
-  });
-};
-
-export const useSetupOrgKmip = (orgId: string) => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (payload: TSetupOrgKmipDTO) => {
-      await apiRequest.post("/api/v1/kmip", payload);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: kmipKeys.getOrgKmip(orgId) });
     }
   });
 };

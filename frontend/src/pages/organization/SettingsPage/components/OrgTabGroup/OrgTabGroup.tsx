@@ -7,7 +7,6 @@ import { useOrganization } from "@app/context";
 
 import { AuditLogStreamsTab } from "../AuditLogStreamTab";
 import { ExternalMigrationsTab } from "../ExternalMigrationsTab";
-import { KmipTab } from "../KmipTab/OrgKmipTab";
 import { OrgEncryptionTab } from "../OrgEncryptionTab";
 import { OrgGeneralTab } from "../OrgGeneralTab";
 import { OrgProductSettingsTab } from "../OrgProductSettingsTab";
@@ -64,7 +63,6 @@ export const OrgTabGroup = () => {
       key: "project-templates",
       component: ProjectTemplatesTab
     },
-    { name: "KMIP", key: "kmip", component: KmipTab },
     {
       name: "Product Enforcements",
       key: "product-enforcements",

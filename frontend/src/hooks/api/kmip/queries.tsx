@@ -3,17 +3,11 @@ import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { OrderByDirection } from "../generic/types";
-import {
-  KmipClientOrderBy,
-  OrgKmipConfig,
-  TListProjectKmipClientsDTO,
-  TProjectKmipClientList
-} from "./types";
+import { KmipClientOrderBy, TListProjectKmipClientsDTO, TProjectKmipClientList } from "./types";
 
 export const kmipKeys = {
   getKmipClientsByProjectId: ({ projectId, ...filters }: TListProjectKmipClientsDTO) =>
-    [projectId, filters] as const,
-  getOrgKmip: (orgId: string) => [{ orgId }, "org-kmip-config"] as const
+    [projectId, filters] as const
 };
 
 export const useGetKmipClientsByProjectId = (
@@ -57,13 +51,3 @@ export const useGetKmipClientsByProjectId = (
   });
 };
 
-export const useGetOrgKmipConfig = (orgId: string) => {
-  return useQuery({
-    queryKey: kmipKeys.getOrgKmip(orgId),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<OrgKmipConfig>("/api/v1/kmip");
-
-      return data;
-    }
-  });
-};
