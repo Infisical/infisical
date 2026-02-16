@@ -8,6 +8,7 @@ import {
   OrganizationActionScope,
   OrgMembershipRole,
   OrgMembershipStatus,
+  TableName,
   TGroups,
   TSamlConfigs,
   TSamlConfigsUpdate,
@@ -17,7 +18,7 @@ import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fn
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { ActorType, AuthTokenType } from "@app/services/auth/auth-type";
+import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TIdentityMetadataDALFactory } from "@app/services/identity/identity-metadata-dal";
@@ -66,13 +67,7 @@ type TSamlConfigServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
   orgDAL: Pick<
     TOrgDALFactory,
-    | "createMembership"
-    | "updateMembershipById"
-    | "findMembership"
-    | "findEffectiveOrgMembership"
-    | "findOrgById"
-    | "findOne"
-    | "updateById"
+    "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
   >;
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete" | "insertMany" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
@@ -540,13 +535,14 @@ export const samlConfigServiceFactory = ({
     if (userAlias) {
       user = await userDAL.transaction(async (tx) => {
         const foundUser = await userDAL.findById(userAlias.userId, tx);
-        const orgMembership = await orgDAL.findEffectiveOrgMembership({
-          actorType: ActorType.USER,
-          actorId: userAlias.userId,
-          orgId,
-          acceptAnyStatus: true,
-          tx
-        });
+        const [orgMembership] = await orgDAL.findMembership(
+          {
+            [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
+            [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
+            [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
+          },
+          { tx }
+        );
 
         if (!orgMembership) {
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
@@ -571,11 +567,7 @@ export const samlConfigServiceFactory = ({
             tx
           );
           // Only update the membership to Accepted if the user account is already completed.
-        } else if (
-          orgMembership.actorUserId === userAlias.userId &&
-          orgMembership.status === OrgMembershipStatus.Invited &&
-          foundUser.isAccepted
-        ) {
+        } else if (orgMembership.status === OrgMembershipStatus.Invited && foundUser.isAccepted) {
           await orgDAL.updateMembershipById(
             orgMembership.id,
             {
@@ -662,13 +654,14 @@ export const samlConfigServiceFactory = ({
           tx
         );
 
-        const orgMembership = await orgDAL.findEffectiveOrgMembership({
-          actorType: ActorType.USER,
-          actorId: userAlias.userId,
-          orgId,
-          acceptAnyStatus: true,
-          tx
-        });
+        const [orgMembership] = await orgDAL.findMembership(
+          {
+            [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
+            [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
+            [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
+          },
+          { tx }
+        );
 
         if (!orgMembership) {
           await throwOnPlanSeatLimitReached(licenseService, orgId, UserAliasType.SAML);
@@ -695,11 +688,7 @@ export const samlConfigServiceFactory = ({
             tx
           );
           // Only update the membership to Accepted if the user account is already completed.
-        } else if (
-          orgMembership.actorUserId === newUser.id &&
-          orgMembership.status === OrgMembershipStatus.Invited &&
-          newUser.isAccepted
-        ) {
+        } else if (orgMembership.status === OrgMembershipStatus.Invited && newUser.isAccepted) {
           await orgDAL.updateMembershipById(
             orgMembership.id,
             {
