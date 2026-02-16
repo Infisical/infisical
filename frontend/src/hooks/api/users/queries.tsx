@@ -269,7 +269,8 @@ export const useDeactivateOrgMembership = () => {
   return useMutation<object, object, DeleteOrgMembershipDTO>({
     mutationFn: ({ membershipId, orgId }) => {
       return apiRequest.post(
-        `/api/v2/organizations/${orgId}/memberships/${membershipId}/deactivate`
+        `/api/v2/organizations/${orgId}/memberships/${membershipId}/deactivate`,
+        {}
       );
     },
     onSuccess: (_, { orgId, membershipId }) => {

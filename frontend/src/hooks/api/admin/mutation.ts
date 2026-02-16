@@ -219,7 +219,8 @@ export const useServerAdminResendOrgInvite = () => {
   return useMutation({
     mutationFn: async ({ organizationId, membershipId }: TResendOrgInviteDTO) => {
       await apiRequest.post(
-        `/api/v1/admin/organization-management/organizations/${organizationId}/memberships/${membershipId}/resend-invite`
+        `/api/v1/admin/organization-management/organizations/${organizationId}/memberships/${membershipId}/resend-invite`,
+        {}
       );
     }
   });
@@ -231,7 +232,8 @@ export const useServerAdminAccessOrg = () => {
   return useMutation({
     mutationFn: async (orgId: string) => {
       const { data } = await apiRequest.post(
-        `/api/v1/admin/organization-management/organizations/${orgId}/access`
+        `/api/v1/admin/organization-management/organizations/${orgId}/access`,
+        {}
       );
       return data;
     },
@@ -246,7 +248,8 @@ export const useGenerateUsageReport = () => {
   return useMutation<TUsageReportResponse, object, void>({
     mutationFn: async () => {
       const { data } = await apiRequest.post<TUsageReportResponse>(
-        "/api/v1/admin/usage-report/generate"
+        "/api/v1/admin/usage-report/generate",
+        {}
       );
       return data;
     }

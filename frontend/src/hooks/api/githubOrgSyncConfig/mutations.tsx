@@ -51,7 +51,7 @@ export const useSyncAllGithubTeams = () => {
       removedMemberships: number;
       syncDuration: number;
     }> => {
-      const response = await apiRequest.post("/api/v1/github-org-sync-config/sync-all-teams");
+      const response = await apiRequest.post("/api/v1/github-org-sync-config/sync-all-teams", {});
       return response.data;
     }
   });
