@@ -3504,7 +3504,8 @@
     },
     {
       "source": "/changelog/:slug*",
-      "destination": "/documentation/getting-started/overview"
+      "destination": "/documentation/getting-started/overview",
+      "permanent": true
     }
   ]
 }
