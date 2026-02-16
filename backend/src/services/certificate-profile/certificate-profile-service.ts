@@ -1,5 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
+import RE2 from "re2";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -288,8 +289,13 @@ export const certificateProfileServiceFactory = ({
       for (const pattern of patterns) {
         if (pattern.includes("*")) {
           try {
-            const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
-            if (new RegExp(`^${escaped}$`).test(value)) return true;
+            const wildcardRegex = new RE2(/\*/g);
+            const withPlaceholder = pattern.replace(wildcardRegex, "__WILDCARD__");
+            const escapeRegex = new RE2(/[.+?^${}()|[\]\\]/g);
+            const escaped = withPlaceholder.replace(escapeRegex, "\\$&");
+            const placeholderRegex = new RE2(/__WILDCARD__/g);
+            const regexPattern = escaped.replace(placeholderRegex, ".*");
+            if (new RE2(`^${regexPattern}$`).test(value)) return true;
           } catch {
             if (pattern === value) return true;
           }
