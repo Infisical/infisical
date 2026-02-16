@@ -171,7 +171,7 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
     rotationMethod = UnixLinuxLocalAccountRotationMethod.LoginAsRoot,
     useSudo
   } = parameters;
-  const shouldUseSudo = Boolean(useSudo ?? false);
+  const shouldUseSudo = Boolean(useSudo);
 
   // Helper to verify SSH credentials work
   const $verifyCredentials = async (targetUsername: string, targetPassword: string): Promise<void> => {
