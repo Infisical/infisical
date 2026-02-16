@@ -670,7 +670,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                       {constraints.templateAllowsCA && (
                         <AccordionItem value="basic-constraints">
                           <AccordionTrigger>Basic Constraints</AccordionTrigger>
-                          <AccordionContent>
+                          <AccordionContent forceMount className="data-[state=closed]:hidden">
                             <div className="space-y-4 pl-2">
                               <Controller
                                 control={control}
