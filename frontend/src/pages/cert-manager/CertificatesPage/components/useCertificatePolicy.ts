@@ -365,7 +365,7 @@ export const useCertificatePolicy = (
 
   // Apply deferred defaults after constraints update has committed and Controllers have mounted
   useEffect(() => {
-    if (!pendingDefaults) return;
+    if (!pendingDefaults) return undefined;
     const timeoutId = setTimeout(() => {
       if (pendingDefaults.keyAlgorithm) {
         setValue("keyAlgorithm", pendingDefaults.keyAlgorithm);
