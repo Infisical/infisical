@@ -57,12 +57,12 @@ export const CommitsPage = () => {
     <div className="mx-auto mb-4 flex h-full w-full max-w-8xl justify-center bg-bunker-800 text-white">
       <div className="w-full">
         <Link
-          to="/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug"
+          to="/organizations/$orgId/projects/secret-management/$projectId/overview"
           params={{
             orgId,
-            projectId: currentProject.id,
-            envSlug
+            projectId: currentProject.id
           }}
+          search={{ secretPath, environments: [envSlug] }}
           className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
         >
           <FontAwesomeIcon icon={faChevronLeft} />
