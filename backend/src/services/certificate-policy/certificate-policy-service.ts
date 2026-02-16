@@ -301,6 +301,8 @@ export const certificatePolicyServiceFactory = ({
     };
   };
 
+  // Keep in sync with validateDefaultsAgainstPolicy() in certificate-profile-service.ts —
+  // if a new policy check is added here, the corresponding check should be added there.
   const validateRequestAgainstPolicy = (
     template: TCertificatePolicy,
     request: TCertificateRequest

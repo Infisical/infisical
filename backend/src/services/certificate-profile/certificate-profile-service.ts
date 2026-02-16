@@ -23,7 +23,9 @@ import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaType } from "../certificate-authority/certificate-authority-enums";
 import { TExternalCertificateAuthorityDALFactory } from "../certificate-authority/external-certificate-authority-dal";
+import { CertPolicyState, CertSubjectAttributeType } from "../certificate-common/certificate-constants";
 import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
+import { TCertificatePolicy } from "../certificate-policy/certificate-policy-types";
 import { TAcmeEnrollmentConfigDALFactory } from "../enrollment-config/acme-enrollment-config-dal";
 import { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
 import { TAcmeConfigData, TApiConfigData, TEstConfigData } from "../enrollment-config/enrollment-config-types";
@@ -37,6 +39,7 @@ import {
   IssuerType,
   TCertificateProfile,
   TCertificateProfileCertificate,
+  TCertificateProfileDefaults,
   TCertificateProfileInsert,
   TCertificateProfileUpdate,
   TCertificateProfileWithConfigs
@@ -251,11 +254,14 @@ const convertDalToService = (dalResult: Record<string, unknown>): TCertificatePr
     parsedExternalConfigs = dalResult.externalConfigs as Record<string, unknown>;
   }
 
+  const parsedDefaults = (dalResult.defaults as TCertificateProfileDefaults) ?? null;
+
   return {
     ...dalResult,
     enrollmentType: dalResult.enrollmentType as EnrollmentType,
     issuerType: dalResult.issuerType as IssuerType,
-    externalConfigs: parsedExternalConfigs
+    externalConfigs: parsedExternalConfigs,
+    defaults: parsedDefaults
   } as TCertificateProfile;
 };
 
@@ -273,23 +279,182 @@ export const certificateProfileServiceFactory = ({
   kmsService,
   projectDAL
 }: TCertificateProfileServiceFactoryDep) => {
-  const validateDefaultTtlDaysAgainstPolicy = async (
-    defaultTtlDays: number | undefined | null,
-    certificatePolicyId: string
-  ) => {
-    if (!defaultTtlDays) return; // No defaultTtlDays to validate
+  // Keep in sync with validateRequestAgainstPolicy() in certificate-policy-service.ts —
+  // if a new policy check is added there, the corresponding check should be added here.
+  const validateDefaultsAgainstPolicy = (defaults: TCertificateProfileDefaults, policy: TCertificatePolicy) => {
+    const errors: string[] = [];
 
-    const policy = await certificatePolicyDAL.findById(certificatePolicyId);
-    if (!policy) return; // Policy validation happens elsewhere
+    const valueMatchesPatterns = (value: string, patterns: string[]): boolean => {
+      for (const pattern of patterns) {
+        if (pattern.includes("*")) {
+          try {
+            const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
+            if (new RegExp(`^${escaped}$`).test(value)) return true;
+          } catch {
+            if (pattern === value) return true;
+          }
+        } else if (pattern === value) {
+          return true;
+        }
+      }
+      return false;
+    };
 
-    if (!policy.validity?.max) return; // No max constraint
+    // 1. Subject attributes
+    const subjectDefaults = new Map<string, string>();
+    if (defaults.commonName) subjectDefaults.set(CertSubjectAttributeType.COMMON_NAME, defaults.commonName);
+    if (defaults.organization) subjectDefaults.set(CertSubjectAttributeType.ORGANIZATION, defaults.organization);
+    if (defaults.organizationalUnit)
+      subjectDefaults.set(CertSubjectAttributeType.ORGANIZATIONAL_UNIT, defaults.organizationalUnit);
+    if (defaults.country) subjectDefaults.set(CertSubjectAttributeType.COUNTRY, defaults.country);
+    if (defaults.state) subjectDefaults.set(CertSubjectAttributeType.STATE, defaults.state);
+    if (defaults.locality) subjectDefaults.set(CertSubjectAttributeType.LOCALITY, defaults.locality);
 
-    const defaultTtlMs = defaultTtlDays * 24 * 60 * 60 * 1000;
-    const maxTtlMs = ms(policy.validity.max);
+    if (subjectDefaults.size > 0) {
+      if (policy.subject && policy.subject.length > 0) {
+        for (const [attrType, value] of subjectDefaults) {
+          const attrPolicy = policy.subject.find((p) => p.type === attrType);
+          if (!attrPolicy) {
+            errors.push(`Default ${attrType} is not allowed by policy (not defined in policy)`);
+            // eslint-disable-next-line no-continue
+            continue;
+          }
+          // Check denied
+          if (attrPolicy.denied && attrPolicy.denied.length > 0 && valueMatchesPatterns(value, attrPolicy.denied)) {
+            errors.push(`Default ${attrType} value '${value}' is denied by policy`);
+            // eslint-disable-next-line no-continue
+            continue;
+          }
+          // Check allowed (if no required match)
+          let satisfiesRequired = false;
+          if (attrPolicy.required && attrPolicy.required.length > 0) {
+            satisfiesRequired = attrPolicy.required.some((r) => valueMatchesPatterns(value, [r]));
+          }
+          if (!satisfiesRequired && attrPolicy.allowed && attrPolicy.allowed.length > 0) {
+            if (!valueMatchesPatterns(value, attrPolicy.allowed)) {
+              errors.push(`Default ${attrType} value '${value}' is not in allowed values list`);
+            }
+          }
+        }
+      } else {
+        for (const [attrType] of subjectDefaults) {
+          errors.push(`Default ${attrType} is not allowed by policy (no subject policies defined)`);
+        }
+      }
+    }
 
-    if (defaultTtlMs > maxTtlMs) {
+    // 2. Key usages
+    if (defaults.keyUsages && defaults.keyUsages.length > 0) {
+      const kuPolicy = policy.keyUsages;
+      if (kuPolicy) {
+        if (kuPolicy.denied && kuPolicy.denied.length > 0) {
+          const denied = defaults.keyUsages.filter((u) => kuPolicy.denied!.includes(u));
+          if (denied.length > 0) errors.push(`Default key usages denied by policy: ${denied.join(", ")}`);
+        }
+        const allAllowed = [...(kuPolicy.required || []), ...(kuPolicy.allowed || [])];
+        const invalid = defaults.keyUsages.filter((u) => !allAllowed.includes(u));
+        if (invalid.length > 0) errors.push(`Default key usages not allowed by policy: ${invalid.join(", ")}`);
+      } else {
+        errors.push("Default key usages are not allowed by policy (not defined in policy)");
+      }
+    }
+
+    // 3. Extended key usages
+    if (defaults.extendedKeyUsages && defaults.extendedKeyUsages.length > 0) {
+      const ekuPolicy = policy.extendedKeyUsages;
+      if (ekuPolicy) {
+        if (ekuPolicy.denied && ekuPolicy.denied.length > 0) {
+          const denied = defaults.extendedKeyUsages.filter((u) => ekuPolicy.denied!.includes(u));
+          if (denied.length > 0) errors.push(`Default extended key usages denied by policy: ${denied.join(", ")}`);
+        }
+        const allAllowed = [...(ekuPolicy.required || []), ...(ekuPolicy.allowed || [])];
+        const invalid = defaults.extendedKeyUsages.filter((u) => !allAllowed.includes(u));
+        if (invalid.length > 0) errors.push(`Default extended key usages not allowed by policy: ${invalid.join(", ")}`);
+      } else {
+        errors.push("Default extended key usages are not allowed by policy (not defined in policy)");
+      }
+    }
+
+    // 4. Signature algorithm
+    if (defaults.signatureAlgorithm) {
+      if (policy.algorithms?.signature && policy.algorithms.signature.length > 0) {
+        const sigMapping: Record<string, string> = {
+          "SHA256-RSA": "RSA-SHA256",
+          "SHA384-RSA": "RSA-SHA384",
+          "SHA512-RSA": "RSA-SHA512",
+          "SHA256-ECDSA": "ECDSA-SHA256",
+          "SHA384-ECDSA": "ECDSA-SHA384",
+          "SHA512-ECDSA": "ECDSA-SHA512"
+        };
+        const mapped = policy.algorithms.signature.map((s) => sigMapping[s] || s);
+        if (!mapped.includes(defaults.signatureAlgorithm)) {
+          errors.push(`Default signature algorithm '${defaults.signatureAlgorithm}' is not allowed by policy`);
+        }
+      } else if (!policy.algorithms?.signature) {
+        errors.push(
+          `Default signature algorithm '${defaults.signatureAlgorithm}' is not allowed by policy (not defined in policy)`
+        );
+      }
+    }
+
+    // 5. Key algorithm
+    if (defaults.keyAlgorithm) {
+      if (policy.algorithms?.keyAlgorithm && policy.algorithms.keyAlgorithm.length > 0) {
+        const keyMapping: Record<string, string> = {
+          "RSA-2048": "RSA_2048",
+          "RSA-3072": "RSA_3072",
+          "RSA-4096": "RSA_4096",
+          "ECDSA-P256": "EC_prime256v1",
+          "ECDSA-P384": "EC_secp384r1",
+          "ECDSA-P521": "EC_secp521r1"
+        };
+        const mapped = policy.algorithms.keyAlgorithm.map((k) => keyMapping[k] || k);
+        if (!mapped.includes(defaults.keyAlgorithm)) {
+          errors.push(`Default key algorithm '${defaults.keyAlgorithm}' is not allowed by policy`);
+        }
+      } else if (!policy.algorithms?.keyAlgorithm) {
+        errors.push(
+          `Default key algorithm '${defaults.keyAlgorithm}' is not allowed by policy (not defined in policy)`
+        );
+      }
+    }
+
+    // 6. TTL
+    if (defaults.ttlDays && policy.validity?.max) {
+      const defaultTtlMs = defaults.ttlDays * 24 * 60 * 60 * 1000;
+      const maxTtlMs = ms(policy.validity.max);
+      if (defaultTtlMs > maxTtlMs) {
+        errors.push(
+          `Default TTL (${defaults.ttlDays} days) exceeds the policy's maximum validity (${policy.validity.max})`
+        );
+      }
+    }
+
+    // 7. Basic constraints
+    if (defaults.basicConstraints) {
+      const isCaPolicy: CertPolicyState = (policy.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
+      if (defaults.basicConstraints.isCA && isCaPolicy === CertPolicyState.DENIED) {
+        errors.push("Default isCA=true is denied by policy");
+      }
+      if (defaults.basicConstraints.isCA && isCaPolicy !== CertPolicyState.DENIED) {
+        const { maxPathLength } = policy.basicConstraints || {};
+        if (
+          maxPathLength !== undefined &&
+          maxPathLength !== null &&
+          maxPathLength !== -1 &&
+          defaults.basicConstraints.pathLength !== undefined &&
+          defaults.basicConstraints.pathLength > maxPathLength
+        ) {
+          errors.push(
+            `Default path length (${defaults.basicConstraints.pathLength}) exceeds maximum allowed by policy (${maxPathLength})`
+          );
+        }
+      }
+    }
+
+    if (errors.length > 0) {
       throw new BadRequestError({
-        message: `Default TTL (${defaultTtlDays} days) exceeds the policy's maximum validity (${policy.validity.max})`
+        message: `Profile defaults violate policy: ${errors.join("; ")}`
       });
     }
   };
@@ -352,8 +517,13 @@ export const certificateProfileServiceFactory = ({
 
     validateIssuerTypeConstraints(data.issuerType, data.enrollmentType, data.caId ?? null);
 
-    // Validate defaultTtlDays against policy constraints
-    await validateDefaultTtlDaysAgainstPolicy(data.defaultTtlDays, data.certificatePolicyId);
+    // Validate defaults against policy constraints
+    if (data.defaults) {
+      const policy = await certificatePolicyDAL.findById(data.certificatePolicyId);
+      if (policy) {
+        validateDefaultsAgainstPolicy(data.defaults, policy);
+      }
+    }
 
     // Validate external configs
     await validateExternalConfigs(
@@ -544,10 +714,13 @@ export const certificateProfileServiceFactory = ({
         }
       }
     }
-    // Validate defaultTtlDays against policy constraints if provided
-    if (data.defaultTtlDays !== undefined) {
+    // Validate defaults against policy constraints if provided
+    if (data.defaults) {
       const policyId = data.certificatePolicyId || existingProfile.certificatePolicyId;
-      await validateDefaultTtlDaysAgainstPolicy(data.defaultTtlDays, policyId);
+      const policy = await certificatePolicyDAL.findById(policyId);
+      if (policy) {
+        validateDefaultsAgainstPolicy(data.defaults, policy);
+      }
     }
 
     const updatedData =

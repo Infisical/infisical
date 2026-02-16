@@ -850,7 +850,7 @@ export const pkiAcmeServiceFactory = ({
           ? {
               ttl: resolveEffectiveTtl({
                 requestTtl: undefined,
-                profileDefaultTtlDays: profile.defaultTtlDays,
+                profileDefaultTtlDays: profile.defaults?.ttlDays,
                 policyMaxValidity: internalPolicy?.validity?.max,
                 flowDefaultTtl: "47d"
               })
@@ -890,7 +890,7 @@ export const pkiAcmeServiceFactory = ({
         : {
             ttl: resolveEffectiveTtl({
               requestTtl: certificateRequest.validity?.ttl,
-              profileDefaultTtlDays: profile.defaultTtlDays,
+              profileDefaultTtlDays: profile.defaults?.ttlDays,
               policyMaxValidity: policy?.validity?.max,
               flowDefaultTtl: "47d"
             })
@@ -1061,7 +1061,7 @@ export const pkiAcmeServiceFactory = ({
               })()
             : resolveEffectiveTtl({
                 requestTtl: undefined,
-                profileDefaultTtlDays: profile.defaultTtlDays,
+                profileDefaultTtlDays: profile.defaults?.ttlDays,
                 policyMaxValidity: policy?.validity?.max,
                 flowDefaultTtl: "47d"
               });

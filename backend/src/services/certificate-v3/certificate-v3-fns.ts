@@ -3,6 +3,8 @@ import RE2 from "re2";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 
+import { TCertificateProfileDefaults } from "../certificate-profile/certificate-profile-types";
+
 export const parseTtlToDays = (ttl: string): number => {
   const match = ttl.match(new RE2("^(\\d+)([dhm])$"));
   if (!match) {
@@ -45,7 +47,7 @@ export const calculateRenewalThreshold = (
  *
  * Priority order:
  * 1. Request TTL (user explicitly passed)
- * 2. Profile's defaultTtlDays (validates against policy max)
+ * 2. Profile's defaults.ttlDays (validates against policy max)
  * 3. Flow-specific default (for ACME, EST, etc.)
  * 4. Error - throws if no TTL source is available
  *
@@ -73,7 +75,7 @@ export const resolveEffectiveTtl = ({
     return requestTtl;
   }
 
-  // Priority 2: Profile's defaultTtlDays
+  // Priority 2: Profile's defaults.ttlDays
   if (profileDefaultTtlDays) {
     // Validate against policy's maxValidity (catch config drift)
     if (policyMaxValidity) {
@@ -98,4 +100,45 @@ export const resolveEffectiveTtl = ({
   throw new BadRequestError({
     message: "Certificate issuance requires a valid TTL"
   });
+};
+
+/**
+ * Applies profile defaults to certificate request
+ * Request values always take precedence over defaults.
+ * For keyUsages/extendedKeyUsages/basicConstraints, replace strategy: request array wins entirely if present.
+ */
+export const applyProfileDefaults = <
+  T extends {
+    commonName?: string;
+    organization?: string;
+    organizationalUnit?: string;
+    country?: string;
+    state?: string;
+    locality?: string;
+    keyAlgorithm?: string;
+    signatureAlgorithm?: string;
+    keyUsages?: string[];
+    extendedKeyUsages?: string[];
+    basicConstraints?: { isCA: boolean; pathLength?: number };
+  }
+>(
+  request: T,
+  defaults: TCertificateProfileDefaults | null | undefined
+): T => {
+  if (!defaults) return request;
+
+  return {
+    ...request,
+    commonName: request.commonName ?? defaults.commonName,
+    organization: request.organization ?? defaults.organization,
+    organizationalUnit: request.organizationalUnit ?? defaults.organizationalUnit,
+    country: request.country ?? defaults.country,
+    state: request.state ?? defaults.state,
+    locality: request.locality ?? defaults.locality,
+    keyAlgorithm: request.keyAlgorithm ?? defaults.keyAlgorithm,
+    signatureAlgorithm: request.signatureAlgorithm ?? defaults.signatureAlgorithm,
+    keyUsages: request.keyUsages !== undefined ? request.keyUsages : defaults.keyUsages,
+    extendedKeyUsages: request.extendedKeyUsages !== undefined ? request.extendedKeyUsages : defaults.extendedKeyUsages,
+    basicConstraints: request.basicConstraints !== undefined ? request.basicConstraints : defaults.basicConstraints
+  };
 };

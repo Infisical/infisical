@@ -44,18 +44,20 @@ type SubjectAttributesFieldProps = {
   allowedAttributeTypes: CertSubjectAttributeType[];
   error?: string;
   shouldUnregister?: boolean;
+  namePrefix?: string;
 };
 
 export const SubjectAttributesField = ({
   control,
   allowedAttributeTypes,
   error,
-  shouldUnregister
+  shouldUnregister,
+  namePrefix = "subjectAttributes"
 }: SubjectAttributesFieldProps) => {
   return (
     <Controller
       control={control}
-      name="subjectAttributes"
+      name={namePrefix}
       shouldUnregister={shouldUnregister}
       render={({ field: { onChange, value } }) => {
         const currentValues = value || [];

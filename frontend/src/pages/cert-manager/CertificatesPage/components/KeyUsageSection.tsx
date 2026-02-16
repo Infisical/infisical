@@ -17,7 +17,7 @@ type KeyUsageSectionProps = {
   control: Control<any>;
   title: string;
   accordionValue: string;
-  namePrefix: "keyUsages" | "extendedKeyUsages";
+  namePrefix: string;
   options: KeyUsageOption[];
   requiredUsages: string[];
   shouldUnregister?: boolean;

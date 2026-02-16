@@ -8,8 +8,37 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertStatus } from "@app/services/certificate/certificate-types";
+import {
+  CertExtendedKeyUsageType,
+  CertKeyAlgorithm,
+  CertKeyUsageType,
+  CertSignatureAlgorithm
+} from "@app/services/certificate-common/certificate-constants";
 import { ExternalConfigUnionSchema } from "@app/services/certificate-profile/certificate-profile-external-config-schemas";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
+
+const CertificateProfileDefaultsResponseSchema = z
+  .object({
+    ttlDays: z.number().optional(),
+    commonName: z.string().optional(),
+    keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
+    signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
+    keyUsages: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
+    extendedKeyUsages: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
+    basicConstraints: z
+      .object({
+        isCA: z.boolean(),
+        pathLength: z.number().optional()
+      })
+      .optional(),
+    organization: z.string().optional(),
+    organizationalUnit: z.string().optional(),
+    country: z.string().optional(),
+    state: z.string().optional(),
+    locality: z.string().optional()
+  })
+  .nullable()
+  .optional();
 
 export const registerCertificateProfilesRouter = async (
   server: FastifyZodProvider,
@@ -58,7 +87,28 @@ export const registerCertificateProfilesRouter = async (
             })
             .optional(),
           externalConfigs: ExternalConfigUnionSchema,
-          defaultTtlDays: z.number().int().positive().optional()
+          defaults: z
+            .object({
+              ttlDays: z.number().int().positive().optional(),
+              commonName: z.string().optional(),
+              keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
+              signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
+              keyUsages: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
+              extendedKeyUsages: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
+              basicConstraints: z
+                .object({
+                  isCA: z.boolean(),
+                  pathLength: z.number().int().min(0).optional()
+                })
+                .optional(),
+              organization: z.string().optional(),
+              organizationalUnit: z.string().optional(),
+              country: z.string().optional(),
+              state: z.string().optional(),
+              locality: z.string().optional()
+            })
+            .nullable()
+            .optional()
         })
         .refine(
           (data) => {
@@ -173,7 +223,8 @@ export const registerCertificateProfilesRouter = async (
       response: {
         200: z.object({
           certificateProfile: PkiCertificateProfilesSchema.extend({
-            externalConfigs: ExternalConfigUnionSchema
+            externalConfigs: ExternalConfigUnionSchema,
+            defaults: CertificateProfileDefaultsResponseSchema
           })
         })
       }
@@ -272,7 +323,8 @@ export const registerCertificateProfilesRouter = async (
                 skipEabBinding: z.boolean().optional()
               })
               .optional(),
-            externalConfigs: ExternalConfigUnionSchema
+            externalConfigs: ExternalConfigUnionSchema,
+            defaults: CertificateProfileDefaultsResponseSchema
           }).array(),
           totalCount: z.number()
         })
@@ -319,7 +371,8 @@ export const registerCertificateProfilesRouter = async (
       response: {
         200: z.object({
           certificateProfile: PkiCertificateProfilesSchema.extend({
-            externalConfigs: ExternalConfigUnionSchema
+            externalConfigs: ExternalConfigUnionSchema,
+            defaults: CertificateProfileDefaultsResponseSchema
           }).extend({
             certificateAuthority: z
               .object({
@@ -412,7 +465,8 @@ export const registerCertificateProfilesRouter = async (
       response: {
         200: z.object({
           certificateProfile: PkiCertificateProfilesSchema.extend({
-            externalConfigs: ExternalConfigUnionSchema
+            externalConfigs: ExternalConfigUnionSchema,
+            defaults: CertificateProfileDefaultsResponseSchema
           })
         })
       }
@@ -476,7 +530,28 @@ export const registerCertificateProfilesRouter = async (
             })
             .optional(),
           externalConfigs: ExternalConfigUnionSchema,
-          defaultTtlDays: z.number().int().positive().nullable().optional()
+          defaults: z
+            .object({
+              ttlDays: z.number().int().positive().optional(),
+              commonName: z.string().optional(),
+              keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
+              signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
+              keyUsages: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
+              extendedKeyUsages: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
+              basicConstraints: z
+                .object({
+                  isCA: z.boolean(),
+                  pathLength: z.number().int().min(0).optional()
+                })
+                .optional(),
+              organization: z.string().optional(),
+              organizationalUnit: z.string().optional(),
+              country: z.string().optional(),
+              state: z.string().optional(),
+              locality: z.string().optional()
+            })
+            .nullable()
+            .optional()
         })
         .refine(
           (data) => {
@@ -510,7 +585,8 @@ export const registerCertificateProfilesRouter = async (
       response: {
         200: z.object({
           certificateProfile: PkiCertificateProfilesSchema.extend({
-            externalConfigs: ExternalConfigUnionSchema
+            externalConfigs: ExternalConfigUnionSchema,
+            defaults: CertificateProfileDefaultsResponseSchema
           })
         })
       }
@@ -558,7 +634,8 @@ export const registerCertificateProfilesRouter = async (
       response: {
         200: z.object({
           certificateProfile: PkiCertificateProfilesSchema.extend({
-            externalConfigs: ExternalConfigUnionSchema
+            externalConfigs: ExternalConfigUnionSchema,
+            defaults: CertificateProfileDefaultsResponseSchema
           })
         })
       }
