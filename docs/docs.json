@@ -3153,7 +3153,7 @@
           },
           {
             "label": "Infisical vs Vault",
-            "href": "https://infisical.com/infisical-vs-hashicorp-vault"
+            "href": "https://infisical.com/compare/infisical-vs-hashicorp-vault"
           },
           {
             "label": "Forum",
@@ -3510,6 +3510,10 @@
     {
       "source": "/integrations/cloud/teamcity",
       "destination": "/integrations/secret-syncs/teamcity"
+    },
+    {
+      "source": "/infisical-vs-hashicorp-vault",
+      "destination": "/compare/infisical-vs-hashicorp-vault"
     }
   ]
 }
