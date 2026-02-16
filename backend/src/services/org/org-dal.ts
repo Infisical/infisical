@@ -165,55 +165,61 @@ export const orgDALFactory = (db: TDbClient) => {
     offset?: number;
   }) => {
     try {
-      const query = db
-        .replicaNode()(TableName.Organization)
-        .where(`${TableName.Organization}.rootOrgId`, dto.orgId)
-        .select(selectAllTableCols(TableName.Organization));
+      const conn = db.replicaNode();
 
       if (dto.isAccessible) {
-        // Correlate subquery: membership.scopeOrgId = outer organizations.id (quoted for PostgreSQL camelCase)
-        const scopeOrgIdEqOrgId = `"${TableName.Membership}"."scopeOrgId" = "${TableName.Organization}"."id"`;
-        void query.where((qb) => {
-          // Direct: actor has membership in the sub-org (user or identity)
-          void qb.whereExists(
-            db
-              .replicaNode()(TableName.Membership)
-              .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-              .whereRaw(scopeOrgIdEqOrgId)
-              .andWhere((subQb) => {
-                if (dto.actorType === ActorType.IDENTITY) {
-                  void subQb.where(`${TableName.Membership}.actorIdentityId`, dto.actorId);
-                } else {
-                  void subQb.where(`${TableName.Membership}.actorUserId`, dto.actorId);
-                }
-              })
-          );
-          // Via inherited group: actor is in a group that is linked to the sub-org (root org group membership in sub-org)
-          const groupLinkedSubquery = db
-            .replicaNode()(TableName.Membership)
-            .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-            .whereRaw(scopeOrgIdEqOrgId)
-            .whereNotNull(`${TableName.Membership}.actorGroupId`);
-          if (dto.actorType === ActorType.IDENTITY) {
-            void groupLinkedSubquery
-              .join(
-                TableName.IdentityGroupMembership,
-                `${TableName.IdentityGroupMembership}.groupId`,
-                `${TableName.Membership}.actorGroupId`
-              )
-              .where(`${TableName.IdentityGroupMembership}.identityId`, dto.actorId);
-          } else {
-            void groupLinkedSubquery
-              .join(
-                TableName.UserGroupMembership,
-                `${TableName.UserGroupMembership}.groupId`,
-                `${TableName.Membership}.actorGroupId`
-              )
-              .where(`${TableName.UserGroupMembership}.userId`, dto.actorId);
-          }
-          void qb.orWhereExists(groupLinkedSubquery);
-        });
+        // Subquery: sub-org ids (children of root)
+        const subOrgIdsSubquery = conn(TableName.Organization)
+          .where(`${TableName.Organization}.rootOrgId`, dto.orgId)
+          .select(db.ref("id").withSchema(TableName.Organization));
+
+        // Group IDs the actor belongs to
+        const userGroupIdsSubquery = conn(TableName.Groups)
+          .join(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
+          .where(`${TableName.UserGroupMembership}.userId`, dto.actorId)
+          .select(db.ref("id").withSchema(TableName.Groups));
+
+        const identityGroupIdsSubquery = conn(TableName.Groups)
+          .join(
+            TableName.IdentityGroupMembership,
+            `${TableName.IdentityGroupMembership}.groupId`,
+            `${TableName.Groups}.id`
+          )
+          .where(`${TableName.IdentityGroupMembership}.identityId`, dto.actorId)
+          .select(db.ref("id").withSchema(TableName.Groups));
+
+        // Accessible sub-org ids: memberships in those orgs where actor is direct or via group
+        const accessibleSubOrgIdsSubquery = conn(TableName.Membership)
+          .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+          .whereIn(`${TableName.Membership}.scopeOrgId`, subOrgIdsSubquery)
+          .andWhere((qb) => {
+            if (dto.actorType === ActorType.USER) {
+              void qb
+                .where(`${TableName.Membership}.actorUserId`, dto.actorId)
+                .orWhereIn(`${TableName.Membership}.actorGroupId`, userGroupIdsSubquery);
+            } else {
+              void qb
+                .where(`${TableName.Membership}.actorIdentityId`, dto.actorId)
+                .orWhereIn(`${TableName.Membership}.actorGroupId`, identityGroupIdsSubquery);
+            }
+          })
+          .select(db.ref("scopeOrgId").withSchema(TableName.Membership));
+
+        const query = conn(TableName.Organization)
+          .where(`${TableName.Organization}.rootOrgId`, dto.orgId)
+          .whereIn(`${TableName.Organization}.id`, accessibleSubOrgIdsSubquery)
+          .select(selectAllTableCols(TableName.Organization));
+
+        if (dto.limit) void query.limit(dto.limit);
+        if (dto.offset) void query.offset(dto.offset);
+
+        const orgs = await query;
+        return orgs;
       }
+
+      const query = conn(TableName.Organization)
+        .where(`${TableName.Organization}.rootOrgId`, dto.orgId)
+        .select(selectAllTableCols(TableName.Organization));
       if (dto.limit) void query.limit(dto.limit);
       if (dto.offset) void query.offset(dto.offset);
 
