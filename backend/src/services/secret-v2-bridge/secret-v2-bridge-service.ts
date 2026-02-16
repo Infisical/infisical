@@ -51,7 +51,7 @@ import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretQueueFactory } from "../secret/secret-queue";
-import { TGetASecretByIdDTO, TRedactSecretVersionValueDTO } from "../secret/secret-types";
+import { PersonalOverridesBehavior, TGetASecretByIdDTO, TRedactSecretVersionValueDTO } from "../secret/secret-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
@@ -1109,6 +1109,8 @@ export const secretV2BridgeServiceFactory = ({
       includeImports,
       recursive,
       expandSecretReferences: shouldExpandSecretReferences,
+      expandPersonalOverrides,
+      personalOverridesBehavior,
       throwOnMissingReadValuePermission = true,
       ...params
     } = dto;
@@ -1196,12 +1198,41 @@ export const secretV2BridgeServiceFactory = ({
 
     const groupedPaths = groupBy(paths, (p) => p.folderId);
 
-    const secrets = await secretDAL.findByFolderIds({
+    const unfilteredSecrets = await secretDAL.findByFolderIds({
       folderIds: paths.map((p) => p.folderId),
       userId: actorId,
       tx: undefined,
       filters: params
     });
+
+    let secrets: typeof unfilteredSecrets = [];
+
+    if (personalOverridesBehavior === PersonalOverridesBehavior.IncludeAll) {
+      secrets = unfilteredSecrets;
+    } else if (personalOverridesBehavior === PersonalOverridesBehavior.NeverInclude) {
+      secrets = unfilteredSecrets.filter((el) => el.type === SecretType.Shared);
+    } else if (personalOverridesBehavior === PersonalOverridesBehavior.Priority) {
+      // if include personaloverrides is enabled, personal overrides should take PRIORITY over shared secrets.
+      // this means if the secrets array already contains a shared secret of the same secret, and the current element is a personal secret, we should replace the existing shared secret with the personal secret.
+      // the TLDR is that we should always ensure that there is only ever 1 secret with the same key (in the same folder). and if personal secrets are included, they should take priorty.
+      const secretMap = new Map<string, (typeof unfilteredSecrets)[number]>();
+
+      unfilteredSecrets.forEach((el) => {
+        const key = `${el.key}-${el.folderId}`;
+        const existing = secretMap.get(key);
+
+        if (!existing) {
+          // no duplicate, add it (might be shared, might be personal)
+          secretMap.set(key, el);
+        } else if (el.type === SecretType.Personal) {
+          // duplicate found and current is personal, replace (personal takes priority)
+          secretMap.set(key, el);
+        }
+        // if duplicate found but current is shared, keep existing (which might be personal)
+      });
+
+      secrets = Array.from(secretMap.values());
+    }
 
     // scott: if any of this changes it also needs to be mirrored in secret rotation for getting dashboard secrets
     const decryptedSecrets = secrets
@@ -1301,7 +1332,13 @@ export const secretV2BridgeServiceFactory = ({
           secretPath: expandSecretPath,
           secretName: expandSecretKey,
           secretTags: expandSecretTags
-        })
+        }),
+      userId:
+        (personalOverridesBehavior === PersonalOverridesBehavior.Priority ||
+          personalOverridesBehavior === PersonalOverridesBehavior.IncludeAll) &&
+        expandPersonalOverrides
+          ? actorId
+          : undefined
     });
 
     if (shouldExpandSecretReferences) {
@@ -1502,7 +1539,8 @@ export const secretV2BridgeServiceFactory = ({
     version,
     viewSecretValue,
     includeImports,
-    expandSecretReferences: shouldExpandSecretReferences
+    expandSecretReferences: shouldExpandSecretReferences,
+    expandPersonalOverrides
   }: TGetASecretDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -1591,7 +1629,8 @@ export const secretV2BridgeServiceFactory = ({
           secretName: expandSecretKey,
           secretTags: expandSecretTags
         });
-      }
+      },
+      userId: secretType === SecretType.Personal && expandPersonalOverrides ? actorId : undefined
     });
 
     // now if secret is not found
