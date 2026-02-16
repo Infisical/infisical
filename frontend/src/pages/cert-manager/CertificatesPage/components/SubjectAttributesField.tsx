@@ -74,8 +74,7 @@ export const SubjectAttributesField = ({
                 );
 
                 return (
-                  // eslint-disable-next-line react/no-array-index-key
-                  <div key={`subject-attr-${index}`} className="flex items-center gap-2">
+                  <div key={`subject-attr-${attr.type}`} className="flex items-center gap-2">
                     <Select
                       value={attr.type}
                       onValueChange={(newType) => {
