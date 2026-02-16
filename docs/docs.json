@@ -3070,15 +3070,6 @@
             ]
           }
         ]
-      },
-      {
-        "tab": "Changelog",
-        "groups": [
-          {
-            "group": "Overview",
-            "pages": ["changelog/overview"]
-          }
-        ]
       }
     ]
   },
@@ -3219,7 +3210,7 @@
         "items": [
           {
             "label": "Changelog",
-            "href": "https://www.infisical.com/docs/changelog"
+            "href": "https://github.com/Infisical/infisical/releases"
           },
           {
             "label": "Status",
@@ -3510,6 +3501,10 @@
     {
       "source": "/integrations/cloud/teamcity",
       "destination": "/integrations/secret-syncs/teamcity"
+    },
+    {
+      "source": "/changelog/:slug*",
+      "destination": "/documentation/getting-started/overview"
     }
   ]
 }
