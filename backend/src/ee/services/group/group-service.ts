@@ -61,7 +61,7 @@ type TGroupServiceFactoryDep = {
     | "transaction"
     | "findAllGroupProjects"
     | "listAvailableGroups"
-    | "hasGroupsReferencingGroup"
+    | "getGroupsReferencingGroup"
   >;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "findOne" | "create" | "getGroupById" | "deleteById">;
   membershipDAL: Pick<TMembershipDALFactory, "find" | "findOne">;
@@ -339,11 +339,11 @@ export const groupServiceFactory = ({
       return group;
     }
 
-    const isReferencedAsSource = await groupDAL.hasGroupsReferencingGroup(id);
-    if (isReferencedAsSource) {
+    const referencingGroups = await groupDAL.getGroupsReferencingGroup(id);
+    if (referencingGroups.length > 0) {
+      const groupList = referencingGroups.map((g) => `"${g.name}"`).join(", ");
       throw new BadRequestError({
-        message:
-          "Cannot delete this group because it is used as a source group by other groups. Unlink or delete those groups first."
+        message: `Cannot delete this group because it is used as a source by other groups. Unlink or delete these groups first: ${groupList}.`
       });
     }
 

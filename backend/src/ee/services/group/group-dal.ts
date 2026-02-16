@@ -595,18 +595,17 @@ export const groupDALFactory = (db: TDbClient) => {
   };
 
   /**
-   * Returns true if any group references the given group via sourceGroupId (self-referential FK).
-   * Used to block delete when this group is the source of linked/copied groups.
+   * Returns the groups that reference the given group via sourceGroupId (self-referential FK).
+   * Used to block delete when this group is the source of linked/copied groups; error message can list them.
    */
-  const hasGroupsReferencingGroup = async (groupId: string, tx?: Knex): Promise<boolean> => {
+  const getGroupsReferencingGroup = async (groupId: string, tx?: Knex): Promise<{ id: string; name: string }[]> => {
     try {
-      const row = await (tx || db.replicaNode())(TableName.Groups)
+      const docs = await (tx || db.replicaNode())(TableName.Groups)
         .whereRaw('"sourceGroupId" = ?', [groupId])
-        .select("id")
-        .first();
-      return Boolean(row);
+        .select("id", "name");
+      return docs;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Has groups referencing group" });
+      throw new DatabaseError({ error, name: "Get groups referencing group" });
     }
   };
 
@@ -622,6 +621,6 @@ export const groupDALFactory = (db: TDbClient) => {
     findGroupsByProjectId,
     findById,
     findOne,
-    hasGroupsReferencingGroup
+    getGroupsReferencingGroup
   };
 };
