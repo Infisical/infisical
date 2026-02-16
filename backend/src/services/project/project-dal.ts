@@ -95,7 +95,6 @@ export const projectDALFactory = (db: TDbClient) => {
       const userGroupSubquery = db
         .replicaNode()(TableName.Groups)
         .leftJoin(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
-        .where(`${TableName.Groups}.orgId`, orgId)
         .where(`${TableName.UserGroupMembership}.userId`, userId)
         .select(db.ref("id").withSchema(TableName.Groups));
 
