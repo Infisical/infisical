@@ -36,6 +36,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
+import { Badge, OrgIcon, SubOrgIcon } from "@app/components/v3";
 import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import {
   getUserTablePreference,
@@ -224,16 +225,20 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                   </IconButton>
                 </div>
               </Th>
+              {isSubOrganization && <Th>Managed By</Th>}
               <Th className="w-5" />
             </Tr>
           </THead>
           <TBody>
-            {isPending && <TableSkeleton columns={4} innerKey="org-groups" />}
+            {isPending && (
+              <TableSkeleton columns={isSubOrganization ? 5 : 4} innerKey="org-groups" />
+            )}
             {!isPending &&
               filteredGroups
                 .slice(offset, perPage * page)
                 .map(({ id, name, slug, role, customRole, orgId: groupOrgId }) => {
                   const isLinkedGroup = currentOrg ? groupOrgId !== currentOrg.id : false;
+                  const isManagedBySubOrg = currentOrg ? groupOrgId === currentOrg.id : false;
                   return (
                     <Tr
                       onClick={() =>
@@ -280,6 +285,23 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                           }}
                         </OrgPermissionCan>
                       </Td>
+                      {isSubOrganization && (
+                        <Td>
+                          <Badge variant={isManagedBySubOrg ? "sub-org" : "org"}>
+                            {isManagedBySubOrg ? (
+                              <>
+                                <SubOrgIcon />
+                                Sub-Organization
+                              </>
+                            ) : (
+                              <>
+                                <OrgIcon />
+                                Root Organization
+                              </>
+                            )}
+                          </Badge>
+                        </Td>
+                      )}
                       <Td>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

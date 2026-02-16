@@ -667,8 +667,7 @@ export const orgDALFactory = (db: TDbClient) => {
 
   /**
    * Returns all effective org memberships for an actor (user or identity) in the org: direct
-   * membership and any memberships via groups the actor belongs to. Single query (permission-DAL style).
-   * Useful when the actor can have multiple memberships (e.g. direct + group, or multiple groups).
+   * membership and any memberships via groups the actor belongs to. Single query
    */
   const findEffectiveOrgMemberships = async (dto: {
     actorType: ActorType;
