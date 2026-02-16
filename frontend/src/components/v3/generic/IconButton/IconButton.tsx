@@ -10,7 +10,8 @@ import { cn } from "@app/components/v3/utils";
 const iconButtonVariants = cva(
   cn(
     "inline-flex items-center active:scale-[0.99] justify-center border cursor-pointer whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none shrink-0 [&>svg]:shrink-0",
-    "focus-visible:ring-ring outline-0 focus-visible:ring-2"
+    "focus-visible:ring-ring outline-0 focus-visible:ring-2",
+    "data-[state=open]:bg-foreground/5"
   ),
   {
     variants: {

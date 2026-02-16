@@ -68,6 +68,8 @@ export enum ApiDocsTags {
   PkiCertificateProfiles = "PKI Certificate Profiles",
   PkiCertificateCollections = "PKI Certificate Collections",
   PkiAlerting = "PKI Alerting",
+  PkiDiscovery = "PKI Discovery",
+  PkiInstallations = "PKI Installations",
   PkiSubscribers = "PKI Subscribers",
   PkiAcme = "PKI ACME",
   SshCertificates = "SSH Certificates",
@@ -79,6 +81,7 @@ export enum ApiDocsTags {
   KmsEncryption = "KMS Encryption",
   KmsSigning = "KMS Signing",
   SecretScanning = "Secret Scanning",
+  SecretSharing = "Secret Sharing",
   OidcSso = "OIDC SSO",
   SamlSso = "SAML SSO",
   LdapSso = "LDAP SSO",
@@ -3336,3 +3339,35 @@ export const EventSubscriptions = {
     register: "List of events you want to subscribe to"
   }
 };
+
+export const SECRET_SHARING = {
+  LIST: {
+    offset: "The offset to start listing shared secrets from. Used for pagination.",
+    limit: "The maximum number of shared secrets to return. Max is 100."
+  },
+  GET_BY_ID: {
+    id: "The ID of the shared secret to retrieve."
+  },
+  ACCESS: {
+    id: "The ID of the shared secret to access.",
+    password:
+      "The password for accessing a password-protected shared secret. Only required if the secret is password protected."
+  },
+  CREATE: {
+    name: "An optional name for the shared secret for easier identification.",
+    secretValue: "The secret value to share.",
+    expiresIn:
+      "The duration after which the shared secret will expire. Accepts formats like '30d', '24h', '1w'. Maximum is 30 days, minimum is 5 minutes.",
+    password:
+      "An optional password to protect the shared secret. Recipients will need to provide this password to access the secret.",
+    maxViews:
+      "The maximum number of times the shared secret can be viewed before it expires. If not provided, unlimited views are allowed.",
+    accessType:
+      "Determines who can access the shared secret. 'organization' restricts access to users within your organization. 'anyone' allows access to anyone with the link. Defaults to 'organization'.",
+    authorizedEmails:
+      "An optional array of email addresses that are authorized to view this secret. Only users with these email addresses will be able to access the secret. Maximum 100 emails."
+  },
+  DELETE: {
+    id: "The ID of the shared secret to delete."
+  }
+} as const;

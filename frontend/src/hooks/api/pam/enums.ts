@@ -18,7 +18,8 @@ export enum PamResourceType {
   Snowflake = "snowflake",
   DynamoDB = "dynamodb",
   AwsIam = "aws-iam",
-  Windows = "windows"
+  Windows = "windows",
+  ActiveDirectory = "active-directory"
 }
 
 export enum PamResourceOrderBy {

@@ -52,6 +52,21 @@ export const PkiManagerLayout = () => {
                   {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Certificates</Tab>}
                 </Link>
                 <Link
+                  to="/organizations/$orgId/projects/cert-manager/$projectId/discovery"
+                  params={{
+                    orgId: currentOrg.id,
+                    projectId: currentProject.id
+                  }}
+                >
+                  {({ isActive }) => (
+                    <Tab
+                      value={isActive || location.pathname.match(/\/discovery/) ? "selected" : ""}
+                    >
+                      Discovery
+                    </Tab>
+                  )}
+                </Link>
+                <Link
                   to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities"
                   params={{
                     orgId: currentOrg.id,

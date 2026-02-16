@@ -27,7 +27,8 @@ export const PgSqlLock = {
   GatewayPamSessionKey: (gatewayId: string) => pgAdvisoryLockHashText(`gateway-pam-session-key:${gatewayId}`),
   IdentityLogin: (identityId: string, nonce: string) => pgAdvisoryLockHashText(`identity-login:${identityId}:${nonce}`),
   PamResourceSshCaInit: (resourceId: string) => pgAdvisoryLockHashText(`pam-resource-ssh-ca-init:${resourceId}`),
-  CreateIdentity: (orgId: string) => pgAdvisoryLockHashText(`create-identity:${orgId}`)
+  CreateIdentity: (orgId: string) => pgAdvisoryLockHashText(`create-identity:${orgId}`),
+  AccessSharedSecret: (sharedSecretId: string) => pgAdvisoryLockHashText(`access-shared-secret:${sharedSecretId}`)
 } as const;
 
 // all the key prefixes used must be set here to avoid conflict

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { THCVaultConnection } from "@app/services/app-connection/hc-vault";
+import { KvVersion } from "@app/services/external-migration/external-migration-types";
 
 import { CreateHCVaultSyncSchema, HCVaultSyncListItemSchema, HCVaultSyncSchema } from "./hc-vault-sync-schemas";
 
@@ -27,6 +28,7 @@ export type THCVaultListVariables = {
   instanceUrl: string;
   namespace?: string;
   mount: string;
+  mountVersion: KvVersion;
   path: string;
 };
 

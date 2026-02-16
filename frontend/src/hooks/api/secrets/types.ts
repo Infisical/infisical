@@ -48,6 +48,7 @@ export type SecretV3RawSanitized = {
   pendingAction?: PendingAction;
   reminder?: Reminder;
   isEmpty?: boolean;
+  isOverrideEmpty?: boolean;
 };
 
 export type SecretV3Raw = {
@@ -111,6 +112,14 @@ export type SecretVersions = {
     membershipId?: string | null;
     groupId?: string | null;
   } | null;
+  isRedacted: boolean;
+  redactedByActor: {
+    username: string | null;
+    email: string | null;
+    projectMembershipId: string | null;
+  } | null;
+  redactedAt: string | null;
+  redactedByUserId: string | null;
 };
 
 // dto

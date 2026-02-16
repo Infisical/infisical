@@ -6,6 +6,7 @@ import {
   PamResourceType,
   PamSessionStatus
 } from "../enums";
+import { TActiveDirectoryAccount, TActiveDirectoryResource } from "./active-directory-resource";
 import { TAwsIamAccount, TAwsIamResource } from "./aws-iam-resource";
 import { TKubernetesAccount, TKubernetesResource } from "./kubernetes-resource";
 import { TMySQLAccount, TMySQLResource } from "./mysql-resource";
@@ -14,6 +15,7 @@ import { TRedisAccount, TRedisResource } from "./redis-resource";
 import { TSSHAccount, TSSHResource } from "./ssh-resource";
 import { TWindowsAccount, TWindowsResource } from "./windows-server-resource";
 
+export * from "./active-directory-resource";
 export * from "./aws-iam-resource";
 export * from "./kubernetes-resource";
 export * from "./mysql-resource";
@@ -29,7 +31,8 @@ export type TPamResource =
   | TSSHResource
   | TAwsIamResource
   | TKubernetesResource
-  | TWindowsResource;
+  | TWindowsResource
+  | TActiveDirectoryResource;
 
 export type TPamAccount =
   | TPostgresAccount
@@ -38,7 +41,8 @@ export type TPamAccount =
   | TSSHAccount
   | TAwsIamAccount
   | TKubernetesAccount
-  | TWindowsAccount;
+  | TWindowsAccount
+  | TActiveDirectoryAccount;
 
 export type TPamFolder = {
   id: string;
@@ -122,13 +126,16 @@ export type TListPamResourcesDTO = {
 export type TCreatePamResourceDTO = Pick<
   TPamResource,
   "name" | "connectionDetails" | "resourceType" | "gatewayId" | "projectId"
->;
+> & {
+  adServerResourceId?: string | null;
+};
 
 export type TUpdatePamResourceDTO = Partial<
   Pick<TPamResource, "name" | "connectionDetails" | "gatewayId">
 > & {
   resourceId: string;
   resourceType: PamResourceType;
+  adServerResourceId?: string | null;
 };
 
 export type TDeletePamResourceDTO = {

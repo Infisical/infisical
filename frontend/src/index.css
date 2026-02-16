@@ -65,6 +65,7 @@
   --color-dynamic-secret: #a6702b;
   --color-import: #457d91;
   --color-secret-rotation: #4c6081;
+  --color-override: #694c81;
 
   /*legacy color schema */
   --color-org-v1: #30b3ff;

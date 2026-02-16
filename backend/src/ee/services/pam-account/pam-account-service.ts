@@ -661,6 +661,10 @@ export const pamAccountServiceFactory = ({
       kmsService
     );
 
+    // Disable access to Active Directory
+    if (resourceType === PamResource.ActiveDirectory)
+      throw new BadRequestError({ message: `Active Directory resources cannot be accessed` });
+
     // Temporarily disable access to Windows Server
     if (resourceType === PamResource.Windows)
       throw new BadRequestError({ message: `Windows resources cannot be accessed at this time` });

@@ -151,6 +151,7 @@ export enum EventType {
   MOVE_SECRETS = "move-secrets",
   DELETE_SECRET = "delete-secret",
   DELETE_SECRETS = "delete-secrets",
+  REDACT_SECRET_VERSION_VALUE = "redact-secret-version-value",
   GET_PROJECT_KEY = "get-project-key",
   AUTHORIZE_INTEGRATION = "authorize-integration",
   UPDATE_INTEGRATION_AUTH = "update-integration-auth",
@@ -638,7 +639,19 @@ export enum EventType {
   DELETE_DYNAMIC_SECRET_LEASE = "delete-dynamic-secret-lease",
   RENEW_DYNAMIC_SECRET_LEASE = "renew-dynamic-secret-lease",
   LIST_DYNAMIC_SECRET_LEASES = "list-dynamic-secret-leases",
-  GET_DYNAMIC_SECRET_LEASE = "get-dynamic-secret-lease"
+  GET_DYNAMIC_SECRET_LEASE = "get-dynamic-secret-lease",
+
+  // PKI Discovery
+  CREATE_PKI_DISCOVERY = "create-pki-discovery",
+  UPDATE_PKI_DISCOVERY = "update-pki-discovery",
+  DELETE_PKI_DISCOVERY = "delete-pki-discovery",
+  GET_PKI_DISCOVERY = "get-pki-discovery",
+  GET_PKI_DISCOVERIES = "get-pki-discoveries",
+  TRIGGER_PKI_DISCOVERY_SCAN = "trigger-pki-discovery-scan",
+  GET_PKI_INSTALLATION = "get-pki-installation",
+  GET_PKI_INSTALLATIONS = "get-pki-installations",
+  UPDATE_PKI_INSTALLATION = "update-pki-installation",
+  DELETE_PKI_INSTALLATION = "delete-pki-installation"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -881,6 +894,18 @@ interface DeleteSecretBatchEvent {
     environment: string;
     secretPath: string;
     secrets: Array<{ secretId: string; secretKey: string; secretVersion: number }>;
+  };
+}
+
+interface RedactSecretVersionValueEvent {
+  type: EventType.REDACT_SECRET_VERSION_VALUE;
+  metadata: {
+    environment: string;
+    secretPath: string;
+    secretId: string;
+    secretKey: string;
+    secretVersionId: string;
+    secretVersion: number;
   };
 }
 
@@ -3505,6 +3530,85 @@ interface PkiSyncClearDefaultCertificateEvent {
   };
 }
 
+interface CreatePkiDiscoveryEvent {
+  type: EventType.CREATE_PKI_DISCOVERY;
+  metadata: {
+    discoveryId: string;
+    name: string;
+  };
+}
+
+interface UpdatePkiDiscoveryEvent {
+  type: EventType.UPDATE_PKI_DISCOVERY;
+  metadata: {
+    discoveryId: string;
+    name: string;
+  };
+}
+
+interface DeletePkiDiscoveryEvent {
+  type: EventType.DELETE_PKI_DISCOVERY;
+  metadata: {
+    discoveryId: string;
+    name: string;
+  };
+}
+
+interface GetPkiDiscoveryEvent {
+  type: EventType.GET_PKI_DISCOVERY;
+  metadata: {
+    discoveryId: string;
+    name: string;
+  };
+}
+
+interface GetPkiDiscoveriesEvent {
+  type: EventType.GET_PKI_DISCOVERIES;
+  metadata: {
+    count: number;
+  };
+}
+
+interface TriggerPkiDiscoveryScanEvent {
+  type: EventType.TRIGGER_PKI_DISCOVERY_SCAN;
+  metadata: {
+    discoveryId: string;
+    name: string;
+  };
+}
+
+interface GetPkiInstallationEvent {
+  type: EventType.GET_PKI_INSTALLATION;
+  metadata: {
+    installationId: string;
+    name?: string;
+  };
+}
+
+interface GetPkiInstallationsEvent {
+  type: EventType.GET_PKI_INSTALLATIONS;
+  metadata: {
+    count: number;
+  };
+}
+
+interface UpdatePkiInstallationEvent {
+  type: EventType.UPDATE_PKI_INSTALLATION;
+  metadata: {
+    installationId: string;
+    name?: string;
+    type?: string;
+  };
+}
+
+interface DeletePkiInstallationEvent {
+  type: EventType.DELETE_PKI_INSTALLATION;
+  metadata: {
+    installationId: string;
+    name: string | null;
+  };
+}
+
 interface OidcGroupMembershipMappingAssignUserEvent {
   type: EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER;
   metadata: {
@@ -4975,6 +5079,7 @@ export type Event =
   | MoveSecretsEvent
   | DeleteSecretEvent
   | DeleteSecretBatchEvent
+  | RedactSecretVersionValueEvent
   | GetProjectKeyEvent
   | AuthorizeIntegrationEvent
   | UpdateIntegrationAuthEvent
@@ -5248,6 +5353,16 @@ export type Event =
   | PkiSyncRemoveCertificatesEvent
   | PkiSyncSetDefaultCertificateEvent
   | PkiSyncClearDefaultCertificateEvent
+  | CreatePkiDiscoveryEvent
+  | UpdatePkiDiscoveryEvent
+  | DeletePkiDiscoveryEvent
+  | GetPkiDiscoveryEvent
+  | GetPkiDiscoveriesEvent
+  | TriggerPkiDiscoveryScanEvent
+  | GetPkiInstallationEvent
+  | GetPkiInstallationsEvent
+  | UpdatePkiInstallationEvent
+  | DeletePkiInstallationEvent
   | OidcGroupMembershipMappingAssignUserEvent
   | OidcGroupMembershipMappingRemoveUserEvent
   | CreateKmipClientEvent

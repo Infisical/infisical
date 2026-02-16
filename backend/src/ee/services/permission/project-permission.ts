@@ -163,6 +163,20 @@ export enum ProjectPermissionPkiSyncActions {
   RemoveCertificates = "remove-certificates"
 }
 
+export enum ProjectPermissionPkiDiscoveryActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  RunScan = "run-scan"
+}
+
+export enum ProjectPermissionPkiCertificateInstallationActions {
+  Read = "read",
+  Edit = "edit",
+  Delete = "delete"
+}
+
 export enum ProjectPermissionSecretRotationActions {
   Read = "read",
   ReadGeneratedCredentials = "read-generated-credentials",
@@ -295,6 +309,8 @@ export enum ProjectPermissionSub {
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
   PkiSyncs = "pki-syncs",
+  PkiDiscovery = "pki-discovery",
+  PkiCertificateInstallations = "pki-certificate-installations",
   Kmip = "kmip",
   SecretScanningDataSources = "secret-scanning-data-sources",
   SecretScanningFindings = "secret-scanning-findings",
@@ -442,6 +458,8 @@ export type ProjectPermissionSet =
       ProjectPermissionPkiSyncActions,
       ProjectPermissionSub.PkiSyncs | (ForcedSubject<ProjectPermissionSub.PkiSyncs> & PkiSyncSubjectFields)
     ]
+  | [ProjectPermissionPkiDiscoveryActions, ProjectPermissionSub.PkiDiscovery]
+  | [ProjectPermissionPkiCertificateInstallationActions, ProjectPermissionSub.PkiCertificateInstallations]
   | [
       ProjectPermissionActions,
       (
@@ -1124,6 +1142,20 @@ const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.PkiCollections).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.PkiDiscovery).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionPkiDiscoveryActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z
+      .literal(ProjectPermissionSub.PkiCertificateInstallations)
+      .describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionPkiCertificateInstallationActions).describe(
       "Describe what action an entity can take."
     )
   }),

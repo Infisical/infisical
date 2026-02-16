@@ -32,7 +32,8 @@ export enum PkiAlertEventType {
 export enum PkiAlertChannelType {
   EMAIL = "email",
   WEBHOOK = "webhook",
-  SLACK = "slack"
+  SLACK = "slack",
+  PAGERDUTY = "pagerduty"
 }
 
 export enum PkiFilterOperator {
@@ -155,10 +156,21 @@ export const SlackChannelConfigSchema = z.object({
     }, "Slack webhook URL must be from hooks.slack.com")
 });
 
+export const pagerDutyIntegrationKeyRegex = new RE2("^[a-f0-9]{32}$", "i");
+
+export const PagerDutyChannelConfigSchema = z.object({
+  integrationKey: z
+    .string()
+    .refine((val) => pagerDutyIntegrationKeyRegex.test(val), "Integration key must be a 32-character hex string")
+});
+
+export type TPagerDutyChannelConfig = z.infer<typeof PagerDutyChannelConfigSchema>;
+
 export const ChannelConfigSchema = z.union([
   EmailChannelConfigSchema,
   WebhookChannelConfigSchema,
-  SlackChannelConfigSchema
+  SlackChannelConfigSchema,
+  PagerDutyChannelConfigSchema
 ]);
 
 export type TEmailChannelConfig = z.infer<typeof EmailChannelConfigSchema>;
@@ -250,7 +262,11 @@ export type TCertificatePreview = {
 };
 
 // Channel config type for responses (webhook has hasSigningSecret instead of signingSecret)
-export type TChannelConfigResponse = TEmailChannelConfig | TWebhookChannelConfigResponse | TSlackChannelConfig;
+export type TChannelConfigResponse =
+  | TEmailChannelConfig
+  | TWebhookChannelConfigResponse
+  | TSlackChannelConfig
+  | TPagerDutyChannelConfig;
 
 export type TLastRun = {
   timestamp: Date;
@@ -327,5 +343,40 @@ export type TSlackPayload = {
 export type TBuildSlackPayloadParams = {
   alert: TAlertInfo;
   certificates: TCertificatePreview[];
+  appUrl?: string;
+};
+
+export type TPagerDutyPayload = {
+  routing_key: string;
+  event_action: "trigger";
+  dedup_key: string;
+  payload: {
+    summary: string;
+    severity: "critical" | "error" | "warning" | "info";
+    source: string;
+    timestamp: string;
+    component: string;
+    group: string;
+    class: string;
+    custom_details: {
+      alert_name: string;
+      alert_before: string;
+      total_certificates: number;
+      certificates: Array<{
+        common_name: string;
+        serial_number: string;
+        expires_at: string;
+        days_until_expiry: number;
+      }>;
+      view_url: string;
+    };
+  };
+  links: Array<{ href: string; text: string }>;
+};
+
+export type TBuildPagerDutyPayloadParams = {
+  alert: TAlertInfo;
+  certificates: TCertificatePreview[];
+  integrationKey: string;
   appUrl?: string;
 };

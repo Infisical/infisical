@@ -9,6 +9,8 @@ import {
   EditIcon,
   EllipsisIcon,
   EyeOffIcon,
+  ForwardIcon,
+  GitBranchIcon,
   HistoryIcon,
   MessageSquareIcon,
   SaveIcon,
@@ -25,7 +27,7 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { SecretReferenceTree } from "@app/components/secrets/SecretReferenceDetails";
-import { DeleteActionModal, Modal, ModalContent, ModalTrigger } from "@app/components/v2";
+import { DeleteActionModal, Modal, ModalContent } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   Badge,
@@ -61,6 +63,7 @@ import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
 import { Reminder } from "@app/hooks/api/reminders/types";
 import { ProjectEnv, SecretType, SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
+import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
@@ -88,7 +91,7 @@ type Props = {
   environmentName: string;
   secretValueHidden: boolean;
   secretPath: string;
-  onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
+  onSecretCreate: (env: string, key: string, value: string, type?: SecretType) => Promise<void>;
   onSecretUpdate: (
     env: string,
     key: string,
@@ -97,7 +100,8 @@ type Props = {
     type?: SecretType,
     secretId?: string
   ) => Promise<void>;
-  onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
+  onSecretDelete: (env: string, key: string, secretId?: string, type?: SecretType) => Promise<void>;
+  onAddOverride?: () => void;
   isRotatedSecret?: boolean;
   isEmpty?: boolean;
   importedSecret?:
@@ -129,6 +133,7 @@ export const SecretEditTableRow = ({
   secretValueHidden,
   onSecretCreate,
   onSecretDelete,
+  onAddOverride,
   environment,
   secretPath,
   isVisible,
@@ -147,7 +152,8 @@ export const SecretEditTableRow = ({
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
-    "accessInsightsUpgrade"
+    "accessInsightsUpgrade",
+    "createSharedSecret"
   ] as const);
 
   const { currentProject } = useProject();
@@ -155,7 +161,7 @@ export const SecretEditTableRow = ({
 
   const [isFieldFocused, setIsFieldFocused] = useToggle();
 
-  const fetchSecretValueParams =
+  const fetchSharedValueParams =
     importedSecret && !isSecretPresent
       ? {
           environment: importedSecret.environment,
@@ -167,23 +173,21 @@ export const SecretEditTableRow = ({
           environment,
           secretPath,
           secretKey: secretName,
-          projectId: currentProject.id,
-          isOverride
+          projectId: currentProject.id
         };
 
-  // scott: only fetch value if secret exists, has non-empty value and user has permission
-  const canFetchValue = Boolean(importedSecret ?? secretId) && !isEmpty && !secretValueHidden;
+  const canFetchSharedValue = Boolean(importedSecret ?? secretId) && !isEmpty && !secretValueHidden;
 
   const {
-    data: secretValueData,
-    isPending: isPendingSecretValueData,
-    isError: isErrorFetchingSecretValue,
-    refetch: refetchSecretValue
-  } = useGetSecretValue(fetchSecretValueParams, {
-    enabled: canFetchValue && (isVisible || isFieldFocused)
+    data: sharedValueData,
+    isPending: isPendingSharedValue,
+    isError: isErrorFetchingSharedValue,
+    refetch: refetchSharedValue
+  } = useGetSecretValue(fetchSharedValueParams, {
+    enabled: canFetchSharedValue && (isVisible || isFieldFocused)
   });
 
-  const isFetchingSecretValue = canFetchValue && isPendingSecretValueData;
+  const isFetchingSharedValue = canFetchSharedValue && isPendingSharedValue;
 
   const {
     handleSubmit,
@@ -194,15 +198,15 @@ export const SecretEditTableRow = ({
     formState: { isDirty, isSubmitting }
   } = useForm({
     defaultValues: {
-      value: secretValueData?.valueOverride ?? secretValueData?.value ?? (defaultValue || null)
+      value: isEmpty ? defaultValue || null : (sharedValueData?.value ?? (defaultValue || null))
     }
   });
 
   useEffect(() => {
-    if (secretValueData && !isDirty) {
-      setValue("value", secretValueData.valueOverride ?? secretValueData.value);
+    if (sharedValueData && !isDirty && !isEmpty) {
+      setValue("value", sharedValueData.value ?? null);
     }
-  }, [secretValueData]);
+  }, [sharedValueData]);
 
   const { permission } = useProjectPermission();
   const { mutateAsync: updateSecretV3, isPending: isUpdatingMultiline } = useUpdateSecretV3();
@@ -216,20 +220,20 @@ export const SecretEditTableRow = ({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
   const [isAccessInsightsOpen, setIsAccessInsightsOpen] = useState(false);
+  const [isSecretReferenceOpen, setIsSecretReferenceOpen] = useState(false);
 
   const toggleModal = useCallback(() => {
     setIsModalOpen((prev) => !prev);
   }, []);
 
   const handleFormReset = () => {
-    reset();
+    reset({ value: sharedValueData?.value ?? (defaultValue || null) });
   };
 
-  const handleCopySecretToClipboard = async () => {
+  const handleCopySharedToClipboard = async () => {
     try {
-      const { data } = await refetchSecretValue();
-
-      await window.navigator.clipboard.writeText(data?.valueOverride ?? data?.value ?? "");
+      const { data } = await refetchSharedValue();
+      await window.navigator.clipboard.writeText(data?.value ?? "");
       createNotification({ type: "success", text: "Copied secret to clipboard" });
     } catch (e) {
       console.error(e);
@@ -247,7 +251,7 @@ export const SecretEditTableRow = ({
         projectId: currentProject.id,
         secretPath,
         secretKey: secretName,
-        type: isOverride ? SecretType.Personal : SecretType.Shared,
+        type: SecretType.Shared,
         skipMultilineEncoding: !skipMultilineEncoding
       });
 
@@ -295,12 +299,12 @@ export const SecretEditTableRow = ({
           secretName,
           value,
           secretValueHidden,
-          isOverride ? SecretType.Personal : SecretType.Shared,
+          SecretType.Shared,
           secretId
         );
       }
     }
-    if (secretValueHidden && !isOverride) {
+    if (secretValueHidden) {
       setTimeout(() => {
         reset({ value: defaultValue || null });
       }, 50);
@@ -315,7 +319,7 @@ export const SecretEditTableRow = ({
       secretName,
       secretValue,
       secretValueHidden,
-      isOverride ? SecretType.Personal : SecretType.Shared,
+      SecretType.Shared,
       secretId
     );
     reset({ value: secretValue });
@@ -362,16 +366,32 @@ export const SecretEditTableRow = ({
 
   const isReadOnly =
     isImportedSecret ||
-    (isRotatedSecret && !isOverride) ||
-    isFetchingSecretValue ||
-    isErrorFetchingSecretValue ||
+    isRotatedSecret ||
+    isFetchingSharedValue ||
+    isErrorFetchingSharedValue ||
     (isCreatable ? !canCreate : !canEditSecretValue);
 
   const shouldStayExpanded =
     isCommentOpen || isTagOpen || isMetadataOpen || isReminderOpen || isDropdownOpen;
 
+  const getTooltipContentForSecretSharing = () => {
+    if (!currentProject.secretSharing) {
+      return "Secret Sharing Disabled";
+    }
+
+    if (secretValueHidden) {
+      return "Access Denied";
+    }
+
+    if (isCreatable && !importedSecret) {
+      return "Create Secret to Share";
+    }
+
+    return "Share Secret";
+  };
+
   return (
-    <div className="flex w-full cursor-text items-center space-x-2 py-1.5">
+    <div className="flex w-full flex-col gap-y-2 py-1.5">
       <DeleteActionModal
         isOpen={isModalOpen}
         onClose={toggleModal}
@@ -379,369 +399,352 @@ export const SecretEditTableRow = ({
         deleteKey={secretName}
         onDeleteApproved={handleDeleteSecret}
       />
-      {secretValueHidden && !isOverride && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <EyeOffIcon className="size-4 text-secret" />
-          </TooltipTrigger>
-          <TooltipContent>
-            You do not have access to view the current value
-            {canEditSecretValue && !isRotatedSecret ? ", but you can set a new one" : "."}
-          </TooltipContent>
-        </Tooltip>
-      )}
-      <div className="grow pr-2 pl-1">
-        <Controller
-          control={control}
-          name="value"
-          render={({ field }) => (
-            <InfisicalSecretInput
-              {...field}
-              isReadOnly={isReadOnly}
-              value={
-                (secretValueHidden && !isOverride) || isFetchingSecretValue
-                  ? HIDDEN_SECRET_VALUE
-                  : isErrorFetchingSecretValue
-                    ? "Error fetching secret value..."
-                    : (field.value as string)
-              }
-              key="secret-input"
-              isVisible={isVisible && !secretValueHidden}
-              secretPath={secretPath}
-              environment={environment}
-              isImport={isImportedSecret}
-              defaultValue={secretValueHidden ? "" : undefined}
-              canEditButNotView={secretValueHidden && !isOverride}
-              onFocus={() => setIsFieldFocused.on()}
-              onBlur={() => {
-                field.onBlur();
-                setIsFieldFocused.off();
-              }}
-            />
-          )}
-        />
-      </div>
-      <div className="flex w-fit items-start justify-end space-x-2 self-start pl-2 transition-all">
-        {isDirty && !isImportedSecret ? (
-          <>
-            <ProjectPermissionCan
-              I={isCreatable ? ProjectPermissionActions.Create : ProjectPermissionActions.Edit}
-              a={subject(ProjectPermissionSub.Secrets, {
-                environment,
-                secretPath,
-                secretName,
-                secretTags: ["*"]
-              })}
-            >
-              {(isAllowed) => (
-                <div>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <UnstableIconButton
-                        size="xs"
-                        variant="success"
-                        isDisabled={isSubmitting || !isAllowed}
-                        onClick={handleSubmit(handleFormSubmit)}
-                      >
-                        <SaveIcon />
-                      </UnstableIconButton>
-                    </TooltipTrigger>
-                    <TooltipContent>Save changes</TooltipContent>
-                  </Tooltip>
-                </div>
-              )}
-            </ProjectPermissionCan>
-            <div>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <UnstableIconButton
-                    variant="danger"
-                    size="xs"
-                    onClick={handleFormReset}
-                    isDisabled={isSubmitting}
-                  >
-                    <Undo2Icon />
-                  </UnstableIconButton>
-                </TooltipTrigger>
-                <TooltipContent>Undo changes</TooltipContent>
-              </Tooltip>
-            </div>
-          </>
-        ) : (
-          <div
-            className={twMerge(
-              "flex items-center transition-all duration-500 group-hover:space-x-1.5",
-              shouldStayExpanded && "space-x-1.5"
+
+      <div className="flex w-full cursor-text items-center space-x-2">
+        {secretValueHidden && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <EyeOffIcon className="size-4 text-secret" />
+            </TooltipTrigger>
+            <TooltipContent>
+              You do not have access to view the current value
+              {canEditSecretValue && !isRotatedSecret ? ", but you can set a new one" : "."}
+            </TooltipContent>
+          </Tooltip>
+        )}
+        <div className="grow pr-2 pl-1">
+          <Controller
+            control={control}
+            name="value"
+            render={({ field }) => (
+              <InfisicalSecretInput
+                {...field}
+                isReadOnly={isReadOnly}
+                value={
+                  secretValueHidden || isFetchingSharedValue
+                    ? HIDDEN_SECRET_VALUE
+                    : isErrorFetchingSharedValue
+                      ? "Error fetching secret value..."
+                      : (field.value as string)
+                }
+                key="secret-input-shared"
+                isVisible={isVisible && !secretValueHidden}
+                secretPath={secretPath}
+                environment={environment}
+                isImport={isImportedSecret}
+                defaultValue={secretValueHidden ? "" : undefined}
+                canEditButNotView={secretValueHidden}
+                onFocus={() => setIsFieldFocused.on()}
+                onBlur={() => {
+                  field.onBlur();
+                  setIsFieldFocused.off();
+                }}
+              />
             )}
-          >
-            <Tooltip delayDuration={300} disableHoverableContent>
-              <TooltipTrigger>
-                <UnstableIconButton
-                  isDisabled={
-                    isImportedSecret ||
-                    (isRotatedSecret && !isOverride) ||
-                    (isCreatable ? !canCreate : !canEditSecretValue)
-                  }
-                  onClick={() => {
-                    setFocus("value", { shouldSelect: true });
-                  }}
-                  variant="ghost"
-                  size="xs"
-                  className={twMerge(
-                    "w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100",
-                    shouldStayExpanded && "w-7 opacity-100"
-                  )}
-                >
-                  <EditIcon />
-                </UnstableIconButton>
-              </TooltipTrigger>
-              <TooltipContent>
-                {isImportedSecret
-                  ? "Cannot Edit Imported Secret"
-                  : isRotatedSecret && !isOverride
-                    ? "Cannot Edit Rotated Secret"
-                    : (isCreatable ? !canCreate : !canEditSecretValue)
-                      ? "Access Denied"
-                      : `${isCreatable ? "Add" : "Edit"} Value`}
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip delayDuration={300} disableHoverableContent>
-              <TooltipTrigger>
-                <UnstableIconButton
-                  isDisabled={!canFetchValue}
-                  onClick={handleCopySecretToClipboard}
-                  variant="ghost"
-                  size="xs"
-                  className={twMerge(
-                    "w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100",
-                    shouldStayExpanded && "w-7 opacity-100"
-                  )}
-                >
-                  <CopyIcon />
-                </UnstableIconButton>
-              </TooltipTrigger>
-              <TooltipContent>
-                {canFetchValue
-                  ? "Copy Secret"
-                  : canReadSecretValue
-                    ? "No Secret Value"
-                    : "Access Denied"}
-              </TooltipContent>
-            </Tooltip>
-            <Popover open={isCommentOpen} onOpenChange={setIsCommentOpen}>
+          />
+        </div>
+        <div className="flex w-fit items-start justify-end space-x-2 self-start pl-2 transition-all">
+          {isDirty && !isImportedSecret ? (
+            <>
+              <ProjectPermissionCan
+                I={isCreatable ? ProjectPermissionActions.Create : ProjectPermissionActions.Edit}
+                a={subject(ProjectPermissionSub.Secrets, {
+                  environment,
+                  secretPath,
+                  secretName,
+                  secretTags: ["*"]
+                })}
+              >
+                {(isAllowed) => (
+                  <div>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <UnstableIconButton
+                          size="xs"
+                          variant="success"
+                          isDisabled={isSubmitting || !isAllowed}
+                          onClick={handleSubmit(handleFormSubmit)}
+                        >
+                          <SaveIcon />
+                        </UnstableIconButton>
+                      </TooltipTrigger>
+                      <TooltipContent>Save changes</TooltipContent>
+                    </Tooltip>
+                  </div>
+                )}
+              </ProjectPermissionCan>
+              <div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <UnstableIconButton
+                      variant="danger"
+                      size="xs"
+                      onClick={handleFormReset}
+                      isDisabled={isSubmitting}
+                    >
+                      <Undo2Icon />
+                    </UnstableIconButton>
+                  </TooltipTrigger>
+                  <TooltipContent>Undo changes</TooltipContent>
+                </Tooltip>
+              </div>
+            </>
+          ) : (
+            <div
+              className={twMerge(
+                "flex items-center transition-all duration-500 group-hover:space-x-1.5",
+                shouldStayExpanded && "space-x-1.5"
+              )}
+            >
               <Tooltip delayDuration={300} disableHoverableContent>
                 <TooltipTrigger>
-                  <PopoverTrigger asChild>
-                    <UnstableIconButton
-                      variant="ghost"
-                      size="xs"
-                      isDisabled={isCreatable || isImportedSecret || isOverride}
-                      className={twMerge(
-                        comment && !isOverride && !isImportedSecret
-                          ? "w-7 text-project opacity-100"
-                          : "w-0 opacity-0",
-                        "overflow-hidden border-0 group-hover:w-7 group-hover:opacity-100",
-                        shouldStayExpanded && "w-7 opacity-100"
-                      )}
-                    >
-                      <MessageSquareIcon />
-                    </UnstableIconButton>
-                  </PopoverTrigger>
+                  <UnstableIconButton
+                    isDisabled={
+                      isImportedSecret ||
+                      isRotatedSecret ||
+                      (isCreatable ? !canCreate : !canEditSecretValue)
+                    }
+                    onClick={() => {
+                      setFocus("value", { shouldSelect: true });
+                    }}
+                    variant="ghost"
+                    size="xs"
+                    className={twMerge(
+                      "w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100",
+                      shouldStayExpanded && "w-7 opacity-100"
+                    )}
+                  >
+                    <EditIcon />
+                  </UnstableIconButton>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {isOverride
-                    ? "Cannot Comment on Personal Overrides"
-                    : isImportedSecret
+                  {isImportedSecret
+                    ? "Cannot Edit Imported Secret"
+                    : isRotatedSecret
+                      ? "Cannot Edit Rotated Secret"
+                      : (isCreatable ? !canCreate : !canEditSecretValue)
+                        ? "Access Denied"
+                        : `${isCreatable ? "Add" : "Edit"} Value`}
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip delayDuration={300} disableHoverableContent>
+                <TooltipTrigger>
+                  <UnstableIconButton
+                    isDisabled={!canFetchSharedValue}
+                    onClick={handleCopySharedToClipboard}
+                    variant="ghost"
+                    size="xs"
+                    className={twMerge(
+                      "w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100",
+                      shouldStayExpanded && "w-7 opacity-100"
+                    )}
+                  >
+                    <CopyIcon />
+                  </UnstableIconButton>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {canFetchSharedValue
+                    ? "Copy Secret"
+                    : canReadSecretValue
+                      ? "No Secret Value"
+                      : "Access Denied"}
+                </TooltipContent>
+              </Tooltip>
+              <Popover open={isCommentOpen} onOpenChange={setIsCommentOpen}>
+                <Tooltip delayDuration={300} disableHoverableContent>
+                  <TooltipTrigger>
+                    <PopoverTrigger asChild>
+                      <UnstableIconButton
+                        variant="ghost"
+                        size="xs"
+                        isDisabled={isCreatable || isImportedSecret}
+                        className={twMerge(
+                          comment && !isImportedSecret
+                            ? "w-7 text-project opacity-100"
+                            : "w-0 opacity-0",
+                          "overflow-hidden border-0 group-hover:w-7 group-hover:opacity-100",
+                          shouldStayExpanded && "w-7 opacity-100"
+                        )}
+                      >
+                        <MessageSquareIcon />
+                      </UnstableIconButton>
+                    </PopoverTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isImportedSecret
                       ? "Cannot Add Comment to Imported Secret"
                       : isCreatable
                         ? "Create Secret to Add Comment"
                         : `${comment ? "View" : "Add"} Comment`}
-                </TooltipContent>
-              </Tooltip>
-              <PopoverContent
-                // prevents tooltip from displaying on close
-                onCloseAutoFocus={(e) => e.preventDefault()}
-                className="w-80"
-                align="end"
-              >
-                <SecretCommentForm
-                  comment={comment}
-                  secretKey={secretName}
-                  secretPath={secretPath}
-                  environment={environment}
-                  isOverride={isOverride}
-                  onClose={() => setIsCommentOpen(false)}
-                />
-              </PopoverContent>
-            </Popover>
-            <Popover modal open={isTagOpen} onOpenChange={setIsTagOpen}>
-              <Tooltip delayDuration={300} disableHoverableContent>
-                <TooltipTrigger>
-                  <PopoverTrigger asChild>
-                    <UnstableIconButton
-                      variant="ghost"
-                      size="xs"
-                      isDisabled={isCreatable || isImportedSecret || isOverride || !canReadTags}
-                      className={twMerge(
-                        canReadTags && tags?.length && !isImportedSecret && !isOverride
-                          ? "w-7 text-project opacity-100"
-                          : "w-0 opacity-0",
-                        "overflow-hidden border-0 group-hover:w-7 group-hover:opacity-100",
-                        shouldStayExpanded && "w-7 opacity-100"
-                      )}
-                    >
-                      <TagsIcon />
-                    </UnstableIconButton>
-                  </PopoverTrigger>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {!canReadTags
-                    ? "Access Denied"
-                    : isOverride
-                      ? "Cannot Add Tags to Personal Overrides"
+                  </TooltipContent>
+                </Tooltip>
+                <PopoverContent
+                  onCloseAutoFocus={(e) => e.preventDefault()}
+                  className="w-80"
+                  align="end"
+                >
+                  <SecretCommentForm
+                    comment={comment}
+                    secretKey={secretName}
+                    secretPath={secretPath}
+                    environment={environment}
+                    onClose={() => setIsCommentOpen(false)}
+                  />
+                </PopoverContent>
+              </Popover>
+              <Popover modal open={isTagOpen} onOpenChange={setIsTagOpen}>
+                <Tooltip delayDuration={300} disableHoverableContent>
+                  <TooltipTrigger>
+                    <PopoverTrigger asChild>
+                      <UnstableIconButton
+                        variant="ghost"
+                        size="xs"
+                        isDisabled={isCreatable || isImportedSecret || !canReadTags}
+                        className={twMerge(
+                          canReadTags && tags?.length && !isImportedSecret
+                            ? "w-7 text-project opacity-100"
+                            : "w-0 opacity-0",
+                          "overflow-hidden border-0 group-hover:w-7 group-hover:opacity-100",
+                          shouldStayExpanded && "w-7 opacity-100"
+                        )}
+                      >
+                        <TagsIcon />
+                      </UnstableIconButton>
+                    </PopoverTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {!canReadTags
+                      ? "Access Denied"
                       : isImportedSecret
                         ? "Cannot Add Tags to Imported Secret"
                         : isCreatable
                           ? "Create Secret to Add Tags"
                           : `${tags?.length ? "View" : "Add"} Tags`}
-                </TooltipContent>
-              </Tooltip>
-              <PopoverContent
-                // prevents tooltip from displaying on close
-                onCloseAutoFocus={(e) => e.preventDefault()}
-                className="w-80"
-                align="end"
-              >
-                <SecretTagForm
-                  secretKey={secretName}
-                  secretPath={secretPath}
-                  environment={environment}
-                  isOverride={isOverride}
-                  tags={tags}
-                  onClose={() => setIsTagOpen(false)}
-                />
-              </PopoverContent>
-            </Popover>
-            <Popover open={isMetadataOpen} onOpenChange={setIsMetadataOpen}>
-              <Tooltip delayDuration={300} disableHoverableContent>
-                <TooltipTrigger>
-                  <PopoverTrigger asChild>
-                    <UnstableIconButton
-                      variant="ghost"
-                      size="xs"
-                      isDisabled={isCreatable || isImportedSecret || isOverride}
-                      className={twMerge(
-                        secretMetadata?.length && !isOverride && !isImportedSecret
-                          ? "w-7 text-project opacity-100"
-                          : "w-0 opacity-0",
-                        "overflow-hidden border-0 group-hover:w-7 group-hover:opacity-100",
-                        shouldStayExpanded && "w-7 opacity-100"
-                      )}
-                    >
-                      <CodeXmlIcon />
-                    </UnstableIconButton>
-                  </PopoverTrigger>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {isOverride
-                    ? "Cannot Edit Metadata on Personal Overrides"
-                    : isImportedSecret
-                      ? "Cannot Edit Metadata on Imported Secret"
-                      : isCreatable
-                        ? "Create Secret to Add Metadata"
-                        : `${secretMetadata?.length ? "View" : "Add"} Metadata`}
-                </TooltipContent>
-              </Tooltip>
-              <PopoverContent
-                onCloseAutoFocus={(e) => e.preventDefault()}
-                className="w-[500px]"
-                align="end"
-              >
-                <SecretMetadataForm
-                  secretMetadata={secretMetadata}
-                  secretKey={secretName}
-                  secretPath={secretPath}
-                  environment={environment}
-                  isOverride={isOverride}
-                  onClose={() => setIsMetadataOpen(false)}
-                />
-              </PopoverContent>
-            </Popover>
-            <Popover open={isReminderOpen} onOpenChange={setIsReminderOpen}>
-              <Tooltip delayDuration={300} disableHoverableContent>
-                <TooltipTrigger>
-                  <PopoverTrigger asChild>
-                    <UnstableIconButton
-                      variant="ghost"
-                      size="xs"
-                      isDisabled={isCreatable || isImportedSecret || isOverride || !secretId}
-                      className={twMerge(
-                        reminder && !isOverride && !isImportedSecret
-                          ? "w-7 text-project opacity-100"
-                          : "w-0 opacity-0",
-                        "overflow-hidden border-0 group-hover:w-7 group-hover:opacity-100",
-                        shouldStayExpanded && "w-7 opacity-100"
-                      )}
-                    >
-                      <BellIcon />
-                    </UnstableIconButton>
-                  </PopoverTrigger>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {isOverride
-                    ? "Cannot Set Reminder on Personal Overrides"
-                    : isImportedSecret
+                  </TooltipContent>
+                </Tooltip>
+                <PopoverContent
+                  onCloseAutoFocus={(e) => e.preventDefault()}
+                  className="w-80"
+                  align="end"
+                >
+                  <SecretTagForm
+                    secretKey={secretName}
+                    secretPath={secretPath}
+                    environment={environment}
+                    tags={tags}
+                    onClose={() => setIsTagOpen(false)}
+                  />
+                </PopoverContent>
+              </Popover>
+              <Popover open={isReminderOpen} onOpenChange={setIsReminderOpen}>
+                <Tooltip delayDuration={300} disableHoverableContent>
+                  <TooltipTrigger>
+                    <PopoverTrigger asChild>
+                      <UnstableIconButton
+                        variant="ghost"
+                        size="xs"
+                        isDisabled={isCreatable || isImportedSecret || !secretId}
+                        className={twMerge(
+                          reminder && !isImportedSecret
+                            ? "w-7 text-project opacity-100"
+                            : "w-0 opacity-0",
+                          "overflow-hidden border-0 group-hover:w-7 group-hover:opacity-100",
+                          shouldStayExpanded && "w-7 opacity-100"
+                        )}
+                      >
+                        <BellIcon />
+                      </UnstableIconButton>
+                    </PopoverTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isImportedSecret
                       ? "Cannot Set Reminder on Imported Secret"
                       : isCreatable
                         ? "Create Secret to Add Reminder"
                         : `${reminder ? "View" : "Add"} Reminder`}
-                </TooltipContent>
-              </Tooltip>
-              <PopoverContent
-                onCloseAutoFocus={(e) => e.preventDefault()}
-                className="w-[420px]"
-                side="left"
-              >
-                {secretId && (
-                  <SecretReminderForm
-                    secretId={secretId}
+                  </TooltipContent>
+                </Tooltip>
+                <PopoverContent
+                  onCloseAutoFocus={(e) => e.preventDefault()}
+                  className="w-[420px]"
+                  side="left"
+                >
+                  {secretId && (
+                    <SecretReminderForm
+                      secretId={secretId}
+                      secretKey={secretName}
+                      secretPath={secretPath}
+                      environment={environment}
+                      reminder={reminder}
+                      onClose={() => setIsReminderOpen(false)}
+                    />
+                  )}
+                </PopoverContent>
+              </Popover>
+              <Popover open={isMetadataOpen} onOpenChange={setIsMetadataOpen}>
+                <Tooltip delayDuration={300} disableHoverableContent>
+                  <TooltipTrigger>
+                    <PopoverTrigger asChild>
+                      <UnstableIconButton
+                        variant="ghost"
+                        size="xs"
+                        isDisabled={isCreatable || isImportedSecret}
+                        className={twMerge(
+                          secretMetadata?.length && !isImportedSecret
+                            ? "w-7 text-project opacity-100"
+                            : "w-0 opacity-0",
+                          "overflow-hidden border-0 group-hover:w-7 group-hover:opacity-100",
+                          shouldStayExpanded && "w-7 opacity-100"
+                        )}
+                      >
+                        <CodeXmlIcon />
+                      </UnstableIconButton>
+                    </PopoverTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isImportedSecret
+                      ? "Cannot Edit Metadata on Imported Secret"
+                      : isCreatable
+                        ? "Create Secret to Add Metadata"
+                        : `${secretMetadata?.length ? "View" : "Add"} Metadata`}
+                  </TooltipContent>
+                </Tooltip>
+                <PopoverContent
+                  onCloseAutoFocus={(e) => e.preventDefault()}
+                  className="w-[500px]"
+                  align="end"
+                >
+                  <SecretMetadataForm
+                    secretMetadata={secretMetadata}
                     secretKey={secretName}
                     secretPath={secretPath}
                     environment={environment}
-                    reminder={reminder}
-                    onClose={() => setIsReminderOpen(false)}
+                    onClose={() => setIsMetadataOpen(false)}
                   />
-                )}
-              </PopoverContent>
-            </Popover>
-            <Tooltip delayDuration={300} disableHoverableContent>
-              <TooltipTrigger>
-                <UnstableIconButton
-                  variant="ghost"
-                  size="xs"
-                  isDisabled={
-                    isCreatable ||
-                    isImportedSecret ||
-                    isOverride ||
-                    !canEditSecretValue ||
-                    isUpdatingMultiline
-                  }
-                  onClick={handleToggleMultilineEncoding}
-                  className={twMerge(
-                    skipMultilineEncoding && !isOverride && !isImportedSecret
-                      ? "w-7 text-project opacity-100"
-                      : "w-0 opacity-0",
-                    "overflow-hidden border-0 group-hover:w-7 group-hover:opacity-100",
-                    shouldStayExpanded && "w-7 opacity-100"
-                  )}
-                >
-                  <WrapTextIcon />
-                </UnstableIconButton>
-              </TooltipTrigger>
-              <TooltipContent>
-                {isOverride
-                  ? "Cannot Edit Multi-line Encoding on Personal Overrides"
-                  : isImportedSecret
+                </PopoverContent>
+              </Popover>
+              <Tooltip delayDuration={300} disableHoverableContent>
+                <TooltipTrigger>
+                  <UnstableIconButton
+                    variant="ghost"
+                    size="xs"
+                    isDisabled={
+                      isCreatable || isImportedSecret || !canEditSecretValue || isUpdatingMultiline
+                    }
+                    onClick={handleToggleMultilineEncoding}
+                    className={twMerge(
+                      skipMultilineEncoding && !isImportedSecret
+                        ? "w-7 text-project opacity-100"
+                        : "w-0 opacity-0",
+                      "overflow-hidden border-0 group-hover:w-7 group-hover:opacity-100",
+                      shouldStayExpanded && "w-7 opacity-100"
+                    )}
+                  >
+                    <WrapTextIcon />
+                  </UnstableIconButton>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isImportedSecret
                     ? "Cannot Edit Multi-line Encoding on Imported Secret"
                     : isCreatable
                       ? "Create Secret to Edit Multi-line Encoding"
@@ -750,222 +753,309 @@ export const SecretEditTableRow = ({
                         : skipMultilineEncoding
                           ? "Disable Multi-line Encoding"
                           : "Enable Multi-line Encoding"}
-              </TooltipContent>
-            </Tooltip>
-            <Modal>
+                </TooltipContent>
+              </Tooltip>
               <Tooltip delayDuration={300} disableHoverableContent>
                 <TooltipTrigger>
-                  <ModalTrigger asChild>
-                    <UnstableIconButton
-                      variant="ghost"
-                      size="xs"
-                      className={twMerge(
-                        "w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100",
-                        shouldStayExpanded && "w-7 opacity-100"
-                      )}
-                      isDisabled={!canReadSecretValue || !secretId || isEmpty}
-                    >
-                      <WorkflowIcon />
-                    </UnstableIconButton>
-                  </ModalTrigger>
-                </TooltipTrigger>
-                <TooltipContent>Secret Reference Tree</TooltipContent>
-              </Tooltip>
-              <ModalContent
-                title="Secret Reference Details"
-                subTitle="Visual breakdown of secrets referenced by this secret."
-                onOpenAutoFocus={(e) => e.preventDefault()} // prevents secret input from displaying value on open
-              >
-                <SecretReferenceTree
-                  secretPath={secretPath}
-                  environment={environment}
-                  secretKey={secretName}
-                />
-              </ModalContent>
-            </Modal>
+                  <UnstableIconButton
+                    isDisabled={
+                      secretValueHidden ||
+                      !currentProject.secretSharing ||
+                      (isCreatable && !isImportedSecret)
+                    }
+                    onClick={async () => {
+                      if (sharedValueData) {
+                        handlePopUpOpen("createSharedSecret", {
+                          value: sharedValueData.value
+                        });
+                        return;
+                      }
 
-            <UnstableDropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
-              <UnstableDropdownMenuTrigger asChild>
-                <UnstableIconButton
-                  variant="ghost"
-                  size="xs"
-                  className={twMerge(
-                    "w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100",
-                    shouldStayExpanded && "w-7 opacity-100"
-                  )}
-                >
-                  <EllipsisIcon />
-                </UnstableIconButton>
-              </UnstableDropdownMenuTrigger>
-              <UnstableDropdownMenuContent align="end">
-                <ProjectPermissionCan
-                  I={ProjectPermissionActions.Read}
-                  a={ProjectPermissionSub.Commits}
-                >
-                  {(isAllowed) => (
-                    <Tooltip
-                      open={isImportedSecret || isCreatable || !isAllowed ? undefined : false}
-                      delayDuration={300}
-                      disableHoverableContent
-                    >
-                      <TooltipTrigger className="block w-full">
-                        <UnstableDropdownMenuItem
-                          onClick={() => setIsVersionHistoryOpen(true)}
-                          isDisabled={!secretId || isCreatable || isImportedSecret || !isAllowed}
-                        >
-                          <HistoryIcon />
-                          Version History
-                        </UnstableDropdownMenuItem>
-                      </TooltipTrigger>
-                      <TooltipContent side="left">
-                        {!isAllowed
-                          ? "Access Denied"
-                          : isImportedSecret
-                            ? "Cannot View Version History for Imported Secret"
-                            : "Create Secret to View History"}
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                </ProjectPermissionCan>
-                <Tooltip
-                  open={isImportedSecret || isCreatable ? undefined : false}
-                  delayDuration={300}
-                  disableHoverableContent
-                >
-                  <TooltipTrigger className="block w-full">
-                    <UnstableDropdownMenuItem
-                      onClick={() => {
-                        if (!subscription?.secretAccessInsights) {
-                          handlePopUpOpen("accessInsightsUpgrade");
-                        } else {
-                          setIsAccessInsightsOpen(true);
+                      const { data, error } = await refetchSharedValue();
+                      if (data) {
+                        handlePopUpOpen("createSharedSecret", { value: data.value });
+                      } else {
+                        createNotification({
+                          type: "error",
+                          title: "Failed to fetch secret value",
+                          text: (error as Error)?.message ?? "Please try again later"
+                        });
+                      }
+                    }}
+                    variant="ghost"
+                    size="xs"
+                    className={twMerge(
+                      "w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100",
+                      shouldStayExpanded && "w-7 opacity-100"
+                    )}
+                  >
+                    <ForwardIcon />
+                  </UnstableIconButton>
+                </TooltipTrigger>
+                <TooltipContent>{getTooltipContentForSecretSharing()}</TooltipContent>
+              </Tooltip>
+              <UnstableDropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
+                <UnstableDropdownMenuTrigger asChild>
+                  <UnstableIconButton
+                    variant="ghost"
+                    size="xs"
+                    className={twMerge(
+                      "w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100",
+                      shouldStayExpanded && "w-7 opacity-100"
+                    )}
+                  >
+                    <EllipsisIcon />
+                  </UnstableIconButton>
+                </UnstableDropdownMenuTrigger>
+                <UnstableDropdownMenuContent align="end">
+                  <ProjectPermissionCan
+                    I={ProjectPermissionActions.Create}
+                    a={subject(ProjectPermissionSub.Secrets, {
+                      environment,
+                      secretPath,
+                      secretName,
+                      secretTags: ["*"]
+                    })}
+                  >
+                    {(isAllowed) => (
+                      <Tooltip
+                        open={
+                          isCreatable || isImportedSecret || isOverride || !isAllowed
+                            ? undefined
+                            : false
                         }
-                      }}
-                      isDisabled={!secretId || isCreatable || isImportedSecret}
-                    >
-                      <UsersIcon />
-                      Access Insights
-                    </UnstableDropdownMenuItem>
-                  </TooltipTrigger>
-                  <TooltipContent side="left">
-                    {isImportedSecret
-                      ? "Cannot View Access for Imported Secret"
-                      : "Create Secret to View Access"}
-                  </TooltipContent>
-                </Tooltip>
-                <ProjectPermissionCan
-                  I={ProjectPermissionActions.Delete}
-                  a={subject(ProjectPermissionSub.Secrets, {
-                    environment,
-                    secretPath,
-                    secretName,
-                    secretTags: ["*"]
-                  })}
-                >
-                  {(isAllowed) => (
-                    <Tooltip
-                      open={isRotatedSecret || isImportedSecret || isCreatable ? undefined : false}
-                      delayDuration={300}
-                      disableHoverableContent
-                    >
-                      <TooltipTrigger className="block w-full">
-                        <UnstableDropdownMenuItem
-                          onClick={toggleModal}
-                          isDisabled={
-                            isCreatable ||
-                            isDeleting ||
-                            !isAllowed ||
-                            isRotatedSecret ||
-                            isImportedSecret
+                        delayDuration={300}
+                        disableHoverableContent
+                      >
+                        <TooltipTrigger className="block w-full">
+                          <UnstableDropdownMenuItem
+                            onClick={() => onAddOverride?.()}
+                            isDisabled={isCreatable || isImportedSecret || isOverride || !isAllowed}
+                          >
+                            <GitBranchIcon />
+                            Add Override
+                          </UnstableDropdownMenuItem>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                          {!isAllowed
+                            ? "Access Denied"
+                            : isOverride
+                              ? "Override Already Exists"
+                              : isImportedSecret
+                                ? "Cannot Override Imported Secret"
+                                : isCreatable
+                                  ? "Create Secret First"
+                                  : "Add Personal Override"}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </ProjectPermissionCan>
+                  <Tooltip
+                    open={!canReadSecretValue || !secretId || isEmpty ? undefined : false}
+                    delayDuration={300}
+                    disableHoverableContent
+                  >
+                    <TooltipTrigger className="block w-full">
+                      <UnstableDropdownMenuItem
+                        onClick={() => setIsSecretReferenceOpen(true)}
+                        isDisabled={!canReadSecretValue || !secretId || isEmpty}
+                      >
+                        <WorkflowIcon />
+                        Secret References
+                      </UnstableDropdownMenuItem>
+                    </TooltipTrigger>
+                    <TooltipContent side="left">
+                      {!canReadSecretValue
+                        ? "Access Denied"
+                        : !secretId || isEmpty
+                          ? "Create Secret to View References"
+                          : "View Secret References"}
+                    </TooltipContent>
+                  </Tooltip>
+                  <ProjectPermissionCan
+                    I={ProjectPermissionActions.Read}
+                    a={ProjectPermissionSub.Commits}
+                  >
+                    {(isAllowed) => (
+                      <Tooltip
+                        open={isImportedSecret || isCreatable || !isAllowed ? undefined : false}
+                        delayDuration={300}
+                        disableHoverableContent
+                      >
+                        <TooltipTrigger className="block w-full">
+                          <UnstableDropdownMenuItem
+                            onClick={() => setIsVersionHistoryOpen(true)}
+                            isDisabled={!secretId || isCreatable || isImportedSecret || !isAllowed}
+                          >
+                            <HistoryIcon />
+                            Version History
+                          </UnstableDropdownMenuItem>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                          {!isAllowed
+                            ? "Access Denied"
+                            : isImportedSecret
+                              ? "Cannot View Version History for Imported Secret"
+                              : "Create Secret to View History"}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </ProjectPermissionCan>
+                  <Tooltip
+                    open={isImportedSecret || isCreatable ? undefined : false}
+                    delayDuration={300}
+                    disableHoverableContent
+                  >
+                    <TooltipTrigger className="block w-full">
+                      <UnstableDropdownMenuItem
+                        onClick={() => {
+                          if (!subscription?.secretAccessInsights) {
+                            handlePopUpOpen("accessInsightsUpgrade");
+                          } else {
+                            setIsAccessInsightsOpen(true);
                           }
-                          variant="danger"
-                        >
-                          <TrashIcon />
-                          Delete Secret
-                        </UnstableDropdownMenuItem>
-                      </TooltipTrigger>
-                      <TooltipContent side="left">
-                        {/* eslint-disable-next-line no-nested-ternary */}
-                        {isRotatedSecret
-                          ? "Cannot Delete Rotated Secret"
-                          : isImportedSecret
-                            ? "Cannot Delete Imported Secret"
-                            : isCreatable
-                              ? "No Secret to Delete"
-                              : "Delete"}
-                      </TooltipContent>
-                    </Tooltip>
+                        }}
+                        isDisabled={!secretId || isCreatable || isImportedSecret}
+                      >
+                        <UsersIcon />
+                        Access Insights
+                      </UnstableDropdownMenuItem>
+                    </TooltipTrigger>
+                    <TooltipContent side="left">
+                      {isImportedSecret
+                        ? "Cannot View Access for Imported Secret"
+                        : "Create Secret to View Access"}
+                    </TooltipContent>
+                  </Tooltip>
+                  <ProjectPermissionCan
+                    I={ProjectPermissionActions.Delete}
+                    a={subject(ProjectPermissionSub.Secrets, {
+                      environment,
+                      secretPath,
+                      secretName,
+                      secretTags: ["*"]
+                    })}
+                  >
+                    {(isAllowed) => (
+                      <Tooltip
+                        open={
+                          isRotatedSecret || isImportedSecret || isCreatable ? undefined : false
+                        }
+                        delayDuration={300}
+                        disableHoverableContent
+                      >
+                        <TooltipTrigger className="block w-full">
+                          <UnstableDropdownMenuItem
+                            onClick={toggleModal}
+                            isDisabled={
+                              isCreatable ||
+                              isDeleting ||
+                              !isAllowed ||
+                              isRotatedSecret ||
+                              isImportedSecret
+                            }
+                            variant="danger"
+                          >
+                            <TrashIcon />
+                            Delete Secret
+                          </UnstableDropdownMenuItem>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                          {isRotatedSecret
+                            ? "Cannot Delete Rotated Secret"
+                            : isImportedSecret
+                              ? "Cannot Delete Imported Secret"
+                              : isCreatable
+                                ? "No Secret to Delete"
+                                : "Delete"}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </ProjectPermissionCan>
+                </UnstableDropdownMenuContent>
+              </UnstableDropdownMenu>
+              <Modal isOpen={isSecretReferenceOpen} onOpenChange={setIsSecretReferenceOpen}>
+                <ModalContent
+                  title="Secret Reference Details"
+                  subTitle="Visual breakdown of secrets referenced by this secret."
+                  onOpenAutoFocus={(e) => e.preventDefault()}
+                >
+                  <SecretReferenceTree
+                    secretPath={secretPath}
+                    environment={environment}
+                    secretKey={secretName}
+                  />
+                </ModalContent>
+              </Modal>
+              <Sheet open={isVersionHistoryOpen} onOpenChange={setIsVersionHistoryOpen}>
+                <SheetContent
+                  onOpenAutoFocus={(e) => e.preventDefault()}
+                  className="gap-y-0"
+                  side="right"
+                >
+                  <SheetHeader>
+                    <SheetTitle>Version History</SheetTitle>
+                    <SheetDescription>Audit secret history and rollback changes</SheetDescription>
+                  </SheetHeader>
+                  <UnstableSeparator />
+                  <div className="bg-container p-4 text-foreground">
+                    <p className="truncate">{secretName}</p>
+                    <Badge variant="neutral" className="mt-0.5">
+                      {environmentName}
+                    </Badge>
+                  </div>
+                  <UnstableSeparator />
+                  {secretId && (
+                    <SecretVersionHistory
+                      secretId={secretId}
+                      secretKey={secretName}
+                      environment={environment}
+                      secretPath={secretPath}
+                      isRotatedSecret={isRotatedSecret ?? false}
+                      canReadValue={canReadSecretValue}
+                    />
                   )}
-                </ProjectPermissionCan>
-              </UnstableDropdownMenuContent>
-            </UnstableDropdownMenu>
-            <Sheet open={isVersionHistoryOpen} onOpenChange={setIsVersionHistoryOpen}>
-              <SheetContent
-                onOpenAutoFocus={(e) => e.preventDefault()}
-                className="gap-y-0"
-                side="right"
-              >
-                <SheetHeader>
-                  <SheetTitle>Version History</SheetTitle>
-                  <SheetDescription>Audit secret history and rollback changes</SheetDescription>
-                </SheetHeader>
-                <UnstableSeparator />
-                <div className="bg-container p-4 text-foreground">
-                  <p className="truncate">{secretName}</p>
-                  <Badge variant="neutral" className="mt-0.5">
-                    {environmentName}
-                  </Badge>
-                </div>
-                <UnstableSeparator />
-                {secretId && (
-                  <SecretVersionHistory
-                    secretId={secretId}
-                    secretKey={secretName}
-                    environment={environment}
-                    secretPath={secretPath}
-                    isRotatedSecret={isRotatedSecret ?? false}
-                    canReadValue={canReadSecretValue}
-                  />
-                )}
-              </SheetContent>
-            </Sheet>
-            <Sheet open={isAccessInsightsOpen} onOpenChange={setIsAccessInsightsOpen}>
-              <SheetContent
-                onOpenAutoFocus={(e) => e.preventDefault()}
-                className="gap-y-0"
-                side="right"
-              >
-                <SheetHeader>
-                  <SheetTitle>Access Insights</SheetTitle>
-                  <SheetDescription>
-                    View users, groups, and identities with access to this secret
-                  </SheetDescription>
-                </SheetHeader>
-                <UnstableSeparator />
-                <div className="bg-container p-4 text-foreground">
-                  <p className="truncate">{secretName}</p>
-                  <Badge variant="neutral" className="mt-0.5">
-                    {environmentName}
-                  </Badge>
-                </div>
-                <UnstableSeparator />
-                {secretId && (
-                  <SecretAccessInsights
-                    secretKey={secretName}
-                    environment={environment}
-                    secretPath={secretPath}
-                  />
-                )}
-              </SheetContent>
-            </Sheet>
-            <UpgradePlanModal
-              isOpen={popUp.accessInsightsUpgrade.isOpen}
-              onOpenChange={(isOpen) => handlePopUpToggle("accessInsightsUpgrade", isOpen)}
-              text="Secret access insights can be unlocked if you upgrade to Infisical Pro plan."
-            />
-          </div>
-        )}
+                </SheetContent>
+              </Sheet>
+              <Sheet open={isAccessInsightsOpen} onOpenChange={setIsAccessInsightsOpen}>
+                <SheetContent
+                  onOpenAutoFocus={(e) => e.preventDefault()}
+                  className="gap-y-0"
+                  side="right"
+                >
+                  <SheetHeader>
+                    <SheetTitle>Access Insights</SheetTitle>
+                    <SheetDescription>
+                      View users, groups, and identities with access to this secret
+                    </SheetDescription>
+                  </SheetHeader>
+                  <UnstableSeparator />
+                  <div className="bg-container p-4 text-foreground">
+                    <p className="truncate">{secretName}</p>
+                    <Badge variant="neutral" className="mt-0.5">
+                      {environmentName}
+                    </Badge>
+                  </div>
+                  <UnstableSeparator />
+                  {secretId && (
+                    <SecretAccessInsights
+                      secretKey={secretName}
+                      environment={environment}
+                      secretPath={secretPath}
+                    />
+                  )}
+                </SheetContent>
+              </Sheet>
+              <UpgradePlanModal
+                isOpen={popUp.accessInsightsUpgrade.isOpen}
+                onOpenChange={(isOpen) => handlePopUpToggle("accessInsightsUpgrade", isOpen)}
+                text="Secret access insights can be unlocked if you upgrade to Infisical Pro plan."
+              />
+            </div>
+          )}
+        </div>
       </div>
+
       <DeleteActionModal
         isOpen={popUp.editSecret.isOpen}
         deleteKey="confirm"
@@ -986,6 +1076,7 @@ export const SecretEditTableRow = ({
           )
         }
       />
+      <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
     </div>
   );
 };

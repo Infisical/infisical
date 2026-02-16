@@ -2,12 +2,12 @@ import { faClock, faEye } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
-import { TSharedSecretResponse } from "@app/hooks/api/secretSharing";
+import { TAccessSharedSecretResponse } from "@app/hooks/api/secretSharing";
 
 import { BrandingTheme } from "../ViewSharedSecretByIDPage";
 
 type Props = {
-  secret: TSharedSecretResponse;
+  secret: TAccessSharedSecretResponse;
   brandingTheme?: BrandingTheme;
 };
 

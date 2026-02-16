@@ -5,6 +5,7 @@ export {
   useDeleteSecretBatch,
   useDeleteSecretV3,
   useMoveSecrets,
+  useRedactSecretValue,
   useUpdateSecretBatch,
   useUpdateSecretV3
 } from "./mutations";

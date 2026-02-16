@@ -47,8 +47,11 @@ export const useUpdatePamResource = () => {
 
       return data.resource;
     },
-    onSuccess: ({ projectId }) => {
+    onSuccess: ({ projectId }, { resourceId, resourceType }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.listResources({ projectId }) });
+      queryClient.invalidateQueries({
+        queryKey: pamKeys.getResource(resourceType, resourceId)
+      });
     }
   });
 };
@@ -98,8 +101,9 @@ export const useUpdatePamAccount = () => {
 
       return data.account;
     },
-    onSuccess: ({ projectId }) => {
+    onSuccess: ({ projectId }, { accountId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.listAccounts({ projectId }) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.getAccount(accountId) });
     }
   });
 };
@@ -163,19 +167,6 @@ export const useAccessPamAccount = () => {
       );
 
       return data;
-    }
-  });
-};
-
-// Web Access
-export const useCreatePamWebAccessTicket = () => {
-  return useMutation({
-    mutationFn: async ({ accountId, projectId }: { accountId: string; projectId: string }) => {
-      const { data } = await apiRequest.post<{ ticket: string }>(
-        `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
-        { projectId }
-      );
-      return data.ticket;
     }
   });
 };

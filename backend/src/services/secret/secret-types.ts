@@ -591,3 +591,7 @@ export type TProcessNewCommitRawDTO = {
     delete?: { folderName: string; id: string }[];
   };
 };
+
+export type TRedactSecretVersionValueDTO = {
+  versionId: string;
+} & Omit<TProjectPermission, "projectId">;

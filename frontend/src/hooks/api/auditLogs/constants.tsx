@@ -27,6 +27,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.UNAUTHORIZE_INTEGRATION]: "Unauthorize integration",
   [EventType.CREATE_INTEGRATION]: "Create integration",
   [EventType.DELETE_INTEGRATION]: "Delete integration",
+  [EventType.REDACT_SECRET_VERSION_VALUE]: "Redact secret version value",
   [EventType.ADD_TRUSTED_IP]: "Add trusted IP",
   [EventType.UPDATE_TRUSTED_IP]: "Update trusted IP",
   [EventType.DELETE_TRUSTED_IP]: "Delete trusted IP",

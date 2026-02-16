@@ -197,7 +197,7 @@ export type TCertificateSubject = {
 
 export type TCertificateFingerprints = {
   sha256: string;
-  sha1: string;
+  sha1?: string;
 };
 
 export type TCertificateBasicConstraints = {

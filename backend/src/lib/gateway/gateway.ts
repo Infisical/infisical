@@ -392,17 +392,17 @@ export const withGatewayProxy = async <T>(
   callback: (port: number, httpsAgent?: https.Agent) => Promise<T>,
   options: IGatewayProxyOptions
 ): Promise<T> => {
-  const { relayHost, relayPort, targetHost, targetPort, tlsOptions, identityId, orgId, protocol, httpsAgent } = options;
+  const { targetHost, targetPort, relayDetails, protocol, httpsAgent } = options;
 
   // Setup the proxy server
   const { port, cleanup, getProxyError } = await setupProxyServer({
     targetHost,
     targetPort,
-    relayPort,
-    relayHost,
-    tlsOptions,
-    identityId,
-    orgId,
+    relayPort: relayDetails.relayPort,
+    relayHost: relayDetails.relayHost,
+    tlsOptions: relayDetails.tlsOptions,
+    identityId: relayDetails.identityId,
+    orgId: relayDetails.orgId,
     protocol,
     httpsAgent
   });
