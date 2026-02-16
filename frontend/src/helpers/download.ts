@@ -1,5 +1,7 @@
 import FileSaver from "file-saver";
 
+import { SecretType } from "@app/hooks/api/types";
+
 export const downloadTxtFile = (filename: string, content: string) => {
   const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
   FileSaver.saveAs(blob, filename);
@@ -28,20 +30,20 @@ export const downloadSecretEnvFile = (
   // Build a map of personal override values (personal overrides take precedence)
   const personalOverrides = new Map<string, { value?: string }>();
   localSecrets.forEach((el) => {
-    if (el.type === "personal") {
+    if (el.type === SecretType.Personal) {
       personalOverrides.set(el.secretKey, { value: el.secretValue });
     }
   });
   importedSecrets.forEach((imp) => {
     imp.secrets.forEach((el) => {
-      if (el.type === "personal") {
+      if (el.type === SecretType.Personal) {
         personalOverrides.set(el.secretKey, { value: el.secretValue });
       }
     });
   });
 
   localSecrets.forEach((el) => {
-    if (el.type === "personal") return;
+    if (el.type === SecretType.Personal) return;
 
     secretsPicked.add(el.secretKey);
     const override = personalOverrides.get(el.secretKey);
@@ -56,7 +58,7 @@ export const downloadSecretEnvFile = (
     for (let j = importedSecrets[i].secrets.length - 1; j >= 0; j -= 1) {
       const secret = importedSecrets[i].secrets[j];
       // eslint-disable-next-line no-continue
-      if (secret.type === "personal") continue;
+      if (secret.type === SecretType.Personal) continue;
 
       if (!secretsPicked.has(secret.secretKey)) {
         const override = personalOverrides.get(secret.secretKey);
