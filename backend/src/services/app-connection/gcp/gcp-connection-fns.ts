@@ -1,4 +1,4 @@
-import { gaxios, Impersonated, JWT } from "google-auth-library";
+import { ExternalAccountClient, gaxios, GoogleAuth, Impersonated, JWT } from "google-auth-library";
 import { GetAccessTokenResponse } from "google-auth-library/build/src/auth/oauth2client";
 
 import { getConfig } from "@app/lib/config/env";
@@ -37,37 +37,95 @@ export const getGcpConnectionAuthToken = async (appConnection: TGcpConnectionCon
     });
   }
 
-  const credJson = JSON.parse(appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) as {
-    client_email: string;
-    private_key: string;
-  };
+  const credJson = JSON.parse(appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) as
+    | {
+        type: "service_account";
+        client_email: string;
+        private_key: string;
+      }
+    | {
+        type: "external_account";
+        audience: string;
+        subject_token_type: string;
+        token_url: string;
+        service_account_impersonation_url: string;
+        credential_source: {
+          file: string;
+        };
+      }
+    | {
+        type: "gke_workload_identity";
+      };
 
-  const sourceClient = new JWT({
-    email: credJson.client_email,
-    key: credJson.private_key,
-    scopes: ["https://www.googleapis.com/auth/cloud-platform"]
-  });
+  let sourceClient: JWT | ExternalAccountClient | GoogleAuth;
+  let useImpersonation = true;
 
-  const impersonatedCredentials = new Impersonated({
-    sourceClient,
-    targetPrincipal: appConnection.credentials.serviceAccountEmail,
-    lifetime: 3600,
-    delegates: [],
-    targetScopes: ["https://www.googleapis.com/auth/cloud-platform"]
-  });
+  // Support three authentication methods:
+  // 1. Workload Identity Federation (external_account) - for GitHub Actions, AWS, Azure, etc.
+  // 2. GKE Workload Identity (gke_workload_identity) - for GKE pods using metadata server
+  // 3. Traditional service account key (service_account) - legacy method
+  if (credJson.type === "external_account") {
+    // Workload Identity Federation - use ExternalAccountClient.fromJSON()
+    // This is for external identity providers (GitHub, AWS, Azure) that use
+    // a Workload Identity Pool and Provider
+    sourceClient = ExternalAccountClient.fromJSON(credJson) as ExternalAccountClient;
+  } else if (credJson.type === "gke_workload_identity") {
+    // GKE Workload Identity - use GoogleAuth to access metadata server
+    // This is for GKE pods that have Workload Identity enabled via
+    // iam.gke.io/gcp-service-account annotation
+    // The pod is already running as the target service account, so no impersonation needed
+    sourceClient = new GoogleAuth({
+      scopes: ["https://www.googleapis.com/auth/cloud-platform"]
+    });
+    useImpersonation = false;
+  } else {
+    // Traditional service account key - use JWT
+    sourceClient = new JWT({
+      email: credJson.client_email,
+      key: credJson.private_key,
+      scopes: ["https://www.googleapis.com/auth/cloud-platform"]
+    });
+  }
 
   let tokenResponse: GetAccessTokenResponse | undefined;
-  try {
-    tokenResponse = await impersonatedCredentials.getAccessToken();
-  } catch (error) {
-    let message = "Unable to validate connection";
-    if (error instanceof gaxios.GaxiosError) {
-      message = error.message;
-    }
 
-    throw new BadRequestError({
-      message
+  if (useImpersonation) {
+    // Use impersonation for service account keys and Workload Identity Federation
+    const impersonatedCredentials = new Impersonated({
+      sourceClient,
+      targetPrincipal: appConnection.credentials.serviceAccountEmail,
+      lifetime: 3600,
+      delegates: [],
+      targetScopes: ["https://www.googleapis.com/auth/cloud-platform"]
     });
+
+    try {
+      tokenResponse = await impersonatedCredentials.getAccessToken();
+    } catch (error) {
+      let message = "Unable to validate connection";
+      if (error instanceof gaxios.GaxiosError) {
+        message = error.message;
+      }
+
+      throw new BadRequestError({
+        message
+      });
+    }
+  } else {
+    // For GKE Workload Identity, get token directly (no impersonation needed)
+    try {
+      const client = await sourceClient.getClient();
+      tokenResponse = await client.getAccessToken();
+    } catch (error) {
+      let message = "Unable to validate connection";
+      if (error instanceof gaxios.GaxiosError) {
+        message = error.message;
+      }
+
+      throw new BadRequestError({
+        message
+      });
+    }
   }
 
   if (!tokenResponse || !tokenResponse.token) {
