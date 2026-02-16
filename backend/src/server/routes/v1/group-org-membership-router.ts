@@ -12,7 +12,7 @@ export const registerGroupOrgMembershipRouter = async (server: FastifyZodProvide
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
       operationId: "listAvailableOrganizationGroups",

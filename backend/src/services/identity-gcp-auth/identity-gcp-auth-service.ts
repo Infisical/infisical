@@ -47,7 +47,7 @@ type TIdentityGcpAuthServiceFactoryDep = {
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
 };
 
 export type TIdentityGcpAuthServiceFactory = ReturnType<typeof identityGcpAuthServiceFactory>;
@@ -151,10 +151,10 @@ export const identityGcpAuthServiceFactory = ({
             throw new NotFoundError({ message: `Sub organization with slug ${organizationSlug} not found` });
           }
 
-          const subOrgMembership = await membershipIdentityDAL.findOne({
-            scope: AccessScope.Organization,
-            actorIdentityId: identity.id,
-            scopeOrgId: subOrg.id
+          const subOrgMembership = await orgDAL.findEffectiveOrgMembership({
+            actorType: ActorType.IDENTITY,
+            actorId: identity.id,
+            orgId: subOrg.id
           });
 
           if (!subOrgMembership) {
