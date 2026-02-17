@@ -94,8 +94,7 @@ export default function InitialSignupStep({
         {t("signup.create-policy")}
       </div>
       <div className="mt-2 w-1/4 min-w-[20rem] px-8 text-center text-xs text-bunker-400 lg:w-1/4">
-        We may send you product updates and occasional emails about Infisical. You can unsubscribe
-        at any time.
+        {t("signup.product-updates-notice")}
       </div>
       <div className="mt-2 flex flex-row text-xs text-bunker-400">
         <Link to="/login">

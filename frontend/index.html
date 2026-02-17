@@ -2,29 +2,27 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Google Tag Manager (only on Infisical Cloud) -->
     <script>(function(w,d,s,l,i){var h=w.location.hostname;
     if(h==='app.infisical.com'||h==='eu.infisical.com'||h==='us.infisical.com'||h==='gamma.infisical.com'){
     w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});
     var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';
     j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
     f.parentNode.insertBefore(j,f);
-    var ns=d.createElement('noscript'),iframe=d.createElement('iframe');
-    iframe.src='https://www.googletagmanager.com/ns.html?id='+i;
-    iframe.height='0';iframe.width='0';iframe.style.display='none';iframe.style.visibility='hidden';
-    ns.appendChild(iframe);d.addEventListener('DOMContentLoaded',function(){d.body.insertBefore(ns,d.body.firstChild);});
     }})(window,document,'script','dataLayer','GTM-WL5C7MWT');</script>
+    <!-- End Google Tag Manager -->
     <link rel="icon" href="/infisical.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       http-equiv="Content-Security-Policy"
       content="
     default-src 'self';
-    script-src 'self' https://*.posthog.com https://js.stripe.com https://api.stripe.com https://widget.intercom.io https://js.intercomcdn.com https://hcaptcha.com https://*.hcaptcha.com https://www.googletagmanager.com https://www.google-analytics.com https://googleads.g.doubleclick.net https://www.googleadservices.com https://www.google.com https://js.hs-scripts.com https://js.hsforms.net https://js.hs-banner.com https://js.hs-analytics.net https://js.usemessages.com https://js.hscollectedforms.net 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net/npm/@lottiefiles/dotlottie-web@0.38.2/dist/dotlottie-player.wasm;
+    script-src 'self' https://*.posthog.com https://js.stripe.com https://api.stripe.com https://widget.intercom.io https://js.intercomcdn.com https://hcaptcha.com https://*.hcaptcha.com 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net/npm/@lottiefiles/dotlottie-web@0.38.2/dist/dotlottie-player.wasm;
     style-src 'self' 'unsafe-inline' https://hcaptcha.com https://*.hcaptcha.com;
     child-src https://api.stripe.com;
-    frame-src https://js.stripe.com/ https://api.stripe.com https://www.youtube.com/ https://hcaptcha.com https://*.hcaptcha.com https://www.googletagmanager.com https://bid.g.doubleclick.net https://td.doubleclick.net;
-    connect-src 'self' wss://nexus-websocket-a.intercom.io https://api-iam.intercom.io https://api.heroku.com/ https://id.heroku.com/oauth/authorize https://id.heroku.com/oauth/token https://checkout.stripe.com https://app.posthog.com https://*.posthog.com https://api.stripe.com https://api.pwnedpasswords.com http://127.0.0.1:* https://hcaptcha.com https://*.hcaptcha.com https://www.googletagmanager.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net https://*.hubspot.com https://forms.hubspot.com https://api.hubapi.com https://cdn.jsdelivr.net/npm/@lottiefiles/dotlottie-web@0.38.2/dist/dotlottie-player.wasm;
-    img-src 'self' https://static.intercomassets.com https://js.intercomcdn.com https://downloads.intercomcdn.com https://*.stripe.com https://i.ytimg.com/ https://www.googletagmanager.com https://www.google-analytics.com https://www.google.com https://googleads.g.doubleclick.net https://www.googleadservices.com https://track.hubspot.com https://forms.hubspot.com data:;
+    frame-src https://js.stripe.com/ https://api.stripe.com https://www.youtube.com/ https://hcaptcha.com https://*.hcaptcha.com;
+    connect-src 'self' wss://nexus-websocket-a.intercom.io https://api-iam.intercom.io https://api.heroku.com/ https://id.heroku.com/oauth/authorize https://id.heroku.com/oauth/token https://checkout.stripe.com https://app.posthog.com https://*.posthog.com https://api.stripe.com https://api.pwnedpasswords.com http://127.0.0.1:* https://hcaptcha.com https://*.hcaptcha.com https://cdn.jsdelivr.net/npm/@lottiefiles/dotlottie-web@0.38.2/dist/dotlottie-player.wasm;
+    img-src 'self' https://static.intercomassets.com https://js.intercomcdn.com https://downloads.intercomcdn.com https://*.stripe.com https://i.ytimg.com/ data:;
     media-src 'self' https://js.intercomcdn.com;
     font-src 'self' https://fonts.intercomcdn.com/ https://fonts.gstatic.com;
   "
@@ -33,6 +31,10 @@
     <script src="/runtime-ui-env.js"></script>
   </head>
   <body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WL5C7MWT"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
