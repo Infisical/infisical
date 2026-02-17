@@ -331,8 +331,29 @@ export const groupServiceFactory = ({
     const { group } = groupMembership;
 
     if (group.orgId !== actorOrgId) {
-      // Linked group: unlink by deleting the membership in this org only
+      // Linked group: unlink by deleting the org membership and all project memberships for this group in this sub-org
       await groupDAL.transaction(async (tx) => {
+        // Find all project-level memberships for this group in the sub-org
+        const projectMemberships = await membershipGroupDAL.find(
+          {
+            actorGroupId: id,
+            scopeOrgId: actorOrgId,
+            scope: AccessScope.Project
+          },
+          { tx }
+        );
+
+        // Delete roles and memberships for each project membership
+        if (projectMemberships.length > 0) {
+          await Promise.all(
+            projectMemberships.map(async (pm) => {
+              await membershipRoleDAL.delete({ membershipId: pm.id }, tx);
+              await membershipGroupDAL.deleteById(pm.id, tx);
+            })
+          );
+        }
+
+        // Delete the org-level membership
         await membershipRoleDAL.delete({ membershipId: groupMembership.id }, tx);
         await membershipGroupDAL.deleteById(groupMembership.id, tx);
       });
