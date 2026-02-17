@@ -850,72 +850,90 @@ export const identityLdapAuthServiceFactory = ({
 
     const LOCKOUT_KEY = `lockout:identity:${identityId}:${IdentityAuthMethod.LDAP_AUTH}:${usernameSlug}`;
 
-    let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
-    try {
-      lock = await keyStore.acquireLock([KeyStorePrefixes.IdentityLockoutLock(LOCKOUT_KEY)], 3000, {
-        retryCount: 3,
-        retryDelay: 1500,
-        retryJitter: 100
+    const lockoutRaw = await keyStore.getItem(LOCKOUT_KEY);
+
+    let lockout: LockoutObject | undefined;
+    if (lockoutRaw) {
+      lockout = JSON.parse(lockoutRaw) as LockoutObject;
+    }
+
+    if (lockout && lockout?.lockedOut) {
+      throw new UnauthorizedError({
+        message: "This identity auth method is temporarily locked, please try again later"
       });
-    } catch (e) {
-      logger.info(
-        `identity login failed to acquire lock [identityId=${identityId}] [authMethod=${IdentityAuthMethod.LDAP_AUTH}]`
-      );
-      throw new RateLimitError({ message: "Failed to acquire lock: rate limit exceeded" });
     }
 
     try {
-      const lockoutRaw = await keyStore.getItem(LOCKOUT_KEY);
-      if (lockoutRaw) {
-        const lockout = JSON.parse(lockoutRaw) as LockoutObject;
-        if (lockout.lockedOut) {
-          throw new UnauthorizedError({
-            message: "This identity auth method is temporarily locked, please try again later"
-          });
-        }
-      }
-
       const result = await authFn();
 
-      await keyStore.deleteItem(LOCKOUT_KEY);
+      // If auth succeeds, clear any existing lockout
+      if (lockout) {
+        await keyStore.deleteItem(LOCKOUT_KEY);
+      }
 
       return result;
     } catch (error) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
-      if ((error as any).status === 401) {
+      if ((error as any).status === 401 || error instanceof UnauthorizedError) {
         const identityLdapAuth = await identityLdapAuthDAL.findOne({ identityId });
         if (!identityLdapAuth) {
           throw new UnauthorizedError({ message: "Invalid credentials" });
         }
 
         if (identityLdapAuth.lockoutEnabled) {
-          let lockout: LockoutObject = {
-            lockedOut: false,
-            failedAttempts: 0
-          };
+          let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
+          try {
+            lock = await keyStore.acquireLock([KeyStorePrefixes.IdentityLockoutLock(LOCKOUT_KEY)], 500, {
+              retryCount: -1,
+              retryDelay: 300,
+              retryJitter: 100
+            });
 
-          const lockoutRaw = await keyStore.getItem(LOCKOUT_KEY);
-          if (lockoutRaw) {
-            lockout = JSON.parse(lockoutRaw) as LockoutObject;
+            // Re-fetch the latest lockout data while holding the lock
+            const lockoutRawNew = await keyStore.getItem(LOCKOUT_KEY);
+            if (lockoutRawNew) {
+              lockout = JSON.parse(lockoutRawNew) as LockoutObject;
+            } else {
+              lockout = {
+                lockedOut: false,
+                failedAttempts: 0
+              };
+            }
+
+            if (lockout.lockedOut) {
+              throw new UnauthorizedError({
+                message: "This identity auth method is temporarily locked, please try again later"
+              });
+            }
+
+            lockout.failedAttempts += 1;
+            if (lockout.failedAttempts >= identityLdapAuth.lockoutThreshold) {
+              lockout.lockedOut = true;
+            }
+
+            await keyStore.setItemWithExpiry(
+              LOCKOUT_KEY,
+              lockout.lockedOut ? identityLdapAuth.lockoutDurationSeconds : identityLdapAuth.lockoutCounterResetSeconds,
+              JSON.stringify(lockout)
+            );
+          } catch (e) {
+            if (lock === undefined) {
+              logger.info(
+                `identity login failed to acquire lock [identityId=${identityId}] [authMethod=${IdentityAuthMethod.LDAP_AUTH}]`
+              );
+              throw new RateLimitError({ message: "Failed to acquire lock: rate limit exceeded" });
+            }
+            throw e;
+          } finally {
+            if (lock) {
+              await lock.release();
+            }
           }
-
-          lockout.failedAttempts += 1;
-          if (lockout.failedAttempts >= identityLdapAuth.lockoutThreshold) {
-            lockout.lockedOut = true;
-          }
-
-          await keyStore.setItemWithExpiry(
-            LOCKOUT_KEY,
-            lockout.lockedOut ? identityLdapAuth.lockoutDurationSeconds : identityLdapAuth.lockoutCounterResetSeconds,
-            JSON.stringify(lockout)
-          );
         }
 
         throw new UnauthorizedError({ message: "Invalid credentials" });
       }
       throw error;
-    } finally {
-      await lock.release();
     }
   };
 
