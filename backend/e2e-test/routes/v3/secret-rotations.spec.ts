@@ -544,7 +544,7 @@ describe("Secret Rotations", async () => {
         host: process.env.E2E_TEST_ORACLE_DB_19_HOST!,
         username: process.env.E2E_TEST_ORACLE_DB_19_USERNAME!,
         port: 1521,
-        database: "ORCLPDB1"
+        database: process.env.E2E_TEST_ORACLE_DB_19_DATABASE!
       },
       secretMapping: {
         username: formatSqlUsername("ORACLEDB_USERNAME"),
