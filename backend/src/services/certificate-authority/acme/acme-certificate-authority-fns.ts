@@ -1,11 +1,13 @@
 import * as x509 from "@peculiar/x509";
 import acme, { CsrBuffer } from "acme-client";
+import dns from "dns";
 import { Knex } from "knex";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
+import { delay } from "@app/lib/delay";
 import { BadRequestError, CryptographyError, NotFoundError } from "@app/lib/errors";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { OrgServiceActor } from "@app/lib/types";
@@ -181,11 +183,58 @@ export const castDbEntryToAcmeCertificateAuthority = (
   };
 };
 
-const getAcmeChallengeRecord = (
+const DNS_PROPAGATION_MAX_RETRIES = 5;
+const DNS_PROPAGATION_INTERVAL_MS = 2000;
+const CNAME_MAX_DEPTH = 10;
+
+const resolveAcmeChallengeCname = async (recordName: string): Promise<string> => {
+  let current = recordName;
+  let depth = 0;
+  let resolved = true;
+
+  while (depth < CNAME_MAX_DEPTH && resolved) {
+    depth += 1;
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const [target] = await dns.promises.resolveCname(current);
+      if (!target) {
+        resolved = false;
+      } else {
+        current = target;
+      }
+    } catch {
+      resolved = false;
+    }
+  }
+
+  return current;
+};
+
+const waitForDnsPropagation = async (lookupName: string, expectedValue: string): Promise<void> => {
+  const unquotedExpected = expectedValue.replace(new RE2('^"|"$', "g"), "");
+  let attempts = 0;
+
+  while (attempts < DNS_PROPAGATION_MAX_RETRIES) {
+    attempts += 1;
+
+    const found = await dns.promises // eslint-disable-line no-await-in-loop
+      .resolveTxt(lookupName)
+      .then((records) => records.some((chunks) => chunks.join("") === unquotedExpected))
+      .catch(() => false);
+
+    if (found) return;
+
+    if (attempts < DNS_PROPAGATION_MAX_RETRIES) {
+      await delay(DNS_PROPAGATION_INTERVAL_MS); // eslint-disable-line no-await-in-loop
+    }
+  }
+};
+
+const getAcmeChallengeRecord = async (
   provider: AcmeDnsProvider,
   identifierValue: string,
   keyAuthorization: string
-): { recordName: string; recordValue: string } => {
+): Promise<{ recordName: string; recordValue: string }> => {
   let recordName: string;
   if (provider === AcmeDnsProvider.DNSMadeEasy) {
     // For DNS Made Easy, we don't need to provide the domain name in the record name.
@@ -193,6 +242,11 @@ const getAcmeChallengeRecord = (
   } else {
     recordName = `_acme-challenge.${identifierValue}`; // e.g., "_acme-challenge.example.com"
   }
+
+  if (provider !== AcmeDnsProvider.DNSMadeEasy) {
+    recordName = await resolveAcmeChallengeCname(recordName);
+  }
+
   const recordValue = `"${keyAuthorization}"`; // must be double quoted
   return { recordName, recordValue };
 };
@@ -331,7 +385,7 @@ export const orderCertificate = async (
         throw new Error("Unsupported challenge type");
       }
 
-      const { recordName, recordValue } = getAcmeChallengeRecord(
+      const { recordName, recordValue } = await getAcmeChallengeRecord(
         acmeCa.configuration.dnsProviderConfig.provider,
         authz.identifier.value,
         keyAuthorization
@@ -369,9 +423,15 @@ export const orderCertificate = async (
           throw new Error(`Unsupported DNS provider: ${acmeCa.configuration.dnsProviderConfig.provider as string}`);
         }
       }
+
+      const lookupName =
+        acmeCa.configuration.dnsProviderConfig.provider === AcmeDnsProvider.DNSMadeEasy
+          ? recordName
+          : `_acme-challenge.${authz.identifier.value}`;
+      await waitForDnsPropagation(lookupName, recordValue);
     },
     challengeRemoveFn: async (authz, challenge, keyAuthorization) => {
-      const { recordName, recordValue } = getAcmeChallengeRecord(
+      const { recordName, recordValue } = await getAcmeChallengeRecord(
         acmeCa.configuration.dnsProviderConfig.provider,
         authz.identifier.value,
         keyAuthorization

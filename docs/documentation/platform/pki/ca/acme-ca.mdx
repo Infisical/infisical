@@ -214,6 +214,44 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
 
 </Steps>
 
+## DNS CNAME Delegation
+
+CNAME delegation is an industry-standard pattern that lets you redirect ACME DNS-01 challenge records to a separate DNS zone. Instead of granting Infisical write access to your main domain zone, you point `_acme-challenge` via a CNAME to a dedicated zone where Infisical creates the TXT records.
+
+### How It Works
+
+If you have a CNAME record pointing `_acme-challenge.example.com` to another domain (e.g., `_acme-challenge.ssl.example.com`), you configure Infisical to manage the target zone (e.g., `ssl.example.com`). Infisical creates the TXT record in that target zone. During validation, the ACME CA queries `_acme-challenge.example.com`, follows the CNAME, and finds the TXT record at the delegated location.
+
+To use CNAME delegation, you need to:
+
+1. **Create a CNAME record** in your domain's DNS that points `_acme-challenge.{your-domain}` to a target in the zone configured with Infisical. For subdomains, create additional CNAMEs as needed (e.g., `_acme-challenge.app.example.com` CNAME to `_acme-challenge.ssl.example.com`).
+
+2. **Register the ACME CA** in Infisical with the **hosted zone ID** of the target zone (e.g., `ssl.example.com` if your CNAME points to `_acme-challenge.ssl.example.com`).
+
+Infisical will automatically resolve the CNAME, create the TXT record at the target, wait for DNS propagation, and clean up after validation completes.
+
+### Example: Delegating Across DNS Providers
+
+Suppose your primary domain `example.com` is managed in Cloudflare, but you want Infisical to perform ACME challenges through a Route53 zone. This is useful when your main DNS provider isn't supported by Infisical, or when you want to keep your production DNS provider credentials separate from certificate automation.
+
+1. **Create a dedicated Route53 hosted zone** for `acme.example.com`, Infisical needs write permissions here.
+2. **Add a CNAME record in Cloudflare** pointing `_acme-challenge.example.com` to `_acme-challenge.acme.example.com`.
+3. **Create an AWS App Connection** in Infisical with Route53 permissions for the `acme.example.com` zone.
+4. **Register your ACME CA in Infisical** using the Route53 hosted zone ID for `acme.example.com`.
+
+When Infisical issues a certificate for `example.com`:
+- Infisical writes the TXT record to `_acme-challenge.acme.example.com` in Route53.
+- The ACME CA queries `_acme-challenge.example.com` in Cloudflare, follows the CNAME to Route53, and finds the TXT record.
+- After validation, Infisical cleans up the TXT record in Route53.
+
+This way, Infisical never needs access to your Cloudflare account, it only writes to the dedicated Route53 zone used for ACME challenges.
+
+### Common Use Cases
+
+- **Least-privilege access**: Grant Infisical write access only to a dedicated subdomain zone instead of your entire domain zone.
+- **Cross-provider setups**: Keep your domain DNS on one provider while using a different, Infisical-supported provider for ACME challenges.
+- **Centralized challenge management**: Point `_acme-challenge` CNAMEs from multiple domains to a single zone for simplified operations.
+
 ## FAQ
 
 <AccordionGroup>
@@ -243,5 +281,8 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
   </Accordion>
   <Accordion title="Can I use multiple ACME providers?">
     Yes. You can register multiple ACME CAs in the same project.
+  </Accordion>
+  <Accordion title="Does Infisical support DNS CNAME delegation for ACME challenges?">
+    Yes. You can delegate `_acme-challenge` records to a different DNS zone by setting up a CNAME, then configuring Infisical to write TXT records in the target zone. See the [DNS CNAME Delegation](#dns-cname-delegation) section above for setup instructions.
   </Accordion>
 </AccordionGroup>
