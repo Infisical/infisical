@@ -7,7 +7,7 @@ import { positionElements } from "./positionElements";
 const NODE_WIDTH = 200;
 const NODE_HEIGHT = 58;
 
-type SecretNodeData = {
+export type SecretNodeData = {
   secretKey: string;
   environment: string;
   secretPath: string;

@@ -1,5 +1,5 @@
 /* eslint-disable no-nested-ternary */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { faKey, faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Handle, NodeProps, Position } from "@xyflow/react";
@@ -9,13 +9,7 @@ import { twMerge } from "tailwind-merge";
 import { Tooltip } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 
-type SecretNodeData = {
-  secretKey: string;
-  environment: string;
-  secretPath: string;
-  isRoot: boolean;
-  isCircular: boolean;
-};
+import { SecretNodeData } from "../utils/convertToFlowElements";
 
 export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
   const { secretKey, environment, secretPath, isRoot, isCircular } = data;
@@ -23,15 +17,7 @@ export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
   const capitalizedEnv = environment.charAt(0).toUpperCase() + environment.slice(1);
 
   const pathTextRef = useRef<HTMLSpanElement>(null);
-  const iconBadgeRef = useRef<HTMLSpanElement>(null);
   const [isPathTruncated, setIsPathTruncated] = useState(false);
-
-  useEffect(() => {
-    const el = iconBadgeRef.current;
-    if (el) {
-      el.style.width = `${el.offsetHeight}px`;
-    }
-  });
 
   const checkTruncation = useCallback(() => {
     const el = pathTextRef.current;
