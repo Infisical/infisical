@@ -224,7 +224,9 @@ const waitForDnsPropagation = async (lookupName: string, expectedValue: string):
 
     if (found) return;
 
-    await delay(DNS_PROPAGATION_INTERVAL_MS); // eslint-disable-line no-await-in-loop
+    if (attempts < DNS_PROPAGATION_MAX_RETRIES) {
+      await delay(DNS_PROPAGATION_INTERVAL_MS); // eslint-disable-line no-await-in-loop
+    }
   }
 };
 
