@@ -93,6 +93,10 @@ export default function InitialSignupStep({
       <div className="mt-6 w-1/4 min-w-[20rem] px-8 text-center text-xs text-bunker-400 lg:w-1/6">
         {t("signup.create-policy")}
       </div>
+      <div className="mt-2 w-1/4 min-w-[20rem] px-8 text-center text-xs text-bunker-400 lg:w-1/4">
+        We may send you product updates and occasional emails about Infisical. You can unsubscribe
+        at any time.
+      </div>
       <div className="mt-2 flex flex-row text-xs text-bunker-400">
         <Link to="/login">
           <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
