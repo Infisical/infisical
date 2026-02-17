@@ -193,8 +193,8 @@ const SecretDependencyTree = ({ secretPath, environment, secretKey }: Props) => 
 
   const flowData = useMemo(() => {
     if (!tree || tree.children.length === 0) return null;
-    return convertDependencyTreeToFlow(tree, secretKey);
-  }, [tree, secretKey]);
+    return convertDependencyTreeToFlow(tree);
+  }, [tree]);
 
   useEffect(() => {
     if (error instanceof AxiosError) {
@@ -255,7 +255,7 @@ const SecretDependencyTree = ({ secretPath, environment, secretKey }: Props) => 
               fitView
               fitViewOptions={{ padding: 0.3 }}
               minZoom={0.1}
-              proOptions={{ hideAttribution: true }}
+              proOptions={{ hideAttribution: false }}
             >
               <Background color="#5d5f64" bgColor="#111419" variant={BackgroundVariant.Dots} />
               <Controls position="bottom-left" showInteractive={false} />
@@ -264,7 +264,7 @@ const SecretDependencyTree = ({ secretPath, environment, secretKey }: Props) => 
         )}
       </div>
       <div className="mt-2 text-xs text-mineshaft-400">
-        Shows secrets that depend on this secret. Each level references the one below it.
+        Shows secrets that depend on this secret. Each level is referenced by the one above it.
       </div>
     </div>
   );

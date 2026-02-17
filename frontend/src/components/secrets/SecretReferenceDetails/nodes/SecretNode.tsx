@@ -1,9 +1,9 @@
 /* eslint-disable no-nested-ternary */
 import { useCallback, useRef, useState } from "react";
-import { faKey, faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
+import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Handle, NodeProps, Position } from "@xyflow/react";
-import { FolderIcon, LayersIcon } from "lucide-react";
+import { FolderIcon, KeyIcon, LayersIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { Tooltip } from "@app/components/v2";
@@ -17,17 +17,38 @@ export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
   const capitalizedEnv = environment.charAt(0).toUpperCase() + environment.slice(1);
 
   const pathTextRef = useRef<HTMLSpanElement>(null);
+  const envTextRef = useRef<HTMLSpanElement>(null);
   const [isPathTruncated, setIsPathTruncated] = useState(false);
+  const [isEnvTruncated, setIsEnvTruncated] = useState(false);
 
-  const checkTruncation = useCallback(() => {
+  const checkPathTruncation = useCallback(() => {
     const el = pathTextRef.current;
     if (el) {
       setIsPathTruncated(el.scrollWidth > el.clientWidth);
     }
   }, []);
 
+  const checkEnvTruncation = useCallback(() => {
+    const el = envTextRef.current;
+    if (el) {
+      setIsEnvTruncated(el.scrollWidth > el.clientWidth);
+    }
+  }, []);
+
+  const envBadge = (
+    <Badge
+      variant="neutral"
+      className="max-w-28 min-w-[3.25rem]"
+      isTruncatable
+      onMouseEnter={checkEnvTruncation}
+    >
+      <LayersIcon className="size-3" />
+      <span ref={envTextRef}>{capitalizedEnv}</span>
+    </Badge>
+  );
+
   const pathBadge = (
-    <Badge variant="neutral" isTruncatable onMouseEnter={checkTruncation}>
+    <Badge variant="neutral" isTruncatable onMouseEnter={checkPathTruncation}>
       <FolderIcon />
       <span ref={pathTextRef}>{secretPath}</span>
     </Badge>
@@ -65,7 +86,7 @@ export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
               variant={isCircular ? "danger" : isRoot ? "project" : "neutral"}
               className="!aspect-square h-auto !w-auto !min-w-0 shrink-0 self-stretch"
             >
-              <FontAwesomeIcon icon={faKey} />
+              <KeyIcon className="size-4" />
             </Badge>
             <div className="flex min-w-0 flex-col">
               <span
@@ -77,10 +98,13 @@ export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
                 {secretKey}
               </span>
               <div className="mt-0.5 flex items-center gap-1.5">
-                <Badge variant="neutral">
-                  <LayersIcon className="size-3" />
-                  {capitalizedEnv}
-                </Badge>
+                {isEnvTruncated ? (
+                  <Tooltip className="max-w-xs text-xs break-all" content={capitalizedEnv}>
+                    {envBadge}
+                  </Tooltip>
+                ) : (
+                  envBadge
+                )}
                 {isPathTruncated ? (
                   <Tooltip className="max-w-xs text-xs break-all" content={secretPath}>
                     {pathBadge}
