@@ -603,18 +603,22 @@ export const groupDALFactory = (db: TDbClient) => {
     }
   };
 
-  /**
-   * Returns the groups that reference the given group via sourceGroupId (self-referential FK).
-   * Used to block delete when this group is the source of linked/copied groups; error message can list them.
-   */
-  const getGroupsReferencingGroup = async (groupId: string, tx?: Knex): Promise<{ id: string; name: string }[]> => {
+  // Check if a group is linked by any sub-orgs (used to prevent deletion of groups still in use)
+  const getGroupsReferencingGroup = async (groupId: string, tx?: Knex) => {
     try {
-      const docs = await (tx || db.replicaNode())(TableName.Groups)
-        .whereRaw('"sourceGroupId" = ?', [groupId])
-        .select("id", "name");
+      const docs = await (tx || db.replicaNode())(TableName.Membership)
+        .where(`${TableName.Membership}.actorGroupId`, groupId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .join(TableName.Groups, `${TableName.Groups}.id`, `${TableName.Membership}.actorGroupId`)
+        .whereNot(`${TableName.Membership}.scopeOrgId`, db.ref("orgId").withSchema(TableName.Groups))
+        .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Membership}.scopeOrgId`)
+        .select(
+          db.ref("id").withSchema(TableName.Organization).as("orgId"),
+          db.ref("name").withSchema(TableName.Organization).as("orgName")
+        );
       return docs;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Get groups referencing group" });
+      throw new DatabaseError({ error, name: "GetGroupsReferencingGroup" });
     }
   };
 

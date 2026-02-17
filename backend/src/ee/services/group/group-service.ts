@@ -339,11 +339,11 @@ export const groupServiceFactory = ({
       return group;
     }
 
-    const referencingGroups = await groupDAL.getGroupsReferencingGroup(id);
-    if (referencingGroups.length > 0) {
-      const groupList = referencingGroups.map((g) => `"${g.name}"`).join(", ");
+    const referencingSubOrgs = await groupDAL.getGroupsReferencingGroup(id);
+    if (referencingSubOrgs.length > 0) {
+      const orgList = referencingSubOrgs.map((o) => `"${o.orgName}"`).join(", ");
       throw new BadRequestError({
-        message: `Cannot delete this group because it is used as a source by other groups. Unlink or delete these groups first: ${groupList}.`
+        message: `Cannot delete this group because it is linked by sub-organizations. Unlink it from these sub-organizations first: ${orgList}.`
       });
     }
 
