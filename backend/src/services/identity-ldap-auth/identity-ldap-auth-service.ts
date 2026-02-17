@@ -884,7 +884,7 @@ export const identityLdapAuthServiceFactory = ({
           let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
           try {
             lock = await keyStore.acquireLock([KeyStorePrefixes.IdentityLockoutLock(LOCKOUT_KEY)], 500, {
-              retryCount: -1,
+              retryCount: 10,
               retryDelay: 300,
               retryJitter: 100
             });
