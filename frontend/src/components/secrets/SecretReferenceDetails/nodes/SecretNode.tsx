@@ -38,7 +38,7 @@ export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
   const envBadge = (
     <Badge
       variant="neutral"
-      className="max-w-28 min-w-[3.25rem]"
+      className="max-w-[50%] shrink-0"
       isTruncatable
       onMouseEnter={checkEnvTruncation}
     >
@@ -48,7 +48,7 @@ export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
   );
 
   const pathBadge = (
-    <Badge variant="neutral" isTruncatable onMouseEnter={checkPathTruncation}>
+    <Badge variant="neutral" className="min-w-0" isTruncatable onMouseEnter={checkPathTruncation}>
       <FolderIcon />
       <span ref={pathTextRef}>{secretPath}</span>
     </Badge>
@@ -88,7 +88,7 @@ export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
             >
               <KeyIcon className="size-4" />
             </Badge>
-            <div className="flex min-w-0 flex-col">
+            <div className="flex w-full min-w-0 flex-col">
               <span
                 className={twMerge(
                   "truncate text-xs text-mineshaft-100",
