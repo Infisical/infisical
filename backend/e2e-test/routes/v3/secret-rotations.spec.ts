@@ -297,13 +297,25 @@ const createOracleDBSecretRotation = async (
   await createOracleInfisicalUsers(credentials, userCredentials);
 
   const createOracleDBSecretRotationReqBody = {
-    parameters: userCredentials.reduce(
-      (acc, user, index) => {
-        acc[`username${index + 1}`] = user.username;
-        return acc;
-      },
-      {} as Record<string, string>
-    ),
+    parameters: {
+      ...userCredentials.reduce(
+        (acc, user, index) => {
+          acc[`username${index + 1}`] = user.username;
+          return acc;
+        },
+        {} as Record<string, string>
+      ),
+      passwordRequirements: {
+        length: 30,
+        required: {
+          digits: 2,
+          lowercase: 12,
+          uppercase: 2,
+          symbols: 2
+        },
+        allowedSymbols: "_"
+      }
+    },
     secretsMapping: {
       username: secretMapping.username,
       password: secretMapping.password
@@ -330,8 +342,6 @@ const createOracleDBSecretRotation = async (
     },
     body: createOracleDBSecretRotationReqBody
   });
-
-  console.log(res.payload);
 
   expect(res.statusCode).toBe(200);
   expect(res.json().secretRotation).toBeDefined();
