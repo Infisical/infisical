@@ -192,7 +192,16 @@ export const groupProjectDALFactory = (db: TDbClient) => {
           id: projectId,
           name: projectName
         },
-        user: { email, username, firstName, lastName, id: userId, publicKey, isGhost, isOrgMembershipActive: isActive ?? true },
+        user: {
+          email,
+          username,
+          firstName,
+          lastName,
+          id: userId,
+          publicKey,
+          isGhost,
+          isOrgMembershipActive: isActive ?? true
+        },
         createdAt
       }),
       key: "id",

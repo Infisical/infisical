@@ -6,6 +6,7 @@ import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TGenericPermission } from "@app/lib/types";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -66,7 +67,7 @@ type TGroupServiceFactoryDep = {
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "findOne" | "create" | "getGroupById" | "deleteById">;
   membershipDAL: Pick<TMembershipDALFactory, "find" | "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
-  orgDAL: Pick<TOrgDALFactory, "findMembership" | "countAllOrgMembers" | "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findMembership" | "countAllOrgMembers" | "findById" | "findEffectiveOrgMembership">;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
     "findOne" | "delete" | "filterProjectsByUserMembership" | "transaction" | "insertMany" | "find"
@@ -333,6 +334,10 @@ export const groupServiceFactory = ({
     if (group.orgId !== actorOrgId) {
       // Linked group: unlink by deleting the org membership and all project memberships for this group in this sub-org
       await groupDAL.transaction(async (tx) => {
+        // Collect users and identities in the group before cleanup
+        const groupUsers = await userGroupMembershipDAL.find({ groupId: id }, { tx });
+        const groupIdentities = await identityGroupMembershipDAL.find({ groupId: id }, { tx });
+
         // Find all project-level memberships for this group in the sub-org
         const projectMemberships = await membershipGroupDAL.find(
           {
@@ -353,9 +358,57 @@ export const groupServiceFactory = ({
           );
         }
 
-        // Delete the org-level membership
+        // Delete the org-level group membership
         await membershipRoleDAL.delete({ membershipId: groupMembership.id }, tx);
         await membershipGroupDAL.deleteById(groupMembership.id, tx);
+
+        // For each user/identity in the group, check if they still have org access; if not, remove their direct project memberships
+        await Promise.all([
+          ...groupUsers.map(async ({ userId }) => {
+            const remainingAccess = await orgDAL.findEffectiveOrgMembership({
+              actorType: ActorType.USER,
+              actorId: userId,
+              orgId: actorOrgId,
+              acceptAnyStatus: true,
+              tx
+            });
+
+            if (!remainingAccess) {
+              const userProjectMemberships = await membershipGroupDAL.find(
+                { actorUserId: userId, scopeOrgId: actorOrgId, scope: AccessScope.Project },
+                { tx }
+              );
+              await Promise.all(
+                userProjectMemberships.map(async (pm) => {
+                  await membershipRoleDAL.delete({ membershipId: pm.id }, tx);
+                  await membershipGroupDAL.deleteById(pm.id, tx);
+                })
+              );
+            }
+          }),
+          ...groupIdentities.map(async ({ identityId }) => {
+            const remainingAccess = await orgDAL.findEffectiveOrgMembership({
+              actorType: ActorType.IDENTITY,
+              actorId: identityId,
+              orgId: actorOrgId,
+              acceptAnyStatus: true,
+              tx
+            });
+
+            if (!remainingAccess) {
+              const identityProjectMemberships = await membershipGroupDAL.find(
+                { actorIdentityId: identityId, scopeOrgId: actorOrgId, scope: AccessScope.Project },
+                { tx }
+              );
+              await Promise.all(
+                identityProjectMemberships.map(async (pm) => {
+                  await membershipRoleDAL.delete({ membershipId: pm.id }, tx);
+                  await membershipGroupDAL.deleteById(pm.id, tx);
+                })
+              );
+            }
+          })
+        ]);
       });
       return group;
     }
