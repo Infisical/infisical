@@ -40,7 +40,8 @@ const UnixLinuxLocalAccountRotationParametersSchema = z.object({
   rotationMethod: z
     .nativeEnum(UnixLinuxLocalAccountRotationMethod)
     .optional()
-    .describe(SecretRotations.PARAMETERS.UNIX_LINUX_LOCAL_ACCOUNT.rotationMethod)
+    .describe(SecretRotations.PARAMETERS.UNIX_LINUX_LOCAL_ACCOUNT.rotationMethod),
+  useSudo: z.boolean().default(false).optional().describe(SecretRotations.PARAMETERS.UNIX_LINUX_LOCAL_ACCOUNT.useSudo)
 });
 
 const UnixLinuxLocalAccountRotationSecretsMappingSchema = z.object({

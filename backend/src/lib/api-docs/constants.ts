@@ -3002,7 +3002,8 @@ export const SecretRotations = {
       rotationMethod:
         'Whether the rotation should be performed using "login-as-target" (the target user\'s own credentials) or "login-as-root" (the SSH connection\'s admin credentials). Defaults to "login-as-target".',
       password:
-        'The current password of the target user. Required if "parameters.rotationMethod" is set to "login-as-target".'
+        'The current password of the target user. Required if "parameters.rotationMethod" is set to "login-as-target".',
+      useSudo: "If true, uses sudo when executing the password rotation command. Defaults to false."
     },
     WINDOWS_LOCAL_ACCOUNT: {
       username: "The username of the Windows user account to rotate the password for.",
