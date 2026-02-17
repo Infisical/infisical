@@ -16,15 +16,17 @@ import { PkiSyncStatus, TPkiSync } from "@app/hooks/api/pkiSyncs";
 const GenericFieldLabel = ({
   label,
   children,
-  labelClassName
+  labelClassName,
+  truncate
 }: {
   label: string;
   children: React.ReactNode;
   labelClassName?: string;
+  truncate?: boolean;
 }) => (
   <div className="mb-4">
     <p className={`text-sm font-medium text-mineshaft-300 ${labelClassName || ""}`}>{label}</p>
-    <div className="text-sm text-mineshaft-300">{children}</div>
+    <div className={`text-sm text-mineshaft-300 ${truncate ? "truncate" : ""}`}>{children}</div>
   </div>
 );
 
@@ -76,7 +78,7 @@ export const PkiSyncDetailsSection = ({ pkiSync, onEditDetails }: Props) => {
         </ProjectPermissionCan>
       </div>
       <div className="pt-2">
-        <GenericFieldLabel label="Name">{name}</GenericFieldLabel>
+        <GenericFieldLabel label="Name" truncate>{name}</GenericFieldLabel>
         <GenericFieldLabel label="Description">{description || "None"}</GenericFieldLabel>
         {subscriber && (
           <GenericFieldLabel label="Source Subscriber">{subscriber.name}</GenericFieldLabel>
