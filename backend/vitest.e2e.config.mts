@@ -12,7 +12,7 @@ export default defineConfig({
       E2E_TEST_ORACLE_DB_19_DATABASE: process.env.E2E_TEST_ORACLE_DB_19_DATABASE!
     },
     environment: "./e2e-test/vitest-environment-knex.ts",
-    include: ["./e2e-test/routes/v3/secret-rotations.spec.ts"],
+    include: ["./e2e-test/**/*.spec.ts"],
     pool: "threads",
     poolOptions: {
       threads: {
