@@ -32,7 +32,6 @@ export const projectDALFactory = (db: TDbClient) => {
           `${TableName.IdentityGroupMembership}.groupId`,
           `${TableName.Groups}.id`
         )
-        .where(`${TableName.Groups}.orgId`, orgId)
         .where(`${TableName.IdentityGroupMembership}.identityId`, identityId)
         .select(db.ref("id").withSchema(TableName.Groups));
 
