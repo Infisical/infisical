@@ -220,15 +220,30 @@ CNAME delegation is an industry-standard pattern that lets you redirect ACME DNS
 
 ### How It Works
 
-If you have a CNAME record pointing `_acme-challenge.example.com` to another domain (e.g., `_acme-challenge.ssl.example.com`), Infisical will automatically follow the CNAME chain and create the TXT record at the final target. The ACME CA also follows CNAMEs during validation, so it finds the TXT record at the delegated location.
+If you have a CNAME record pointing `_acme-challenge.example.com` to another domain (e.g., `_acme-challenge.ssl.example.com`), you configure Infisical to manage the target zone (e.g., `ssl.example.com`). Infisical resolves the CNAME and creates the TXT record in that target zone. During validation, the ACME CA queries `_acme-challenge.example.com`, follows the CNAME, and finds the TXT record at the delegated location.
 
 To use CNAME delegation, you need to:
 
 1. **Create a CNAME record** in your domain's DNS that points `_acme-challenge.{your-domain}` to a target in the zone configured with Infisical. For subdomains, create additional CNAMEs as needed (e.g., `_acme-challenge.app.example.com` CNAME to `_acme-challenge.ssl.example.com`).
 
-2. **Register the ACME CA** in Infisical with the **hosted zone ID** of the zone where the CNAME target lives.
+2. **Register the ACME CA** in Infisical with the **hosted zone ID** of the target zone (e.g., `ssl.example.com` if your CNAME points to `_acme-challenge.ssl.example.com`).
 
 Infisical will automatically resolve the CNAME, create the TXT record at the target, wait for DNS propagation, and clean up after validation completes.
+
+### Example: Delegating to a Separate Zone for Security
+
+Suppose your primary domain `example.com` is managed in a production Route53 hosted zone that you want to keep locked down. Instead of granting Infisical write access to that zone, you can delegate ACME challenges to a separate zone:
+
+1. **Create a dedicated Route53 hosted zone** for `acme.example.com` with restricted access — only Infisical needs write permissions here.
+2. **Add a CNAME record in your production zone** pointing `_acme-challenge.example.com` to `_acme-challenge.acme.example.com`.
+3. **Register your ACME CA in Infisical** using the hosted zone ID for `acme.example.com`.
+
+When Infisical issues a certificate for `example.com`:
+- Infisical resolves the CNAME and writes the TXT record to `_acme-challenge.acme.example.com` in the dedicated zone.
+- The ACME CA queries `_acme-challenge.example.com`, follows the CNAME to the dedicated zone, and finds the TXT record.
+- After validation, Infisical cleans up the TXT record.
+
+This way, your production DNS zone remains read-only — Infisical only has write access to the dedicated `acme.example.com` zone.
 
 ### Common Use Cases
 
@@ -267,7 +282,6 @@ Infisical will automatically resolve the CNAME, create the TXT record at the tar
     Yes. You can register multiple ACME CAs in the same project.
   </Accordion>
   <Accordion title="Does Infisical support DNS CNAME delegation for ACME challenges?">
-    Yes. Infisical automatically follows CNAME records when creating DNS-01 challenge TXT records. This allows you to delegate
-    `_acme-challenge` to a different DNS zone or provider. See the [DNS CNAME Delegation](#dns-cname-delegation) section above for setup instructions.
+    Yes. You can delegate `_acme-challenge` records to a different DNS zone by setting up a CNAME, then configuring Infisical to write TXT records in the target zone. See the [DNS CNAME Delegation](#dns-cname-delegation) section above for setup instructions.
   </Accordion>
 </AccordionGroup>
