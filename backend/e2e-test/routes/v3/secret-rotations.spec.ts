@@ -207,7 +207,7 @@ const createOracleInfisicalUsers = async (
     const existingUser = await client.raw(`SELECT * FROM all_users WHERE username = '${username}'`);
 
     if (!existingUser.length) {
-      await client.raw(`CREATE USER ${username} IDENTIFIED BY "TEMPORARY_password"`);
+      await client.raw(`CREATE USER ${username} IDENTIFIED BY "TEMPORARY_password22__"`);
     }
     await client.raw(`GRANT ALL PRIVILEGES TO ${username} WITH ADMIN OPTION`);
   }
@@ -245,7 +245,7 @@ const createMySQLInfisicalUsers = async (
     const existingUser = await client.raw(`SELECT * FROM mysql.user WHERE user = '${username}'`);
 
     if (!existingUser[0].length) {
-      await client.raw(`CREATE USER '${username}'@'%' IDENTIFIED BY 'TEMPORARY_password';`);
+      await client.raw(`CREATE USER '${username}'@'%' IDENTIFIED BY 'TEMPORARY_password22__';`);
     }
 
     await client.raw(`GRANT ALL PRIVILEGES ON \`${credentials.database}\`.* TO '${username}'@'%';`);
@@ -276,7 +276,7 @@ const createPostgresInfisicalUsers = async (
     const existingUser = await client.raw("SELECT * FROM pg_catalog.pg_user WHERE usename = ?", [username]);
 
     if (!existingUser.rows.length) {
-      await client.raw(`CREATE USER "${username}" WITH PASSWORD 'TEMPORARY_password'`);
+      await client.raw(`CREATE USER "${username}" WITH PASSWORD 'TEMPORARY_password22__'`);
     }
 
     await client.raw("GRANT ALL PRIVILEGES ON DATABASE ?? TO ??", [credentials.database, username]);
