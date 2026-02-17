@@ -78,7 +78,9 @@ export const PkiSyncDetailsSection = ({ pkiSync, onEditDetails }: Props) => {
         </ProjectPermissionCan>
       </div>
       <div className="pt-2">
-        <GenericFieldLabel label="Name" truncate>{name}</GenericFieldLabel>
+        <GenericFieldLabel label="Name" truncate>
+          {name}
+        </GenericFieldLabel>
         <GenericFieldLabel label="Description">{description || "None"}</GenericFieldLabel>
         {subscriber && (
           <GenericFieldLabel label="Source Subscriber">{subscriber.name}</GenericFieldLabel>
