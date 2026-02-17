@@ -577,7 +577,7 @@ export const groupServiceFactory = ({
     const { group } = groupMembership;
 
     const { projects, totalCount } = await groupDAL.findAllGroupProjects({
-      orgId: group.orgId,
+      orgId: actorOrgId,
       groupId: group.id,
       offset,
       limit,
