@@ -331,6 +331,8 @@ const createOracleDBSecretRotation = async (
     body: createOracleDBSecretRotationReqBody
   });
 
+  console.log(res.payload);
+
   expect(res.statusCode).toBe(200);
   expect(res.json().secretRotation).toBeDefined();
 
