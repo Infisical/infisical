@@ -479,6 +479,8 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
   ) => {
     const userGroupSubquery = db(TableName.Groups)
       .leftJoin(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
+      .join(TableName.Membership, `${TableName.Groups}.id`, `${TableName.Membership}.actorGroupId`)
+      .where(`${TableName.Membership}.scopeOrgId`, orgId)
       .select(db.ref("id").withSchema(TableName.Groups));
 
     try {
@@ -671,6 +673,8 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           `${TableName.IdentityGroupMembership}.groupId`,
           `${TableName.Groups}.id`
         )
+        .join(TableName.Membership, `${TableName.Groups}.id`, `${TableName.Membership}.actorGroupId`)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .select(db.ref("id").withSchema(TableName.Groups));
 
       const docs = await db
