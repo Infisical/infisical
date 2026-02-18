@@ -144,8 +144,12 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
             <UnstableEmptyDescription>Contact us to learn more.</UnstableEmptyDescription>
           </UnstableEmptyHeader>
           <UnstableEmptyContent>
-            <Button variant={isSubOrganization ? "sub-org" : "org"} asChild>
-              <a href="https://infisical.com/talk-to-us" target="_blank" rel="noopener noreferrer">
+            <Button size="sm" variant={isSubOrganization ? "sub-org" : "org"} asChild>
+              <a
+                href="https://infisical.com/schedule-demo"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 Talk to Us
               </a>
             </Button>
