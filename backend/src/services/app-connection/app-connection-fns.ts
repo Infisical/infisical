@@ -61,7 +61,7 @@ import {
   getAzureDevopsConnectionListItem,
   validateAzureDevOpsConnectionCredentials
 } from "./azure-devops/azure-devops-fns";
-import { AzureDnsConnectionMethod } from "./azure-dns/azure-dns-connection-enum";
+import { AzureDnsConnectionMethod } from "./azure-dns/azure-dns-connection-enums";
 import {
   getAzureDnsConnectionListItem,
   validateAzureDnsConnectionCredentials

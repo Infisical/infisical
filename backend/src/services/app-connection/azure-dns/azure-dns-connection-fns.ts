@@ -6,7 +6,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
-import { AzureDnsConnectionMethod } from "./azure-dns-connection-enum";
+import { AzureDnsConnectionMethod } from "./azure-dns-connection-enums";
 import { TAzureDnsConnection, TAzureDnsConnectionConfig, TAzureDnsZone } from "./azure-dns-connection-types";
 
 const AZURE_DNS_ZONE_RESOURCE_ID_REGEX = new RE2(

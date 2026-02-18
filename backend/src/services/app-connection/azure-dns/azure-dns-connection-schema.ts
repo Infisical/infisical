@@ -10,7 +10,7 @@ import {
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
-import { AzureDnsConnectionMethod } from "./azure-dns-connection-enum";
+import { AzureDnsConnectionMethod } from "./azure-dns-connection-enums";
 
 const AZURE_GUID_REGEX = new RE2("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", "i");
 

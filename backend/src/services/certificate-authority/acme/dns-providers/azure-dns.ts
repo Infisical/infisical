@@ -20,8 +20,6 @@ export const azureDnsInsertTxtRecord = async (
 
   validateAzureDnsZoneResourceId(hostedZoneId);
 
-  logger.info({ hostedZoneId, recordName, value }, "Inserting TXT record for Azure DNS");
-
   try {
     const accessToken = await getAzureDnsAccessToken(tenantId, clientId, clientSecret);
 
@@ -63,8 +61,6 @@ export const azureDnsDeleteTxtRecord = async (
   } = connection;
 
   validateAzureDnsZoneResourceId(hostedZoneId);
-
-  logger.info({ hostedZoneId, recordName, value }, "Deleting TXT record for Azure DNS");
 
   try {
     const accessToken = await getAzureDnsAccessToken(tenantId, clientId, clientSecret);
