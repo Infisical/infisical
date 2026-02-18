@@ -1562,7 +1562,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                         <FormControl
                           label={
                             <FormLabel
-                              label="Time to Live (TTL)"
+                              label="Time to Live (TTL) in Days"
                               icon={
                                 <Tooltip content="Fallback validity period used when not explicitly specified in certificate request. Leave empty for no TTL default.">
                                   <FontAwesomeIcon
