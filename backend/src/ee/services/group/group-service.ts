@@ -315,6 +315,96 @@ export const groupServiceFactory = ({
   };
 
   /**
+   * After removing users/identities from a group, clean up their direct project memberships
+   * in any sub-orgs where the group is linked and the actor no longer has effective access.
+   */
+  const cleanUpSubOrgProjectMemberships = async ({
+    groupId,
+    userIds,
+    identityIds
+  }: {
+    groupId: string;
+    userIds: string[];
+    identityIds: string[];
+  }) => {
+    if (userIds.length === 0 && identityIds.length === 0) return;
+
+    const referencingSubOrgs = await groupDAL.getGroupsReferencingGroup(groupId);
+    if (referencingSubOrgs.length === 0) return;
+
+    await groupDAL.transaction(async (tx) => {
+      const collectIdsForSubOrg = async (subOrgId: string): Promise<string[]> => {
+        // Find remaining linked groups in this sub-org (excluding the one the user was removed from)
+        const remainingOrgGroupMemberships = await membershipGroupDAL.find(
+          { scopeOrgId: subOrgId, scope: AccessScope.Organization },
+          { tx }
+        );
+        const remainingGroupIds = remainingOrgGroupMemberships
+          .filter((m) => m.actorGroupId && m.actorGroupId !== groupId)
+          .map((m) => m.actorGroupId!);
+
+        // Check effective org-level memberships (direct + group-based) for these actors
+        const effectiveRows = await membershipGroupDAL.findEffectiveInOrg({
+          scopeOrgId: subOrgId,
+          excludeMembershipIds: [],
+          userIds,
+          identityIds,
+          groupIds: remainingGroupIds,
+          tx
+        });
+
+        const userIdsWithAccess = new Set<string>();
+        const identityIdsWithAccess = new Set<string>();
+
+        for (const row of effectiveRows) {
+          if (row.actorUserId) userIdsWithAccess.add(row.actorUserId);
+          if (row.actorIdentityId) identityIdsWithAccess.add(row.actorIdentityId);
+        }
+
+        // Resolve group-based access: find which users/identities are in remaining linked groups
+        const groupIdsInEffective = new Set(effectiveRows.map((r) => r.actorGroupId).filter(Boolean) as string[]);
+
+        if (groupIdsInEffective.size > 0) {
+          const [remainingUserMembers, remainingIdentityMembers] = await Promise.all([
+            userIds.length > 0
+              ? userGroupMembershipDAL.find({ $in: { groupId: Array.from(groupIdsInEffective) } }, { tx })
+              : [],
+            identityIds.length > 0
+              ? identityGroupMembershipDAL.find({ $in: { groupId: Array.from(groupIdsInEffective) } }, { tx })
+              : []
+          ]);
+
+          for (const um of remainingUserMembers) userIdsWithAccess.add(um.userId);
+          for (const im of remainingIdentityMembers) identityIdsWithAccess.add(im.identityId);
+        }
+
+        const usersToCleanUp = userIds.filter((uid) => !userIdsWithAccess.has(uid));
+        const identitiesToCleanUp = identityIds.filter((iid) => !identityIdsWithAccess.has(iid));
+
+        const [userProjectMemberships, identityProjectMemberships] = await Promise.all([
+          usersToCleanUp.length > 0
+            ? membershipGroupDAL.find(
+                { scopeOrgId: subOrgId, scope: AccessScope.Project, $in: { actorUserId: usersToCleanUp } },
+                { tx }
+              )
+            : [],
+          identitiesToCleanUp.length > 0
+            ? membershipGroupDAL.find(
+                { scopeOrgId: subOrgId, scope: AccessScope.Project, $in: { actorIdentityId: identitiesToCleanUp } },
+                { tx }
+              )
+            : []
+        ]);
+
+        return [...userProjectMemberships.map((pm) => pm.id), ...identityProjectMemberships.map((pm) => pm.id)];
+      };
+
+      const idsPerSubOrg = await Promise.all(referencingSubOrgs.map((subOrg) => collectIdsForSubOrg(subOrg.orgId)));
+      await deleteMembershipsInBatch(idsPerSubOrg.flat(), tx);
+    });
+  };
+
+  /**
    * Unlink a group from a sub-organization.
    * This removes the group's org and project memberships in the sub-org,
    * and cleans up direct project memberships for users/identities
@@ -999,6 +1089,12 @@ export const groupServiceFactory = ({
       projectKeyDAL
     });
 
+    await cleanUpSubOrgProjectMemberships({
+      groupId: id,
+      userIds: [user.id],
+      identityIds: []
+    });
+
     return users[0];
   };
 
@@ -1074,6 +1170,12 @@ export const groupServiceFactory = ({
       identityDAL,
       membershipDAL,
       identityGroupMembershipDAL
+    });
+
+    await cleanUpSubOrgProjectMemberships({
+      groupId: id,
+      userIds: [],
+      identityIds: [identityId]
     });
 
     return identities[0];
