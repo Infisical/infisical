@@ -120,6 +120,11 @@ export const registerServeUI = async (
         const regex = new RE2(`(${directive}\\s+[^;]+)(;)`, "g");
         indexHtml = indexHtml.replace(regex, `$1 ${domains.join(" ")}$2`);
       }
+
+      indexHtml = indexHtml.replace(
+        "<!-- GTM_NOSCRIPT_PLACEHOLDER -->",
+        `<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WL5C7MWT" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>`
+      );
     }
 
     await server.register(staticServe, {
