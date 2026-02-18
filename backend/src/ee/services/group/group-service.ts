@@ -66,7 +66,7 @@ type TGroupServiceFactoryDep = {
   >;
   membershipGroupDAL: Pick<
     TMembershipGroupDALFactory,
-    "find" | "findOne" | "create" | "getGroupById" | "deleteById" | "delete"
+    "find" | "findOne" | "create" | "getGroupById" | "deleteById" | "delete" | "findEffectiveInOrg"
   >;
   membershipDAL: Pick<TMembershipDALFactory, "find" | "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
@@ -338,59 +338,99 @@ export const groupServiceFactory = ({
         identityGroupMembershipDAL.find({ groupId }, { tx })
       ]);
 
-      // Remove group's project-level memberships in this sub-org
+      // Collect all membership IDs to delete (group's project-level + org link)
       const groupProjectMemberships = await membershipGroupDAL.find(
         { actorGroupId: groupId, scopeOrgId: actorOrgId, scope: AccessScope.Project },
         { tx }
       );
-      await deleteMembershipsInBatch(
-        groupProjectMemberships.map((pm) => pm.id),
-        tx
-      );
+      const membershipIdsToDelete = [...groupProjectMemberships.map((pm) => pm.id), groupMembershipId];
 
-      await deleteMembershipsInBatch([groupMembershipId], tx);
-
-      //     Clean up direct project memberships for members who no longer have
-      //     access through any other linked group in this sub-org.
+      // Remaining linked groups in this sub-org (excluding the one we're unlinking)
       const remainingOrgGroupMemberships = await membershipGroupDAL.find(
         { scopeOrgId: actorOrgId, scope: AccessScope.Organization },
         { tx }
       );
       const remainingGroupIds = new Set(
-        remainingOrgGroupMemberships.filter((m) => m.actorGroupId).map((m) => m.actorGroupId!)
+        remainingOrgGroupMemberships
+          .filter((m) => m.actorGroupId && m.id !== groupMembershipId)
+          .map((m) => m.actorGroupId!)
       );
 
-      const cleanUpUserProjectMemberships = groupUsers.map(async ({ userId }) => {
-        const userGroups = await userGroupMembershipDAL.find({ userId }, { tx });
-        const hasOtherLinkedGroup = userGroups.some((g) => remainingGroupIds.has(g.groupId));
-        if (hasOtherLinkedGroup) return;
+      const groupUserIds = groupUsers.map((u) => u.userId);
+      const groupIdentityIds = groupIdentities.map((i) => i.identityId);
 
-        const userProjectMemberships = await membershipGroupDAL.find(
-          { actorUserId: userId, scopeOrgId: actorOrgId, scope: AccessScope.Project },
-          { tx }
-        );
-        await deleteMembershipsInBatch(
-          userProjectMemberships.map((pm) => pm.id),
-          tx
-        );
+      // Effective memberships: any membership in this org for these actors (direct or via remaining groups), excluding the ones we're deleting
+      const effectiveRows = await membershipGroupDAL.findEffectiveInOrg({
+        scopeOrgId: actorOrgId,
+        excludeMembershipIds: membershipIdsToDelete,
+        userIds: groupUserIds,
+        identityIds: groupIdentityIds,
+        groupIds: Array.from(remainingGroupIds),
+        tx
       });
 
-      const cleanUpIdentityProjectMemberships = groupIdentities.map(async ({ identityId }) => {
-        const identityGroups = await identityGroupMembershipDAL.find({ identityId }, { tx });
-        const hasOtherLinkedGroup = identityGroups.some((g) => remainingGroupIds.has(g.groupId));
-        if (hasOtherLinkedGroup) return;
+      const userIdsWithOtherMemberships = new Set<string>();
+      const identityIdsWithOtherMemberships = new Set<string>();
+      for (const row of effectiveRows) {
+        if (row.actorUserId) userIdsWithOtherMemberships.add(row.actorUserId);
+        if (row.actorIdentityId) identityIdsWithOtherMemberships.add(row.actorIdentityId);
+      }
 
-        const identityProjectMemberships = await membershipGroupDAL.find(
-          { actorIdentityId: identityId, scopeOrgId: actorOrgId, scope: AccessScope.Project },
-          { tx }
-        );
-        await deleteMembershipsInBatch(
-          identityProjectMemberships.map((pm) => pm.id),
-          tx
-        );
-      });
+      // For group-based effective rows, add all users/identities in those groups
+      if (remainingGroupIds.size > 0) {
+        const [remainingUserMembers, remainingIdentityMembers] = await Promise.all([
+          userGroupMembershipDAL.find({ $in: { groupId: Array.from(remainingGroupIds) } }, { tx }),
+          identityGroupMembershipDAL.find({ $in: { groupId: Array.from(remainingGroupIds) } }, { tx })
+        ]);
+        const groupIdsInEffective = new Set(effectiveRows.map((r) => r.actorGroupId).filter(Boolean) as string[]);
+        for (const g of groupIdsInEffective) {
+          for (const um of remainingUserMembers.filter((mem) => mem.groupId === g)) {
+            userIdsWithOtherMemberships.add(um.userId);
+          }
+          for (const im of remainingIdentityMembers.filter((mem) => mem.groupId === g)) {
+            identityIdsWithOtherMemberships.add(im.identityId);
+          }
+        }
+      }
 
-      await Promise.all([...cleanUpUserProjectMemberships, ...cleanUpIdentityProjectMemberships]);
+      // Remove direct project memberships only for users/identities who have no other effective membership in this org
+      const usersToCleanUp = groupUserIds.filter((id) => !userIdsWithOtherMemberships.has(id));
+      const identitiesToCleanUp = groupIdentityIds.filter((id) => !identityIdsWithOtherMemberships.has(id));
+
+      const [userProjectIdsToDelete, identityProjectIdsToDelete] = await Promise.all([
+        usersToCleanUp.length > 0
+          ? membershipGroupDAL
+              .find(
+                {
+                  ...(usersToCleanUp.length === 1
+                    ? { actorUserId: usersToCleanUp[0] }
+                    : { $in: { actorUserId: usersToCleanUp } }),
+                  scopeOrgId: actorOrgId,
+                  scope: AccessScope.Project
+                },
+                { tx }
+              )
+              .then((rows) => rows.map((r) => r.id))
+          : [],
+        identitiesToCleanUp.length > 0
+          ? membershipGroupDAL
+              .find(
+                {
+                  ...(identitiesToCleanUp.length === 1
+                    ? { actorIdentityId: identitiesToCleanUp[0] }
+                    : { $in: { actorIdentityId: identitiesToCleanUp } }),
+                  scopeOrgId: actorOrgId,
+                  scope: AccessScope.Project
+                },
+                { tx }
+              )
+              .then((rows) => rows.map((r) => r.id))
+          : []
+      ]);
+
+      membershipIdsToDelete.push(...userProjectIdsToDelete, ...identityProjectIdsToDelete);
+
+      await deleteMembershipsInBatch(membershipIdsToDelete, tx);
     });
 
     return group;

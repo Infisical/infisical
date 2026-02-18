@@ -276,5 +276,62 @@ export const membershipGroupDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findGroups, getGroupById };
+  type TFindEffectiveInOrgArg = {
+    scopeOrgId: string;
+    excludeMembershipIds: string[];
+    userIds: string[];
+    identityIds: string[];
+    groupIds: string[];
+    tx?: Knex;
+  };
+
+  /**
+   * Find all memberships in an org that grant access to the given actors (users, identities, or groups).
+   * Used to determine which actors still have at least one membership after excluding some (e.g. when unlinking a group).
+   */
+  const findEffectiveInOrg = async ({
+    scopeOrgId,
+    excludeMembershipIds,
+    userIds,
+    identityIds,
+    groupIds,
+    tx
+  }: TFindEffectiveInOrgArg) => {
+    try {
+      if (userIds.length === 0 && identityIds.length === 0 && groupIds.length === 0) {
+        return [];
+      }
+
+      const qb = (tx || db.replicaNode())(TableName.Membership)
+        .where(`${TableName.Membership}.scopeOrgId`, scopeOrgId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where((inner) => {
+          if (userIds.length > 0) void inner.orWhereIn(`${TableName.Membership}.actorUserId`, userIds);
+          if (identityIds.length > 0) void inner.orWhereIn(`${TableName.Membership}.actorIdentityId`, identityIds);
+          if (groupIds.length > 0) void inner.orWhereIn(`${TableName.Membership}.actorGroupId`, groupIds);
+        })
+        .select(
+          `${TableName.Membership}.id`,
+          `${TableName.Membership}.actorUserId`,
+          `${TableName.Membership}.actorIdentityId`,
+          `${TableName.Membership}.actorGroupId`
+        );
+
+      if (excludeMembershipIds.length > 0) {
+        void qb.whereNotIn(`${TableName.Membership}.id`, excludeMembershipIds);
+      }
+
+      const rows = await qb;
+      return rows as Array<{
+        id: string;
+        actorUserId: string | null;
+        actorIdentityId: string | null;
+        actorGroupId: string | null;
+      }>;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "MembershipFindEffectiveInOrg" });
+    }
+  };
+
+  return { ...orm, findGroups, getGroupById, findEffectiveInOrg };
 };
