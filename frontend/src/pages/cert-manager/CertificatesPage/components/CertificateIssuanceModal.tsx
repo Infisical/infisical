@@ -341,11 +341,15 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
           subjectAttributes &&
           subjectAttributes.length > 0
         ) {
+          const defaults = actualSelectedProfile?.defaults;
+
           const cnAttr = subjectAttributes.find(
             (attr) => attr.type === CertSubjectAttributeType.COMMON_NAME
           );
           if (cnAttr?.value) {
             request.attributes.commonName = cnAttr.value;
+          } else if (defaults?.commonName) {
+            request.attributes.commonName = null;
           }
 
           const orgAttr = subjectAttributes.find(
@@ -353,6 +357,8 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
           );
           if (orgAttr?.value) {
             request.attributes.organization = orgAttr.value;
+          } else if (defaults?.organization) {
+            request.attributes.organization = null;
           }
 
           const ouAttr = subjectAttributes.find(
@@ -360,6 +366,8 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
           );
           if (ouAttr?.value) {
             request.attributes.organizationUnit = ouAttr.value;
+          } else if (defaults?.organizationalUnit) {
+            request.attributes.organizationUnit = null;
           }
 
           const countryAttr = subjectAttributes.find(
@@ -367,6 +375,8 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
           );
           if (countryAttr?.value) {
             request.attributes.country = countryAttr.value;
+          } else if (defaults?.country) {
+            request.attributes.country = null;
           }
 
           const stateAttr = subjectAttributes.find(
@@ -374,6 +384,8 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
           );
           if (stateAttr?.value) {
             request.attributes.state = stateAttr.value;
+          } else if (defaults?.state) {
+            request.attributes.state = null;
           }
 
           const localityAttr = subjectAttributes.find(
@@ -381,6 +393,8 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
           );
           if (localityAttr?.value) {
             request.attributes.locality = localityAttr.value;
+          } else if (defaults?.locality) {
+            request.attributes.locality = null;
           }
         }
 
@@ -419,6 +433,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
       constraints.shouldShowSanSection,
       constraints.templateAllowsCA,
       constraints.templateRequiresCA,
+      actualSelectedProfile?.defaults,
       handlePopUpToggle,
       navigate
     ]

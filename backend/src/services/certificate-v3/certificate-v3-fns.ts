@@ -127,16 +127,17 @@ export const applyProfileDefaults = <
 ): T => {
   if (!defaults) return request;
 
+  // For scalar fields, key-presence distinguishes "omitted" (use default) from "explicitly set/cleared".
   return {
     ...request,
-    commonName: request.commonName ?? defaults.commonName,
-    organization: request.organization ?? defaults.organization,
-    organizationalUnit: request.organizationalUnit ?? defaults.organizationalUnit,
-    country: request.country ?? defaults.country,
-    state: request.state ?? defaults.state,
-    locality: request.locality ?? defaults.locality,
-    keyAlgorithm: request.keyAlgorithm ?? defaults.keyAlgorithm,
-    signatureAlgorithm: request.signatureAlgorithm ?? defaults.signatureAlgorithm,
+    commonName: "commonName" in request ? request.commonName : defaults.commonName,
+    organization: "organization" in request ? request.organization : defaults.organization,
+    organizationalUnit: "organizationalUnit" in request ? request.organizationalUnit : defaults.organizationalUnit,
+    country: "country" in request ? request.country : defaults.country,
+    state: "state" in request ? request.state : defaults.state,
+    locality: "locality" in request ? request.locality : defaults.locality,
+    keyAlgorithm: "keyAlgorithm" in request ? request.keyAlgorithm : defaults.keyAlgorithm,
+    signatureAlgorithm: "signatureAlgorithm" in request ? request.signatureAlgorithm : defaults.signatureAlgorithm,
     keyUsages: request.keyUsages !== undefined ? request.keyUsages : defaults.keyUsages,
     extendedKeyUsages: request.extendedKeyUsages !== undefined ? request.extendedKeyUsages : defaults.extendedKeyUsages,
     basicConstraints: request.basicConstraints !== undefined ? request.basicConstraints : defaults.basicConstraints

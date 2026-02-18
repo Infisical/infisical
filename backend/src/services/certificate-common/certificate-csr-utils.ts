@@ -40,7 +40,10 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
       // eslint-disable-next-line no-bitwise
       (keyUsage) => (x509.KeyUsageFlags[keyUsage] & csrKeyUsageExtension.usages) !== 0
     );
-    certificateRequest.keyUsages = csrKeyUsages.map(mapLegacyKeyUsageToStandard);
+    const mapped = csrKeyUsages.map(mapLegacyKeyUsageToStandard);
+    if (mapped.length > 0) {
+      certificateRequest.keyUsages = mapped;
+    }
   }
 
   const csrExtendedKeyUsageExtension = csrObj.getExtension("2.5.29.37") as x509.ExtendedKeyUsageExtension;
@@ -48,7 +51,10 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
     const csrExtendedKeyUsages = csrExtendedKeyUsageExtension.usages.map(
       (ekuOid) => CertExtendedKeyUsageOIDToName[ekuOid as string]
     );
-    certificateRequest.extendedKeyUsages = csrExtendedKeyUsages.map(mapLegacyExtendedKeyUsageToStandard);
+    const mapped = csrExtendedKeyUsages.map(mapLegacyExtendedKeyUsageToStandard);
+    if (mapped.length > 0) {
+      certificateRequest.extendedKeyUsages = mapped;
+    }
   }
 
   const sanExtension = csrObj.extensions.find((ext) => ext.type === "2.5.29.17");
