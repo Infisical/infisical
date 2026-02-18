@@ -18,7 +18,7 @@ export enum OrgPermissionActions {
 export enum OrgPermissionSubOrgActions {
   Create = "create",
   DirectAccess = "direct-access",
-  LinkRootGroup = "link-root-group"
+  LinkGroup = "link-group"
 }
 
 export enum OrgPermissionAppConnectionActions {
@@ -201,7 +201,7 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
     action: CASL_ACTION_SCHEMA_ENUM([
       OrgPermissionSubOrgActions.Create,
       OrgPermissionSubOrgActions.DirectAccess,
-      OrgPermissionSubOrgActions.LinkRootGroup
+      OrgPermissionSubOrgActions.LinkGroup
     ]).describe("Describe what action an entity can take.")
   }),
   z.object({
@@ -330,7 +330,7 @@ const buildAdminPermission = () => {
 
   can(OrgPermissionSubOrgActions.Create, OrgPermissionSubjects.SubOrganization);
   can(OrgPermissionSubOrgActions.DirectAccess, OrgPermissionSubjects.SubOrganization);
-  can(OrgPermissionSubOrgActions.LinkRootGroup, OrgPermissionSubjects.SubOrganization);
+  can(OrgPermissionSubOrgActions.LinkGroup, OrgPermissionSubjects.SubOrganization);
 
   // role permission
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);

@@ -61,7 +61,7 @@ export const newOrgMembershipGroupFactory = ({
       scope: OrganizationActionScope.Any
     });
     ForbiddenError.from(rootOrgPermission).throwUnlessCan(
-      OrgPermissionSubOrgActions.LinkRootGroup,
+      OrgPermissionSubOrgActions.LinkGroup,
       OrgPermissionSubjects.SubOrganization
     );
 
@@ -167,7 +167,7 @@ export const newOrgMembershipGroupFactory = ({
         scope: OrganizationActionScope.Any
       });
       ForbiddenError.from(rootOrgPermission).throwUnlessCan(
-        OrgPermissionSubOrgActions.LinkRootGroup,
+        OrgPermissionSubOrgActions.LinkGroup,
         OrgPermissionSubjects.SubOrganization
       );
     }

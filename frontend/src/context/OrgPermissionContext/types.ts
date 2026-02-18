@@ -116,7 +116,7 @@ export enum OrgPermissionGroupActions {
 export enum OrgPermissionSubOrgActions {
   Create = "create",
   DirectAccess = "direct-access",
-  LinkRootGroup = "link-root-group"
+  LinkGroup = "link-group"
 }
 
 export type AppConnectionSubjectFields = {

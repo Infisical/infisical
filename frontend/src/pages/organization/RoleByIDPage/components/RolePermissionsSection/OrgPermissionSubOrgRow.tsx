@@ -13,7 +13,7 @@ import { TFormSchema } from "../OrgRoleModifySection.utils";
 const PERMISSION_ACTIONS = [
   { action: OrgPermissionSubOrgActions.Create, label: "Create" },
   { action: OrgPermissionSubOrgActions.DirectAccess, label: "Direct Access" },
-  { action: OrgPermissionSubOrgActions.LinkRootGroup, label: "Link Root Group" }
+  { action: OrgPermissionSubOrgActions.LinkGroup, label: "Link Group" }
 ] as const;
 
 type Props = {
@@ -68,7 +68,7 @@ export const OrgPermissionSubOrgRow = ({ isEditable, control, setValue }: Props)
           {
             [OrgPermissionSubOrgActions.Create]: false,
             [OrgPermissionSubOrgActions.DirectAccess]: false,
-            [OrgPermissionSubOrgActions.LinkRootGroup]: false
+            [OrgPermissionSubOrgActions.LinkGroup]: false
           },
           { shouldDirty: true }
         );
@@ -79,7 +79,7 @@ export const OrgPermissionSubOrgRow = ({ isEditable, control, setValue }: Props)
           {
             [OrgPermissionSubOrgActions.Create]: true,
             [OrgPermissionSubOrgActions.DirectAccess]: true,
-            [OrgPermissionSubOrgActions.LinkRootGroup]: true
+            [OrgPermissionSubOrgActions.LinkGroup]: true
           },
           { shouldDirty: true }
         );
@@ -90,7 +90,7 @@ export const OrgPermissionSubOrgRow = ({ isEditable, control, setValue }: Props)
           {
             [OrgPermissionSubOrgActions.Create]: true,
             [OrgPermissionSubOrgActions.DirectAccess]: true,
-            [OrgPermissionSubOrgActions.LinkRootGroup]: true
+            [OrgPermissionSubOrgActions.LinkGroup]: true
           },
           { shouldDirty: true }
         );
