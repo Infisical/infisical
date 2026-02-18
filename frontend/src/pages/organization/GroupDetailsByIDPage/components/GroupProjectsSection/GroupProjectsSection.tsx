@@ -22,9 +22,10 @@ import { GroupProjectsTable } from "./GroupProjectsTable";
 type Props = {
   groupId: string;
   groupSlug: string;
+  hideAddToProject?: boolean;
 };
 
-export const GroupProjectsSection = ({ groupId, groupSlug }: Props) => {
+export const GroupProjectsSection = ({ groupId, groupSlug, hideAddToProject = false }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "addGroupProjects",
     "removeProjectFromGroup"
@@ -53,24 +54,26 @@ export const GroupProjectsSection = ({ groupId, groupSlug }: Props) => {
           <UnstableCardTitle>Projects</UnstableCardTitle>
           <UnstableCardDescription>Manage group project memberships</UnstableCardDescription>
           <UnstableCardAction>
-            <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
-              {(isAllowed) => (
-                <Button
-                  isDisabled={!isAllowed}
-                  onClick={() => {
-                    handlePopUpOpen("addGroupProjects", {
-                      groupId,
-                      slug: groupSlug
-                    });
-                  }}
-                  size="xs"
-                  variant="outline"
-                >
-                  <PlusIcon />
-                  Add to Project
-                </Button>
-              )}
-            </OrgPermissionCan>
+            {!hideAddToProject && (
+              <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
+                {(isAllowed) => (
+                  <Button
+                    isDisabled={!isAllowed}
+                    onClick={() => {
+                      handlePopUpOpen("addGroupProjects", {
+                        groupId,
+                        slug: groupSlug
+                      });
+                    }}
+                    size="xs"
+                    variant="outline"
+                  >
+                    <PlusIcon />
+                    Add to Project
+                  </Button>
+                )}
+              </OrgPermissionCan>
+            )}
           </UnstableCardAction>
         </UnstableCardHeader>
         <UnstableCardContent>
@@ -78,6 +81,7 @@ export const GroupProjectsSection = ({ groupId, groupSlug }: Props) => {
             groupId={groupId}
             groupSlug={groupSlug}
             handlePopUpOpen={handlePopUpOpen}
+            hideAddToProject={hideAddToProject}
           />
         </UnstableCardContent>
       </UnstableCard>

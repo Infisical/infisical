@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { groupKeys } from "../groups/queries";
+import { TGroupMembership } from "../groups/types";
 import { userKeys } from "../users/query-keys";
 import { projectKeys } from "./query-keys";
 import {
@@ -25,7 +26,7 @@ export const useAddGroupToWorkspace = () => {
     }) => {
       const {
         data: { groupMembership }
-      } = await apiRequest.post(`/api/v1/projects/${projectId}/groups/${groupId}`, {
+      } = await apiRequest.post(`/api/v1/projects/${projectId}/memberships/groups/${groupId}`, {
         role
       });
 
@@ -44,13 +45,12 @@ export const useUpdateGroupWorkspaceRole = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ groupId, projectId, roles }: TUpdateWorkspaceGroupRoleDTO) => {
-      const {
-        data: { groupMembership }
-      } = await apiRequest.patch(`/api/v1/projects/${projectId}/groups/${groupId}`, {
-        roles
-      });
+      const { data } = await apiRequest.patch<{ roles: TGroupMembership["roles"] }>(
+        `/api/v1/projects/${projectId}/memberships/groups/${groupId}`,
+        { roles }
+      );
 
-      return groupMembership;
+      return data;
     },
     onSuccess: (_, { projectId, groupId }) => {
       queryClient.invalidateQueries({
@@ -76,7 +76,7 @@ export const useDeleteGroupFromWorkspace = () => {
     }) => {
       const {
         data: { groupMembership }
-      } = await apiRequest.delete(`/api/v1/projects/${projectId}/groups/${groupId}`);
+      } = await apiRequest.delete(`/api/v1/projects/${projectId}/memberships/groups/${groupId}`);
       return groupMembership;
     },
     onSuccess: (_, { projectId, username, groupId }) => {

@@ -38,13 +38,19 @@ type Props = {
     popUpName: keyof UsePopUpState<["removeProjectFromGroup", "addGroupProjects"]>,
     data?: object
   ) => void;
+  hideAddToProject?: boolean;
 };
 
 enum GroupProjectsOrderBy {
   Name = "name"
 }
 
-export const GroupProjectsTable = ({ groupId, groupSlug, handlePopUpOpen }: Props) => {
+export const GroupProjectsTable = ({
+  groupId,
+  groupSlug,
+  handlePopUpOpen,
+  hideAddToProject = false
+}: Props) => {
   const { isSubOrganization } = useOrganization();
 
   const {
@@ -144,7 +150,7 @@ export const GroupProjectsTable = ({ groupId, groupSlug, handlePopUpOpen }: Prop
                 ? "Adjust search filters to view project memberships."
                 : "Add this group to a project."}
             </UnstableEmptyDescription>
-            {!debouncedSearch && (
+            {!debouncedSearch && !hideAddToProject && (
               <UnstableEmptyContent>
                 <Button
                   variant={isSubOrganization ? "sub-org" : "org"}

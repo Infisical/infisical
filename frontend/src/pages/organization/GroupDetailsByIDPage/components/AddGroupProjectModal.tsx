@@ -81,7 +81,8 @@ export const AddGroupProjectModal = ({ popUp, handlePopUpToggle }: Props) => {
 
     await addProjectToGroupMutateAsync({
       groupId: popUpData.groupId,
-      projectId
+      projectId,
+      role: "no-access"
     });
 
     createNotification({

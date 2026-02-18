@@ -172,20 +172,18 @@ export interface TPermissionDALFactory {
 export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
   const getPermission: TPermissionDALFactory["getPermission"] = async ({ scopeData, tx, actorId, actorType }) => {
     try {
-      // akhilmhdh: when group has another group like sub group we would need recursively go down
-      const userGroupSubquery = (tx || db)(TableName.Groups)
-        .leftJoin(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
-        .where(`${TableName.Groups}.orgId`, scopeData.orgId)
+      const conn = tx || db;
+      const userGroupSubquery = conn(TableName.Groups)
+        .join(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
         .where(`${TableName.UserGroupMembership}.userId`, actorId)
         .select(db.ref("id").withSchema(TableName.Groups));
 
-      const identityGroupSubquery = (tx || db)(TableName.Groups)
-        .leftJoin(
+      const identityGroupSubquery = conn(TableName.Groups)
+        .join(
           TableName.IdentityGroupMembership,
           `${TableName.IdentityGroupMembership}.groupId`,
           `${TableName.Groups}.id`
         )
-        .where(`${TableName.Groups}.orgId`, scopeData.orgId)
         .where(`${TableName.IdentityGroupMembership}.identityId`, actorId)
         .select(db.ref("id").withSchema(TableName.Groups));
 
@@ -481,7 +479,8 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
   ) => {
     const userGroupSubquery = db(TableName.Groups)
       .leftJoin(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
-      .where(`${TableName.Groups}.orgId`, orgId)
+      .join(TableName.Membership, `${TableName.Groups}.id`, `${TableName.Membership}.actorGroupId`)
+      .where(`${TableName.Membership}.scopeOrgId`, orgId)
       .select(db.ref("id").withSchema(TableName.Groups));
 
     try {
@@ -674,7 +673,8 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           `${TableName.IdentityGroupMembership}.groupId`,
           `${TableName.Groups}.id`
         )
-        .where(`${TableName.Groups}.orgId`, orgId)
+        .join(TableName.Membership, `${TableName.Groups}.id`, `${TableName.Membership}.actorGroupId`)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .select(db.ref("id").withSchema(TableName.Groups));
 
       const docs = await db

@@ -70,7 +70,7 @@ type TIdentityLdapAuthServiceFactoryDep = {
     TKeyStoreFactory,
     "setItemWithExpiry" | "getItem" | "deleteItem" | "getKeysByPattern" | "deleteItems" | "acquireLock"
   >;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
 };
 
 export type TIdentityLdapAuthServiceFactory = ReturnType<typeof identityLdapAuthServiceFactory>;
@@ -187,10 +187,10 @@ export const identityLdapAuthServiceFactory = ({
           throw new NotFoundError({ message: `Sub organization with slug ${organizationSlug} not found` });
         }
 
-        const subOrgMembership = await membershipIdentityDAL.findOne({
-          scope: AccessScope.Organization,
-          actorIdentityId: identity.id,
-          scopeOrgId: subOrg.id
+        const subOrgMembership = await orgDAL.findEffectiveOrgMembership({
+          actorType: ActorType.IDENTITY,
+          actorId: identity.id,
+          orgId: subOrg.id
         });
 
         if (!subOrgMembership) {

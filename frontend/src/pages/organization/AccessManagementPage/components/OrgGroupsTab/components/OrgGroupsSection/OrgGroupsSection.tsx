@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -15,13 +16,17 @@ import {
 import { useDeleteGroup } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { GroupWizardSteps } from "./groupWizardSteps";
 import { OrgGroupModal } from "./OrgGroupModal";
 import { OrgGroupsTable } from "./OrgGroupsTable";
 
+export { GroupWizardSteps };
+
 export const OrgGroupsSection = () => {
   const { subscription } = useSubscription();
-  const { isSubOrganization } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const { mutateAsync: deleteMutateAsync } = useDeleteGroup();
+  const [wizardStep, setWizardStep] = useState<GroupWizardSteps>(GroupWizardSteps.CreateGroup);
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "group",
@@ -37,16 +42,30 @@ export const OrgGroupsSection = () => {
         isEnterpriseFeature: true
       });
     } else {
+      if (!isSubOrganization) {
+        setWizardStep(GroupWizardSteps.CreateGroup);
+      }
       handlePopUpOpen("group");
     }
   };
 
-  const onDeleteGroupSubmit = async ({ name, groupId }: { name: string; groupId: string }) => {
+  const onDeleteGroupSubmit = async ({
+    name,
+    groupId,
+    isLinkedGroup
+  }: {
+    name: string;
+    groupId: string;
+    isLinkedGroup?: boolean;
+  }) => {
     await deleteMutateAsync({
-      id: groupId
+      id: groupId,
+      organizationId: currentOrg?.id
     });
     createNotification({
-      text: `Successfully deleted the group named ${name}`,
+      text: isLinkedGroup
+        ? "Successfully unlinked group from sub-organization"
+        : `Successfully deleted the group named ${name}`,
       type: "success"
     });
 
@@ -71,7 +90,9 @@ export const OrgGroupsSection = () => {
               onClick={() => handleAddGroupModal()}
               isDisabled={!isAllowed}
             >
-              Create {isSubOrganization ? "Sub-" : ""}Organization Group
+              {isSubOrganization
+                ? "Add Group to Sub-Organization"
+                : `Create ${isSubOrganization ? "Sub-" : ""}Organization Group`}
             </Button>
           )}
         </OrgPermissionCan>
@@ -81,16 +102,27 @@ export const OrgGroupsSection = () => {
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}
         handlePopUpToggle={handlePopUpToggle}
+        wizardStep={wizardStep}
+        setWizardStep={setWizardStep}
+        isSubOrganization={isSubOrganization}
       />
       <DeleteActionModal
         isOpen={popUp.deleteGroup.isOpen}
-        title={`Are you sure you want to delete the group named ${
-          (popUp?.deleteGroup?.data as { name: string })?.name || ""
-        }?`}
+        title={
+          (popUp?.deleteGroup?.data as { name: string; isLinkedGroup?: boolean })?.isLinkedGroup
+            ? `Are you sure you want to unlink the group "${
+                (popUp?.deleteGroup?.data as { name: string })?.name || ""
+              }" from this sub-organization?`
+            : `Are you sure you want to delete the group named ${
+                (popUp?.deleteGroup?.data as { name: string })?.name || ""
+              }?`
+        }
         onChange={(isOpen) => handlePopUpToggle("deleteGroup", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() =>
-          onDeleteGroupSubmit(popUp?.deleteGroup?.data as { name: string; groupId: string })
+          onDeleteGroupSubmit(
+            popUp?.deleteGroup?.data as { name: string; groupId: string; isLinkedGroup?: boolean }
+          )
         }
       />
       <UpgradePlanModal

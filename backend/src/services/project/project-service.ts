@@ -175,7 +175,7 @@ type TProjectServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "invalidateGetPlan">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  orgDAL: Pick<TOrgDALFactory, "findOne">;
+  orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem">;
   roleDAL: Pick<TRoleDALFactory, "find" | "insertMany" | "delete">;
   kmsService: Pick<
@@ -674,17 +674,13 @@ export const projectServiceFactory = ({
 
       // If the project is being created by an identity, add the identity to the project as an admin
       else if (actor === ActorType.IDENTITY) {
-        // Find identity org membership
-        const identityOrgMembership = await membershipIdentityDAL.findOne(
-          {
-            actorIdentityId: actorId,
-            scopeOrgId: project.orgId,
-            scope: AccessScope.Organization
-          },
+        const identityOrgMembership = await orgDAL.findEffectiveOrgMembership({
+          actorType: ActorType.IDENTITY,
+          actorId,
+          orgId: project.orgId,
           tx
-        );
+        });
 
-        // If identity org membership not found, throw error
         if (!identityOrgMembership) {
           throw new NotFoundError({
             message: `Failed to find identity with id '${actorId}'`
