@@ -18,7 +18,11 @@ const QueryParamsSchema = z.object({
   force: z.boolean().optional(),
   org_id: z.string().optional().catch(undefined),
   auth_method: z.enum(["saml", "oidc"]).optional().catch(undefined),
-  org_slug: z.string().regex(/^[a-z0-9-]+$/).optional().catch(undefined)
+  org_slug: z
+    .string()
+    .regex(/^[a-z0-9-]+$/)
+    .optional()
+    .catch(undefined)
 });
 
 export const AuthConsentWrapper = () => {
