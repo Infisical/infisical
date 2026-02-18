@@ -170,6 +170,26 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
+  const getUniqueImportCountByFolderIds = async (folderIds: string[], search?: string, tx?: Knex) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.SecretImport)
+        .whereIn("folderId", folderIds)
+        .where("isReserved", false)
+        .where((bd) => {
+          if (search) {
+            void bd.whereILike("importPath", `%${search}%`);
+          }
+        })
+        .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
+        .count(db.raw(`DISTINCT ("${TableName.SecretImport}"."importPath", "${TableName.SecretImport}"."importEnv")`));
+
+      // @ts-expect-error scott - not typed
+      return Number(docs[0]?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "get unique secret imports count" });
+    }
+  };
+
   const findByFolderIds = async (folderIds: string[], tx?: Knex) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.SecretImport)
@@ -351,6 +371,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
     findLastImportPosition,
     updateAllPosition,
     getProjectImportCount,
+    getUniqueImportCountByFolderIds,
     getFolderIsImportedBy,
     getFolderImports
   };

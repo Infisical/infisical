@@ -139,6 +139,73 @@ export const useSecretRotationOverview = (
   };
 };
 
+export const useSecretImportOverview = (imports: DashboardProjectSecretsOverview["imports"]) => {
+  const secretImportNames = useMemo(() => {
+    const keys = new Map<
+      string,
+      { importEnvSlug: string; importEnvName: string; importPath: string }
+    >();
+    imports?.forEach((imp) => {
+      if (imp.isReserved) return;
+      const key = `${imp.importEnv.slug}:${imp.importPath}`;
+      if (!keys.has(key)) {
+        keys.set(key, {
+          importEnvSlug: imp.importEnv.slug,
+          importEnvName: imp.importEnv.name,
+          importPath: imp.importPath
+        });
+      }
+    });
+    return Array.from(keys.values());
+  }, [imports]);
+
+  const isSecretImportInEnv = useCallback(
+    (importEnvSlug: string, importPath: string, targetEnv: string) => {
+      return Boolean(
+        imports?.find(
+          (imp) =>
+            !imp.isReserved &&
+            imp.importEnv.slug === importEnvSlug &&
+            imp.importPath === importPath &&
+            imp.environment === targetEnv
+        )
+      );
+    },
+    [imports]
+  );
+
+  const getSecretImportByEnv = useCallback(
+    (importEnvSlug: string, importPath: string, targetEnv: string) => {
+      return imports?.find(
+        (imp) =>
+          !imp.isReserved &&
+          imp.importEnv.slug === importEnvSlug &&
+          imp.importPath === importPath &&
+          imp.environment === targetEnv
+      );
+    },
+    [imports]
+  );
+
+  const getSecretImportsForEnv = useCallback(
+    (targetEnv: string) => {
+      return (
+        imports
+          ?.filter((imp) => !imp.isReserved && imp.environment === targetEnv)
+          .sort((a, b) => Number(a.position) - Number(b.position)) ?? []
+      );
+    },
+    [imports]
+  );
+
+  return {
+    secretImportNames,
+    isSecretImportInEnv,
+    getSecretImportByEnv,
+    getSecretImportsForEnv
+  };
+};
+
 export const useSecretOverview = (secrets: DashboardProjectSecretsOverview["secrets"]) => {
   const secKeys = useMemo(() => {
     const keys = new Set<string>();

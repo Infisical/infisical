@@ -2,6 +2,7 @@ import {
   ChevronDown,
   FingerprintIcon,
   FolderIcon,
+  ImportIcon,
   PlusIcon,
   RefreshCwIcon,
   UploadIcon
@@ -27,9 +28,11 @@ type Props = {
   onAddFolder: () => void;
   onAddDyanamicSecret: () => void;
   onAddSecretRotation: () => void;
+  onAddSecretImport: () => void;
   onImportSecrets: () => void;
   isDyanmicSecretAvailable: boolean;
   isSecretRotationAvailable: boolean;
+  isSecretImportAvailable: boolean;
 };
 
 export function AddResourceButtons({
@@ -37,9 +40,11 @@ export function AddResourceButtons({
   onAddFolder,
   onAddDyanamicSecret,
   onAddSecretRotation,
+  onAddSecretImport,
   onImportSecrets,
   isDyanmicSecretAvailable,
-  isSecretRotationAvailable
+  isSecretRotationAvailable,
+  isSecretImportAvailable
 }: Props) {
   return (
     <UnstableButtonGroup>
@@ -104,6 +109,18 @@ export function AddResourceButtons({
               >
                 <RefreshCwIcon className="text-secret-rotation" />
                 Add Secret Rotation
+              </UnstableDropdownMenuItem>
+            </TooltipTrigger>
+            <TooltipContent side="left">Access restricted</TooltipContent>
+          </Tooltip>
+          <Tooltip open={!isSecretImportAvailable ? undefined : false}>
+            <TooltipTrigger className="block w-full">
+              <UnstableDropdownMenuItem
+                onClick={onAddSecretImport}
+                isDisabled={!isSecretImportAvailable}
+              >
+                <ImportIcon className="text-import" />
+                Add Secret Import
               </UnstableDropdownMenuItem>
             </TooltipTrigger>
             <TooltipContent side="left">Access restricted</TooltipContent>

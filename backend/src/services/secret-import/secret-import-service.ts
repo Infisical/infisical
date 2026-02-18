@@ -536,11 +536,10 @@ export const secretImportServiceFactory = ({
       throw new NotFoundError({
         message: `Folder with path '${secretPath}' not found on environments with slugs '${environments.join(", ")}'`
       });
-    const counts = await Promise.all(
-      folders.map((folder) => secretImportDAL.getProjectImportCount({ folderId: folder.id, search }))
+    return secretImportDAL.getUniqueImportCountByFolderIds(
+      folders.map((folder) => folder.id),
+      search
     );
-
-    return counts.reduce((sum, count) => sum + count, 0);
   };
 
   const getImports = async ({

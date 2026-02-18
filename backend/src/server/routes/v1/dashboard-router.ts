@@ -254,8 +254,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           actorOrgId: req.permission.orgId,
           projectId,
           environments,
-          path: secretPath,
-          search
+          path: secretPath
+          // search: removing because this prevents searching imported secrets which are fetched separately client side
         });
 
         if (remainingLimit > 0 && totalImportCount > adjustedOffset) {
@@ -267,7 +267,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             projectId,
             environments,
             path: secretPath,
-            search,
+            // search: removing because this prevents searching imported secrets which are fetched separately client side
             limit: remainingLimit,
             offset: adjustedOffset
           });
@@ -284,6 +284,16 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               }
             }
           });
+
+          // get the count of unique folder names to properly adjust remaining limit
+          const uniqueImportCount = new Set(
+            imports.filter((imp) => !imp.isReserved).map((imp) => `${imp.importEnv.slug}:${imp.importPath}`)
+          ).size;
+
+          remainingLimit -= uniqueImportCount;
+          adjustedOffset = 0;
+        } else {
+          adjustedOffset = Math.max(0, adjustedOffset - totalImportCount);
         }
       }
 
@@ -328,9 +338,11 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
       if (!includeDynamicSecrets && !includeSecrets && !includeSecretRotations)
         return {
+          imports,
           folders,
+          totalImportCount,
           totalFolderCount,
-          totalCount: totalFolderCount ?? 0
+          totalCount: (totalImportCount ?? 0) + (totalFolderCount ?? 0)
         };
 
       if (includeDynamicSecrets) {
@@ -586,6 +598,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         importedByEnvs,
         usedBySecretSyncs,
         totalCount:
+          (totalImportCount ?? 0) +
           (totalFolderCount ?? 0) +
           (totalDynamicSecretCount ?? 0) +
           (totalSecretCount ?? 0) +
