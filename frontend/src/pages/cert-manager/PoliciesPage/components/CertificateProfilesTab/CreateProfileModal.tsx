@@ -1549,8 +1549,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                 {!watchedPolicyId ? (
                   <EmptyState title="Select a certificate policy on the Configuration tab to configure defaults." />
                 ) : (
-                  <div className="space-y-4">
-                    <p className="text-sm text-bunker-300">
+                  <div>
+                    <p className="mb-4 text-sm text-bunker-300">
                       Set default values for certificates issued under this profile. These defaults
                       are used when a certificate request does not specify its own values.
                     </p>
@@ -1614,104 +1614,108 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                     )}
 
                     {/* Key Usages, Ext Key Usages, Basic Constraints — in Accordion */}
-                    <Accordion type="single" collapsible className="w-full">
-                      {filteredKeyUsages.length > 0 && (
-                        <KeyUsageSection
-                          control={control}
-                          title="Key Usages"
-                          accordionValue="key-usages"
-                          namePrefix="defaults.keyUsages"
-                          options={filteredKeyUsages as Array<{ value: string; label: string }>}
-                          requiredUsages={[]}
-                        />
-                      )}
-                      {filteredExtendedKeyUsages.length > 0 && (
-                        <KeyUsageSection
-                          control={control}
-                          title="Extended Key Usages"
-                          accordionValue="extended-key-usages"
-                          namePrefix="defaults.extendedKeyUsages"
-                          options={
-                            filteredExtendedKeyUsages as Array<{ value: string; label: string }>
-                          }
-                          requiredUsages={[]}
-                        />
-                      )}
-                      {policyConstraints.templateAllowsCA && (
-                        <AccordionItem value="basic-constraints">
-                          <AccordionTrigger>Basic Constraints</AccordionTrigger>
-                          <AccordionContent>
-                            <div className="space-y-4 pl-2">
-                              <Controller
-                                control={control}
-                                name="defaults.basicConstraints.isCA"
-                                render={({ field: { value, onChange } }) => (
-                                  <div className="flex items-center gap-3">
-                                    <Checkbox
-                                      id="defaults-isCA"
-                                      isChecked={value || false}
-                                      onCheckedChange={(checked) => {
-                                        onChange(checked);
-                                        if (!checked) {
-                                          setValue(
-                                            "defaults.basicConstraints.pathLength",
-                                            undefined
-                                          );
-                                        }
-                                      }}
-                                    />
-                                    <div className="space-y-1">
-                                      <FormLabel
-                                        id="defaults-isCA"
-                                        className="cursor-pointer text-sm font-medium text-mineshaft-100"
-                                        label="Issue as Certificate Authority"
-                                      />
-                                      <p className="text-xs text-bunker-300">
-                                        Certificates will default to CA:TRUE extension
-                                      </p>
-                                    </div>
-                                  </div>
-                                )}
-                              />
-
-                              {watchedDefaultsIsCA && (
+                    {(filteredKeyUsages.length > 0 ||
+                      filteredExtendedKeyUsages.length > 0 ||
+                      policyConstraints.templateAllowsCA) && (
+                      <Accordion type="single" collapsible className="w-full">
+                        {filteredKeyUsages.length > 0 && (
+                          <KeyUsageSection
+                            control={control}
+                            title="Key Usages"
+                            accordionValue="key-usages"
+                            namePrefix="defaults.keyUsages"
+                            options={filteredKeyUsages as Array<{ value: string; label: string }>}
+                            requiredUsages={[]}
+                          />
+                        )}
+                        {filteredExtendedKeyUsages.length > 0 && (
+                          <KeyUsageSection
+                            control={control}
+                            title="Extended Key Usages"
+                            accordionValue="extended-key-usages"
+                            namePrefix="defaults.extendedKeyUsages"
+                            options={
+                              filteredExtendedKeyUsages as Array<{ value: string; label: string }>
+                            }
+                            requiredUsages={[]}
+                          />
+                        )}
+                        {policyConstraints.templateAllowsCA && (
+                          <AccordionItem value="basic-constraints">
+                            <AccordionTrigger>Basic Constraints</AccordionTrigger>
+                            <AccordionContent>
+                              <div className="space-y-4 pl-2">
                                 <Controller
                                   control={control}
-                                  name="defaults.basicConstraints.pathLength"
-                                  render={({ field, fieldState: { error } }) => (
-                                    <FormControl
-                                      label="Path Length"
-                                      isError={Boolean(error)}
-                                      errorText={error?.message}
-                                    >
-                                      <Input
-                                        {...field}
-                                        type="number"
-                                        min={0}
-                                        placeholder="Leave empty for no constraint"
-                                        className="w-full"
-                                        value={field.value ?? ""}
-                                        onChange={(e) => {
-                                          const val = e.target.value;
-                                          if (val === "") {
-                                            field.onChange(undefined);
-                                          } else {
-                                            const numVal = parseInt(val, 10);
-                                            field.onChange(
-                                              Number.isNaN(numVal) ? undefined : numVal
+                                  name="defaults.basicConstraints.isCA"
+                                  render={({ field: { value, onChange } }) => (
+                                    <div className="flex items-center gap-3">
+                                      <Checkbox
+                                        id="defaults-isCA"
+                                        isChecked={value || false}
+                                        onCheckedChange={(checked) => {
+                                          onChange(checked);
+                                          if (!checked) {
+                                            setValue(
+                                              "defaults.basicConstraints.pathLength",
+                                              undefined
                                             );
                                           }
                                         }}
                                       />
-                                    </FormControl>
+                                      <div className="space-y-1">
+                                        <FormLabel
+                                          id="defaults-isCA"
+                                          className="cursor-pointer text-sm font-medium text-mineshaft-100"
+                                          label="Issue as Certificate Authority"
+                                        />
+                                        <p className="text-xs text-bunker-300">
+                                          Certificates will default to CA:TRUE extension
+                                        </p>
+                                      </div>
+                                    </div>
                                   )}
                                 />
-                              )}
-                            </div>
-                          </AccordionContent>
-                        </AccordionItem>
-                      )}
-                    </Accordion>
+
+                                {watchedDefaultsIsCA && (
+                                  <Controller
+                                    control={control}
+                                    name="defaults.basicConstraints.pathLength"
+                                    render={({ field, fieldState: { error } }) => (
+                                      <FormControl
+                                        label="Path Length"
+                                        isError={Boolean(error)}
+                                        errorText={error?.message}
+                                      >
+                                        <Input
+                                          {...field}
+                                          type="number"
+                                          min={0}
+                                          placeholder="Leave empty for no constraint"
+                                          className="w-full"
+                                          value={field.value ?? ""}
+                                          onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (val === "") {
+                                              field.onChange(undefined);
+                                            } else {
+                                              const numVal = parseInt(val, 10);
+                                              field.onChange(
+                                                Number.isNaN(numVal) ? undefined : numVal
+                                              );
+                                            }
+                                          }}
+                                        />
+                                      </FormControl>
+                                    )}
+                                  />
+                                )}
+                              </div>
+                            </AccordionContent>
+                          </AccordionItem>
+                        )}
+                      </Accordion>
+                    )}
                   </div>
                 )}
               </Tab.Panel>
