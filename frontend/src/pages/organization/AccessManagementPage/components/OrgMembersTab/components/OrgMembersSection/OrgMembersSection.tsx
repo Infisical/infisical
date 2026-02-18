@@ -212,10 +212,7 @@ export const OrgMembersSection = () => {
         <UnstableCardHeader>
           <UnstableCardTitle>
             {isSubOrganization ? "Sub-" : ""}Organization Users
-            <DocumentationLinkBadge
-              className="ml-2"
-              href="https://infisical.com/docs/documentation/platform/identities/user-identities"
-            />
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/user-identities" />
           </UnstableCardTitle>
           <UnstableCardDescription>
             Invite and manage {isSubOrganization ? "sub-" : ""}organization users

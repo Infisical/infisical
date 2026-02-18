@@ -1,36 +1,36 @@
 import {
-  faArrowDown,
-  faArrowUp,
-  faBan,
-  faEdit,
-  faEllipsisV,
-  faEye,
-  faMagnifyingGlass,
-  faServer,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+  ChevronDownIcon,
+  EditIcon,
+  EyeIcon,
+  MoreHorizontalIcon,
+  SearchIcon,
+  TrashIcon
+} from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  EmptyState,
-  IconButton,
-  Input,
-  Pagination,
-  Spinner,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  Skeleton,
+  UnstableDropdownMenu,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuTrigger,
+  UnstableEmpty,
+  UnstableEmptyDescription,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle,
+  UnstableIconButton,
+  UnstablePagination,
+  UnstableTable,
+  UnstableTableBody,
+  UnstableTableCell,
+  UnstableTableHead,
+  UnstableTableHeader,
+  UnstableTableRow
+} from "@app/components/v3";
 import { OrgPermissionSubjects, useOrganization, useSubscription } from "@app/context";
 import { OrgPermissionMachineIdentityAuthTemplateActions } from "@app/context/OrgPermissionContext/types";
 import {
@@ -89,7 +89,7 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
   const organizationId = currentOrg?.id || "";
   const { subscription } = useSubscription();
 
-  const { data, isPending, isFetching } = useGetIdentityAuthTemplates({
+  const { data, isPending } = useGetIdentityAuthTemplates({
     organizationId,
     limit,
     offset,
@@ -116,175 +116,180 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
     setOrderDirection(OrderByDirection.ASC);
   };
 
+  const isFiltered = debouncedSearch.trim().length > 0;
+
   return (
     <div>
-      <div className="mb-4 flex items-center space-x-2">
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search templates by name..."
-        />
+      <div className="mb-4 flex gap-2">
+        <InputGroup className="flex-1">
+          <InputGroupAddon>
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search templates by name..."
+          />
+        </InputGroup>
       </div>
-      <TableContainer>
-        <Table>
-          <THead>
-            <Tr className="h-14">
-              <Th className="w-1/6">
-                <div className="flex items-center">
-                  Name
-                  <IconButton
-                    variant="plain"
-                    className={`ml-2 ${orderBy === TemplatesOrderBy.Name ? "" : "opacity-30"}`}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(TemplatesOrderBy.Name)}
-                  >
-                    <FontAwesomeIcon
-                      icon={
-                        orderDirection === OrderByDirection.DESC &&
-                        orderBy === TemplatesOrderBy.Name
-                          ? faArrowUp
-                          : faArrowDown
-                      }
-                    />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-1/6">
-                <div className="flex items-center">
-                  Method
-                  <IconButton
-                    variant="plain"
-                    className={`ml-2 ${orderBy === TemplatesOrderBy.AuthMethod ? "" : "opacity-30"}`}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(TemplatesOrderBy.AuthMethod)}
-                  >
-                    <FontAwesomeIcon
-                      icon={
-                        orderDirection === OrderByDirection.DESC &&
-                        orderBy === TemplatesOrderBy.AuthMethod
-                          ? faArrowUp
-                          : faArrowDown
-                      }
-                    />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-2/3">URL</Th>
-              <Th className="w-16">{isFetching ? <Spinner size="xs" /> : null}</Th>
-            </Tr>
-          </THead>
-          <TBody>
-            {subscription.machineIdentityAuthTemplates && isPending && (
-              <TableSkeleton columns={4} innerKey="identity-auth-templates" />
-            )}
-
-            {!isPending &&
-              templates?.map((template) => (
-                <Tr
-                  className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
-                  key={`template-${template.id}`}
-                >
-                  <Td>{template.name}</Td>
-                  <Td>
-                    <div className="flex items-center">
-                      <span className="uppercase">{template.authMethod}</span>
-                    </div>
-                  </Td>
-                  <Td>
-                    <span className="text-sm text-mineshaft-400">
-                      {template.templateFields.url}
-                    </span>
-                  </Td>
-                  <Td>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <IconButton
-                          ariaLabel="Options"
-                          className="w-6"
-                          colorSchema="secondary"
-                          variant="plain"
-                        >
-                          <FontAwesomeIcon icon={faEllipsisV} />
-                        </IconButton>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent sideOffset={2} align="end">
-                        <DropdownMenuItem
-                          icon={<FontAwesomeIcon icon={faEye} />}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePopUpOpen("viewUsages", { template });
-                          }}
-                        >
-                          {TEMPLATE_UI_LABELS.VIEW_USAGES}
-                        </DropdownMenuItem>
-                        <OrgPermissionCan
-                          I={OrgPermissionMachineIdentityAuthTemplateActions.EditTemplates}
-                          a={OrgPermissionSubjects.MachineIdentityAuthTemplate}
-                        >
-                          {(isAllowed) => (
-                            <DropdownMenuItem
-                              icon={<FontAwesomeIcon icon={faEdit} />}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePopUpOpen("editTemplate", { template });
-                              }}
-                              isDisabled={!isAllowed}
-                            >
-                              {TEMPLATE_UI_LABELS.EDIT_TEMPLATE}
-                            </DropdownMenuItem>
-                          )}
-                        </OrgPermissionCan>
-                        <OrgPermissionCan
-                          I={OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates}
-                          a={OrgPermissionSubjects.MachineIdentityAuthTemplate}
-                        >
-                          {(isAllowed) => (
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePopUpOpen("deleteTemplate", {
-                                  templateId: template.id,
-                                  name: template.name
-                                });
-                              }}
-                              isDisabled={!isAllowed}
-                              icon={<FontAwesomeIcon icon={faTrash} />}
-                            >
-                              {TEMPLATE_UI_LABELS.DELETE_TEMPLATE}
-                            </DropdownMenuItem>
-                          )}
-                        </OrgPermissionCan>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </Td>
-                </Tr>
-              ))}
-          </TBody>
-        </Table>
-        {!isPending && data && totalCount > 0 && (
-          <Pagination
-            count={totalCount}
-            page={page}
-            perPage={perPage}
-            onChangePage={(newPage) => setPage(newPage)}
-            onChangePerPage={handlePerPageChange}
-          />
-        )}
-        {!subscription.machineIdentityAuthTemplates && (
-          <EmptyState title="This feature has not been activated for your license." icon={faBan} />
-        )}
-        {!isPending && templates.length === 0 && (
-          <EmptyState
-            title={
-              debouncedSearch.trim().length > 0
+      {/* eslint-disable-next-line no-nested-ternary */}
+      {(!isPending || !subscription.machineIdentityAuthTemplates) && !templates.length ? (
+        <UnstableEmpty className="border">
+          <UnstableEmptyHeader>
+            <UnstableEmptyTitle>
+              {isFiltered
                 ? "No templates match search filter"
-                : "No identity auth templates have been created"
-            }
-            icon={faServer}
-          />
-        )}
-      </TableContainer>
+                : "No identity auth templates have been added"}
+            </UnstableEmptyTitle>
+            <UnstableEmptyDescription>
+              {isFiltered ? "Adjust your search criteria." : "Create a template to get started."}
+            </UnstableEmptyDescription>
+          </UnstableEmptyHeader>
+        </UnstableEmpty>
+      ) : (
+        <>
+          <UnstableTable>
+            <UnstableTableHeader>
+              <UnstableTableRow>
+                <UnstableTableHead
+                  className="w-1/4 cursor-pointer"
+                  onClick={() => handleSort(TemplatesOrderBy.Name)}
+                >
+                  Name
+                  <ChevronDownIcon
+                    className={twMerge(
+                      "transition-transform",
+                      orderBy === TemplatesOrderBy.Name &&
+                        orderDirection === OrderByDirection.DESC &&
+                        "rotate-180",
+                      orderBy !== TemplatesOrderBy.Name && "opacity-30"
+                    )}
+                  />
+                </UnstableTableHead>
+                <UnstableTableHead
+                  className="w-1/4 cursor-pointer"
+                  onClick={() => handleSort(TemplatesOrderBy.AuthMethod)}
+                >
+                  Method
+                  <ChevronDownIcon
+                    className={twMerge(
+                      "transition-transform",
+                      orderBy === TemplatesOrderBy.AuthMethod &&
+                        orderDirection === OrderByDirection.DESC &&
+                        "rotate-180",
+                      orderBy !== TemplatesOrderBy.AuthMethod && "opacity-30"
+                    )}
+                  />
+                </UnstableTableHead>
+                <UnstableTableHead>URL</UnstableTableHead>
+                <UnstableTableHead className="w-5" />
+              </UnstableTableRow>
+            </UnstableTableHeader>
+            <UnstableTableBody>
+              {isPending &&
+                Array.from({ length: perPage }).map((_, i) => (
+                  <UnstableTableRow key={`skeleton-${i + 1}`}>
+                    <UnstableTableCell>
+                      <Skeleton className="h-4 w-full" />
+                    </UnstableTableCell>
+                    <UnstableTableCell>
+                      <Skeleton className="h-4 w-full" />
+                    </UnstableTableCell>
+                    <UnstableTableCell>
+                      <Skeleton className="h-4 w-full" />
+                    </UnstableTableCell>
+                    <UnstableTableCell>
+                      <Skeleton className="h-4 w-4" />
+                    </UnstableTableCell>
+                  </UnstableTableRow>
+                ))}
+              {!isPending &&
+                templates?.map((template) => (
+                  <UnstableTableRow key={`template-${template.id}`}>
+                    <UnstableTableCell isTruncatable>{template.name}</UnstableTableCell>
+                    <UnstableTableCell>
+                      <span className="uppercase">{template.authMethod}</span>
+                    </UnstableTableCell>
+                    <UnstableTableCell isTruncatable>
+                      {template.templateFields.url}
+                    </UnstableTableCell>
+                    <UnstableTableCell>
+                      <UnstableDropdownMenu>
+                        <UnstableDropdownMenuTrigger asChild>
+                          <UnstableIconButton
+                            variant="ghost"
+                            size="xs"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreHorizontalIcon />
+                          </UnstableIconButton>
+                        </UnstableDropdownMenuTrigger>
+                        <UnstableDropdownMenuContent align="end">
+                          <UnstableDropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePopUpOpen("viewUsages", { template });
+                            }}
+                          >
+                            <EyeIcon />
+                            {TEMPLATE_UI_LABELS.VIEW_USAGES}
+                          </UnstableDropdownMenuItem>
+                          <OrgPermissionCan
+                            I={OrgPermissionMachineIdentityAuthTemplateActions.EditTemplates}
+                            a={OrgPermissionSubjects.MachineIdentityAuthTemplate}
+                          >
+                            {(isAllowed) => (
+                              <UnstableDropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePopUpOpen("editTemplate", { template });
+                                }}
+                                isDisabled={!isAllowed}
+                              >
+                                <EditIcon />
+                                {TEMPLATE_UI_LABELS.EDIT_TEMPLATE}
+                              </UnstableDropdownMenuItem>
+                            )}
+                          </OrgPermissionCan>
+                          <OrgPermissionCan
+                            I={OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates}
+                            a={OrgPermissionSubjects.MachineIdentityAuthTemplate}
+                          >
+                            {(isAllowed) => (
+                              <UnstableDropdownMenuItem
+                                variant="danger"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePopUpOpen("deleteTemplate", {
+                                    templateId: template.id,
+                                    name: template.name
+                                  });
+                                }}
+                                isDisabled={!isAllowed}
+                              >
+                                <TrashIcon />
+                                {TEMPLATE_UI_LABELS.DELETE_TEMPLATE}
+                              </UnstableDropdownMenuItem>
+                            )}
+                          </OrgPermissionCan>
+                        </UnstableDropdownMenuContent>
+                      </UnstableDropdownMenu>
+                    </UnstableTableCell>
+                  </UnstableTableRow>
+                ))}
+            </UnstableTableBody>
+          </UnstableTable>
+          {totalCount > 0 && (
+            <UnstablePagination
+              count={totalCount}
+              page={page}
+              perPage={perPage}
+              onChangePage={setPage}
+              onChangePerPage={handlePerPageChange}
+            />
+          )}
+        </>
+      )}
     </div>
   );
 };

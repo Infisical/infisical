@@ -1,51 +1,54 @@
 import { useCallback, useState } from "react";
-import {
-  faArrowDown,
-  faArrowUp,
-  faCheckCircle,
-  faChevronRight,
-  faEdit,
-  faEllipsisV,
-  faFilter,
-  faInfoCircle,
-  faMagnifyingGlass,
-  faServer,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
+import {
+  ChevronDownIcon,
+  EditIcon,
+  FilterIcon,
+  InfoIcon,
+  MoreHorizontalIcon,
+  SearchIcon,
+  TrashIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { LastLoginSection } from "@app/components/organization/LastLoginSection";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-  DropdownSubMenu,
-  DropdownSubMenuContent,
-  DropdownSubMenuTrigger,
-  EmptyState,
-  IconButton,
-  Input,
-  Pagination,
+  Badge,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  OrgIcon,
   Select,
+  SelectContent,
   SelectItem,
-  Spinner,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
+  SelectTrigger,
+  SelectValue,
+  Skeleton,
+  SubOrgIcon,
   Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge, OrgIcon, SubOrgIcon } from "@app/components/v3";
+  TooltipContent,
+  TooltipTrigger,
+  UnstableDropdownMenu,
+  UnstableDropdownMenuCheckboxItem,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuLabel,
+  UnstableDropdownMenuTrigger,
+  UnstableEmpty,
+  UnstableEmptyDescription,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle,
+  UnstableIconButton,
+  UnstablePagination,
+  UnstableTable,
+  UnstableTableBody,
+  UnstableTableCell,
+  UnstableTableHead,
+  UnstableTableHeader,
+  UnstableTableRow
+} from "@app/components/v3";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import {
   getUserTablePreference,
@@ -112,7 +115,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
 
   const { mutateAsync: updateMutateAsync } = useUpdateOrgIdentity();
 
-  const { data, isPending, isFetching } = useSearchOrgIdentityMemberships({
+  const { data, isPending } = useSearchOrgIdentityMemberships({
     offset,
     limit,
     orderDirection,
@@ -172,175 +175,173 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
 
   const isTableFiltered = Boolean(filter.roles.length);
 
-  return (
-    <div>
-      <div className="mb-4 flex items-center space-x-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <IconButton
-              ariaLabel="Filter Machine Identities"
-              variant="plain"
-              size="sm"
-              className={twMerge(
-                "flex h-9.5 w-[2.6rem] items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
-                isTableFiltered && "border-primary/50 text-primary"
-              )}
-            >
-              <FontAwesomeIcon icon={faFilter} />
-            </IconButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="p-0">
-            <DropdownMenuLabel>Filter By</DropdownMenuLabel>
-            <DropdownSubMenu>
-              <DropdownSubMenuTrigger
-                iconPos="right"
-                icon={<FontAwesomeIcon icon={faChevronRight} size="sm" />}
-              >
-                Roles
-              </DropdownSubMenuTrigger>
-              <DropdownSubMenuContent className="max-h-80 thin-scrollbar overflow-y-auto rounded-l-none">
-                <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
-                  Filter {isSubOrganization ? "Sub-" : ""}Organization Machine Identities by Role
-                </DropdownMenuLabel>
-                {roles?.map(({ id, slug, name }) => (
-                  <DropdownMenuItem
-                    onClick={(evt) => {
-                      evt.preventDefault();
-                      handleRoleToggle(slug);
-                    }}
-                    key={id}
-                    icon={filter.roles.includes(slug) && <FontAwesomeIcon icon={faCheckCircle} />}
-                    iconPos="right"
-                  >
-                    <div className="flex items-center">
-                      <div
-                        className="mr-2 h-2 w-2 rounded-full"
-                        style={{ background: "#bec2c8" }}
-                      />
-                      {name}
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownSubMenuContent>
-            </DropdownSubMenu>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder={`Search ${isSubOrganization ? "sub-organization" : "organization"} machine identities by name...`}
-        />
-      </div>
-      <TableContainer>
-        <Table>
-          <THead>
-            <Tr className="h-14">
-              <Th className="w-2/3">
-                <div className="flex items-center">
-                  Name
-                  <IconButton
-                    variant="plain"
-                    className={`ml-2 ${orderBy === OrgIdentityOrderBy.Name ? "" : "opacity-30"}`}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(OrgIdentityOrderBy.Name)}
-                  >
-                    <FontAwesomeIcon
-                      icon={
-                        orderDirection === OrderByDirection.DESC &&
-                        orderBy === OrgIdentityOrderBy.Name
-                          ? faArrowUp
-                          : faArrowDown
-                      }
-                    />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th>
-                <div className="flex items-center">
-                  {isSubOrganization ? "Sub-" : ""}Organization Role
-                  <IconButton
-                    variant="plain"
-                    className={`ml-2 ${orderBy === OrgIdentityOrderBy.Role ? "" : "opacity-30"}`}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(OrgIdentityOrderBy.Role)}
-                  >
-                    <FontAwesomeIcon
-                      icon={
-                        orderDirection === OrderByDirection.DESC &&
-                        orderBy === OrgIdentityOrderBy.Role
-                          ? faArrowUp
-                          : faArrowDown
-                      }
-                    />
-                  </IconButton>
-                </div>
-              </Th>
-              {isSubOrganization && <Th>Managed By</Th>}
-              <Th className="w-16">{isFetching ? <Spinner size="xs" /> : null}</Th>
-            </Tr>
-          </THead>
-          <TBody>
-            {isPending && (
-              <TableSkeleton columns={isSubOrganization ? 4 : 3} innerKey="org-identities" />
-            )}
-            {!isPending &&
-              data?.identities?.map(
-                ({
-                  identity: { id, name, orgId },
-                  role,
-                  customRole,
-                  lastLoginAuthMethod,
-                  lastLoginTime
-                }) => {
-                  const isSubOrgIdentity = currentOrg.id === orgId;
+  const isFiltered = debouncedSearch.trim().length > 0 || isTableFiltered;
 
-                  return (
-                    <Tr
-                      className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
-                      key={`identity-${id}`}
-                      onClick={() =>
-                        navigate({
-                          to: "/organizations/$orgId/identities/$identityId",
-                          params: {
-                            identityId: id,
-                            orgId: currentOrg.id
-                          }
-                        })
-                      }
-                    >
-                      <Td className="group max-w-0 truncate">
-                        {name}
-                        {lastLoginAuthMethod && lastLoginTime && (
-                          <Tooltip
-                            className="max-w-96 min-w-52 px-3"
-                            content={
-                              <LastLoginSection
-                                lastLoginAuthMethod={identityAuthToNameMap[lastLoginAuthMethod]}
-                                lastLoginTime={lastLoginTime}
-                              />
+  return (
+    <>
+      <div className="mb-4 flex gap-2">
+        <InputGroup className="flex-1">
+          <InputGroupAddon>
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={`Search ${isSubOrganization ? "sub-organization" : "organization"} machine identities by name...`}
+          />
+        </InputGroup>
+        <UnstableDropdownMenu>
+          <UnstableDropdownMenuTrigger asChild>
+            <UnstableIconButton
+              variant={
+                // eslint-disable-next-line no-nested-ternary
+                isTableFiltered ? (isSubOrganization ? "sub-org" : "org") : "outline"
+              }
+            >
+              <FilterIcon />
+            </UnstableIconButton>
+          </UnstableDropdownMenuTrigger>
+          <UnstableDropdownMenuContent align="end" className="max-h-80 overflow-y-auto">
+            <UnstableDropdownMenuLabel>Filter by Organization Role</UnstableDropdownMenuLabel>
+            {roles?.map(({ id, slug, name }) => (
+              <UnstableDropdownMenuCheckboxItem
+                key={id}
+                checked={filter.roles.includes(slug)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleRoleToggle(slug);
+                }}
+              >
+                {name}
+              </UnstableDropdownMenuCheckboxItem>
+            ))}
+          </UnstableDropdownMenuContent>
+        </UnstableDropdownMenu>
+      </div>
+      {!isPending && !data?.identities?.length ? (
+        <UnstableEmpty className="border">
+          <UnstableEmptyHeader>
+            <UnstableEmptyTitle>
+              {isFiltered
+                ? `No ${isSubOrganization ? "sub-" : ""}organization machine identities match search filter`
+                : `No machine identities have been added to this ${isSubOrganization ? "sub-" : ""}organization`}
+            </UnstableEmptyTitle>
+            <UnstableEmptyDescription>
+              {isFiltered
+                ? "Adjust your search or filter criteria."
+                : "Add a machine identity to get started."}
+            </UnstableEmptyDescription>
+          </UnstableEmptyHeader>
+        </UnstableEmpty>
+      ) : (
+        <>
+          <UnstableTable>
+            <UnstableTableHeader>
+              <UnstableTableRow>
+                <UnstableTableHead
+                  className="w-1/2 cursor-pointer"
+                  onClick={() => handleSort(OrgIdentityOrderBy.Name)}
+                >
+                  Name
+                  <ChevronDownIcon
+                    className={twMerge(
+                      "transition-transform",
+                      orderBy === OrgIdentityOrderBy.Name &&
+                        orderDirection === OrderByDirection.DESC &&
+                        "rotate-180",
+                      orderBy !== OrgIdentityOrderBy.Name && "opacity-30"
+                    )}
+                  />
+                </UnstableTableHead>
+                <UnstableTableHead
+                  className="cursor-pointer"
+                  onClick={() => handleSort(OrgIdentityOrderBy.Role)}
+                >
+                  {isSubOrganization ? "Sub-" : ""}Organization Role
+                  <ChevronDownIcon
+                    className={twMerge(
+                      "transition-transform",
+                      orderBy === OrgIdentityOrderBy.Role &&
+                        orderDirection === OrderByDirection.DESC &&
+                        "rotate-180",
+                      orderBy !== OrgIdentityOrderBy.Role && "opacity-30"
+                    )}
+                  />
+                </UnstableTableHead>
+                {isSubOrganization && <UnstableTableHead>Managed By</UnstableTableHead>}
+                <UnstableTableHead className="w-5" />
+              </UnstableTableRow>
+            </UnstableTableHeader>
+            <UnstableTableBody>
+              {isPending &&
+                Array.from({ length: perPage }).map((_, i) => (
+                  <UnstableTableRow key={`skeleton-${i + 1}`}>
+                    <UnstableTableCell>
+                      <Skeleton className="h-4 w-full" />
+                    </UnstableTableCell>
+                    <UnstableTableCell>
+                      <Skeleton className="h-4 w-full" />
+                    </UnstableTableCell>
+                    {isSubOrganization && (
+                      <UnstableTableCell>
+                        <Skeleton className="h-4 w-full" />
+                      </UnstableTableCell>
+                    )}
+                    <UnstableTableCell>
+                      <Skeleton className="h-4 w-4" />
+                    </UnstableTableCell>
+                  </UnstableTableRow>
+                ))}
+              {!isPending &&
+                data?.identities?.map(
+                  ({
+                    identity: { id, name, orgId },
+                    role,
+                    customRole,
+                    lastLoginAuthMethod,
+                    lastLoginTime
+                  }) => {
+                    const isSubOrgIdentity = currentOrg.id === orgId;
+
+                    return (
+                      <UnstableTableRow
+                        key={`identity-${id}`}
+                        className="cursor-pointer"
+                        onClick={() =>
+                          navigate({
+                            to: "/organizations/$orgId/identities/$identityId",
+                            params: {
+                              identityId: id,
+                              orgId: currentOrg.id
                             }
+                          })
+                        }
+                      >
+                        <UnstableTableCell isTruncatable className="group">
+                          {name}
+                          {lastLoginAuthMethod && lastLoginTime && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <InfoIcon className="ml-2 inline size-3.5 text-mineshaft-400 opacity-0 transition-all group-hover:opacity-100" />
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-96 min-w-52">
+                                <LastLoginSection
+                                  lastLoginAuthMethod={identityAuthToNameMap[lastLoginAuthMethod]}
+                                  lastLoginTime={lastLoginTime}
+                                />
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </UnstableTableCell>
+                        <UnstableTableCell>
+                          <OrgPermissionCan
+                            I={OrgPermissionIdentityActions.Edit}
+                            a={OrgPermissionSubjects.Identity}
                           >
-                            <FontAwesomeIcon
-                              icon={faInfoCircle}
-                              className="ml-2 text-mineshaft-400 opacity-0 transition-all group-hover:opacity-100"
-                            />
-                          </Tooltip>
-                        )}
-                      </Td>
-                      <Td>
-                        <OrgPermissionCan
-                          I={OrgPermissionIdentityActions.Edit}
-                          a={OrgPermissionSubjects.Identity}
-                        >
-                          {(isAllowed) => {
-                            return (
+                            {(isAllowed) => (
                               <Select
                                 value={role === "custom" ? (customRole?.slug as string) : role}
-                                isDisabled={!isAllowed}
-                                className="h-8 w-48 bg-mineshaft-700"
-                                position="popper"
-                                dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
+                                disabled={!isAllowed}
                                 onValueChange={(selectedRole) =>
                                   handleChangeRole({
                                     identityId: id,
@@ -348,120 +349,119 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                                   })
                                 }
                               >
-                                {(roles || []).map(({ slug, name: roleName }) => (
-                                  <SelectItem value={slug} key={`owner-option-${slug}`}>
-                                    {roleName}
-                                  </SelectItem>
-                                ))}
+                                <SelectTrigger
+                                  className="w-full max-w-32 lg:max-w-64"
+                                  size="sm"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="max-w-32 lg:max-w-64">
+                                  {(roles || []).map(({ slug, name: roleName }) => (
+                                    <SelectItem value={slug} key={`owner-option-${slug}`}>
+                                      {roleName}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
                               </Select>
-                            );
-                          }}
-                        </OrgPermissionCan>
-                      </Td>
-                      {isSubOrganization && (
-                        <Td>
-                          <Badge variant={isSubOrgIdentity ? "sub-org" : "org"}>
-                            {isSubOrgIdentity ? (
-                              <>
-                                <SubOrgIcon />
-                                Sub-Organization
-                              </>
-                            ) : (
-                              <>
-                                <OrgIcon />
-                                Root Organization
-                              </>
                             )}
-                          </Badge>
-                        </Td>
-                      )}
-                      <Td>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <IconButton
-                              ariaLabel="Options"
-                              className="w-6"
-                              colorSchema="secondary"
-                              variant="plain"
-                            >
-                              <FontAwesomeIcon icon={faEllipsisV} />
-                            </IconButton>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent sideOffset={2} align="end">
-                            <OrgPermissionCan
-                              I={OrgPermissionIdentityActions.Edit}
-                              a={OrgPermissionSubjects.Identity}
-                            >
-                              {(isAllowed) => (
-                                <DropdownMenuItem
-                                  icon={<FontAwesomeIcon icon={faEdit} />}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigate({
-                                      to: "/organizations/$orgId/identities/$identityId",
-                                      params: {
+                          </OrgPermissionCan>
+                        </UnstableTableCell>
+                        {isSubOrganization && (
+                          <UnstableTableCell>
+                            <Badge variant={isSubOrgIdentity ? "sub-org" : "org"}>
+                              {isSubOrgIdentity ? (
+                                <>
+                                  <SubOrgIcon />
+                                  Sub-Organization
+                                </>
+                              ) : (
+                                <>
+                                  <OrgIcon />
+                                  Root Organization
+                                </>
+                              )}
+                            </Badge>
+                          </UnstableTableCell>
+                        )}
+                        <UnstableTableCell>
+                          <UnstableDropdownMenu>
+                            <UnstableDropdownMenuTrigger asChild>
+                              <UnstableIconButton
+                                variant="ghost"
+                                size="xs"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreHorizontalIcon />
+                              </UnstableIconButton>
+                            </UnstableDropdownMenuTrigger>
+                            <UnstableDropdownMenuContent align="end">
+                              <OrgPermissionCan
+                                I={OrgPermissionIdentityActions.Edit}
+                                a={OrgPermissionSubjects.Identity}
+                              >
+                                {(isAllowed) => (
+                                  <UnstableDropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate({
+                                        to: "/organizations/$orgId/identities/$identityId",
+                                        params: {
+                                          identityId: id,
+                                          orgId
+                                        }
+                                      });
+                                    }}
+                                    isDisabled={!isAllowed}
+                                  >
+                                    <EditIcon />
+                                    Edit Machine Identity {isSubOrgIdentity ? "" : "Membership"}
+                                  </UnstableDropdownMenuItem>
+                                )}
+                              </OrgPermissionCan>
+                              <OrgPermissionCan
+                                I={OrgPermissionIdentityActions.Delete}
+                                a={OrgPermissionSubjects.Identity}
+                              >
+                                {(isAllowed) => (
+                                  <UnstableDropdownMenuItem
+                                    variant="danger"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePopUpOpen("deleteIdentity", {
                                         identityId: id,
-                                        orgId
-                                      }
-                                    });
-                                  }}
-                                  isDisabled={!isAllowed}
-                                >
-                                  Edit Machine Identity {isSubOrgIdentity ? "" : "Membership"}
-                                </DropdownMenuItem>
-                              )}
-                            </OrgPermissionCan>
-                            <OrgPermissionCan
-                              I={OrgPermissionIdentityActions.Delete}
-                              a={OrgPermissionSubjects.Identity}
-                            >
-                              {(isAllowed) => (
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePopUpOpen("deleteIdentity", {
-                                      identityId: id,
-                                      name
-                                    });
-                                  }}
-                                  isDisabled={!isAllowed}
-                                  icon={<FontAwesomeIcon icon={faTrash} />}
-                                >
-                                  {isSubOrgIdentity
-                                    ? "Delete Machine Identity"
-                                    : "Remove From Sub-Organization"}
-                                </DropdownMenuItem>
-                              )}
-                            </OrgPermissionCan>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </Td>
-                    </Tr>
-                  );
-                }
-              )}
-          </TBody>
-        </Table>
-        {!isPending && data && totalCount > 0 && (
-          <Pagination
-            count={totalCount}
-            page={page}
-            perPage={perPage}
-            onChangePage={(newPage) => setPage(newPage)}
-            onChangePerPage={handlePerPageChange}
-          />
-        )}
-        {!isPending && data && data?.identities.length === 0 && (
-          <EmptyState
-            title={
-              debouncedSearch.trim().length > 0 || filter.roles?.length > 0
-                ? `No ${isSubOrganization ? "sub-" : ""}organization machine identities match search filter`
-                : `No machine identities have been created in this ${isSubOrganization ? "sub-" : ""}organization`
-            }
-            icon={faServer}
-          />
-        )}
-      </TableContainer>
-    </div>
+                                        name
+                                      });
+                                    }}
+                                    isDisabled={!isAllowed}
+                                  >
+                                    <TrashIcon />
+                                    {isSubOrgIdentity
+                                      ? "Delete Machine Identity"
+                                      : "Remove From Sub-Organization"}
+                                  </UnstableDropdownMenuItem>
+                                )}
+                              </OrgPermissionCan>
+                            </UnstableDropdownMenuContent>
+                          </UnstableDropdownMenu>
+                        </UnstableTableCell>
+                      </UnstableTableRow>
+                    );
+                  }
+                )}
+            </UnstableTableBody>
+          </UnstableTable>
+          {totalCount > 0 && (
+            <UnstablePagination
+              count={totalCount}
+              page={page}
+              perPage={perPage}
+              onChangePage={setPage}
+              onChangePerPage={handlePerPageChange}
+            />
+          )}
+        </>
+      )}
+    </>
   );
 };
