@@ -37,8 +37,7 @@ const CertificateProfileDefaultsResponseSchema = z
     state: z.string().optional(),
     locality: z.string().optional()
   })
-  .nullable()
-  .optional();
+  .nullish();
 
 export const registerCertificateProfilesRouter = async (
   server: FastifyZodProvider,
@@ -107,8 +106,7 @@ export const registerCertificateProfilesRouter = async (
               state: z.string().optional(),
               locality: z.string().optional()
             })
-            .nullable()
-            .optional()
+            .nullish()
         })
         .refine(
           (data) => {
@@ -550,8 +548,7 @@ export const registerCertificateProfilesRouter = async (
               state: z.string().optional(),
               locality: z.string().optional()
             })
-            .nullable()
-            .optional()
+            .nullish()
         })
         .refine(
           (data) => {
