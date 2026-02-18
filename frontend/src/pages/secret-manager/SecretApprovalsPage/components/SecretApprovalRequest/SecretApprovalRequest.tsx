@@ -148,7 +148,7 @@ export const SecretApprovalRequest = () => {
         value={searchFilter}
         onChange={(e) => setSearchFilter(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search change requests by author, environment or policy path..."
+        placeholder="Search change requests by author, environment, path, policy path or secret name..."
         className="flex-1"
         containerClassName="mb-4"
       />
@@ -269,12 +269,18 @@ export const SecretApprovalRequest = () => {
             status,
             committerUser,
             hasMerged,
-            updatedAt
+            updatedAt,
+            policy
           } = secretApproval;
-          const isReviewed = reviewers.some(
-            ({ status: reviewStatus, userId }) =>
-              userId === userSession.id && reviewStatus === ApprovalStatus.APPROVED
-          );
+
+          const isMergable =
+            reviewers.filter(({ status: reviewStatus }) => reviewStatus === ApprovalStatus.APPROVED)
+              .length >= policy.approvals;
+
+          const requiresUserReview =
+            policy.approvers.find((approver) => approver.userId === userSession.id) &&
+            !reviewers.find(({ userId }) => userId === userSession.id);
+
           return (
             <div
               key={reqId}
@@ -308,7 +314,13 @@ export const SecretApprovalRequest = () => {
                   ) : (
                     <span className="text-gray-600">Deleted User</span>
                   )}
-                  {!isReviewed && status === "open" && " - Review required"}
+                  {status === "open" &&
+                    // eslint-disable-next-line no-nested-ternary
+                    (isMergable
+                      ? " - Pending merge"
+                      : requiresUserReview
+                        ? " - Review required"
+                        : " - Review in progress")}
                 </span>
               </div>
               {status === "close" && (

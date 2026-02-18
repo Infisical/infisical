@@ -27,6 +27,7 @@ type Props = {
   status: "close" | "open";
   approvals: number;
   canApprove?: boolean;
+  isCommitter?: boolean;
   isBypasser: boolean;
   statusChangeByEmail?: string;
   enforcementLevel: EnforcementLevel;
@@ -41,6 +42,7 @@ export const SecretApprovalRequestAction = ({
   statusChangeByEmail,
   enforcementLevel,
   canApprove,
+  isCommitter,
   isBypasser
 }: Props) => {
   const { projectId } = useProject();
@@ -111,7 +113,7 @@ export const SecretApprovalRequestAction = ({
             </span>
           </div>
           <div className="mt-4 flex items-center justify-end space-x-2 px-4 xl:mt-0">
-            {canApprove || isSoftEnforcement ? (
+            {canApprove || isSoftEnforcement || isCommitter ? (
               <div className="flex items-center space-x-4">
                 <Button
                   onClick={() => handleSecretApprovalStatusChange("close")}

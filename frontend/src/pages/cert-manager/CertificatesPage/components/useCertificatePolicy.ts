@@ -33,6 +33,25 @@ const convertTemplateTtlToCertificateTtl = (templateTtl: string): string => {
   }
 };
 
+const parseTtlToMs = (ttl: string): number => {
+  const match = ttl.match(/^(\d+)([dhmy])$/);
+  if (!match) return 0;
+  const value = parseInt(match[1], 10);
+  const msPerDay = 24 * 60 * 60 * 1000;
+  switch (match[2]) {
+    case "h":
+      return value * 60 * 60 * 1000;
+    case "d":
+      return value * msPerDay;
+    case "m":
+      return value * 30 * msPerDay;
+    case "y":
+      return value * 365 * msPerDay;
+    default:
+      return 0;
+  }
+};
+
 export type TemplateConstraints = {
   allowedKeyUsages: string[];
   allowedExtendedKeyUsages: string[];
@@ -161,9 +180,19 @@ export const useCertificatePolicy = (
         maxPathLength
       };
 
-      // Set TTL if available
-      if (templateData.validity?.max) {
-        setValue("ttl", convertTemplateTtlToCertificateTtl(templateData.validity.max));
+      // Set TTL: use min(profile.defaultTtlDays, policy.maxValidity)
+      const profileTtlDays = selectedProfile?.defaultTtlDays;
+      const policyMaxValidity = templateData.validity?.max;
+
+      if (profileTtlDays && policyMaxValidity) {
+        const profileTtlMs = profileTtlDays * 24 * 60 * 60 * 1000;
+        const policyMaxMs = parseTtlToMs(policyMaxValidity);
+        const ttl = profileTtlMs <= policyMaxMs ? `${profileTtlDays}d` : policyMaxValidity;
+        setValue("ttl", convertTemplateTtlToCertificateTtl(ttl));
+      } else if (profileTtlDays) {
+        setValue("ttl", `${profileTtlDays}d`);
+      } else if (policyMaxValidity) {
+        setValue("ttl", convertTemplateTtlToCertificateTtl(policyMaxValidity));
       }
 
       // Handle SAN types

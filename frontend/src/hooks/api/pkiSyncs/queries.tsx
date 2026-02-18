@@ -3,6 +3,8 @@ import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 import { PkiSync, TPkiSyncOption } from "@app/hooks/api/pkiSyncs";
 import {
+  TAwsListener,
+  TAwsLoadBalancer,
   TListPkiSyncOptions,
   TListPkiSyncs,
   TPkiSync,
@@ -20,7 +22,11 @@ export const pkiSyncKeys = {
   certificates: (syncId: string, pagination?: { offset: number; limit: number }) =>
     pagination
       ? ([...pkiSyncKeys.all, "certificates", syncId, pagination] as const)
-      : ([...pkiSyncKeys.all, "certificates", syncId] as const)
+      : ([...pkiSyncKeys.all, "certificates", syncId] as const),
+  awsLoadBalancers: (connectionId: string, region: string) =>
+    [...pkiSyncKeys.all, "aws-load-balancers", connectionId, region] as const,
+  awsListeners: (connectionId: string, region: string, loadBalancerArn: string) =>
+    [...pkiSyncKeys.all, "aws-listeners", connectionId, region, loadBalancerArn] as const
 };
 
 export const usePkiSyncOptions = (
@@ -148,6 +154,66 @@ export const useListPkiSyncCertificates = (
         totalCount: data.totalCount || 0
       };
     },
+    ...options
+  });
+};
+
+export const useListAwsLoadBalancers = (
+  { connectionId, region }: { connectionId: string; region: string },
+  options?: Omit<
+    UseQueryOptions<
+      TAwsLoadBalancer[],
+      unknown,
+      TAwsLoadBalancer[],
+      ReturnType<typeof pkiSyncKeys.awsLoadBalancers>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: pkiSyncKeys.awsLoadBalancers(connectionId, region),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ loadBalancers: TAwsLoadBalancer[] }>(
+        "/api/v1/cert-manager/syncs/aws-elastic-load-balancer/load-balancers",
+        {
+          params: { connectionId, region }
+        }
+      );
+      return data.loadBalancers;
+    },
+    enabled: !!connectionId && !!region,
+    ...options
+  });
+};
+
+export const useListAwsListeners = (
+  {
+    connectionId,
+    region,
+    loadBalancerArn
+  }: { connectionId: string; region: string; loadBalancerArn: string },
+  options?: Omit<
+    UseQueryOptions<
+      TAwsListener[],
+      unknown,
+      TAwsListener[],
+      ReturnType<typeof pkiSyncKeys.awsListeners>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: pkiSyncKeys.awsListeners(connectionId, region, loadBalancerArn),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ listeners: TAwsListener[] }>(
+        "/api/v1/cert-manager/syncs/aws-elastic-load-balancer/listeners",
+        {
+          params: { connectionId, region, loadBalancerArn }
+        }
+      );
+      return data.listeners;
+    },
+    enabled: !!connectionId && !!region && !!loadBalancerArn,
     ...options
   });
 };

@@ -1,6 +1,7 @@
 /* eslint-disable import/extensions */
 import path from "node:path";
 
+import type { ClickHouseClient } from "@clickhouse/client";
 import type { FastifyCookieOptions } from "@fastify/cookie";
 import cookie from "@fastify/cookie";
 import type { FastifyCorsOptions } from "@fastify/cors";
@@ -11,6 +12,7 @@ import helmet from "@fastify/helmet";
 import type { FastifyRateLimitOptions } from "@fastify/rate-limit";
 import ratelimiter from "@fastify/rate-limit";
 import { fastifyRequestContext } from "@fastify/request-context";
+import websocket from "@fastify/websocket";
 import fastify, { FastifyInstance, FastifyRequest } from "fastify";
 import { Cluster, Redis } from "ioredis";
 import { Knex } from "knex";
@@ -44,6 +46,7 @@ type TMain = {
   queue: TQueueServiceFactory;
   keyStore: TKeyStoreFactory;
   redis: Redis | Cluster;
+  clickhouse: ClickHouseClient | null;
   envConfig: TEnvConfig;
   superAdminDAL: TSuperAdminDALFactory;
   hsmService: THsmServiceFactory;
@@ -59,6 +62,7 @@ export const main = async ({
   queue,
   keyStore,
   redis,
+  clickhouse,
   envConfig,
   superAdminDAL,
   hsmService,
@@ -145,6 +149,9 @@ export const main = async ({
 
     await server.register(fastifySwagger);
     await server.register(fastifyFormBody);
+    await server.register(websocket, {
+      options: { maxPayload: 64 * 1024 } // 64 KB
+    });
     await server.register(fastifyErrHandler);
 
     // Rate limiters and security headers
@@ -171,6 +178,7 @@ export const main = async ({
       db,
       auditLogDb,
       keyStore,
+      clickhouse,
       hsmService,
       envConfig,
       superAdminDAL,

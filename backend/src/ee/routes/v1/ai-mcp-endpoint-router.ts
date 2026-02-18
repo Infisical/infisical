@@ -72,7 +72,8 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         server: mcpServer,
         transport,
         projectId,
-        endpointName
+        endpointName,
+        cleanup
       } = await server.services.aiMcpEndpoint.interactWithMcp({
         endpointId: req.params.endpointId,
         userId: req.permission.id,
@@ -95,11 +96,18 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         }
       });
 
-      // Close transport when client disconnects
+      // Close transport and cleanup gateway proxies when client disconnects
       res.raw.on("close", () => {
         void transport.close().catch((err) => {
           logger.error(err, "Failed to close transport for mcp endpoint");
         });
+
+        // Cleanup gateway proxies
+        if (cleanup) {
+          void cleanup().catch((err) => {
+            logger.error(err, "Failed to cleanup gateway proxies for mcp endpoint");
+          });
+        }
       });
 
       await mcpServer.connect(transport);
@@ -646,7 +654,7 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         code_challenge: z.string(),
         code_challenge_method: z.enum(["S256"]),
         redirect_uri: z.string(),
-        resource: z.string(),
+        resource: z.string().optional(),
         state: z.string().optional()
       })
     },
@@ -680,7 +688,7 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         code_challenge: z.string(),
         code_challenge_method: z.enum(["S256"]),
         redirect_uri: z.string(),
-        resource: z.string(),
+        resource: z.string().optional(),
         expireIn: z.string().refine((val) => ms(val) > 0, "Max TTL must be a positive number")
       }),
       response: {

@@ -80,7 +80,7 @@ export const identityUaServiceFactory = ({
   keyStore,
   identityDAL
 }: TIdentityUaServiceFactoryDep) => {
-  const login = async ({ clientId, clientSecret, ip, subOrganizationName }: TLoginUaDTO) => {
+  const login = async ({ clientId, clientSecret, ip, organizationSlug }: TLoginUaDTO) => {
     const appCfg = getConfig();
     const identityUa = await identityUaDAL.findOne({ clientId });
     if (!identityUa) {
@@ -234,12 +234,12 @@ export const identityUaServiceFactory = ({
               accessTokenMaxTTL: 1000000000
             };
 
-      if (subOrganizationName) {
+      if (organizationSlug) {
         if (!isSubOrgIdentity) {
-          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: subOrganizationName });
+          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: organizationSlug });
 
           if (!subOrg) {
-            throw new NotFoundError({ message: `Sub organization with name ${subOrganizationName} not found` });
+            throw new NotFoundError({ message: `Sub organization with name ${organizationSlug} not found` });
           }
 
           const subOrgMembership = await membershipIdentityDAL.findOne({
@@ -250,7 +250,7 @@ export const identityUaServiceFactory = ({
 
           if (!subOrgMembership) {
             throw new UnauthorizedError({
-              message: `Identity not authorized to access sub organization ${subOrganizationName}`
+              message: `Identity not authorized to access sub organization ${organizationSlug}`
             });
           }
 

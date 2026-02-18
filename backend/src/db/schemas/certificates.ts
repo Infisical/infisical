@@ -33,7 +33,18 @@ export const CertificatesSchema = z.object({
   renewedByCertificateId: z.string().uuid().nullable().optional(),
   renewalError: z.string().nullable().optional(),
   keyAlgorithm: z.string().nullable().optional(),
-  signatureAlgorithm: z.string().nullable().optional()
+  signatureAlgorithm: z.string().nullable().optional(),
+  subjectOrganization: z.string().nullable().optional(),
+  subjectOrganizationalUnit: z.string().nullable().optional(),
+  subjectCountry: z.string().nullable().optional(),
+  subjectState: z.string().nullable().optional(),
+  subjectLocality: z.string().nullable().optional(),
+  fingerprintSha256: z.string().nullable().optional(),
+  fingerprintSha1: z.string().nullable().optional(),
+  isCA: z.boolean().nullable().optional(),
+  pathLength: z.number().nullable().optional(),
+  source: z.string().nullable().optional(),
+  discoveryMetadata: z.unknown().nullable().optional()
 });
 
 export type TCertificates = z.infer<typeof CertificatesSchema>;

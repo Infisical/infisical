@@ -54,7 +54,7 @@ import {
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { usePopUp, useToggle } from "@app/hooks";
-import { useGetSecretVersion } from "@app/hooks/api";
+import { useGetSecretVersion, useRedactSecretValue } from "@app/hooks/api";
 import {
   dashboardKeys,
   fetchSecretValue,
@@ -103,6 +103,8 @@ export const SecretDetailSidebar = ({
   const { currentProject } = useProject();
   const [isFieldFocused, setIsFieldFocused] = useToggle();
   const queryClient = useQueryClient();
+
+  const { mutateAsync: redactSecretValue } = useRedactSecretValue();
 
   const canFetchSecretValue =
     Boolean(originalSecret) && !originalSecret.secretValueHidden && !originalSecret.isEmpty;
@@ -179,17 +181,44 @@ export const SecretDetailSidebar = ({
     formState: { isDirty }
   } = useForm<TFormSchema>({
     resolver: zodResolver(formSchema),
-    values: {
+    defaultValues: {
       ...secret,
+      tags: secret?.tags?.map((tag) => ({ id: tag.id, slug: tag.slug, tagColor: tag.color })),
       valueOverride: getOverrideDefaultValue(),
       value: getDefaultValue()
     },
     disabled: !secret
   });
 
+  // Update value fields when secret value is fetched, but only if user hasn't modified them
+  useEffect(() => {
+    if (secretValueData) {
+      // Only update if the field hasn't been touched/modified by the user
+      if (!getFieldState("value").isDirty && secretValueData.value !== undefined) {
+        setValue("value", secretValueData.value, { shouldDirty: false });
+      }
+      if (!getFieldState("valueOverride").isDirty && secretValueData.valueOverride !== undefined) {
+        setValue("valueOverride", secretValueData.valueOverride, { shouldDirty: false });
+      }
+    }
+  }, [secretValueData, setValue, getFieldState]);
+
+  // Reset form when a different secret is opened
+  useEffect(() => {
+    if (originalSecret?.id) {
+      reset({
+        ...secret,
+        tags: secret?.tags?.map((tag) => ({ id: tag.id, slug: tag.slug, tagColor: tag.color })),
+        valueOverride: getOverrideDefaultValue(),
+        value: getDefaultValue()
+      });
+    }
+  }, [originalSecret?.id]);
+
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp([
     "secretAccessUpgradePlan",
-    "secretReferenceTree"
+    "secretReferenceTree",
+    "redactSecretValue"
   ] as const);
 
   const tagFields = useFieldArray({
@@ -270,7 +299,7 @@ export const SecretDetailSidebar = ({
         tagFields.remove(tagPos);
       }
     } else {
-      tagFields.append(tag);
+      tagFields.append({ id: tag.id, slug: tag.slug, tagColor: tag.color });
     }
   };
 
@@ -332,6 +361,7 @@ export const SecretDetailSidebar = ({
         }
       >
         <ModalContent
+          className="max-w-3xl"
           title="Secret Reference Details"
           subTitle="Visual breakdown of secrets referenced by this secret."
           onOpenAutoFocus={(e) => e.preventDefault()}
@@ -343,6 +373,7 @@ export const SecretDetailSidebar = ({
           />
         </ModalContent>
       </Modal>
+
       <Drawer
         onOpenChange={async (state) => {
           if (isOpen && isDirty) {
@@ -741,6 +772,16 @@ export const SecretDetailSidebar = ({
                     secretVersion={version}
                     secret={secret}
                     currentVersion={secretVersion.length}
+                    onRedactSecretValue={async (versionId) => {
+                      await redactSecretValue({ versionId, secretId: secret.id });
+
+                      createNotification({
+                        title: "Secret value redacted",
+                        text: "The secret value has been redacted successfully and is no longer persisted or viewable.",
+                        type: "success"
+                      });
+                    }}
+                    canEditSecret={!cannotEditSecret}
                     onRevert={async (versionValue) => {
                       await fetchValue();
 
@@ -875,7 +916,7 @@ export const SecretDetailSidebar = ({
                 leftIcon={<FontAwesomeIcon icon={faProjectDiagram} />}
                 onClick={() => handlePopUpOpen("secretReferenceTree", secretKey)}
               >
-                Secret Reference Tree
+                Secret References
               </Button>
               <Tooltip content="Copy Secret ID" className="z-100">
                 <IconButton

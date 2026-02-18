@@ -92,10 +92,10 @@ export const ViewSecretRequestByIDPage = () => {
   const hasCustomBranding = !!brandingConfig;
 
   const logoUrl = brandingConfig?.hasLogo
-    ? `/api/v1/secret-sharing/requests/${id}/branding/brand-logo`
+    ? `/api/v1/shared-secrets/requests/${id}/branding/brand-logo`
     : DEFAULT_LOGO_URL;
   const faviconUrl = brandingConfig?.hasFavicon
-    ? `/api/v1/secret-sharing/requests/${id}/branding/brand-favicon`
+    ? `/api/v1/shared-secrets/requests/${id}/branding/brand-favicon`
     : DEFAULT_FAVICON_URL;
 
   const brandingTheme = useMemo(() => {

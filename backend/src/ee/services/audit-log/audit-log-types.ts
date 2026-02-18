@@ -151,6 +151,7 @@ export enum EventType {
   MOVE_SECRETS = "move-secrets",
   DELETE_SECRET = "delete-secret",
   DELETE_SECRETS = "delete-secrets",
+  REDACT_SECRET_VERSION_VALUE = "redact-secret-version-value",
   GET_PROJECT_KEY = "get-project-key",
   AUTHORIZE_INTEGRATION = "authorize-integration",
   UPDATE_INTEGRATION_AUTH = "update-integration-auth",
@@ -328,6 +329,7 @@ export enum EventType {
   SIGN_INTERMEDIATE = "sign-intermediate",
   IMPORT_CA_CERT = "import-certificate-authority-cert",
   GET_CA_CRLS = "get-certificate-authority-crls",
+  GENERATE_CA_CERTIFICATE = "generate-ca-certificate",
   ISSUE_CERT = "issue-cert",
   IMPORT_CERT = "import-cert",
   SIGN_CERT = "sign-cert",
@@ -459,6 +461,8 @@ export enum EventType {
   PKI_SYNC_SYNC_CERTIFICATES = "pki-sync-sync-certificates",
   PKI_SYNC_IMPORT_CERTIFICATES = "pki-sync-import-certificates",
   PKI_SYNC_REMOVE_CERTIFICATES = "pki-sync-remove-certificates",
+  PKI_SYNC_SET_DEFAULT_CERTIFICATE = "pki-sync-set-default-certificate",
+  PKI_SYNC_CLEAR_DEFAULT_CERTIFICATE = "pki-sync-clear-default-certificate",
   OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
   OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user",
   CREATE_KMIP_CLIENT = "create-kmip-client",
@@ -557,12 +561,14 @@ export enum EventType {
   PAM_FOLDER_UPDATE = "pam-folder-update",
   PAM_FOLDER_DELETE = "pam-folder-delete",
   PAM_ACCOUNT_LIST = "pam-account-list",
+  PAM_ACCOUNT_GET = "pam-account-get",
   PAM_ACCOUNT_ACCESS = "pam-account-access",
   PAM_ACCOUNT_CREATE = "pam-account-create",
   PAM_ACCOUNT_UPDATE = "pam-account-update",
   PAM_ACCOUNT_DELETE = "pam-account-delete",
   PAM_ACCOUNT_CREDENTIAL_ROTATION = "pam-account-credential-rotation",
   PAM_ACCOUNT_CREDENTIAL_ROTATION_FAILED = "pam-account-credential-rotation-failed",
+  PAM_WEB_ACCESS_SESSION_TICKET_CREATED = "pam-web-access-session-ticket-created",
   PAM_RESOURCE_LIST = "pam-resource-list",
   PAM_RESOURCE_GET = "pam-resource-get",
   PAM_RESOURCE_CREATE = "pam-resource-create",
@@ -633,7 +639,19 @@ export enum EventType {
   DELETE_DYNAMIC_SECRET_LEASE = "delete-dynamic-secret-lease",
   RENEW_DYNAMIC_SECRET_LEASE = "renew-dynamic-secret-lease",
   LIST_DYNAMIC_SECRET_LEASES = "list-dynamic-secret-leases",
-  GET_DYNAMIC_SECRET_LEASE = "get-dynamic-secret-lease"
+  GET_DYNAMIC_SECRET_LEASE = "get-dynamic-secret-lease",
+
+  // PKI Discovery
+  CREATE_PKI_DISCOVERY = "create-pki-discovery",
+  UPDATE_PKI_DISCOVERY = "update-pki-discovery",
+  DELETE_PKI_DISCOVERY = "delete-pki-discovery",
+  GET_PKI_DISCOVERY = "get-pki-discovery",
+  GET_PKI_DISCOVERIES = "get-pki-discoveries",
+  TRIGGER_PKI_DISCOVERY_SCAN = "trigger-pki-discovery-scan",
+  GET_PKI_INSTALLATION = "get-pki-installation",
+  GET_PKI_INSTALLATIONS = "get-pki-installations",
+  UPDATE_PKI_INSTALLATION = "update-pki-installation",
+  DELETE_PKI_INSTALLATION = "delete-pki-installation"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -762,6 +780,7 @@ interface CreateSubOrganizationEvent {
   type: EventType.CREATE_SUB_ORGANIZATION;
   metadata: {
     name: string;
+    slug: string;
     organizationId: string;
   };
 }
@@ -770,6 +789,7 @@ interface UpdateSubOrganizationEvent {
   type: EventType.UPDATE_SUB_ORGANIZATION;
   metadata: {
     name: string;
+    slug: string;
     organizationId: string;
   };
 }
@@ -874,6 +894,18 @@ interface DeleteSecretBatchEvent {
     environment: string;
     secretPath: string;
     secrets: Array<{ secretId: string; secretKey: string; secretVersion: number }>;
+  };
+}
+
+interface RedactSecretVersionValueEvent {
+  type: EventType.REDACT_SECRET_VERSION_VALUE;
+  metadata: {
+    environment: string;
+    secretPath: string;
+    secretId: string;
+    secretKey: string;
+    secretVersionId: string;
+    secretVersion: number;
   };
 }
 
@@ -2413,6 +2445,16 @@ interface GetCaCrls {
   };
 }
 
+interface GenerateCaCertificate {
+  type: EventType.GENERATE_CA_CERTIFICATE;
+  metadata: {
+    caId: string;
+    dn: string;
+    serialNumber: string;
+    parentCaId?: string;
+  };
+}
+
 interface IssueCert {
   type: EventType.ISSUE_CERT;
   metadata: {
@@ -3471,6 +3513,102 @@ interface PkiSyncRemoveCertificatesEvent {
   };
 }
 
+interface PkiSyncSetDefaultCertificateEvent {
+  type: EventType.PKI_SYNC_SET_DEFAULT_CERTIFICATE;
+  metadata: {
+    pkiSyncId: string;
+    name: string;
+    certificateId: string;
+  };
+}
+
+interface PkiSyncClearDefaultCertificateEvent {
+  type: EventType.PKI_SYNC_CLEAR_DEFAULT_CERTIFICATE;
+  metadata: {
+    pkiSyncId: string;
+    name: string;
+  };
+}
+
+interface CreatePkiDiscoveryEvent {
+  type: EventType.CREATE_PKI_DISCOVERY;
+  metadata: {
+    discoveryId: string;
+    name: string;
+  };
+}
+
+interface UpdatePkiDiscoveryEvent {
+  type: EventType.UPDATE_PKI_DISCOVERY;
+  metadata: {
+    discoveryId: string;
+    name: string;
+  };
+}
+
+interface DeletePkiDiscoveryEvent {
+  type: EventType.DELETE_PKI_DISCOVERY;
+  metadata: {
+    discoveryId: string;
+    name: string;
+  };
+}
+
+interface GetPkiDiscoveryEvent {
+  type: EventType.GET_PKI_DISCOVERY;
+  metadata: {
+    discoveryId: string;
+    name: string;
+  };
+}
+
+interface GetPkiDiscoveriesEvent {
+  type: EventType.GET_PKI_DISCOVERIES;
+  metadata: {
+    count: number;
+  };
+}
+
+interface TriggerPkiDiscoveryScanEvent {
+  type: EventType.TRIGGER_PKI_DISCOVERY_SCAN;
+  metadata: {
+    discoveryId: string;
+    name: string;
+  };
+}
+
+interface GetPkiInstallationEvent {
+  type: EventType.GET_PKI_INSTALLATION;
+  metadata: {
+    installationId: string;
+    name?: string;
+  };
+}
+
+interface GetPkiInstallationsEvent {
+  type: EventType.GET_PKI_INSTALLATIONS;
+  metadata: {
+    count: number;
+  };
+}
+
+interface UpdatePkiInstallationEvent {
+  type: EventType.UPDATE_PKI_INSTALLATION;
+  metadata: {
+    installationId: string;
+    name?: string;
+    type?: string;
+  };
+}
+
+interface DeletePkiInstallationEvent {
+  type: EventType.DELETE_PKI_INSTALLATION;
+  metadata: {
+    installationId: string;
+    name: string | null;
+  };
+}
+
 interface OidcGroupMembershipMappingAssignUserEvent {
   type: EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER;
   metadata: {
@@ -4205,7 +4343,14 @@ interface PamAccountListEvent {
   type: EventType.PAM_ACCOUNT_LIST;
   metadata: {
     accountCount: number;
-    folderCount: number;
+  };
+}
+
+interface PamAccountGetEvent {
+  type: EventType.PAM_ACCOUNT_GET;
+  metadata: {
+    accountId: string;
+    accountName: string;
   };
 }
 
@@ -4213,9 +4358,18 @@ interface PamAccountAccessEvent {
   type: EventType.PAM_ACCOUNT_ACCESS;
   metadata: {
     accountId: string;
-    accountPath: string;
+    resourceName: string;
     accountName: string;
     duration?: string;
+  };
+}
+
+interface PamWebAccessSessionTicketCreatedEvent {
+  type: EventType.PAM_WEB_ACCESS_SESSION_TICKET_CREATED;
+  metadata: {
+    accountId: string;
+    resourceName: string;
+    accountName: string;
   };
 }
 
@@ -4925,6 +5079,7 @@ export type Event =
   | MoveSecretsEvent
   | DeleteSecretEvent
   | DeleteSecretBatchEvent
+  | RedactSecretVersionValueEvent
   | GetProjectKeyEvent
   | AuthorizeIntegrationEvent
   | UpdateIntegrationAuthEvent
@@ -5072,6 +5227,7 @@ export type Event =
   | SignIntermediate
   | ImportCaCert
   | GetCaCrls
+  | GenerateCaCertificate
   | IssueCert
   | ImportCert
   | SignCert
@@ -5195,6 +5351,18 @@ export type Event =
   | PkiSyncSyncCertificatesEvent
   | PkiSyncImportCertificatesEvent
   | PkiSyncRemoveCertificatesEvent
+  | PkiSyncSetDefaultCertificateEvent
+  | PkiSyncClearDefaultCertificateEvent
+  | CreatePkiDiscoveryEvent
+  | UpdatePkiDiscoveryEvent
+  | DeletePkiDiscoveryEvent
+  | GetPkiDiscoveryEvent
+  | GetPkiDiscoveriesEvent
+  | TriggerPkiDiscoveryScanEvent
+  | GetPkiInstallationEvent
+  | GetPkiInstallationsEvent
+  | UpdatePkiInstallationEvent
+  | DeletePkiInstallationEvent
   | OidcGroupMembershipMappingAssignUserEvent
   | OidcGroupMembershipMappingRemoveUserEvent
   | CreateKmipClientEvent
@@ -5281,7 +5449,9 @@ export type Event =
   | PamFolderUpdateEvent
   | PamFolderDeleteEvent
   | PamAccountListEvent
+  | PamAccountGetEvent
   | PamAccountAccessEvent
+  | PamWebAccessSessionTicketCreatedEvent
   | PamAccountCreateEvent
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent

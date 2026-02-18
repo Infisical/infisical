@@ -47,7 +47,7 @@ export const AzureKeyVaultPkiSyncSchema = PkiSyncSchema.extend({
 });
 
 export const CreateAzureKeyVaultPkiSyncSchema = z.object({
-  name: z.string().trim().min(1).max(64),
+  name: z.string().trim().min(1).max(256),
   description: z.string().optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: AzureKeyVaultPkiSyncConfigSchema,
@@ -59,7 +59,7 @@ export const CreateAzureKeyVaultPkiSyncSchema = z.object({
 });
 
 export const UpdateAzureKeyVaultPkiSyncSchema = z.object({
-  name: z.string().trim().min(1).max(64).optional(),
+  name: z.string().trim().min(1).max(256).optional(),
   description: z.string().optional(),
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: AzureKeyVaultPkiSyncConfigSchema.optional(),

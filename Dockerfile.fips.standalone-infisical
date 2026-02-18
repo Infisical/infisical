@@ -109,7 +109,7 @@ RUN apt-get update && apt-get install -y \
 RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
 
 COPY --from=backend-build /app .
-RUN rm -rf ./node_modules
+RUN rm -rf ./node_modules ./bdd ./e2e-test
 RUN npm ci --omit=dev
 
 RUN mkdir frontend-build
@@ -181,6 +181,9 @@ RUN wget https://www.openssl.org/source/openssl-3.1.2.tar.gz \
     && rm -rf /openssl-build \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Install smbclient for Windows SMB operations
+RUN apt-get update && apt-get install -y smbclient && rm -rf /var/lib/apt/lists/*
 
 # Install Infisical CLI
 RUN curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \

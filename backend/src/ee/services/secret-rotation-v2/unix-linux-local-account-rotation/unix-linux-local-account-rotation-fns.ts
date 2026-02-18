@@ -56,10 +56,17 @@ const executeCommand = (client: Client, command: string): Promise<string> => {
 };
 
 // Change password for managed rotation (admin changing another user's password)
-const changeManagedPassword = async (client: Client, username: string, newPassword: string): Promise<void> => {
+const changeManagedPassword = async (
+  client: Client,
+  username: string,
+  newPassword: string,
+  useSudo: boolean = false
+): Promise<void> => {
   // Using base64 encoding to avoid any shell escaping issues
   const encodedPassword = Buffer.from(`${username}:${newPassword}`).toString("base64");
-  const command = `echo '${encodedPassword}' | base64 -d | sudo chpasswd`;
+  const command = useSudo
+    ? `echo '${encodedPassword}' | base64 -d | sudo chpasswd`
+    : `echo '${encodedPassword}' | base64 -d | chpasswd`;
 
   try {
     await executeCommand(client, command);
@@ -161,8 +168,10 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
   const {
     username,
     passwordRequirements,
-    rotationMethod = UnixLinuxLocalAccountRotationMethod.LoginAsRoot
+    rotationMethod = UnixLinuxLocalAccountRotationMethod.LoginAsRoot,
+    useSudo
   } = parameters;
+  const shouldUseSudo = Boolean(useSudo);
 
   // Helper to verify SSH credentials work
   const $verifyCredentials = async (targetUsername: string, targetPassword: string): Promise<void> => {
@@ -197,10 +206,6 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
     const isSelfRotation = rotationMethod === UnixLinuxLocalAccountRotationMethod.LoginAsTarget;
     if (username === credentials.username)
       throw new BadRequestError({ message: "Provided username is used in Infisical app connections." });
-
-    const privilegedAccounts = ["root", "admin", "administrator", "sudo"];
-    if (privilegedAccounts.includes(username.toLowerCase()))
-      throw new BadRequestError({ message: "Cannot rotate passwords for privileged system accounts." });
 
     // Determine which credentials to use for the SSH connection
     let connectConfig: TSshConnectionConfig;
@@ -238,8 +243,8 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
           // Self rotation: user changes their own password using passwd command
           await changeSelfPassword(client, currentPassword, newPassword);
         } else {
-          // Managed rotation: admin changes user's password using sudo chpasswd
-          await changeManagedPassword(client, username, newPassword);
+          // Managed rotation: admin changes user's password using chpasswd (with sudo if specified)
+          await changeManagedPassword(client, username, newPassword, shouldUseSudo);
         }
       } finally {
         client.destroy();

@@ -45,5 +45,9 @@ export enum AppConnection {
   LaravelForge = "laravel-forge",
   Chef = "chef",
   OctopusDeploy = "octopus-deploy",
-  SSH = "ssh"
+  SSH = "ssh",
+  Dbt = "dbt",
+  SMB = "smb",
+  OpenRouter = "open-router",
+  CircleCI = "circleci"
 }

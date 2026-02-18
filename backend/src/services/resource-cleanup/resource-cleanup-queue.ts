@@ -5,6 +5,7 @@ import { TKeyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { TQueueJobsDALFactory } from "@app/queue/queue-jobs-dal";
 import { TUserNotificationDALFactory } from "@app/services/notification/user-notification-dal";
 
 import { TApprovalRequestDALFactory, TApprovalRequestGrantsDALFactory } from "../approval-policy/approval-request-dal";
@@ -36,6 +37,7 @@ type TDailyResourceCleanUpQueueServiceFactoryDep = {
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "markExpiredRequests">;
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "markExpiredGrants">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "markExpiredApprovalRequests">;
+  queueJobsDAL: Pick<TQueueJobsDALFactory, "pruneQueueJobs">;
 };
 
 export type TDailyResourceCleanUpQueueServiceFactory = ReturnType<typeof dailyResourceCleanUpQueueServiceFactory>;
@@ -57,7 +59,8 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
   keyValueStoreDAL,
   approvalRequestDAL,
   approvalRequestGrantsDAL,
-  certificateRequestDAL
+  certificateRequestDAL,
+  queueJobsDAL
 }: TDailyResourceCleanUpQueueServiceFactoryDep) => {
   const appCfg = getConfig();
 
@@ -70,60 +73,42 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       return;
     }
 
-    await queueService.stopRepeatableJob(
-      QueueName.AuditLogPrune,
-      QueueJobs.AuditLogPrune,
-      { pattern: "0 0 * * *", utc: true },
-      QueueName.AuditLogPrune // just a job id
-    );
-    await queueService.stopRepeatableJob(
-      QueueName.DailyResourceCleanUp,
-      QueueJobs.DailyResourceCleanUp,
-      { pattern: "0 0 * * *", utc: true },
-      QueueName.DailyResourceCleanUp // just a job id
-    );
-
-    await queueService.startPg<QueueName.DailyResourceCleanUp>(
-      QueueJobs.DailyResourceCleanUp,
-      async () => {
-        try {
-          logger.info(`${QueueName.DailyResourceCleanUp}: queue task started`);
-          await identityUniversalAuthClientSecretDAL.removeExpiredClientSecrets();
-          await secretSharingDAL.pruneExpiredSharedSecrets();
-          await secretSharingDAL.pruneExpiredSecretRequests();
-          await snapshotDAL.pruneExcessSnapshots();
-          await secretVersionDAL.pruneExcessVersions();
-          await secretVersionV2DAL.pruneExcessVersions();
-          await secretFolderVersionDAL.pruneExcessVersions();
-          await serviceTokenService.notifyExpiringTokens();
-          await scimService.notifyExpiringTokens();
-          await orgService.notifyInvitedUsers();
-          await auditLogDAL.pruneAuditLog();
-          await userNotificationDAL.pruneNotifications();
-          await keyValueStoreDAL.pruneExpiredKeys();
-          const expiredApprovalRequestIds = await approvalRequestDAL.markExpiredRequests();
-          if (expiredApprovalRequestIds.length > 0) {
-            await certificateRequestDAL.markExpiredApprovalRequests(expiredApprovalRequestIds);
-          }
-          await approvalRequestGrantsDAL.markExpiredGrants();
-          logger.info(`${QueueName.DailyResourceCleanUp}: queue task completed`);
-        } catch (error) {
-          logger.error(error, `${QueueName.DailyResourceCleanUp}: resource cleanup failed`);
-          throw error;
+    queueService.start(QueueName.DailyResourceCleanUp, async () => {
+      try {
+        logger.info(`${QueueName.DailyResourceCleanUp}: queue task started`);
+        await identityUniversalAuthClientSecretDAL.removeExpiredClientSecrets();
+        await secretSharingDAL.pruneExpiredSharedSecrets();
+        await secretSharingDAL.pruneExpiredSecretRequests();
+        await snapshotDAL.pruneExcessSnapshots();
+        await secretVersionDAL.pruneExcessVersions();
+        await secretVersionV2DAL.pruneExcessVersions();
+        await secretFolderVersionDAL.pruneExcessVersions();
+        await serviceTokenService.notifyExpiringTokens();
+        await scimService.notifyExpiringTokens();
+        await orgService.notifyInvitedUsers();
+        await auditLogDAL.pruneAuditLog();
+        await userNotificationDAL.pruneNotifications();
+        await keyValueStoreDAL.pruneExpiredKeys();
+        await queueJobsDAL.pruneQueueJobs();
+        const expiredApprovalRequestIds = await approvalRequestDAL.markExpiredRequests();
+        if (expiredApprovalRequestIds.length > 0) {
+          await certificateRequestDAL.markExpiredApprovalRequests(expiredApprovalRequestIds);
         }
-      },
-      {
-        batchSize: 1,
-        workerCount: 1,
-        pollingIntervalSeconds: 1
+        await approvalRequestGrantsDAL.markExpiredGrants();
+        logger.info(`${QueueName.DailyResourceCleanUp}: queue task completed`);
+      } catch (error) {
+        logger.error(error, `${QueueName.DailyResourceCleanUp}: resource cleanup failed`);
+        throw error;
       }
-    );
-    await queueService.schedulePg(
-      QueueJobs.DailyResourceCleanUp,
-      appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *",
-      undefined,
-      { tz: "UTC" }
-    );
+    });
+
+    await queueService.queue(QueueName.DailyResourceCleanUp, QueueJobs.DailyResourceCleanUp, undefined, {
+      jobId: QueueJobs.DailyResourceCleanUp,
+      repeat: {
+        pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *",
+        key: QueueJobs.DailyResourceCleanUp
+      }
+    });
 
     // Hourly cleanup routine
     await queueService.stopRepeatableJob(
@@ -133,30 +118,24 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       QueueName.FrequentResourceCleanUp // just a job id
     );
 
-    await queueService.startPg<QueueName.FrequentResourceCleanUp>(
-      QueueJobs.FrequentResourceCleanUp,
-      async () => {
-        try {
-          logger.info(`${QueueName.FrequentResourceCleanUp}: queue task started`);
-          await identityAccessTokenDAL.removeExpiredTokens();
-          logger.info(`${QueueName.FrequentResourceCleanUp}: queue task completed`);
-        } catch (error) {
-          logger.error(error, `${QueueName.FrequentResourceCleanUp}: resource cleanup failed`);
-          throw error;
-        }
-      },
-      {
-        batchSize: 1,
-        workerCount: 1,
-        pollingIntervalSeconds: 1
+    queueService.start(QueueName.FrequentResourceCleanUp, async () => {
+      try {
+        logger.info(`${QueueName.FrequentResourceCleanUp}: queue task started`);
+        await identityAccessTokenDAL.removeExpiredTokens();
+        logger.info(`${QueueName.FrequentResourceCleanUp}: queue task completed`);
+      } catch (error) {
+        logger.error(error, `${QueueName.FrequentResourceCleanUp}: resource cleanup failed`);
+        throw error;
       }
-    );
-    await queueService.schedulePg(
-      QueueJobs.FrequentResourceCleanUp,
-      "0 * * * *", // Schedule to run every hour
-      undefined,
-      { tz: "UTC" }
-    );
+    });
+
+    await queueService.queue(QueueName.FrequentResourceCleanUp, QueueJobs.FrequentResourceCleanUp, undefined, {
+      jobId: QueueJobs.FrequentResourceCleanUp,
+      repeat: {
+        pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 * * * *",
+        key: QueueJobs.FrequentResourceCleanUp
+      }
+    });
   };
 
   return {

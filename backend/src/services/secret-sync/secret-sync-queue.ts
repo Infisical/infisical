@@ -1,6 +1,7 @@
 import opentelemetry from "@opentelemetry/api";
 import { AxiosError } from "axios";
 import { Job } from "bullmq";
+import { randomUUID } from "crypto";
 
 import { ProjectMembershipRole, SecretType } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -56,8 +57,8 @@ import {
   TSendSecretSyncFailedNotificationsJobDTO
 } from "@app/services/secret-sync/secret-sync-types";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
+import { expandSecretReferencesFactory } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
-import { expandSecretReferencesFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
@@ -353,21 +354,25 @@ export const secretSyncQueueFactory = ({
         delay: 3000
       },
       removeOnComplete: true,
-      removeOnFail: true
+      removeOnFail: true,
+      jobId: randomUUID()
     });
 
   const queueSecretSyncImportSecretsById = async (payload: TQueueSecretSyncImportSecretsByIdDTO) =>
     queueService.queue(QueueName.AppConnectionSecretSync, QueueJobs.SecretSyncImportSecrets, payload, {
       attempts: 1,
       removeOnComplete: true,
-      removeOnFail: true
+      removeOnFail: true,
+
+      jobId: randomUUID()
     });
 
   const queueSecretSyncRemoveSecretsById = async (payload: TQueueSecretSyncRemoveSecretsByIdDTO) =>
     queueService.queue(QueueName.AppConnectionSecretSync, QueueJobs.SecretSyncRemoveSecrets, payload, {
       attempts: 1,
       removeOnComplete: true,
-      removeOnFail: true
+      removeOnFail: true,
+      jobId: randomUUID()
     });
 
   const $queueSendSecretSyncFailedNotifications = async (payload: TQueueSendSecretSyncActionFailedNotificationsDTO) => {

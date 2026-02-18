@@ -28,7 +28,8 @@ export const SecretSharingSchema = z.object({
   encryptedSecret: zodBuffer.nullable().optional(),
   identifier: z.string().nullable().optional(),
   type: z.string().default("share"),
-  authorizedEmails: z.unknown().nullable().optional()
+  authorizedEmails: z.unknown().nullable().optional(),
+  identityId: z.string().uuid().nullable().optional()
 });
 
 export type TSecretSharing = z.infer<typeof SecretSharingSchema>;

@@ -59,7 +59,7 @@ export const getTokenConfig = (tokenType: TokenType) => {
     }
     case TokenType.TOKEN_EMAIL_PASSWORD_RESET: {
       // generate random hex
-      const token = crypto.randomBytes(16).toString("hex");
+      const token = crypto.randomBytes(32).toString("hex");
       const expiresAt = new Date(new Date().getTime() + 86400000);
       return { token, expiresAt };
     }
@@ -79,6 +79,12 @@ export const getTokenConfig = (tokenType: TokenType) => {
       const token = crypto.randomBytes(32).toString("hex");
       const triesLeft = 1;
       const expiresAt = new Date(new Date().getTime() + 60000); // 60 seconds
+      return { token, triesLeft, expiresAt };
+    }
+    case TokenType.TOKEN_PAM_WS_TICKET: {
+      const token = crypto.randomBytes(32).toString("hex");
+      const triesLeft = 1;
+      const expiresAt = new Date(new Date().getTime() + 30000); // 30 seconds
       return { token, triesLeft, expiresAt };
     }
     default: {

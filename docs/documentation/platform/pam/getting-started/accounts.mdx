@@ -13,12 +13,12 @@ Accounts belong to Resources. A single Resource can have multiple Accounts assoc
 For example, your database would normally have multiple accounts. You might have a superuser account for admins, a standard read/write account for applications, and a read-only account for reporting.
 
 In PAM, these are represented as:
-- **Resource**: `Production Database` (PostgreSQL)
+- **Resource**: `production-database` (PostgreSQL)
     - **Account 1**: `postgres` (Superuser)
-    - **Account 2**: `app_user` (Read/Write)
+    - **Account 2**: `app-user` (Read/Write)
     - **Account 3**: `analytics` (Read-only)
 
-When a user requests access in PAM, they request access to a specific **Account** on a **Resource**.
+When a user accesses a PAM account, they access a specific **Account** on a **Resource**. Users navigate to a resource, then select an account within it to gain access.
 
 ## Creating an Account
 
@@ -26,15 +26,11 @@ When a user requests access in PAM, they request access to a specific **Account*
     **Prerequisite**: You must have at least one [Resource](/documentation/platform/pam/getting-started/resources) created before adding accounts.
 </Info>
 
-To add an account, navigate to the **Accounts** tab in your PAM project and click **Add Account**.
+To add an account, navigate to the **Resources** tab in your PAM project, click into the resource you want to add an account to, and then click **Add Account**.
 
 ![Add Account Button](/images/pam/getting-started/accounts/add-account-button.png)
 
-Next, select the **Resource** that this account belongs to.
-
-![Select Resource](/images/pam/getting-started/accounts/select-resource.png)
-
-After selecting a resource, provide the credentials (username, password, etc.) for this account. The required fields vary depending on the resource type. For example, for a Linux server, you would enter the username and the corresponding password or SSH key.
+Provide the credentials (username, password, etc.) for this account. The required fields vary depending on the resource type. For example, for a Linux server, you would enter the username and the corresponding password or SSH key.
 
 ![Create Account](/images/pam/getting-started/accounts/create-account.png)
 

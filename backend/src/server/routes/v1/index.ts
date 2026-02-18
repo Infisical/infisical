@@ -6,6 +6,7 @@ import { registerCmekRouter } from "@app/server/routes/v1/cmek-router";
 import { registerDashboardRouter } from "@app/server/routes/v1/dashboard-router";
 import { registerSecretSyncRouter, SECRET_SYNC_REGISTER_ROUTER_MAP } from "@app/server/routes/v1/secret-sync-routers";
 
+import { registerAccountRecoveryRouter } from "./account-recovery-router";
 import { registerAdminRouter } from "./admin-router";
 import { APPROVAL_POLICY_REGISTER_ROUTER_MAP } from "./approval-policy-routers";
 import { registerAuthRoutes } from "./auth-router";
@@ -99,6 +100,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     { prefix: "/auth" }
   );
   await server.register(registerPasswordRouter, { prefix: "/password" });
+  await server.register(registerAccountRecoveryRouter, { prefix: "/account-recovery" });
   await server.register(
     async (orgRouter) => {
       await orgRouter.register(registerOrgRouter);
@@ -247,10 +249,10 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (secretSharingRouter) => {
-      await secretSharingRouter.register(registerSecretSharingRouter, { prefix: "/shared" });
+      await secretSharingRouter.register(registerSecretSharingRouter);
       await secretSharingRouter.register(registerSecretRequestsRouter, { prefix: "/requests" });
     },
-    { prefix: "/secret-sharing" }
+    { prefix: "/shared-secrets" }
   );
 
   await server.register(registerUserEngagementRouter, { prefix: "/user-engagement" });

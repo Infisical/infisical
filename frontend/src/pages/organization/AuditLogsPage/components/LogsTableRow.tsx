@@ -59,7 +59,7 @@ export const LogsTableRow = ({ auditLog, rowNumber, timezone }: Props) => {
         </Td>
         <Td className="align-top">{formatDateTime({ timestamp: auditLog.createdAt, timezone })}</Td>
         <Td>
-          <div className="flex flex-wrap gap-4 text-sm">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
             <Tag label="event" value={auditLog.event.type} />
             <Tag label="actor" value={auditLog.actor.type} />
             {auditLog.actor.type === ActorType.USER && (

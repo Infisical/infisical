@@ -3,17 +3,20 @@ import { AxiosError } from "axios";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { TQueueOptions } from "@app/queue/queue-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { AUTH0_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./auth0-client-secret";
 import { AWS_IAM_USER_SECRET_ROTATION_LIST_OPTION } from "./aws-iam-user-secret";
 import { AZURE_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./azure-client-secret";
 import { DATABRICKS_SERVICE_PRINCIPAL_SECRET_ROTATION_LIST_OPTION } from "./databricks-service-principal-secret";
+import { DBT_SERVICE_TOKEN_ROTATION_LIST_OPTION } from "./dbt-service-token";
 import { LDAP_PASSWORD_ROTATION_LIST_OPTION, TLdapPasswordRotation } from "./ldap-password";
 import { MONGODB_CREDENTIALS_ROTATION_LIST_OPTION } from "./mongodb-credentials";
 import { MSSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mssql-credentials";
 import { MYSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mysql-credentials";
 import { OKTA_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./okta-client-secret";
+import { OPEN_ROUTER_API_KEY_ROTATION_LIST_OPTION } from "./open-router-api-key";
 import { ORACLEDB_CREDENTIALS_ROTATION_LIST_OPTION } from "./oracledb-credentials";
 import { POSTGRES_CREDENTIALS_ROTATION_LIST_OPTION } from "./postgres-credentials";
 import { REDIS_CREDENTIALS_ROTATION_LIST_OPTION } from "./redis-credentials";
@@ -32,6 +35,10 @@ import {
   TUnixLinuxLocalAccountRotation,
   UNIX_LINUX_LOCAL_ACCOUNT_ROTATION_LIST_OPTION
 } from "./unix-linux-local-account-rotation";
+import {
+  TWindowsLocalAccountRotation,
+  WINDOWS_LOCAL_ACCOUNT_ROTATION_LIST_OPTION
+} from "./windows-local-account-rotation";
 
 const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2ListItem> = {
   [SecretRotation.PostgresCredentials]: POSTGRES_CREDENTIALS_ROTATION_LIST_OPTION,
@@ -46,7 +53,10 @@ const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2List
   [SecretRotation.RedisCredentials]: REDIS_CREDENTIALS_ROTATION_LIST_OPTION,
   [SecretRotation.MongoDBCredentials]: MONGODB_CREDENTIALS_ROTATION_LIST_OPTION,
   [SecretRotation.DatabricksServicePrincipalSecret]: DATABRICKS_SERVICE_PRINCIPAL_SECRET_ROTATION_LIST_OPTION,
-  [SecretRotation.UnixLinuxLocalAccount]: UNIX_LINUX_LOCAL_ACCOUNT_ROTATION_LIST_OPTION
+  [SecretRotation.UnixLinuxLocalAccount]: UNIX_LINUX_LOCAL_ACCOUNT_ROTATION_LIST_OPTION,
+  [SecretRotation.DbtServiceToken]: DBT_SERVICE_TOKEN_ROTATION_LIST_OPTION,
+  [SecretRotation.WindowsLocalAccount]: WINDOWS_LOCAL_ACCOUNT_ROTATION_LIST_OPTION,
+  [SecretRotation.OpenRouterApiKey]: OPEN_ROUTER_API_KEY_ROTATION_LIST_OPTION
 };
 
 export const listSecretRotationOptions = () => {
@@ -143,14 +153,19 @@ export const decryptSecretRotationCredentials = async ({
 export const getSecretRotationRotateSecretJobOptions = ({
   id,
   nextRotationAt
-}: Pick<TSecretRotationV2Raw, "id" | "nextRotationAt">) => {
+}: Pick<TSecretRotationV2Raw, "id" | "nextRotationAt">): TQueueOptions => {
   const appCfg = getConfig();
 
   return {
     jobId: `secret-rotation-v2-rotate-${id}`,
-    retryLimit: appCfg.isRotationDevelopmentMode ? 3 : 5,
-    retryBackoff: true,
-    startAfter: nextRotationAt ?? undefined
+    attempts: appCfg.isRotationDevelopmentMode ? 1 : 5,
+    removeOnFail: true,
+    removeOnComplete: true,
+    backoff: {
+      type: "exponential",
+      delay: 1000
+    },
+    delay: nextRotationAt ? Number(nextRotationAt) - Date.now() : undefined
   };
 };
 
@@ -282,6 +297,17 @@ export const throwOnImmutableParameterUpdate = (
         haveUnequalProperties(
           updatePayload.parameters as TUnixLinuxLocalAccountRotation["parameters"],
           secretRotation.parameters as TUnixLinuxLocalAccountRotation["parameters"],
+          ["rotationMethod", "username"]
+        )
+      ) {
+        throw new BadRequestError({ message: "Cannot update rotation method or username" });
+      }
+      break;
+    case SecretRotation.WindowsLocalAccount:
+      if (
+        haveUnequalProperties(
+          updatePayload.parameters as TWindowsLocalAccountRotation["parameters"],
+          secretRotation.parameters as TWindowsLocalAccountRotation["parameters"],
           ["rotationMethod", "username"]
         )
       ) {

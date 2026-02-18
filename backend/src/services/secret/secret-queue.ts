@@ -1,12 +1,12 @@
 /* eslint-disable no-await-in-loop */
 import opentelemetry from "@opentelemetry/api";
 import { AxiosError } from "axios";
+import { randomUUID } from "crypto";
 import { Knex } from "knex";
 
 import {
   AccessScope,
   ProjectMembershipRole,
-  ProjectType,
   ProjectUpgradeStatus,
   ProjectVersion,
   SecretType,
@@ -14,9 +14,9 @@ import {
   TSecretVersionsV2
 } from "@app/db/schemas";
 import { Actor, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TEventBusService } from "@app/ee/services/event/event-bus-service";
-import { BusEventName, PublishableEvent, TopicName } from "@app/ee/services/event/types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TProjectEventsService } from "@app/ee/services/project-events/project-events-service";
+import { ProjectEvents, TProjectEventPayload } from "@app/ee/services/project-events/project-events-types";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretRotationDALFactory } from "@app/ee/services/secret-rotation/secret-rotation-dal";
 import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
@@ -59,8 +59,8 @@ import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-sche
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
+import { expandSecretReferencesFactory, getAllSecretReferences } from "../secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
-import { expandSecretReferencesFactory, getAllSecretReferences } from "../secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
@@ -120,7 +120,7 @@ type TSecretQueueFactoryDep = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   secretSyncQueue: Pick<TSecretSyncQueueFactory, "queueSecretSyncsSyncSecretsByPath">;
   reminderService: Pick<TReminderServiceFactory, "createReminderInternal" | "deleteReminderBySecretId">;
-  eventBusService: TEventBusService;
+  projectEventsService: TProjectEventsService;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
@@ -184,7 +184,7 @@ export const secretQueueFactory = ({
   secretSyncQueue,
   folderCommitService,
   reminderService,
-  eventBusService,
+  projectEventsService,
   licenseService,
   membershipUserDAL,
   membershipRoleDAL,
@@ -538,7 +538,8 @@ export const secretQueueFactory = ({
         delay: 3000
       },
       removeOnComplete: true,
-      removeOnFail: true
+      removeOnFail: true,
+      jobId: randomUUID()
     });
   };
 
@@ -550,54 +551,9 @@ export const secretQueueFactory = ({
         delay: 3000
       },
       removeOnComplete: true,
-      removeOnFail: true
+      removeOnFail: true,
+      jobId: randomUUID()
     });
-  };
-
-  const publishEvents = async (event: PublishableEvent) => {
-    if (event.created) {
-      await eventBusService.publish(TopicName.CoreServers, {
-        type: ProjectType.SecretManager,
-        source: "infiscal",
-        data: {
-          event: BusEventName.CreateSecret,
-          payload: event.created
-        }
-      });
-    }
-
-    if (event.updated) {
-      await eventBusService.publish(TopicName.CoreServers, {
-        type: ProjectType.SecretManager,
-        source: "infiscal",
-        data: {
-          event: BusEventName.UpdateSecret,
-          payload: event.updated
-        }
-      });
-    }
-
-    if (event.deleted) {
-      await eventBusService.publish(TopicName.CoreServers, {
-        type: ProjectType.SecretManager,
-        source: "infiscal",
-        data: {
-          event: BusEventName.DeleteSecret,
-          payload: event.deleted
-        }
-      });
-    }
-
-    if (event.importMutation) {
-      await eventBusService.publish(TopicName.CoreServers, {
-        type: ProjectType.SecretManager,
-        source: "infiscal",
-        data: {
-          event: BusEventName.ImportMutation,
-          payload: event.importMutation
-        }
-      });
-    }
   };
 
   const syncSecrets = async <T extends boolean = false>({
@@ -605,9 +561,9 @@ export const secretQueueFactory = ({
     _deDupeQueue: deDupeQueue = {},
     _depth: depth = 0,
     _deDupeReplicationQueue: deDupeReplicationQueue = {},
-    event,
+    events: event,
     ...dto
-  }: TSyncSecretsDTO<T> & { event?: PublishableEvent }) => {
+  }: TSyncSecretsDTO<T> & { events?: TProjectEventPayload[] }) => {
     logger.info(
       `syncSecrets: syncing project secrets where [projectId=${dto.projectId}]  [environment=${dto.environmentSlug}] [path=${dto.secretPath}]`
     );
@@ -615,7 +571,9 @@ export const secretQueueFactory = ({
     const plan = await licenseService.getPlan(dto.orgId);
 
     if (event && plan.eventSubscriptions) {
-      await publishEvents(event);
+      for await (const singleEvent of event) {
+        await projectEventsService.publish(singleEvent);
+      }
     }
 
     const deDuplicationKey = uniqueSecretQueueKey(dto.environmentSlug, dto.secretPath);
@@ -813,12 +771,14 @@ export const secretQueueFactory = ({
                 _deDupeQueue: deDupeQueue,
                 _depth: depth + 1,
                 excludeReplication: true,
-                event: {
-                  importMutation: {
+                events: [
+                  {
+                    type: ProjectEvents.SecretImportMutation,
+                    projectId,
                     secretPath: foldersGroupedById[folderId][0]?.path as string,
                     environment: foldersGroupedById[folderId][0]?.environmentSlug as string
                   }
-                }
+                ]
               })
             )
         );
@@ -872,12 +832,14 @@ export const secretQueueFactory = ({
                 _deDupeQueue: deDupeQueue,
                 _depth: depth + 1,
                 excludeReplication: true,
-                event: {
-                  importMutation: {
+                events: [
+                  {
+                    type: ProjectEvents.SecretImportMutation,
+                    projectId,
                     secretPath: referencedFoldersGroupedById[folderId][0]?.path as string,
                     environment: referencedFoldersGroupedById[folderId][0]?.environmentSlug as string
                   }
-                }
+                ]
               })
             )
         );
@@ -1169,7 +1131,8 @@ export const secretQueueFactory = ({
       { projectId },
       {
         removeOnComplete: true,
-        removeOnFail: true
+        removeOnFail: true,
+        jobId: randomUUID()
       }
     );
   };
@@ -1381,7 +1344,8 @@ export const secretQueueFactory = ({
               reminderNote: el.secretReminderNote,
               reminderRepeatDays: el.secretReminderRepeatDays,
               secretId: el.secretId,
-              envId: el.envId
+              envId: el.envId,
+              isRedacted: false
             };
             el.tags.forEach(({ secretTagId }) => {
               projectV3SecretVersionTags.push({ secret_tagsId: secretTagId, secret_versions_v2Id: el.id });
@@ -1443,7 +1407,8 @@ export const secretQueueFactory = ({
             reminderNote: el.secretReminderNote,
             reminderRepeatDays: el.secretReminderRepeatDays,
             secretId: el.secretId,
-            envId: el.envId
+            envId: el.envId,
+            isRedacted: false
           };
         });
 

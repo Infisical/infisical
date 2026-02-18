@@ -3,6 +3,7 @@ export interface TBasePamResource {
   projectId: string;
   name: string;
   gatewayId: string;
+  adServerResourceId?: string | null;
   createdAt: string;
   updatedAt: string;
 }

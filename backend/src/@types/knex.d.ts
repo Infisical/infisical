@@ -329,6 +329,12 @@ import {
   TPkiApiEnrollmentConfigs,
   TPkiApiEnrollmentConfigsInsert,
   TPkiApiEnrollmentConfigsUpdate,
+  TPkiCertificateInstallationCerts,
+  TPkiCertificateInstallationCertsInsert,
+  TPkiCertificateInstallationCertsUpdate,
+  TPkiCertificateInstallations,
+  TPkiCertificateInstallationsInsert,
+  TPkiCertificateInstallationsUpdate,
   TPkiCertificatePolicies,
   TPkiCertificatePoliciesInsert,
   TPkiCertificatePoliciesUpdate,
@@ -344,6 +350,15 @@ import {
   TPkiCollections,
   TPkiCollectionsInsert,
   TPkiCollectionsUpdate,
+  TPkiDiscoveryConfigs,
+  TPkiDiscoveryConfigsInsert,
+  TPkiDiscoveryConfigsUpdate,
+  TPkiDiscoveryInstallations,
+  TPkiDiscoveryInstallationsInsert,
+  TPkiDiscoveryInstallationsUpdate,
+  TPkiDiscoveryScanHistory,
+  TPkiDiscoveryScanHistoryInsert,
+  TPkiDiscoveryScanHistoryUpdate,
   TPkiEstEnrollmentConfigs,
   TPkiEstEnrollmentConfigsInsert,
   TPkiEstEnrollmentConfigsUpdate,
@@ -377,15 +392,21 @@ import {
   TProjectSshConfigsInsert,
   TProjectSshConfigsUpdate,
   TProjectsUpdate,
+  TProjectTemplateGroupMemberships,
+  TProjectTemplateGroupMembershipsInsert,
+  TProjectTemplateGroupMembershipsUpdate,
+  TProjectTemplateIdentityMemberships,
+  TProjectTemplateIdentityMembershipsInsert,
+  TProjectTemplateIdentityMembershipsUpdate,
   TProjectTemplates,
   TProjectTemplatesInsert,
   TProjectTemplatesUpdate,
   TProjectTemplateUserMemberships,
   TProjectTemplateUserMembershipsInsert,
   TProjectTemplateUserMembershipsUpdate,
-  TProjectTemplateGroupMemberships,
-  TProjectTemplateGroupMembershipsInsert,
-  TProjectTemplateGroupMembershipsUpdate,
+  TQueueJobs,
+  TQueueJobsInsert,
+  TQueueJobsUpdate,
   TRateLimit,
   TRateLimitInsert,
   TRateLimitUpdate,
@@ -853,6 +874,31 @@ declare module "knex/types/tables" {
       TPkiSubscribersUpdate
     >;
     [TableName.PkiSync]: KnexOriginal.CompositeTableType<TPkiSyncs, TPkiSyncsInsert, TPkiSyncsUpdate>;
+    [TableName.PkiDiscoveryConfig]: KnexOriginal.CompositeTableType<
+      TPkiDiscoveryConfigs,
+      TPkiDiscoveryConfigsInsert,
+      TPkiDiscoveryConfigsUpdate
+    >;
+    [TableName.PkiCertificateInstallation]: KnexOriginal.CompositeTableType<
+      TPkiCertificateInstallations,
+      TPkiCertificateInstallationsInsert,
+      TPkiCertificateInstallationsUpdate
+    >;
+    [TableName.PkiDiscoveryInstallation]: KnexOriginal.CompositeTableType<
+      TPkiDiscoveryInstallations,
+      TPkiDiscoveryInstallationsInsert,
+      TPkiDiscoveryInstallationsUpdate
+    >;
+    [TableName.PkiCertificateInstallationCert]: KnexOriginal.CompositeTableType<
+      TPkiCertificateInstallationCerts,
+      TPkiCertificateInstallationCertsInsert,
+      TPkiCertificateInstallationCertsUpdate
+    >;
+    [TableName.PkiDiscoveryScanHistory]: KnexOriginal.CompositeTableType<
+      TPkiDiscoveryScanHistory,
+      TPkiDiscoveryScanHistoryInsert,
+      TPkiDiscoveryScanHistoryUpdate
+    >;
     [TableName.CertificateSync]: KnexOriginal.CompositeTableType<
       TCertificateSyncs,
       TCertificateSyncsInsert,
@@ -1284,6 +1330,11 @@ declare module "knex/types/tables" {
       TProjectTemplateGroupMembershipsInsert,
       TProjectTemplateGroupMembershipsUpdate
     >;
+    [TableName.ProjectTemplateIdentityMembership]: KnexOriginal.CompositeTableType<
+      TProjectTemplateIdentityMemberships,
+      TProjectTemplateIdentityMembershipsInsert,
+      TProjectTemplateIdentityMembershipsUpdate
+    >;
     [TableName.TotpConfig]: KnexOriginal.CompositeTableType<TTotpConfigs, TTotpConfigsInsert, TTotpConfigsUpdate>;
     [TableName.ProjectSplitBackfillIds]: KnexOriginal.CompositeTableType<
       TProjectSplitBackfillIds,
@@ -1555,5 +1606,7 @@ declare module "knex/types/tables" {
       TOrganizationAssetsInsert,
       TOrganizationAssetsUpdate
     >;
+
+    [TableName.QueueJobs]: KnexOriginal.CompositeTableType<TQueueJobs, TQueueJobsInsert, TQueueJobsUpdate>;
   }
 }

@@ -1,4 +1,20 @@
-import { CertExtendedKeyUsage, CertKeyUsage, CertStatus } from "./enums";
+import { CertExtendedKeyUsage, CertKeyUsage, CertSource, CertStatus } from "./enums";
+
+export type TCertificateSubject = {
+  commonName?: string;
+  organization?: string;
+  organizationalUnit?: string;
+  country?: string;
+  state?: string;
+  locality?: string;
+};
+
+export type TCertificateFingerprints = {
+  sha256: string;
+  sha1?: string;
+};
+
+export type TCertificateSource = CertSource | null;
 
 export type TCertificate = {
   id: string;
@@ -21,6 +37,27 @@ export type TCertificate = {
   renewedByCertificateId?: string;
   renewalError?: string;
   hasPrivateKey?: boolean;
+  keyAlgorithm?: string | null;
+  signatureAlgorithm?: string | null;
+  subject?: TCertificateSubject;
+  fingerprints?: TCertificateFingerprints;
+  basicConstraints?: {
+    isCA: boolean;
+    pathLength?: number;
+  };
+  caName?: string | null;
+  profileName?: string | null;
+  caType?: "internal" | "external" | null;
+  source?: TCertificateSource;
+  discoveryMetadata?: {
+    issuerCommonName?: string;
+    issuerOrganization?: string;
+    [key: string]: unknown;
+  } | null;
+};
+
+export type TCertificateByIdResponse = {
+  certificate: TCertificate;
 };
 
 export type TDeleteCertDTO = {
@@ -94,8 +131,8 @@ export type TUnifiedCertificateIssuanceDTO = {
       type: string;
       value: string;
     }>;
-    signatureAlgorithm: string;
-    keyAlgorithm: string;
+    signatureAlgorithm?: string;
+    keyAlgorithm?: string;
     subjectAlternativeNames?: Array<{
       type: string;
       value: string;

@@ -51,7 +51,7 @@ export const sendApprovalEmailsFn = async ({
         firstName: reviewerUser.firstName,
         projectName: project.name,
         organizationName: project.organization.name,
-        approvalUrl: `${cfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${project.id}/approval}`
+        approvalUrl: `${cfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${project.id}/approval`
       },
       template: SmtpTemplates.SecretApprovalRequestNeedsReview
     });

@@ -47,7 +47,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
     defaultValues: {
       name: "",
       maxRequestTtl: null,
-      conditions: [{ accountPaths: [] }],
+      conditions: [{ resourceNames: [], accountNames: [] }],
       constraints: {
         accessDuration: {
           min: "30s",
@@ -72,10 +72,14 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   useEffect(() => {
     if (policyData?.policy) {
+      const conditions = policyData.policy.conditions.conditions as PamAccessPolicyConditions;
       reset({
         name: policyData.policy.name,
         maxRequestTtl: policyData.policy.maxRequestTtl,
-        conditions: policyData.policy.conditions.conditions as PamAccessPolicyConditions,
+        conditions: conditions.map((c) => ({
+          resourceNames: c.resourceNames || [],
+          accountNames: c.accountNames || []
+        })),
         constraints: policyData.policy.constraints.constraints,
         steps: policyData.policy.steps.map((step) => ({
           ...step,
@@ -86,7 +90,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
       reset({
         name: "",
         maxRequestTtl: null,
-        conditions: [{ accountPaths: [] }],
+        conditions: [{ resourceNames: [], accountNames: [] }],
         constraints: {
           accessDuration: {
             min: "30s",

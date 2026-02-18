@@ -23,6 +23,7 @@ import {
   CamundaConnectionMethod,
   CloudflareConnectionMethod,
   DatabricksConnectionMethod,
+  DbtConnectionMethod,
   FlyioConnectionMethod,
   GcpConnectionMethod,
   GitHubConnectionMethod,
@@ -51,6 +52,7 @@ import { AzureDNSConnectionMethod } from "@app/hooks/api/appConnections/types/az
 import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
 import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/checkly-connection";
 import { ChefConnectionMethod } from "@app/hooks/api/appConnections/types/chef-connection";
+import { CircleCIConnectionMethod } from "@app/hooks/api/appConnections/types/circleci-connection";
 import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
 import { DNSMadeEasyConnectionMethod } from "@app/hooks/api/appConnections/types/dns-made-easy-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
@@ -58,8 +60,10 @@ import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/type
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
 import { NorthflankConnectionMethod } from "@app/hooks/api/appConnections/types/northflank-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
+import { OpenRouterConnectionMethod } from "@app/hooks/api/appConnections/types/open-router-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
+import { SmbConnectionMethod } from "@app/hooks/api/appConnections/types/smb-connection";
 import { SshConnectionMethod } from "@app/hooks/api/appConnections/types/ssh-connection";
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
 
@@ -142,7 +146,11 @@ export const APP_CONNECTION_MAP: Record<
   },
   [AppConnection.Chef]: { name: "Chef", image: "Chef.png", enterprise: true },
   [AppConnection.OctopusDeploy]: { name: "Octopus Deploy", image: "Octopus Deploy.png" },
-  [AppConnection.SSH]: { name: "SSH", image: "SSH.png" }
+  [AppConnection.SSH]: { name: "SSH", image: "SSH.png" },
+  [AppConnection.Dbt]: { name: "DBT", image: "DBT.png" },
+  [AppConnection.SMB]: { name: "SMB", image: "SMB.png", size: 50 },
+  [AppConnection.OpenRouter]: { name: "OpenRouter", image: "OpenRouter.png" },
+  [AppConnection.CircleCI]: { name: "CircleCI", image: "CircleCI.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -182,6 +190,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case NorthflankConnectionMethod.ApiToken:
     case OktaConnectionMethod.ApiToken:
     case LaravelForgeConnectionMethod.ApiToken:
+    case DbtConnectionMethod.ApiToken:
+    case CircleCIConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
@@ -215,6 +225,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Project Token", icon: faKey };
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
+    case OpenRouterConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     case ChefConnectionMethod.UserKey:
       return { name: "User Key", icon: faKey };
@@ -235,6 +246,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Password", icon: faLock };
     case SshConnectionMethod.SshKey:
       return { name: "SSH Key", icon: faKey };
+    case SmbConnectionMethod.Credentials:
+      return { name: "Credentials", icon: faLock };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

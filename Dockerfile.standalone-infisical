@@ -110,7 +110,7 @@ RUN apt-get update && apt-get install -y \
 RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
 
 COPY --from=backend-build /app .
-RUN rm -rf ./node_modules
+RUN rm -rf ./node_modules ./bdd ./e2e-test
 RUN npm ci --omit=dev
 
 RUN mkdir frontend-build
@@ -166,6 +166,9 @@ RUN ARCH=$(dpkg --print-architecture) && \
     echo /opt/oracle/instantclient_23_26 > /etc/ld.so.conf.d/oracle-instantclient.conf && \
     ldconfig && \
     rm -rf /var/lib/apt/lists/*
+
+# Install smbclient for Windows SMB operations
+RUN apt-get update && apt-get install -y smbclient && rm -rf /var/lib/apt/lists/*
 
 # Install Infisical CLI
 RUN curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \

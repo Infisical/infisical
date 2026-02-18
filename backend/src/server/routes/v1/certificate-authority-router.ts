@@ -72,6 +72,18 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
               "At least one of the fields commonName, organization, ou, country, province, or locality must be non-empty",
             path: []
           }
+        )
+        .refine(
+          (data) => {
+            if (data.notBefore !== undefined && data.notAfter === undefined) {
+              return false;
+            }
+            return true;
+          },
+          {
+            message: "NotBefore is set but notAfter date is missing",
+            path: []
+          }
         ),
       response: {
         200: z.object({

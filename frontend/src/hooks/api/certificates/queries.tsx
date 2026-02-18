@@ -4,6 +4,7 @@ import { apiRequest } from "@app/config/request";
 
 import {
   TCertificate,
+  TCertificateByIdResponse,
   TCertificateRequestDetails,
   TListCertificateRequestsParams,
   TListCertificateRequestsResponse
@@ -13,6 +14,7 @@ export const certKeys = {
   getCertById: (serialNumber: string) => [{ serialNumber }, "cert"],
   getCertBody: (serialNumber: string) => [{ serialNumber }, "certBody"],
   getCertBundle: (serialNumber: string) => [{ serialNumber }, "certBundle"],
+  getCertificateById: (certificateId: string) => [{ certificateId }, "certificateById"],
   getCertificateRequest: (requestId: string, projectSlug: string) => [
     { requestId, projectSlug },
     "certificateRequest"
@@ -76,6 +78,19 @@ export const useGetCertBundle = (serialNumber: string) => {
       return data;
     },
     enabled: Boolean(serialNumber)
+  });
+};
+
+export const useGetCertificateById = (certificateId: string) => {
+  return useQuery({
+    queryKey: certKeys.getCertificateById(certificateId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TCertificateByIdResponse>(
+        `/api/v1/cert-manager/certificates/${certificateId}`
+      );
+      return data;
+    },
+    enabled: Boolean(certificateId)
   });
 };
 

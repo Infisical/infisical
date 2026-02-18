@@ -16,7 +16,7 @@ import { loginMappingSchema, sanitizedSshHost } from "@app/ee/services/ssh-host/
 import { LoginMappingSource } from "@app/ee/services/ssh-host/ssh-host-types";
 import { sanitizedSshHostGroup } from "@app/ee/services/ssh-host-group/ssh-host-group-schema";
 import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
-import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { projectCreationLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -89,7 +89,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     method: "POST",
     url: "/",
     config: {
-      rateLimit: writeLimit
+      rateLimit: projectCreationLimit
     },
     schema: {
       hide: false,

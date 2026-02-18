@@ -453,93 +453,95 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             onClickSegment={handleClickSegment}
           />
         </Popover.Trigger>
-        <Popover.Content
-          align="start"
-          onOpenAutoFocus={(e) => e.preventDefault()}
-          className="relative top-2 z-100 max-h-64 overflow-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md"
-          style={{
-            width: "var(--radix-popover-trigger-width)"
-          }}
-        >
-          <div
-            className="h-full w-full flex-col items-center justify-center rounded-md text-white"
-            ref={popoverContentRef}
+        <Popover.Portal>
+          <Popover.Content
+            align="start"
+            onOpenAutoFocus={(e) => e.preventDefault()}
+            className="relative top-2 z-100 max-h-64 thin-scrollbar overflow-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md"
+            style={{
+              width: "var(--radix-popover-trigger-width)"
+            }}
           >
-            {suggestions.map((item, i) => {
-              let entryIcon;
-              let subText;
-              const isNoMatchMessage = item.slug === "__no_match__";
+            <div
+              className="h-full w-full flex-col items-center justify-center rounded-md text-white"
+              ref={popoverContentRef}
+            >
+              {suggestions.map((item, i) => {
+                let entryIcon;
+                let subText;
+                const isNoMatchMessage = item.slug === "__no_match__";
 
-              if (isNoMatchMessage) {
-                entryIcon = <FontAwesomeIcon icon={faSearch} className="text-gray-400" />;
-                subText = "No results";
-              } else if (item.type === ReferenceType.SECRET) {
-                entryIcon = <FontAwesomeIcon icon={faKey} className="text-bunker-300" />;
-                subText = "Secret";
-              } else if (item.type === ReferenceType.ENVIRONMENT) {
-                entryIcon = <FontAwesomeIcon icon={faLayerGroup} className="text-green-700" />;
-                subText = "Environment";
-              } else {
-                entryIcon = <FontAwesomeIcon icon={faFolder} className="text-yellow-700" />;
-                subText = "Folder";
-              }
+                if (isNoMatchMessage) {
+                  entryIcon = <FontAwesomeIcon icon={faSearch} className="text-gray-400" />;
+                  subText = "No results";
+                } else if (item.type === ReferenceType.SECRET) {
+                  entryIcon = <FontAwesomeIcon icon={faKey} className="text-bunker-300" />;
+                  subText = "Secret";
+                } else if (item.type === ReferenceType.ENVIRONMENT) {
+                  entryIcon = <FontAwesomeIcon icon={faLayerGroup} className="text-green-700" />;
+                  subText = "Environment";
+                } else {
+                  entryIcon = <FontAwesomeIcon icon={faFolder} className="text-yellow-700" />;
+                  subText = "Folder";
+                }
 
-              return isNoMatchMessage ? (
-                <div
-                  role="status"
-                  aria-label="no-match-message"
-                  className="flex w-full items-center justify-between border-mineshaft-600 text-left"
-                  key={`secret-reference-secret-${i + 1}`}
-                >
-                  <div className="text-md relative flex w-full cursor-default items-center justify-between px-2 py-2 opacity-75 outline-hidden transition-all select-none">
-                    <div className="flex w-full items-start gap-2">
-                      <div className="mt-1 flex items-center">{entryIcon}</div>
-                      <div className="text-md w-10/12 truncate text-left">
-                        <span className="text-gray-400">{item.label}</span>
-                        <div className="mb-[0.1rem] text-xs leading-3 text-bunker-400">
-                          {subText}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSuggestionSelect(i);
-                  }}
-                  aria-label="suggestion-item"
-                  onClick={(e) => {
-                    inputRef.current?.focus();
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleSuggestionSelect(i);
-                  }}
-                  onMouseEnter={() => setHighlightedIndex(i)}
-                  className="flex w-full items-center justify-between border-none border-mineshaft-600 bg-transparent p-0 text-left"
-                  key={`secret-reference-secret-${i + 1}`}
-                >
+                return isNoMatchMessage ? (
                   <div
-                    className={`${
-                      highlightedIndex === i ? "bg-mineshaft-500" : ""
-                    } text-md relative flex w-full cursor-pointer items-center justify-between px-2 py-2 outline-hidden transition-all select-none hover:bg-mineshaft-700 data-highlighted:bg-mineshaft-700`}
+                    role="status"
+                    aria-label="no-match-message"
+                    className="flex w-full items-center justify-between border-mineshaft-600 text-left"
+                    key={`secret-reference-secret-${i + 1}`}
                   >
-                    <div className="flex w-full items-start gap-2">
-                      <div className="mt-1 flex items-center">{entryIcon}</div>
-                      <div className="text-md w-10/12 truncate text-left">
-                        <span>{item.label}</span>
-                        <div className="mb-[0.1rem] text-xs leading-3 text-bunker-400">
-                          {subText}
+                    <div className="text-md relative flex w-full cursor-default items-center justify-between px-2 py-2 opacity-75 outline-hidden transition-all select-none">
+                      <div className="flex w-full items-start gap-2">
+                        <div className="mt-1 flex items-center">{entryIcon}</div>
+                        <div className="text-md w-10/12 truncate text-left">
+                          <span className="text-gray-400">{item.label}</span>
+                          <div className="mb-[0.1rem] text-xs leading-3 text-bunker-400">
+                            {subText}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </button>
-              );
-            })}
-          </div>
-        </Popover.Content>
+                ) : (
+                  <button
+                    type="button"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSuggestionSelect(i);
+                    }}
+                    aria-label="suggestion-item"
+                    onClick={(e) => {
+                      inputRef.current?.focus();
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleSuggestionSelect(i);
+                    }}
+                    onMouseEnter={() => setHighlightedIndex(i)}
+                    className="flex w-full items-center justify-between border-none border-mineshaft-600 bg-transparent p-0 text-left"
+                    key={`secret-reference-secret-${i + 1}`}
+                  >
+                    <div
+                      className={`${
+                        highlightedIndex === i ? "bg-mineshaft-500" : ""
+                      } text-md relative flex w-full cursor-pointer items-center justify-between px-2 py-2 outline-hidden transition-all select-none hover:bg-mineshaft-700 data-highlighted:bg-mineshaft-700`}
+                    >
+                      <div className="flex w-full items-start gap-2">
+                        <div className="mt-1 flex items-center">{entryIcon}</div>
+                        <div className="text-md w-10/12 truncate text-left">
+                          <span>{item.label}</span>
+                          <div className="mb-[0.1rem] text-xs leading-3 text-bunker-400">
+                            {subText}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </Popover.Content>
+        </Popover.Portal>
       </Popover.Root>
     );
   }

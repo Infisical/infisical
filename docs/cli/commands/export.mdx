@@ -103,7 +103,7 @@ infisical export --template=<path to template>
   </Accordion>
 
   <Accordion title="--template">
-    The `--template` flag specifies the path to the template file used for rendering secrets. When using templates, you can omit the other format flags.
+    The `--template` flag specifies the path to the Go template file used for rendering secrets. When using templates, you can omit the other format flags.
 
     	```text my-template-file
     {{$secrets := secret "<infisical-project-id>" "<environment-slug>" "<folder-path>"}}
@@ -121,6 +121,11 @@ infisical export --template=<path to template>
     # Example
     infisical export --template="/path/to/template/file"
     ```
+
+    <Tip>
+      The Infisical CLI templating engine also supports Sprig library templating functions to help you transform your secrets further.
+      You can read more about the available functions [here](/integrations/platforms/kubernetes/overview#available-helper-functions).
+    </Tip>
 
   </Accordion>
   

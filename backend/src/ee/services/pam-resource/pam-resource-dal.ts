@@ -84,5 +84,18 @@ export const pamResourceDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findById, findByProjectId };
+  const findByAdServerResourceId = async (adServerResourceId: string, tx?: Knex) => {
+    try {
+      const resources = await (tx || db.replicaNode())(TableName.PamResource)
+        .select(selectAllTableCols(TableName.PamResource))
+        .where(`${TableName.PamResource}.adServerResourceId`, adServerResourceId)
+        .orderBy(`${TableName.PamResource}.name`, "asc");
+
+      return resources;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find PAM resources by AD server resource ID" });
+    }
+  };
+
+  return { ...orm, findById, findByProjectId, findByAdServerResourceId };
 };

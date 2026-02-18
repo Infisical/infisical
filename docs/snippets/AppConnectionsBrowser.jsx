@@ -6,6 +6,7 @@ export const AppConnectionsBrowser = () => {
 
   const categories = [
     "All",
+    "AI & LLM",
     "Cloud Providers",
     "Databases",
     "CI/CD",
@@ -148,6 +149,14 @@ export const AppConnectionsBrowser = () => {
       category: "Hosting",
     },
     {
+      name: "DBT",
+      slug: "dbt",
+      path: "/integrations/app-connections/dbt",
+      description:
+        "Learn how to connect your DBT application to pull secrets from Infisical.",
+      category: "Data Analytics",
+    },
+    {
       name: "DigitalOcean",
       slug: "digital-ocean",
       path: "/integrations/app-connections/digital-ocean",
@@ -226,6 +235,14 @@ export const AppConnectionsBrowser = () => {
       description:
         "Learn how to connect your Cloudflare application to pull secrets from Infisical.",
       category: "Cloud Providers",
+    },
+    {
+      name: "CircleCI",
+      slug: "circleci",
+      path: "/integrations/app-connections/circleci",
+      description:
+        "Learn how to connect your CircleCI application to pull secrets from Infisical.",
+      category: "CI/CD",
     },
     {
       name: "Databricks",
@@ -353,6 +370,14 @@ export const AppConnectionsBrowser = () => {
       category: "Identity & Auth",
     },
     {
+      name: "OpenRouter",
+      slug: "openrouter",
+      path: "/integrations/app-connections/openrouter",
+      description:
+        "Learn how to connect OpenRouter (unified LLM router) to manage and rotate API keys with Infisical.",
+      category: "AI & LLM",
+    },
+    {
       name: "Laravel Forge",
       slug: "laravel-forge",
       path: "/integrations/app-connections/laravel-forge",
@@ -389,6 +414,13 @@ export const AppConnectionsBrowser = () => {
       path: "/integrations/app-connections/octopus-deploy",
       description: "Learn how to connect your Octopus Deploy to pull secrets from Infisical.",
       category: "DevOps Tools",
+    },
+    {
+      name: "SMB",
+      slug: "smb",
+      path: "/integrations/app-connections/smb",
+      description: "Learn how to connect to Windows servers via SMB.",
+      category: "Networking & DNS",
     }
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());

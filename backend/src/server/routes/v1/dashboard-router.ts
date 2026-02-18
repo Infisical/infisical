@@ -22,7 +22,7 @@ import {
 } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
-import { SecretsOrderBy } from "@app/services/secret/secret-types";
+import { PersonalOverridesBehavior, SecretsOrderBy } from "@app/services/secret/secret-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const MAX_DEEP_SEARCH_LIMIT = 500; // arbitrary limit to prevent excessive results
@@ -111,6 +111,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             .intersection(
               SecretRotationV2Schema,
               z.object({
+                // TODO (scott): think we can actually get rid of this and not query relations as we don't display secrets with rotations anymore
                 secrets: secretRawSchema
                   .omit({ secretValue: true })
                   .extend({
@@ -132,7 +133,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
               secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
-              tags: SanitizedTagSchema.array().optional()
+              tags: SanitizedTagSchema.array().optional(),
+              reminder: RemindersSchema.extend({
+                recipients: z.string().array().optional()
+              }).nullish()
             })
             .array()
             .optional(),
@@ -224,7 +228,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       let imports: Awaited<ReturnType<typeof server.services.secretImport.getImportsMultiEnv>> | undefined;
       let folders: Awaited<ReturnType<typeof server.services.folder.getFoldersMultiEnv>> | undefined;
       let secrets:
-        | (Awaited<ReturnType<typeof server.services.secret.getSecretsRawMultiEnv>>[number] & { isEmpty: boolean })[]
+        | (Awaited<ReturnType<typeof server.services.secret.getSecretsRawMultiEnv>>[number] & {
+            isEmpty: boolean;
+            reminder: Awaited<ReturnType<typeof server.services.reminder.getRemindersForDashboard>>[string] | null;
+          })[]
         | undefined;
       let dynamicSecrets:
         | Awaited<ReturnType<typeof server.services.dynamicSecret.listDynamicSecretsByEnvs>>
@@ -447,24 +454,34 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         });
 
         if (remainingLimit > 0 && totalSecretCount > adjustedOffset) {
-          secrets = (
-            await server.services.secret.getSecretsRawMultiEnv({
-              viewSecretValue: true,
-              actorId: req.permission.id,
-              actor: req.permission.type,
-              actorOrgId: req.permission.orgId,
-              environments,
-              actorAuthMethod: req.permission.authMethod,
-              projectId,
-              path: secretPath,
-              orderBy,
-              orderDirection,
-              search,
-              limit: remainingLimit,
-              offset: adjustedOffset,
-              isInternal: true
-            })
-          ).map((secret) => ({ ...secret, isEmpty: !secret.secretValue }));
+          const rawSecrets = await server.services.secret.getSecretsRawMultiEnv({
+            personalOverridesBehavior: PersonalOverridesBehavior.IncludeAll,
+            viewSecretValue: true,
+            actorId: req.permission.id,
+            actor: req.permission.type,
+            actorOrgId: req.permission.orgId,
+            environments,
+            actorAuthMethod: req.permission.authMethod,
+            projectId,
+            path: secretPath,
+            orderBy,
+            orderDirection,
+            search,
+            limit: remainingLimit,
+            offset: adjustedOffset,
+            isInternal: true
+          });
+
+          const reminders =
+            rawSecrets.length > 0
+              ? await server.services.reminder.getRemindersForDashboard(rawSecrets.map((s) => s.id))
+              : {};
+
+          secrets = rawSecrets.map((secret) => ({
+            ...secret,
+            isEmpty: !secret.secretValue,
+            reminder: reminders[secret.id] ?? null
+          }));
         }
       }
 
@@ -1006,6 +1023,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           if (remainingLimit > 0 && totalSecretCount > adjustedOffset) {
             const rawSecrets = (
               await server.services.secret.getSecretsRaw({
+                personalOverridesBehavior: PersonalOverridesBehavior.IncludeAll,
                 actorId: req.permission.id,
                 actor: req.permission.type,
                 viewSecretValue: true,
@@ -1456,6 +1474,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       if (!keys.length) throw new BadRequestError({ message: "One or more keys required" });
 
       const { secrets } = await server.services.secret.getSecretsRaw({
+        personalOverridesBehavior: PersonalOverridesBehavior.IncludeAll,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
@@ -1537,6 +1556,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
       // TODO (scott): just get the secret instead of searching for it in list
       const { secrets } = await server.services.secret.getSecretsRaw({
+        personalOverridesBehavior: PersonalOverridesBehavior.IncludeAll,
         actorId: req.permission.id,
         actor: req.permission.type,
         viewSecretValue: true,
@@ -1682,6 +1702,17 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           secretVersions: secretRawSchema
             .omit({ secretValue: true })
             .extend({
+              isRedacted: z.boolean(),
+              redactedByActor: z
+                .object({
+                  username: z.string().nullable(),
+                  email: z.string().nullable().optional(),
+                  projectMembershipId: z.string().uuid().nullable().optional()
+                })
+                .nullable()
+                .optional(),
+              redactedAt: z.date().nullable(),
+              redactedByUserId: z.string().uuid().nullable(),
               secretValueHidden: z.boolean()
             })
             .array()

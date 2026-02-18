@@ -200,7 +200,6 @@ export const executeWithPotentialGateway = async <T>(
     }
 
     const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(gatewayId);
-    const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
 
     return withGatewayProxy(
       async (proxyPort) => {
@@ -212,18 +211,10 @@ export const executeWithPotentialGateway = async <T>(
         }
       },
       {
+        relayDetails,
         protocol: GatewayProxyProtocol.Tcp,
         targetHost: app === AppConnection.Postgres ? targetHost : credentials.host,
-        targetPort: credentials.port,
-        relayHost,
-        relayPort: Number(relayPort),
-        identityId: relayDetails.identityId,
-        orgId: relayDetails.orgId,
-        tlsOptions: {
-          ca: relayDetails.certChain,
-          cert: relayDetails.certificate,
-          key: relayDetails.privateKey.toString()
-        }
+        targetPort: credentials.port
       }
     );
   }
