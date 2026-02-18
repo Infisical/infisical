@@ -202,7 +202,9 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
             </UnstableIconButton>
           </UnstableDropdownMenuTrigger>
           <UnstableDropdownMenuContent align="end" className="max-h-80 overflow-y-auto">
-            <UnstableDropdownMenuLabel>Filter by {isSubOrganization ? "Sub-" : ""}Organization Role</UnstableDropdownMenuLabel>
+            <UnstableDropdownMenuLabel>
+              Filter by {isSubOrganization ? "Sub-" : ""}Organization Role
+            </UnstableDropdownMenuLabel>
             {roles?.map(({ id, slug, name }) => (
               <UnstableDropdownMenuCheckboxItem
                 key={id}
