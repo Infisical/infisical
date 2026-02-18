@@ -29,8 +29,7 @@ export const CustomProviderFactory = () => {
         { ping: "ok" },
         {
           headers: streamHeaders,
-          timeout: AUDIT_LOG_STREAM_TIMEOUT,
-          signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
+          timeout: AUDIT_LOG_STREAM_TIMEOUT
         }
       )
       .catch((err) => {
@@ -55,8 +54,7 @@ export const CustomProviderFactory = () => {
 
     await request.post(url, auditLog, {
       headers: streamHeaders,
-      timeout: AUDIT_LOG_STREAM_TIMEOUT,
-      signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
+      timeout: AUDIT_LOG_STREAM_TIMEOUT
     });
   };
 

@@ -50,8 +50,7 @@ export const SplunkProviderFactory = () => {
     await request
       .post(url, createPayload({ ping: "ok" }), {
         headers: streamHeaders,
-        timeout: AUDIT_LOG_STREAM_TIMEOUT,
-        signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
+        timeout: AUDIT_LOG_STREAM_TIMEOUT
       })
       .catch((err) => {
         throw new BadRequestError({ message: `Failed to connect with Splunk: ${(err as Error)?.message}` });
@@ -72,8 +71,7 @@ export const SplunkProviderFactory = () => {
 
     await request.post(url, createPayload(auditLog), {
       headers: streamHeaders,
-      timeout: AUDIT_LOG_STREAM_TIMEOUT,
-      signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
+      timeout: AUDIT_LOG_STREAM_TIMEOUT
     });
   };
 
