@@ -10,6 +10,7 @@ import { twMerge } from "tailwind-merge";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Button,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -19,6 +20,7 @@ import {
   UnstableDropdownMenuItem,
   UnstableDropdownMenuTrigger,
   UnstableEmpty,
+  UnstableEmptyContent,
   UnstableEmptyDescription,
   UnstableEmptyHeader,
   UnstableEmptyTitle,
@@ -61,7 +63,7 @@ type Props = {
 };
 
 export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
 
   const {
     offset,
@@ -133,7 +135,23 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
         </InputGroup>
       </div>
       {/* eslint-disable-next-line no-nested-ternary */}
-      {(!isPending || !subscription.machineIdentityAuthTemplates) && !templates.length ? (
+      {!subscription.machineIdentityAuthTemplates ? (
+        <UnstableEmpty className="border">
+          <UnstableEmptyHeader>
+            <UnstableEmptyTitle>
+              This feature has not been activated for your license.
+            </UnstableEmptyTitle>
+            <UnstableEmptyDescription>Contact us to learn more.</UnstableEmptyDescription>
+          </UnstableEmptyHeader>
+          <UnstableEmptyContent>
+            <Button variant={isSubOrganization ? "sub-org" : "org"} asChild>
+              <a href="https://infisical.com/talk-to-us" target="_blank" rel="noopener noreferrer">
+                Talk to Us
+              </a>
+            </Button>
+          </UnstableEmptyContent>
+        </UnstableEmpty>
+      ) : !isPending && !templates.length ? (
         <UnstableEmpty className="border">
           <UnstableEmptyHeader>
             <UnstableEmptyTitle>
