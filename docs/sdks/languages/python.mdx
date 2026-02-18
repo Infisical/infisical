@@ -124,7 +124,11 @@ response = client.auth.ldap_auth.login(
 - `username` (str): Your LDAP username.
 - `password` (str): Your LDAP password.
 
-This authentication method is used for machine identities configured with LDAP-based authentication, enabling integration with corporate directory services like Active Directory.
+<Info>
+  Please note that this authentication method requires LDAP credentials. Please
+  [read more](/documentation/platform/identities/ldap-auth/general) about this
+  authentication method.
+</Info>
 
 #### Token Auth
 
