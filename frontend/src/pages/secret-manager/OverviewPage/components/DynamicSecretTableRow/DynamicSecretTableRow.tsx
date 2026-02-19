@@ -126,36 +126,34 @@ export const DynamicSecretTableRow = ({
 
     return (
       <div className="flex items-center transition-all duration-500 group-hover:ml-2 group-hover:space-x-1.5">
-        {dynamicSecret.type !== DynamicSecretProviders.Totp && (
-          <ProjectPermissionCan
-            I={ProjectPermissionDynamicSecretActions.Lease}
-            a={subject(ProjectPermissionSub.DynamicSecrets, {
-              environment: dynamicSecret.environment,
-              secretPath,
-              metadata: dynamicSecret.metadata
-            })}
-          >
-            {(isAllowed) => (
-              <Tooltip>
-                <TooltipTrigger>
-                  <UnstableIconButton
-                    variant="ghost"
-                    size="xs"
-                    className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100"
-                    isDisabled={!isAllowed || isRevoking}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onGenerateLease(dynamicSecret);
-                    }}
-                  >
-                    <FileKeyIcon />
-                  </UnstableIconButton>
-                </TooltipTrigger>
-                <TooltipContent>Generate Lease</TooltipContent>
-              </Tooltip>
-            )}
-          </ProjectPermissionCan>
-        )}
+        <ProjectPermissionCan
+          I={ProjectPermissionDynamicSecretActions.Lease}
+          a={subject(ProjectPermissionSub.DynamicSecrets, {
+            environment: dynamicSecret.environment,
+            secretPath,
+            metadata: dynamicSecret.metadata
+          })}
+        >
+          {(isAllowed) => (
+            <Tooltip>
+              <TooltipTrigger>
+                <UnstableIconButton
+                  variant="ghost"
+                  size="xs"
+                  className="w-0 overflow-hidden border-0 opacity-0 group-hover:w-7 group-hover:opacity-100"
+                  isDisabled={!isAllowed || isRevoking}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onGenerateLease(dynamicSecret);
+                  }}
+                >
+                  <FileKeyIcon />
+                </UnstableIconButton>
+              </TooltipTrigger>
+              <TooltipContent>Generate Lease</TooltipContent>
+            </Tooltip>
+          )}
+        </ProjectPermissionCan>
         <ProjectPermissionCan
           I={ProjectPermissionDynamicSecretActions.EditRootCredential}
           a={subject(ProjectPermissionSub.DynamicSecrets, {
