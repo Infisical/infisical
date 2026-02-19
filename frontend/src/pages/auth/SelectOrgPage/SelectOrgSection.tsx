@@ -225,74 +225,32 @@ export const SelectOrganizationSection = () => {
 
   // Look up the full Organization object by ID then log in
   const handleLoginById = useCallback(
-    async (id: string) => {
-      // If the org is in the flat list (direct membership), use the full flow
-      // which handles SSO enforcement, MFA, etc.
+    (id: string) => {
+      // Direct membership — use the full org object as-is
       const org = organizations.data?.find((o) => o.id === id);
       if (org) {
         handleSelectOrganization(org);
         return;
       }
 
-      // Sub-orgs accessible via parent org membership are not in the flat list.
-      // Call selectOrganization directly — sub-orgs don't carry their own SSO enforcement.
-      let token;
-      let isMfaEnabled;
-      let mfaMethod;
+      // Sub-org: not in the flat list, so find its root org and inherit its SSO
+      // settings. Overriding only the id means selectOrganization will target the
+      // sub-org while still respecting the root org's auth enforcement rules.
+      const parentEntry = orgsWithSubOrgs.data?.find((rootOrg) =>
+        rootOrg.subOrganizations.some((sub) => sub.id === id)
+      );
+      const rootOrg = parentEntry
+        ? organizations.data?.find((o) => o.id === parentEntry.id)
+        : undefined;
 
-      try {
-        const result = await selectOrg.mutateAsync({
-          organizationId: id,
-          userAgent: callbackPort ? UserAgentType.CLI : undefined
-        });
-        token = result.token;
-        isMfaEnabled = result.isMfaEnabled;
-        mfaMethod = result.mfaMethod;
-      } catch (error: any) {
-        if (error?.response?.status === 403) {
-          await handleLogout();
-          return;
-        }
-        throw error;
-      }
-
-      await router.invalidate();
-
-      if (isMfaEnabled) {
-        SecurityClient.setMfaToken(token);
-        if (mfaMethod) setRequiredMfaMethod(mfaMethod);
-        toggleShowMfa.on();
-        setMfaSuccessCallback(() => () => handleLoginById(id));
+      if (rootOrg) {
+        handleSelectOrganization({ ...rootOrg, id });
         return;
       }
 
-      if (callbackPort) {
-        if (!user?.email || !token) {
-          createNotification({ text: "Login failed, please try again", type: "error" });
-          return;
-        }
-        const payload = {
-          JTWToken: token,
-          email: user.email,
-          privateKey: ""
-        } as IsCliLoginSuccessful["loginResponse"];
-
-        const instance = axios.create();
-        await instance.post(`http://127.0.0.1:${callbackPort}/`, payload).catch(() => {
-          sessionStorage.setItem(
-            SessionStorageKeys.CLI_TERMINAL_TOKEN,
-            JSON.stringify({
-              expiry: formatISO(addSeconds(new Date(), 30)),
-              data: window.btoa(JSON.stringify(payload))
-            })
-          );
-        });
-        navigate({ to: "/cli-redirect" });
-      } else {
-        navigateUserToOrg({ navigate, organizationId: id });
-      }
+      createNotification({ text: "Organization not found", type: "error" });
     },
-    [organizations.data, handleSelectOrganization, selectOrg, callbackPort, user, router]
+    [organizations.data, orgsWithSubOrgs.data, handleSelectOrganization]
   );
 
   const handleCliRedirect = useCallback(() => {
