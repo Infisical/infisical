@@ -104,34 +104,6 @@ See the [AWS Connection](/integrations/app-connections/aws) page for full setup 
   </Step>
 </Steps>
 
-## API Usage
-
-<Tabs>
-  <Tab title="Create AWS PCA CA">
-    ```bash
-    curl --request POST \
-      --url https://app.infisical.com/api/v1/cert-manager/ca/aws-pca \
-      --header 'Authorization: Bearer <access-token>' \
-      --header 'Content-Type: application/json' \
-      --data '{
-        "projectId": "<project-id>",
-        "name": "my-aws-pca-ca",
-        "appConnectionId": "<app-connection-id>",
-        "configuration": {
-          "certificateAuthorityArn": "arn:aws:acm-pca:us-east-1:123456789012:certificate-authority/abc-123"
-        }
-      }'
-    ```
-  </Tab>
-  <Tab title="List AWS PCA CAs">
-    ```bash
-    curl --request GET \
-      --url 'https://app.infisical.com/api/v1/cert-manager/ca/aws-pca?projectId=<project-id>' \
-      --header 'Authorization: Bearer <access-token>'
-    ```
-  </Tab>
-</Tabs>
-
 ## Troubleshooting
 
 **CA Not in ACTIVE Status**
