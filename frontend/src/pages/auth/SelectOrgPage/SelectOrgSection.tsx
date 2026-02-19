@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { faChevronDown } from "@fortawesome/free-solid-svg-icons";
+import { faArrowRight, faChevronDown, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import axios from "axios";
@@ -225,11 +225,74 @@ export const SelectOrganizationSection = () => {
 
   // Look up the full Organization object by ID then log in
   const handleLoginById = useCallback(
-    (id: string) => {
+    async (id: string) => {
+      // If the org is in the flat list (direct membership), use the full flow
+      // which handles SSO enforcement, MFA, etc.
       const org = organizations.data?.find((o) => o.id === id);
-      if (org) handleSelectOrganization(org);
+      if (org) {
+        handleSelectOrganization(org);
+        return;
+      }
+
+      // Sub-orgs accessible via parent org membership are not in the flat list.
+      // Call selectOrganization directly — sub-orgs don't carry their own SSO enforcement.
+      let token;
+      let isMfaEnabled;
+      let mfaMethod;
+
+      try {
+        const result = await selectOrg.mutateAsync({
+          organizationId: id,
+          userAgent: callbackPort ? UserAgentType.CLI : undefined
+        });
+        token = result.token;
+        isMfaEnabled = result.isMfaEnabled;
+        mfaMethod = result.mfaMethod;
+      } catch (error: any) {
+        if (error?.response?.status === 403) {
+          await handleLogout();
+          return;
+        }
+        throw error;
+      }
+
+      await router.invalidate();
+
+      if (isMfaEnabled) {
+        SecurityClient.setMfaToken(token);
+        if (mfaMethod) setRequiredMfaMethod(mfaMethod);
+        toggleShowMfa.on();
+        setMfaSuccessCallback(() => () => handleLoginById(id));
+        return;
+      }
+
+      if (callbackPort) {
+        if (!user?.email || !token) {
+          createNotification({ text: "Login failed, please try again", type: "error" });
+          return;
+        }
+        const payload = {
+          JTWToken: token,
+          email: user.email,
+          privateKey: ""
+        } as IsCliLoginSuccessful["loginResponse"];
+
+        const instance = axios.create();
+        await instance.post(`http://127.0.0.1:${callbackPort}/`, payload).catch(() => {
+          sessionStorage.setItem(
+            SessionStorageKeys.CLI_TERMINAL_TOKEN,
+            JSON.stringify({
+              expiry: formatISO(addSeconds(new Date(), 30)),
+              data: window.btoa(JSON.stringify(payload))
+            })
+          );
+        });
+        navigate({ to: "/cli-redirect" });
+      } else {
+        navigateUserToOrg({ navigate, organizationId: id });
+      }
     },
-    [organizations.data, handleSelectOrganization]
+    [organizations.data, handleSelectOrganization, selectOrg, callbackPort, user, router]
   );
 
   const handleCliRedirect = useCallback(() => {
@@ -255,10 +318,19 @@ export const SelectOrganizationSection = () => {
 
   useEffect(() => {
     if (organizations.isPending || !organizations.data) return;
+    if (orgsWithSubOrgs.isPending || !orgsWithSubOrgs.data) return;
 
     if (organizations.data.length === 0) {
       navigate({ to: "/organizations/none" });
-    } else if (organizations.data.length === 1) {
+      return;
+    }
+
+    // Only auto-select when there is exactly 1 root org and it has no accessible sub-orgs.
+    // If the single org has sub-orgs the user should pick which one to log into.
+    const onlyOneRootOrgWithNoSubOrgs =
+      orgsWithSubOrgs.data.length === 1 && orgsWithSubOrgs.data[0].subOrganizations.length === 0;
+
+    if (onlyOneRootOrgWithNoSubOrgs) {
       if (callbackPort) {
         handleCliRedirect();
         setIsInitialOrgCheckLoading(false);
@@ -268,7 +340,7 @@ export const SelectOrganizationSection = () => {
     } else {
       setIsInitialOrgCheckLoading(false);
     }
-  }, [organizations.isPending, organizations.data]);
+  }, [organizations.isPending, organizations.data, orgsWithSubOrgs.isPending, orgsWithSubOrgs.data]);
 
   useEffect(() => {
     if (mfaPending && defaultSelectedOrg) {
@@ -316,7 +388,8 @@ export const SelectOrganizationSection = () => {
           method={requiredMfaMethod}
         />
       ) : (
-        <div className="mx-auto mt-20 w-fit rounded-lg border-2 border-mineshaft-500 p-10 shadow-lg">
+        <div className="mx-auto mt-20 w-full max-w-md pb-28">
+          {/* Logo + heading outside the card */}
           <Link to="/">
             <div className="mb-4 flex justify-center">
               <img
@@ -326,52 +399,54 @@ export const SelectOrganizationSection = () => {
               />
             </div>
           </Link>
-          <form className="mx-auto flex w-full flex-col items-center justify-center">
-            <div className="mb-8 space-y-2">
-              <h1 className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-2xl font-medium text-transparent">
-                Choose your organization
-              </h1>
-              <div className="space-y-1">
-                <p className="text-md text-center text-gray-500">
-                  You&apos;re currently logged in as <strong>{user.username}</strong>
-                </p>
-                <p className="text-md text-center text-gray-500">
-                  Not you?{" "}
-                  <Button variant="link" onClick={handleLogout} className="font-medium">
-                    Change account
-                  </Button>
-                </p>
-              </div>
+          <div className="mb-8 space-y-2">
+            <h1 className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-2xl font-medium text-transparent">
+              Choose your organization
+            </h1>
+            <div className="space-y-1">
+              <p className="text-md text-center text-gray-500">
+                You&apos;re currently logged in as <strong>{user.username}</strong>
+              </p>
+              <p className="text-md text-center text-gray-500">
+                Not you?{" "}
+                <Button variant="link" onClick={handleLogout} className="font-medium">
+                  Change account
+                </Button>
+              </p>
             </div>
+          </div>
 
-            <div className="mt-2 w-full min-w-[25.1rem] space-y-4">
-              {/* Search */}
+          {/* Card: search + fixed-height list */}
+          <div className="rounded-lg border-2 border-mineshaft-500 shadow-lg">
+            <div className="border-b border-mineshaft-600 px-4 py-3">
               <Input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search organizations..."
+                leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
                 className="h-10"
               />
+            </div>
 
-              {/* Org list */}
-              <div className="max-h-96 space-y-3 overflow-y-auto thin-scrollbar">
-                {orgsWithSubOrgs.isPending ? (
-                  <div className="flex justify-center py-6">
-                    <Spinner size="sm" />
-                  </div>
-                ) : filteredOrgs.length === 0 ? (
-                  <p className="py-4 text-center text-sm text-mineshaft-400">
-                    No organizations found
-                  </p>
-                ) : (
-                  filteredOrgs.map((org) => {
+            <div className="max-h-96 overflow-y-auto p-2 thin-scrollbar">
+              {orgsWithSubOrgs.isPending ? (
+                <div className="flex justify-center py-6">
+                  <Spinner size="sm" />
+                </div>
+              ) : filteredOrgs.length === 0 ? (
+                <p className="py-4 text-center text-sm text-mineshaft-400">
+                  No organizations found
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {filteredOrgs.map((org) => {
                     const hasSubOrgs = org.subOrganizations.length > 0;
                     const isExpanded = expandedOrgs.has(org.id);
 
                     return (
                       <div key={org.id}>
                         {/* Root org row */}
-                        <div className="group flex cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-700 px-4 py-3 text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600">
+                        <div className="group flex h-14 cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-700 px-4 text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600">
                           <div className="flex flex-col items-start">
                             <p className="truncate transition-colors">{org.name}</p>
                             {hasSubOrgs && (
@@ -381,16 +456,15 @@ export const SelectOrganizationSection = () => {
                               </p>
                             )}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              colorSchema="primary"
-                              variant="outline_bg"
-                              size="xs"
-                              isLoading={selectOrg.isPending}
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
                               onClick={() => handleLoginById(org.id)}
+                              aria-label="Login"
+                              className="text-gray-400 transition-all hover:text-primary-500 group-hover:text-primary-400"
                             >
-                              Login
-                            </Button>
+                              <FontAwesomeIcon icon={faArrowRight} />
+                            </button>
                             {hasSubOrgs && (
                               <button
                                 type="button"
@@ -409,35 +483,32 @@ export const SelectOrganizationSection = () => {
                           </div>
                         </div>
 
-                        {/* Sub-org rows */}
+                        {/* Sub-org rows — full row clickable */}
                         {hasSubOrgs && isExpanded && (
-                          <div className="ml-4 mt-1 space-y-1 border-l-2 border-mineshaft-600 pl-3">
+                          <div className="mx-2 mt-1 space-y-1">
                             {org.subOrganizations.map((sub) => (
-                              <div
+                              <button
                                 key={sub.id}
-                                className="flex items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 py-2.5 text-gray-300 shadow-sm transition-colors hover:bg-mineshaft-700"
+                                type="button"
+                                onClick={() => handleLoginById(sub.id)}
+                                className="group flex h-14 w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 text-gray-300 shadow-md transition-colors hover:bg-mineshaft-700"
                               >
-                                <p className="truncate text-sm">{sub.name}</p>
-                                <Button
-                                  colorSchema="primary"
-                                  variant="outline_bg"
-                                  size="xs"
-                                  isLoading={selectOrg.isPending}
-                                  onClick={() => handleLoginById(sub.id)}
-                                >
-                                  Login
-                                </Button>
-                              </div>
+                                <p className="truncate">{sub.name}</p>
+                                <FontAwesomeIcon
+                                  icon={faArrowRight}
+                                  className="text-gray-400 transition-all group-hover:translate-x-1 group-hover:text-primary-500"
+                                />
+                              </button>
                             ))}
                           </div>
                         )}
                       </div>
                     );
-                  })
-                )}
-              </div>
+                  })}
+                </div>
+              )}
             </div>
-          </form>
+          </div>
         </div>
       )}
       <div className="pb-28" />
