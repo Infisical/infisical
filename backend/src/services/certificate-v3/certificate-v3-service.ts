@@ -52,6 +52,8 @@ import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
   CertPolicyState,
+  mapExtendedKeyUsageToLegacy,
+  mapKeyUsageToLegacy,
   mapLegacyExtendedKeyUsageToStandard,
   mapLegacyKeyUsageToStandard
 } from "../certificate-common/certificate-constants";
@@ -249,7 +251,7 @@ const validateRenewalEligibility = (
 
   const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
   const isInternalCa = caType === CaType.INTERNAL;
-  const isConnectedExternalCa = caType === CaType.ACME || caType === CaType.AZURE_AD_CS;
+  const isConnectedExternalCa = caType === CaType.ACME || caType === CaType.AZURE_AD_CS || caType === CaType.AWS_PCA;
   const isImportedCertificate = certificate.pkiSubscriberId != null && !certificate.profileId;
 
   if (!isInternalCa && !isConnectedExternalCa) {
@@ -340,10 +342,6 @@ const parseExtendedKeyUsages = (extendedKeyUsages: unknown): CertExtendedKeyUsag
   }
 
   return raw.map((u) => normalize(u)).filter((u): u is CertExtendedKeyUsageType => u !== null);
-};
-
-const convertEnumsToStringArray = <T extends string>(enumArray: T[]): string[] => {
-  return enumArray.map((item) => item as string);
 };
 
 const createSelfSignedCertificateRecord = async ({
@@ -1524,7 +1522,12 @@ export const certificateV3ServiceFactory = ({
         notBefore: certificateOrder.notBefore,
         notAfter: certificateOrder.notAfter,
         signatureAlgorithm: certificateOrder.signatureAlgorithm,
-        keyAlgorithm: certificateOrder.keyAlgorithm
+        keyAlgorithm: certificateOrder.keyAlgorithm,
+        organization: certificateOrder.organization,
+        organizationalUnit: certificateOrder.organizationalUnit,
+        country: certificateOrder.country,
+        state: certificateOrder.state,
+        locality: certificateOrder.locality
       };
     }
 
@@ -1580,16 +1583,19 @@ export const certificateV3ServiceFactory = ({
             csr: certificateOrder.csr || null,
             commonName: certificateOrder.commonName || null,
             altNames: certificateOrder.altNames ? JSON.stringify(certificateOrder.altNames) : null,
-            keyUsages: certificateOrder.keyUsages ? convertEnumsToStringArray(certificateOrder.keyUsages) : null,
-            extendedKeyUsages: certificateOrder.extendedKeyUsages
-              ? convertEnumsToStringArray(certificateOrder.extendedKeyUsages)
-              : null,
+            keyUsages: convertKeyUsageArrayToLegacy(certificateOrder.keyUsages) || null,
+            extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateOrder.extendedKeyUsages) || null,
             notBefore: certificateOrder.notBefore || null,
             notAfter: certificateOrder.notAfter || null,
             keyAlgorithm: certificateOrder.keyAlgorithm || null,
             signatureAlgorithm: certificateOrder.signatureAlgorithm || null,
             ttl: certificateOrder.validity?.ttl || null,
             metadata: certificateOrder.template ? JSON.stringify({ template: certificateOrder.template }) : null,
+            organization: certificateRequest.organization || null,
+            organizationalUnit: certificateRequest.organizationalUnit || null,
+            country: certificateRequest.country || null,
+            state: certificateRequest.state || null,
+            locality: certificateRequest.locality || null,
             status: CertificateRequestStatus.PENDING_APPROVAL
           },
           tx
@@ -1683,7 +1689,7 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
-    if (caType === CaType.ACME || caType === CaType.AZURE_AD_CS) {
+    if (caType === CaType.ACME || caType === CaType.AZURE_AD_CS || caType === CaType.AWS_PCA) {
       const orderId = randomUUID();
 
       const certRequest = await certificateRequestService.createCertificateRequest({
@@ -1695,10 +1701,8 @@ export const certificateV3ServiceFactory = ({
         caId: ca.id,
         profileId: profile.id,
         commonName: certificateOrder.commonName || "",
-        keyUsages: certificateOrder.keyUsages ? convertEnumsToStringArray(certificateOrder.keyUsages) : [],
-        extendedKeyUsages: certificateOrder.extendedKeyUsages
-          ? convertEnumsToStringArray(certificateOrder.extendedKeyUsages)
-          : [],
+        keyUsages: convertKeyUsageArrayToLegacy(certificateOrder.keyUsages) || [],
+        extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateOrder.extendedKeyUsages) || [],
         keyAlgorithm: certificateOrder.keyAlgorithm || "",
         signatureAlgorithm: certificateOrder.signatureAlgorithm || "",
         altNames: certificateOrder.altNames,
@@ -1706,7 +1710,12 @@ export const certificateV3ServiceFactory = ({
         notAfter: certificateOrder.notAfter,
         status: CertificateRequestStatus.PENDING,
         ttl: certificateOrder.validity?.ttl,
-        enrollmentType: EnrollmentType.API
+        enrollmentType: EnrollmentType.API,
+        organization: certificateRequest.organization,
+        organizationalUnit: certificateRequest.organizationalUnit,
+        country: certificateRequest.country,
+        state: certificateRequest.state,
+        locality: certificateRequest.locality
       });
 
       await certificateIssuanceQueue.queueCertificateIssuance({
@@ -1717,13 +1726,17 @@ export const certificateV3ServiceFactory = ({
         signatureAlgorithm: certificateOrder.signatureAlgorithm || "",
         keyAlgorithm: certificateRequest.keyAlgorithm || "",
         commonName: certificateRequest.commonName || "",
-        altNames: certificateRequest.subjectAlternativeNames?.map((san) => san.value) || [],
-        keyUsages: certificateRequest.keyUsages ? convertEnumsToStringArray(certificateRequest.keyUsages) : [],
-        extendedKeyUsages: certificateRequest.extendedKeyUsages
-          ? convertEnumsToStringArray(certificateRequest.extendedKeyUsages)
-          : [],
+        altNames:
+          certificateRequest.subjectAlternativeNames?.map((san) => ({ type: san.type, value: san.value })) || [],
+        keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || [],
+        extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || [],
         certificateRequestId: certRequest.id,
-        csr: certificateOrder.csr
+        csr: certificateOrder.csr,
+        organization: certificateRequest.organization,
+        organizationalUnit: certificateRequest.organizationalUnit,
+        country: certificateRequest.country,
+        state: certificateRequest.state,
+        locality: certificateRequest.locality
       });
 
       return {
@@ -1995,7 +2008,7 @@ export const certificateV3ServiceFactory = ({
             throw new NotFoundError({ message: "Certificate was signed but could not be found in database" });
           }
           newCert = foundCert;
-        } else if (caType === CaType.ACME || caType === CaType.AZURE_AD_CS) {
+        } else if (caType === CaType.ACME || caType === CaType.AZURE_AD_CS || caType === CaType.AWS_PCA) {
           // External CA renewal - mark for async processing outside transaction
           return {
             isExternalCA: true,
@@ -2158,12 +2171,17 @@ export const certificateV3ServiceFactory = ({
         profileId: profile?.id || "",
         caId: ca.id,
         commonName: originalCert.commonName || "",
-        altNames: altNamesArray,
+        altNames: structuredAltNames,
         ttl,
         signatureAlgorithm: originalSignatureAlgorithm,
         keyAlgorithm: originalKeyAlgorithm,
-        keyUsages: convertEnumsToStringArray(parseKeyUsages(originalCert.keyUsages)),
-        extendedKeyUsages: convertEnumsToStringArray(parseExtendedKeyUsages(originalCert.extendedKeyUsages)),
+        keyUsages: parseKeyUsages(originalCert.keyUsages).map(mapKeyUsageToLegacy),
+        extendedKeyUsages: parseExtendedKeyUsages(originalCert.extendedKeyUsages).map(mapExtendedKeyUsageToLegacy),
+        organization: originalCert.subjectOrganization || undefined,
+        organizationalUnit: originalCert.subjectOrganizationalUnit || undefined,
+        country: originalCert.subjectCountry || undefined,
+        state: originalCert.subjectState || undefined,
+        locality: originalCert.subjectLocality || undefined,
         isRenewal: true,
         originalCertificateId: certificateId,
         certificateRequestId: certificateRequest.id

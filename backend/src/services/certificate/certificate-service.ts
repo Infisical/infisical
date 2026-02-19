@@ -18,6 +18,7 @@ import { TCertificateAuthorityDALFactory } from "@app/services/certificate-autho
 import { CaCapability, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { caSupportsCapability } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
+import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
@@ -75,6 +76,7 @@ type TCertificateServiceFactoryDep = {
   certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findPkiSyncIdsByCertificateId">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
+  certificateAuthorityService: Pick<TCertificateAuthorityServiceFactory, "revokeCertificate">;
 };
 
 export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFactory>;
@@ -94,7 +96,8 @@ export const certificateServiceFactory = ({
   permissionService,
   certificateSyncDAL,
   pkiSyncDAL,
-  pkiSyncQueue
+  pkiSyncQueue,
+  certificateAuthorityService
 }: TCertificateServiceFactoryDep) => {
   /**
    * Return details for certificate with serial number [serialNumber]
@@ -364,7 +367,15 @@ export const certificateServiceFactory = ({
     });
 
     // Note: External CA revocation handling would go here for supported CA types
-    // Currently, only internal CAs and ACME CAs support revocation
+    // Currently, only internal CAs, ACME CAs and AWS PCA (external CA) support revocation
+
+    if (ca.externalCa?.type === CaType.AWS_PCA) {
+      await certificateAuthorityService.revokeCertificate({
+        caId: ca.id,
+        serialNumber: cert.serialNumber,
+        reason: revocationReason
+      });
+    }
 
     // rebuild CRL (TODO: move to interval-based cron job)
     // Only rebuild CRL for internal CAs - external CAs manage their own CRLs

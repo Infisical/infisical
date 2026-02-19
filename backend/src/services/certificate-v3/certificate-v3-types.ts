@@ -73,6 +73,11 @@ export type TOrderCertificateFromProfileDTO = {
     keyAlgorithm?: string;
     template?: string;
     csr?: string;
+    organization?: string;
+    organizationalUnit?: string;
+    country?: string;
+    state?: string;
+    locality?: string;
   };
   removeRootsFromChain?: boolean;
 } & Omit<TProjectPermission, "projectId">;

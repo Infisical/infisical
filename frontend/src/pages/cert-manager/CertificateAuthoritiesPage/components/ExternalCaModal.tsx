@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { AppConnectionOption } from "@app/components/app-connections";
 import { createNotification } from "@app/components/notifications";
+import { AwsRegionSelect } from "@app/components/secret-syncs/forms/SecretSyncDestinationFields/shared/AwsRegionSelect";
 import {
   Button,
   FilterableSelect,
@@ -106,6 +107,15 @@ const azureAdCsConfigurationSchema = z.object({
   })
 });
 
+const awsPcaConfigurationSchema = z.object({
+  awsConnection: z.object({
+    id: z.string().min(1, "AWS Connection is required"),
+    name: z.string()
+  }),
+  certificateAuthorityArn: z.string().trim().min(1, "Certificate Authority ARN is required"),
+  region: z.string().min(1, "Region is required")
+});
+
 const schema = z.discriminatedUnion("type", [
   baseSchema.extend({
     type: z.literal(CaType.ACME),
@@ -114,6 +124,10 @@ const schema = z.discriminatedUnion("type", [
   baseSchema.extend({
     type: z.literal(CaType.AZURE_AD_CS),
     configuration: azureAdCsConfigurationSchema
+  }),
+  baseSchema.extend({
+    type: z.literal(CaType.AWS_PCA),
+    configuration: awsPcaConfigurationSchema
   })
 ]);
 
@@ -126,7 +140,8 @@ type Props = {
 
 const caTypes = [
   { label: "ACME", value: CaType.ACME },
-  { label: "Active Directory Certificate Services (AD CS)", value: CaType.AZURE_AD_CS }
+  { label: "Active Directory Certificate Services (AD CS)", value: CaType.AZURE_AD_CS },
+  { label: "AWS Private CA (PCA)", value: CaType.AWS_PCA }
 ];
 
 export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
@@ -176,6 +191,20 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             }
           }
         });
+      } else if (initialType === CaType.AWS_PCA) {
+        reset({
+          type: CaType.AWS_PCA,
+          name: "",
+          status: CaStatus.ACTIVE,
+          configuration: {
+            awsConnection: {
+              id: "",
+              name: ""
+            },
+            certificateAuthorityArn: "",
+            region: ""
+          }
+        });
       } else {
         reset({
           type: CaType.ACME,
@@ -220,9 +249,20 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       enabled: caType === CaType.AZURE_AD_CS
     });
 
+  const { data: availableAwsConnections, isPending: isAwsPending } = useListAvailableAppConnections(
+    AppConnection.AWS,
+    currentProject.id,
+    {
+      enabled: caType === CaType.AWS_PCA
+    }
+  );
+
   const availableConnections: TAvailableAppConnection[] = useMemo(() => {
     if (caType === CaType.AZURE_AD_CS) {
       return availableAzureConnections || [];
+    }
+    if (caType === CaType.AWS_PCA) {
+      return availableAwsConnections || [];
     }
     return [
       ...(availableRoute53Connections || []),
@@ -234,14 +274,16 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     availableRoute53Connections,
     availableCloudflareConnections,
     availableDNSMadeEasyConnections,
-    availableAzureConnections
+    availableAzureConnections,
+    availableAwsConnections
   ]);
 
   const isPending =
     isRoute53Pending ||
     isCloudflarePending ||
     isDNSMadeEasyPending ||
-    (isAzurePending && caType === CaType.AZURE_AD_CS);
+    (isAzurePending && caType === CaType.AZURE_AD_CS) ||
+    (isAwsPending && caType === CaType.AWS_PCA);
 
   const dnsAppConnection =
     caType === CaType.ACME && configuration && "dnsAppConnection" in configuration
@@ -301,6 +343,24 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             }
           }
         });
+      } else if (ca.type === CaType.AWS_PCA && availableConnections?.length) {
+        const selectedConnection = availableConnections?.find(
+          (connection) => connection.id === ca.configuration.appConnectionId
+        );
+
+        reset({
+          type: ca.type,
+          name: ca.name,
+          status: ca.status,
+          configuration: {
+            awsConnection: {
+              id: ca.configuration.appConnectionId,
+              name: selectedConnection?.name || ""
+            },
+            certificateAuthorityArn: ca.configuration.certificateAuthorityArn,
+            region: ca.configuration.region
+          }
+        });
       }
     }
   }, [ca, availableConnections, reset, isCaLoading]);
@@ -327,6 +387,12 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     } else if (type === CaType.AZURE_AD_CS && "azureAdcsConnection" in formConfiguration) {
       configPayload = {
         azureAdcsConnectionId: formConfiguration.azureAdcsConnection.id
+      };
+    } else if (type === CaType.AWS_PCA && "awsConnection" in formConfiguration) {
+      configPayload = {
+        appConnectionId: formConfiguration.awsConnection.id,
+        certificateAuthorityArn: formConfiguration.certificateAuthorityArn,
+        region: formConfiguration.region
       };
     } else {
       throw new Error("Invalid certificate authority configuration");
@@ -638,6 +704,68 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
               control={control}
               name="configuration.azureAdcsConnection"
             />
+          )}
+          {caType === CaType.AWS_PCA && (
+            <>
+              <Controller
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl
+                    tooltipText="AWS App Connection provides the credentials used to communicate with AWS Private Certificate Authority."
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    label="AWS Connection"
+                  >
+                    <FilterableSelect
+                      value={value}
+                      onChange={(newValue) => {
+                        onChange(newValue);
+                      }}
+                      isLoading={isPending}
+                      options={availableConnections}
+                      placeholder="Select connection..."
+                      getOptionLabel={(option) => option.name}
+                      getOptionValue={(option) => option.id}
+                      components={{ Option: AppConnectionOption }}
+                    />
+                  </FormControl>
+                )}
+                control={control}
+                name="configuration.awsConnection"
+              />
+              <Controller
+                control={control}
+                defaultValue=""
+                name="configuration.certificateAuthorityArn"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Certificate Authority ARN"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    isRequired
+                  >
+                    <Input
+                      {...field}
+                      placeholder="arn:aws:acm-pca:us-east-1:123456789012:certificate-authority/abc-123"
+                    />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                defaultValue=""
+                name="configuration.region"
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl
+                    label="Region"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    isRequired
+                  >
+                    <AwsRegionSelect value={value} onChange={(v) => onChange(v || "")} />
+                  </FormControl>
+                )}
+              />
+            </>
           )}
           <div className="flex items-center">
             <Button

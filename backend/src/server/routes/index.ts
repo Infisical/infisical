@@ -2345,7 +2345,8 @@ export const registerRoutes = async (
     pkiCollectionItemDAL,
     certificateSyncDAL,
     pkiSyncDAL,
-    pkiSyncQueue
+    pkiSyncQueue,
+    certificateAuthorityService
   });
 
   const certificateRequestService = certificateRequestServiceFactory({
