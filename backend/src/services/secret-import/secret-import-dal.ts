@@ -173,11 +173,11 @@ export const secretImportDALFactory = (db: TDbClient) => {
   const getUniqueImportCountByFolderIds = async (folderIds: string[], search?: string, tx?: Knex) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.SecretImport)
-        .whereIn("folderId", folderIds)
-        .where("isReserved", false)
+        .whereIn(`${TableName.SecretImport}.folderId`, folderIds)
+        .where(`${TableName.SecretImport}.isReserved`, false)
         .where((bd) => {
           if (search) {
-            void bd.whereILike("importPath", `%${search}%`);
+            void bd.whereILike(`${TableName.SecretImport}.importPath`, `%${search}%`);
           }
         })
         .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
