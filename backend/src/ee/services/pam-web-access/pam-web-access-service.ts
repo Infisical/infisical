@@ -1,7 +1,6 @@
 import net from "node:net";
 
 import { ForbiddenError, subject } from "@casl/ability";
-import pg from "pg";
 import type WebSocket from "ws";
 
 import { ActionProjectType } from "@app/db/schemas";
@@ -40,20 +39,26 @@ import {
   TPostgresAccountCredentials,
   TPostgresResourceConnectionDetails
 } from "../pam-resource/postgres/postgres-resource-types";
+import { TSSHAccountCredentials, TSSHResourceConnectionDetails } from "../pam-resource/ssh/ssh-resource-types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
-import { createPamSqlRepl } from "./pam-web-access-repl";
+import { handlePostgresSession } from "./pam-postgres-session-handler";
+import { handleSSHSession } from "./pam-ssh-session-handler";
 import {
   DEFAULT_WEB_SESSION_DURATION_MS,
   MAX_WEB_SESSIONS_PER_USER,
   SessionEndReason,
   TIssueWebSocketTicketDTO,
+  TSessionContext,
+  TSessionHandlerResult,
   TWebSocketServerMessage,
-  WebSocketClientMessageSchema,
+  WebSocketServerMessageSchema,
   WS_IDLE_TIMEOUT_MS,
   WS_PING_INTERVAL_MS,
   WsMessageType
 } from "./pam-web-access-types";
+
+const SUPPORTED_WEB_ACCESS_RESOURCES = [PamResource.Postgres, PamResource.SSH];
 
 type TPamWebAccessServiceFactoryDep = {
   pamAccountDAL: Pick<TPamAccountDALFactory, "findById">;
@@ -112,7 +117,8 @@ export const pamWebAccessServiceFactory = ({
   const sendMessage = (socket: WebSocket, message: TWebSocketServerMessage): void => {
     try {
       if (socket.readyState === socket.OPEN) {
-        socket.send(JSON.stringify(message));
+        const parsed = WebSocketServerMessageSchema.parse(message);
+        socket.send(JSON.stringify(parsed));
       }
     } catch (err) {
       logger.error(err, "Failed to send WebSocket message");
@@ -149,9 +155,9 @@ export const pamWebAccessServiceFactory = ({
       throw new NotFoundError({ message: `Resource with ID '${account.resourceId}' not found` });
     }
 
-    if (resource.resourceType !== PamResource.Postgres) {
+    if (!SUPPORTED_WEB_ACCESS_RESOURCES.includes(resource.resourceType as PamResource)) {
       throw new BadRequestError({
-        message: "Web access is currently only supported for PostgreSQL accounts"
+        message: "Web access is not supported for this resource type"
       });
     }
 
@@ -299,7 +305,7 @@ export const pamWebAccessServiceFactory = ({
   }: THandleWebSocketConnectionDTO): Promise<void> => {
     let session: { id: string } | null = null;
     let cleanedUp = false;
-    let pgClient: pg.Client | null = null;
+    let handlerResult: TSessionHandlerResult | null = null;
     let relayServer: { port: number; cleanup: () => Promise<void> } | null = null;
     let relayCerts: {
       relay: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
@@ -326,18 +332,18 @@ export const pamWebAccessServiceFactory = ({
         idleTimer = null;
       }
 
-      // End pg client (needs tunnel to send Terminate message)
-      if (pgClient) {
+      // Handler cleanup (closes protocol client through the tunnel)
+      if (handlerResult) {
         try {
-          await pgClient.end();
+          await handlerResult.cleanup();
         } catch (err) {
-          logger.debug(err, "Error closing pg client");
+          logger.debug(err, "Error in handler cleanup");
         } finally {
-          pgClient = null;
+          handlerResult = null;
         }
       }
 
-      // Close relay tunnel
+      // Close relay tunnel (MUST come after handler cleanup)
       if (relayServer) {
         try {
           await relayServer.cleanup();
@@ -392,8 +398,8 @@ export const pamWebAccessServiceFactory = ({
         throw new BadRequestError({ message: "Resource not found" });
       }
 
-      if (resource.resourceType !== PamResource.Postgres) {
-        throw new BadRequestError({ message: "Web access is only supported for PostgreSQL" });
+      if (!SUPPORTED_WEB_ACCESS_RESOURCES.includes(resource.resourceType as PamResource)) {
+        throw new BadRequestError({ message: "Web access is not supported for this resource type" });
       }
 
       if (!resource.gatewayId) {
@@ -405,25 +411,25 @@ export const pamWebAccessServiceFactory = ({
       if (activeCount >= MAX_WEB_SESSIONS_PER_USER) {
         sendMessage(socket, {
           type: WsMessageType.Output,
-          data: `Maximum concurrent web sessions (${MAX_WEB_SESSIONS_PER_USER}) reached. Please close an existing session first.\n`,
-          prompt: ""
+          data: `Maximum concurrent web sessions (${MAX_WEB_SESSIONS_PER_USER}) reached. Please close an existing session first.\n`
         });
         socket.close();
         return;
       }
 
       // 2. DECRYPT
-      const resourceConnectionDetails = (await decryptResourceConnectionDetails({
+      const resourceConnectionDetails = await decryptResourceConnectionDetails({
         projectId,
         encryptedConnectionDetails: resource.encryptedConnectionDetails,
         kmsService
-      })) as TPostgresResourceConnectionDetails;
+      });
+      const { host, port } = resourceConnectionDetails as { host: string; port: number };
 
-      const accountCredentials = (await decryptAccountCredentials({
+      const accountCredentials = await decryptAccountCredentials({
         projectId,
         encryptedCredentials: account.encryptedCredentials,
         kmsService
-      })) as TPostgresAccountCredentials;
+      });
 
       // 3. CREATE SESSION
       const user = await userDAL.findById(userId);
@@ -451,9 +457,9 @@ export const pamWebAccessServiceFactory = ({
       const certs = await gatewayV2Service.getPAMConnectionDetails({
         gatewayId: resource.gatewayId,
         sessionId: session.id,
-        resourceType: PamResource.Postgres,
-        host: resourceConnectionDetails.host,
-        port: resourceConnectionDetails.port,
+        resourceType: resource.resourceType as PamResource,
+        host,
+        port,
         duration: DEFAULT_WEB_SESSION_DURATION_MS,
         actorMetadata: {
           id: userId,
@@ -481,41 +487,50 @@ export const pamWebAccessServiceFactory = ({
         longLived: true
       });
 
-      // 6. CONNECT PG
-      pgClient = new pg.Client({
-        host: "localhost",
-        port: relayServer.port,
-        user: accountCredentials.username,
-        database: resourceConnectionDetails.database,
-        password: "",
-        ssl: false,
-        // Max time to wait for TCP connection
-        connectionTimeoutMillis: 30_000,
-        // Max execution time per SQL statement (sent as a PostgreSQL connection parameter)
-        statement_timeout: 30_000,
-        // Return raw strings for ALL types — we only display values, never compute with them.
-        // Without this, pg auto-parses timestamps to JS Date objects (verbose toString()),
-        // booleans to true/false (psql shows t/f), JSON to objects, arrays to JS arrays, etc.
-        types: {
-          getTypeParser: () => (val: string | Buffer) => (typeof val === "string" ? val : val.toString("hex"))
-        }
-      });
+      // Tunnel drop detection
+      // The gateway cert expires on the gateway's clock, which may be slightly
+      // ahead of ours (clock skew). A 30s tolerance lets us correctly attribute
+      // tunnel teardowns near session end as normal completion rather than errors.
+      const isNearSessionExpiry = () => Date.now() >= expiresAt.getTime() - 30_000;
 
-      await pgClient.connect();
+      // Bound message helpers for handlers
+      const boundSendMessage = (msg: TWebSocketServerMessage) => sendMessage(socket, msg);
+      const boundSendSessionEnd = (reason: SessionEndReason) => sendSessionEnd(socket, reason);
+      const handlerCleanup = () => {
+        if (!cleanedUp) {
+          void cleanup();
+        }
+      };
+
+      // Build session context once — passed to any handler
+      const ctx: TSessionContext = {
+        socket,
+        relayPort: relayServer.port,
+        resourceName: resource.name,
+        sessionId: session.id,
+        sendMessage: boundSendMessage,
+        sendSessionEnd: boundSendSessionEnd,
+        isNearSessionExpiry,
+        onCleanup: handlerCleanup
+      };
+
+      // 6. CONNECT TO RESOURCE (dispatch by type)
+      if (resource.resourceType === PamResource.Postgres) {
+        handlerResult = await handlePostgresSession(ctx, {
+          connectionDetails: resourceConnectionDetails as TPostgresResourceConnectionDetails,
+          credentials: accountCredentials as TPostgresAccountCredentials
+        });
+      } else if (resource.resourceType === PamResource.SSH) {
+        handlerResult = await handleSSHSession(ctx, {
+          connectionDetails: resourceConnectionDetails as TSSHResourceConnectionDetails,
+          credentials: accountCredentials as TSSHAccountCredentials
+        });
+      }
 
       // 7. ACTIVATE SESSION
       await pamSessionDAL.updateById(session.id, {
         status: PamSessionStatus.Active,
         startedAt: new Date()
-      });
-
-      // 8. INIT REPL + SEND READY
-      const repl = createPamSqlRepl(pgClient);
-
-      sendMessage(socket, {
-        type: WsMessageType.Ready,
-        data: `Connected to ${resource.name} (${resourceConnectionDetails.database}) as ${accountCredentials.username}\n\n`,
-        prompt: "=> "
       });
 
       logger.info({ accountId, sessionId: session.id }, "Web access session established");
@@ -535,7 +550,7 @@ export const pamWebAccessServiceFactory = ({
         }
       });
 
-      // 9. SET UP HANDLERS
+      // 8. SET UP COMMON HANDLERS
 
       const resetIdleTimer = () => {
         if (idleTimer) clearTimeout(idleTimer);
@@ -569,122 +584,9 @@ export const pamWebAccessServiceFactory = ({
         }
       }, WS_PING_INTERVAL_MS);
 
-      // Sequential message processing to prevent concurrent query issues
-      let processingPromise = Promise.resolve();
-
-      socket.on("message", (rawData: Buffer | ArrayBuffer | Buffer[]) => {
+      // Reset idle timer on any incoming message
+      socket.on("message", () => {
         resetIdleTimer();
-        processingPromise = processingPromise
-          .then(async () => {
-            if (cleanedUp) return;
-
-            let data: string;
-            if (Buffer.isBuffer(rawData)) {
-              data = rawData.toString();
-            } else if (Array.isArray(rawData)) {
-              data = Buffer.concat(rawData).toString();
-            } else {
-              data = Buffer.from(rawData).toString();
-            }
-
-            let parsed: unknown;
-            try {
-              parsed = JSON.parse(data);
-            } catch {
-              sendMessage(socket, {
-                type: WsMessageType.Output,
-                data: "Invalid message format\n",
-                prompt: repl.getPrompt()
-              });
-              return;
-            }
-            const result = WebSocketClientMessageSchema.safeParse(parsed);
-            if (!result.success) {
-              sendMessage(socket, {
-                type: WsMessageType.Output,
-                data: "Invalid message format\n",
-                prompt: repl.getPrompt()
-              });
-              return;
-            }
-
-            const message = result.data;
-
-            // Control messages
-            if (message.type === WsMessageType.Control) {
-              if (message.data === "quit") {
-                sendSessionEnd(socket, SessionEndReason.UserQuit);
-                void cleanup();
-                socket.close();
-                return;
-              }
-              if (message.data === "clear-buffer") {
-                repl.clearBuffer();
-                // No response — frontend already writes ^C and prompt locally
-                return;
-              }
-              return;
-            }
-
-            // User input
-            if (message.type === WsMessageType.Input) {
-              const replResult = await repl.processInput(message.data);
-
-              if (replResult.shouldClose) {
-                sendSessionEnd(socket, SessionEndReason.UserQuit);
-                void cleanup();
-                socket.close();
-                return;
-              }
-
-              sendMessage(socket, {
-                type: WsMessageType.Output,
-                data: replResult.output,
-                prompt: replResult.prompt
-              });
-            }
-          })
-          .catch((err) => {
-            logger.error(err, "Error processing message");
-            if (!cleanedUp) {
-              sendMessage(socket, {
-                type: WsMessageType.Output,
-                data: "Internal error\n",
-                prompt: "=> "
-              });
-            }
-          });
-      });
-
-      // Tunnel drop detection
-      // The gateway cert expires on the gateway's clock, which may be slightly
-      // ahead of ours (clock skew). A 30s tolerance lets us correctly attribute
-      // tunnel teardowns near session end as normal completion rather than errors.
-      const isNearSessionExpiry = () => Date.now() >= expiresAt.getTime() - 30_000;
-
-      pgClient.on("error", (err) => {
-        logger.error(err, "Database connection error");
-        if (!cleanedUp) {
-          if (isNearSessionExpiry()) {
-            sendSessionEnd(socket, SessionEndReason.SessionCompleted);
-          } else {
-            sendSessionEnd(socket, SessionEndReason.ConnectionLost);
-          }
-          void cleanup();
-          socket.close();
-        }
-      });
-
-      pgClient.on("end", () => {
-        if (!cleanedUp) {
-          if (isNearSessionExpiry()) {
-            sendSessionEnd(socket, SessionEndReason.SessionCompleted);
-          } else {
-            sendSessionEnd(socket, SessionEndReason.ConnectionLost);
-          }
-          void cleanup();
-          socket.close();
-        }
       });
 
       // Session expiry timer

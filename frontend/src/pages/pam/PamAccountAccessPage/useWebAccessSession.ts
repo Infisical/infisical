@@ -16,6 +16,7 @@ type UseWebAccessSessionOptions = {
   orgId: string;
   resourceName: string;
   accountName: string;
+  resourceType: string;
   onSessionEnd?: () => void;
 };
 
@@ -25,6 +26,7 @@ export const useWebAccessSession = ({
   orgId,
   resourceName,
   accountName,
+  resourceType,
   onSessionEnd
 }: UseWebAccessSessionOptions) => {
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
@@ -68,6 +70,8 @@ export const useWebAccessSession = ({
     },
     []
   );
+  // TODO: refactor when the list of supported resource type grows
+  const isSSH = resourceType === "ssh";
 
   // --- WebSocket lifecycle (imperative) ---
 
@@ -92,6 +96,20 @@ export const useWebAccessSession = ({
 
         if (msg.type === WsMessageType.Ready) {
           setIsConnected(true);
+
+          // Send initial terminal dimensions so the remote PTY knows the correct size
+          if (isSSH && terminalRef.current) {
+            ws.send(
+              JSON.stringify({
+                type: WsMessageType.Resize,
+                data: JSON.stringify({
+                  rows: terminalRef.current.rows,
+                  cols: terminalRef.current.cols
+                })
+              })
+            );
+          }
+
           setTimeout(() => terminal.focus(), 100);
         }
 
@@ -101,12 +119,17 @@ export const useWebAccessSession = ({
         }
 
         if (msg.data) {
-          if (containerEl && fitAddonRef.current) {
+          if (!isSSH && containerEl && fitAddonRef.current) {
             adjustWidthForOutput(msg.data, terminal, fitAddonRef.current, containerEl);
           }
-          terminal.write(msg.data.replace(/\r?\n/g, "\r\n"));
+          if (isSSH) {
+            // Raw ANSI passthrough — no newline normalization
+            terminal.write(msg.data);
+          } else {
+            terminal.write(msg.data.replace(/\r?\n/g, "\r\n"));
+          }
         }
-        if (msg.prompt) {
+        if (msg.prompt && !isSSH) {
           currentPromptRef.current = msg.prompt;
           terminal.write(msg.prompt);
         }
@@ -125,7 +148,7 @@ export const useWebAccessSession = ({
         // no-op: onclose always fires after onerror
       };
     },
-    [accountId, containerEl, adjustWidthForOutput]
+    [accountId, containerEl, adjustWidthForOutput, isSSH]
   );
 
   const connect = useCallback(async () => {
@@ -382,38 +405,80 @@ export const useWebAccessSession = ({
     fitAddonRef.current = fitAddon;
 
     // Wire terminal keyboard input — reads wsRef/inputBufferRef/currentPromptRef dynamically
-    terminal.onData((data) => {
-      if (data === "\r") {
-        terminal.write("\r\n");
+    if (isSSH) {
+      // SSH: raw keystroke forwarding
+      terminal.onData((data) => {
+        // Handle internal prompts (MFA/approval) even in SSH mode
         if (promptCallbackRef.current) {
-          const cb = promptCallbackRef.current;
-          promptCallbackRef.current = null;
-          cb(inputBufferRef.current);
-          inputBufferRef.current = "";
+          if (data === "\r") {
+            terminal.write("\r\n");
+            const cb = promptCallbackRef.current;
+            promptCallbackRef.current = null;
+            cb(inputBufferRef.current);
+            inputBufferRef.current = "";
+          } else if (data === "\x7f") {
+            if (inputBufferRef.current.length > 0) {
+              inputBufferRef.current = inputBufferRef.current.slice(0, -1);
+              terminal.write("\b \b");
+            }
+          } else {
+            inputBufferRef.current += data;
+            terminal.write(data);
+          }
         } else if (wsRef.current?.readyState === WebSocket.OPEN) {
-          wsRef.current.send(
-            JSON.stringify({ type: WsMessageType.Input, data: inputBufferRef.current })
-          );
-          inputBufferRef.current = "";
+          // Send raw keystroke to server — no local echo, no buffering
+          wsRef.current.send(JSON.stringify({ type: WsMessageType.Input, data }));
         }
-      } else if (data === "\x7f") {
-        if (inputBufferRef.current.length > 0) {
-          inputBufferRef.current = inputBufferRef.current.slice(0, -1);
-          terminal.write("\b \b");
-        }
-      } else if (data === "\x03") {
-        terminal.write("^C\r\n");
-        inputBufferRef.current = "";
+      });
+
+      // Send terminal resize events to the server
+      terminal.onResize(({ rows, cols }) => {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
-          wsRef.current.send(JSON.stringify({ type: WsMessageType.Control, data: "clear-buffer" }));
+          wsRef.current.send(
+            JSON.stringify({
+              type: WsMessageType.Resize,
+              data: JSON.stringify({ rows, cols })
+            })
+          );
         }
-        terminal.write(currentPromptRef.current);
-      } else if (data >= " " || data === "\t") {
-        const normalized = data.replace(/\r\n|\r/g, "\n");
-        inputBufferRef.current += normalized;
-        terminal.write(normalized.replace(/\n/g, "\r\n"));
-      }
-    });
+      });
+    } else {
+      // Postgres: existing line-buffered behavior
+      terminal.onData((data) => {
+        if (data === "\r") {
+          terminal.write("\r\n");
+          if (promptCallbackRef.current) {
+            const cb = promptCallbackRef.current;
+            promptCallbackRef.current = null;
+            cb(inputBufferRef.current);
+            inputBufferRef.current = "";
+          } else if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(
+              JSON.stringify({ type: WsMessageType.Input, data: inputBufferRef.current })
+            );
+            inputBufferRef.current = "";
+          }
+        } else if (data === "\x7f") {
+          if (inputBufferRef.current.length > 0) {
+            inputBufferRef.current = inputBufferRef.current.slice(0, -1);
+            terminal.write("\b \b");
+          }
+        } else if (data === "\x03") {
+          terminal.write("^C\r\n");
+          inputBufferRef.current = "";
+          if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(
+              JSON.stringify({ type: WsMessageType.Control, data: "clear-buffer" })
+            );
+          }
+          terminal.write(currentPromptRef.current);
+        } else if (data >= " " || data === "\t") {
+          const normalized = data.replace(/\r\n|\r/g, "\n");
+          inputBufferRef.current += normalized;
+          terminal.write(normalized.replace(/\n/g, "\r\n"));
+        }
+      });
+    }
 
     // Resize handling
     const handleResize = () => fitAddon.fit();
@@ -433,7 +498,7 @@ export const useWebAccessSession = ({
       terminal.dispose();
       setIsConnected(false);
     };
-  }, [containerEl, accountId, connect, disconnect]);
+  }, [containerEl, accountId, connect, disconnect, isSSH]);
 
   const containerRef = useCallback((node: HTMLDivElement | null) => {
     setContainerEl(node);

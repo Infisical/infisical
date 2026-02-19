@@ -1,3 +1,4 @@
+import type WebSocket from "ws";
 import { z } from "zod";
 
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
@@ -20,21 +21,22 @@ export enum WsMessageType {
   Output = "output",
   Input = "input",
   Control = "control",
+  Resize = "resize",
   SessionEnd = "session_end"
 }
 
 export enum SessionEndReason {
   SessionCompleted = "Session duration complete. Connection closed.",
   UserQuit = "Goodbye!",
-  ConnectionLost = "Database connection lost. Session ended.",
-  SetupFailed = "Failed to establish database connection.",
+  ConnectionLost = "Connection lost. Session ended.",
+  SetupFailed = "Failed to establish connection.",
   IdleTimeout = "Session closed due to inactivity."
 }
 
 const WebSocketOutputMessageSchema = z.object({
   type: z.enum([WsMessageType.Ready, WsMessageType.Output]),
   data: z.string(),
-  prompt: z.string()
+  prompt: z.string().default("")
 });
 
 const WebSocketSessionEndMessageSchema = z.object({
@@ -47,12 +49,48 @@ export const WebSocketServerMessageSchema = z.discriminatedUnion("type", [
   WebSocketSessionEndMessageSchema
 ]);
 
-export type TWebSocketServerMessage = z.infer<typeof WebSocketServerMessageSchema>;
+export type TWebSocketServerMessage = z.input<typeof WebSocketServerMessageSchema>;
 
 export const WebSocketClientMessageSchema = z.object({
-  type: z.enum([WsMessageType.Input, WsMessageType.Control]),
+  type: z.enum([WsMessageType.Input, WsMessageType.Control, WsMessageType.Resize]),
   data: z.string()
 });
+
+export type TSessionContext = {
+  socket: WebSocket;
+  relayPort: number;
+  resourceName: string;
+  sessionId: string;
+  sendMessage: (msg: TWebSocketServerMessage) => void;
+  sendSessionEnd: (reason: SessionEndReason) => void;
+  isNearSessionExpiry: () => boolean;
+  onCleanup: () => void;
+};
+
+export type TSessionHandlerResult = {
+  cleanup: () => Promise<void>;
+};
+
+export const resolveEndReason = (isNearSessionExpiry: () => boolean): SessionEndReason =>
+  isNearSessionExpiry() ? SessionEndReason.SessionCompleted : SessionEndReason.ConnectionLost;
+
+export const parseWsClientMessage = (
+  rawData: Buffer | ArrayBuffer | Buffer[]
+): z.infer<typeof WebSocketClientMessageSchema> | null => {
+  let data: string;
+  if (Buffer.isBuffer(rawData)) data = rawData.toString();
+  else if (Array.isArray(rawData)) data = Buffer.concat(rawData).toString();
+  else data = Buffer.from(rawData).toString();
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(data);
+  } catch {
+    return null;
+  }
+  const result = WebSocketClientMessageSchema.safeParse(parsed);
+  return result.success ? result.data : null;
+};
 
 export type TIssueWebSocketTicketDTO = {
   accountId: string;
