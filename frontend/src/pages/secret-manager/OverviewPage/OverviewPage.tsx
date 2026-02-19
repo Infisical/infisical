@@ -775,11 +775,12 @@ export const OverviewPage = () => {
 
   const handleSecretImportDelete = async () => {
     const secretImportData = popUp.deleteSecretImport?.data as TSecretImport;
-    if (!secretImportData) return;
+    if (!secretImportData || !secretImportData.environment) return;
+
     try {
       await deleteSecretImport({
         projectId,
-        environment: secretImportData.environment!,
+        environment: secretImportData.environment,
         path: secretPath,
         id: secretImportData.id
       });
