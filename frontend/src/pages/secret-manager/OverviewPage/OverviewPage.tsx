@@ -40,12 +40,6 @@ import {
   Badge,
   Button,
   Checkbox,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  FilterableSelect,
   Skeleton,
   Tooltip,
   TooltipContent,
@@ -530,7 +524,6 @@ export const OverviewPage = () => {
     { value: string; comments: string[] }
   > | null>(null);
 
-  const [secretImportEnv, setSecretImportEnv] = useState<string>("");
 
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "addSecretsInAllEnvs",
@@ -587,13 +580,6 @@ export const OverviewPage = () => {
   };
 
   const handleAddSecretImport = () => {
-    if (isSingleEnvView) {
-      setSecretImportEnv(singleEnvSlug);
-    } else if (userAvailableSecretImportEnvs.length === 1) {
-      setSecretImportEnv(userAvailableSecretImportEnvs[0].slug);
-    } else {
-      setSecretImportEnv("");
-    }
     handlePopUpOpen("addSecretImport");
   };
 
@@ -1371,6 +1357,7 @@ export const OverviewPage = () => {
                     isSecretRotationAvailable={userAvailableSecretRotationEnvs.length > 0}
                     onAddSecretImport={handleAddSecretImport}
                     isSecretImportAvailable={userAvailableSecretImportEnvs.length > 0}
+                    isSingleEnvSelected={isSingleEnvView}
                   />
                 )}
               </div>
@@ -1924,46 +1911,17 @@ export const OverviewPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <Dialog
-        open={popUp.addSecretImport.isOpen && !secretImportEnv}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) {
-            handlePopUpClose("addSecretImport");
-            setSecretImportEnv("");
-          }
-        }}
-      >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Select Environment</DialogTitle>
-            <DialogDescription>
-              Choose the environment to add the secret import to.
-            </DialogDescription>
-          </DialogHeader>
-          <FilterableSelect
-            options={userAvailableSecretImportEnvs}
-            getOptionLabel={(option) => option.name}
-            getOptionValue={(option) => option.slug}
-            placeholder="Select environment..."
-            onChange={(option) => {
-              if (option) setSecretImportEnv((option as { slug: string }).slug);
-            }}
-          />
-        </DialogContent>
-      </Dialog>
       <CreateSecretImportForm
-        environment={secretImportEnv}
+        environment={singleEnvSlug}
         projectId={projectId}
         secretPath={secretPath}
-        isOpen={popUp.addSecretImport.isOpen && Boolean(secretImportEnv)}
+        isOpen={popUp.addSecretImport.isOpen}
         onClose={() => {
           handlePopUpClose("addSecretImport");
-          setSecretImportEnv("");
         }}
         onTogglePopUp={(isOpen) => {
           if (!isOpen) {
             handlePopUpClose("addSecretImport");
-            setSecretImportEnv("");
           }
         }}
         onUpgradePlan={() =>

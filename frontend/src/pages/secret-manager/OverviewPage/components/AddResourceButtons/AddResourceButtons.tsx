@@ -33,6 +33,7 @@ type Props = {
   isDyanmicSecretAvailable: boolean;
   isSecretRotationAvailable: boolean;
   isSecretImportAvailable: boolean;
+  isSingleEnvSelected: boolean;
 };
 
 export function AddResourceButtons({
@@ -44,7 +45,8 @@ export function AddResourceButtons({
   onImportSecrets,
   isDyanmicSecretAvailable,
   isSecretRotationAvailable,
-  isSecretImportAvailable
+  isSecretImportAvailable,
+  isSingleEnvSelected
 }: Props) {
   return (
     <UnstableButtonGroup>
@@ -113,17 +115,21 @@ export function AddResourceButtons({
             </TooltipTrigger>
             <TooltipContent side="left">Access restricted</TooltipContent>
           </Tooltip>
-          <Tooltip open={!isSecretImportAvailable ? undefined : false}>
+          <Tooltip open={!isSecretImportAvailable || !isSingleEnvSelected ? undefined : false}>
             <TooltipTrigger className="block w-full">
               <UnstableDropdownMenuItem
                 onClick={onAddSecretImport}
-                isDisabled={!isSecretImportAvailable}
+                isDisabled={!isSecretImportAvailable || !isSingleEnvSelected}
               >
                 <ImportIcon className="text-import" />
                 Add Secret Import
               </UnstableDropdownMenuItem>
             </TooltipTrigger>
-            <TooltipContent side="left">Access restricted</TooltipContent>
+            <TooltipContent side="left">
+              {!isSecretImportAvailable
+                ? "Access restricted"
+                : "Select a single environment to add a secret import"}
+            </TooltipContent>
           </Tooltip>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Create}
