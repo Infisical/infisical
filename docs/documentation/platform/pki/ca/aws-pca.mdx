@@ -82,10 +82,15 @@ See the [AWS Connection](/integrations/app-connections/aws) page for full setup 
     ![Copy PCA ARN](/images/platform/pki/aws-pca/aws-pca-copy-arn.png)
   </Step>
 
+  <Step title="Navigate to External Certificate Authorities">
+    In your Infisical project, go to **Certificate Authorities** and scroll to the **External Certificate Authorities** section.
+    ![External CA Page](/images/platform/pki/aws-pca/aws-pca-external-ca-page.png)
+  </Step>
+
   <Step title="Create New AWS PCA Certificate Authority">
-    In your Infisical project, go to **Certificate Authorities** and under **External Certificate Authorities**, click **Create CA** and configure:
+    Click **Create CA** and configure:
     - **CA Type**: Choose **AWS Private CA (PCA)**
-    - **Name**: Friendly name for this CA (e.g., "Production AWS PCA")
+    - **Name**: A slug name for this CA — lowercase letters, numbers, and hyphens only (e.g., "production-aws-pca")
     - **AWS Connection**: Select your AWS connection from the dropdown
     - **Certificate Authority ARN**: Paste the ARN copied from the previous step
     - **Region**: Select the AWS region where your PCA is hosted
