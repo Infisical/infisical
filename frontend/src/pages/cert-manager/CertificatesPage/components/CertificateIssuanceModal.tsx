@@ -413,6 +413,8 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
             isCA: true,
             pathLength: basicConstraints?.pathLength ?? undefined
           };
+        } else if (constraints.templateAllowsCA) {
+          request.attributes.basicConstraints = { isCA: false };
         }
 
         const response = await issueCertificate(request);
@@ -701,7 +703,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                                         if (!constraints.templateRequiresCA) {
                                           onChange(checked);
                                           if (!checked) {
-                                            setValue("basicConstraints.pathLength", undefined);
+                                            setValue("basicConstraints.pathLength", null);
                                           }
                                         }
                                       }}
@@ -784,12 +786,10 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                                           onChange={(e) => {
                                             const val = e.target.value;
                                             if (val === "") {
-                                              field.onChange(undefined);
+                                              field.onChange(null);
                                             } else {
                                               const numVal = parseInt(val, 10);
-                                              field.onChange(
-                                                Number.isNaN(numVal) ? undefined : numVal
-                                              );
+                                              field.onChange(Number.isNaN(numVal) ? null : numVal);
                                             }
                                           }}
                                         />

@@ -37,7 +37,7 @@ export const KeyUsageSection = ({
   return (
     <AccordionItem value={accordionValue}>
       <AccordionTrigger>{title}</AccordionTrigger>
-      <AccordionContent>
+      <AccordionContent forceMount className="data-[state=closed]:hidden">
         <div className="grid grid-cols-2 gap-2 pl-2">
           {options.map(({ label, value }) => {
             const isRequired = requiredUsages.includes(value);
