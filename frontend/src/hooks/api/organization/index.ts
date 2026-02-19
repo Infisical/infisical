@@ -1,3 +1,4 @@
+export type { TOrgWithSubOrgs } from "./queries";
 export {
   useAddOrgPmtMethod,
   useAddOrgTaxId,
@@ -9,6 +10,7 @@ export {
   useGetIdentityMembershipOrgs,
   useGetOrganizationGroups,
   useGetOrganizations,
+  useGetOrganizationsWithSubOrgs,
   useGetOrgBillingDetails,
   useGetOrgIntegrationAuths,
   useGetOrgInvoices,

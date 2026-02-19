@@ -1,23 +1,24 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import axios from "axios";
-import { addSeconds, format, formatISO } from "date-fns";
+import { addSeconds, formatISO } from "date-fns";
 import { jwtDecode } from "jwt-decode";
 
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
 import { IsCliLoginSuccessful } from "@app/components/utilities/attemptCliLogin";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button, ContentLoader, Spinner } from "@app/components/v2";
+import { Button, ContentLoader, Input, Spinner } from "@app/components/v2";
 import { SessionStorageKeys } from "@app/const";
 import { OrgMembershipRole } from "@app/helpers/roles";
 import { useToggle } from "@app/hooks";
 import {
   useGetOrganizations,
+  useGetOrganizationsWithSubOrgs,
   useGetUser,
   useLogoutUser,
   useSelectOrganization
@@ -34,11 +35,14 @@ export const SelectOrganizationSection = () => {
   const { t } = useTranslation();
 
   const organizations = useGetOrganizations();
+  const orgsWithSubOrgs = useGetOrganizationsWithSubOrgs();
   const selectOrg = useSelectOrganization();
   const { data: user, isPending: userLoading } = useGetUser();
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
   const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
   const [isInitialOrgCheckLoading, setIsInitialOrgCheckLoading] = useState(true);
+  const [expandedOrgs, setExpandedOrgs] = useState<Set<string>>(new Set());
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
 
@@ -53,13 +57,50 @@ export const SelectOrganizationSection = () => {
   const logout = useLogoutUser(true);
   const handleLogout = useCallback(async () => {
     try {
-      console.log("Logging out...");
       await logout.mutateAsync();
       navigate({ to: "/login" });
     } catch (error) {
       console.error(error);
     }
   }, [logout, navigate]);
+
+  // Expand all orgs when searching
+  useEffect(() => {
+    if (searchTerm && orgsWithSubOrgs.data) {
+      setExpandedOrgs(new Set(orgsWithSubOrgs.data.map((o) => o.id)));
+    }
+  }, [searchTerm, orgsWithSubOrgs.data]);
+
+  const filteredOrgs = useMemo(() => {
+    if (!orgsWithSubOrgs.data) return [];
+    if (!searchTerm.trim()) return orgsWithSubOrgs.data;
+
+    const term = searchTerm.toLowerCase();
+    return orgsWithSubOrgs.data
+      .filter(
+        (org) =>
+          org.name.toLowerCase().includes(term) ||
+          org.subOrganizations.some((sub) => sub.name.toLowerCase().includes(term))
+      )
+      .map((org) => ({
+        ...org,
+        subOrganizations: org.name.toLowerCase().includes(term)
+          ? org.subOrganizations
+          : org.subOrganizations.filter((sub) => sub.name.toLowerCase().includes(term))
+      }));
+  }, [orgsWithSubOrgs.data, searchTerm]);
+
+  const toggleExpand = (id: string) => {
+    setExpandedOrgs((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
   const handleSelectOrganization = useCallback(
     async (organization: Organization) => {
@@ -86,13 +127,10 @@ export const SelectOrganizationSection = () => {
       if ((organization.authEnforced || organization.googleSsoAuthEnforced) && !canBypassOrgAuth) {
         const authToken = jwtDecode(getAuthToken()) as { authMethod: AuthMethod };
 
-        // org has an org-level auth method enabled (e.g. SAML)
-        // -> logout + redirect to SAML SSO
         let url = "";
         if (organization.googleSsoAuthEnforced) {
           if (authToken.authMethod !== AuthMethod.GOOGLE) {
             url = `/api/v1/sso/redirect/google?org_slug=${organization.slug}`;
-
             if (callbackPort) {
               url += `&callback_port=${callbackPort}`;
             }
@@ -103,14 +141,11 @@ export const SelectOrganizationSection = () => {
           }`;
         } else if (organization.orgAuthMethod === AuthMethod.SAML) {
           url = `/api/v1/sso/redirect/saml2/organizations/${organization.slug}`;
-
           if (callbackPort) {
             url += `?callback_port=${callbackPort}`;
           }
         }
 
-        // we are conditionally checking if the url is set because it may not be set if google SSO is enforced, but the user is already logged in with google SSO
-        // see line 103-106
         if (url) {
           await logout.mutateAsync();
           window.location.href = url;
@@ -160,10 +195,7 @@ export const SelectOrganizationSection = () => {
         if (!token) error = "No token found";
 
         if (error) {
-          createNotification({
-            text: error,
-            type: "error"
-          });
+          createNotification({ text: error, type: "error" });
           return;
         }
 
@@ -173,11 +205,8 @@ export const SelectOrganizationSection = () => {
           privateKey: ""
         } as IsCliLoginSuccessful["loginResponse"];
 
-        // send request to server endpoint
         const instance = axios.create();
         await instance.post(`http://127.0.0.1:${callbackPort}/`, payload).catch(() => {
-          // if error happens to communicate we set the token with an expiry in sessino storage
-          // the cli-redirect page has logic to show this to user and ask them to paste it in terminal
           sessionStorage.setItem(
             SessionStorageKeys.CLI_TERMINAL_TOKEN,
             JSON.stringify({
@@ -187,7 +216,6 @@ export const SelectOrganizationSection = () => {
           );
         });
         navigate({ to: "/cli-redirect" });
-        // cli page
       } else {
         navigateUserToOrg({ navigate, organizationId: organization.id });
       }
@@ -195,12 +223,20 @@ export const SelectOrganizationSection = () => {
     [selectOrg]
   );
 
+  // Look up the full Organization object by ID then log in
+  const handleLoginById = useCallback(
+    (id: string) => {
+      const org = organizations.data?.find((o) => o.id === id);
+      if (org) handleSelectOrganization(org);
+    },
+    [organizations.data, handleSelectOrganization]
+  );
+
   const handleCliRedirect = useCallback(() => {
     const authToken = getAuthToken();
 
     if (authToken && !callbackPort) {
       const decodedJwt = jwtDecode(authToken) as any;
-
       if (decodedJwt?.organizationId) {
         navigateUserToOrg({ navigate, organizationId: decodedJwt.organizationId });
       }
@@ -220,8 +256,6 @@ export const SelectOrganizationSection = () => {
   useEffect(() => {
     if (organizations.isPending || !organizations.data) return;
 
-    // Case: User has no organizations.
-    // This can happen if the user was previously a member, but the organization was deleted or the user was removed.
     if (organizations.data.length === 0) {
       navigate({ to: "/organizations/none" });
     } else if (organizations.data.length === 1) {
@@ -287,10 +321,7 @@ export const SelectOrganizationSection = () => {
             <div className="mb-4 flex justify-center">
               <img
                 src="/images/gradientLogo.svg"
-                style={{
-                  height: "90px",
-                  width: "120px"
-                }}
+                style={{ height: "90px", width: "120px" }}
                 alt="Infisical logo"
               />
             </div>
@@ -302,7 +333,7 @@ export const SelectOrganizationSection = () => {
               </h1>
               <div className="space-y-1">
                 <p className="text-md text-center text-gray-500">
-                  You&lsquo;re currently logged in as <strong>{user.username}</strong>
+                  You&apos;re currently logged in as <strong>{user.username}</strong>
                 </p>
                 <p className="text-md text-center text-gray-500">
                   Not you?{" "}
@@ -312,31 +343,99 @@ export const SelectOrganizationSection = () => {
                 </p>
               </div>
             </div>
-            <div className="mt-2 w-1/4 min-w-[21.2rem] space-y-4 rounded-md text-center md:min-w-[25.1rem] lg:w-1/4">
-              {organizations.isPending ? (
-                <Spinner />
-              ) : (
-                organizations.data?.map((org) => (
-                  // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-                  <div
-                    onClick={() => handleSelectOrganization(org)}
-                    key={org.id}
-                    className="group flex cursor-pointer items-center justify-between rounded-md border border-border bg-mineshaft-700 px-4 py-3 text-gray-200 capitalize shadow-md transition-colors hover:bg-mineshaft-600"
-                  >
-                    <div className="flex flex-col items-start">
-                      <p className="truncate transition-colors">{org.name}</p>
-                      <p className="text-xs text-mineshaft-400">
-                        Member since {format(new Date(org.userJoinedAt), "MMM d yyyy")}
-                      </p>
-                    </div>
 
-                    <FontAwesomeIcon
-                      icon={faArrowRight}
-                      className="text-gray-400 transition-all group-hover:translate-x-1 group-hover:text-primary-500"
-                    />
+            <div className="mt-2 w-full min-w-[25.1rem] space-y-4">
+              {/* Search */}
+              <Input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search organizations..."
+                className="h-10"
+              />
+
+              {/* Org list */}
+              <div className="max-h-96 space-y-3 overflow-y-auto thin-scrollbar">
+                {orgsWithSubOrgs.isPending ? (
+                  <div className="flex justify-center py-6">
+                    <Spinner size="sm" />
                   </div>
-                ))
-              )}
+                ) : filteredOrgs.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-mineshaft-400">
+                    No organizations found
+                  </p>
+                ) : (
+                  filteredOrgs.map((org) => {
+                    const hasSubOrgs = org.subOrganizations.length > 0;
+                    const isExpanded = expandedOrgs.has(org.id);
+
+                    return (
+                      <div key={org.id}>
+                        {/* Root org row */}
+                        <div className="group flex cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-700 px-4 py-3 text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600">
+                          <div className="flex flex-col items-start">
+                            <p className="truncate transition-colors">{org.name}</p>
+                            {hasSubOrgs && (
+                              <p className="text-xs text-mineshaft-400">
+                                {org.subOrganizations.length} sub-organization
+                                {org.subOrganizations.length !== 1 ? "s" : ""}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              colorSchema="primary"
+                              variant="outline_bg"
+                              size="xs"
+                              isLoading={selectOrg.isPending}
+                              onClick={() => handleLoginById(org.id)}
+                            >
+                              Login
+                            </Button>
+                            {hasSubOrgs && (
+                              <button
+                                type="button"
+                                onClick={() => toggleExpand(org.id)}
+                                aria-label={isExpanded ? "Collapse" : "Expand"}
+                                className="flex size-5 shrink-0 items-center justify-center text-mineshaft-400 transition-colors hover:text-gray-200"
+                              >
+                                <FontAwesomeIcon
+                                  icon={faChevronDown}
+                                  className={`text-xs transition-transform duration-200 ${
+                                    isExpanded ? "rotate-180" : ""
+                                  }`}
+                                />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Sub-org rows */}
+                        {hasSubOrgs && isExpanded && (
+                          <div className="ml-4 mt-1 space-y-1 border-l-2 border-mineshaft-600 pl-3">
+                            {org.subOrganizations.map((sub) => (
+                              <div
+                                key={sub.id}
+                                className="flex items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 py-2.5 text-gray-300 shadow-sm transition-colors hover:bg-mineshaft-700"
+                              >
+                                <p className="truncate text-sm">{sub.name}</p>
+                                <Button
+                                  colorSchema="primary"
+                                  variant="outline_bg"
+                                  size="xs"
+                                  isLoading={selectOrg.isPending}
+                                  onClick={() => handleLoginById(sub.id)}
+                                >
+                                  Login
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
           </form>
         </div>
