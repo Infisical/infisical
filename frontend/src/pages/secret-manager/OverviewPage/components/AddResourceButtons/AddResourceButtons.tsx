@@ -1,5 +1,6 @@
 import {
   ChevronDown,
+  ClipboardPasteIcon,
   FingerprintIcon,
   FolderIcon,
   PlusIcon,
@@ -28,8 +29,10 @@ type Props = {
   onAddDyanamicSecret: () => void;
   onAddSecretRotation: () => void;
   onImportSecrets: () => void;
+  onReplicateSecrets: () => void;
   isDyanmicSecretAvailable: boolean;
   isSecretRotationAvailable: boolean;
+  isReplicateSecretsAvailable: boolean;
 };
 
 export function AddResourceButtons({
@@ -38,8 +41,10 @@ export function AddResourceButtons({
   onAddDyanamicSecret,
   onAddSecretRotation,
   onImportSecrets,
+  onReplicateSecrets,
   isDyanmicSecretAvailable,
-  isSecretRotationAvailable
+  isSecretRotationAvailable,
+  isReplicateSecretsAvailable
 }: Props) {
   return (
     <UnstableButtonGroup>
@@ -121,6 +126,29 @@ export function AddResourceButtons({
                   </UnstableDropdownMenuItem>
                 </TooltipTrigger>
                 <TooltipContent side="left">Access Restricted</TooltipContent>
+              </Tooltip>
+            )}
+          </ProjectPermissionCan>
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Create}
+            a={ProjectPermissionSub.SecretFolders}
+          >
+            {(isAllowed) => (
+              <Tooltip open={!isReplicateSecretsAvailable || !isAllowed ? undefined : false}>
+                <TooltipTrigger className="block w-full">
+                  <UnstableDropdownMenuItem
+                    onClick={onReplicateSecrets}
+                    isDisabled={!isReplicateSecretsAvailable || !isAllowed}
+                  >
+                    <ClipboardPasteIcon className="text-accent" />
+                    Replicate Secrets
+                  </UnstableDropdownMenuItem>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  {!isReplicateSecretsAvailable
+                    ? "Select a single environment to replicate secrets"
+                    : "Access Denied"}
+                </TooltipContent>
               </Tooltip>
             )}
           </ProjectPermissionCan>
