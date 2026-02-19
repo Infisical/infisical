@@ -268,6 +268,69 @@ Infisical supports two methods for connecting to AWS.
                             </Accordion>
                         </AccordionGroup>
                     </Tab>
+                    <Tab title="External CA">
+                        <AccordionGroup>
+                            <Accordion title="AWS Private CA">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to issue certificates via AWS Private CA.
+
+                                For a **single CA**, scope the `Resource` to that CA's ARN:
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowAwsPrivateCAAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "acm-pca:DescribeCertificateAuthority",
+                                                "acm-pca:GetCertificateAuthorityCertificate",
+                                                "acm-pca:IssueCertificate",
+                                                "acm-pca:GetCertificate",
+                                                "acm-pca:RevokeCertificate"
+                                            ],
+                                            "Resource": "arn:aws:acm-pca:us-east-1:123456789012:certificate-authority/your-ca-id"
+                                        }
+                                    ]
+                                }
+                                ```
+
+                                For **multiple CAs**, list each ARN in the `Resource` array:
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowAwsPrivateCAAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "acm-pca:DescribeCertificateAuthority",
+                                                "acm-pca:GetCertificateAuthorityCertificate",
+                                                "acm-pca:IssueCertificate",
+                                                "acm-pca:GetCertificate",
+                                                "acm-pca:RevokeCertificate"
+                                            ],
+                                            "Resource": [
+                                                "arn:aws:acm-pca:us-east-1:123456789012:certificate-authority/ca-id-1",
+                                                "arn:aws:acm-pca:us-west-2:123456789012:certificate-authority/ca-id-2"
+                                            ]
+                                        }
+                                    ]
+                                }
+                                ```
+                                <Note>
+                                    - **DescribeCertificateAuthority**: Validates the CA status and configuration
+                                    - **GetCertificateAuthorityCertificate**: Retrieves the CA certificate and chain
+                                    - **IssueCertificate**: Issues certificates from the private CA
+                                    - **GetCertificate**: Retrieves issued certificates
+                                    - **RevokeCertificate**: Revokes previously issued certificates
+
+                                    Using a specific CA ARN in `Resource` is recommended over `"*"` to follow the principle of least privilege.
+                                </Note>
+                            </Accordion>
+                        </AccordionGroup>
+                    </Tab>
                 </Tabs>
             </Step>
 
@@ -532,6 +595,69 @@ Infisical supports two methods for connecting to AWS.
                                     - **AddListenerCertificates**: Attaches certificates to listeners
                                     - **RemoveListenerCertificates**: Removes certificates from listeners
                                     - **ModifyListener**: Sets the default certificate on listeners
+                                </Note>
+                            </Accordion>
+                        </AccordionGroup>
+                    </Tab>
+                    <Tab title="External CA">
+                        <AccordionGroup>
+                            <Accordion title="AWS Private CA">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to issue certificates via AWS Private CA.
+
+                                For a **single CA**, scope the `Resource` to that CA's ARN:
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowAwsPrivateCAAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "acm-pca:DescribeCertificateAuthority",
+                                                "acm-pca:GetCertificateAuthorityCertificate",
+                                                "acm-pca:IssueCertificate",
+                                                "acm-pca:GetCertificate",
+                                                "acm-pca:RevokeCertificate"
+                                            ],
+                                            "Resource": "arn:aws:acm-pca:us-east-1:123456789012:certificate-authority/your-ca-id"
+                                        }
+                                    ]
+                                }
+                                ```
+
+                                For **multiple CAs**, list each ARN in the `Resource` array:
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowAwsPrivateCAAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "acm-pca:DescribeCertificateAuthority",
+                                                "acm-pca:GetCertificateAuthorityCertificate",
+                                                "acm-pca:IssueCertificate",
+                                                "acm-pca:GetCertificate",
+                                                "acm-pca:RevokeCertificate"
+                                            ],
+                                            "Resource": [
+                                                "arn:aws:acm-pca:us-east-1:123456789012:certificate-authority/ca-id-1",
+                                                "arn:aws:acm-pca:us-west-2:123456789012:certificate-authority/ca-id-2"
+                                            ]
+                                        }
+                                    ]
+                                }
+                                ```
+                                <Note>
+                                    - **DescribeCertificateAuthority**: Validates the CA status and configuration
+                                    - **GetCertificateAuthorityCertificate**: Retrieves the CA certificate and chain
+                                    - **IssueCertificate**: Issues certificates from the private CA
+                                    - **GetCertificate**: Retrieves issued certificates
+                                    - **RevokeCertificate**: Revokes previously issued certificates
+
+                                    Using a specific CA ARN in `Resource` is recommended over `"*"` to follow the principle of least privilege.
                                 </Note>
                             </Accordion>
                         </AccordionGroup>

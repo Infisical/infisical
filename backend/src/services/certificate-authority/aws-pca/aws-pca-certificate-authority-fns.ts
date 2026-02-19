@@ -82,7 +82,7 @@ const ensureCsrPemFormat = (csr: string): string => {
 
   const standardBase64 = base64UrlToBase64(trimmedCsr);
 
-  const base64Lines = standardBase64.match(/.{1,64}/g) || [standardBase64];
+  const base64Lines = standardBase64.match(new RE2(".{1,64}", "g")) || [standardBase64];
   return `-----BEGIN CERTIFICATE REQUEST-----\n${base64Lines.join("\n")}\n-----END CERTIFICATE REQUEST-----`;
 };
 
