@@ -336,7 +336,7 @@ export const OrgMembersTable = ({
           </UnstableDropdownMenuTrigger>
           <UnstableDropdownMenuContent align="end">
             <UnstableDropdownMenuLabel>
-              Filter Users by {isSubOrganization ? "Sub-" : ""}Organization Role
+              Filter by {isSubOrganization ? "Sub-" : ""}Organization Role
             </UnstableDropdownMenuLabel>
             {roles?.map(({ id, slug, name }) => (
               <UnstableDropdownMenuCheckboxItem
@@ -359,7 +359,7 @@ export const OrgMembersTable = ({
           <UnstableEmptyHeader>
             <UnstableEmptyTitle>
               {members.length
-                ? `No ${isSubOrganization ? "sub-" : ""}organization users match search...`
+                ? `No ${isSubOrganization ? "sub-" : ""}organization users match search`
                 : `No ${isSubOrganization ? "sub-" : ""}organization users found`}
             </UnstableEmptyTitle>
             <UnstableEmptyDescription>
@@ -563,7 +563,7 @@ export const OrgMembersTable = ({
                               >
                                 <SelectTrigger
                                   size="sm"
-                                  className="!w-full max-w-32 lg:max-w-64"
+                                  className="w-full max-w-32 lg:max-w-64"
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   <SelectValue />
@@ -614,10 +614,7 @@ export const OrgMembersTable = ({
                                 </OrgPermissionCan>
                               )}
                             <UnstableDropdownMenu>
-                              <UnstableDropdownMenuTrigger
-                                disabled={userId === u?.id}
-                                onClick={(e) => e.stopPropagation()}
-                              >
+                              <UnstableDropdownMenuTrigger asChild>
                                 <UnstableIconButton
                                   variant="ghost"
                                   size="xs"
