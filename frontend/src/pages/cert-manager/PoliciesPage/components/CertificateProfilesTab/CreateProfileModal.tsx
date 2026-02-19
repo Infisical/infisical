@@ -1697,12 +1697,10 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                                           onChange={(e) => {
                                             const val = e.target.value;
                                             if (val === "") {
-                                              field.onChange(undefined);
+                                              field.onChange(null);
                                             } else {
                                               const numVal = parseInt(val, 10);
-                                              field.onChange(
-                                                Number.isNaN(numVal) ? undefined : numVal
-                                              );
+                                              field.onChange(Number.isNaN(numVal) ? null : numVal);
                                             }
                                           }}
                                         />
