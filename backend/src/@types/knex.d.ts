@@ -649,7 +649,37 @@ import {
   TMicrosoftTeamsIntegrationsInsert,
   TMicrosoftTeamsIntegrationsUpdate
 } from "@app/db/schemas/microsoft-teams-integrations";
+import {
+  TPamAccountDependencies,
+  TPamAccountDependenciesInsert,
+  TPamAccountDependenciesUpdate
+} from "@app/db/schemas/pam-account-dependencies";
 import { TPamAccounts, TPamAccountsInsert, TPamAccountsUpdate } from "@app/db/schemas/pam-accounts";
+import {
+  TPamDiscoveryRuns,
+  TPamDiscoveryRunsInsert,
+  TPamDiscoveryRunsUpdate
+} from "@app/db/schemas/pam-discovery-runs";
+import {
+  TPamDiscoverySourceAccounts,
+  TPamDiscoverySourceAccountsInsert,
+  TPamDiscoverySourceAccountsUpdate
+} from "@app/db/schemas/pam-discovery-source-accounts";
+import {
+  TPamDiscoverySourceDependencies,
+  TPamDiscoverySourceDependenciesInsert,
+  TPamDiscoverySourceDependenciesUpdate
+} from "@app/db/schemas/pam-discovery-source-dependencies";
+import {
+  TPamDiscoverySourceResources,
+  TPamDiscoverySourceResourcesInsert,
+  TPamDiscoverySourceResourcesUpdate
+} from "@app/db/schemas/pam-discovery-source-resources";
+import {
+  TPamDiscoverySources,
+  TPamDiscoverySourcesInsert,
+  TPamDiscoverySourcesUpdate
+} from "@app/db/schemas/pam-discovery-sources";
 import { TPamFolders, TPamFoldersInsert, TPamFoldersUpdate } from "@app/db/schemas/pam-folders";
 import { TPamResources, TPamResourcesInsert, TPamResourcesUpdate } from "@app/db/schemas/pam-resources";
 import { TPamSessions, TPamSessionsInsert, TPamSessionsUpdate } from "@app/db/schemas/pam-sessions";
@@ -1501,6 +1531,36 @@ declare module "knex/types/tables" {
     [TableName.PamResource]: KnexOriginal.CompositeTableType<TPamResources, TPamResourcesInsert, TPamResourcesUpdate>;
     [TableName.PamAccount]: KnexOriginal.CompositeTableType<TPamAccounts, TPamAccountsInsert, TPamAccountsUpdate>;
     [TableName.PamSession]: KnexOriginal.CompositeTableType<TPamSessions, TPamSessionsInsert, TPamSessionsUpdate>;
+    [TableName.PamDiscoverySource]: KnexOriginal.CompositeTableType<
+      TPamDiscoverySources,
+      TPamDiscoverySourcesInsert,
+      TPamDiscoverySourcesUpdate
+    >;
+    [TableName.PamDiscoveryRun]: KnexOriginal.CompositeTableType<
+      TPamDiscoveryRuns,
+      TPamDiscoveryRunsInsert,
+      TPamDiscoveryRunsUpdate
+    >;
+    [TableName.PamDiscoverySourceResource]: KnexOriginal.CompositeTableType<
+      TPamDiscoverySourceResources,
+      TPamDiscoverySourceResourcesInsert,
+      TPamDiscoverySourceResourcesUpdate
+    >;
+    [TableName.PamDiscoverySourceAccount]: KnexOriginal.CompositeTableType<
+      TPamDiscoverySourceAccounts,
+      TPamDiscoverySourceAccountsInsert,
+      TPamDiscoverySourceAccountsUpdate
+    >;
+    [TableName.PamDiscoverySourceDependency]: KnexOriginal.CompositeTableType<
+      TPamDiscoverySourceDependencies,
+      TPamDiscoverySourceDependenciesInsert,
+      TPamDiscoverySourceDependenciesUpdate
+    >;
+    [TableName.PamAccountDependency]: KnexOriginal.CompositeTableType<
+      TPamAccountDependencies,
+      TPamAccountDependenciesInsert,
+      TPamAccountDependenciesUpdate
+    >;
 
     [TableName.Namespace]: KnexOriginal.CompositeTableType<TNamespaces, TNamespacesInsert, TNamespacesUpdate>;
     [TableName.Membership]: KnexOriginal.CompositeTableType<TMemberships, TMembershipsInsert, TMembershipsUpdate>;
