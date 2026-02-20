@@ -338,9 +338,10 @@ export const SecretImportTableRow = ({
       Array.from(secretKeysByEnv.values()).some((keys) => !keys.has(secret.key))
     );
 
-    const firstEnvImport = allEnvImportedSecrets.length > 0
-      ? getSecretImportByEnv(importEnvSlug, importPath, allEnvImportedSecrets[0].sourceEnv)
-      : undefined;
+    const firstEnvImport =
+      allEnvImportedSecrets.length > 0
+        ? getSecretImportByEnv(importEnvSlug, importPath, allEnvImportedSecrets[0].sourceEnv)
+        : undefined;
     const isReplicated = firstEnvImport?.isReplication;
 
     return (
@@ -540,7 +541,7 @@ export const SecretImportTableRow = ({
                   {environments
                     .filter((env) => isSecretImportInEnv(importEnvSlug, importPath, env.slug))
                     .map(({ name: envName, slug }) => {
-                      const secretImport = getSecretImportByEnv(importEnvSlug, importPath, slug);
+                      const secImp = getSecretImportByEnv(importEnvSlug, importPath, slug);
 
                       return (
                         <div
@@ -550,8 +551,7 @@ export const SecretImportTableRow = ({
                           <Badge variant="neutral">
                             <LayersIcon />
                             {envName}
-                            {secretImport?.isReplication &&
-                              renderReplicationStatus(secretImport, slug)}
+                            {secImp?.isReplication && renderReplicationStatus(secImp, slug)}
                           </Badge>
                         </div>
                       );
