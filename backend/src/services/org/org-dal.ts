@@ -14,7 +14,8 @@ import {
   TOrganizationsInsert,
   TUserEncryptionKeys
 } from "@app/db/schemas";
-import { DatabaseError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError } from "@app/lib/errors";
+import { groupBy } from "@app/lib/fn";
 import {
   buildFindFilter,
   ormify,
@@ -27,6 +28,7 @@ import {
 import { generateKnexQueryFromScim } from "@app/lib/knex/scim";
 
 import { ActorType } from "../auth/auth-type";
+import { TOrgWithSubOrgs } from "./org-schema";
 import { OrgAuthMethod } from "./org-types";
 
 export type TOrgDALFactory = ReturnType<typeof orgDALFactory>;
@@ -227,6 +229,98 @@ export const orgDALFactory = (db: TDbClient) => {
       return orgs;
     } catch (error) {
       throw new DatabaseError({ error, name: "List sub organization" });
+    }
+  };
+
+  /**
+   * Returns all root orgs the actor can see (has membership, direct or via group),
+   * each with its sub-organizations. Basic org fields and suborg id/name/slug only.
+   */
+  const listOrganizationsWithSubOrgs = async (dto: {
+    actorId: string;
+    actorType: ActorType;
+  }): Promise<TOrgWithSubOrgs[]> => {
+    if (dto.actorType !== ActorType.USER) {
+      throw new BadRequestError({
+        message: "listOrganizationsWithSubOrgs only supports user actors; identity/machine is not supported"
+      });
+    }
+
+    try {
+      const conn = db.replicaNode();
+
+      // Group IDs the user belongs to
+      const userGroupIdsSubquery = conn(TableName.Groups)
+        .join(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
+        .where(`${TableName.UserGroupMembership}.userId`, dto.actorId)
+        .select(db.ref("id").withSchema(TableName.Groups));
+
+      // Root org IDs the user can see (membership direct or via group, scope = Organization, org is root)
+      const rootOrgIdsSubquery = conn(TableName.Membership)
+        .join(TableName.Organization, `${TableName.Membership}.scopeOrgId`, `${TableName.Organization}.id`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNull(`${TableName.Organization}.rootOrgId`)
+        .andWhere((qb) => {
+          void qb
+            .where(`${TableName.Membership}.actorUserId`, dto.actorId)
+            .orWhereIn(`${TableName.Membership}.actorGroupId`, userGroupIdsSubquery);
+        })
+        .distinct(db.ref("id").withSchema(TableName.Organization).as("rootOrgId"));
+
+      const rootOrgs = await conn(TableName.Organization)
+        .whereIn(`${TableName.Organization}.id`, rootOrgIdsSubquery)
+        .select(
+          db.ref("id").withSchema(TableName.Organization),
+          db.ref("name").withSchema(TableName.Organization),
+          db.ref("slug").withSchema(TableName.Organization),
+          db.ref("createdAt").withSchema(TableName.Organization)
+        );
+
+      const rootOrgIds = rootOrgs.map((o) => o.id);
+      if (rootOrgIds.length === 0) {
+        return rootOrgs.map((o) => ({ ...o, subOrganizations: [] }));
+      }
+
+      // Only sub-orgs the user has membership in (direct or via group)
+      const accessibleSubOrgIdsSubquery = conn(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereIn(
+          `${TableName.Membership}.scopeOrgId`,
+          conn(TableName.Organization)
+            .whereIn(`${TableName.Organization}.rootOrgId`, rootOrgIds)
+            .select(db.ref("id").withSchema(TableName.Organization))
+        )
+        .andWhere((qb) => {
+          void qb
+            .where(`${TableName.Membership}.actorUserId`, dto.actorId)
+            .orWhereIn(`${TableName.Membership}.actorGroupId`, userGroupIdsSubquery);
+        })
+        .select(db.ref("scopeOrgId").withSchema(TableName.Membership));
+
+      const subOrgs = await conn(TableName.Organization)
+        .whereIn(`${TableName.Organization}.rootOrgId`, rootOrgIds)
+        .whereIn(`${TableName.Organization}.id`, accessibleSubOrgIdsSubquery)
+        .select(
+          db.ref("id").withSchema(TableName.Organization),
+          db.ref("name").withSchema(TableName.Organization),
+          db.ref("slug").withSchema(TableName.Organization),
+          db.ref("rootOrgId").withSchema(TableName.Organization)
+        );
+      const subOrgsByRootId = groupBy(subOrgs, (s) => s.rootOrgId as string);
+
+      return rootOrgs.map((org) => ({
+        id: org.id,
+        name: org.name,
+        slug: org.slug,
+        createdAt: org.createdAt,
+        subOrganizations: (subOrgsByRootId[org.id] ?? []).map((s) => ({
+          id: s.id,
+          name: s.name,
+          slug: s.slug
+        }))
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "List organizations with sub orgs" });
     }
   };
 
@@ -853,6 +947,7 @@ export const orgDALFactory = (db: TDbClient) => {
     findAllOrgMembers,
     countAllOrgMembers,
     listSubOrganizations,
+    listOrganizationsWithSubOrgs,
     findOrgById,
     findOrgBySlug,
     findAllOrgsByUserId,
