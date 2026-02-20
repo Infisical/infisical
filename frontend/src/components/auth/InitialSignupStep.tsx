@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { faGithub, faGitlab, faGoogle } from "@fortawesome/free-brands-svg-icons";
 import { faEnvelope } from "@fortawesome/free-regular-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 
 import { RegionSelect } from "@app/components/navigation/RegionSelect";
 import { useServerConfig } from "@app/context";
@@ -17,9 +17,16 @@ export default function InitialSignupStep({
 }) {
   const { t } = useTranslation();
   const { config } = useServerConfig();
-
+  const navigate = useNavigate();
   const shouldDisplaySignupMethod = (method: LoginMethod) =>
     !config.enabledLoginMethods || config.enabledLoginMethods.includes(method);
+
+  const handleOauth = (provider: string) => {
+    navigate({
+      href: `/api/v1/sso/redirect/${provider}`,
+      reloadDocument: true
+    });
+  };
 
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">
@@ -32,10 +39,7 @@ export default function InitialSignupStep({
           <Button
             colorSchema="primary"
             variant="solid"
-            onClick={() => {
-              window.open("/api/v1/sso/redirect/google");
-              window.close();
-            }}
+            onClick={() => handleOauth("google")}
             leftIcon={<FontAwesomeIcon icon={faGoogle} className="mr-2" />}
             className="mx-0 h-12 w-full"
           >
@@ -48,10 +52,7 @@ export default function InitialSignupStep({
           <Button
             colorSchema="primary"
             variant="outline_bg"
-            onClick={() => {
-              window.open("/api/v1/sso/redirect/github");
-              window.close();
-            }}
+            onClick={() => handleOauth("github")}
             leftIcon={<FontAwesomeIcon icon={faGithub} className="mr-2" />}
             className="mx-0 h-12 w-full"
           >
@@ -64,10 +65,7 @@ export default function InitialSignupStep({
           <Button
             colorSchema="primary"
             variant="outline_bg"
-            onClick={() => {
-              window.open("/api/v1/sso/redirect/gitlab");
-              window.close();
-            }}
+            onClick={() => handleOauth("gitlab")}
             leftIcon={<FontAwesomeIcon icon={faGitlab} className="mr-2" />}
             className="mx-0 h-12 w-full"
           >
