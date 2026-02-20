@@ -31,6 +31,13 @@ export type TSupabaseProject = {
   database: TSupabaseDatabase;
 };
 
+export type TSupabaseProjectBranch = {
+  id: string,
+  name: string,
+  project_ref: string,
+  is_default: boolean
+};
+
 type TSupabaseDatabase = {
   host: string;
   version: string;
