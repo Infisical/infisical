@@ -64,7 +64,7 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
   };
 
   return (
-    <div className="flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6">
+    <div className="flex min-h-screen flex-col justify-center overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6">
       <Helmet>
         <title>{t("common.head-title", { title: t("login.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
