@@ -14,6 +14,10 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  UnstableEmpty,
+  UnstableEmptyDescription,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle,
   UnstableIconButton,
   UnstableInput
 } from "@app/components/v3";
@@ -55,7 +59,7 @@ export const ConditionsFields = ({
     (errors?.permissions as any)?.[subject]?.[position]?.conditions?.root?.message;
 
   return (
-    <div className="mt-6 border-t border-t-border bg-background pt-2">
+    <div className="mt-6 border-t border-t-border bg-card pt-2">
       <div className="flex w-full items-center justify-between">
         <div className="mt-2.5 flex items-center text-foreground">
           <span>Conditions</span>
@@ -92,7 +96,16 @@ export const ConditionsFields = ({
         </Button>
       </div>
       <div className="mt-2 flex flex-col space-y-2">
-        {Boolean(items.fields.length) &&
+        {items.fields.length === 0 ? (
+          <UnstableEmpty className="mt-2 border !p-8">
+            <UnstableEmptyHeader>
+              <UnstableEmptyTitle>No conditions configured</UnstableEmptyTitle>
+              <UnstableEmptyDescription>
+                Add conditions to control when this policy applies.
+              </UnstableEmptyDescription>
+            </UnstableEmptyHeader>
+          </UnstableEmpty>
+        ) : (
           items.fields.map((el, index) => {
             const condition =
               (watch(`permissions.${subject}.${position}.conditions.${index}` as const) as {
@@ -103,7 +116,7 @@ export const ConditionsFields = ({
             return (
               <div
                 key={el.id}
-                className="flex items-start gap-2 bg-background first:rounded-t-md last:rounded-b-md"
+                className="flex items-start gap-2 bg-card first:rounded-t-md last:rounded-b-md"
               >
                 <div className="w-1/4">
                   <Controller
@@ -198,7 +211,8 @@ export const ConditionsFields = ({
                 </UnstableIconButton>
               </div>
             );
-          })}
+          })
+        )}
       </div>
       {conditionErrorMessage && (
         <div className="flex items-center space-x-2 py-2 text-sm text-muted">

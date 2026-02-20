@@ -182,6 +182,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
     name: `permissions.${subject}`
   });
 
+  const [openAccordion, setOpenAccordion] = useState<string | undefined>(undefined);
   const [draggedItem, setDraggedItem] = useState<number | null>(null);
   const [dragOverItem, setDragOverItem] = useState<number | null>(null);
 
@@ -220,10 +221,12 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
     <UnstableAccordion
       type="single"
       collapsible
-      className="overflow-clip border border-border bg-container first:rounded-t-md last:rounded-b-md hover:bg-foreground/5"
+      value={openAccordion}
+      onValueChange={setOpenAccordion}
+      className="overflow-clip border border-border bg-container first:rounded-t-md last:rounded-b-md hover:bg-container-hover"
     >
       <UnstableAccordionItem value={subject} className="border-0">
-        <UnstableAccordionTrigger className="min-h-14 px-5 py-4 hover:bg-foreground/5">
+        <UnstableAccordionTrigger className="min-h-14 px-5 py-4 hover:bg-container-hover">
           <div className="flex flex-1 items-center gap-2 text-left">
             <div className="flex grow flex-col">
               <span className="text-base select-none">{title}</span>
@@ -234,37 +237,39 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                 {fields.length} Rules
               </Badge>
             )}
-            <div className="flex items-center gap-2">
-              {onShowAccessTree && (
-                <Button
-                  variant="outline"
-                  size="xs"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onShowAccessTree(subject);
-                  }}
-                >
-                  <NetworkIcon className="size-4" />
-                  Visualize Access
-                </Button>
-              )}
-              {!isDisabled && isConditionalSubjects(subject) && (
-                <Button
-                  variant="outline"
-                  size="xs"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    insert(fields.length, [
-                      { read: false, edit: false, create: false, delete: false } as any
-                    ]);
-                  }}
-                  isDisabled={isDisabled}
-                >
-                  <PlusIcon className="size-4" />
-                  Add Rule
-                </Button>
-              )}
-            </div>
+            {openAccordion === subject && (
+              <div className="flex items-center gap-2">
+                {onShowAccessTree && (
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onShowAccessTree(subject);
+                    }}
+                  >
+                    <NetworkIcon className="size-4" />
+                    Visualize Access
+                  </Button>
+                )}
+                {!isDisabled && isConditionalSubjects(subject) && (
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      insert(fields.length, [
+                        { read: false, edit: false, create: false, delete: false } as any
+                      ]);
+                    }}
+                    isDisabled={isDisabled}
+                  >
+                    <PlusIcon className="size-4" />
+                    Add Rule
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </UnstableAccordionTrigger>
         <UnstableAccordionContent className="!p-0">
@@ -276,7 +281,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                 <div
                   key={el.id}
                   className={twMerge(
-                    "relative rounded-md border-l-[6px] bg-background px-5 py-4 transition-colors duration-300",
+                    "relative rounded-md border border-l-[6px] border-border bg-card px-5 py-4 transition-colors duration-300",
                     isInverted ? "border-l-red-600/50" : "border-l-green-600/50",
                     dragOverItem === rootIndex ? "border-2 border-primary/50" : "",
                     draggedItem === rootIndex ? "opacity-50" : ""
