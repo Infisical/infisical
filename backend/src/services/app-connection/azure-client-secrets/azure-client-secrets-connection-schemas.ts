@@ -78,6 +78,7 @@ export const AzureClientSecretsConnectionClientSecretOutputCredentialsSchema = z
   clientId: z.string(),
   clientSecret: z.string(),
   tenantId: z.string(),
+  applicationObjectId: z.string().optional(),
   accessToken: z.string(),
   expiresAt: z.number()
 });

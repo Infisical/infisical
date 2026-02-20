@@ -66,7 +66,7 @@ export const ValidateAzureKeyVaultConnectionCredentialsSchema = z.discriminatedU
 ]);
 
 export const CreateAzureKeyVaultConnectionSchema = ValidateAzureKeyVaultConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.AzureKeyVault)
+  GenericCreateAppConnectionFieldsSchema(AppConnection.AzureKeyVault, { supportsCredentialRotation: true })
 );
 
 export const UpdateAzureKeyVaultConnectionSchema = z

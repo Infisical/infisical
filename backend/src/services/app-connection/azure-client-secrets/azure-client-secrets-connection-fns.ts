@@ -113,6 +113,38 @@ export const getAzureClientSecretsConnectionListItem = () => {
   };
 };
 
+const getAzureConnectionApplicationObjectId = async (
+  connectionId: string,
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">,
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+) => {
+  const appConnection = await appConnectionDAL.findById(connectionId);
+  if (!appConnection) {
+    throw new NotFoundError({ message: `Connection with ID '${connectionId}' not found` });
+  }
+
+  if (appConnection.method !== AzureClientSecretsConnectionMethod.ClientSecret) {
+    return null;
+  }
+
+  const credentials = (await decryptAppConnectionCredentials({
+    orgId: appConnection.orgId,
+    kmsService,
+    projectId: appConnection.projectId,
+    encryptedCredentials: appConnection.encryptedCredentials
+  })) as TAzureClientSecretsConnectionClientSecretCredentials;
+
+  if (!credentials.applicationObjectId) {
+    // then we need to make an api call to get it
+    const { data } = await request.get<{ value: { appId: string }[] }>(
+      `https://graph.microsoft.com/v1.0/applications?$filter=appId eq '${credentials.clientId}'`
+    );
+    return data.value[0].appId;
+  }
+
+  return credentials.applicationObjectId;
+};
+
 export const getAzureConnectionAccessToken = async (
   connectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,

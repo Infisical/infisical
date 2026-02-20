@@ -44,6 +44,9 @@ import {
   TApiKeys,
   TApiKeysInsert,
   TApiKeysUpdate,
+  TAppConnectionCredentialRotations,
+  TAppConnectionCredentialRotationsInsert,
+  TAppConnectionCredentialRotationsUpdate,
   TAppConnections,
   TAppConnectionsInsert,
   TAppConnectionsUpdate,
@@ -1608,5 +1611,10 @@ declare module "knex/types/tables" {
     >;
 
     [TableName.QueueJobs]: KnexOriginal.CompositeTableType<TQueueJobs, TQueueJobsInsert, TQueueJobsUpdate>;
+    [TableName.AppConnectionCredentialRotation]: KnexOriginal.CompositeTableType<
+      TAppConnectionCredentialRotations,
+      TAppConnectionCredentialRotationsInsert,
+      TAppConnectionCredentialRotationsUpdate
+    >;
   }
 }

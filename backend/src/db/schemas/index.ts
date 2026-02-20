@@ -12,6 +12,7 @@ export * from "./ai-mcp-server-tools";
 export * from "./ai-mcp-server-user-credentials";
 export * from "./ai-mcp-servers";
 export * from "./api-keys";
+export * from "./app-connection-credential-rotations";
 export * from "./app-connections";
 export * from "./approval-policies";
 export * from "./approval-policy-step-approvers";

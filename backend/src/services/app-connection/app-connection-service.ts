@@ -73,6 +73,7 @@ import { ValidateCircleCIConnectionCredentialsSchema } from "./circleci";
 import { circleciConnectionService } from "./circleci/circleci-connection-service";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
 import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-service";
+import { TAppConnectionCredentialRotationServiceFactory } from "./credential-rotation";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
 import { ValidateDbtConnectionCredentialsSchema } from "./dbt";
@@ -143,6 +144,7 @@ export type TAppConnectionServiceFactoryDep = {
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findProjectById">;
+  appConnectionCredentialRotationService: TAppConnectionCredentialRotationServiceFactory;
 };
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
@@ -209,7 +211,8 @@ export const appConnectionServiceFactory = ({
   gatewayV2Service,
   gatewayDAL,
   gatewayV2DAL,
-  projectDAL
+  projectDAL,
+  appConnectionCredentialRotationService
 }: TAppConnectionServiceFactoryDep) => {
   const listAppConnections = async (actor: OrgServiceActor, app?: AppConnection, projectId?: string) => {
     let appConnections: TAppConnections[];
@@ -368,7 +371,16 @@ export const appConnectionServiceFactory = ({
   };
 
   const createAppConnection = async (
-    { method, app, credentials, gatewayId, projectId, ...params }: TCreateAppConnectionDTO,
+    {
+      method,
+      app,
+      credentials,
+      gatewayId,
+      projectId,
+      rotation,
+      isAutoRotationEnabled,
+      ...params
+    }: TCreateAppConnectionDTO,
     actor: OrgServiceActor
   ) => {
     const { permission: orgPermission } = await permissionService.getOrgPermission({
@@ -449,21 +461,39 @@ export const appConnectionServiceFactory = ({
 
     try {
       const createConnection = async (connectionCredentials: TAppConnection["credentials"]) => {
-        const encryptedCredentials = await encryptAppConnectionCredentials({
-          credentials: connectionCredentials,
-          orgId: actor.orgId,
-          kmsService,
-          projectId
-        });
+        return appConnectionDAL.transaction(async (tx) => {
+          const encryptedCredentials = await encryptAppConnectionCredentials({
+            credentials: connectionCredentials,
+            orgId: actor.orgId,
+            kmsService,
+            projectId
+          });
 
-        return appConnectionDAL.create({
-          orgId: actor.orgId,
-          encryptedCredentials,
-          method,
-          app,
-          gatewayId,
-          projectId,
-          ...params
+          const appConnection = await appConnectionDAL.create(
+            {
+              orgId: actor.orgId,
+              encryptedCredentials,
+              method,
+              app,
+              gatewayId,
+              projectId,
+              isAutoRotationEnabled,
+              ...params
+            },
+            tx
+          );
+
+          if (isAutoRotationEnabled && rotation) {
+            await appConnectionCredentialRotationService.createRotation(
+              {
+                connectionId: appConnection.id,
+                ...rotation
+              },
+              tx
+            );
+          }
+
+          return appConnection;
         });
       };
 

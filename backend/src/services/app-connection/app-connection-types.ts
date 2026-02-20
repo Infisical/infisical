@@ -412,7 +412,16 @@ export type TSqlConnectionInput =
 
 export type TCreateAppConnectionDTO = Pick<
   TAppConnectionInput,
-  "credentials" | "method" | "name" | "app" | "description" | "isPlatformManagedCredentials" | "gatewayId" | "projectId"
+  | "credentials"
+  | "method"
+  | "name"
+  | "app"
+  | "description"
+  | "isPlatformManagedCredentials"
+  | "gatewayId"
+  | "projectId"
+  | "rotation"
+  | "isAutoRotationEnabled"
 >;
 
 export type TUpdateAppConnectionDTO = Partial<Omit<TCreateAppConnectionDTO, "method" | "app" | "projectId">> & {
@@ -566,5 +575,6 @@ export type TAppConnectionTransitionCredentialsToPlatform = (
 
 export type TAppConnectionBaseConfig = {
   supportsPlatformManagedCredentials?: boolean;
+  supportsCredentialRotation?: boolean;
   supportsGateways?: boolean;
 };

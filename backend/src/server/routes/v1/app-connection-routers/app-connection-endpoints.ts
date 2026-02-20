@@ -8,6 +8,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { TAppConnection, TAppConnectionInput } from "@app/services/app-connection/app-connection-types";
+import { TCreateAppConnectionCredentialRotationSchema } from "@app/services/app-connection/credential-rotation/app-connection-credential-rotation-types";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerAppConnectionEndpoints = <T extends TAppConnection, I extends TAppConnectionInput>({
@@ -25,8 +26,10 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     credentials: I["credentials"];
     description?: string | null;
     isPlatformManagedCredentials?: boolean;
+    isAutoRotationEnabled?: boolean;
     gatewayId?: string | null;
     projectId?: string;
+    rotation?: TCreateAppConnectionCredentialRotationSchema;
   }>;
   updateSchema: z.ZodType<{
     name?: string;
@@ -272,10 +275,31 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { name, method, credentials, description, isPlatformManagedCredentials, gatewayId, projectId } = req.body;
+      const {
+        name,
+        method,
+        credentials,
+        description,
+        isPlatformManagedCredentials,
+        gatewayId,
+        projectId,
+        isAutoRotationEnabled,
+        rotation
+      } = req.body;
 
       const appConnection = (await server.services.appConnection.createAppConnection(
-        { name, method, app, credentials, description, isPlatformManagedCredentials, gatewayId, projectId },
+        {
+          name,
+          method,
+          app,
+          credentials,
+          description,
+          isPlatformManagedCredentials,
+          gatewayId,
+          projectId,
+          rotation,
+          isAutoRotationEnabled
+        },
         req.permission
       )) as T;
 
