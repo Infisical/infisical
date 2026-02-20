@@ -40,7 +40,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
         .first();
       if (data) {
         const { envId, envName, envSlug } = data;
-        return { ...data, envId, enviroment: { id: envId, name: envName, slug: envSlug } };
+        return { ...data, envId, environment: { id: envId, name: envName, slug: envSlug } };
       }
     } catch (error) {
       throw new DatabaseError({ error, name: "FindById" });

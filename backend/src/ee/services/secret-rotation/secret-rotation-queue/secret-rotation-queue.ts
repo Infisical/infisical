@@ -204,7 +204,7 @@ export const secretRotationQueueFactory = ({
 
       /*
        * Rotation Function For AWS Services
-       * Due to complexity in AWS Authorization hashing signature process we keep it as seperate entity instead of http template mode
+       * Due to complexity in AWS Authorization hashing signature process we keep it as separate entity instead of http template mode
        * We first delete old key before creating a new one because aws iam has a quota limit of 2 keys
        * */
       if (provider.template.type === TProviderFunctionTypes.AWS) {
