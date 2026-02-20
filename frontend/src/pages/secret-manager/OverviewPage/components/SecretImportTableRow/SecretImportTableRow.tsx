@@ -345,50 +345,49 @@ export const SecretImportTableRow = ({
     const isReplicated = firstEnvImport?.isReplication;
 
     return (
-      <UnstableTable containerClassName="border-none rounded-none bg-transparent">
-        <UnstableTableHeader>
-          <UnstableTableRow>
-            <UnstableTableHead className="w-1/2">Name</UnstableTableHead>
-            <UnstableTableHead className="w-1/2">Value</UnstableTableHead>
-          </UnstableTableRow>
-        </UnstableTableHeader>
-        <UnstableTableBody>
-          {filteredImportedSecrets.map((secret) => {
-            const missingEnvNames = environments
-              .filter(
-                (env) =>
-                  secretKeysByEnv.has(env.slug) && !secretKeysByEnv.get(env.slug)!.has(secret.key)
-              )
-              .map((env) => env.name);
+      <>
+        <UnstableTable containerClassName="border-none rounded-none bg-transparent">
+          <UnstableTableHeader>
+            <UnstableTableRow>
+              <UnstableTableHead className="w-1/2">Name</UnstableTableHead>
+              <UnstableTableHead className="w-1/2">Value</UnstableTableHead>
+            </UnstableTableRow>
+          </UnstableTableHeader>
+          <UnstableTableBody>
+            {filteredImportedSecrets.map((secret) => {
+              const missingEnvNames = environments
+                .filter(
+                  (env) =>
+                    secretKeysByEnv.has(env.slug) && !secretKeysByEnv.get(env.slug)!.has(secret.key)
+                )
+                .map((env) => env.name);
 
-            return (
-              <SecretImportSecretRow
-                key={`import-secret-multi-${secret.key}`}
-                secretKey={secret.key}
-                environment={isReplicated ? allEnvImportedSecrets[0].sourceEnv : importEnvSlug}
-                secretPath={
-                  isReplicated && firstEnvImport
-                    ? `${secretPath === "/" ? "" : secretPath}/${ReservedFolders.SecretReplication}${firstEnvImport.id}`
-                    : importPath
-                }
-                isEmpty={secret.isEmpty}
-                missingFromEnvs={missingEnvNames}
-              />
-            );
-          })}
-        </UnstableTableBody>
+              return (
+                <SecretImportSecretRow
+                  key={`import-secret-multi-${secret.key}`}
+                  secretKey={secret.key}
+                  environment={isReplicated ? allEnvImportedSecrets[0].sourceEnv : importEnvSlug}
+                  secretPath={
+                    isReplicated && firstEnvImport
+                      ? `${secretPath === "/" ? "" : secretPath}/${ReservedFolders.SecretReplication}${firstEnvImport.id}`
+                      : importPath
+                  }
+                  isEmpty={secret.isEmpty}
+                  missingFromEnvs={missingEnvNames}
+                />
+              );
+            })}
+          </UnstableTableBody>
+        </UnstableTable>
         {hasAnyDiscrepancy && (
-          <caption className="ml-2 caption-bottom pt-3 text-left">
-            <div className="flex items-center gap-1.5 text-xs text-warning">
-              <TriangleAlertIcon className="size-3.5 shrink-0" />
-              <span>
-                One or more replicated imports may be out of sync. Secrets marked with a warning
-                indicator are not present across all linked environments.
-              </span>
-            </div>
-          </caption>
+          <p className="max-w-full text-xs text-wrap text-warning">
+            <TriangleAlertIcon className="mr-1.5 mb-0.5 inline-block size-3 shrink-0" />
+            One or more replicated imports may be out of sync. Secrets marked with a warning
+            indicator are not present across all importing environments. Select a single environment
+            to view exact import state.
+          </p>
         )}
-      </UnstableTable>
+      </>
     );
   };
 

@@ -33,9 +33,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
     try {
       if (targetPos === -1) {
         // this means delete
-        const query = (tx || db)(TableName.SecretImport)
-          .where({ folderId })
-          .andWhere("position", ">", pos);
+        const query = (tx || db)(TableName.SecretImport).where({ folderId }).andWhere("position", ">", pos);
         if (excludeIds?.length) {
           void query.whereNotIn("id", excludeIds);
         }
@@ -391,7 +389,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
         .join(" ");
       await (tx || db)(TableName.SecretImport)
         .whereIn("id", ids)
-        .update({ position: db.raw(`CASE ${cases} END`, bindings) });
+        .update({ position: db.raw(`CASE ${cases} END`, bindings) as unknown as number });
     } catch (error) {
       throw new DatabaseError({ error, name: "Bulk update position" });
     }
