@@ -1,18 +1,32 @@
-import { cloneElement, ReactNode, useState } from "react";
+import { cloneElement, useMemo, useState } from "react";
 import { Control, Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
+import { components, MultiValueRemoveProps, OptionProps } from "react-select";
 import {
   faChevronDown,
   faChevronRight,
   faDiagramProject,
   faGripVertical,
-  faInfoCircle,
   faPlus,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { CheckIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { Button, Checkbox, IconButton, Select, SelectItem, Tag, Tooltip } from "@app/components/v2";
+import { Tag } from "@app/components/v2";
+import {
+  Button,
+  FilterableSelect,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  UnstableIconButton as IconButton
+} from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
 
@@ -31,40 +45,124 @@ type Props<T extends ProjectPermissionSub> = {
   onShowAccessTree?: (subject: ProjectPermissionSub) => void;
 };
 
-type ActionProps = {
+type ActionOption = {
+  label: string;
   value: string;
-  subject: ProjectPermissionSub;
+  description?: string;
+};
+
+const OptionWithDescription = <T extends ActionOption>(props: OptionProps<T>) => {
+  const { data, children, isSelected } = props;
+
+  return (
+    <components.Option {...props}>
+      <div className="flex flex-row items-center justify-between">
+        <div className="min-w-0 flex-1">
+          <p className="truncate">{children}</p>
+          {data.description && (
+            <p className="truncate text-xs leading-4 text-mineshaft-400">{data.description}</p>
+          )}
+        </div>
+        {isSelected && <CheckIcon className="ml-2 size-4 shrink-0" />}
+      </div>
+    </components.Option>
+  );
+};
+
+const MultiValueRemove = ({ selectProps, ...props }: MultiValueRemoveProps) => {
+  if (selectProps?.isDisabled) {
+    return null;
+  }
+  return <components.MultiValueRemove selectProps={selectProps} {...props} />;
+};
+
+type ActionsMultiSelectProps<T extends ProjectPermissionSub> = {
+  subject: T;
   rootIndex: number;
-  label: ReactNode;
+  actions: TProjectPermissionObject[T]["actions"];
   isDisabled?: boolean;
   control: Control<TFormSchema>;
 };
 
-const ActionCheckbox = ({ value, subject, isDisabled, rootIndex, label, control }: ActionProps) => {
-  // scott: using Controller caused discrepancy between field value and actual value, this is a hacky fix
-  const fieldValue = useWatch({
+const ActionsMultiSelect = <T extends ProjectPermissionSub>({
+  subject,
+  rootIndex,
+  actions,
+  isDisabled,
+  control
+}: ActionsMultiSelectProps<T>) => {
+  const { setValue } = useFormContext<TFormSchema>();
+
+  const permissionRule = useWatch({
     control,
-    name: `permissions.${subject}.${rootIndex}.${value}` as any
+    name: `permissions.${subject}.${rootIndex}` as any,
+    defaultValue: {}
   });
-  const { setValue } = useFormContext();
+
+  const visibleActions = useMemo(
+    () =>
+      actions.filter(({ value }) => {
+        if (typeof value !== "string") return false;
+
+        if (subject === ProjectPermissionSub.Secrets && value === "read") {
+          return Boolean(permissionRule?.read);
+        }
+
+        return true;
+      }),
+    [actions, subject, permissionRule?.read]
+  );
+
+  const actionOptions = useMemo(
+    () =>
+      visibleActions.map(({ label, value, description }) => ({
+        label: typeof label === "string" ? label : "",
+        value: value as string,
+        description
+      })),
+    [visibleActions]
+  );
+
+  const selectedActions = useMemo(
+    () => actionOptions.filter((opt) => Boolean(permissionRule?.[opt.value])),
+    [actionOptions, permissionRule]
+  );
+
+  const handleChange = (newValue: unknown) => {
+    const selectedArray = Array.isArray(newValue) ? newValue : [];
+    visibleActions.forEach(({ value }) => {
+      const valueStr = String(value);
+      const isSelected = selectedArray.some((s: { value: string }) => s.value === valueStr);
+      setValue(`permissions.${subject}.${rootIndex}.${valueStr}` as any, isSelected, {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true
+      });
+    });
+  };
 
   return (
-    <div className="flex items-center justify-center">
-      <Checkbox
-        isDisabled={isDisabled}
-        isChecked={Boolean(fieldValue)}
-        onCheckedChange={(isChecked) =>
-          setValue(`permissions.${subject}.${rootIndex}.${value}`, isChecked, {
-            shouldDirty: true,
-            shouldTouch: true,
-            shouldValidate: true
-          })
-        }
-        id={`permissions.${subject}.${rootIndex}.${String(value)}`}
-      >
-        {label}
-      </Checkbox>
-    </div>
+    <Controller
+      control={control}
+      name={`permissions.${subject}.${rootIndex}` as any}
+      render={() => (
+        <FilterableSelect
+          isMulti
+          value={selectedActions}
+          onChange={handleChange}
+          options={actionOptions}
+          placeholder="Select actions..."
+          isDisabled={isDisabled}
+          isClearable={!isDisabled}
+          className="w-full"
+          menuPosition="fixed"
+          components={{
+            Option: OptionWithDescription,
+            MultiValueRemove
+          }}
+        />
+      )}
+    />
   );
 };
 
@@ -148,8 +246,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
         )}
         {isOpen && onShowAccessTree && (
           <Button
-            leftIcon={<FontAwesomeIcon icon={faDiagramProject} />}
-            variant="outline_bg"
+            variant="outline"
             size="xs"
             className="ml-2"
             onClick={(e) => {
@@ -157,13 +254,13 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
               onShowAccessTree(subject);
             }}
           >
+            <FontAwesomeIcon icon={faDiagramProject} />
             Visualize Access
           </Button>
         )}
         {!isDisabled && isOpen && isConditionalSubjects(subject) && (
           <Button
-            leftIcon={<FontAwesomeIcon icon={faPlus} />}
-            variant="outline_bg"
+            variant="outline"
             className="ml-2"
             size="xs"
             onClick={(e) => {
@@ -174,6 +271,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
             }}
             isDisabled={isDisabled}
           >
+            <FontAwesomeIcon icon={faPlus} />
             Add Rule
           </Button>
         )}
@@ -181,12 +279,6 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
       {isOpen && (
         <div key={`select-${subject}-type`} className="flex flex-col space-y-3 bg-bunker-700 p-3">
           {fields.map((el, rootIndex) => {
-            let isFullReadAccessEnabled = false;
-
-            if (subject === ProjectPermissionSub.Secrets) {
-              isFullReadAccessEnabled = watch(`permissions.${subject}.${rootIndex}.read` as any);
-            }
-
             const isInverted = watch(`permissions.${subject}.${rootIndex}.inverted` as any);
 
             return (
@@ -201,119 +293,68 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                 onDragOver={(e) => handleDragOver(e, rootIndex)}
                 onDrop={handleDrop}
               >
-                {isConditionalSubjects(subject) && (
-                  <div className="mb-4 flex items-center gap-3">
-                    <div className="flex w-full items-center text-gray-300">
-                      <div className="mr-3">Permission</div>
-                      <Controller
-                        defaultValue={false as any}
-                        name={`permissions.${subject}.${rootIndex}.inverted`}
-                        render={({ field }) => (
-                          <Select
-                            value={String(field.value)}
-                            onValueChange={(val) => field.onChange(val === "true")}
-                            containerClassName="w-40"
-                            className="w-full"
-                            isDisabled={isDisabled}
-                            position="popper"
-                          >
+                <div className="flex items-center gap-3">
+                  {isConditionalSubjects(subject) && (
+                    <Controller
+                      defaultValue={false as any}
+                      name={`permissions.${subject}.${rootIndex}.inverted`}
+                      render={({ field }) => (
+                        <Select
+                          value={String(field.value)}
+                          onValueChange={(val) => field.onChange(val === "true")}
+                          disabled={isDisabled}
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent position="popper">
                             <SelectItem value="false">Allow</SelectItem>
                             <SelectItem value="true">Forbid</SelectItem>
-                          </Select>
-                        )}
-                      />
-                      <Tooltip
-                        asChild
-                        content={
-                          <>
-                            <p>
-                              Whether to allow or forbid the selected actions when the following
-                              conditions (if any) are met.
-                            </p>
-                            <p className="mt-2">Forbid rules must come after allow rules.</p>
-                          </>
-                        }
-                      >
-                        <FontAwesomeIcon
-                          icon={faInfoCircle}
-                          size="sm"
-                          className="ml-2 text-bunker-400"
-                        />
-                      </Tooltip>
-                      {!isDisabled && (
-                        <Tooltip content="Remove Rule">
-                          <IconButton
-                            ariaLabel="Remove rule"
-                            colorSchema="danger"
-                            variant="plain"
-                            size="xs"
-                            className="mr-3 ml-auto rounded-sm"
-                            onClick={() => remove(rootIndex)}
-                            isDisabled={isDisabled}
-                          >
-                            <FontAwesomeIcon icon={faTrash} />
-                          </IconButton>
-                        </Tooltip>
+                          </SelectContent>
+                        </Select>
                       )}
-                      {!isDisabled && (
-                        <Tooltip position="left" content="Drag to reorder permission">
-                          <div
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, rootIndex)}
-                            onDragEnd={handleDragEnd}
-                            className="cursor-move text-bunker-300 hover:text-bunker-200"
-                          >
-                            <FontAwesomeIcon icon={faGripVertical} />
-                          </div>
-                        </Tooltip>
-                      )}
-                    </div>
+                    />
+                  )}
+                  <div className="flex-1">
+                    <ActionsMultiSelect
+                      subject={subject}
+                      rootIndex={rootIndex}
+                      actions={actions}
+                      isDisabled={isDisabled}
+                      control={control}
+                    />
                   </div>
-                )}
-                <div className="flex flex-col text-gray-300">
-                  <div className="flex w-full justify-between">
-                    <div className="mb-2">Actions</div>
-                    {!isDisabled && !isConditionalSubjects(subject) && (
-                      <Tooltip content="Remove Rule">
+                  {!isDisabled && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
                         <IconButton
-                          ariaLabel="Remove rule"
-                          colorSchema="danger"
-                          variant="plain"
+                          aria-label="Remove rule"
+                          variant="danger"
                           size="xs"
-                          className="ml-auto rounded-sm"
                           onClick={() => remove(rootIndex)}
                           isDisabled={isDisabled}
                         >
                           <FontAwesomeIcon icon={faTrash} />
                         </IconButton>
-                      </Tooltip>
-                    )}
-                  </div>
-                  <div className="flex grow flex-wrap justify-start gap-x-8 gap-y-4">
-                    {actions.map(({ label, value }, index) => {
-                      if (typeof value !== "string") return undefined;
-
-                      if (
-                        subject === ProjectPermissionSub.Secrets &&
-                        value === "read" &&
-                        !isFullReadAccessEnabled
-                      ) {
-                        return null;
-                      }
-
-                      return (
-                        <ActionCheckbox
-                          key={`${el.id}-${index + 1}`}
-                          value={value}
-                          label={label}
-                          rootIndex={rootIndex}
-                          control={control}
-                          subject={subject}
-                          isDisabled={isDisabled}
-                        />
-                      );
-                    })}
-                  </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">Remove Rule</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {!isDisabled && isConditionalSubjects(subject) && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, rootIndex)}
+                          onDragEnd={handleDragEnd}
+                          className="cursor-move text-bunker-300 hover:text-bunker-200"
+                        >
+                          <FontAwesomeIcon icon={faGripVertical} />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">Drag to reorder permission</TooltipContent>
+                    </Tooltip>
+                  )}
                 </div>
                 {children &&
                   cloneElement(children, {

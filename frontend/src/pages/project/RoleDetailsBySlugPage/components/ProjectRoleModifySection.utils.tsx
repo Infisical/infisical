@@ -1,9 +1,5 @@
-import { ReactNode } from "react";
-import { faWarning } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { z } from "zod";
 
-import { Tooltip } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionCertificateActions,
@@ -1615,7 +1611,8 @@ export type TProjectPermissionObject = {
   [K in ProjectPermissionSub]: {
     title: string;
     actions: {
-      label: string | ReactNode;
+      label: string;
+      description: string;
       value: keyof Omit<
         NonNullable<NonNullable<TFormSchema["permissions"]>[K]>[number],
         "conditions" | "inverted"
@@ -1629,51 +1626,54 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     title: "Secrets",
     actions: [
       {
-        label: (
-          <div className="flex items-center gap-1.5">
-            <p className="opacity-60">
-              Read <span className="text-xs opacity-80">(legacy)</span>
-            </p>
-            <Tooltip
-              className="overflow-hidden whitespace-normal"
-              content={
-                <div>
-                  This is a legacy action and will be removed in the future.
-                  <br />
-                  <br /> You should instead use the{" "}
-                  <strong className="font-medium">Describe Secret</strong> and{" "}
-                  <strong className="font-medium">Read Value</strong> actions.
-                </div>
-              }
-            >
-              <FontAwesomeIcon icon={faWarning} className="mt-1 text-yellow-500" size="sm" />
-            </Tooltip>
-          </div>
-        ),
+        label: "Read (legacy)",
+        description:
+          "This is a legacy action and will be removed in the future. Use Describe Secret and Read Value instead.",
         value: ProjectPermissionSecretActions.DescribeAndReadValue
       },
-      { label: "Describe Secret", value: ProjectPermissionSecretActions.DescribeSecret },
-      { label: "Read Value", value: ProjectPermissionSecretActions.ReadValue },
-      { label: "Modify", value: ProjectPermissionSecretActions.Edit },
-      { label: "Remove", value: ProjectPermissionSecretActions.Delete },
-      { label: "Create", value: ProjectPermissionSecretActions.Create }
+      {
+        label: "Describe Secret",
+        description:
+          "View secret metadata (name, tags, etc.) without revealing the actual secret value",
+        value: ProjectPermissionSecretActions.DescribeSecret
+      },
+      {
+        label: "Read Value",
+        description: "Access and view the actual secret value",
+        value: ProjectPermissionSecretActions.ReadValue
+      },
+      {
+        label: "Modify",
+        description: "Edit existing secrets and their values",
+        value: ProjectPermissionSecretActions.Edit
+      },
+      {
+        label: "Remove",
+        description: "Delete secrets from the project",
+        value: ProjectPermissionSecretActions.Delete
+      },
+      {
+        label: "Create",
+        description: "Create new secrets in the project",
+        value: ProjectPermissionSecretActions.Create
+      }
     ]
   },
   [ProjectPermissionSub.SecretFolders]: {
     title: "Secret Folders",
     actions: [
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Create", value: "create", description: "Create new folders to organize secrets" },
+      { label: "Modify", value: "edit", description: "Rename or modify folder properties" },
+      { label: "Remove", value: "delete", description: "Delete folders and their contents" }
     ]
   },
   [ProjectPermissionSub.SecretImports]: {
     title: "Secret Imports",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Read", value: "read", description: "View imported secrets from other projects" },
+      { label: "Create", value: "create", description: "Set up new secret imports" },
+      { label: "Modify", value: "edit", description: "Change import configuration" },
+      { label: "Remove", value: "delete", description: "Remove secret imports" }
     ]
   },
   [ProjectPermissionSub.DynamicSecrets]: {
@@ -1681,378 +1681,768 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     actions: [
       {
         label: "Read Root Credentials",
-        value: ProjectPermissionDynamicSecretActions.ReadRootCredential
+        value: ProjectPermissionDynamicSecretActions.ReadRootCredential,
+        description: "View the root credentials used for dynamic secret generation"
       },
       {
         label: "Create Root Credentials",
-        value: ProjectPermissionDynamicSecretActions.CreateRootCredential
+        value: ProjectPermissionDynamicSecretActions.CreateRootCredential,
+        description: "Configure new root credentials for dynamic secrets"
       },
       {
         label: "Modify Root Credentials",
-        value: ProjectPermissionDynamicSecretActions.EditRootCredential
+        value: ProjectPermissionDynamicSecretActions.EditRootCredential,
+        description: "Update existing root credentials configuration"
       },
       {
         label: "Remove Root Credentials",
-        value: ProjectPermissionDynamicSecretActions.DeleteRootCredential
+        value: ProjectPermissionDynamicSecretActions.DeleteRootCredential,
+        description: "Delete root credentials configuration"
       },
-      { label: "Manage Leases", value: ProjectPermissionDynamicSecretActions.Lease }
+      {
+        label: "Manage Leases",
+        value: ProjectPermissionDynamicSecretActions.Lease,
+        description: "Create and revoke dynamic secret leases"
+      }
     ]
   },
   [ProjectPermissionSub.Cmek]: {
     title: "KMS",
     actions: [
-      { label: "Read", value: ProjectPermissionCmekActions.Read },
-      { label: "Create", value: ProjectPermissionCmekActions.Create },
-      { label: "Modify", value: ProjectPermissionCmekActions.Edit },
-      { label: "Remove", value: ProjectPermissionCmekActions.Delete },
-      { label: "Encrypt", value: ProjectPermissionCmekActions.Encrypt },
-      { label: "Decrypt", value: ProjectPermissionCmekActions.Decrypt },
-      { label: "Sign", value: ProjectPermissionCmekActions.Sign },
-      { label: "Verify", value: ProjectPermissionCmekActions.Verify },
-      { label: "Export Private Key", value: ProjectPermissionCmekActions.ExportPrivateKey }
+      {
+        label: "Read",
+        value: ProjectPermissionCmekActions.Read,
+        description: "View KMS keys and their metadata"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionCmekActions.Create,
+        description: "Create new KMS encryption keys"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionCmekActions.Edit,
+        description: "Update KMS key configuration"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionCmekActions.Delete,
+        description: "Delete KMS keys"
+      },
+      {
+        label: "Encrypt",
+        value: ProjectPermissionCmekActions.Encrypt,
+        description: "Use KMS keys to encrypt data"
+      },
+      {
+        label: "Decrypt",
+        value: ProjectPermissionCmekActions.Decrypt,
+        description: "Use KMS keys to decrypt data"
+      },
+      {
+        label: "Sign",
+        value: ProjectPermissionCmekActions.Sign,
+        description: "Create cryptographic signatures using KMS keys"
+      },
+      {
+        label: "Verify",
+        value: ProjectPermissionCmekActions.Verify,
+        description: "Verify signatures using KMS keys"
+      },
+      {
+        label: "Export Private Key",
+        value: ProjectPermissionCmekActions.ExportPrivateKey,
+        description: "Export the private key from KMS (sensitive operation)"
+      }
     ]
   },
   [ProjectPermissionSub.Kms]: {
     title: "Project KMS Configuration",
-    actions: [{ label: "Modify", value: "edit" }]
+    actions: [
+      {
+        label: "Modify",
+        value: "edit",
+        description: "Change KMS configuration settings for the project"
+      }
+    ]
   },
   [ProjectPermissionSub.Integrations]: {
     title: "Native Integrations",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Read", value: "read", description: "View configured integrations" },
+      {
+        label: "Create",
+        value: "create",
+        description: "Set up new integrations with external services"
+      },
+      { label: "Modify", value: "edit", description: "Update integration configuration" },
+      { label: "Remove", value: "delete", description: "Delete integrations" }
     ]
   },
   [ProjectPermissionSub.Project]: {
     title: "Project",
     actions: [
-      { label: "Update project details", value: "edit" },
-      { label: "Delete project", value: "delete" }
+      {
+        label: "Update project details",
+        value: "edit",
+        description: "Modify project name, description, and settings"
+      },
+      {
+        label: "Delete project",
+        value: "delete",
+        description: "Permanently delete the entire project"
+      }
     ]
   },
   [ProjectPermissionSub.Role]: {
     title: "Roles",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Read", value: "read", description: "View roles and their permissions" },
+      { label: "Create", value: "create", description: "Create new custom roles" },
+      { label: "Modify", value: "edit", description: "Update role permissions and policies" },
+      { label: "Remove", value: "delete", description: "Delete custom roles" }
     ]
   },
   [ProjectPermissionSub.Member]: {
     title: "User Management",
     actions: [
-      { label: "Read", value: ProjectPermissionMemberActions.Read },
-      { label: "Add", value: ProjectPermissionMemberActions.Create },
-      { label: "Modify", value: ProjectPermissionMemberActions.Edit },
-      { label: "Remove", value: ProjectPermissionMemberActions.Delete },
-      { label: "Grant Privileges", value: ProjectPermissionMemberActions.GrantPrivileges },
-      { label: "Assume Privileges", value: ProjectPermissionMemberActions.AssumePrivileges }
+      {
+        label: "Read",
+        value: ProjectPermissionMemberActions.Read,
+        description: "View project members and their roles"
+      },
+      {
+        label: "Add",
+        value: ProjectPermissionMemberActions.Create,
+        description: "Invite new users to the project"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionMemberActions.Edit,
+        description: "Change user roles and permissions"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionMemberActions.Delete,
+        description: "Remove users from the project"
+      },
+      {
+        label: "Grant Privileges",
+        value: ProjectPermissionMemberActions.GrantPrivileges,
+        description: "Grant temporary elevated privileges to users"
+      },
+      {
+        label: "Assume Privileges",
+        value: ProjectPermissionMemberActions.AssumePrivileges,
+        description: "Temporarily assume another user's privileges"
+      }
     ]
   },
   [ProjectPermissionSub.Identity]: {
     title: "Machine Identity Management",
     actions: [
-      { label: "Read", value: ProjectPermissionIdentityActions.Read },
-      { label: "Add", value: ProjectPermissionIdentityActions.Create },
-      { label: "Modify", value: ProjectPermissionIdentityActions.Edit },
-      { label: "Remove", value: ProjectPermissionIdentityActions.Delete },
-      { label: "Grant Privileges", value: ProjectPermissionIdentityActions.GrantPrivileges },
-      { label: "Assume Privileges", value: ProjectPermissionIdentityActions.AssumePrivileges },
-      { label: "Revoke Auth", value: ProjectPermissionIdentityActions.RevokeAuth },
-      { label: "Create Token", value: ProjectPermissionIdentityActions.CreateToken },
-      { label: "Get Token", value: ProjectPermissionIdentityActions.GetToken },
-      { label: "Delete Token", value: ProjectPermissionIdentityActions.DeleteToken }
+      {
+        label: "Read",
+        value: ProjectPermissionIdentityActions.Read,
+        description: "View machine identities and their configuration"
+      },
+      {
+        label: "Add",
+        value: ProjectPermissionIdentityActions.Create,
+        description: "Create new machine identities for automation"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionIdentityActions.Edit,
+        description: "Update machine identity settings"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionIdentityActions.Delete,
+        description: "Delete machine identities"
+      },
+      {
+        label: "Grant Privileges",
+        value: ProjectPermissionIdentityActions.GrantPrivileges,
+        description: "Grant temporary elevated privileges to machine identities"
+      },
+      {
+        label: "Assume Privileges",
+        value: ProjectPermissionIdentityActions.AssumePrivileges,
+        description: "Temporarily assume another identity's privileges"
+      },
+      {
+        label: "Revoke Auth",
+        value: ProjectPermissionIdentityActions.RevokeAuth,
+        description: "Revoke authentication for a machine identity"
+      },
+      {
+        label: "Create Token",
+        value: ProjectPermissionIdentityActions.CreateToken,
+        description: "Generate access tokens for machine identities"
+      },
+      {
+        label: "Get Token",
+        value: ProjectPermissionIdentityActions.GetToken,
+        description: "View existing access tokens"
+      },
+      {
+        label: "Delete Token",
+        value: ProjectPermissionIdentityActions.DeleteToken,
+        description: "Revoke access tokens"
+      }
     ]
   },
   [ProjectPermissionSub.Groups]: {
     title: "Group Management",
     actions: [
-      { label: "Read", value: ProjectPermissionGroupActions.Read },
-      { label: "Create", value: ProjectPermissionGroupActions.Create },
-      { label: "Modify", value: ProjectPermissionGroupActions.Edit },
-      { label: "Remove", value: ProjectPermissionGroupActions.Delete },
-      { label: "Grant Privileges", value: ProjectPermissionGroupActions.GrantPrivileges }
+      {
+        label: "Read",
+        value: ProjectPermissionGroupActions.Read,
+        description: "View groups and their members"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionGroupActions.Create,
+        description: "Create new user groups"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionGroupActions.Edit,
+        description: "Update group membership and settings"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionGroupActions.Delete,
+        description: "Delete groups"
+      },
+      {
+        label: "Grant Privileges",
+        value: ProjectPermissionGroupActions.GrantPrivileges,
+        description: "Grant temporary elevated privileges to groups"
+      }
     ]
   },
   [ProjectPermissionSub.Webhooks]: {
     title: "Webhooks",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Read", value: "read", description: "View configured webhooks" },
+      {
+        label: "Create",
+        value: "create",
+        description: "Set up new webhooks for event notifications"
+      },
+      { label: "Modify", value: "edit", description: "Update webhook configuration and triggers" },
+      { label: "Remove", value: "delete", description: "Delete webhooks" }
     ]
   },
   [ProjectPermissionSub.ServiceTokens]: {
     title: "Service Tokens",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Read", value: "read", description: "View service tokens" },
+      {
+        label: "Create",
+        value: "create",
+        description: "Generate new service tokens for API access"
+      },
+      { label: "Modify", value: "edit", description: "Update service token configuration" },
+      { label: "Remove", value: "delete", description: "Revoke service tokens" }
     ]
   },
   [ProjectPermissionSub.Settings]: {
     title: "Settings",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Modify", value: "edit" }
+      { label: "Read", value: "read", description: "View project settings" },
+      { label: "Modify", value: "edit", description: "Change project settings and configuration" }
     ]
   },
   [ProjectPermissionSub.Environments]: {
     title: "Environment Management",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Read", value: "read", description: "View environments (dev, staging, prod, etc.)" },
+      { label: "Create", value: "create", description: "Create new environments" },
+      { label: "Modify", value: "edit", description: "Update environment configuration" },
+      { label: "Remove", value: "delete", description: "Delete environments" }
     ]
   },
   [ProjectPermissionSub.Commits]: {
     title: "Commits",
     actions: [
-      { label: "View", value: ProjectPermissionCommitsActions.Read },
-      { label: "Perform Rollback", value: ProjectPermissionCommitsActions.PerformRollback }
+      {
+        label: "View",
+        value: ProjectPermissionCommitsActions.Read,
+        description: "View secret change history and commits"
+      },
+      {
+        label: "Perform Rollback",
+        value: ProjectPermissionCommitsActions.PerformRollback,
+        description: "Rollback secrets to a previous commit"
+      }
     ]
   },
   [ProjectPermissionSub.Tags]: {
     title: "Tags",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Read", value: "read", description: "View secret tags" },
+      { label: "Create", value: "create", description: "Create new tags for organizing secrets" },
+      { label: "Modify", value: "edit", description: "Update tag properties" },
+      { label: "Remove", value: "delete", description: "Delete tags" }
     ]
   },
   [ProjectPermissionSub.AuditLogs]: {
     title: "Audit Logs",
-    actions: [{ label: "Read", value: ProjectPermissionAuditLogsActions.Read }]
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionAuditLogsActions.Read,
+        description: "View audit logs and security events"
+      }
+    ]
   },
   [ProjectPermissionSub.IpAllowList]: {
     title: "IP Allowlist",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Read", value: "read", description: "View IP allowlist configuration" },
+      { label: "Create", value: "create", description: "Add IP addresses to the allowlist" },
+      { label: "Modify", value: "edit", description: "Update IP allowlist entries" },
+      { label: "Remove", value: "delete", description: "Remove IP addresses from the allowlist" }
     ]
   },
   [ProjectPermissionSub.CertificateAuthorities]: {
     title: "Certificate Authorities",
     actions: [
-      { label: "Read", value: ProjectPermissionCertificateAuthorityActions.Read },
-      { label: "Create", value: ProjectPermissionCertificateAuthorityActions.Create },
-      { label: "Modify", value: ProjectPermissionCertificateAuthorityActions.Edit },
-      { label: "Remove", value: ProjectPermissionCertificateAuthorityActions.Delete },
+      {
+        label: "Read",
+        value: ProjectPermissionCertificateAuthorityActions.Read,
+        description: "View certificate authorities and their configuration"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionCertificateAuthorityActions.Create,
+        description: "Create new certificate authorities"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionCertificateAuthorityActions.Edit,
+        description: "Update certificate authority settings"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionCertificateAuthorityActions.Delete,
+        description: "Delete certificate authorities"
+      },
       {
         label: "Issue CA Certificate",
-        value: ProjectPermissionCertificateAuthorityActions.IssueCACertificate
+        value: ProjectPermissionCertificateAuthorityActions.IssueCACertificate,
+        description: "Issue certificates from a certificate authority"
       },
       {
         label: "Sign Intermediate",
-        value: ProjectPermissionCertificateAuthorityActions.SignIntermediate
+        value: ProjectPermissionCertificateAuthorityActions.SignIntermediate,
+        description: "Sign intermediate CA certificates"
       }
     ]
   },
   [ProjectPermissionSub.Certificates]: {
     title: "Certificates",
     actions: [
-      { label: "Read", value: ProjectPermissionCertificateActions.Read },
-      { label: "Read Private Key", value: ProjectPermissionCertificateActions.ReadPrivateKey },
-      // { label: "Create", value: ProjectPermissionCertificateActions.Create }, // Hidden from UI - kept for backend compatibility
-      { label: "Import", value: ProjectPermissionCertificateActions.Import },
-      { label: "Modify", value: ProjectPermissionCertificateActions.Edit },
-      { label: "Remove", value: ProjectPermissionCertificateActions.Delete }
+      {
+        label: "Read",
+        value: ProjectPermissionCertificateActions.Read,
+        description: "View certificates and their metadata"
+      },
+      {
+        label: "Read Private Key",
+        value: ProjectPermissionCertificateActions.ReadPrivateKey,
+        description: "Access and view certificate private keys (sensitive operation)"
+      },
+      {
+        label: "Import",
+        value: ProjectPermissionCertificateActions.Import,
+        description: "Import existing certificates into the system"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionCertificateActions.Edit,
+        description: "Update certificate properties"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionCertificateActions.Delete,
+        description: "Delete certificates"
+      }
     ]
   },
   [ProjectPermissionSub.CertificateTemplates]: {
     title: "Certificate Templates",
     actions: [
-      { label: "Read", value: ProjectPermissionPkiTemplateActions.Read },
-      { label: "Create", value: ProjectPermissionPkiTemplateActions.Create },
-      { label: "Modify", value: ProjectPermissionPkiTemplateActions.Edit },
-      { label: "Remove", value: ProjectPermissionPkiTemplateActions.Delete },
-      { label: "List Certificates", value: ProjectPermissionPkiTemplateActions.ListCerts }
+      {
+        label: "Read",
+        value: ProjectPermissionPkiTemplateActions.Read,
+        description: "View certificate templates and their configuration"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionPkiTemplateActions.Create,
+        description: "Create new certificate templates"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionPkiTemplateActions.Edit,
+        description: "Update certificate template settings"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionPkiTemplateActions.Delete,
+        description: "Delete certificate templates"
+      },
+      {
+        label: "List Certificates",
+        value: ProjectPermissionPkiTemplateActions.ListCerts,
+        description: "View certificates issued from a template"
+      }
     ]
   },
   [ProjectPermissionSub.CertificateProfiles]: {
     title: "Certificate Profiles",
     actions: [
-      { label: "Read", value: ProjectPermissionCertificateProfileActions.Read },
-      { label: "Create", value: ProjectPermissionCertificateProfileActions.Create },
-      { label: "Modify", value: ProjectPermissionCertificateProfileActions.Edit },
-      { label: "Remove", value: ProjectPermissionCertificateProfileActions.Delete },
-      { label: "Request Certificates", value: ProjectPermissionCertificateProfileActions.IssueCert }
+      {
+        label: "Read",
+        value: ProjectPermissionCertificateProfileActions.Read,
+        description: "View certificate profiles and their configuration"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionCertificateProfileActions.Create,
+        description: "Create new certificate profiles"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionCertificateProfileActions.Edit,
+        description: "Update certificate profile settings"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionCertificateProfileActions.Delete,
+        description: "Delete certificate profiles"
+      },
+      {
+        label: "Request Certificates",
+        value: ProjectPermissionCertificateProfileActions.IssueCert,
+        description: "Request new certificates using a profile"
+      }
     ]
   },
   [ProjectPermissionSub.CertificatePolicies]: {
     title: "Certificate Policies",
     actions: [
-      { label: "Read", value: ProjectPermissionCertificatePolicyActions.Read },
-      { label: "Create", value: ProjectPermissionCertificatePolicyActions.Create },
-      { label: "Modify", value: ProjectPermissionCertificatePolicyActions.Edit },
-      { label: "Remove", value: ProjectPermissionCertificatePolicyActions.Delete }
+      {
+        label: "Read",
+        value: ProjectPermissionCertificatePolicyActions.Read,
+        description: "View certificate policies and their rules"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionCertificatePolicyActions.Create,
+        description: "Create new certificate policies"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionCertificatePolicyActions.Edit,
+        description: "Update certificate policy rules"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionCertificatePolicyActions.Delete,
+        description: "Delete certificate policies"
+      }
     ]
   },
   [ProjectPermissionSub.SshCertificateAuthorities]: {
     title: "SSH Certificate Authorities",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Read", value: "read", description: "View SSH certificate authorities" },
+      { label: "Create", value: "create", description: "Create new SSH certificate authorities" },
+      { label: "Modify", value: "edit", description: "Update SSH CA configuration" },
+      { label: "Remove", value: "delete", description: "Delete SSH certificate authorities" }
     ]
   },
   [ProjectPermissionSub.SshCertificates]: {
     title: "SSH Certificates",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Read", value: "read", description: "View SSH certificates" },
+      { label: "Create", value: "create", description: "Issue new SSH certificates" },
+      { label: "Modify", value: "edit", description: "Update SSH certificate properties" },
+      { label: "Remove", value: "delete", description: "Revoke SSH certificates" }
     ]
   },
   [ProjectPermissionSub.SshCertificateTemplates]: {
     title: "SSH Certificate Templates",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Read", value: "read", description: "View SSH certificate templates" },
+      { label: "Create", value: "create", description: "Create new SSH certificate templates" },
+      { label: "Modify", value: "edit", description: "Update SSH template configuration" },
+      { label: "Remove", value: "delete", description: "Delete SSH certificate templates" }
     ]
   },
   [ProjectPermissionSub.SshHosts]: {
     title: "SSH Hosts",
     actions: [
-      { label: "Read", value: ProjectPermissionSshHostActions.Read },
-      { label: "Create", value: ProjectPermissionSshHostActions.Create },
-      { label: "Modify", value: ProjectPermissionSshHostActions.Edit },
-      { label: "Remove", value: ProjectPermissionSshHostActions.Delete },
-      { label: "Issue Host Certificate", value: ProjectPermissionSshHostActions.IssueHostCert }
+      {
+        label: "Read",
+        value: ProjectPermissionSshHostActions.Read,
+        description: "View SSH hosts and their configuration"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionSshHostActions.Create,
+        description: "Register new SSH hosts"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionSshHostActions.Edit,
+        description: "Update SSH host settings"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionSshHostActions.Delete,
+        description: "Remove SSH hosts"
+      },
+      {
+        label: "Issue Host Certificate",
+        value: ProjectPermissionSshHostActions.IssueHostCert,
+        description: "Issue host certificates for SSH hosts"
+      }
     ]
   },
   [ProjectPermissionSub.SshHostGroups]: {
     title: "SSH Host Groups",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Read", value: "read", description: "View SSH host groups" },
+      { label: "Create", value: "create", description: "Create new SSH host groups" },
+      { label: "Modify", value: "edit", description: "Update SSH host group membership" },
+      { label: "Remove", value: "delete", description: "Delete SSH host groups" }
     ]
   },
   [ProjectPermissionSub.PkiSubscribers]: {
     title: "PKI Subscribers",
     actions: [
-      { label: "Read", value: ProjectPermissionPkiSubscriberActions.Read },
-      { label: "Create", value: ProjectPermissionPkiSubscriberActions.Create },
-      { label: "Modify", value: ProjectPermissionPkiSubscriberActions.Edit },
-      { label: "Remove", value: ProjectPermissionPkiSubscriberActions.Delete },
-      { label: "List Certificates", value: ProjectPermissionPkiSubscriberActions.ListCerts }
+      {
+        label: "Read",
+        value: ProjectPermissionPkiSubscriberActions.Read,
+        description: "View PKI subscribers and their details"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionPkiSubscriberActions.Create,
+        description: "Register new PKI subscribers"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionPkiSubscriberActions.Edit,
+        description: "Update subscriber configuration"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionPkiSubscriberActions.Delete,
+        description: "Remove PKI subscribers"
+      },
+      {
+        label: "List Certificates",
+        value: ProjectPermissionPkiSubscriberActions.ListCerts,
+        description: "View certificates associated with a subscriber"
+      }
     ]
   },
   [ProjectPermissionSub.PkiCollections]: {
     title: "PKI Collections",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Read", value: "read", description: "View PKI collections" },
+      { label: "Create", value: "create", description: "Create new certificate collections" },
+      { label: "Modify", value: "edit", description: "Update collection properties" },
+      { label: "Remove", value: "delete", description: "Delete PKI collections" }
     ]
   },
   [ProjectPermissionSub.PkiAlerts]: {
     title: "PKI Alerts",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Read", value: "read", description: "View PKI alerts and notifications" },
+      { label: "Create", value: "create", description: "Set up new certificate expiration alerts" },
+      { label: "Modify", value: "edit", description: "Update alert configuration" },
+      { label: "Remove", value: "delete", description: "Delete PKI alerts" }
     ]
   },
   [ProjectPermissionSub.SecretApproval]: {
     title: "Secret Approval Policies",
     actions: [
-      { label: "Read", value: ProjectPermissionActions.Read },
-      { label: "Create", value: ProjectPermissionActions.Create },
-      { label: "Modify", value: ProjectPermissionActions.Edit },
-      { label: "Remove", value: ProjectPermissionActions.Delete }
+      {
+        label: "Read",
+        value: ProjectPermissionActions.Read,
+        description: "View secret approval policies"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionActions.Create,
+        description: "Create new approval policies for secret changes"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionActions.Edit,
+        description: "Update approval policy rules"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionActions.Delete,
+        description: "Delete approval policies"
+      }
     ]
   },
   [ProjectPermissionSub.SecretRotation]: {
     title: "Secret Rotation",
     actions: [
-      { label: "Read Config", value: ProjectPermissionSecretRotationActions.Read },
+      {
+        label: "Read Config",
+        value: ProjectPermissionSecretRotationActions.Read,
+        description: "View secret rotation configurations"
+      },
       {
         label: "Read Generated Credentials",
-        value: ProjectPermissionSecretRotationActions.ReadGeneratedCredentials
+        value: ProjectPermissionSecretRotationActions.ReadGeneratedCredentials,
+        description: "Access rotated credential values"
       },
-      { label: "Create Config", value: ProjectPermissionSecretRotationActions.Create },
-      { label: "Modify Config", value: ProjectPermissionSecretRotationActions.Edit },
-      { label: "Remove Config", value: ProjectPermissionSecretRotationActions.Delete },
-      { label: "Rotate Secrets", value: ProjectPermissionSecretRotationActions.RotateSecrets }
+      {
+        label: "Create Config",
+        value: ProjectPermissionSecretRotationActions.Create,
+        description: "Set up new secret rotation schedules"
+      },
+      {
+        label: "Modify Config",
+        value: ProjectPermissionSecretRotationActions.Edit,
+        description: "Update rotation configuration"
+      },
+      {
+        label: "Remove Config",
+        value: ProjectPermissionSecretRotationActions.Delete,
+        description: "Delete rotation configurations"
+      },
+      {
+        label: "Rotate Secrets",
+        value: ProjectPermissionSecretRotationActions.RotateSecrets,
+        description: "Manually trigger secret rotation"
+      }
     ]
   },
   [ProjectPermissionSub.SecretRollback]: {
     title: "Secret Rollback",
     actions: [
-      { label: "Perform rollback", value: "create" },
-      { label: "View", value: "read" }
+      {
+        label: "Perform rollback",
+        value: "create",
+        description: "Rollback secrets to a previous version"
+      },
+      { label: "View", value: "read", description: "View rollback history" }
     ]
   },
   [ProjectPermissionSub.SecretSyncs]: {
     title: "Secret Syncs",
     actions: [
-      { label: "Read", value: ProjectPermissionSecretSyncActions.Read },
-      { label: "Create", value: ProjectPermissionSecretSyncActions.Create },
-      { label: "Modify", value: ProjectPermissionSecretSyncActions.Edit },
-      { label: "Remove", value: ProjectPermissionSecretSyncActions.Delete },
-      { label: "Trigger Syncs", value: ProjectPermissionSecretSyncActions.SyncSecrets },
+      {
+        label: "Read",
+        value: ProjectPermissionSecretSyncActions.Read,
+        description: "View secret sync configurations"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionSecretSyncActions.Create,
+        description: "Set up new secret syncs to external destinations"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionSecretSyncActions.Edit,
+        description: "Update sync configuration"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionSecretSyncActions.Delete,
+        description: "Delete secret sync configurations"
+      },
+      {
+        label: "Trigger Syncs",
+        value: ProjectPermissionSecretSyncActions.SyncSecrets,
+        description: "Manually trigger secret synchronization"
+      },
       {
         label: "Import Secrets from Destination",
-        value: ProjectPermissionSecretSyncActions.ImportSecrets
+        value: ProjectPermissionSecretSyncActions.ImportSecrets,
+        description: "Import secrets from the sync destination"
       },
       {
         label: "Remove Secrets from Destination",
-        value: ProjectPermissionSecretSyncActions.RemoveSecrets
+        value: ProjectPermissionSecretSyncActions.RemoveSecrets,
+        description: "Remove synced secrets from the destination"
       }
     ]
   },
   [ProjectPermissionSub.PkiSyncs]: {
     title: "Certificate Syncs",
     actions: [
-      { label: "Read", value: ProjectPermissionPkiSyncActions.Read },
-      { label: "Create", value: ProjectPermissionPkiSyncActions.Create },
-      { label: "Modify", value: ProjectPermissionPkiSyncActions.Edit },
-      { label: "Remove", value: ProjectPermissionPkiSyncActions.Delete },
-      { label: "Trigger Syncs", value: ProjectPermissionPkiSyncActions.SyncCertificates },
+      {
+        label: "Read",
+        value: ProjectPermissionPkiSyncActions.Read,
+        description: "View certificate sync configurations"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionPkiSyncActions.Create,
+        description: "Set up new certificate syncs"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionPkiSyncActions.Edit,
+        description: "Update sync configuration"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionPkiSyncActions.Delete,
+        description: "Delete certificate sync configurations"
+      },
+      {
+        label: "Trigger Syncs",
+        value: ProjectPermissionPkiSyncActions.SyncCertificates,
+        description: "Manually trigger certificate synchronization"
+      },
       {
         label: "Import Certificates from Destination",
-        value: ProjectPermissionPkiSyncActions.ImportCertificates
+        value: ProjectPermissionPkiSyncActions.ImportCertificates,
+        description: "Import certificates from the sync destination"
       },
       {
         label: "Remove Certificates from Destination",
-        value: ProjectPermissionPkiSyncActions.RemoveCertificates
+        value: ProjectPermissionPkiSyncActions.RemoveCertificates,
+        description: "Remove synced certificates from the destination"
       }
     ]
   },
   [ProjectPermissionSub.PkiDiscovery]: {
     title: "PKI Discovery",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" },
-      { label: "Run Scan", value: "run-scan" }
+      {
+        label: "Read",
+        value: "read",
+        description: "View PKI discovery configurations and results"
+      },
+      { label: "Create", value: "create", description: "Set up new PKI discovery scans" },
+      { label: "Modify", value: "edit", description: "Update discovery configuration" },
+      { label: "Remove", value: "delete", description: "Delete PKI discovery configurations" },
+      { label: "Run Scan", value: "run-scan", description: "Trigger a certificate discovery scan" }
     ]
   },
   [ProjectPermissionSub.PkiCertificateInstallations]: {
     title: "Certificate Installations",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Read", value: "read", description: "View certificate installation records" },
+      { label: "Modify", value: "edit", description: "Update installation properties" },
+      { label: "Remove", value: "delete", description: "Remove certificate installation records" }
     ]
   },
   [ProjectPermissionSub.Kmip]: {
@@ -2060,23 +2450,28 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     actions: [
       {
         label: "Read Clients",
-        value: ProjectPermissionKmipActions.ReadClients
+        value: ProjectPermissionKmipActions.ReadClients,
+        description: "View KMIP clients and their configuration"
       },
       {
         label: "Create Clients",
-        value: ProjectPermissionKmipActions.CreateClients
+        value: ProjectPermissionKmipActions.CreateClients,
+        description: "Register new KMIP clients"
       },
       {
         label: "Modify Clients",
-        value: ProjectPermissionKmipActions.UpdateClients
+        value: ProjectPermissionKmipActions.UpdateClients,
+        description: "Update KMIP client settings"
       },
       {
         label: "Delete Clients",
-        value: ProjectPermissionKmipActions.DeleteClients
+        value: ProjectPermissionKmipActions.DeleteClients,
+        description: "Remove KMIP clients"
       },
       {
         label: "Generate Client Certificates",
-        value: ProjectPermissionKmipActions.GenerateClientCertificates
+        value: ProjectPermissionKmipActions.GenerateClientCertificates,
+        description: "Generate authentication certificates for KMIP clients"
       }
     ]
   },
@@ -2085,31 +2480,38 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     actions: [
       {
         label: "Read Data Sources",
-        value: ProjectPermissionSecretScanningDataSourceActions.Read
+        value: ProjectPermissionSecretScanningDataSourceActions.Read,
+        description: "View configured data sources for secret scanning"
       },
       {
         label: "Create Data Sources",
-        value: ProjectPermissionSecretScanningDataSourceActions.Create
+        value: ProjectPermissionSecretScanningDataSourceActions.Create,
+        description: "Add new repositories or sources to scan"
       },
       {
         label: "Modify Data Sources",
-        value: ProjectPermissionSecretScanningDataSourceActions.Edit
+        value: ProjectPermissionSecretScanningDataSourceActions.Edit,
+        description: "Update data source configuration"
       },
       {
         label: "Delete Data Sources",
-        value: ProjectPermissionSecretScanningDataSourceActions.Delete
+        value: ProjectPermissionSecretScanningDataSourceActions.Delete,
+        description: "Remove data sources from scanning"
       },
       {
         label: "Read Resources",
-        value: ProjectPermissionSecretScanningDataSourceActions.ReadResources
+        value: ProjectPermissionSecretScanningDataSourceActions.ReadResources,
+        description: "View discovered resources within data sources"
       },
       {
         label: "Read Scans",
-        value: ProjectPermissionSecretScanningDataSourceActions.ReadScans
+        value: ProjectPermissionSecretScanningDataSourceActions.ReadScans,
+        description: "View scan history and results"
       },
       {
         label: "Trigger Scans",
-        value: ProjectPermissionSecretScanningDataSourceActions.TriggerScans
+        value: ProjectPermissionSecretScanningDataSourceActions.TriggerScans,
+        description: "Manually initiate secret scanning"
       }
     ]
   },
@@ -2118,11 +2520,13 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     actions: [
       {
         label: "Read Findings",
-        value: ProjectPermissionSecretScanningFindingActions.Read
+        value: ProjectPermissionSecretScanningFindingActions.Read,
+        description: "View detected secrets and vulnerabilities"
       },
       {
         label: "Update Findings",
-        value: ProjectPermissionSecretScanningFindingActions.Update
+        value: ProjectPermissionSecretScanningFindingActions.Update,
+        description: "Mark findings as resolved or false positive"
       }
     ]
   },
@@ -2131,11 +2535,13 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     actions: [
       {
         label: "Read Config",
-        value: ProjectPermissionSecretScanningConfigActions.Read
+        value: ProjectPermissionSecretScanningConfigActions.Read,
+        description: "View secret scanning configuration"
       },
       {
         label: "Update Config",
-        value: ProjectPermissionSecretScanningConfigActions.Update
+        value: ProjectPermissionSecretScanningConfigActions.Update,
+        description: "Modify scanning rules and settings"
       }
     ]
   },
@@ -2144,19 +2550,23 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     actions: [
       {
         label: "Subscribe to Creation Events",
-        value: ProjectPermissionSecretEventActions.SubscribeToCreationEvents
+        value: ProjectPermissionSecretEventActions.SubscribeToCreationEvents,
+        description: "Receive notifications when secrets are created"
       },
       {
         label: "Subscribe to Deletion Events",
-        value: ProjectPermissionSecretEventActions.SubscribeToDeletionEvents
+        value: ProjectPermissionSecretEventActions.SubscribeToDeletionEvents,
+        description: "Receive notifications when secrets are deleted"
       },
       {
         label: "Subscribe to Update Events",
-        value: ProjectPermissionSecretEventActions.SubscribeToUpdateEvents
+        value: ProjectPermissionSecretEventActions.SubscribeToUpdateEvents,
+        description: "Receive notifications when secrets are updated"
       },
       {
         label: "Subscribe to Import Mutation Events",
-        value: ProjectPermissionSecretEventActions.SubscribeToImportMutationEvents
+        value: ProjectPermissionSecretEventActions.SubscribeToImportMutationEvents,
+        description: "Receive notifications when secret imports change"
       }
     ]
   },
@@ -2165,98 +2575,205 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     actions: [
       {
         label: "Read",
-        value: ProjectPermissionAppConnectionActions.Read
+        value: ProjectPermissionAppConnectionActions.Read,
+        description: "View configured app connections"
       },
       {
         label: "Create",
-        value: ProjectPermissionAppConnectionActions.Create
+        value: ProjectPermissionAppConnectionActions.Create,
+        description: "Set up new connections to external applications"
       },
       {
         label: "Update",
-        value: ProjectPermissionAppConnectionActions.Edit
+        value: ProjectPermissionAppConnectionActions.Edit,
+        description: "Modify app connection settings"
       },
       {
         label: "Delete",
-        value: ProjectPermissionAppConnectionActions.Delete
+        value: ProjectPermissionAppConnectionActions.Delete,
+        description: "Remove app connections"
       },
       {
         label: "Connect",
-        value: ProjectPermissionAppConnectionActions.Connect
+        value: ProjectPermissionAppConnectionActions.Connect,
+        description: "Establish connections to external applications"
       }
     ]
   },
   [ProjectPermissionSub.PamFolders]: {
     title: "Folders",
     actions: [
-      { label: "Read", value: ProjectPermissionActions.Read },
-      { label: "Create", value: ProjectPermissionActions.Create },
-      { label: "Modify", value: ProjectPermissionActions.Edit },
-      { label: "Remove", value: ProjectPermissionActions.Delete }
+      { label: "Read", value: ProjectPermissionActions.Read, description: "View PAM folders" },
+      {
+        label: "Create",
+        value: ProjectPermissionActions.Create,
+        description: "Create new PAM folders"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionActions.Edit,
+        description: "Update folder properties"
+      },
+      { label: "Remove", value: ProjectPermissionActions.Delete, description: "Delete PAM folders" }
     ]
   },
   [ProjectPermissionSub.PamResources]: {
     title: "Resources",
     actions: [
-      { label: "Read", value: ProjectPermissionActions.Read },
-      { label: "Create", value: ProjectPermissionActions.Create },
-      { label: "Modify", value: ProjectPermissionActions.Edit },
-      { label: "Remove", value: ProjectPermissionActions.Delete }
+      { label: "Read", value: ProjectPermissionActions.Read, description: "View PAM resources" },
+      {
+        label: "Create",
+        value: ProjectPermissionActions.Create,
+        description: "Add new resources to PAM"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionActions.Edit,
+        description: "Update resource configuration"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionActions.Delete,
+        description: "Remove PAM resources"
+      }
     ]
   },
   [ProjectPermissionSub.PamAccounts]: {
     title: "Accounts",
     actions: [
-      { label: "Access", value: ProjectPermissionPamAccountActions.Access },
-      { label: "Read", value: ProjectPermissionPamAccountActions.Read },
-      { label: "Create", value: ProjectPermissionPamAccountActions.Create },
-      { label: "Modify", value: ProjectPermissionPamAccountActions.Edit },
-      { label: "Remove", value: ProjectPermissionPamAccountActions.Delete }
+      {
+        label: "Access",
+        value: ProjectPermissionPamAccountActions.Access,
+        description: "Connect to and use PAM accounts"
+      },
+      {
+        label: "Read",
+        value: ProjectPermissionPamAccountActions.Read,
+        description: "View PAM account details"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionPamAccountActions.Create,
+        description: "Create new PAM accounts"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionPamAccountActions.Edit,
+        description: "Update PAM account settings"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionPamAccountActions.Delete,
+        description: "Delete PAM accounts"
+      }
     ]
   },
   [ProjectPermissionSub.PamSessions]: {
     title: "Sessions",
-    actions: [{ label: "Read", value: ProjectPermissionPamSessionActions.Read }]
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionPamSessionActions.Read,
+        description: "View PAM session history and recordings"
+      }
+    ]
   },
   [ProjectPermissionSub.ApprovalRequests]: {
     title: "Approval Requests",
     actions: [
-      { label: "Read", value: ProjectPermissionApprovalRequestActions.Read },
-      { label: "Create", value: ProjectPermissionApprovalRequestActions.Create }
+      {
+        label: "Read",
+        value: ProjectPermissionApprovalRequestActions.Read,
+        description: "View pending approval requests"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionApprovalRequestActions.Create,
+        description: "Submit new approval requests"
+      }
     ]
   },
   [ProjectPermissionSub.ApprovalRequestGrants]: {
     title: "Approval Request Grants",
     actions: [
-      { label: "Read", value: ProjectPermissionApprovalRequestGrantActions.Read },
-      { label: "Revoke", value: ProjectPermissionApprovalRequestGrantActions.Revoke }
+      {
+        label: "Read",
+        value: ProjectPermissionApprovalRequestGrantActions.Read,
+        description: "View granted approval requests"
+      },
+      {
+        label: "Revoke",
+        value: ProjectPermissionApprovalRequestGrantActions.Revoke,
+        description: "Revoke previously granted approvals"
+      }
     ]
   },
   [ProjectPermissionSub.McpEndpoints]: {
     title: "MCP Endpoints",
     actions: [
-      { label: "Read", value: ProjectPermissionMcpEndpointActions.Read },
-      { label: "Create", value: ProjectPermissionMcpEndpointActions.Create },
-      { label: "Modify", value: ProjectPermissionMcpEndpointActions.Edit },
-      { label: "Remove", value: ProjectPermissionMcpEndpointActions.Delete },
-      { label: "Connect", value: ProjectPermissionMcpEndpointActions.Connect }
+      {
+        label: "Read",
+        value: ProjectPermissionMcpEndpointActions.Read,
+        description: "View MCP endpoints"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionMcpEndpointActions.Create,
+        description: "Create new MCP endpoints"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionMcpEndpointActions.Edit,
+        description: "Update endpoint configuration"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionMcpEndpointActions.Delete,
+        description: "Delete MCP endpoints"
+      },
+      {
+        label: "Connect",
+        value: ProjectPermissionMcpEndpointActions.Connect,
+        description: "Connect to MCP endpoints"
+      }
     ]
   },
   [ProjectPermissionSub.McpServers]: {
     title: "MCP Servers",
     actions: [
-      { label: "Read", value: ProjectPermissionActions.Read },
-      { label: "Create", value: ProjectPermissionActions.Create },
-      { label: "Modify", value: ProjectPermissionActions.Edit },
-      { label: "Remove", value: ProjectPermissionActions.Delete }
+      { label: "Read", value: ProjectPermissionActions.Read, description: "View MCP servers" },
+      {
+        label: "Create",
+        value: ProjectPermissionActions.Create,
+        description: "Register new MCP servers"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionActions.Edit,
+        description: "Update server configuration"
+      },
+      { label: "Remove", value: ProjectPermissionActions.Delete, description: "Remove MCP servers" }
     ]
   },
   [ProjectPermissionSub.McpActivityLogs]: {
     title: "MCP Activity Logs",
-    actions: [{ label: "Read", value: ProjectPermissionActions.Read }]
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionActions.Read,
+        description: "View MCP activity and access logs"
+      }
+    ]
   },
   [ProjectPermissionSub.SecretApprovalRequest]: {
     title: "Secret Approval Requests",
-    actions: [{ label: "Read", value: ProjectPermissionSecretApprovalRequestActions.Read }]
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionSecretApprovalRequestActions.Read,
+        description: "View pending secret change requests"
+      }
+    ]
   }
 };
 
