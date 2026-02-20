@@ -137,6 +137,9 @@ export const PamDiscoverySourcesTable = ({ projectId }: Props) => {
             <UnstableTableRow>
               <UnstableTableHead>Name</UnstableTableHead>
               <UnstableTableHead>Domain</UnstableTableHead>
+              <UnstableTableHead>Schedule</UnstableTableHead>
+              <UnstableTableHead>Resources</UnstableTableHead>
+              <UnstableTableHead>Accounts</UnstableTableHead>
               <UnstableTableHead>Status</UnstableTableHead>
               <UnstableTableHead>Last Run</UnstableTableHead>
               <UnstableTableHead className="w-5" />
@@ -145,14 +148,14 @@ export const PamDiscoverySourcesTable = ({ projectId }: Props) => {
           <UnstableTableBody>
             {isPending && (
               <UnstableTableRow>
-                <UnstableTableCell colSpan={5} className="text-center text-muted">
+                <UnstableTableCell colSpan={8} className="text-center text-muted">
                   Loading discovery sources...
                 </UnstableTableCell>
               </UnstableTableRow>
             )}
             {!isPending && sources.length === 0 && (
               <UnstableTableRow>
-                <UnstableTableCell colSpan={5}>
+                <UnstableTableCell colSpan={8}>
                   <UnstableEmpty className="border-0 bg-transparent py-8 shadow-none">
                     <UnstableEmptyHeader>
                       <UnstableEmptyTitle>
@@ -183,6 +186,15 @@ export const PamDiscoverySourcesTable = ({ projectId }: Props) => {
                   <UnstableTableCell className="font-medium">{source.name}</UnstableTableCell>
                   <UnstableTableCell className="text-muted">
                     {(source.discoveryConfiguration?.domainFQDN as string) || "-"}
+                  </UnstableTableCell>
+                  <UnstableTableCell className="text-muted capitalize">
+                    {source.schedule ?? "-"}
+                  </UnstableTableCell>
+                  <UnstableTableCell className="text-muted">
+                    {source.totalResources}
+                  </UnstableTableCell>
+                  <UnstableTableCell className="text-muted">
+                    {source.totalAccounts}
                   </UnstableTableCell>
                   <UnstableTableCell>
                     <Badge variant={STATUS_BADGE_MAP[source.status] || "info"}>

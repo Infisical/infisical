@@ -21,10 +21,27 @@ export type TPamDiscoverySource = {
   discoveryCredentials?: Record<string, unknown>;
   schedule?: string | null;
   lastRunAt?: string | null;
-  nextRunAt?: string | null;
   status: string;
+  totalResources: number;
+  totalAccounts: number;
   createdAt: string;
   updatedAt: string;
+};
+
+export type TPamDiscoveryRunProgress = {
+  adEnumeration?: {
+    status: "running" | "completed" | "failed";
+    completedAt?: string;
+    error?: string;
+  };
+  dependencyScan?: {
+    status: "running" | "completed" | "failed" | "skipped";
+    totalMachines?: number;
+    scannedMachines?: number;
+    failedMachines?: number;
+    reason?: string;
+  };
+  machineErrors?: Record<string, string>;
 };
 
 export type TPamDiscoveryRun = {
@@ -37,7 +54,7 @@ export type TPamDiscoveryRun = {
   dependenciesDiscovered: number;
   newSinceLastRun: number;
   staleSinceLastRun: number;
-  progress?: unknown;
+  progress?: TPamDiscoveryRunProgress;
   errorMessage?: string | null;
   startedAt?: string | null;
   completedAt?: string | null;
@@ -61,6 +78,7 @@ export type TDiscoveredAccount = {
   accountName: string;
   resourceId: string;
   resourceName: string;
+  resourceType: string;
   lastDiscoveredAt: string;
   isStale: boolean;
   metadata?: unknown;

@@ -52,12 +52,11 @@ export const UpdateActiveDirectoryDiscoverySourceSchema = BaseUpdatePamDiscovery
 });
 
 // Discovery Run
-const ActiveDirectoryDiscoverySourceRunProgressSchema = z.object({
-  // TODO(andrey): Revisit this schema
+export const ActiveDirectoryDiscoverySourceRunProgressSchema = z.object({
   adEnumeration: z
     .object({
       status: z.enum(["running", "completed", "failed"]),
-      completedAt: z.date().optional(),
+      completedAt: z.string().optional(),
       error: z.string().optional()
     })
     .optional(),

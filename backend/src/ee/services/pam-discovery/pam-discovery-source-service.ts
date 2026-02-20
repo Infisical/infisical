@@ -47,8 +47,14 @@ type TPamDiscoverySourceServiceFactoryDep = {
     TPamDiscoveryRunDALFactory,
     "findByDiscoverySourceId" | "findLatestBySourceId" | "findById" | "find"
   >;
-  pamDiscoverySourceResourcesDAL: Pick<TPamDiscoverySourceResourcesDALFactory, "findByDiscoverySourceIdWithResources">;
-  pamDiscoverySourceAccountsDAL: Pick<TPamDiscoverySourceAccountsDALFactory, "findByDiscoverySourceIdWithAccounts">;
+  pamDiscoverySourceResourcesDAL: Pick<
+    TPamDiscoverySourceResourcesDALFactory,
+    "findByDiscoverySourceIdWithResources" | "countByDiscoverySourceIds"
+  >;
+  pamDiscoverySourceAccountsDAL: Pick<
+    TPamDiscoverySourceAccountsDALFactory,
+    "findByDiscoverySourceIdWithAccounts" | "countByDiscoverySourceIds"
+  >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
@@ -349,8 +355,21 @@ export const pamDiscoverySourceServiceFactory = ({
       filterDiscoveryTypes
     });
 
+    const sourceIds = sources.map((s) => s.id);
+
+    const [resourceCounts, accountCounts]: { [k: string]: number }[] = await Promise.all([
+      sourceIds.length ? pamDiscoverySourceResourcesDAL.countByDiscoverySourceIds(sourceIds) : {},
+      sourceIds.length ? pamDiscoverySourceAccountsDAL.countByDiscoverySourceIds(sourceIds) : {}
+    ]);
+
     return {
-      sources: await Promise.all(sources.map((src) => decryptDiscoverySource(src, projectId, kmsService))),
+      sources: await Promise.all(
+        sources.map(async (src) => ({
+          ...(await decryptDiscoverySource(src, projectId, kmsService)),
+          totalResources: resourceCounts[src.id] ?? 0,
+          totalAccounts: accountCounts[src.id] ?? 0
+        }))
+      ),
       totalCount
     };
   };
@@ -381,10 +400,7 @@ export const pamDiscoverySourceServiceFactory = ({
 
     // Check if a scan is already running
     const latestRun = await pamDiscoveryRunDAL.findLatestBySourceId(id);
-    if (
-      latestRun &&
-      (latestRun.status === PamDiscoveryRunStatus.Pending || latestRun.status === PamDiscoveryRunStatus.Running)
-    ) {
+    if (latestRun && latestRun.status === PamDiscoveryRunStatus.Running) {
       throw new BadRequestError({ message: "A scan is already in progress for this Discovery Source" });
     }
 

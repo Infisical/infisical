@@ -88,6 +88,20 @@ export const pamDiscoverySourceResourcesDALFactory = (db: TDbClient) => {
     }
   };
 
+  const countByDiscoverySourceIds = async (discoverySourceIds: string[], tx?: Knex) => {
+    try {
+      const rows = await (tx || db.replicaNode())(TableName.PamDiscoverySourceResource)
+        .whereIn("discoverySourceId", discoverySourceIds)
+        .groupBy("discoverySourceId")
+        .select("discoverySourceId")
+        .count("*", { as: "count" });
+
+      return Object.fromEntries(rows.map((r) => [r.discoverySourceId, Number(r.count)]));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count PAM discovery source resources by source IDs" });
+    }
+  };
+
   const markStaleForRun = async (discoverySourceId: string, runId: string, tx?: Knex) => {
     try {
       const knex = tx || db;
@@ -109,6 +123,7 @@ export const pamDiscoverySourceResourcesDALFactory = (db: TDbClient) => {
   return {
     ...orm,
     findByDiscoverySourceIdWithResources,
+    countByDiscoverySourceIds,
     upsertJunction,
     markStaleForRun
   };

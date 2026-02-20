@@ -5,7 +5,15 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { BanIcon, EllipsisVerticalIcon, PencilIcon, PlayIcon, TrashIcon } from "lucide-react";
+import {
+  BanIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  EllipsisVerticalIcon,
+  PencilIcon,
+  PlayIcon,
+  TrashIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -37,7 +45,11 @@ import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionPamDiscoveryActions } from "@app/context/ProjectPermissionContext/types";
 import { usePagination } from "@app/hooks";
 import { gatewaysQueryKeys } from "@app/hooks/api";
-import type { PamDiscoveryType, TPamDiscoverySource } from "@app/hooks/api/pamDiscovery";
+import type {
+  PamDiscoveryType,
+  TPamDiscoveryRunProgress,
+  TPamDiscoverySource
+} from "@app/hooks/api/pamDiscovery";
 import {
   PAM_DISCOVERY_TYPE_MAP,
   useDeletePamDiscoverySource,
@@ -197,6 +209,99 @@ const DiscoveryCredentialsSection = ({
   );
 };
 
+const formatDuration = (startedAt?: string | null, completedAt?: string | null): string => {
+  if (!startedAt) return "-";
+  const end = completedAt ? new Date(completedAt) : new Date();
+  const seconds = Math.floor((end.getTime() - new Date(startedAt).getTime()) / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+};
+
+const PROGRESS_BADGE_MAP: Record<string, "success" | "danger" | "info" | "neutral"> = {
+  completed: "success",
+  failed: "danger",
+  running: "info",
+  skipped: "neutral"
+};
+
+const RunExpandedContent = ({
+  progress,
+  errorMessage
+}: {
+  progress?: TPamDiscoveryRunProgress;
+  errorMessage?: string | null;
+}) => {
+  const adEnum = progress?.adEnumeration;
+  const depScan = progress?.dependencyScan;
+  const machineErrors = progress?.machineErrors;
+  const hasMachineErrors = machineErrors && Object.keys(machineErrors).length > 0;
+
+  return (
+    <div className="flex flex-col gap-4 px-8 py-4">
+      <div className="flex gap-10">
+        {adEnum && (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium tracking-wider text-muted uppercase">
+              AD Enumeration
+            </span>
+            <Badge variant={PROGRESS_BADGE_MAP[adEnum.status] || "info"}>{adEnum.status}</Badge>
+            {adEnum.error && adEnum.error !== errorMessage && (
+              <span className="text-xs text-red-400">{adEnum.error}</span>
+            )}
+          </div>
+        )}
+        {depScan && (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium tracking-wider text-muted uppercase">
+              Dependency Scan
+            </span>
+            <Badge variant={PROGRESS_BADGE_MAP[depScan.status] || "info"}>{depScan.status}</Badge>
+            {depScan.totalMachines !== undefined && (
+              <span className="text-xs text-muted">
+                {depScan.scannedMachines ?? 0}/{depScan.totalMachines} machines
+                {(depScan.failedMachines ?? 0) > 0 && (
+                  <span className="ml-1 text-red-400">({depScan.failedMachines} failed)</span>
+                )}
+              </span>
+            )}
+            {depScan.reason && depScan.reason !== errorMessage && (
+              <span className="text-xs text-muted">{depScan.reason}</span>
+            )}
+          </div>
+        )}
+      </div>
+      {errorMessage && (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs font-medium tracking-wider text-muted uppercase">Error</span>
+          <span className="rounded border border-red-500/30 bg-red-500/10 px-3 py-2 font-mono text-xs text-red-400">
+            {errorMessage}
+          </span>
+        </div>
+      )}
+      {hasMachineErrors && (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs font-medium tracking-wider text-muted uppercase">
+            Machine Errors
+          </span>
+          <div className="flex flex-col gap-1">
+            {Object.entries(machineErrors).map(([host, err]) => (
+              <div
+                key={host}
+                className="rounded border border-red-500/30 bg-red-500/10 px-3 py-2 font-mono text-xs"
+              >
+                <span className="font-semibold text-foreground">{host}</span>
+                <span className="ml-2 text-muted">{err}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const RunsTab = ({
   discoverySourceId,
   discoveryType
@@ -204,6 +309,7 @@ const RunsTab = ({
   discoverySourceId: string;
   discoveryType: PamDiscoveryType;
 }) => {
+  const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
   const { page, perPage, setPage, setPerPage, offset } = usePagination("", {
     initPerPage: 20
   });
@@ -215,16 +321,18 @@ const RunsTab = ({
 
   const runs = data?.runs || [];
   const totalCount = data?.totalCount || 0;
+  const COL_COUNT = 9;
 
   return (
     <div>
       <UnstableTable>
         <UnstableTableHeader>
           <UnstableTableRow>
-            <UnstableTableHead>Status</UnstableTableHead>
-            <UnstableTableHead>Triggered By</UnstableTableHead>
+            <UnstableTableHead className="w-8" />
             <UnstableTableHead>Started</UnstableTableHead>
-            <UnstableTableHead>Completed</UnstableTableHead>
+            <UnstableTableHead>Duration</UnstableTableHead>
+            <UnstableTableHead>Triggered By</UnstableTableHead>
+            <UnstableTableHead>Status</UnstableTableHead>
             <UnstableTableHead>Resources</UnstableTableHead>
             <UnstableTableHead>Accounts</UnstableTableHead>
             <UnstableTableHead>New</UnstableTableHead>
@@ -234,14 +342,14 @@ const RunsTab = ({
         <UnstableTableBody>
           {isPending && (
             <UnstableTableRow>
-              <UnstableTableCell colSpan={8} className="text-center text-muted">
+              <UnstableTableCell colSpan={COL_COUNT} className="text-center text-muted">
                 Loading runs...
               </UnstableTableCell>
             </UnstableTableRow>
           )}
           {!isPending && runs.length === 0 && (
             <UnstableTableRow>
-              <UnstableTableCell colSpan={8}>
+              <UnstableTableCell colSpan={COL_COUNT}>
                 <UnstableEmpty className="border-0 bg-transparent py-8 shadow-none">
                   <UnstableEmptyHeader>
                     <UnstableEmptyTitle>No discovery runs yet</UnstableEmptyTitle>
@@ -251,24 +359,63 @@ const RunsTab = ({
             </UnstableTableRow>
           )}
           {!isPending &&
-            runs.map((run) => (
-              <UnstableTableRow key={run.id}>
-                <UnstableTableCell>
-                  <Badge variant={STATUS_BADGE_MAP[run.status] || "info"}>{run.status}</Badge>
-                </UnstableTableCell>
-                <UnstableTableCell className="text-muted">{run.triggeredBy}</UnstableTableCell>
-                <UnstableTableCell className="text-muted">
-                  {run.startedAt ? format(new Date(run.startedAt), "MMM d, yyyy HH:mm") : "-"}
-                </UnstableTableCell>
-                <UnstableTableCell className="text-muted">
-                  {run.completedAt ? format(new Date(run.completedAt), "MMM d, yyyy HH:mm") : "-"}
-                </UnstableTableCell>
-                <UnstableTableCell>{run.resourcesDiscovered}</UnstableTableCell>
-                <UnstableTableCell>{run.accountsDiscovered}</UnstableTableCell>
-                <UnstableTableCell>{run.newSinceLastRun}</UnstableTableCell>
-                <UnstableTableCell>{run.staleSinceLastRun}</UnstableTableCell>
-              </UnstableTableRow>
-            ))}
+            runs.map((run) => {
+              const isExpanded = expandedRunId === run.id;
+              const hasDetails =
+                run.progress?.adEnumeration ||
+                run.progress?.dependencyScan ||
+                run.errorMessage ||
+                (run.progress?.machineErrors && Object.keys(run.progress.machineErrors).length > 0);
+
+              return (
+                <>
+                  <UnstableTableRow
+                    key={run.id}
+                    className={hasDetails ? "cursor-pointer" : undefined}
+                    onClick={
+                      hasDetails ? () => setExpandedRunId(isExpanded ? null : run.id) : undefined
+                    }
+                  >
+                    <UnstableTableCell>
+                      {hasDetails &&
+                        (isExpanded ? (
+                          <ChevronDownIcon className="size-4 text-muted" />
+                        ) : (
+                          <ChevronRightIcon className="size-4 text-muted" />
+                        ))}
+                    </UnstableTableCell>
+                    <UnstableTableCell className="text-muted">
+                      {run.startedAt ? format(new Date(run.startedAt), "MMM d, yyyy hh:mm a") : "-"}
+                    </UnstableTableCell>
+                    <UnstableTableCell className="text-muted">
+                      {formatDuration(run.startedAt, run.completedAt)}
+                    </UnstableTableCell>
+                    <UnstableTableCell className="text-muted capitalize">
+                      {run.triggeredBy}
+                    </UnstableTableCell>
+                    <UnstableTableCell>
+                      <Badge variant={STATUS_BADGE_MAP[run.status] || "info"}>{run.status}</Badge>
+                    </UnstableTableCell>
+                    <UnstableTableCell>{run.resourcesDiscovered}</UnstableTableCell>
+                    <UnstableTableCell>{run.accountsDiscovered}</UnstableTableCell>
+                    <UnstableTableCell className="text-green-400">
+                      {run.newSinceLastRun > 0 ? `+${run.newSinceLastRun}` : run.newSinceLastRun}
+                    </UnstableTableCell>
+                    <UnstableTableCell>{run.staleSinceLastRun}</UnstableTableCell>
+                  </UnstableTableRow>
+                  {isExpanded && (
+                    <UnstableTableRow key={`${run.id}-expanded`}>
+                      <UnstableTableCell colSpan={COL_COUNT} className="p-0">
+                        <RunExpandedContent
+                          progress={run.progress}
+                          errorMessage={run.errorMessage}
+                        />
+                      </UnstableTableCell>
+                    </UnstableTableRow>
+                  )}
+                </>
+              );
+            })}
         </UnstableTableBody>
       </UnstableTable>
       {Boolean(totalCount) && !isPending && (
@@ -286,11 +433,15 @@ const RunsTab = ({
 
 const ResourcesTab = ({
   discoverySourceId,
-  discoveryType
+  discoveryType,
+  projectId
 }: {
   discoverySourceId: string;
   discoveryType: PamDiscoveryType;
+  projectId: string;
 }) => {
+  const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
   const { page, perPage, setPage, setPerPage, offset } = usePagination("", {
     initPerPage: 20
   });
@@ -335,7 +486,21 @@ const ResourcesTab = ({
           )}
           {!isPending &&
             resources.map((resource) => (
-              <UnstableTableRow key={resource.id}>
+              <UnstableTableRow
+                key={resource.id}
+                className="cursor-pointer"
+                onClick={() =>
+                  navigate({
+                    to: "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId",
+                    params: {
+                      orgId: currentOrg.id,
+                      projectId,
+                      resourceType: resource.resourceType,
+                      resourceId: resource.resourceId
+                    }
+                  })
+                }
+              >
                 <UnstableTableCell className="font-medium">
                   {resource.resourceName}
                 </UnstableTableCell>
@@ -371,11 +536,15 @@ const ResourcesTab = ({
 
 const AccountsTab = ({
   discoverySourceId,
-  discoveryType
+  discoveryType,
+  projectId
 }: {
   discoverySourceId: string;
   discoveryType: PamDiscoveryType;
+  projectId: string;
 }) => {
+  const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
   const { page, perPage, setPage, setPerPage, offset } = usePagination("", {
     initPerPage: 20
   });
@@ -420,7 +589,22 @@ const AccountsTab = ({
           )}
           {!isPending &&
             accounts.map((account) => (
-              <UnstableTableRow key={account.id}>
+              <UnstableTableRow
+                key={account.id}
+                className="cursor-pointer"
+                onClick={() =>
+                  navigate({
+                    to: "/organizations/$orgId/projects/pam/$projectId/resources/$resourceType/$resourceId/accounts/$accountId",
+                    params: {
+                      orgId: currentOrg.id,
+                      projectId,
+                      resourceType: account.resourceType,
+                      resourceId: account.resourceId,
+                      accountId: account.accountId
+                    }
+                  })
+                }
+              >
                 <UnstableTableCell className="font-medium">{account.accountName}</UnstableTableCell>
                 <UnstableTableCell className="text-muted">{account.resourceName}</UnstableTableCell>
                 <UnstableTableCell className="text-muted">
@@ -631,10 +815,18 @@ const PageContent = () => {
               <RunsTab discoverySourceId={source.id} discoveryType={source.discoveryType} />
             </TabPanel>
             <TabPanel value="resources">
-              <ResourcesTab discoverySourceId={source.id} discoveryType={source.discoveryType} />
+              <ResourcesTab
+                discoverySourceId={source.id}
+                discoveryType={source.discoveryType}
+                projectId={projectId!}
+              />
             </TabPanel>
             <TabPanel value="accounts">
-              <AccountsTab discoverySourceId={source.id} discoveryType={source.discoveryType} />
+              <AccountsTab
+                discoverySourceId={source.id}
+                discoveryType={source.discoveryType}
+                projectId={projectId!}
+              />
             </TabPanel>
           </Tabs>
         </div>

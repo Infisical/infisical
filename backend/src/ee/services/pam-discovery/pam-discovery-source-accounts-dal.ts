@@ -27,7 +27,7 @@ export const pamDiscoverySourceAccountsDALFactory = (db: TDbClient) => {
       const countQuery = query.clone().count("*", { as: "count" }).first();
 
       void query.select(
-        selectAllTableCols(TableName.PamDiscoverySourceResource),
+        selectAllTableCols(TableName.PamDiscoverySourceAccount),
         db.ref("name").withSchema(TableName.PamAccount).as("accountName"),
         db.ref("resourceId").withSchema(TableName.PamAccount).as("resourceId"),
         db.ref("resourceType").withSchema(TableName.PamResource).as("resourceType"),
@@ -88,6 +88,20 @@ export const pamDiscoverySourceAccountsDALFactory = (db: TDbClient) => {
     }
   };
 
+  const countByDiscoverySourceIds = async (discoverySourceIds: string[], tx?: Knex) => {
+    try {
+      const rows = await (tx || db.replicaNode())(TableName.PamDiscoverySourceAccount)
+        .whereIn("discoverySourceId", discoverySourceIds)
+        .groupBy("discoverySourceId")
+        .select("discoverySourceId")
+        .count("*", { as: "count" });
+
+      return Object.fromEntries(rows.map((r) => [r.discoverySourceId, Number(r.count)]));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count PAM discovery source accounts by source IDs" });
+    }
+  };
+
   const markStaleForRun = async (discoverySourceId: string, runId: string, tx?: Knex) => {
     try {
       const knex = tx || db;
@@ -109,6 +123,7 @@ export const pamDiscoverySourceAccountsDALFactory = (db: TDbClient) => {
   return {
     ...orm,
     findByDiscoverySourceIdWithAccounts,
+    countByDiscoverySourceIds,
     upsertJunction,
     markStaleForRun
   };

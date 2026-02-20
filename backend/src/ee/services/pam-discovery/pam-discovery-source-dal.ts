@@ -102,7 +102,7 @@ export const pamDiscoverySourceDALFactory = (db: TDbClient) => {
           (tx || db.replicaNode())(TableName.PamDiscoveryRun)
             .select(db.raw("1"))
             .whereRaw(`"discoverySourceId" = ${TableName.PamDiscoverySource}."id"`)
-            .whereIn("status", [PamDiscoveryRunStatus.Pending, PamDiscoveryRunStatus.Running])
+            .where("status", PamDiscoveryRunStatus.Running)
         );
 
       return docs as TPamDiscoverySources[];

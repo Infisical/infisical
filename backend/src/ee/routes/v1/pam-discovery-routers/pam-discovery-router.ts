@@ -65,7 +65,12 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
       }),
       response: {
         200: z.object({
-          sources: SanitizedDiscoverySourcesSchema.array(),
+          sources: SanitizedDiscoverySourcesSchema.and(
+            z.object({
+              totalResources: z.number(),
+              totalAccounts: z.number()
+            })
+          ).array(),
           totalCount: z.number()
         })
       }

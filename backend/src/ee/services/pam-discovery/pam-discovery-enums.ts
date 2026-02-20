@@ -21,12 +21,9 @@ export enum PamDiscoveryOrderBy {
 
 // Discovery Runs
 export enum PamDiscoveryRunStatus {
-  Pending = "pending",
   Running = "running",
   Completed = "completed",
-  CompletedWithErrors = "completed_with_errors",
-  Failed = "failed",
-  Stopped = "stopped"
+  Failed = "failed"
 }
 
 export enum PamDiscoveryRunTrigger {
