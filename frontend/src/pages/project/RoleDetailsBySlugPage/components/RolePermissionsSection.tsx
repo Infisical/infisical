@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { MongoAbility, MongoQuery, RawRuleOf } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -6,7 +6,7 @@ import { SaveIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { AccessTree } from "@app/components/permissions";
-import { Button } from "@app/components/v3";
+import { Button, UnstableAccordion } from "@app/components/v3";
 import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 import { evaluatePermissionsAbility } from "@app/helpers/permissions";
@@ -145,9 +145,9 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
   const hasNativeIntegrations = integrations.length > 0;
 
   const [showAccessTree, setShowAccessTree] = useState<ProjectPermissionSub | null>(null);
+  const [openPolicies, setOpenPolicies] = useState<string[]>([]);
 
   const form = useForm<TFormSchema>({
-    values: role ? { ...role, permissions: rolePermission2Form(role.permissions) } : undefined,
     resolver: zodResolver(projectRoleFormSchema)
   });
 
@@ -156,6 +156,13 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
     formState: { isDirty, isSubmitting },
     reset
   } = form;
+
+  // This is to reset the form so that the form is not dirty when the role is loaded
+  useEffect(() => {
+    if (role) {
+      reset({ ...role, permissions: rolePermission2Form(role.permissions) });
+    }
+  }, [role, reset]);
 
   const { mutateAsync: updateRole } = useUpdateProjectRole();
 
@@ -202,6 +209,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
               <div className="flex items-center gap-2">
                 {isDirty && (
                   <Button
+                    type="button"
                     className="mr-4 text-muted"
                     variant="ghost"
                     disabled={isSubmitting}
@@ -227,36 +235,44 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
           <div className="flex flex-1 flex-col overflow-hidden px-4">
             <div className="thin-scrollbar flex-1 overflow-y-scroll py-4">
               {!isPending && <PermissionEmptyState />}
-              {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[])
-                .filter((subject) => !EXCLUDED_PERMISSION_SUBS.includes(subject))
-                .filter((subject) => ProjectTypePermissionSubjects[currentProject.type][subject])
-                .filter(
-                  (subject) =>
-                    // Hide Native Integrations policy if project has no integrations
-                    subject !== ProjectPermissionSub.Integrations || hasNativeIntegrations
-                )
-                .map((subject) => (
-                  <GeneralPermissionPolicies
-                    subject={subject}
-                    actions={PROJECT_PERMISSION_OBJECT[subject].actions}
-                    title={PROJECT_PERMISSION_OBJECT[subject].title}
-                    description={PROJECT_PERMISSION_OBJECT[subject].description}
-                    key={`project-permission-${subject}`}
-                    isDisabled={isDisabled}
-                    onShowAccessTree={
-                      [
-                        ProjectPermissionSub.Secrets,
-                        ProjectPermissionSub.SecretFolders,
-                        ProjectPermissionSub.DynamicSecrets,
-                        ProjectPermissionSub.SecretImports
-                      ].includes(subject)
-                        ? setShowAccessTree
-                        : undefined
-                    }
-                  >
-                    {renderConditionalComponents(subject, isDisabled)}
-                  </GeneralPermissionPolicies>
-                ))}
+              <UnstableAccordion
+                type="multiple"
+                value={openPolicies}
+                onValueChange={setOpenPolicies}
+                className="overflow-clip rounded-md border border-border bg-container hover:bg-container-hover"
+              >
+                {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[])
+                  .filter((subject) => !EXCLUDED_PERMISSION_SUBS.includes(subject))
+                  .filter((subject) => ProjectTypePermissionSubjects[currentProject.type][subject])
+                  .filter(
+                    (subject) =>
+                      // Hide Native Integrations policy if project has no integrations
+                      subject !== ProjectPermissionSub.Integrations || hasNativeIntegrations
+                  )
+                  .map((subject) => (
+                    <GeneralPermissionPolicies
+                      subject={subject}
+                      actions={PROJECT_PERMISSION_OBJECT[subject].actions}
+                      title={PROJECT_PERMISSION_OBJECT[subject].title}
+                      description={PROJECT_PERMISSION_OBJECT[subject].description}
+                      key={`project-permission-${subject}`}
+                      isDisabled={isDisabled}
+                      isOpen={openPolicies.includes(subject)}
+                      onShowAccessTree={
+                        [
+                          ProjectPermissionSub.Secrets,
+                          ProjectPermissionSub.SecretFolders,
+                          ProjectPermissionSub.DynamicSecrets,
+                          ProjectPermissionSub.SecretImports
+                        ].includes(subject)
+                          ? setShowAccessTree
+                          : undefined
+                      }
+                    >
+                      {renderConditionalComponents(subject, isDisabled)}
+                    </GeneralPermissionPolicies>
+                  ))}
+              </UnstableAccordion>
             </div>
           </div>
         </FormProvider>

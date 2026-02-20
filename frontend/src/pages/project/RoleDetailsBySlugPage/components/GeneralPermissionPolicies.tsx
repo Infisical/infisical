@@ -137,26 +137,20 @@ const ActionsMultiSelect = <T extends ProjectPermissionSub>({
   };
 
   return (
-    <Controller
-      control={control}
-      name={`permissions.${subject}.${rootIndex}` as any}
-      render={() => (
-        <FilterableSelect
-          isMulti
-          value={selectedActions}
-          onChange={handleChange}
-          options={actionOptions}
-          placeholder="Select actions..."
-          isDisabled={isDisabled}
-          isClearable={!isDisabled}
-          className="w-full"
-          menuPosition="fixed"
-          components={{
-            Option: OptionWithDescription,
-            MultiValueRemove
-          }}
-        />
-      )}
+    <FilterableSelect
+      isMulti
+      value={selectedActions}
+      onChange={handleChange}
+      options={actionOptions}
+      placeholder="Select actions..."
+      isDisabled={isDisabled}
+      isClearable={!isDisabled}
+      className="w-full"
+      menuPosition="fixed"
+      components={{
+        Option: OptionWithDescription,
+        MultiValueRemove
+      }}
     />
   );
 };
