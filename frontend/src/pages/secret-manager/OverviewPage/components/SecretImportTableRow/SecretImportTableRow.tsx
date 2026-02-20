@@ -520,7 +520,7 @@ export const SecretImportTableRow = ({
                 className="sticky left-0 flex flex-col gap-y-4 border-t-2 border-b-1 border-l-1 border-border border-x-project/50 bg-card p-4"
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm text-muted">Linked in:</span>
+                  <span className="text-sm text-muted">Imported in:</span>
                   {environments
                     .filter((env) => isSecretImportInEnv(importEnvSlug, importPath, env.slug))
                     .map(({ name: envName, slug }) => {
