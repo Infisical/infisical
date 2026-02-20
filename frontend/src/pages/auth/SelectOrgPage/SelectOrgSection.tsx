@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { faArrowRight, faChevronDown, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
+import { faArrowRight, faChevronRight, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import axios from "axios";
@@ -17,6 +17,7 @@ import { SessionStorageKeys } from "@app/const";
 import { OrgMembershipRole } from "@app/helpers/roles";
 import { useToggle } from "@app/hooks";
 import {
+  TOrgWithSubOrgs,
   useGetOrganizations,
   useGetOrganizationsWithSubOrgs,
   useGetUser,
@@ -41,7 +42,7 @@ export const SelectOrganizationSection = () => {
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
   const [requiredMfaMethod, setRequiredMfaMethod] = useState(MfaMethod.EMAIL);
   const [isInitialOrgCheckLoading, setIsInitialOrgCheckLoading] = useState(true);
-  const [expandedOrgs, setExpandedOrgs] = useState<Set<string>>(new Set());
+  const [selectedRootOrg, setSelectedRootOrg] = useState<TOrgWithSubOrgs | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
   const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
@@ -64,13 +65,6 @@ export const SelectOrganizationSection = () => {
     }
   }, [logout, navigate]);
 
-  // Expand all orgs when searching
-  useEffect(() => {
-    if (searchTerm && orgsWithSubOrgs.data) {
-      setExpandedOrgs(new Set(orgsWithSubOrgs.data.map((o) => o.id)));
-    }
-  }, [searchTerm, orgsWithSubOrgs.data]);
-
   const filteredOrgs = useMemo(() => {
     if (!orgsWithSubOrgs.data) return [];
     if (!searchTerm.trim()) return orgsWithSubOrgs.data;
@@ -90,17 +84,12 @@ export const SelectOrganizationSection = () => {
       }));
   }, [orgsWithSubOrgs.data, searchTerm]);
 
-  const toggleExpand = (id: string) => {
-    setExpandedOrgs((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
+  const filteredSubOrgs = useMemo(() => {
+    if (!selectedRootOrg) return [];
+    if (!searchTerm.trim()) return selectedRootOrg.subOrganizations;
+    const term = searchTerm.toLowerCase();
+    return selectedRootOrg.subOrganizations.filter((sub) => sub.name.toLowerCase().includes(term));
+  }, [selectedRootOrg, searchTerm]);
 
   const handleSelectOrganization = useCallback(
     async (organization: Organization) => {
@@ -374,40 +363,101 @@ export const SelectOrganizationSection = () => {
             </div>
           </div>
 
-          {/* Card: search + fixed-height list */}
+          {/* Card: search + breadcrumb + fixed-height list */}
           <div className="rounded-lg border-2 border-mineshaft-500 shadow-lg">
             <div className="border-b border-mineshaft-600 px-4 py-3">
               <Input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search organizations..."
+                placeholder={selectedRootOrg ? "Search sub-organizations..." : "Search organizations..."}
                 leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
                 className="h-10"
               />
             </div>
+
+            {/* Breadcrumb */}
+            {selectedRootOrg && (
+              <div className="border-b border-mineshaft-600 px-4 py-2">
+                <nav className="flex items-center gap-1.5 text-sm">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedRootOrg(null);
+                      setSearchTerm("");
+                    }}
+                    className="text-mineshaft-400 transition-colors hover:text-gray-200"
+                  >
+                    All organizations
+                  </button>
+                  <span className="text-mineshaft-600">›</span>
+                  <span className="font-medium text-gray-300">{selectedRootOrg.name}</span>
+                </nav>
+              </div>
+            )}
 
             <div className="max-h-96 overflow-y-auto p-2 thin-scrollbar">
               {orgsWithSubOrgs.isPending ? (
                 <div className="flex justify-center py-6">
                   <Spinner size="sm" />
                 </div>
+              ) : selectedRootOrg ? (
+                /* Drill-down: root org + its sub-orgs */
+                <div className="space-y-2">
+                  {/* Root org login row */}
+                  <div className="group flex h-14 cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-700 px-4 text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600">
+                    <div className="flex flex-col items-start">
+                      <p className="truncate">{selectedRootOrg.name}</p>
+                      <p className="text-xs text-mineshaft-400">Root organization</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleLoginById(selectedRootOrg.id)}
+                      aria-label="Login to root organization"
+                      className="text-gray-400 transition-all hover:text-primary-500 group-hover:text-primary-400"
+                    >
+                      <FontAwesomeIcon icon={faArrowRight} />
+                    </button>
+                  </div>
+
+                  {/* Sub-org rows */}
+                  {filteredSubOrgs.length === 0 ? (
+                    <p className="py-4 text-center text-sm text-mineshaft-400">
+                      No sub-organizations found
+                    </p>
+                  ) : (
+                    filteredSubOrgs.map((sub) => (
+                      <button
+                        key={sub.id}
+                        type="button"
+                        onClick={() => handleLoginById(sub.id)}
+                        className="group flex h-14 w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 text-gray-300 shadow-md transition-colors hover:bg-mineshaft-700"
+                      >
+                        <p className="truncate">{sub.name}</p>
+                        <FontAwesomeIcon
+                          icon={faArrowRight}
+                          className="text-gray-400 transition-all group-hover:translate-x-1 group-hover:text-primary-500"
+                        />
+                      </button>
+                    ))
+                  )}
+                </div>
               ) : filteredOrgs.length === 0 ? (
                 <p className="py-4 text-center text-sm text-mineshaft-400">
                   No organizations found
                 </p>
               ) : (
+                /* Default: root org list */
                 <div className="space-y-2">
                   {filteredOrgs.map((org) => {
                     const hasSubOrgs = org.subOrganizations.length > 0;
-                    const isExpanded = expandedOrgs.has(org.id);
+                    const isSearching = !!searchTerm.trim();
 
                     return (
                       <div key={org.id}>
-                        {/* Root org row */}
                         <div className="group flex h-14 cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-700 px-4 text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600">
                           <div className="flex flex-col items-start">
                             <p className="truncate transition-colors">{org.name}</p>
-                            {hasSubOrgs && (
+                            {hasSubOrgs && !isSearching && (
                               <p className="text-xs text-mineshaft-400">
                                 {org.subOrganizations.length} sub-organization
                                 {org.subOrganizations.length !== 1 ? "s" : ""}
@@ -423,26 +473,21 @@ export const SelectOrganizationSection = () => {
                             >
                               <FontAwesomeIcon icon={faArrowRight} />
                             </button>
-                            {hasSubOrgs && (
+                            {hasSubOrgs && !isSearching && (
                               <button
                                 type="button"
-                                onClick={() => toggleExpand(org.id)}
-                                aria-label={isExpanded ? "Collapse" : "Expand"}
+                                onClick={() => setSelectedRootOrg(org)}
+                                aria-label="View sub-organizations"
                                 className="flex size-5 shrink-0 items-center justify-center text-mineshaft-400 transition-colors hover:text-gray-200"
                               >
-                                <FontAwesomeIcon
-                                  icon={faChevronDown}
-                                  className={`text-xs transition-transform duration-200 ${
-                                    isExpanded ? "rotate-180" : ""
-                                  }`}
-                                />
+                                <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
                               </button>
                             )}
                           </div>
                         </div>
 
-                        {/* Sub-org rows — full row clickable */}
-                        {hasSubOrgs && isExpanded && (
+                        {/* Auto-expand sub-orgs when searching */}
+                        {isSearching && hasSubOrgs && (
                           <div className="mx-2 mt-1 space-y-1">
                             {org.subOrganizations.map((sub) => (
                               <button
