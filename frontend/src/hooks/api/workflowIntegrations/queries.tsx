@@ -29,15 +29,18 @@ export const workflowIntegrationKeys = {
 
 export const fetchSlackInstallUrl = async ({
   slug,
-  description
+  description,
+  isGovSlack
 }: {
   slug: string;
   description?: string;
+  isGovSlack?: boolean;
 }) => {
   const { data } = await apiRequest.get<string>("/api/v1/workflow-integrations/slack/install", {
     params: {
       slug,
-      description
+      description,
+      isGovSlack
     }
   });
 

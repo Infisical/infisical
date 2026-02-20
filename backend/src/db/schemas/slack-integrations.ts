@@ -19,7 +19,8 @@ export const SlackIntegrationsSchema = z.object({
   slackBotId: z.string(),
   slackBotUserId: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  isGovSlack: z.boolean().default(false)
 });
 
 export type TSlackIntegrations = z.infer<typeof SlackIntegrationsSchema>;

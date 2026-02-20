@@ -7,6 +7,7 @@ import { TKmsServiceFactory } from "../kms/kms-service";
 export type TGetSlackInstallUrlDTO = {
   slug: string;
   description?: string;
+  isGovSlack?: boolean;
 } & Omit<TOrgPermission, "orgId">;
 
 export type TGetReinstallUrlDTO = {
@@ -39,6 +40,7 @@ export type TCompleteSlackIntegrationDTO = {
   botAccessToken: string;
   slackBotId: string;
   slackBotUserId: string;
+  isGovSlack?: boolean;
 };
 
 export type TReinstallSlackIntegrationDTO = {

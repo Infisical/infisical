@@ -8,6 +8,8 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
+import { booleanSchema } from "../sanitizedSchemas";
+
 const sanitizedSlackIntegrationSchema = WorkflowIntegrationsSchema.pick({
   id: true,
   description: true,
@@ -37,7 +39,8 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
       ],
       querystring: z.object({
         slug: slugSchema({ max: 64 }),
-        description: z.string().optional()
+        description: z.string().optional(),
+        isGovSlack: booleanSchema.default(false).optional()
       }),
       response: {
         200: z.string()
@@ -333,6 +336,26 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req, res) => {
       const installer = await server.services.slack.getSlackInstaller();
+
+      return installer.handleCallback(req.raw, res.raw, {
+        failureAsync: async () => {
+          return res.redirect(appCfg.SITE_URL as string);
+        },
+        successAsync: async () => {
+          return res.redirect(`${appCfg.SITE_URL}/organization/settings?selectedTab=workflow-integrations`);
+        }
+      });
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/oauth_redirect_gov",
+    config: {
+      rateLimit: readLimit
+    },
+    handler: async (req, res) => {
+      const installer = await server.services.slack.getSlackInstaller(true);
 
       return installer.handleCallback(req.raw, res.raw, {
         failureAsync: async () => {

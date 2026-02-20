@@ -101,6 +101,10 @@ let adminIntegrationsConfig: TAdminIntegrationConfig = {
     clientSecret: "",
     clientId: ""
   },
+  govSlack: {
+    clientSecret: "",
+    clientId: ""
+  },
   microsoftTeams: {
     appId: "",
     clientSecret: "",
@@ -207,6 +211,13 @@ export const superAdminServiceFactory = ({
       ? decrypt(serverCfg.encryptedSlackClientSecret).toString()
       : "";
 
+    const govSlackClientId = serverCfg.encryptedGovSlackClientId
+      ? decrypt(serverCfg.encryptedGovSlackClientId).toString()
+      : "";
+    const govSlackClientSecret = serverCfg.encryptedGovSlackClientSecret
+      ? decrypt(serverCfg.encryptedGovSlackClientSecret).toString()
+      : "";
+
     const microsoftAppId = serverCfg.encryptedMicrosoftTeamsAppId
       ? decrypt(serverCfg.encryptedMicrosoftTeamsAppId).toString()
       : "";
@@ -239,6 +250,10 @@ export const superAdminServiceFactory = ({
       slack: {
         clientSecret: slackClientSecret,
         clientId: slackClientId
+      },
+      govSlack: {
+        clientSecret: govSlackClientSecret,
+        clientId: govSlackClientId
       },
       microsoftTeams: {
         appId: microsoftAppId,
@@ -305,6 +320,8 @@ export const superAdminServiceFactory = ({
     data: TSuperAdminUpdate & {
       slackClientId?: string;
       slackClientSecret?: string;
+      govSlackClientId?: string;
+      govSlackClientSecret?: string;
       microsoftTeamsAppId?: string;
       microsoftTeamsClientSecret?: string;
       microsoftTeamsBotId?: string;
@@ -379,6 +396,20 @@ export const superAdminServiceFactory = ({
 
       updatedData.encryptedSlackClientSecret = encryptedClientSecret;
       updatedData.slackClientSecret = undefined;
+    }
+
+    if (data.govSlackClientId) {
+      const encryptedClientId = encryptWithRoot(Buffer.from(data.govSlackClientId));
+
+      updatedData.encryptedGovSlackClientId = encryptedClientId;
+      updatedData.govSlackClientId = undefined;
+    }
+
+    if (data.govSlackClientSecret) {
+      const encryptedClientSecret = encryptWithRoot(Buffer.from(data.govSlackClientSecret));
+
+      updatedData.encryptedGovSlackClientSecret = encryptedClientSecret;
+      updatedData.govSlackClientSecret = undefined;
     }
 
     let microsoftTeamsSettingsUpdated = false;

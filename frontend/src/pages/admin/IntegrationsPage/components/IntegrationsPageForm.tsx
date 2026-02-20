@@ -5,6 +5,7 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { useGetAdminIntegrationsConfig } from "@app/hooks/api";
 import { AdminIntegrationsConfig } from "@app/hooks/api/admin/types";
 
+import { GovSlackIntegrationForm } from "./GovSlackIntegrationForm";
 import { MicrosoftTeamsIntegrationForm } from "./MicrosoftTeamsIntegrationForm";
 import { SlackIntegrationForm } from "./SlackIntegrationForm";
 
@@ -19,6 +20,7 @@ interface WorkflowTabProps {
 const WorkflowTab = ({ adminIntegrationsConfig }: WorkflowTabProps) => (
   <div className="flex flex-col gap-2">
     <SlackIntegrationForm adminIntegrationsConfig={adminIntegrationsConfig} />
+    <GovSlackIntegrationForm adminIntegrationsConfig={adminIntegrationsConfig} />
     <MicrosoftTeamsIntegrationForm adminIntegrationsConfig={adminIntegrationsConfig} />
   </div>
 );

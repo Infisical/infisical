@@ -78,6 +78,8 @@ export type TServerConfig = {
 export type TUpdateServerConfigDTO = {
   slackClientId?: string;
   slackClientSecret?: string;
+  govSlackClientId?: string;
+  govSlackClientSecret?: string;
   microsoftTeamsAppId?: string;
   microsoftTeamsClientSecret?: string;
   microsoftTeamsBotId?: string;
@@ -117,6 +119,10 @@ export type AdminGetIdentitiesFilters = {
 
 export type AdminIntegrationsConfig = {
   slack: {
+    clientId: string;
+    clientSecret: string;
+  };
+  govSlack: {
     clientId: string;
     clientSecret: string;
   };
