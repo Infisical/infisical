@@ -11,7 +11,6 @@ import {
   decryptAppConnectionCredentials,
   encryptAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-fns";
-import { AzureKeyVaultConnectionMethod } from "@app/services/app-connection/azure-key-vault/azure-key-vault-connection-enums";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnection } from "../app-connection-types";
@@ -31,24 +30,22 @@ import {
   parseRotationErrorMessage
 } from "./app-connection-credential-rotation-fns";
 import {
-  TAppConnectionCredentialRotationGeneratedCredentials,
-  TAzureClientSecretStrategyConfig,
+  TAppConnectionCredentialRotationStrategyConfig,
   TCreateAppConnectionCredentialRotationDTO,
+  TCredentialRotationProvider,
   TTriggerAppConnectionCredentialRotationDTO,
   TUpdateAppConnectionCredentialRotationDTO
 } from "./app-connection-credential-rotation-types";
-import {
-  createAzureClientSecret,
-  getApplicationObjectId,
-  listAzurePasswordCredentials,
-  revokeAzureClientSecret,
-  validateAzureClientSecretRotationConfig
-} from "./providers/azure-client-secret-credential-rotation";
+import { azureClientSecretRotationProvider } from "./providers/azure-client-secret-credential-rotation";
 
 const MAX_GENERATED_CREDENTIALS_LENGTH = 2;
 
 const STRATEGY_MAP: Record<string, AppConnectionCredentialRotationStrategy> = {
   [AppConnection.AzureKeyVault]: AppConnectionCredentialRotationStrategy.AzureClientSecret
+};
+
+const CREDENTIAL_ROTATION_PROVIDER_MAP: Record<AppConnectionCredentialRotationStrategy, TCredentialRotationProvider> = {
+  [AppConnectionCredentialRotationStrategy.AzureClientSecret]: azureClientSecretRotationProvider
 };
 
 export type TAppConnectionCredentialRotationServiceFactoryDep = {
@@ -71,42 +68,31 @@ export const appConnectionCredentialRotationServiceFactory = ({
   queueService
 }: TAppConnectionCredentialRotationServiceFactoryDep) => {
   /**
-   * Decrypt connection credentials and extract clientId, clientSecret, tenantId.
+   * Decrypt connection credentials.
    */
   const getConnectionClientCredentials = async (connection: {
     orgId: string;
     encryptedCredentials: Buffer;
     projectId?: string | null;
-  }) => {
-    const credentials = (await decryptAppConnectionCredentials({
+  }): Promise<Record<string, unknown>> => {
+    return decryptAppConnectionCredentials({
       orgId: connection.orgId,
       encryptedCredentials: connection.encryptedCredentials,
       kmsService,
       projectId: connection.projectId
-    })) as { clientId: string; clientSecret: string; tenantId: string; applicationObjectId?: string };
-
-    return credentials;
+    }) as Promise<Record<string, unknown>>;
   };
 
   /**
-   * Update the connection's stored credentials with a new client secret and optionally save applicationObjectId.
+   * Update the connection's stored credentials.
    */
   const updateConnectionCredentials = async (
     connectionId: string,
-    newClientSecret: string,
-    applicationObjectId?: string,
+    updatedCredentials: TAppConnection["credentials"],
     tx?: Knex
   ) => {
     const connection = await appConnectionDAL.findById(connectionId, tx);
     if (!connection) throw new NotFoundError({ message: `Connection ${connectionId} not found` });
-
-    const credentials = await getConnectionClientCredentials(connection);
-
-    const updatedCredentials = {
-      ...credentials,
-      clientSecret: newClientSecret,
-      ...(applicationObjectId && { applicationObjectId })
-    } as TAppConnection["credentials"];
 
     const encryptedCredentials = await encryptAppConnectionCredentials({
       orgId: connection.orgId,
@@ -115,13 +101,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
       projectId: connection.projectId
     });
 
-    await appConnectionDAL.updateById(
-      connectionId,
-      {
-        encryptedCredentials
-      },
-      tx
-    );
+    await appConnectionDAL.updateById(connectionId, { encryptedCredentials }, tx);
   };
 
   /**
@@ -134,22 +114,14 @@ export const appConnectionCredentialRotationServiceFactory = ({
     const connection = await appConnectionDAL.findById(connectionId, tx);
     if (!connection) throw new NotFoundError({ message: `Connection ${connectionId} not found` });
 
-    // Validate connection type supports rotation
-    if (connection.app !== AppConnection.AzureKeyVault) {
-      throw new BadRequestError({ message: "Credential rotation is only supported for Azure Key Vault connections" });
-    }
-
-    if (connection.method !== AzureKeyVaultConnectionMethod.ClientSecret) {
-      throw new BadRequestError({
-        message: "Credential rotation is only supported for Client Secret auth method"
-      });
-    }
-
     // Auto-infer strategy from connection type
     const strategy = STRATEGY_MAP[connection.app];
     if (!strategy) {
-      throw new BadRequestError({ message: `No rotation strategy available for ${connection.app} connections` });
+      throw new BadRequestError({ message: `Credential rotation is not supported for ${connection.app} connections` });
     }
+
+    const provider = CREDENTIAL_ROTATION_PROVIDER_MAP[strategy];
+    provider.validateConnectionMethod(connection.method);
 
     // Check if rotation config already exists
     const existingRotation = await appConnectionCredentialRotationDAL.findByConnectionId(connectionId, tx);
@@ -160,35 +132,13 @@ export const appConnectionCredentialRotationServiceFactory = ({
     // Get the connection's own credentials for self-rotation
     const credentials = await getConnectionClientCredentials(connection);
 
-    // Auto-detect applicationObjectId if not already stored
-    let { applicationObjectId } = credentials;
-    if (!applicationObjectId) {
-      applicationObjectId = await getApplicationObjectId(credentials);
-    }
+    const { strategyConfig, generatedCredentials, updatedCredentials } = await provider.issueInitialCredentials(
+      credentials,
+      rotationInterval
+    );
 
-    const strategyConfig: TAzureClientSecretStrategyConfig = { objectId: applicationObjectId };
-
-    // Validate strategy config (check objectId is accessible via Graph API)
-    await validateAzureClientSecretRotationConfig(strategyConfig, credentials);
-
-    // List existing password credentials before creating a new one, so we can track the original
-    const existingCredentials = await listAzurePasswordCredentials(strategyConfig, credentials);
-
-    // Perform initial credential issuance
-    const newCredential = await createAzureClientSecret(strategyConfig, credentials, rotationInterval, 0);
-
-    // Update the connection to use the new credential and save applicationObjectId
-    await updateConnectionCredentials(connectionId, newCredential.clientSecret, applicationObjectId, tx);
-
-    // Track the original credential at index 1 so it gets revoked on the first rotation cycle.
-    // This maintains the dual-credential pattern: two active secrets at all times for zero downtime.
-    const originalCredential = existingCredentials.find((cred) => cred.keyId !== newCredential.keyId);
-    const generatedCredentials: TAppConnectionCredentialRotationGeneratedCredentials = [
-      newCredential,
-      originalCredential
-        ? { keyId: originalCredential.keyId, clientSecret: credentials.clientSecret, createdAt: "" }
-        : null
-    ];
+    // Update the connection to use the new credential
+    await updateConnectionCredentials(connectionId, updatedCredentials as TAppConnection["credentials"], tx);
 
     const now = new Date();
 
@@ -398,7 +348,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
         const credentials = await getConnectionClientCredentials(connection);
 
         // Decrypt strategy config and generated credentials
-        const config = await decryptStrategyConfig<TAzureClientSecretStrategyConfig>({
+        const config = await decryptStrategyConfig<TAppConnectionCredentialRotationStrategyConfig>({
           orgId,
           encryptedStrategyConfig: encryptedConfig,
           kmsService
@@ -410,25 +360,31 @@ export const appConnectionCredentialRotationServiceFactory = ({
           kmsService
         });
 
+        const provider = CREDENTIAL_ROTATION_PROVIDER_MAP[strategy as AppConnectionCredentialRotationStrategy];
+
         // Two-credential rotation: create-first, revoke-after.
         // This ordering ensures that if create fails, we still have 2 valid secrets.
         const inactiveIndex = (activeIndex + 1) % MAX_GENERATED_CREDENTIALS_LENGTH;
         const inactiveCredential = generatedCredentials[inactiveIndex];
 
         // Step 1: Create new credential first (safe — worst case we have 3 secrets temporarily)
-        const newCredential = await createAzureClientSecret(config, credentials, rotationInterval, inactiveIndex);
+        const newCredential = await provider.createCredential(config, credentials, rotationInterval, inactiveIndex);
 
         // Step 2: Update connection credentials with new secret
-        await updateConnectionCredentials(connectionId, newCredential.clientSecret);
+        const updatedCredentials = provider.mergeCredentials(
+          credentials,
+          newCredential
+        ) as TAppConnection["credentials"];
+        await updateConnectionCredentials(connectionId, updatedCredentials);
 
         // Step 3: Revoke old credential at inactive index (best-effort, non-fatal)
-        // If this fails, we have 3 secrets on Azure temporarily — they'll be cleaned up on the next cycle.
-        if (inactiveCredential?.keyId) {
+        // If this fails, we have 3 secrets temporarily — they'll be cleaned up on the next cycle.
+        if (inactiveCredential) {
           try {
             logger.info(
               `credentialRotation: Revoking old credential keyId=${inactiveCredential.keyId} at index=${inactiveIndex} [rotationId=${rotationId}]`
             );
-            await revokeAzureClientSecret(inactiveCredential.keyId, config, credentials);
+            await provider.revokeCredential(inactiveCredential, config, credentials);
           } catch (revokeError) {
             logger.warn(
               revokeError,

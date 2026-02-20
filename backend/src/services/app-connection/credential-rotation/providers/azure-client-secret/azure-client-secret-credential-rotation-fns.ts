@@ -4,10 +4,13 @@ import { AxiosError } from "axios";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { AzureKeyVaultConnectionMethod } from "@app/services/app-connection/azure-key-vault/azure-key-vault-connection-enums";
 
 import {
+  TAppConnectionCredentialRotationGeneratedCredentials,
   TAzureClientSecretGeneratedCredential,
-  TAzureClientSecretStrategyConfig
+  TAzureClientSecretStrategyConfig,
+  TCredentialRotationProvider
 } from "../app-connection-credential-rotation-types";
 
 const GRAPH_API_BASE = "https://graph.microsoft.com/v1.0";
@@ -331,5 +334,66 @@ export const revokeAzureClientSecret = async (
     }
 
     parseAzureError(error, `Failed to revoke client secret keyId=${keyId} from app ${config.objectId}`);
+  }
+};
+
+export const azureClientSecretRotationProvider: TCredentialRotationProvider = {
+  validateConnectionMethod(method: string) {
+    if (method !== AzureKeyVaultConnectionMethod.ClientSecret) {
+      throw new BadRequestError({
+        message: "Credential rotation is only supported for Client Secret auth method"
+      });
+    }
+  },
+
+  async issueInitialCredentials(credentials, rotationInterval) {
+    const azureCredentials = credentials as {
+      clientId: string;
+      clientSecret: string;
+      tenantId: string;
+      applicationObjectId?: string;
+    };
+    let { applicationObjectId } = azureCredentials;
+    if (!applicationObjectId) {
+      applicationObjectId = await getApplicationObjectId(azureCredentials);
+    }
+    const strategyConfig: TAzureClientSecretStrategyConfig = { objectId: applicationObjectId };
+    await validateAzureClientSecretRotationConfig(strategyConfig, azureCredentials);
+    const existingCreds = await listAzurePasswordCredentials(strategyConfig, azureCredentials);
+    const newCredential = await createAzureClientSecret(strategyConfig, azureCredentials, rotationInterval, 0);
+    const originalCredential = existingCreds.find((c) => c.keyId !== newCredential.keyId);
+    const generatedCredentials: TAppConnectionCredentialRotationGeneratedCredentials = [
+      newCredential,
+      originalCredential
+        ? { keyId: originalCredential.keyId, clientSecret: azureCredentials.clientSecret, createdAt: "" }
+        : null
+    ];
+    return {
+      strategyConfig,
+      generatedCredentials,
+      updatedCredentials: { ...azureCredentials, clientSecret: newCredential.clientSecret, applicationObjectId }
+    };
+  },
+
+  async createCredential(strategyConfig, credentials, rotationInterval, inactiveIndex) {
+    return createAzureClientSecret(
+      strategyConfig,
+      credentials as { clientId: string; clientSecret: string; tenantId: string; applicationObjectId?: string },
+      rotationInterval,
+      inactiveIndex
+    );
+  },
+
+  mergeCredentials(currentCredentials, newCredential) {
+    return { ...currentCredentials, clientSecret: newCredential.clientSecret };
+  },
+
+  async revokeCredential(inactiveCredential, strategyConfig, credentials) {
+    if (!inactiveCredential?.keyId) return;
+    await revokeAzureClientSecret(
+      inactiveCredential.keyId,
+      strategyConfig,
+      credentials as { clientId: string; clientSecret: string; tenantId: string }
+    );
   }
 };
