@@ -128,6 +128,10 @@ export const secretImportServiceFactory = ({
       });
     }
 
+    if (environment === data.environment && secretPath === data.path) {
+      throw new BadRequestError({ message: "Cyclic import not allowed" });
+    }
+
     const sourceFolder = await folderDAL.findBySecretPath(projectId, data.environment, data.path);
     if (sourceFolder) {
       const existingImport = await secretImportDAL.findOne({
