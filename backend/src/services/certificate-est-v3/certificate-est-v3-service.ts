@@ -143,7 +143,7 @@ export const certificateEstV3ServiceFactory = ({
     const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
     const ttl = resolveEffectiveTtl({
       requestTtl: undefined, // EST doesn't accept TTL in request
-      profileDefaultTtlDays: profile.defaultTtlDays,
+      profileDefaultTtlDays: profile.defaults?.ttlDays,
       policyMaxValidity: policy?.validity?.max,
       flowDefaultTtl: "90d"
     });
@@ -279,7 +279,7 @@ export const certificateEstV3ServiceFactory = ({
     const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
     const ttl = resolveEffectiveTtl({
       requestTtl: undefined, // EST doesn't accept TTL in request
-      profileDefaultTtlDays: profile.defaultTtlDays,
+      profileDefaultTtlDays: profile.defaults?.ttlDays,
       policyMaxValidity: policy?.validity?.max,
       flowDefaultTtl: "90d"
     });
