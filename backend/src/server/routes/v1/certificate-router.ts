@@ -228,7 +228,12 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           signatureAlgorithm: attributes?.signatureAlgorithm,
           keyAlgorithm: attributes?.keyAlgorithm,
           csr,
-          basicConstraints: attributes?.basicConstraints
+          basicConstraints: attributes?.basicConstraints,
+          organization: attributes?.organization ?? undefined,
+          organizationalUnit: attributes?.organizationalUnit ?? undefined,
+          country: attributes?.country ?? undefined,
+          state: attributes?.state ?? undefined,
+          locality: attributes?.locality ?? undefined
         };
 
         const data = await server.services.certificateV3.orderCertificateFromProfile({

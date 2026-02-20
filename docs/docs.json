@@ -778,7 +778,8 @@
                   "documentation/platform/pki/ca/acme-ca",
                   "documentation/platform/pki/ca/lets-encrypt",
                   "documentation/platform/pki/ca/digicert",
-                  "documentation/platform/pki/ca/azure-adcs"
+                  "documentation/platform/pki/ca/azure-adcs",
+                  "documentation/platform/pki/ca/aws-pca"
                 ]
               }
             ]
@@ -2744,6 +2745,16 @@
                       "api-reference/endpoints/certificate-authorities/acme/read",
                       "api-reference/endpoints/certificate-authorities/acme/update",
                       "api-reference/endpoints/certificate-authorities/acme/delete"
+                    ]
+                  },
+                  {
+                    "group": "AWS PCA",
+                    "pages": [
+                      "api-reference/endpoints/certificate-authorities/aws-pca/list",
+                      "api-reference/endpoints/certificate-authorities/aws-pca/create",
+                      "api-reference/endpoints/certificate-authorities/aws-pca/read",
+                      "api-reference/endpoints/certificate-authorities/aws-pca/update",
+                      "api-reference/endpoints/certificate-authorities/aws-pca/delete"
                     ]
                   },
                   {

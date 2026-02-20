@@ -938,7 +938,8 @@ export const pkiAcmeServiceFactory = ({
         signatureAlgorithm: updatedCertificateRequest.signatureAlgorithm || "",
         keyAlgorithm: updatedCertificateRequest.keyAlgorithm || "",
         commonName: updatedCertificateRequest.commonName || "",
-        altNames: updatedCertificateRequest.subjectAlternativeNames?.map((san) => san.value) || [],
+        altNames:
+          updatedCertificateRequest.subjectAlternativeNames?.map((san) => ({ type: san.type, value: san.value })) || [],
         keyUsages: updatedCertificateRequest.keyUsages?.map((usage) => usage.toString()) ?? [],
         extendedKeyUsages: updatedCertificateRequest.extendedKeyUsages?.map((usage) => usage.toString()) ?? [],
         certificateRequestId: certRequest.id,
