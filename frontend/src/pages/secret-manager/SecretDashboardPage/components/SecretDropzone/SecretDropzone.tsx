@@ -13,7 +13,8 @@ import {
   parseCsvToMatrix,
   parseDotEnv,
   parseJson,
-  parseYaml
+  parseYaml,
+  VALID_KEY_REGEX
 } from "@app/components/utilities/parseSecrets";
 import {
   Button,
@@ -372,7 +373,7 @@ export const SecretDropzone = ({
     const env: TParsedEnv = {};
     matrix.forEach((row) => {
       const key = row[importSecretMatrixMap.key];
-      if (key) {
+      if (key && VALID_KEY_REGEX.test(key)) {
         env[key] = {
           value: importSecretMatrixMap.value ? row[importSecretMatrixMap.value] : "",
           comments: importSecretMatrixMap.comment ? [row[importSecretMatrixMap.comment]] : []
@@ -561,9 +562,9 @@ export const SecretDropzone = ({
                 popUp.importMatrixMap.data?.matrix
                   ? finishMappedMatrixImport(popUp.importMatrixMap.data?.matrix)
                   : createNotification({
-                      text: "Invalid secret matrix.",
-                      type: "error"
-                    })
+                    text: "Invalid secret matrix.",
+                    type: "error"
+                  })
               }
               isFullWidth
               variant="outline_bg"
