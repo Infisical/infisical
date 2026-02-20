@@ -5,7 +5,11 @@ import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
+import {
+  CertExtendedKeyUsage,
+  CertKeyUsage,
+  CertSubjectAlternativeNameType
+} from "@app/services/certificate/certificate-types";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -396,7 +400,7 @@ export const certificateIssuanceQueueFactory = ({
           caId,
           profileId,
           commonName: commonName || "",
-          altNames: altNames || [],
+          altNames: (altNames || []) as Array<{ type: CertSubjectAlternativeNameType; value: string }>,
           keyUsages: keyUsages as CertKeyUsage[],
           extendedKeyUsages: extendedKeyUsages as CertExtendedKeyUsage[],
           validity: { ttl },

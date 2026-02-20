@@ -34,8 +34,9 @@ import {
   CertKeyAlgorithm,
   CertKeyUsage,
   CertStatus,
+  CertSubjectAlternativeNameType,
   CrlReason,
-  TAltNameType
+  mapSanTypeToX509Type
 } from "@app/services/certificate/certificate-types";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -47,9 +48,9 @@ import { CaStatus, CaType } from "../certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import {
+  API_CSR_PASSTHROUGH_TEMPLATE_ARN,
   CA_KEY_ALGORITHM_TO_SIGNING_ALGORITHM_MAP,
-  CRL_REASON_TO_REVOCATION_REASON_MAP,
-  CSR_PASSTHROUGH_TEMPLATE_ARN
+  CRL_REASON_TO_REVOCATION_REASON_MAP
 } from "./aws-pca-certificate-authority-enums";
 import {
   TAwsPcaCertificateAuthority,
@@ -58,7 +59,7 @@ import {
 } from "./aws-pca-certificate-authority-types";
 
 const base64UrlToBase64 = (base64url: string): string => {
-  let base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
+  let base64 = base64url.replace(new RE2(/-/g), "+").replace(new RE2(/_/g), "/");
 
   const padding = base64.length % 4;
   if (padding === 2) {
@@ -84,23 +85,6 @@ const ensureCsrPemFormat = (csr: string): string => {
 
   const base64Lines = standardBase64.match(new RE2(".{1,64}", "g")) || [standardBase64];
   return `-----BEGIN CERTIFICATE REQUEST-----\n${base64Lines.join("\n")}\n-----END CERTIFICATE REQUEST-----`;
-};
-
-/**
- * Maps CertSubjectAlternativeNameType values to x509 TAltNameType values.
- */
-const sanTypeToX509Type = (sanType: string): TAltNameType => {
-  switch (sanType) {
-    case "ip_address":
-      return "ip" as TAltNameType;
-    case "email":
-      return "email" as TAltNameType;
-    case "uri":
-      return "url" as TAltNameType;
-    case "dns_name":
-    default:
-      return "dns" as TAltNameType;
-  }
 };
 
 const parseTtlToDays = (ttl: string): number => {
@@ -553,7 +537,7 @@ export const AwsPcaCertificateAuthorityFns = ({
     caId: string;
     profileId: string;
     commonName: string;
-    altNames?: Array<{ type: string; value: string }>;
+    altNames?: Array<{ type: CertSubjectAlternativeNameType; value: string }>;
     keyUsages?: CertKeyUsage[];
     extendedKeyUsages?: CertExtendedKeyUsage[];
     validity: { ttl: string };
@@ -614,10 +598,12 @@ export const AwsPcaCertificateAuthorityFns = ({
       // Build CSR extensions
       const extensions: x509.Extension[] = [];
       if (altNames && altNames.length > 0) {
+        // RFC 5280: SAN must be critical when the subject is empty
+        const isSanCritical = !commonName;
         extensions.push(
           new x509.SubjectAlternativeNameExtension(
-            altNames.map((san) => ({ type: sanTypeToX509Type(san.type), value: san.value })),
-            false
+            altNames.map((san) => ({ type: mapSanTypeToX509Type(san.type), value: san.value })),
+            isSanCritical
           )
         );
       }
@@ -675,12 +661,35 @@ export const AwsPcaCertificateAuthorityFns = ({
       validityDays = parseTtlToDays(validity.ttl);
     }
 
+    const sanToGeneralName = (san: { type: CertSubjectAlternativeNameType; value: string }) => {
+      switch (san.type) {
+        case CertSubjectAlternativeNameType.DNS_NAME:
+          return { DnsName: san.value };
+        case CertSubjectAlternativeNameType.IP_ADDRESS:
+          return { IpAddress: san.value };
+        case CertSubjectAlternativeNameType.EMAIL:
+          return { Rfc822Name: san.value };
+        case CertSubjectAlternativeNameType.URI:
+          return { UniformResourceIdentifier: san.value };
+        default:
+          return { DnsName: san.value };
+      }
+    };
+
     const issueResult = await pcaClient.send(
       new IssueCertificateCommand({
         CertificateAuthorityArn: certificateAuthorityArn,
         Csr: Buffer.from(csrPem),
         SigningAlgorithm: awsSigningAlgorithm,
-        TemplateArn: CSR_PASSTHROUGH_TEMPLATE_ARN,
+        TemplateArn: API_CSR_PASSTHROUGH_TEMPLATE_ARN,
+        ...(altNames &&
+          altNames.length > 0 && {
+            ApiPassthrough: {
+              Extensions: {
+                SubjectAlternativeNames: altNames.map(sanToGeneralName)
+              }
+            }
+          }),
         Validity: {
           Type: ValidityPeriodType.DAYS,
           Value: validityDays

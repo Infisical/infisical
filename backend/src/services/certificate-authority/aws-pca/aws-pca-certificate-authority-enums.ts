@@ -34,7 +34,10 @@ export const CRL_REASON_TO_REVOCATION_REASON_MAP: Record<CrlReason, RevocationRe
 };
 
 /**
- * The CSR passthrough template ARN for AWS PCA.
- * This template passes through all CSR extensions to the issued certificate.
+ * The API+CSR passthrough template ARN for AWS PCA.
+ * Extensions supplied via the ApiPassthrough parameter take precedence over
+ * those in the CSR, which lets us control SAN criticality (RFC 5280 requires
+ * SANs to be critical when the subject is empty — e.g. certbot CSRs).
  */
-export const CSR_PASSTHROUGH_TEMPLATE_ARN = "arn:aws:acm-pca:::template/BlankEndEntityCertificate_CSRPassthrough/V1";
+export const API_CSR_PASSTHROUGH_TEMPLATE_ARN =
+  "arn:aws:acm-pca:::template/BlankEndEntityCertificate_APICSRPassthrough/V1";
