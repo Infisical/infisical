@@ -29,7 +29,7 @@ export const SecretImportSecretRow = ({
     <UnstableTableRow className="group">
       <UnstableTableCell isTruncatable>
         <div className="flex items-center gap-1.5">
-          {secretKey}
+          <span className="truncate">{secretKey}</span>
           {missingFromEnvs && missingFromEnvs.length > 0 && (
             <Tooltip>
               <TooltipTrigger asChild>
