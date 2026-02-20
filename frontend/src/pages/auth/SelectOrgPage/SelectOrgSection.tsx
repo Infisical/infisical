@@ -386,41 +386,50 @@ export const SelectOrganizationSection = () => {
           const hasSubOrgs = org.subOrganizations.length > 0;
           return (
             <div key={org.id}>
-              <div className="group flex h-14 overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-700 text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600">
-                {/* Main login area */}
+              {hasSubOrgs && !isSearching ? (
+                /* Org with sub-orgs: absolute login button + pointer-events-none content layer */
+                <div className="group relative rounded-md border border-mineshaft-600 bg-mineshaft-700 text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600">
+                  <button
+                    type="button"
+                    onClick={() => handleLoginById(org.id)}
+                    aria-label={`Login to ${org.name}`}
+                    className="absolute inset-0 z-0 rounded-md"
+                  />
+                  <div className="pointer-events-none relative z-10 flex items-center justify-between px-4 py-3">
+                    <div className="flex flex-col gap-1.5">
+                      <p className="truncate transition-colors">{org.name}</p>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedRootOrg(org)}
+                        aria-label={`View sub-organizations of ${org.name}`}
+                        className="pointer-events-auto flex w-fit items-center gap-1 rounded-full bg-mineshaft-600 px-2 py-0.5 text-xs text-mineshaft-300 transition-colors hover:bg-mineshaft-500 hover:text-gray-200"
+                      >
+                        {org.subOrganizations.length} sub-organization
+                        {org.subOrganizations.length !== 1 ? "s" : ""}
+                        <FontAwesomeIcon icon={faChevronRight} className="text-[10px]" />
+                      </button>
+                    </div>
+                    <FontAwesomeIcon
+                      icon={faArrowRight}
+                      className="text-gray-400 transition-all group-hover:text-primary-400"
+                    />
+                  </div>
+                </div>
+              ) : (
+                /* Org without sub-orgs: simple full-row login button */
                 <button
                   type="button"
                   onClick={() => handleLoginById(org.id)}
                   aria-label={`Login to ${org.name}`}
-                  className="flex flex-1 items-center justify-between px-4"
+                  className="group flex h-14 w-full items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-700 px-4 text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600"
                 >
-                  <div className="flex flex-col items-start">
-                    <p className="truncate transition-colors">{org.name}</p>
-                    {hasSubOrgs && !isSearching && (
-                      <p className="text-xs text-mineshaft-400">
-                        {org.subOrganizations.length} sub-organization
-                        {org.subOrganizations.length !== 1 ? "s" : ""}
-                      </p>
-                    )}
-                  </div>
+                  <p className="truncate transition-colors">{org.name}</p>
                   <FontAwesomeIcon
                     icon={faArrowRight}
                     className="text-gray-400 transition-all group-hover:text-primary-400 hover:text-primary-500"
                   />
                 </button>
-
-                {/* Drill-down trigger — only for orgs with sub-orgs */}
-                {hasSubOrgs && !isSearching && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedRootOrg(org)}
-                    aria-label={`View sub-organizations of ${org.name}`}
-                    className="flex items-center border-l border-mineshaft-600 px-3 text-mineshaft-400 transition-colors hover:bg-mineshaft-500 hover:text-gray-200"
-                  >
-                    <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
-                  </button>
-                )}
-              </div>
+              )}
 
               {/* Auto-expand sub-orgs when searching */}
               {isSearching && hasSubOrgs && (
