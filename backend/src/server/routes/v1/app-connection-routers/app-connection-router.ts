@@ -54,6 +54,10 @@ import {
   SanitizedCircleCIConnectionSchema
 } from "@app/services/app-connection/circleci";
 import {
+  AlibabaCloudConnectionListItemSchema,
+  SanitizedAlibabaCloudConnectionSchema
+} from "@app/services/app-connection/alibaba-cloud";
+import {
   CloudflareConnectionListItemSchema,
   SanitizedCloudflareConnectionSchema
 } from "@app/services/app-connection/cloudflare/cloudflare-connection-schema";
@@ -201,7 +205,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedSmbConnectionSchema.options,
   ...SanitizedSshConnectionSchema.options,
   ...SanitizedDbtConnectionSchema.options,
-  ...SanitizedOpenRouterConnectionSchema.options
+  ...SanitizedOpenRouterConnectionSchema.options,
+  ...SanitizedAlibabaCloudConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -254,7 +259,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   SmbConnectionListItemSchema,
   SshConnectionListItemSchema,
   DbtConnectionListItemSchema,
-  OpenRouterConnectionListItemSchema
+  OpenRouterConnectionListItemSchema,
+  AlibabaCloudConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

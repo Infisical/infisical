@@ -27,6 +27,10 @@ import { CamundaSyncListItemSchema, CamundaSyncSchema } from "@app/services/secr
 import { ChecklySyncListItemSchema, ChecklySyncSchema } from "@app/services/secret-sync/checkly/checkly-sync-schemas";
 import { CircleCISyncListItemSchema, CircleCISyncSchema } from "@app/services/secret-sync/circleci";
 import {
+  AlibabaCloudKMSSyncListItemSchema,
+  AlibabaCloudKMSSyncSchema
+} from "@app/services/secret-sync/alibaba-cloud-kms";
+import {
   CloudflarePagesSyncListItemSchema,
   CloudflarePagesSyncSchema
 } from "@app/services/secret-sync/cloudflare-pages/cloudflare-pages-schema";
@@ -94,7 +98,8 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   LaravelForgeSyncSchema,
   ChefSyncSchema,
   OctopusDeploySyncSchema,
-  CircleCISyncSchema
+  CircleCISyncSchema,
+  AlibabaCloudKMSSyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -132,7 +137,8 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   LaravelForgeSyncListItemSchema,
   ChefSyncListItemSchema,
   OctopusDeploySyncListItemSchema,
-  CircleCISyncListItemSchema
+  CircleCISyncListItemSchema,
+  AlibabaCloudKMSSyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {

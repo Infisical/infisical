@@ -12,6 +12,7 @@ import { registerBitbucketSyncRouter } from "./bitbucket-sync-router";
 import { registerCamundaSyncRouter } from "./camunda-sync-router";
 import { registerChecklySyncRouter } from "./checkly-sync-router";
 import { registerCircleCISyncRouter } from "./circleci-sync-router";
+import { registerAlibabaCloudKMSSyncRouter } from "./alibaba-cloud-kms-sync-router";
 import { registerCloudflarePagesSyncRouter } from "./cloudflare-pages-sync-router";
 import { registerCloudflareWorkersSyncRouter } from "./cloudflare-workers-sync-router";
 import { registerDatabricksSyncRouter } from "./databricks-sync-router";
@@ -73,5 +74,6 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.LaravelForge]: registerLaravelForgeSyncRouter,
   [SecretSync.Chef]: registerChefSyncRouter,
   [SecretSync.OctopusDeploy]: registerOctopusDeploySyncRouter,
-  [SecretSync.CircleCI]: registerCircleCISyncRouter
+  [SecretSync.CircleCI]: registerCircleCISyncRouter,
+  [SecretSync.AlibabaCloudKMS]: registerAlibabaCloudKMSSyncRouter
 };
