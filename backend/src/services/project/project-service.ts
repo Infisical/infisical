@@ -2282,9 +2282,48 @@ export const projectServiceFactory = ({
     });
   };
 
+  const getProjectByName = async ({
+  name,
+  actor,
+  actorId,
+  actorOrgId,
+  actorAuthMethod
+}: {
+  name: string;
+  actor: ActorType;
+  actorId: string;
+  actorOrgId: string;
+  actorAuthMethod: ActorAuthMethod;
+}) => {
+  const project = await projectDAL.findOne({ name, orgId: actorOrgId });
+  if (!project) {
+    throw new NotFoundError({
+      message: `Project with name '${name}' not found`
+    });
+  }
+
+  const { permission } = await permissionService.getProjectPermission({
+    actor,
+    actorId,
+    projectId: project.id,
+    actorAuthMethod,
+    actorOrgId,
+    actionProjectType: ActionProjectType.Any
+  });
+
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Project
+  );
+
+  return project;
+};
+
+
   return {
     createProject,
     deleteProject,
+    getProjectByName,
     getProjects,
     updateProject,
     getProjectUpgradeStatus,
