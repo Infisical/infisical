@@ -2917,6 +2917,9 @@ export const SecretSyncs = {
       orgName: "The CircleCI organization name to sync secrets to.",
       projectId: "The CircleCI project ID to sync secrets to.",
       projectName: "The CircleCI project name to sync secrets to."
+    },
+    ALIBABA_CLOUD_KMS: {
+      secretPrefix: "An optional prefix to prepend to secret names when syncing to Alibaba Cloud KMS."
     }
   }
 };
