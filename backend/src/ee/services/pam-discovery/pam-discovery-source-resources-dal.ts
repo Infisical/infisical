@@ -32,7 +32,8 @@ export const pamDiscoverySourceResourcesDALFactory = (db: TDbClient) => {
       void query.select(
         selectAllTableCols(TableName.PamDiscoverySourceResource),
         db.ref("name").withSchema(TableName.PamResource).as("resourceName"),
-        db.ref("resourceType").withSchema(TableName.PamResource).as("resourceType")
+        db.ref("resourceType").withSchema(TableName.PamResource).as("resourceType"),
+        db.ref("encryptedResourceMetadata").withSchema(TableName.PamResource).as("encryptedResourceMetadata")
       );
 
       void query.orderBy(`${TableName.PamResource}.name`, "asc");

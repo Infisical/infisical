@@ -7,7 +7,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { TPamAccountDependenciesDALFactory } from "./pam-account-dependencies-dal";
-import { PamDiscoveryType } from "./pam-discovery-enums";
+import { PamDiscoveryRunTrigger, PamDiscoveryType } from "./pam-discovery-enums";
 import { PAM_DISCOVERY_FACTORY_MAP } from "./pam-discovery-factory";
 import { decryptDiscoveryCredentials } from "./pam-discovery-fns";
 import { TPamDiscoveryRunDALFactory } from "./pam-discovery-run-dal";
@@ -55,16 +55,22 @@ export const pamDiscoveryQueueFactory = ({
     queueService.start(QueueName.PamDiscoveryScan, async (job) => {
       try {
         if (job.name === QueueJobs.PamDiscoveryRunScan) {
-          const { discoverySourceId } = job.data as { discoverySourceId: string };
+          const { discoverySourceId, triggeredBy } = job.data as {
+            discoverySourceId: string;
+            triggeredBy: PamDiscoveryRunTrigger;
+          };
 
           const discoverySource = await pamDiscoverySourceDAL.findById(discoverySourceId);
           if (!discoverySource) {
-            logger.error({ discoverySourceId }, "PAM Discovery Source not found, skipping scan");
+            logger.error({ discoverySourceId, triggeredBy }, "PAM Discovery Source not found, skipping scan");
             return;
           }
 
           if (!discoverySource.gatewayId) {
-            logger.error({ discoverySourceId }, "PAM Discovery Source has no gateway configured, skipping scan");
+            logger.error(
+              { discoverySourceId, triggeredBy },
+              "PAM Discovery Source has no gateway configured, skipping scan"
+            );
             return;
           }
 
@@ -101,7 +107,7 @@ export const pamDiscoveryQueueFactory = ({
             gatewayV2DAL
           };
 
-          await factory.scan(discoverySourceId, scanDeps);
+          await factory.scan(discoverySourceId, triggeredBy, scanDeps);
         } else if (job.name === QueueJobs.PamDiscoveryScheduledScan) {
           const dueSources = await pamDiscoverySourceDAL.findDueForScan();
 
@@ -109,7 +115,7 @@ export const pamDiscoveryQueueFactory = ({
             await queueService.queue(
               QueueName.PamDiscoveryScan,
               QueueJobs.PamDiscoveryRunScan,
-              { discoverySourceId: src.id },
+              { discoverySourceId: src.id, triggeredBy: PamDiscoveryRunTrigger.Schedule },
               { jobId: `pam-discovery-scan-${src.id}` }
             );
           }
@@ -138,7 +144,7 @@ export const pamDiscoveryQueueFactory = ({
     await queueService.queue(
       QueueName.PamDiscoveryScan,
       QueueJobs.PamDiscoveryRunScan,
-      { discoverySourceId },
+      { discoverySourceId, triggeredBy: PamDiscoveryRunTrigger.Manual },
       {
         jobId,
         attempts: 1,

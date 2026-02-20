@@ -56,14 +56,11 @@ export const executeWithGateway = async <T>(
   );
 };
 
-export const sshResourceFactory: TPamResourceFactory<TSSHResourceConnectionDetails, TSSHAccountCredentials> = (
-  resourceType,
-  connectionDetails,
-  gatewayId,
-  gatewayV2Service,
-  _projectId,
-  resourceMetadata?: TSSHResourceMetadata
-) => {
+export const sshResourceFactory: TPamResourceFactory<
+  TSSHResourceConnectionDetails,
+  TSSHAccountCredentials,
+  TSSHResourceMetadata
+> = (resourceType, connectionDetails, gatewayId, gatewayV2Service, _projectId, resourceMetadata) => {
   const validateConnection = async () => {
     try {
       if (!gatewayId) {

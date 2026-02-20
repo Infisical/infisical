@@ -6,7 +6,7 @@ import {
   TActiveDirectoryDiscoveryCredentials,
   TActiveDirectoryDiscoverySource
 } from "./active-directory/active-directory-discovery-types";
-import { PamDiscoveryOrderBy, PamDiscoveryType } from "./pam-discovery-enums";
+import { PamDiscoveryOrderBy, PamDiscoveryRunTrigger, PamDiscoveryType } from "./pam-discovery-enums";
 import { TPamDiscoveryScanDeps } from "./pam-discovery-factory";
 
 export type TPamDiscoverySource = TActiveDirectoryDiscoverySource;
@@ -72,5 +72,5 @@ export type TPamDiscoveryFactory<T extends TPamDiscoveryConfiguration, C extends
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   validateConnection: () => Promise<void>;
-  scan: (discoverySourceId: string, deps: TPamDiscoveryScanDeps) => Promise<void>;
+  scan: (discoverySourceId: string, triggeredBy: PamDiscoveryRunTrigger, deps: TPamDiscoveryScanDeps) => Promise<void>;
 };

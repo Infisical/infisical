@@ -13,6 +13,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
+import { decryptResourceMetadata } from "../pam-resource/pam-resource-fns";
 import { PamDiscoveryRunStatus, PamDiscoverySourceStatus, PamDiscoveryType } from "./pam-discovery-enums";
 import { PAM_DISCOVERY_FACTORY_MAP } from "./pam-discovery-factory";
 import {
@@ -487,11 +488,31 @@ export const pamDiscoverySourceServiceFactory = ({
       ProjectPermissionSub.PamDiscovery
     );
 
-    const result = await pamDiscoverySourceResourcesDAL.findByDiscoverySourceIdWithResources(discoverySourceId, {
-      offset,
-      limit
-    });
-    return result;
+    const { resources, totalCount } = await pamDiscoverySourceResourcesDAL.findByDiscoverySourceIdWithResources(
+      discoverySourceId,
+      { offset, limit }
+    );
+
+    const decryptedResources = await Promise.all(
+      resources.map(async (resource) => {
+        const { encryptedResourceMetadata, ...rest } = resource as typeof resource & {
+          encryptedResourceMetadata?: Buffer | null;
+        };
+        if (!encryptedResourceMetadata) return rest;
+        try {
+          const resourceMetadata = await decryptResourceMetadata({
+            projectId: discoverySource.projectId,
+            encryptedMetadata: encryptedResourceMetadata,
+            kmsService
+          });
+          return { ...rest, resourceMetadata };
+        } catch {
+          return rest;
+        }
+      })
+    );
+
+    return { resources: decryptedResources, totalCount };
   };
 
   const getDiscoveredAccounts = async (

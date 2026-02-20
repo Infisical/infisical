@@ -12,7 +12,8 @@ import { PamResource } from "../pam-resource-enums";
 import {
   TPamResourceFactory,
   TPamResourceFactoryRotateAccountCredentials,
-  TPamResourceFactoryValidateAccountCredentials
+  TPamResourceFactoryValidateAccountCredentials,
+  TPamResourceMetadata
 } from "../pam-resource-types";
 import { KubernetesAuthMethod } from "./kubernetes-resource-enums";
 import { TKubernetesAccountCredentials, TKubernetesResourceConnectionDetails } from "./kubernetes-resource-types";
@@ -72,7 +73,8 @@ export const executeWithGateway = async <T>(
 
 export const kubernetesResourceFactory: TPamResourceFactory<
   TKubernetesResourceConnectionDetails,
-  TKubernetesAccountCredentials
+  TKubernetesAccountCredentials,
+  TPamResourceMetadata
 > = (resourceType, connectionDetails, gatewayId, gatewayV2Service) => {
   const validateConnection = async () => {
     if (!gatewayId) {

@@ -14,6 +14,7 @@ import {
   PlayIcon,
   TrashIcon
 } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -24,6 +25,9 @@ import {
   Detail,
   DetailLabel,
   DetailValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   UnstableDropdownMenu,
   UnstableDropdownMenuContent,
   UnstableDropdownMenuItem,
@@ -219,6 +223,17 @@ const formatDuration = (startedAt?: string | null, completedAt?: string | null):
   return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
 };
 
+const formatWindowsFileTime = (fileTime?: string): string => {
+  if (!fileTime) return "-";
+  try {
+    const ms = Number(BigInt(fileTime) / 10000n - 11644473600000n);
+    if (Number.isNaN(ms) || ms <= 0) return "-";
+    return format(new Date(ms), "MMM d, yyyy HH:mm");
+  } catch {
+    return "-";
+  }
+};
+
 const PROGRESS_BADGE_MAP: Record<string, "success" | "danger" | "info" | "neutral"> = {
   completed: "success",
   failed: "danger",
@@ -398,7 +413,9 @@ const RunsTab = ({
                     </UnstableTableCell>
                     <UnstableTableCell>{run.resourcesDiscovered}</UnstableTableCell>
                     <UnstableTableCell>{run.accountsDiscovered}</UnstableTableCell>
-                    <UnstableTableCell className="text-green-400">
+                    <UnstableTableCell
+                      className={twMerge(run.newSinceLastRun > 0 && "text-green-400")}
+                    >
                       {run.newSinceLastRun > 0 ? `+${run.newSinceLastRun}` : run.newSinceLastRun}
                     </UnstableTableCell>
                     <UnstableTableCell>{run.staleSinceLastRun}</UnstableTableCell>
@@ -461,6 +478,7 @@ const ResourcesTab = ({
           <UnstableTableRow>
             <UnstableTableHead>Name</UnstableTableHead>
             <UnstableTableHead>Type</UnstableTableHead>
+            <UnstableTableHead>OS Version</UnstableTableHead>
             <UnstableTableHead>Last Discovered</UnstableTableHead>
             <UnstableTableHead>Status</UnstableTableHead>
           </UnstableTableRow>
@@ -468,14 +486,14 @@ const ResourcesTab = ({
         <UnstableTableBody>
           {isPending && (
             <UnstableTableRow>
-              <UnstableTableCell colSpan={4} className="text-center text-muted">
+              <UnstableTableCell colSpan={5} className="text-center text-muted">
                 Loading resources...
               </UnstableTableCell>
             </UnstableTableRow>
           )}
           {!isPending && resources.length === 0 && (
             <UnstableTableRow>
-              <UnstableTableCell colSpan={4}>
+              <UnstableTableCell colSpan={5}>
                 <UnstableEmpty className="border-0 bg-transparent py-8 shadow-none">
                   <UnstableEmptyHeader>
                     <UnstableEmptyTitle>No discovered resources</UnstableEmptyTitle>
@@ -506,6 +524,18 @@ const ResourcesTab = ({
                 </UnstableTableCell>
                 <UnstableTableCell className="text-muted">
                   {resource.resourceType}
+                </UnstableTableCell>
+                <UnstableTableCell className="text-muted" isTruncatable>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>{resource.resourceMetadata?.osVersion || "-"}</span>
+                    </TooltipTrigger>
+                    <TooltipContent side="left">
+                      {resource.resourceMetadata?.osVersion || "-"}
+                      {resource.resourceMetadata?.osVersionDetail &&
+                        ` ${resource.resourceMetadata?.osVersionDetail}`}
+                    </TooltipContent>
+                  </Tooltip>
                 </UnstableTableCell>
                 <UnstableTableCell className="text-muted">
                   {format(new Date(resource.lastDiscoveredAt), "MMM d, yyyy HH:mm")}
@@ -564,6 +594,8 @@ const AccountsTab = ({
           <UnstableTableRow>
             <UnstableTableHead>Name</UnstableTableHead>
             <UnstableTableHead>Resource</UnstableTableHead>
+            <UnstableTableHead>Type</UnstableTableHead>
+            <UnstableTableHead>Last Logon</UnstableTableHead>
             <UnstableTableHead>Last Discovered</UnstableTableHead>
             <UnstableTableHead>Status</UnstableTableHead>
           </UnstableTableRow>
@@ -571,14 +603,14 @@ const AccountsTab = ({
         <UnstableTableBody>
           {isPending && (
             <UnstableTableRow>
-              <UnstableTableCell colSpan={4} className="text-center text-muted">
+              <UnstableTableCell colSpan={6} className="text-center text-muted">
                 Loading accounts...
               </UnstableTableCell>
             </UnstableTableRow>
           )}
           {!isPending && accounts.length === 0 && (
             <UnstableTableRow>
-              <UnstableTableCell colSpan={4}>
+              <UnstableTableCell colSpan={6}>
                 <UnstableEmpty className="border-0 bg-transparent py-8 shadow-none">
                   <UnstableEmptyHeader>
                     <UnstableEmptyTitle>No discovered accounts</UnstableEmptyTitle>
@@ -607,6 +639,12 @@ const AccountsTab = ({
               >
                 <UnstableTableCell className="font-medium">{account.accountName}</UnstableTableCell>
                 <UnstableTableCell className="text-muted">{account.resourceName}</UnstableTableCell>
+                <UnstableTableCell className="text-muted capitalize">
+                  {account.metadata?.accountType ?? "-"}
+                </UnstableTableCell>
+                <UnstableTableCell className="text-muted">
+                  {formatWindowsFileTime(account.metadata?.lastLogonTimestamp)}
+                </UnstableTableCell>
                 <UnstableTableCell className="text-muted">
                   {format(new Date(account.lastDiscoveredAt), "MMM d, yyyy HH:mm")}
                 </UnstableTableCell>
@@ -797,7 +835,7 @@ const PageContent = () => {
 
       <div className="flex gap-6">
         {/* Left Column */}
-        <div className="flex w-80 flex-col gap-4">
+        <div className="flex w-80 shrink-0 flex-col gap-4">
           <DiscoveryDetailsSection source={source} onEdit={() => setIsEditModalOpen(true)} />
           <DiscoveryConfigurationSection source={source} onEdit={() => setIsEditModalOpen(true)} />
           <DiscoveryCredentialsSection source={source} onEdit={() => setIsEditModalOpen(true)} />

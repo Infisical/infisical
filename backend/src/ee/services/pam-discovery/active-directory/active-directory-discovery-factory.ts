@@ -18,9 +18,12 @@ import {
 } from "../../pam-resource/active-directory/active-directory-resource-types";
 import { TPamResourceDALFactory } from "../../pam-resource/pam-resource-dal";
 import { PamResource } from "../../pam-resource/pam-resource-enums";
-import { encryptResourceConnectionDetails } from "../../pam-resource/pam-resource-fns";
+import { encryptResourceConnectionDetails, encryptResourceMetadata } from "../../pam-resource/pam-resource-fns";
 import { WindowsProtocol } from "../../pam-resource/windows-server/windows-server-resource-enums";
-import { TWindowsResourceConnectionDetails } from "../../pam-resource/windows-server/windows-server-resource-types";
+import {
+  TWindowsResourceConnectionDetails,
+  TWindowsResourceMetadata
+} from "../../pam-resource/windows-server/windows-server-resource-types";
 import { PamDiscoveryRunStatus, PamDiscoveryRunTrigger } from "../pam-discovery-enums";
 import { TPamDiscoveryFactory } from "../pam-discovery-types";
 import {
@@ -37,6 +40,7 @@ type TLdapComputer = {
   cn: string;
   dNSHostName: string;
   operatingSystem: string;
+  operatingSystemVersion: string;
   objectGUID: string;
   whenChanged: string;
 };
@@ -50,6 +54,7 @@ type TLdapUser = {
   memberOf: string | string[];
   pwdLastSet: string;
   userAccountControl: string;
+  lastLogonTimestamp: string;
   whenChanged: string;
 };
 
@@ -230,13 +235,14 @@ const executeLdapEnumeration = async (
           client,
           baseDN,
           "(&(objectClass=computer)(operatingSystem=*Server*))",
-          ["cn", "dNSHostName", "operatingSystem", "objectGUID", "whenChanged"]
+          ["cn", "dNSHostName", "operatingSystem", "operatingSystemVersion", "objectGUID", "whenChanged"]
         );
 
         const computers: TLdapComputer[] = computerEntries.map((entry) => ({
           cn: getAttr(entry, "cn"),
           dNSHostName: getAttr(entry, "dNSHostName"),
           operatingSystem: getAttr(entry, "operatingSystem"),
+          operatingSystemVersion: getAttr(entry, "operatingSystemVersion"),
           objectGUID: parseObjectGUID(getAttrBuffer(entry, "objectGUID")),
           whenChanged: getAttr(entry, "whenChanged")
         }));
@@ -250,6 +256,7 @@ const executeLdapEnumeration = async (
           "memberOf",
           "pwdLastSet",
           "userAccountControl",
+          "lastLogonTimestamp",
           "whenChanged"
         ]);
 
@@ -262,6 +269,7 @@ const executeLdapEnumeration = async (
           memberOf: getAttrAll(entry, "memberOf"),
           pwdLastSet: getAttr(entry, "pwdLastSet"),
           userAccountControl: getAttr(entry, "userAccountControl"),
+          lastLogonTimestamp: getAttr(entry, "lastLogonTimestamp"),
           whenChanged: getAttr(entry, "whenChanged")
         }));
 
@@ -334,15 +342,25 @@ const upsertWindowsServerResource = async (
 
   if (existing.length > 0) return { resource: existing[0], isNew: false };
 
-  const encryptedConnectionDetails = await encryptResourceConnectionDetails({
-    projectId,
-    connectionDetails: {
-      protocol: WindowsProtocol.RDP,
-      hostname,
-      port: 3389
-    } as TWindowsResourceConnectionDetails,
-    kmsService
-  });
+  const [encryptedConnectionDetails, encryptedResourceMetadata] = await Promise.all([
+    encryptResourceConnectionDetails({
+      projectId,
+      connectionDetails: {
+        protocol: WindowsProtocol.RDP,
+        hostname,
+        port: 3389
+      } as TWindowsResourceConnectionDetails,
+      kmsService
+    }),
+    encryptResourceMetadata({
+      projectId,
+      metadata: {
+        osVersion: computer.operatingSystem || undefined,
+        osVersionDetail: computer.operatingSystemVersion || undefined
+      } as TWindowsResourceMetadata,
+      kmsService
+    })
+  ]);
 
   const resource = await pamResourceDAL.create({
     projectId,
@@ -350,6 +368,7 @@ const upsertWindowsServerResource = async (
     resourceType: PamResource.Windows,
     gatewayId,
     encryptedConnectionDetails,
+    encryptedResourceMetadata,
     adServerResourceId
   });
 
@@ -396,7 +415,8 @@ const upsertDomainAccount = async (
     userPrincipalName: user.userPrincipalName || undefined,
     servicePrincipalName,
     userAccountControl: user.userAccountControl ? parseInt(user.userAccountControl, 10) : undefined,
-    pwdLastSet: user.pwdLastSet || undefined
+    pwdLastSet: user.pwdLastSet || undefined,
+    lastLogonTimestamp: user.lastLogonTimestamp || undefined
   } as TActiveDirectoryAccountMetadata;
 
   const account = await pamAccountDAL.create({
@@ -452,7 +472,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
     }
   };
 
-  const scan = async (discoverySourceId: string, deps: TPamDiscoveryScanDeps) => {
+  const scan = async (discoverySourceId: string, triggeredBy: PamDiscoveryRunTrigger, deps: TPamDiscoveryScanDeps) => {
     const {
       pamDiscoverySourceDAL,
       pamDiscoveryRunDAL,
@@ -467,7 +487,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory<
     const run = await pamDiscoveryRunDAL.create({
       discoverySourceId,
       status: PamDiscoveryRunStatus.Running,
-      triggeredBy: PamDiscoveryRunTrigger.Manual,
+      triggeredBy,
       startedAt: new Date(),
       progress: {
         adEnumeration: { status: "running" }

@@ -2,6 +2,7 @@ import { Job, Queue, QueueOptions, RepeatOptions, Worker, WorkerListener } from 
 
 import { SecretEncryptionAlgo, SecretKeyEncoding, TQueueJobs } from "@app/db/schemas";
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
+import { PamDiscoveryRunTrigger } from "@app/ee/services/pam-discovery/pam-discovery-enums";
 import {
   TSecretRotationRotateSecretsJobPayload,
   TSecretRotationSendNotificationJobPayload
@@ -486,7 +487,7 @@ export type TQueueJobTypes = {
   [QueueName.PamDiscoveryScan]:
     | {
         name: QueueJobs.PamDiscoveryRunScan;
-        payload: { discoverySourceId: string };
+        payload: { discoverySourceId: string; triggeredBy: PamDiscoveryRunTrigger };
       }
     | {
         name: QueueJobs.PamDiscoveryScheduledScan;

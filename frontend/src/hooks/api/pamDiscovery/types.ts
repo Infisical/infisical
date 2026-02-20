@@ -70,6 +70,18 @@ export type TDiscoveredResource = {
   lastDiscoveredAt: string;
   isStale: boolean;
   createdAt: string;
+  resourceMetadata?: {
+    osVersion?: string;
+    osVersionDetail?: string;
+  };
+};
+
+export type TDiscoveredAccountMetadata = {
+  accountType?: string;
+  adGuid?: string;
+  displayName?: string;
+  userPrincipalName?: string;
+  lastLogonTimestamp?: string;
 };
 
 export type TDiscoveredAccount = {
@@ -81,7 +93,7 @@ export type TDiscoveredAccount = {
   resourceType: string;
   lastDiscoveredAt: string;
   isStale: boolean;
-  metadata?: unknown;
+  metadata?: TDiscoveredAccountMetadata;
   createdAt: string;
 };
 
