@@ -96,6 +96,13 @@ export const useCertificatePolicy = (
     maxPathLength: undefined
   });
 
+  const [pendingDefaults, setPendingDefaults] = useState<{
+    keyAlgorithm?: string;
+    signatureAlgorithm?: string;
+    basicConstraints?: { isCA: boolean; pathLength?: number };
+    subjectAttributes?: Array<{ type: CertSubjectAttributeType; value: string }>;
+  } | null>(null);
+
   const filteredKeyUsages = useMemo(() => {
     return KEY_USAGES_OPTIONS.filter(({ value }) => constraints.allowedKeyUsages.includes(value));
   }, [constraints.allowedKeyUsages]);
@@ -127,6 +134,7 @@ export const useCertificatePolicy = (
   }, [constraints.allowedKeyAlgorithms]);
 
   const resetConstraints = () => {
+    setPendingDefaults(null);
     setConstraints({
       allowedKeyUsages: [],
       allowedExtendedKeyUsages: [],
@@ -180,10 +188,12 @@ export const useCertificatePolicy = (
         maxPathLength
       };
 
-      // Set TTL: use min(profile.defaultTtlDays, policy.maxValidity)
-      const profileTtlDays = selectedProfile?.defaultTtlDays;
+      // Pre-populate from profile defaults
+      const defaults = selectedProfile?.defaults;
+      const profileTtlDays = defaults?.ttlDays;
       const policyMaxValidity = templateData.validity?.max;
 
+      // Set TTL: use min(profile.defaults.ttlDays, policy.maxValidity)
       if (profileTtlDays && policyMaxValidity) {
         const profileTtlMs = profileTtlDays * 24 * 60 * 60 * 1000;
         const policyMaxMs = parseTtlToMs(policyMaxValidity);
@@ -193,6 +203,27 @@ export const useCertificatePolicy = (
         setValue("ttl", `${profileTtlDays}d`);
       } else if (policyMaxValidity) {
         setValue("ttl", convertTemplateTtlToCertificateTtl(policyMaxValidity));
+      }
+
+      // Collect defaults that need to be applied after constraints update
+      const deferred: {
+        keyAlgorithm?: string;
+        signatureAlgorithm?: string;
+        basicConstraints?: { isCA: boolean; pathLength?: number };
+        subjectAttributes?: Array<{ type: CertSubjectAttributeType; value: string }>;
+      } = {};
+
+      // Defer algorithm defaults (Controllers use shouldUnregister)
+      if (defaults?.keyAlgorithm) {
+        deferred.keyAlgorithm = defaults.keyAlgorithm;
+      }
+      if (defaults?.signatureAlgorithm) {
+        deferred.signatureAlgorithm = defaults.signatureAlgorithm;
+      }
+
+      // Defer basic constraints defaults (Controller is behind templateAllowsCA gate)
+      if (defaults?.basicConstraints) {
+        deferred.basicConstraints = defaults.basicConstraints;
       }
 
       // Handle SAN types
@@ -222,10 +253,60 @@ export const useCertificatePolicy = (
         newConstraints.allowedSubjectAttributeTypes =
           subjectTypes.length > 0 ? subjectTypes : [CertSubjectAttributeType.COMMON_NAME];
 
+        // Pre-populate subject attributes from profile defaults
+        const defaultSubjectAttrs: Array<{ type: CertSubjectAttributeType; value: string }> = [];
+        if (defaults?.commonName) {
+          defaultSubjectAttrs.push({
+            type: CertSubjectAttributeType.COMMON_NAME,
+            value: defaults.commonName
+          });
+        }
+        if (defaults?.organization) {
+          defaultSubjectAttrs.push({
+            type: CertSubjectAttributeType.ORGANIZATION,
+            value: defaults.organization
+          });
+        }
+        if (defaults?.organizationalUnit) {
+          defaultSubjectAttrs.push({
+            type: CertSubjectAttributeType.ORGANIZATIONAL_UNIT,
+            value: defaults.organizationalUnit
+          });
+        }
+        if (defaults?.country) {
+          defaultSubjectAttrs.push({
+            type: CertSubjectAttributeType.COUNTRY,
+            value: defaults.country
+          });
+        }
+        if (defaults?.state) {
+          defaultSubjectAttrs.push({
+            type: CertSubjectAttributeType.STATE,
+            value: defaults.state
+          });
+        }
+        if (defaults?.locality) {
+          defaultSubjectAttrs.push({
+            type: CertSubjectAttributeType.LOCALITY,
+            value: defaults.locality
+          });
+        }
+
         const currentSubjectAttrs = watch("subjectAttributes");
         if (!currentSubjectAttrs || currentSubjectAttrs.length === 0) {
-          const defaultType = newConstraints.allowedSubjectAttributeTypes[0];
-          setValue("subjectAttributes", [{ type: defaultType, value: "" }]);
+          if (defaultSubjectAttrs.length > 0) {
+            // Filter to only allowed attribute types
+            const filteredDefaults = defaultSubjectAttrs.filter((attr) =>
+              newConstraints.allowedSubjectAttributeTypes.includes(attr.type)
+            );
+            deferred.subjectAttributes =
+              filteredDefaults.length > 0
+                ? filteredDefaults
+                : [{ type: newConstraints.allowedSubjectAttributeTypes[0], value: "" }];
+          } else {
+            const defaultType = newConstraints.allowedSubjectAttributeTypes[0];
+            deferred.subjectAttributes = [{ type: defaultType, value: "" }];
+          }
         }
       } else {
         newConstraints.shouldShowSubjectSection = false;
@@ -233,28 +314,78 @@ export const useCertificatePolicy = (
         setValue("subjectAttributes", undefined);
       }
 
+      // Merge templateRequiresCA into deferred basicConstraints
+      if (templateRequiresCA) {
+        deferred.basicConstraints = {
+          isCA: true,
+          ...(deferred.basicConstraints?.pathLength !== undefined
+            ? { pathLength: deferred.basicConstraints.pathLength }
+            : {})
+        };
+      }
+
       setConstraints(newConstraints);
 
-      // Set initial required usages
+      if (Object.keys(deferred).length > 0) {
+        setPendingDefaults(deferred);
+      }
+
+      // Set initial usages: merge required usages with profile defaults
       const initialKeyUsages: Record<string, boolean> = {};
       const initialExtendedKeyUsages: Record<string, boolean> = {};
 
+      // Start with profile default key usages
+      if (defaults?.keyUsages) {
+        defaults.keyUsages.forEach((usage: string) => {
+          initialKeyUsages[usage] = true;
+        });
+      }
+
+      // Required usages always override (ensure they're checked)
       (templateData.keyUsages?.required || []).forEach((usage: string) => {
         initialKeyUsages[usage] = true;
       });
 
+      // Start with profile default extended key usages
+      if (defaults?.extendedKeyUsages) {
+        defaults.extendedKeyUsages.forEach((usage: string) => {
+          initialExtendedKeyUsages[usage] = true;
+        });
+      }
+
+      // Required extended key usages always override
       (templateData.extendedKeyUsages?.required || []).forEach((usage: string) => {
         initialExtendedKeyUsages[usage] = true;
       });
 
       setValue("keyUsages", initialKeyUsages);
       setValue("extendedKeyUsages", initialExtendedKeyUsages);
-
-      if (templateRequiresCA) {
-        setValue("basicConstraints.isCA", true);
-      }
     }
   }, [templateData, selectedProfile, setValue, watch, isModalOpen]);
+
+  // Apply deferred defaults after constraints update has committed and Controllers have mounted
+  useEffect(() => {
+    if (!pendingDefaults) return undefined;
+    const timeoutId = setTimeout(() => {
+      if (pendingDefaults.keyAlgorithm) {
+        setValue("keyAlgorithm", pendingDefaults.keyAlgorithm);
+      }
+      if (pendingDefaults.signatureAlgorithm) {
+        setValue("signatureAlgorithm", pendingDefaults.signatureAlgorithm);
+      }
+      if (pendingDefaults.basicConstraints) {
+        setValue("basicConstraints.isCA", pendingDefaults.basicConstraints.isCA);
+        if (pendingDefaults.basicConstraints.pathLength !== undefined) {
+          setValue("basicConstraints.pathLength", pendingDefaults.basicConstraints.pathLength);
+        }
+      }
+      if (pendingDefaults.subjectAttributes) {
+        setValue("subjectAttributes", pendingDefaults.subjectAttributes);
+      }
+      setPendingDefaults(null);
+    }, 0);
+    return () => clearTimeout(timeoutId);
+  }, [pendingDefaults, setValue]);
 
   return {
     constraints,

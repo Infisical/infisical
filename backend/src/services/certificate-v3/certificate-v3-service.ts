@@ -1,4 +1,5 @@
 import { ForbiddenError, subject } from "@casl/ability";
+import * as x509 from "@peculiar/x509";
 import { randomUUID } from "crypto";
 import RE2 from "re2";
 
@@ -38,6 +39,10 @@ import {
   TCertificateAuthorityWithAssociatedCa
 } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import {
+  createDistinguishedName,
+  parseDistinguishedName
+} from "@app/services/certificate-authority/certificate-authority-fns";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -89,7 +94,7 @@ import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { addRenewedCertificateToSyncs, triggerAutoSyncForCertificate } from "../pki-sync/pki-sync-utils";
-import { resolveEffectiveTtl } from "./certificate-v3-fns";
+import { applyProfileDefaults, resolveEffectiveTtl } from "./certificate-v3-fns";
 import {
   TCertificateIssuanceResponse,
   TDisableRenewalConfigDTO,
@@ -695,9 +700,10 @@ export const certificateV3ServiceFactory = ({
     if (matchedApprovalPolicy && !shouldBypassApproval(actor, matchedApprovalPolicy)) {
       const approvalPolicy = matchedApprovalPolicy;
 
+      const withDefaults = applyProfileDefaults(certificateRequest, profile.defaults);
       const mappedCertificateRequestForValidation = mapEnumsForValidation({
-        ...certificateRequest,
-        subjectAlternativeNames: certificateRequest.altNames
+        ...withDefaults,
+        subjectAlternativeNames: withDefaults.altNames
       });
 
       const policy = await certificatePolicyService.getPolicyById({
@@ -728,7 +734,7 @@ export const certificateV3ServiceFactory = ({
 
       const resolvedTtl = resolveEffectiveTtl({
         requestTtl: certificateRequest.validity.ttl || undefined,
-        profileDefaultTtlDays: profile.defaultTtlDays,
+        profileDefaultTtlDays: profile.defaults?.ttlDays,
         policyMaxValidity: policy?.validity?.max,
         flowDefaultTtl: ""
       });
@@ -836,9 +842,10 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
+    const certificateRequestWithDefaults = applyProfileDefaults(certificateRequest, profile.defaults);
     const mappedCertificateRequest = mapEnumsForValidation({
-      ...certificateRequest,
-      subjectAlternativeNames: certificateRequest.altNames
+      ...certificateRequestWithDefaults,
+      subjectAlternativeNames: certificateRequestWithDefaults.altNames
     });
 
     const policy = await certificatePolicyService.getPolicyById({
@@ -864,8 +871,10 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
-    const effectiveSignatureAlgorithm = certificateRequest.signatureAlgorithm as CertSignatureAlgorithm | undefined;
-    const effectiveKeyAlgorithm = certificateRequest.keyAlgorithm as CertKeyAlgorithm | undefined;
+    const effectiveSignatureAlgorithm = certificateRequestWithDefaults.signatureAlgorithm as
+      | CertSignatureAlgorithm
+      | undefined;
+    const effectiveKeyAlgorithm = certificateRequestWithDefaults.keyAlgorithm as CertKeyAlgorithm | undefined;
 
     if (policy.algorithms?.keyAlgorithm && !effectiveKeyAlgorithm) {
       throw new BadRequestError({
@@ -879,9 +888,9 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
-    const certificateSubject = buildCertificateSubjectFromTemplate(certificateRequest, policy?.subject);
+    const certificateSubject = buildCertificateSubjectFromTemplate(certificateRequestWithDefaults, policy?.subject);
     const subjectAlternativeNames = buildSubjectAlternativeNamesFromTemplate(
-      { subjectAlternativeNames: certificateRequest.altNames },
+      { subjectAlternativeNames: certificateRequestWithDefaults.altNames },
       policy?.sans
     );
 
@@ -890,7 +899,7 @@ export const certificateV3ServiceFactory = ({
     if (issuerType === IssuerType.SELF_SIGNED) {
       const resolvedTtl = resolveEffectiveTtl({
         requestTtl: certificateRequest.validity.ttl || undefined,
-        profileDefaultTtlDays: profile.defaultTtlDays,
+        profileDefaultTtlDays: profile.defaults?.ttlDays,
         policyMaxValidity: policy?.validity?.max,
         flowDefaultTtl: ""
       });
@@ -1042,25 +1051,25 @@ export const certificateV3ServiceFactory = ({
         commonName: certificateSubject.common_name || "",
         altNames: subjectAlternativeNames,
         basicConstraints: caBasicConstraints,
-        pathLength: certificateRequest.basicConstraints?.pathLength,
+        pathLength: certificateRequestWithDefaults.basicConstraints?.pathLength,
         ttl: resolveEffectiveTtl({
           requestTtl: certificateRequest.validity.ttl,
-          profileDefaultTtlDays: profile.defaultTtlDays,
+          profileDefaultTtlDays: profile.defaults?.ttlDays,
           policyMaxValidity: policy?.validity?.max,
           flowDefaultTtl: ""
         }),
-        keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || [],
-        extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || [],
+        keyUsages: convertKeyUsageArrayToLegacy(certificateRequestWithDefaults.keyUsages) || [],
+        extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequestWithDefaults.extendedKeyUsages) || [],
         notBefore: normalizeDateForApi(certificateRequest.notBefore),
         notAfter: normalizeDateForApi(certificateRequest.notAfter),
         signatureAlgorithm: effectiveSignatureAlgorithm,
         keyAlgorithm: effectiveKeyAlgorithm,
         isFromProfile: true,
-        organization: certificateRequest.organization,
-        organizationalUnit: certificateRequest.organizationalUnit,
-        country: certificateRequest.country,
-        state: certificateRequest.state,
-        locality: certificateRequest.locality,
+        organization: certificateRequestWithDefaults.organization,
+        organizationalUnit: certificateRequestWithDefaults.organizationalUnit,
+        country: certificateRequestWithDefaults.country,
+        state: certificateRequestWithDefaults.state,
+        locality: certificateRequestWithDefaults.locality,
         tx
       };
 
@@ -1076,7 +1085,7 @@ export const certificateV3ServiceFactory = ({
       }
       const effectiveTtl = resolveEffectiveTtl({
         requestTtl: certificateRequest.validity.ttl,
-        profileDefaultTtlDays: profile.defaultTtlDays,
+        profileDefaultTtlDays: profile.defaults?.ttlDays,
         policyMaxValidity: policy?.validity?.max,
         flowDefaultTtl: ""
       });
@@ -1215,7 +1224,8 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate policy not found for this profile" });
     }
 
-    const certificateRequest = extractCertificateRequestFromCSR(csr);
+    const csrCertificateRequest = extractCertificateRequestFromCSR(csr);
+    const certificateRequest = applyProfileDefaults(csrCertificateRequest, profile.defaults);
     const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
 
     const { keyAlgorithm: extractedKeyAlgorithm, signatureAlgorithm: extractedSignatureAlgorithm } =
@@ -1389,10 +1399,22 @@ export const certificateV3ServiceFactory = ({
 
     const effectiveTtl = resolveEffectiveTtl({
       requestTtl: validity.ttl,
-      profileDefaultTtlDays: profile.defaultTtlDays,
+      profileDefaultTtlDays: profile.defaults?.ttlDays,
       policyMaxValidity: policy?.validity?.max,
       flowDefaultTtl: ""
     });
+
+    const csrSubjectParsed = parseDistinguishedName(new x509.Pkcs10CertificateRequest(csr).subject);
+    const mergedSubject = {
+      ...csrSubjectParsed,
+      commonName: csrSubjectParsed.commonName ?? certificateRequest.commonName,
+      organization: csrSubjectParsed.organization ?? certificateRequest.organization,
+      ou: csrSubjectParsed.ou ?? certificateRequest.organizationalUnit,
+      country: csrSubjectParsed.country ?? certificateRequest.country,
+      province: csrSubjectParsed.province ?? certificateRequest.state,
+      locality: csrSubjectParsed.locality ?? certificateRequest.locality
+    };
+    const subjectOverride = createDistinguishedName(mergedSubject);
 
     const { certificate, certificateChain, issuingCaCertificate, serialNumber, cert, certificateRequestId } =
       await certificateDAL.transaction(async (tx) => {
@@ -1400,12 +1422,19 @@ export const certificateV3ServiceFactory = ({
           isInternal: true,
           caId: ca.id,
           csr,
+          subjectOverride,
           basicConstraints: caBasicConstraints,
           pathLength: effectiveBasicConstraints?.pathLength,
           ttl: effectiveTtl,
           altNames: undefined,
           notBefore: normalizeDateForApi(notBefore),
           notAfter: normalizeDateForApi(notAfter),
+          keyUsages: certificateRequest.keyUsages
+            ? convertKeyUsageArrayToLegacy(certificateRequest.keyUsages)
+            : undefined,
+          extendedKeyUsages: certificateRequest.extendedKeyUsages
+            ? convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages)
+            : undefined,
           signatureAlgorithm: effectiveSignatureAlgorithm,
           keyAlgorithm: effectiveKeyAlgorithm,
           isFromProfile: true,
@@ -1503,7 +1532,8 @@ export const certificateV3ServiceFactory = ({
     let extractedSignatureAlgorithm: string | undefined;
 
     if (certificateOrder.csr) {
-      certificateRequest = extractCertificateRequestFromCSR(certificateOrder.csr);
+      const csrRequest = extractCertificateRequestFromCSR(certificateOrder.csr);
+      certificateRequest = applyProfileDefaults(csrRequest, profile.defaults);
       const algorithms = extractAlgorithmsFromCSR(certificateOrder.csr);
       extractedKeyAlgorithm = algorithms.keyAlgorithm;
       extractedSignatureAlgorithm = algorithms.signatureAlgorithm;
@@ -1513,7 +1543,7 @@ export const certificateV3ServiceFactory = ({
         certificateRequest.notAfter = certificateOrder.notAfter;
       }
     } else {
-      certificateRequest = {
+      const rawRequest: TCertificateRequest = {
         commonName: certificateOrder.commonName,
         keyUsages: certificateOrder.keyUsages,
         extendedKeyUsages: certificateOrder.extendedKeyUsages,
@@ -1529,6 +1559,7 @@ export const certificateV3ServiceFactory = ({
         state: certificateOrder.state,
         locality: certificateOrder.locality
       };
+      certificateRequest = applyProfileDefaults(rawRequest, profile.defaults);
     }
 
     // Check if this is a CA certificate request (either explicit basicConstraints or keyCertSign in key usages)

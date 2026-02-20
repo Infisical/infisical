@@ -22,7 +22,7 @@ export const PkiCertificateProfilesSchema = z.object({
   acmeConfigId: z.string().uuid().nullable().optional(),
   issuerType: z.string().default("ca"),
   externalConfigs: z.string().nullable().optional(),
-  defaultTtlDays: z.number().nullable().optional()
+  defaults: z.unknown().nullable().optional()
 });
 
 export type TPkiCertificateProfiles = z.infer<typeof PkiCertificateProfilesSchema>;

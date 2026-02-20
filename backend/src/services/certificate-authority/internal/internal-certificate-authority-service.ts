@@ -1882,6 +1882,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       keyAlgorithm,
       basicConstraints,
       pathLength,
+      subjectOverride,
       tx
     } = dto;
 
@@ -2192,7 +2193,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const serialNumber = createSerialNumber();
     const leafCert = await x509.X509CertificateGenerator.create({
       serialNumber,
-      subject: csrObj.subject,
+      subject: subjectOverride || csrObj.subject,
       issuer: caCertObj.subject,
       notBefore: notBeforeDate,
       notAfter: notAfterDate,
