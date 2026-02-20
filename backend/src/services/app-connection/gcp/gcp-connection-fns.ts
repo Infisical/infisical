@@ -1,4 +1,4 @@
-import { gaxios, Impersonated, JWT } from "google-auth-library";
+import { gaxios, GoogleAuth, Impersonated, JWT } from "google-auth-library";
 import { GetAccessTokenResponse } from "google-auth-library/build/src/auth/oauth2client";
 
 import { getConfig } from "@app/lib/config/env";
@@ -37,16 +37,24 @@ export const getGcpConnectionAuthToken = async (appConnection: TGcpConnectionCon
     });
   }
 
-  const credJson = JSON.parse(appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) as {
-    client_email: string;
-    private_key: string;
-  };
+  const baseCred = JSON.parse(appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL);
 
-  const sourceClient = new JWT({
-    email: credJson.client_email,
-    key: credJson.private_key,
-    scopes: ["https://www.googleapis.com/auth/cloud-platform"]
-  });
+  let sourceClient;
+
+  if (baseCred.private_key && baseCred.client_email) {
+    sourceClient = new JWT({
+      email: baseCred.client_email,
+      key: baseCred.private_key,
+      scopes: ["https://www.googleapis.com/auth/cloud-platform"]
+    });
+  } else {
+    const auth = new GoogleAuth({
+      credentials: baseCred,
+      scopes: ["https://www.googleapis.com/auth/cloud-platform"]
+    });
+
+    sourceClient = await auth.getClient();
+  }
 
   const impersonatedCredentials = new Impersonated({
     sourceClient,
