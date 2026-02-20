@@ -76,6 +76,21 @@ export const InitialStep = ({
     }
   }, [serverDetails?.samlDefaultOrgSlug]);
 
+  useEffect(() => {
+    if (isAdmin) return;
+
+    const authMethod = queryParams.get("auth_method");
+    const orgSlug = queryParams.get("org_slug");
+
+    if (authMethod && orgSlug) {
+      if (authMethod === "saml") {
+        redirectToSaml(orgSlug);
+      } else if (authMethod === "oidc") {
+        redirectToOidc(orgSlug);
+      }
+    }
+  }, []);
+
   const handleSaml = () => {
     if (config.defaultAuthOrgSlug) {
       redirectToSaml(config.defaultAuthOrgSlug);
