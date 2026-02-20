@@ -22,29 +22,45 @@ export const secretImportDALFactory = (db: TDbClient) => {
     return lastPos?.position || 0;
   };
 
-  const updateAllPosition = async (folderId: string, pos: number, targetPos: number, positionInc = 1, tx?: Knex) => {
+  const updateAllPosition = async (
+    folderId: string,
+    pos: number,
+    targetPos: number,
+    positionInc = 1,
+    tx?: Knex,
+    excludeIds?: string[]
+  ) => {
     try {
       if (targetPos === -1) {
         // this means delete
-        await (tx || db)(TableName.SecretImport)
+        const query = (tx || db)(TableName.SecretImport)
           .where({ folderId })
-          .andWhere("position", ">", pos)
-          .decrement("position", positionInc);
+          .andWhere("position", ">", pos);
+        if (excludeIds?.length) {
+          void query.whereNotIn("id", excludeIds);
+        }
+        await query.decrement("position", positionInc);
         return;
       }
 
       if (targetPos > pos) {
-        await (tx || db)(TableName.SecretImport)
+        const query = (tx || db)(TableName.SecretImport)
           .where({ folderId })
           .where("position", "<=", targetPos)
-          .andWhere("position", ">", pos)
-          .decrement("position", positionInc);
+          .andWhere("position", ">", pos);
+        if (excludeIds?.length) {
+          void query.whereNotIn("id", excludeIds);
+        }
+        await query.decrement("position", positionInc);
       } else {
-        await (tx || db)(TableName.SecretImport)
+        const query = (tx || db)(TableName.SecretImport)
           .where({ folderId })
           .where("position", ">=", targetPos)
-          .andWhere("position", "<", pos)
-          .increment("position", positionInc);
+          .andWhere("position", "<", pos);
+        if (excludeIds?.length) {
+          void query.whereNotIn("id", excludeIds);
+        }
+        await query.increment("position", positionInc);
       }
     } catch (error) {
       throw new DatabaseError({ error, name: "Update position" });
@@ -362,6 +378,25 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
+  const bulkUpdatePosition = async (updates: { id: string; position: number }[], tx?: Knex) => {
+    if (!updates.length) return;
+    try {
+      const ids = updates.map(({ id }) => id);
+      const bindings: (string | number)[] = [];
+      const cases = updates
+        .map(({ id, position }) => {
+          bindings.push(id, position);
+          return `WHEN id = ? THEN ?::integer`;
+        })
+        .join(" ");
+      await (tx || db)(TableName.SecretImport)
+        .whereIn("id", ids)
+        .update({ position: db.raw(`CASE ${cases} END`, bindings) });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Bulk update position" });
+    }
+  };
+
   return {
     ...secretImportOrm,
     find,
@@ -370,6 +405,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
     findByFolderIds,
     findLastImportPosition,
     updateAllPosition,
+    bulkUpdatePosition,
     getProjectImportCount,
     getUniqueImportCountByFolderIds,
     getFolderIsImportedBy,

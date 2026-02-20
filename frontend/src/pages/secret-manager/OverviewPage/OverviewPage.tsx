@@ -524,7 +524,6 @@ export const OverviewPage = () => {
     { value: string; comments: string[] }
   > | null>(null);
 
-
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "addSecretsInAllEnvs",
     "addFolder",
@@ -792,6 +791,11 @@ export const OverviewPage = () => {
     const newIndex = source.sortable.index;
     if (oldIndex === newIndex) return;
 
+    // sortableImportItems excludes reserved imports, so UI indices don't map 1:1
+    // to DB positions when replications are present. Use the DB position of the
+    // item currently at the target slot.
+    const targetPosition = Number(sortableImportItems[newIndex].position);
+
     const newImportOrder = arrayMove(sortableImportItems, oldIndex, newIndex);
     setSortableImportItems(newImportOrder);
     updateSecretImport({
@@ -800,7 +804,7 @@ export const OverviewPage = () => {
       path: secretPath,
       id: source.id as string,
       import: {
-        position: newIndex + 1
+        position: targetPosition
       }
     });
   };
@@ -1232,6 +1236,8 @@ export const OverviewPage = () => {
   // const combinedKeys = [...secKeys, ...secretImports.map((impSecrets) => impSecrets?.data?.map((impSec) => impSec.secrets?.map((impSecKey) => impSecKey.key))).flat().flat()];
 
   const isTableFiltered = isFilteredByResources;
+
+  console.log("secret import", sortableImportItems);
 
   if (!isProjectV3)
     return (
