@@ -203,7 +203,7 @@ export const orgServiceFactory = ({
     return orgs.filter((org) => org.userStatus !== "invited");
   };
 
-  const findAllAcessibleOrganizationsWithSubOrgs = async (userId: string): Promise<TOrgWithSubOrgs[]> => {
+  const findAllAccessibleOrganizationsWithSubOrgs = async (userId: string): Promise<TOrgWithSubOrgs[]> => {
     return orgDAL.listOrganizationsWithSubOrgs({ actorId: userId, actorType: ActorType.USER });
   };
 
@@ -1298,7 +1298,7 @@ export const orgServiceFactory = ({
     findAllWorkspaces,
     addGhostUser,
     updateOrgMembership,
-    findAllAcessibleOrganizationsWithSubOrgs,
+    findAllAccessibleOrganizationsWithSubOrgs,
     // incident contacts
     findIncidentContacts,
     createIncidentContact,

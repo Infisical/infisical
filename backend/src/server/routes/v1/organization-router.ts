@@ -69,7 +69,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
-      const organizations = await server.services.org.findAllAcessibleOrganizationsWithSubOrgs(req.permission.id);
+      const organizations = await server.services.org.findAllAccessibleOrganizationsWithSubOrgs(req.permission.id);
       return { organizations };
     }
   });
