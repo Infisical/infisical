@@ -43,8 +43,14 @@ Infisical supports two methods for connecting to AWS.
                     ![Access Key Step 3](/images/integrations/aws/integrations-aws-access-key-3.png)
                 </Step>
                 <Step title="Set Up Connection Keys">
-                    1. Set the access key as **INF_APP_CONNECTION_AWS_ACCESS_KEY_ID**.
-                    2. Set the secret key as **INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY**.
+                    Set the following environment variables in your Infisical instance:
+
+                    - `INF_APP_CONNECTION_AWS_ACCESS_KEY_ID`: The AWS access key ID.
+                    - `INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY`: The AWS secret access key.
+
+                    <Note>
+                        If you can't directly access and modify environment variables, you can update them using the [Server Admin Console](/documentation/platform/admin-panel/server-admin#environment-variables-tab).
+                    </Note>
                 </Step>
             </Steps>
         </Accordion>
