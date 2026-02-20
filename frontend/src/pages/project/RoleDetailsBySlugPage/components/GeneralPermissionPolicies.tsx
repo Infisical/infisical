@@ -16,7 +16,6 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-  UnstableAccordion,
   UnstableAccordionContent,
   UnstableAccordionItem,
   UnstableAccordionTrigger,
@@ -37,6 +36,7 @@ type Props<T extends ProjectPermissionSub> = {
   actions: TProjectPermissionObject[T]["actions"];
   children?: JSX.Element;
   isDisabled?: boolean;
+  isOpen?: boolean;
   onShowAccessTree?: (subject: ProjectPermissionSub) => void;
 };
 
@@ -168,6 +168,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
   title,
   description,
   isDisabled,
+  isOpen = false,
   onShowAccessTree
 }: Props<T>) => {
   const { control, watch } = useFormContext<TFormSchema>();
@@ -182,7 +183,6 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
     name: `permissions.${subject}`
   });
 
-  const [openAccordion, setOpenAccordion] = useState<string | undefined>(undefined);
   const [draggedItem, setDraggedItem] = useState<number | null>(null);
   const [dragOverItem, setDragOverItem] = useState<number | null>(null);
 
@@ -218,150 +218,144 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
   };
 
   return (
-    <UnstableAccordion
-      type="single"
-      collapsible
-      value={openAccordion}
-      onValueChange={setOpenAccordion}
-      className="overflow-clip border border-border bg-container first:rounded-t-md last:rounded-b-md hover:bg-container-hover"
-    >
-      <UnstableAccordionItem value={subject} className="border-0">
-        <UnstableAccordionTrigger className="min-h-14 px-5 py-4 hover:bg-container-hover">
-          <div className="flex flex-1 items-center gap-2 text-left">
-            <div className="flex grow flex-col">
-              <span className="text-base select-none">{title}</span>
-              <span className="text-sm text-muted">{description}</span>
-            </div>
-            {fields.length > 1 && (
-              <Badge variant="neutral" className="mr-2">
-                {fields.length} Rules
-              </Badge>
-            )}
-            {openAccordion === subject && (
-              <div className="flex items-center gap-2">
-                {onShowAccessTree && (
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onShowAccessTree(subject);
-                    }}
-                  >
-                    <NetworkIcon className="size-4" />
-                    Visualize Access
-                  </Button>
-                )}
-                {!isDisabled && isConditionalSubjects(subject) && (
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      insert(fields.length, [
-                        { read: false, edit: false, create: false, delete: false } as any
-                      ]);
-                    }}
-                    isDisabled={isDisabled}
-                  >
-                    <PlusIcon className="size-4" />
-                    Add Rule
-                  </Button>
-                )}
-              </div>
-            )}
+    <UnstableAccordionItem value={subject}>
+      <UnstableAccordionTrigger className="min-h-14 px-5 py-4 hover:bg-container-hover">
+        <div className="flex flex-1 items-center gap-2 text-left">
+          <div className="flex grow flex-col">
+            <span className="text-base select-none">{title}</span>
+            <span className="text-sm text-muted">{description}</span>
           </div>
-        </UnstableAccordionTrigger>
-        <UnstableAccordionContent className="!p-0">
-          <div key={`select-${subject}-type`} className="flex flex-col space-y-3 bg-container p-3">
-            {fields.map((el, rootIndex) => {
-              const isInverted = watch(`permissions.${subject}.${rootIndex}.inverted` as any);
-
-              return (
-                <div
-                  key={el.id}
-                  className={twMerge(
-                    "relative rounded-md border border-l-[6px] border-border bg-card px-5 py-4 transition-colors duration-300",
-                    isInverted ? "border-l-red-600/50" : "border-l-green-600/50",
-                    dragOverItem === rootIndex ? "border-2 border-primary/50" : "",
-                    draggedItem === rootIndex ? "opacity-50" : ""
-                  )}
-                  onDragOver={(e) => handleDragOver(e, rootIndex)}
-                  onDrop={handleDrop}
+          {fields.length > 1 && (
+            <Badge variant="neutral" className="mr-2">
+              {fields.length} Rules
+            </Badge>
+          )}
+          {isOpen && (
+            <div className="flex items-center gap-2">
+              {onShowAccessTree && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onShowAccessTree(subject);
+                  }}
                 >
-                  <div className="flex items-center gap-3">
-                    {isConditionalSubjects(subject) && (
-                      <Controller
-                        defaultValue={false as any}
-                        name={`permissions.${subject}.${rootIndex}.inverted`}
-                        render={({ field }) => (
-                          <Select
-                            value={String(field.value)}
-                            onValueChange={(val) => field.onChange(val === "true")}
-                            disabled={isDisabled}
-                          >
-                            <SelectTrigger className="w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent position="popper">
-                              <SelectItem value="false">Allow</SelectItem>
-                              <SelectItem value="true">Forbid</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )}
-                      />
-                    )}
-                    <div className="flex-1">
-                      <ActionsMultiSelect
-                        subject={subject}
-                        rootIndex={rootIndex}
-                        actions={actions}
-                        isDisabled={isDisabled}
-                        control={control}
-                      />
-                    </div>
-                    {!isDisabled && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <UnstableIconButton
-                            aria-label="Remove rule"
-                            variant="danger"
-                            size="xs"
-                            onClick={() => remove(rootIndex)}
-                            isDisabled={isDisabled}
-                          >
-                            <TrashIcon className="size-4" />
-                          </UnstableIconButton>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">Remove Rule</TooltipContent>
-                      </Tooltip>
-                    )}
-                    {!isDisabled && isConditionalSubjects(subject) && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, rootIndex)}
-                            onDragEnd={handleDragEnd}
-                            className="cursor-move text-muted hover:text-foreground"
-                          >
-                            <GripVerticalIcon className="size-4" />
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">Drag to reorder permission</TooltipContent>
-                      </Tooltip>
-                    )}
+                  <NetworkIcon className="size-4" />
+                  Visualize Access
+                </Button>
+              )}
+              {!isDisabled && isConditionalSubjects(subject) && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    insert(fields.length, [
+                      { read: false, edit: false, create: false, delete: false } as any
+                    ]);
+                  }}
+                  isDisabled={isDisabled}
+                >
+                  <PlusIcon className="size-4" />
+                  Add Rule
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      </UnstableAccordionTrigger>
+      <UnstableAccordionContent className="!p-0">
+        <div key={`select-${subject}-type`} className="flex flex-col space-y-3 bg-container p-3">
+          {fields.map((el, rootIndex) => {
+            const isInverted = watch(`permissions.${subject}.${rootIndex}.inverted` as any);
+
+            return (
+              <div
+                key={el.id}
+                className={twMerge(
+                  "relative rounded-md border border-l-[6px] border-border bg-card px-5 py-4 transition-colors duration-300",
+                  isInverted ? "border-l-red-600/50" : "border-l-green-600/50",
+                  dragOverItem === rootIndex ? "border-2 border-primary/50" : "",
+                  draggedItem === rootIndex ? "opacity-50" : ""
+                )}
+                onDragOver={(e) => handleDragOver(e, rootIndex)}
+                onDrop={handleDrop}
+              >
+                <div className="flex items-center gap-3">
+                  {isConditionalSubjects(subject) && (
+                    <Controller
+                      defaultValue={false as any}
+                      name={`permissions.${subject}.${rootIndex}.inverted`}
+                      render={({ field }) => (
+                        <Select
+                          value={String(field.value)}
+                          onValueChange={(val) => field.onChange(val === "true")}
+                          disabled={isDisabled}
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent position="popper">
+                            <SelectItem value="false">Allow</SelectItem>
+                            <SelectItem value="true">Forbid</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  )}
+                  <div className="flex-1">
+                    <ActionsMultiSelect
+                      subject={subject}
+                      rootIndex={rootIndex}
+                      actions={actions}
+                      isDisabled={isDisabled}
+                      control={control}
+                    />
                   </div>
-                  {children &&
-                    cloneElement(children, {
-                      position: rootIndex
-                    })}
+                  {!isDisabled && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <UnstableIconButton
+                          aria-label="Remove rule"
+                          variant="danger"
+                          size="xs"
+                          onClick={() => remove(rootIndex)}
+                          isDisabled={isDisabled}
+                        >
+                          <TrashIcon className="size-4" />
+                        </UnstableIconButton>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">Remove Rule</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {!isDisabled && isConditionalSubjects(subject) && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, rootIndex)}
+                          onDragEnd={handleDragEnd}
+                          className="cursor-move text-muted hover:text-foreground"
+                        >
+                          <GripVerticalIcon className="size-4" />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">Drag to reorder permission</TooltipContent>
+                    </Tooltip>
+                  )}
                 </div>
-              );
-            })}
-          </div>
-        </UnstableAccordionContent>
-      </UnstableAccordionItem>
-    </UnstableAccordion>
+                {children &&
+                  cloneElement(children, {
+                    position: rootIndex
+                  })}
+              </div>
+            );
+          })}
+        </div>
+      </UnstableAccordionContent>
+    </UnstableAccordionItem>
   );
 };

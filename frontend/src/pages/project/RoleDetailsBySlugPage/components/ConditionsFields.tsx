@@ -54,6 +54,10 @@ export const ConditionsFields = ({
     name: `permissions.${subject}.${position}.conditions` as const
   });
 
+  if (isDisabled && items.fields.length === 0) {
+    return null;
+  }
+
   const conditionErrorMessage =
     (errors?.permissions as any)?.[subject]?.[position]?.conditions?.message ||
     (errors?.permissions as any)?.[subject]?.[position]?.conditions?.root?.message;
@@ -79,6 +83,7 @@ export const ConditionsFields = ({
           </Tooltip>
         </div>
         <Button
+          type="button"
           variant="outline"
           size="xs"
           className="mt-2"

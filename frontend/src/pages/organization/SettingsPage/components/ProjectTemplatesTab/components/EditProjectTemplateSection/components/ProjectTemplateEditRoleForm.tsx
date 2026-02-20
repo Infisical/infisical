@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { faChevronLeft, faSave } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -7,6 +8,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
+import { UnstableAccordion } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { isCustomProjectRole } from "@app/helpers/roles";
 import { TProjectTemplate, useUpdateProjectTemplate } from "@app/hooks/api/projectTemplates";
@@ -43,6 +45,8 @@ export const ProjectTemplateEditRoleForm = ({
   role,
   isDisabled
 }: Props) => {
+  const [openPolicies, setOpenPolicies] = useState<string[]>([]);
+
   const formMethods = useForm<TFormSchema>({
     values: role ? { ...role, permissions: rolePermission2Form(role.permissions) } : undefined,
     resolver: zodResolver(formSchema)
@@ -165,7 +169,12 @@ export const ProjectTemplateEditRoleForm = ({
         <div className="p-4">
           <div className="mb-2 text-lg">Policies</div>
           <PermissionEmptyState />
-          <div>
+          <UnstableAccordion
+            type="multiple"
+            value={openPolicies}
+            onValueChange={setOpenPolicies}
+            className="overflow-clip rounded-md border border-border bg-container"
+          >
             {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map((subject) => (
               <GeneralPermissionPolicies
                 subject={subject}
@@ -174,11 +183,12 @@ export const ProjectTemplateEditRoleForm = ({
                 description={PROJECT_PERMISSION_OBJECT[subject].description}
                 key={`project-permission-${subject}`}
                 isDisabled={isDisabled}
+                isOpen={openPolicies.includes(subject)}
               >
                 {renderConditionalComponents(subject, isDisabled)}
               </GeneralPermissionPolicies>
             ))}
-          </div>
+          </UnstableAccordion>
         </div>
       </FormProvider>
     </form>

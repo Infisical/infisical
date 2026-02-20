@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { faCaretDown, faClock, faSave } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -20,7 +21,7 @@ import {
   Tag,
   Tooltip
 } from "@app/components/v2";
-import { UnstableSeparator } from "@app/components/v3";
+import { UnstableAccordion, UnstableSeparator } from "@app/components/v3";
 import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
@@ -78,6 +79,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
   isDisabled
 }: Props) => {
   const isCreate = !privilegeId;
+  const [openPolicies, setOpenPolicies] = useState<string[]>([]);
   const { currentProject } = useProject();
   const projectId = currentProject?.id || "";
   const { data: privilegeDetails, isPending } = useGetProjectUserPrivilegeDetails(
@@ -323,20 +325,28 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
           </div>
           {(isCreate || !isPending) && <PermissionEmptyState />}
           <div className="scrollbar-thin max-h-[50vh] overflow-y-auto">
-            {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map(
-              (permissionSubject) => (
-                <GeneralPermissionPolicies
-                  subject={permissionSubject}
-                  actions={PROJECT_PERMISSION_OBJECT[permissionSubject].actions}
-                  title={PROJECT_PERMISSION_OBJECT[permissionSubject].title}
-                  description={PROJECT_PERMISSION_OBJECT[permissionSubject].description}
-                  key={`project-permission-${permissionSubject}`}
-                  isDisabled={isDisabled}
-                >
-                  {renderConditionalComponents(permissionSubject, isDisabled)}
-                </GeneralPermissionPolicies>
-              )
-            )}
+            <UnstableAccordion
+              type="multiple"
+              value={openPolicies}
+              onValueChange={setOpenPolicies}
+              className="overflow-clip rounded-md border border-border bg-container"
+            >
+              {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map(
+                (permissionSubject) => (
+                  <GeneralPermissionPolicies
+                    subject={permissionSubject}
+                    actions={PROJECT_PERMISSION_OBJECT[permissionSubject].actions}
+                    title={PROJECT_PERMISSION_OBJECT[permissionSubject].title}
+                    description={PROJECT_PERMISSION_OBJECT[permissionSubject].description}
+                    key={`project-permission-${permissionSubject}`}
+                    isDisabled={isDisabled}
+                    isOpen={openPolicies.includes(permissionSubject)}
+                  >
+                    {renderConditionalComponents(permissionSubject, isDisabled)}
+                  </GeneralPermissionPolicies>
+                )
+              )}
+            </UnstableAccordion>
           </div>
         </div>
         <UnstableSeparator />

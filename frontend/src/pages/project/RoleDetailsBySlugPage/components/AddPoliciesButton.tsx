@@ -45,6 +45,7 @@ export const AddPoliciesButton = ({ isDisabled, projectType, projectId }: Props)
     <div>
       <UnstableButtonGroup>
         <Button
+          type="button"
           className="rounded-r-none"
           isDisabled={isDisabled}
           variant="outline"
@@ -58,7 +59,7 @@ export const AddPoliciesButton = ({ isDisabled, projectType, projectId }: Props)
           onOpenChange={(isOpen) => handlePopUpToggle("addPolicyOptions", isOpen)}
         >
           <UnstableDropdownMenuTrigger asChild>
-            <UnstableIconButton variant="outline">
+            <UnstableIconButton type="button" variant="outline">
               <ChevronDownIcon />
             </UnstableIconButton>
           </UnstableDropdownMenuTrigger>
