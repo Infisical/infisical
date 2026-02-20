@@ -38,6 +38,7 @@ import {
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useResyncSecretReplication } from "@app/hooks/api";
+import { ReservedFolders } from "@app/hooks/api/secretFolders/types";
 import { TSecretImport } from "@app/hooks/api/secretImports/types";
 import { SecretV3RawSanitized } from "@app/hooks/api/types";
 
@@ -337,6 +338,11 @@ export const SecretImportTableRow = ({
       Array.from(secretKeysByEnv.values()).some((keys) => !keys.has(secret.key))
     );
 
+    const firstEnvImport = allEnvImportedSecrets.length > 0
+      ? getSecretImportByEnv(importEnvSlug, importPath, allEnvImportedSecrets[0].sourceEnv)
+      : undefined;
+    const isReplicated = firstEnvImport?.isReplication;
+
     return (
       <UnstableTable containerClassName="border-none rounded-none bg-transparent">
         <UnstableTableHeader>
@@ -358,8 +364,12 @@ export const SecretImportTableRow = ({
               <SecretImportSecretRow
                 key={`import-secret-multi-${secret.key}`}
                 secretKey={secret.key}
-                environment={importEnvSlug}
-                secretPath={importPath}
+                environment={isReplicated ? allEnvImportedSecrets[0].sourceEnv : importEnvSlug}
+                secretPath={
+                  isReplicated && firstEnvImport
+                    ? `${secretPath === "/" ? "" : secretPath}/${ReservedFolders.SecretReplication}${firstEnvImport.id}`
+                    : importPath
+                }
                 isEmpty={secret.isEmpty}
                 missingFromEnvs={missingEnvNames}
               />
@@ -412,8 +422,12 @@ export const SecretImportTableRow = ({
             <SecretImportSecretRow
               key={`import-secret-${envSlug}-${secret.key}`}
               secretKey={secret.key}
-              environment={importEnvSlug}
-              secretPath={importPath}
+              environment={singleEnvImport?.isReplication ? singleEnvSlug : importEnvSlug}
+              secretPath={
+                singleEnvImport?.isReplication
+                  ? `${secretPath === "/" ? "" : secretPath}/${ReservedFolders.SecretReplication}${singleEnvImport.id}`
+                  : importPath
+              }
               isEmpty={secret.isEmpty}
             />
           ))}
