@@ -84,6 +84,11 @@ export const SelectOrganizationSection = () => {
       }));
   }, [orgsWithSubOrgs.data, searchTerm]);
 
+  const totalOrgCount = useMemo(() => {
+    if (!orgsWithSubOrgs.data) return 0;
+    return orgsWithSubOrgs.data.reduce((sum, org) => sum + 1 + org.subOrganizations.length, 0);
+  }, [orgsWithSubOrgs.data]);
+
   const filteredSubOrgs = useMemo(() => {
     if (!selectedRootOrg) return [];
     if (!searchTerm.trim()) return selectedRootOrg.subOrganizations;
@@ -504,17 +509,19 @@ export const SelectOrganizationSection = () => {
 
           {/* Card: search + breadcrumb + fixed-height list */}
           <div className="rounded-lg border-2 border-mineshaft-500 shadow-lg">
-            <div className="border-b border-mineshaft-600 px-4 py-3">
-              <Input
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={
-                  selectedRootOrg ? "Search sub-organizations..." : "Search organizations..."
-                }
-                leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-                className="h-10"
-              />
-            </div>
+            {totalOrgCount >= 5 && (
+              <div className="border-b border-mineshaft-600 px-4 py-3">
+                <Input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder={
+                    selectedRootOrg ? "Search sub-organizations..." : "Search organizations..."
+                  }
+                  leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+                  className="h-10"
+                />
+              </div>
+            )}
 
             {/* Breadcrumb */}
             {selectedRootOrg && (
