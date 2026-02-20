@@ -333,6 +333,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                   subject={permissionSubject}
                   actions={PROJECT_PERMISSION_OBJECT[permissionSubject].actions}
                   title={PROJECT_PERMISSION_OBJECT[permissionSubject].title}
+                  description={PROJECT_PERMISSION_OBJECT[permissionSubject].description}
                   key={`project-permission-${permissionSubject}`}
                   isDisabled={isDisabled}
                 >

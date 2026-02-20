@@ -1610,6 +1610,7 @@ export const EXCLUDED_PERMISSION_SUBS = [ProjectPermissionSub.SecretRollback];
 export type TProjectPermissionObject = {
   [K in ProjectPermissionSub]: {
     title: string;
+    description: string;
     actions: {
       label: string;
       description: string;
@@ -1624,6 +1625,7 @@ export type TProjectPermissionObject = {
 export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   [ProjectPermissionSub.Secrets]: {
     title: "Secrets",
+    description: "Manage secret values, metadata, and access within project environments",
     actions: [
       {
         label: "Read (legacy)",
@@ -1661,6 +1663,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.SecretFolders]: {
     title: "Secret Folders",
+    description: "Organize secrets into hierarchical folder structures",
     actions: [
       { label: "Create", value: "create", description: "Create new folders to organize secrets" },
       { label: "Modify", value: "edit", description: "Rename or modify folder properties" },
@@ -1669,6 +1672,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.SecretImports]: {
     title: "Secret Imports",
+    description: "Import and reference secrets from other environments or projects",
     actions: [
       { label: "Read", value: "read", description: "View imported secrets from other projects" },
       { label: "Create", value: "create", description: "Set up new secret imports" },
@@ -1678,6 +1682,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.DynamicSecrets]: {
     title: "Dynamic Secrets",
+    description: "Configure auto-rotating credentials for databases and services",
     actions: [
       {
         label: "Read Root Credentials",
@@ -1708,6 +1713,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.Cmek]: {
     title: "KMS",
+    description: "Manage encryption keys and cryptographic operations",
     actions: [
       {
         label: "Read",
@@ -1758,6 +1764,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.Kms]: {
     title: "Project KMS Configuration",
+    description: "Configure key management system settings for the project",
     actions: [
       {
         label: "Modify",
@@ -1768,6 +1775,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.Integrations]: {
     title: "Native Integrations",
+    description: "Connect secrets to third-party services and platforms",
     actions: [
       { label: "Read", value: "read", description: "View configured integrations" },
       {
@@ -1781,6 +1789,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.Project]: {
     title: "Project",
+    description: "Manage project settings, details, and lifecycle",
     actions: [
       {
         label: "Update project details",
@@ -1796,6 +1805,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.Role]: {
     title: "Roles",
+    description: "Define and configure custom permission roles",
     actions: [
       { label: "Read", value: "read", description: "View roles and their permissions" },
       { label: "Create", value: "create", description: "Create new custom roles" },
@@ -1805,6 +1815,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.Member]: {
     title: "User Management",
+    description: "Manage project member access and role assignments",
     actions: [
       {
         label: "Read",
@@ -1840,6 +1851,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.Identity]: {
     title: "Machine Identity Management",
+    description: "Manage machine identities and their access to secrets",
     actions: [
       {
         label: "Read",
@@ -1895,6 +1907,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.Groups]: {
     title: "Group Management",
+    description: "Organize users into groups for bulk permission management",
     actions: [
       {
         label: "Read",
@@ -1925,6 +1938,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.Webhooks]: {
     title: "Webhooks",
+    description: "Configure automated notifications for secret events",
     actions: [
       { label: "Read", value: "read", description: "View configured webhooks" },
       {
@@ -1938,6 +1952,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.ServiceTokens]: {
     title: "Service Tokens",
+    description: "Create and manage tokens for programmatic access",
     actions: [
       { label: "Read", value: "read", description: "View service tokens" },
       {
@@ -1951,6 +1966,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.Settings]: {
     title: "Settings",
+    description: "Configure project-level settings and preferences",
     actions: [
       { label: "Read", value: "read", description: "View project settings" },
       { label: "Modify", value: "edit", description: "Change project settings and configuration" }
@@ -1958,6 +1974,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.Environments]: {
     title: "Environment Management",
+    description: "Create and manage project environments",
     actions: [
       { label: "Read", value: "read", description: "View environments (dev, staging, prod, etc.)" },
       { label: "Create", value: "create", description: "Create new environments" },
@@ -1967,6 +1984,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.Commits]: {
     title: "Commits",
+    description: "View and manage secret version history",
     actions: [
       {
         label: "View",
@@ -1982,6 +2000,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.Tags]: {
     title: "Tags",
+    description: "Organize and categorize secrets with labels",
     actions: [
       { label: "Read", value: "read", description: "View secret tags" },
       { label: "Create", value: "create", description: "Create new tags for organizing secrets" },
@@ -1991,6 +2010,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.AuditLogs]: {
     title: "Audit Logs",
+    description: "View project activity and audit trail",
     actions: [
       {
         label: "Read",
@@ -2001,6 +2021,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.IpAllowList]: {
     title: "IP Allowlist",
+    description: "Restrict project access by IP address",
     actions: [
       { label: "Read", value: "read", description: "View IP allowlist configuration" },
       { label: "Create", value: "create", description: "Add IP addresses to the allowlist" },
@@ -2010,6 +2031,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.CertificateAuthorities]: {
     title: "Certificate Authorities",
+    description: "Manage PKI root and intermediate certificate authorities",
     actions: [
       {
         label: "Read",
@@ -2045,6 +2067,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.Certificates]: {
     title: "Certificates",
+    description: "Issue and manage X.509 certificates",
     actions: [
       {
         label: "Read",
@@ -2075,6 +2098,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.CertificateTemplates]: {
     title: "Certificate Templates",
+    description: "Define templates for certificate issuance",
     actions: [
       {
         label: "Read",
@@ -2105,6 +2129,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.CertificateProfiles]: {
     title: "Certificate Profiles",
+    description: "Configure certificate profile settings",
     actions: [
       {
         label: "Read",
@@ -2135,6 +2160,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.CertificatePolicies]: {
     title: "Certificate Policies",
+    description: "Define policies for certificate lifecycle management",
     actions: [
       {
         label: "Read",
@@ -2160,6 +2186,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.SshCertificateAuthorities]: {
     title: "SSH Certificate Authorities",
+    description: "Manage SSH CA for signing host and user certificates",
     actions: [
       { label: "Read", value: "read", description: "View SSH certificate authorities" },
       { label: "Create", value: "create", description: "Create new SSH certificate authorities" },
@@ -2169,6 +2196,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.SshCertificates]: {
     title: "SSH Certificates",
+    description: "Issue and manage SSH user certificates",
     actions: [
       { label: "Read", value: "read", description: "View SSH certificates" },
       { label: "Create", value: "create", description: "Issue new SSH certificates" },
@@ -2178,6 +2206,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.SshCertificateTemplates]: {
     title: "SSH Certificate Templates",
+    description: "Define templates for SSH certificate issuance",
     actions: [
       { label: "Read", value: "read", description: "View SSH certificate templates" },
       { label: "Create", value: "create", description: "Create new SSH certificate templates" },
@@ -2187,6 +2216,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.SshHosts]: {
     title: "SSH Hosts",
+    description: "Manage SSH host certificates and access",
     actions: [
       {
         label: "Read",
@@ -2217,6 +2247,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.SshHostGroups]: {
     title: "SSH Host Groups",
+    description: "Organize SSH hosts into groups",
     actions: [
       { label: "Read", value: "read", description: "View SSH host groups" },
       { label: "Create", value: "create", description: "Create new SSH host groups" },
@@ -2226,6 +2257,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.PkiSubscribers]: {
     title: "PKI Subscribers",
+    description: "Manage entities that receive certificates",
     actions: [
       {
         label: "Read",
@@ -2256,6 +2288,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.PkiCollections]: {
     title: "PKI Collections",
+    description: "Organize certificates into collections",
     actions: [
       { label: "Read", value: "read", description: "View PKI collections" },
       { label: "Create", value: "create", description: "Create new certificate collections" },
@@ -2265,6 +2298,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.PkiAlerts]: {
     title: "PKI Alerts",
+    description: "Configure certificate expiration and renewal alerts",
     actions: [
       { label: "Read", value: "read", description: "View PKI alerts and notifications" },
       { label: "Create", value: "create", description: "Set up new certificate expiration alerts" },
@@ -2274,6 +2308,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.SecretApproval]: {
     title: "Secret Approval Policies",
+    description: "Define approval workflows for secret access",
     actions: [
       {
         label: "Read",
@@ -2299,6 +2334,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.SecretRotation]: {
     title: "Secret Rotation",
+    description: "Configure automatic secret rotation policies",
     actions: [
       {
         label: "Read Config",
@@ -2334,6 +2370,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.SecretRollback]: {
     title: "Secret Rollback",
+    description: "Restore secrets to previous versions",
     actions: [
       {
         label: "Perform rollback",
@@ -2345,6 +2382,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.SecretSyncs]: {
     title: "Secret Syncs",
+    description: "Sync secrets across environments and projects",
     actions: [
       {
         label: "Read",
@@ -2385,6 +2423,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.PkiSyncs]: {
     title: "Certificate Syncs",
+    description: "Sync certificates across PKI instances",
     actions: [
       {
         label: "Read",
@@ -2425,6 +2464,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.PkiDiscovery]: {
     title: "PKI Discovery",
+    description: "Discover and inventory certificates",
     actions: [
       {
         label: "Read",
@@ -2439,6 +2479,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.PkiCertificateInstallations]: {
     title: "Certificate Installations",
+    description: "Install certificates to target systems",
     actions: [
       { label: "Read", value: "read", description: "View certificate installation records" },
       { label: "Modify", value: "edit", description: "Update installation properties" },
@@ -2447,6 +2488,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.Kmip]: {
     title: "KMIP",
+    description: "Manage keys via KMIP protocol",
     actions: [
       {
         label: "Read Clients",
@@ -2477,6 +2519,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.SecretScanningDataSources]: {
     title: "Secret Scanning Data Sources",
+    description: "Configure data sources for secret scanning",
     actions: [
       {
         label: "Read Data Sources",
@@ -2517,6 +2560,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.SecretScanningFindings]: {
     title: "Secret Scanning Findings",
+    description: "View and manage detected secret exposures",
     actions: [
       {
         label: "Read Findings",
@@ -2532,6 +2576,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.SecretScanningConfigs]: {
     title: "Secret Scanning Config",
+    description: "Configure secret scanning rules and settings",
     actions: [
       {
         label: "Read Config",
@@ -2547,6 +2592,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.SecretEventSubscriptions]: {
     title: "Secret Event Subscriptions",
+    description: "Subscribe to secret lifecycle events",
     actions: [
       {
         label: "Subscribe to Creation Events",
@@ -2572,6 +2618,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.AppConnections]: {
     title: "App Connections",
+    description: "Connect applications to access secrets",
     actions: [
       {
         label: "Read",
@@ -2602,6 +2649,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.PamFolders]: {
     title: "Folders",
+    description: "Organize PAM resources into folders",
     actions: [
       { label: "Read", value: ProjectPermissionActions.Read, description: "View PAM folders" },
       {
@@ -2619,6 +2667,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.PamResources]: {
     title: "Resources",
+    description: "Manage privileged access resources",
     actions: [
       { label: "Read", value: ProjectPermissionActions.Read, description: "View PAM resources" },
       {
@@ -2640,6 +2689,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.PamAccounts]: {
     title: "Accounts",
+    description: "Manage privileged account credentials",
     actions: [
       {
         label: "Access",
@@ -2670,6 +2720,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.PamSessions]: {
     title: "Sessions",
+    description: "View and manage privileged access sessions",
     actions: [
       {
         label: "Read",
@@ -2680,6 +2731,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.ApprovalRequests]: {
     title: "Approval Requests",
+    description: "Manage and respond to access approval requests",
     actions: [
       {
         label: "Read",
@@ -2695,6 +2747,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.ApprovalRequestGrants]: {
     title: "Approval Request Grants",
+    description: "Grant or deny approval requests for access",
     actions: [
       {
         label: "Read",
@@ -2710,6 +2763,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.McpEndpoints]: {
     title: "MCP Endpoints",
+    description: "Manage Model Context Protocol endpoints",
     actions: [
       {
         label: "Read",
@@ -2740,6 +2794,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.McpServers]: {
     title: "MCP Servers",
+    description: "Configure MCP server connections",
     actions: [
       { label: "Read", value: ProjectPermissionActions.Read, description: "View MCP servers" },
       {
@@ -2757,6 +2812,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.McpActivityLogs]: {
     title: "MCP Activity Logs",
+    description: "View MCP endpoint activity and usage",
     actions: [
       {
         label: "Read",
@@ -2767,6 +2823,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.SecretApprovalRequest]: {
     title: "Secret Approval Requests",
+    description: "Approve or deny requests to access secrets",
     actions: [
       {
         label: "Read",

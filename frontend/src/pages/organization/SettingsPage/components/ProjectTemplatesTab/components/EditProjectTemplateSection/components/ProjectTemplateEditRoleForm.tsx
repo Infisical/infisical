@@ -171,6 +171,7 @@ export const ProjectTemplateEditRoleForm = ({
                 subject={subject}
                 actions={PROJECT_PERMISSION_OBJECT[subject].actions}
                 title={PROJECT_PERMISSION_OBJECT[subject].title}
+                description={PROJECT_PERMISSION_OBJECT[subject].description}
                 key={`project-permission-${subject}`}
                 isDisabled={isDisabled}
               >
