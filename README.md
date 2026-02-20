@@ -84,6 +84,7 @@ We're on a mission to make security tooling more accessible to everyone, not jus
 - **[Infisical SDK](https://infisical.com/docs/sdks/overview)**: Interact with Infisical via client SDKs ([Node](https://infisical.com/docs/sdks/languages/node), [Python](https://github.com/Infisical/python-sdk-official?tab=readme-ov-file#infisical-python-sdk), [Go](https://infisical.com/docs/sdks/languages/go), [Ruby](https://infisical.com/docs/sdks/languages/ruby), [Java](https://infisical.com/docs/sdks/languages/java), [.NET](https://infisical.com/docs/sdks/languages/csharp))
 - **[Infisical CLI](https://infisical.com/docs/cli/overview)**: Interact with Infisical via CLI; useful for injecting secrets into local development and CI/CD pipelines.
 - **[Infisical API](https://infisical.com/docs/api-reference/overview/introduction)**: Interact with Infisical via API.
+- **[CircleCI Orb](https://infisical.com/docs/integrations/cicd/circleci-orb)**: Simplify Infisical integration in CircleCI workflows with reusable orb commands.
 
 ## Getting started
 
