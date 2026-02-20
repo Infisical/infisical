@@ -175,6 +175,12 @@ import {
 } from "./terraform-cloud";
 import { TVercelSync, TVercelSyncInput, TVercelSyncListItem, TVercelSyncWithCredentials } from "./vercel";
 import { TZabbixSync, TZabbixSyncInput, TZabbixSyncListItem, TZabbixSyncWithCredentials } from "./zabbix";
+import {
+  TAlibabaCloudKMSSync,
+  TAlibabaCloudKMSSyncInput,
+  TAlibabaCloudKMSSyncListItem,
+  TAlibabaCloudKMSSyncWithCredentials
+} from "./alibaba-cloud-kms";
 
 export type TSecretSync =
   | TAwsParameterStoreSync
@@ -210,7 +216,8 @@ export type TSecretSync =
   | TNorthflankSync
   | TBitbucketSync
   | TOctopusDeploySync
-  | TCircleCISync;
+  | TCircleCISync
+  | TAlibabaCloudKMSSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -247,7 +254,8 @@ export type TSecretSyncWithCredentials =
   | TBitbucketSyncWithCredentials
   | TLaravelForgeSyncWithCredentials
   | TOctopusDeploySyncWithCredentials
-  | TCircleCISyncWithCredentials;
+  | TCircleCISyncWithCredentials
+  | TAlibabaCloudKMSSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -284,7 +292,8 @@ export type TSecretSyncInput =
   | TBitbucketSyncInput
   | TLaravelForgeSyncInput
   | TOctopusDeploySyncInput
-  | TCircleCISyncInput;
+  | TCircleCISyncInput
+  | TAlibabaCloudKMSSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -321,7 +330,8 @@ export type TSecretSyncListItem =
   | TNorthflankSyncListItem
   | TBitbucketSyncListItem
   | TOctopusDeploySyncListItem
-  | TCircleCISyncListItem;
+  | TCircleCISyncListItem
+  | TAlibabaCloudKMSSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

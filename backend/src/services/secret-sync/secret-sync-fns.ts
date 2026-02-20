@@ -66,6 +66,10 @@ import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terra
 import { VERCEL_SYNC_LIST_OPTION, VercelSyncFns } from "./vercel";
 import { WINDMILL_SYNC_LIST_OPTION, WindmillSyncFns } from "./windmill";
 import { ZABBIX_SYNC_LIST_OPTION, ZabbixSyncFns } from "./zabbix";
+import {
+  ALIBABA_CLOUD_KMS_SYNC_LIST_OPTION,
+  AlibabaCloudKMSSyncFns
+} from "./alibaba-cloud-kms";
 
 const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.AWSParameterStore]: AWS_PARAMETER_STORE_SYNC_LIST_OPTION,
@@ -102,7 +106,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.LaravelForge]: LARAVEL_FORGE_SYNC_LIST_OPTION,
   [SecretSync.Chef]: CHEF_SYNC_LIST_OPTION,
   [SecretSync.OctopusDeploy]: OCTOPUS_DEPLOY_SYNC_LIST_OPTION,
-  [SecretSync.CircleCI]: CIRCLECI_SYNC_LIST_OPTION
+  [SecretSync.CircleCI]: CIRCLECI_SYNC_LIST_OPTION,
+  [SecretSync.AlibabaCloudKMS]: ALIBABA_CLOUD_KMS_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -329,6 +334,8 @@ export const SecretSyncFns = {
         return OctopusDeploySyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.CircleCI:
         return CircleCISyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.AlibabaCloudKMS:
+        return AlibabaCloudKMSSyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -463,6 +470,9 @@ export const SecretSyncFns = {
       case SecretSync.CircleCI:
         secretMap = await CircleCISyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.AlibabaCloudKMS:
+        secretMap = await AlibabaCloudKMSSyncFns.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -566,6 +576,8 @@ export const SecretSyncFns = {
         return OctopusDeploySyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.CircleCI:
         return CircleCISyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.AlibabaCloudKMS:
+        return AlibabaCloudKMSSyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
