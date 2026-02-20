@@ -134,6 +134,7 @@ export const mockKeyStore = (): TKeyStoreFactory => {
         list = JSON.parse(existing) as string[];
       }
       return list.length;
-    }
+    },
+    isRedisClusterMode: () => false
   };
 };

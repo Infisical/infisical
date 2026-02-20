@@ -56,7 +56,7 @@ type TKmsServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById" | "updateById" | "transaction">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "updateById" | "transaction">;
   kmsRootConfigDAL: Pick<TKmsRootConfigDALFactory, "findById" | "create" | "updateById" | "transaction">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "waitTillReady" | "setItemWithExpiry">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "waitTillReady" | "setItemWithExpiry" | "isRedisClusterMode">;
   internalKmsDAL: Pick<TInternalKmsDALFactory, "create">;
   hsmService: THsmServiceFactory;
   envConfig: Pick<TEnvConfig, "ENCRYPTION_KEY" | "ROOT_ENCRYPTION_KEY">;
@@ -198,6 +198,30 @@ export const kmsServiceFactory = ({
    * In mean time the rest of the request will wait until creation is finished followed by getting the created on
    * In real time this would be milliseconds
    */
+  // Helper function to create org KMS key within a transaction
+  const $createOrgKmsKey = async (orgId: string, tx: Knex) => {
+    const org = await orgDAL.findById(orgId, tx);
+    if (org.kmsDefaultKeyId) {
+      return org.kmsDefaultKeyId;
+    }
+
+    const key = await generateKmsKey({
+      isReserved: true,
+      orgId: org.id,
+      tx
+    });
+
+    await orgDAL.updateById(
+      org.id,
+      {
+        kmsDefaultKeyId: key.id
+      },
+      tx
+    );
+
+    return key.id;
+  };
+
   const getOrgKmsKeyId = async (orgId: string, trx?: Knex) => {
     let org = await orgDAL.findById(orgId, trx);
 
@@ -206,6 +230,17 @@ export const kmsServiceFactory = ({
     }
 
     if (!org.kmsDefaultKeyId) {
+      // In Redis Cluster mode, use PostgreSQL advisory lock for reliable distributed locking
+      if (keyStore.isRedisClusterMode()) {
+        const keyId = await (trx || orgDAL).transaction(async (tx) => {
+          await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsOrgKeyCreation(orgId)]);
+          return $createOrgKmsKey(orgId, tx);
+        });
+
+        return keyId;
+      }
+
+      // Standalone Redis mode - use Redis lock
       const lock = await keyStore
         .acquireLock([KeyStorePrefixes.KmsOrgKeyCreation, orgId], 3000, { retryCount: 3 })
         .catch(() => null);
@@ -221,28 +256,9 @@ export const kmsServiceFactory = ({
           org = await orgDAL.findById(orgId, trx);
         } else {
           const keyId = await (trx || orgDAL).transaction(async (tx) => {
-            org = await orgDAL.findById(orgId, tx);
-            if (org.kmsDefaultKeyId) {
-              return org.kmsDefaultKeyId;
-            }
-
-            const key = await generateKmsKey({
-              isReserved: true,
-              orgId: org.id,
-              tx
-            });
-
-            await orgDAL.updateById(
-              org.id,
-              {
-                kmsDefaultKeyId: key.id
-              },
-              tx
-            );
-
+            const createdKeyId = await $createOrgKmsKey(orgId, tx);
             await keyStore.setItemWithExpiry(`${KeyStorePrefixes.WaitUntilReadyKmsOrgKeyCreation}${orgId}`, 10, "true");
-
-            return key.id;
+            return createdKeyId;
           });
 
           return keyId;
@@ -583,6 +599,22 @@ export const kmsServiceFactory = ({
     };
   };
 
+  // Helper function to create org data key within a transaction
+  const $createOrgKmsDataKey = async (orgId: string, kmsKeyId: string, tx: Knex) => {
+    const org = await orgDAL.findById(orgId, tx);
+    if (org.kmsEncryptedDataKey) {
+      return;
+    }
+
+    const dataKey = crypto.randomBytes(32);
+    const kmsEncryptor = await encryptWithKmsKey({ kmsId: kmsKeyId }, tx);
+    const { cipherTextBlob } = await kmsEncryptor({ plainText: dataKey });
+
+    await orgDAL.updateById(org.id, { kmsEncryptedDataKey: cipherTextBlob }, tx);
+
+    return dataKey;
+  };
+
   const $getOrgKmsDataKey = async (orgId: string, trx?: Knex) => {
     const kmsKeyId = await getOrgKmsKeyId(orgId, trx);
     let org = await orgDAL.findById(orgId, trx);
@@ -592,61 +624,52 @@ export const kmsServiceFactory = ({
     }
 
     if (!org.kmsEncryptedDataKey) {
-      const lock = await keyStore
-        .acquireLock([KeyStorePrefixes.KmsOrgDataKeyCreation, orgId], 500, { retryCount: 0 })
-        .catch(() => null);
+      // In Redis Cluster mode, use PostgreSQL advisory lock for reliable distributed locking
+      if (keyStore.isRedisClusterMode()) {
+        const orgDataKey = await (trx || orgDAL).transaction(async (tx) => {
+          await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsOrgDataKeyCreation(orgId)]);
+          return $createOrgKmsDataKey(orgId, kmsKeyId, tx);
+        });
 
-      try {
-        if (!lock) {
-          await keyStore.waitTillReady({
-            key: `${KeyStorePrefixes.WaitUntilReadyKmsOrgDataKeyCreation}${orgId}`,
-            keyCheckCb: (val) => val === "true",
-            waitingCb: () => logger.info("KMS. Waiting for org data key to be created")
-          });
+        if (orgDataKey) {
+          return orgDataKey;
+        }
 
-          org = await orgDAL.findById(orgId, trx);
-        } else {
-          const orgDataKey = await (trx || orgDAL).transaction(async (tx) => {
-            org = await orgDAL.findById(orgId, tx);
-            if (org.kmsEncryptedDataKey) {
-              return;
-            }
+        // Key was created by another transaction; re-fetch org to get the encrypted data key
+        org = await orgDAL.findById(orgId, trx);
+      } else {
+        // Standalone Redis mode - use Redis lock
+        const lock = await keyStore
+          .acquireLock([KeyStorePrefixes.KmsOrgDataKeyCreation, orgId], 500, { retryCount: 0 })
+          .catch(() => null);
 
-            const dataKey = crypto.randomBytes(32);
-            const kmsEncryptor = await encryptWithKmsKey(
-              {
-                kmsId: kmsKeyId
-              },
-              tx
-            );
-
-            const { cipherTextBlob } = await kmsEncryptor({
-              plainText: dataKey
+        try {
+          if (!lock) {
+            await keyStore.waitTillReady({
+              key: `${KeyStorePrefixes.WaitUntilReadyKmsOrgDataKeyCreation}${orgId}`,
+              keyCheckCb: (val) => val === "true",
+              waitingCb: () => logger.info("KMS. Waiting for org data key to be created")
             });
 
-            await orgDAL.updateById(
-              org.id,
-              {
-                kmsEncryptedDataKey: cipherTextBlob
-              },
-              tx
-            );
+            org = await orgDAL.findById(orgId, trx);
+          } else {
+            const orgDataKey = await (trx || orgDAL).transaction(async (tx) => {
+              const createdDataKey = await $createOrgKmsDataKey(orgId, kmsKeyId, tx);
+              await keyStore.setItemWithExpiry(
+                `${KeyStorePrefixes.WaitUntilReadyKmsOrgDataKeyCreation}${orgId}`,
+                10,
+                "true"
+              );
+              return createdDataKey;
+            });
 
-            await keyStore.setItemWithExpiry(
-              `${KeyStorePrefixes.WaitUntilReadyKmsOrgDataKeyCreation}${orgId}`,
-              10,
-              "true"
-            );
-
-            return dataKey;
-          });
-
-          if (orgDataKey) {
-            return orgDataKey;
+            if (orgDataKey) {
+              return orgDataKey;
+            }
           }
+        } finally {
+          await lock?.release();
         }
-      } finally {
-        await lock?.release();
       }
     }
 
@@ -664,6 +687,24 @@ export const kmsServiceFactory = ({
     });
   };
 
+  // Helper function to create project KMS key within a transaction
+  const $createProjectKmsKey = async (projectId: string, tx: Knex) => {
+    const project = await projectDAL.findById(projectId, tx);
+    if (project.kmsSecretManagerKeyId) {
+      return project.kmsSecretManagerKeyId;
+    }
+
+    const key = await generateKmsKey({
+      isReserved: true,
+      orgId: project.orgId,
+      tx
+    });
+
+    await projectDAL.updateById(projectId, { kmsSecretManagerKeyId: key.id }, tx);
+
+    return key.id;
+  };
+
   const getProjectSecretManagerKmsKeyId = async (projectId: string, trx?: Knex) => {
     let project = await projectDAL.findById(projectId, trx);
     if (!project) {
@@ -671,6 +712,17 @@ export const kmsServiceFactory = ({
     }
 
     if (!project.kmsSecretManagerKeyId) {
+      // In Redis Cluster mode, use PostgreSQL advisory lock for reliable distributed locking
+      if (keyStore.isRedisClusterMode()) {
+        const kmsKeyId = await (trx || projectDAL).transaction(async (tx) => {
+          await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsProjectKeyCreation(projectId)]);
+          return $createProjectKmsKey(projectId, tx);
+        });
+
+        return kmsKeyId;
+      }
+
+      // Standalone Redis mode - use Redis lock
       const lock = await keyStore
         .acquireLock([KeyStorePrefixes.KmsProjectKeyCreation, projectId], 3000, { retryCount: 0 })
         .catch(() => null);
@@ -684,36 +736,17 @@ export const kmsServiceFactory = ({
             delay: 500
           });
 
-          project = await projectDAL.findById(projectId);
+          project = await projectDAL.findById(projectId, trx);
         } else {
           const kmsKeyId = await (trx || projectDAL).transaction(async (tx) => {
-            project = await projectDAL.findById(projectId, tx);
-            if (project.kmsSecretManagerKeyId) {
-              return project.kmsSecretManagerKeyId;
-            }
-
-            const key = await generateKmsKey({
-              isReserved: true,
-              orgId: project.orgId,
-              tx
-            });
-
-            await projectDAL.updateById(
-              projectId,
-              {
-                kmsSecretManagerKeyId: key.id
-              },
-              tx
+            const createdKeyId = await $createProjectKmsKey(projectId, tx);
+            await keyStore.setItemWithExpiry(
+              `${KeyStorePrefixes.WaitUntilReadyKmsProjectKeyCreation}${projectId}`,
+              10,
+              "true"
             );
-
-            return key.id;
+            return createdKeyId;
           });
-
-          await keyStore.setItemWithExpiry(
-            `${KeyStorePrefixes.WaitUntilReadyKmsProjectKeyCreation}${projectId}`,
-            10,
-            "true"
-          );
 
           return kmsKeyId;
         }
@@ -729,76 +762,84 @@ export const kmsServiceFactory = ({
     return project.kmsSecretManagerKeyId;
   };
 
+  // Helper function to create project data key within a transaction
+  const $createProjectKmsDataKey = async (projectId: string, kmsKeyId: string, tx: Knex) => {
+    const project = await projectDAL.findById(projectId, tx);
+    if (project.kmsSecretManagerEncryptedDataKey) {
+      return;
+    }
+
+    const dataKey = crypto.randomBytes(32);
+    const kmsEncryptor = await encryptWithKmsKey({ kmsId: kmsKeyId }, tx);
+    const { cipherTextBlob } = await kmsEncryptor({ plainText: dataKey });
+
+    await projectDAL.updateById(projectId, { kmsSecretManagerEncryptedDataKey: cipherTextBlob }, tx);
+
+    return dataKey;
+  };
+
   const $getProjectSecretManagerKmsDataKey = async (projectId: string, trx?: Knex) => {
     const kmsKeyId = await getProjectSecretManagerKmsKeyId(projectId, trx);
     let project = await projectDAL.findById(projectId, trx);
 
     if (!project.kmsSecretManagerEncryptedDataKey) {
-      const lock = await keyStore
-        .acquireLock([KeyStorePrefixes.KmsProjectDataKeyCreation, projectId], 3000, { retryCount: 0 })
-        .catch((err) => {
-          logger.error(err, "KMS. Failed to acquire lock.");
-          return null;
+      // In Redis Cluster mode, use PostgreSQL advisory lock for reliable distributed locking
+      if (keyStore.isRedisClusterMode()) {
+        const projectDataKey = await (trx || projectDAL).transaction(async (tx) => {
+          await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsProjectDataKeyCreation(projectId)]);
+          return $createProjectKmsDataKey(projectId, kmsKeyId, tx);
         });
 
-      try {
-        if (!lock) {
-          await keyStore.waitTillReady({
-            key: `${KeyStorePrefixes.WaitUntilReadyKmsProjectDataKeyCreation}${projectId}`,
-            keyCheckCb: (val) => val === "true",
-            waitingCb: () => logger.info("KMS. Waiting for secret manager data key to be created"),
-            delay: 500
+        if (projectDataKey) {
+          return projectDataKey;
+        }
+
+        // Key was created by another transaction; re-fetch project to get the encrypted data key
+        project = await projectDAL.findById(projectId, trx);
+      } else {
+        // Standalone Redis mode - use Redis lock
+        const lock = await keyStore
+          .acquireLock([KeyStorePrefixes.KmsProjectDataKeyCreation, projectId], 3000, { retryCount: 0 })
+          .catch((err) => {
+            logger.error(err, "KMS. Failed to acquire lock.");
+            return null;
           });
 
-          project = await projectDAL.findById(projectId, trx);
-        } else {
-          logger.info(`KMS. Generating KMS key for project ${projectId}`);
-          const projectDataKey = await (trx || projectDAL).transaction(async (tx) => {
-            project = await projectDAL.findById(projectId, tx);
-            if (project.kmsSecretManagerEncryptedDataKey) {
-              return project.kmsSecretManagerEncryptedDataKey;
-            }
-
-            const dataKey = crypto.randomBytes(32);
-            const kmsEncryptor = await encryptWithKmsKey(
-              {
-                kmsId: kmsKeyId
-              },
-              tx
-            );
-
-            const { cipherTextBlob } = await kmsEncryptor({
-              plainText: dataKey
+        try {
+          if (!lock) {
+            await keyStore.waitTillReady({
+              key: `${KeyStorePrefixes.WaitUntilReadyKmsProjectDataKeyCreation}${projectId}`,
+              keyCheckCb: (val) => val === "true",
+              waitingCb: () => logger.info("KMS. Waiting for secret manager data key to be created"),
+              delay: 500
             });
 
-            await projectDAL.updateById(
-              projectId,
-              {
-                kmsSecretManagerEncryptedDataKey: cipherTextBlob
-              },
-              tx
-            );
+            project = await projectDAL.findById(projectId, trx);
+          } else {
+            logger.info(`KMS. Generating KMS data key for project ${projectId}`);
+            const projectDataKey = await (trx || projectDAL).transaction(async (tx) => {
+              const createdDataKey = await $createProjectKmsDataKey(projectId, kmsKeyId, tx);
+              await keyStore.setItemWithExpiry(
+                `${KeyStorePrefixes.WaitUntilReadyKmsProjectDataKeyCreation}${projectId}`,
+                10,
+                "true"
+              );
+              return createdDataKey;
+            });
 
-            await keyStore.setItemWithExpiry(
-              `${KeyStorePrefixes.WaitUntilReadyKmsProjectDataKeyCreation}${projectId}`,
-              10,
-              "true"
-            );
-            return dataKey;
-          });
-
-          if (projectDataKey) {
-            return projectDataKey;
+            if (projectDataKey) {
+              return projectDataKey;
+            }
           }
+        } catch (error) {
+          logger.error(
+            error,
+            `getProjectSecretManagerKmsDataKey: Failed to get project data key for [projectId=${projectId}]`
+          );
+          throw error;
+        } finally {
+          await lock?.release();
         }
-      } catch (error) {
-        logger.error(
-          error,
-          `getProjectSecretManagerKmsDataKey: Failed to get project data key for [projectId=${projectId}]`
-        );
-        throw error;
-      } finally {
-        await lock?.release();
       }
     }
 
